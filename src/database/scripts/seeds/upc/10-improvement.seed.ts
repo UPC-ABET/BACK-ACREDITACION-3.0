@@ -2,14 +2,26 @@ import { runTenantSeed } from '../seed-runner';
 
 runTenantSeed('improvement module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
-		INSERT INTO "improvement"."actions" (description)
-		SELECT v.description
+		INSERT INTO "improvement"."actions" (
+			description,
+			correlative,
+			action_status_type_id,
+			program_id,
+			academic_period_id
+		)
+		SELECT v.description, v.correlative, action_status.id, program.id, period.id
 		FROM (
 			VALUES
-				('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.'),
-				('Incorporar revisiones por pares en el Proyecto Integrador de Software.'),
-				('Actualizar la matriz de evidencias para indicadores de acreditacion.')
-		) AS v(description)
+				('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 2026101, 'TG802-T001', 'PROG_SOFT', 'AP_2026_1'),
+				('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 2026102, 'TG802-T001', 'PROG_SOFT', 'AP_2026_2'),
+				('Actualizar la matriz de evidencias para indicadores de acreditacion.', 2026103, 'TG802-T002', 'PROG_SOFT', 'AP_2026_1')
+		) AS v(description, correlative, action_status_type_code, program_code, academic_period_code)
+		JOIN "core"."types" action_status
+			ON action_status.code = v.action_status_type_code
+		JOIN "academic"."programs" program
+			ON program.code = v.program_code
+		JOIN "academic"."academic_periods" period
+			ON period.code = v.academic_period_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "improvement"."actions" action WHERE action.description = v.description
 		);
@@ -23,16 +35,19 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			correlative,
 			description,
 			study_plan_course_id,
-			campus_id
+			campus_id,
+			finding_status_type_id
 		)
-		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, spc.id, campus.id
+		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, spc.id, campus.id, finding_status.id
 		FROM (
 			VALUES
-				('TG801-T002', 'INST_FP_EXAM', 'calidad@upc.edu.pe', 2026001, 'Se identifico necesidad de reforzar la formulacion de algoritmos antes de la implementacion.', 'SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'CAMPUS_MON'),
-				('TG801-T001', 'INST_CAPSTONE', 'calidad@upc.edu.pe', 2026002, 'Los equipos requieren mayor evidencia de colaboracion registrada durante el proyecto.', 'SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', 'CAMPUS_MON')
-		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, study_plan_code, academic_period_code, course_name, campus_code)
+				('TG801-T002', 'INST_FP_EXAM', 'calidad@upc.edu.pe', 2026001, 'Se identifico necesidad de reforzar la formulacion de algoritmos antes de la implementacion.', 'SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'CAMPUS_MON', 'TG803-T001'),
+				('TG801-T001', 'INST_CAPSTONE', 'calidad@upc.edu.pe', 2026002, 'Los equipos requieren mayor evidencia de colaboracion registrada durante el proyecto.', 'SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', 'CAMPUS_MON', 'TG803-T002')
+		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, study_plan_code, academic_period_code, course_name, campus_code, finding_status_type_code)
 		JOIN "core"."types" criticality
 			ON criticality.code = v.criticality_type_code
+		JOIN "core"."types" finding_status
+			ON finding_status.code = v.finding_status_type_code
 		JOIN "evidence"."instruments" instrument
 			ON instrument.code = v.instrument_code
 		JOIN "organization"."staff" staff
@@ -58,15 +73,16 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		INSERT INTO "improvement"."finding_actions" (
 			finding_id,
 			action_id,
-			in_plan_required
+			in_plan_required,
+			evidences
 		)
-		SELECT finding.id, action.id, v.in_plan_required
+		SELECT finding.id, action.id, v.in_plan_required, v.evidences
 		FROM (
 			VALUES
-				(2026001, 'Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', true),
-				(2026002, 'Incorporar revisiones por pares en el Proyecto Integrador de Software.', true),
-				(2026001, 'Actualizar la matriz de evidencias para indicadores de acreditacion.', false)
-		) AS v(finding_correlative, action_description, in_plan_required)
+				(2026001, 'Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', true, '{"required":["syllabus","exercise-bank"]}'::jsonb),
+				(2026002, 'Incorporar revisiones por pares en el Proyecto Integrador de Software.', true, '{"required":["peer-review-log","team-rubric"]}'::jsonb),
+				(2026001, 'Actualizar la matriz de evidencias para indicadores de acreditacion.', false, '{"required":["evidence-matrix"]}'::jsonb)
+		) AS v(finding_correlative, action_description, in_plan_required, evidences)
 		JOIN "improvement"."findings" finding
 			ON finding.correlative = v.finding_correlative
 		JOIN "improvement"."actions" action
@@ -104,15 +120,14 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."plan_actions" (
 			plan_id,
-			finding_action_id,
-			evidences
+			finding_action_id
 		)
-		SELECT plan.id, finding_action.id, v.evidences
+		SELECT plan.id, finding_action.id
 		FROM (
 			VALUES
-				('Plan de mejora de evidencias 2026-1', 2026001, 'Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', '{"required":["syllabus","exercise-bank"]}'::jsonb),
-				('Plan de seguimiento capstone 2026-2', 2026002, 'Incorporar revisiones por pares en el Proyecto Integrador de Software.', '{"required":["peer-review-log","team-rubric"]}'::jsonb)
-		) AS v(plan_name, finding_correlative, action_description, evidences)
+				('Plan de mejora de evidencias 2026-1', 2026001, 'Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.'),
+				('Plan de seguimiento capstone 2026-2', 2026002, 'Incorporar revisiones por pares en el Proyecto Integrador de Software.')
+		) AS v(plan_name, finding_correlative, action_description)
 		JOIN "improvement"."plans" plan
 			ON plan.name = v.plan_name
 		JOIN "improvement"."findings" finding

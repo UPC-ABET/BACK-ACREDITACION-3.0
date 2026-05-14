@@ -57,14 +57,15 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			campus_id,
 			program_id,
 			information,
-			survey_number
+			survey_number,
+			course_section_id
 		)
-		SELECT survey_type.id, survey_status.id, student.id, period.id, campus.id, program.id, v.information, v.survey_number
+		SELECT survey_type.id, survey_status.id, student.id, period.id, campus.id, program.id, v.information, v.survey_number, course_section.id
 		FROM (
 			VALUES
-				('TG601-T001', 'TG602-T001', 'student.luis.ramirez@upc.edu.pe', 'AP_2026_1', 'CAMPUS_MON', 'PROG_SOFT', 'Encuesta de satisfaccion del periodo 2026-1', 20260101),
-				('TG601-T001', 'TG602-T001', 'student.sofia.torres@upc.edu.pe', 'AP_2026_1', 'CAMPUS_MON', 'PROG_SOFT', 'Encuesta de satisfaccion del periodo 2026-1', 20260102)
-		) AS v(survey_type_code, survey_status_code, student_email, academic_period_code, campus_code, program_code, information, survey_number)
+				('TG601-T001', 'TG602-T001', 'student.luis.ramirez@upc.edu.pe', 'AP_2026_1', 'CAMPUS_MON', 'PROG_SOFT', 'SOFT-FP-2026-1-A', 'Encuesta de satisfaccion del periodo 2026-1', 20260101),
+				('TG601-T001', 'TG602-T001', 'student.sofia.torres@upc.edu.pe', 'AP_2026_1', 'CAMPUS_MON', 'PROG_SOFT', 'SOFT-FP-2026-1-A', 'Encuesta de satisfaccion del periodo 2026-1', 20260102)
+		) AS v(survey_type_code, survey_status_code, student_email, academic_period_code, campus_code, program_code, section_code, information, survey_number)
 		JOIN "core"."types" survey_type
 			ON survey_type.code = v.survey_type_code
 		JOIN "core"."types" survey_status
@@ -79,6 +80,8 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			ON campus.code = v.campus_code
 		JOIN "academic"."programs" program
 			ON program.code = v.program_code
+		JOIN "academic"."course_sections" course_section
+			ON course_section.section_code = v.section_code
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM "evidence"."surveys" survey

@@ -2,7 +2,7 @@ import { runTenantSeed } from '../seed-runner';
 
 runTenantSeed('academic module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."academic_periods" (modality_type_Id, code, start_date, end_date)
+		INSERT INTO "academic"."academic_periods" ("modality_type_Id", code, start_date, end_date)
 		SELECT t.id, v.code, v.start_date::timestamptz, v.end_date::timestamptz
 		FROM "core"."types" t
 		JOIN (
