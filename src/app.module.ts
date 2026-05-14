@@ -46,10 +46,8 @@ import { TypeModule } from './modules/core/types/types.module';
 import { ProjectEvaluatorModule } from './modules/evaluation/project-evaluators/project-evaluators.module';
 import { ProjectStudentModule } from './modules/evaluation/project-students/project-students.module';
 import { ProjectModule } from './modules/evaluation/projects/projects.module';
-import { RubricOutcomeCriteriaModule } from './modules/evaluation/rubric-outcome-criterias/rubric-outcome-criterias.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
-import { RubricScaleModule } from './modules/evaluation/rubric-scales/rubric-scales.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
 import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
 
@@ -158,10 +156,8 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		ParameterModule,
 		TypeGroupModule,
 		TypeModule,
-		RubricOutcomeCriteriaModule,
 		RubricQuestionCriteriaModule,
 		RubricQuestionModule,
-		RubricScaleModule,
 		RubricScoreModule,
 		RubricModule,
 		EvaluationModule,

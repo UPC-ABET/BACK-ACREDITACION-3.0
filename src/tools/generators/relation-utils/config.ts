@@ -315,20 +315,6 @@ export const ENTITY_CONFIG: Record<
 		plural: 'findings',
 	},
 
-	rubric_scale: {
-		entity: 'RubricScaleEntity',
-		path: 'evaluation/rubric-scales',
-		singular: 'rubric_scale',
-		plural: 'rubric_scales',
-	},
-
-	rubric_outcome_criteria: {
-		entity: 'RubricOutcomeCriteriaEntity',
-		path: 'evaluation/rubric-outcome-criterias',
-		singular: 'rubric_outcome_criteria',
-		plural: 'rubric_outcome_criterias',
-	},
-
 	rubric_question: {
 		entity: 'RubricQuestionEntity',
 		path: 'evaluation/rubric-questions',
