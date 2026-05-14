@@ -1,0 +1,46 @@
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from 'src/commons/base.entity';
+import { CodeColumn, TextMediumColumn, IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
+import { ChartLevelEntity } from 'src/modules/organization/chart-levels/model/chart-levels.entity';
+import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
+
+@Entity({ name: 'charts', schema: 'organization' })
+export class ChartEntity extends BaseEntity {
+	// %% ATRIBUTOS
+
+	@IntegerFKIDColumn({ nullable: false })
+	staff_id: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	academic_period_id: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	chart_level_id: number;
+
+	@IntegerColumn({ nullable: false })
+	root_chart_detail_id: number;
+
+	@TextMediumColumn({ nullable: false })
+	level_title: string;
+
+	@IntegerColumn({ nullable: false })
+	entity_type_id: number;
+
+	@CodeColumn({ nullable: false })
+	entity_code: string;
+
+	// %% RELACIONES
+
+	@ManyToOne(() => StaffEntity)
+	@JoinColumn({ name: 'staff_id' })
+	staff: StaffEntity;
+
+	@ManyToOne(() => AcademicPeriodEntity)
+	@JoinColumn({ name: 'academic_period_id' })
+	academic_period: AcademicPeriodEntity;
+
+	@ManyToOne(() => ChartLevelEntity)
+	@JoinColumn({ name: 'chart_level_id' })
+	chart_level: ChartLevelEntity;
+}

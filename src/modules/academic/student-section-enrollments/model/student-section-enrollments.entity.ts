@@ -1,0 +1,26 @@
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from 'src/commons/base.entity';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/course-sections.entity';
+import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/model/enrolled-students.entity';
+
+@Entity({ name: 'student_section_enrollments', schema: 'academic' })
+export class StudentSectionEnrollmentEntity extends BaseEntity {
+	// %% ATRIBUTOS
+
+	@IntegerFKIDColumn({ nullable: false })
+	enrolled_student_id: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	course_section_id: number;
+
+	// %% RELACIONES
+
+	@ManyToOne(() => EnrolledStudentEntity)
+	@JoinColumn({ name: 'enrolled_student_id' })
+	enrolled_student: EnrolledStudentEntity;
+
+	@ManyToOne(() => CourseSectionEntity)
+	@JoinColumn({ name: 'course_section_id' })
+	course_section: CourseSectionEntity;
+}

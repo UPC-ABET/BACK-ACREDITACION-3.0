@@ -1,0 +1,14 @@
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { BaseRepostitory } from 'src/commons/base.repository';
+import { FindingActionEntity } from '../model/finding-actions.entity';
+
+export class FindingActionRepository extends BaseRepostitory {
+	constructor(
+		@InjectRepository(FindingActionEntity)
+		repository: Repository<FindingActionEntity>,
+		dataSource: DataSource,
+	) {
+		super(repository, dataSource);
+	}
+}

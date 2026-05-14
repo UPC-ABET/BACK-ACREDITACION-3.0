@@ -1,0 +1,11 @@
+export const findingsValidationStrings = {
+	error: {
+		findingExists: 'error.finding.exists',
+		notFound: 'error.notFound',
+	},
+	result: {
+		createFailed: 'error.created.failed',
+		updateFailed: 'error.update.failed',
+		deleteFailed: 'error.delete.failed',
+	},
+};

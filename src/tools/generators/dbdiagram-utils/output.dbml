@@ -1,0 +1,720 @@
+Table academic_periods {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  modality_type_Id int
+  code varchar
+  start_date timestamp
+  end_date timestamp
+}
+
+Table accreditors {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  code varchar
+  name varchar
+}
+
+Table commissions {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  accreditor_id int
+  code varchar
+  name varchar
+}
+
+Table programs {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  modality_type_id int
+  code varchar
+  name varchar
+  degree varchar
+}
+
+Table program_commissions {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  commission_id int
+  program_id int
+  academic_period_id int
+  commission_type_id int
+}
+
+Table outcomes {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  program_commission_id int
+  outcome_code varchar
+  outcome_name varchar
+  outcome_description varchar
+}
+
+Table campuses {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  code varchar
+  name varchar
+}
+
+Table users {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  document_type_id varchar
+  document_code int
+  first_name varchar
+  last_name varchar
+  email varchar
+  phone varchar
+  password varchar
+  is_admin boolean [null]
+}
+
+Table students {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  user_id int
+  program_id int
+  graduation_modality_type_id int
+}
+
+Table surveys {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  survey_type_id int
+  survey_status_type_id int
+  student_id int
+  academic_period_id int
+  campus_id int
+  program_id int
+  information varchar [null]
+  survey_number int [null]
+}
+
+Table scores {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  survey_id int
+  outcome_id int
+  score decimal
+  commentaries varchar [null]
+}
+
+Table notifications {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  survey_id int
+  notification_status_type_id int
+  token text
+  max_register_date timestamp
+}
+
+Table outcome_configs {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  outcome_id int
+  user_outcome_name varchar
+  user_outcome_description varchar [null]
+}
+
+Table notification_messages {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  survey_type_id int
+  program_id int
+  title varchar
+  body varchar
+  cc_receivers json [null]
+}
+
+Table faculties {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  code varchar
+  name varchar
+}
+
+Table schools {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  faculty_id int
+  code varchar
+  name varchar
+}
+
+Table staff {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  user_id int
+  position_type_id int
+  job_title varchar
+  job_description varchar
+  staff_email varchar
+  staff_phone varchar
+}
+
+Table chart_levels {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  level int
+  level_type_id int
+}
+
+Table charts {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  staff_id int
+  academic_period_id int
+  chart_level_id int
+  root_chart_detail_id int
+  level_title varchar
+  entity_type_id int
+  entity_code varchar
+}
+
+Table actions {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  description varchar
+}
+
+Table instruments {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  constituent_type_id int
+  code varchar
+  name varchar
+  description varchar [null]
+  is_for_accreditation boolean
+}
+
+Table courses {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  name varchar
+  description varchar
+  learning_outcome text
+}
+
+Table study_plans {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  program_id int
+  code varchar
+  name varchar
+  description varchar
+}
+
+Table study_plan_academic_periods {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  study_plan_id int
+  academic_period_id int
+}
+
+Table study_plan_courses {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  study_plan_academic_period_id int
+  course_id int
+  is_elective boolean
+  level_type_id int
+}
+
+Table findings {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  criticality_type_id int
+  instrument_id int
+  staff_id int [null]
+  correlative int
+  description varchar [null]
+  study_plan_course_id int
+  campus_id int
+}
+
+Table finding_actions {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  finding_id int
+  action_id int
+  in_plan_required boolean
+}
+
+Table plans {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  program_id int
+  academic_period_id int
+  name varchar
+  description varchar [null]
+  is_open boolean
+}
+
+Table plan_actions {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  plan_id int
+  finding_action_id int
+  evidences json [null]
+}
+
+Table finding_outcomes {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  finding_id int
+  outcome_id int
+}
+
+Table ifcs {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  study_plan_course_id int
+  information varchar [null]
+}
+
+Table statuses {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  ifc_id int
+  status_type_id int
+  staff_id int
+  commentary varchar [null]
+  register_at timestamp
+}
+
+Table ifc_findings {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  ifc_id int
+  finding_id int
+}
+
+Table professors {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  staff_id int
+}
+
+Table course_sections {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  study_plan_course_id int
+  campus_id int
+  professor_id int
+  section_code varchar
+  schedule json [null]
+  section_modality_type_id int
+}
+
+Table enrolled_students {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  student_id int
+  study_plan_academic_period int
+  campus_id int
+  enrollement_modality_type_id int
+}
+
+Table student_section_enrollments {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  enrolled_student_id int
+  course_section_id int
+}
+
+Table student_course_outcome_grades {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  student_section_enrollment_id int
+  outcome_id int
+  grade decimal
+}
+
+Table projects {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  code varchar
+  name varchar
+  description varchar [null]
+}
+
+Table project_evaluators {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  project_id int
+  professor_id int
+  evaluator_type_id int
+}
+
+Table project_students {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  project_id int
+  student_section_enrollment_id int
+  evaluator_type_id int
+}
+
+Table evaluations {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  project_student_id int
+  project_evaluator_id int
+  qualification_status_type_id int
+  observation varchar [null]
+  register_at timestamp [null]
+}
+
+Table rubrics {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  rubric_type_id int
+  segment_type_id int
+  study_plan_course_id int
+}
+
+Table rubric_outcome_criterias {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  rubric_id int
+  outcome_id int
+  criteria varchar
+}
+
+Table rubric_question_criterias {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  rubric_question_id int
+  rubric_scale_id int
+  criteria varchar
+  min_value decimal
+  max_value decimal
+}
+
+Table rubric_scores {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  evaluation_id int
+  rubric_outcome_criteria_id int
+  rubric_question_criteria_id int
+  score decimal
+  commentaries varchar [null]
+}
+
+Table rubric_scales {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  rubric_id int
+  code varchar
+  name varchar
+}
+
+Table rubric_questions {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  rubric_id int
+  outcome_id int
+  question varchar
+}
+
+Table type_groups {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  code varchar
+  name varchar
+  description varchar [null]
+}
+
+Table types {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  type_group_id int
+  code varchar
+  name varchar
+  description varchar [null]
+}
+
+Table parameters {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  code varchar
+  name varchar
+  description varchar [null]
+  value json [null]
+}
+
+Table users {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  email varchar
+  password varchar [null]
+  is_admin boolean [null]
+}
+
+Table student_course_grades {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  student_section_enrollment_id int
+  grade_type_id int
+  grade_type_percentage decimal
+  grade decimal
+}
+
+Table performance_levels {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  instrument_type_id int
+  academic_period_id int
+  name varchar
+  code varchar
+  unique_value decimal
+  min_score decimal
+  max_score decimal
+  max_value decimal
+}
+
+Table course_outcome_mappings {
+  id int
+  extra json
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+  outcome_id int
+  study_plan_course_id int
+  outcome_type_id int
+}
+
+Ref: commissions.accreditor_id > accreditors.id
+Ref: program_commissions.commission_id > commissions.id
+Ref: program_commissions.program_id > programs.id
+Ref: program_commissions.academic_period_id > academic_periods.id
+Ref: outcomes.program_commission_id > program_commissions.id
+Ref: students.user_id > users.id
+Ref: students.program_id > programs.id
+Ref: surveys.student_id > students.id
+Ref: surveys.academic_period_id > academic_periods.id
+Ref: surveys.campus_id > campuses.id
+Ref: surveys.program_id > programs.id
+Ref: scores.survey_id > surveys.id
+Ref: scores.outcome_id > outcomes.id
+Ref: notifications.survey_id > surveys.id
+Ref: outcome_configs.outcome_id > outcomes.id
+Ref: notification_messages.program_id > programs.id
+Ref: schools.faculty_id > faculties.id
+Ref: staff.user_id > users.id
+Ref: charts.staff_id > staff.id
+Ref: charts.academic_period_id > academic_periods.id
+Ref: charts.chart_level_id > chart_levels.id
+Ref: study_plans.program_id > programs.id
+Ref: study_plan_academic_periods.study_plan_id > study_plans.id
+Ref: study_plan_academic_periods.academic_period_id > academic_periods.id
+Ref: study_plan_courses.study_plan_academic_period_id > study_plan_academic_periods.id
+Ref: study_plan_courses.course_id > courses.id
+Ref: findings.instrument_id > instruments.id
+Ref: findings.staff_id > staff.id
+Ref: findings.study_plan_course_id > study_plan_courses.id
+Ref: findings.campus_id > campuses.id
+Ref: finding_actions.finding_id > findings.id
+Ref: finding_actions.action_id > actions.id
+Ref: plans.program_id > programs.id
+Ref: plans.academic_period_id > academic_periods.id
+Ref: plan_actions.plan_id > plans.id
+Ref: plan_actions.finding_action_id > finding_actions.id
+Ref: finding_outcomes.finding_id > findings.id
+Ref: finding_outcomes.outcome_id > outcomes.id
+Ref: ifcs.study_plan_course_id > study_plan_courses.id
+Ref: statuses.ifc_id > ifcs.id
+Ref: statuses.staff_id > staff.id
+Ref: ifc_findings.ifc_id > ifcs.id
+Ref: ifc_findings.finding_id > findings.id
+Ref: professors.staff_id > staff.id
+Ref: course_sections.study_plan_course_id > study_plan_courses.id
+Ref: course_sections.campus_id > campuses.id
+Ref: course_sections.professor_id > professors.id
+Ref: enrolled_students.student_id > students.id
+Ref: enrolled_students.campus_id > campuses.id
+Ref: student_section_enrollments.enrolled_student_id > enrolled_students.id
+Ref: student_section_enrollments.course_section_id > course_sections.id
+Ref: student_course_outcome_grades.student_section_enrollment_id > student_section_enrollments.id
+Ref: student_course_outcome_grades.outcome_id > outcomes.id
+Ref: project_evaluators.project_id > projects.id
+Ref: project_evaluators.professor_id > professors.id
+Ref: project_students.project_id > projects.id
+Ref: project_students.student_section_enrollment_id > student_section_enrollments.id
+Ref: evaluations.project_student_id > project_students.id
+Ref: evaluations.project_evaluator_id > project_evaluators.id
+Ref: rubrics.study_plan_course_id > study_plan_courses.id
+Ref: rubric_outcome_criterias.rubric_id > rubrics.id
+Ref: rubric_outcome_criterias.outcome_id > outcomes.id
+Ref: rubric_scores.evaluation_id > evaluations.id
+Ref: rubric_scores.rubric_outcome_criteria_id > rubric_outcome_criterias.id
+Ref: rubric_scores.rubric_question_criteria_id > rubric_question_criterias.id
+Ref: rubric_scales.rubric_id > rubrics.id
+Ref: rubric_questions.rubric_id > rubrics.id
+Ref: rubric_questions.outcome_id > outcomes.id
+Ref: types.type_group_id > type_groups.id
+Ref: student_course_grades.student_section_enrollment_id > student_section_enrollments.id
+Ref: performance_levels.academic_period_id > academic_periods.id
+Ref: course_outcome_mappings.outcome_id > outcomes.id
+Ref: course_outcome_mappings.study_plan_course_id > study_plan_courses.id

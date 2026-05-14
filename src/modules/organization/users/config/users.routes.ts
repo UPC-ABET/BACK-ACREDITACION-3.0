@@ -1,0 +1,15 @@
+export const usersRoutes = {
+	route: 'users',
+	tag: 'Usuarios',
+	operation: {
+		create: { method: 'POST', route: '/create', summary: 'Crear usuario' },
+		update: { method: 'PUT', route: '/update/:id', summary: 'Actualizar usuario' },
+		delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar usuario' },
+		getAll: { method: 'GET', route: '/get-all', summary: 'Listar usuarios' },
+		getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener usuario' },
+		getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar usuarios' },
+		loginByCredentials: { method: 'POST', route: '/login-by-credentials', summary: 'Login de usuario por credenciales' },
+		logout: { method: 'POST', route: '/logout', summary: 'Cerrar Sesión Usuario' },
+		changeRole: { method: 'POST', route: '/change-role', summary: 'Cambiar rol activo de usuario' },
+	},
+};
