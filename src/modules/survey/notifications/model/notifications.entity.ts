@@ -17,6 +17,9 @@ export class NotificationEntity extends BaseEntity {
 	token: string;
 
 	@DateColumn({ nullable: false })
+	sent_date: string;
+
+	@DateColumn({ nullable: false })
 	max_register_date: string;
 
 	// %% RELACIONES
