@@ -1,14 +1,36 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, Post, Get, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { SwaggerRubricController, SwaggerRubricCreate, SwaggerRubricUpdate, SwaggerRubricDelete, SwaggerRubricGetAll, SwaggerRubricGetById, SwaggerRubricGetByFilters } from './docs/rubrics.swagger';
 import { RubricService } from './rubrics.service';
+import { RubricConfigService } from './rubric-config.service';
 import { CreateRubricDto, UpdateRubricDto, FilterRubricDto } from '../model/rubrics.dtos';
 
 @SwaggerRubricController()
 export class RubricController extends BaseController<RubricService> {
-	constructor(private readonly service: RubricService) {
+	constructor(
+		private readonly service: RubricService,
+		private readonly rubricConfigService: RubricConfigService,
+	) {
 		super(service);
 	}
+
+	@Post('create-full')
+	async createRubricFull(@Body() dto: CreateRubricDto) {
+		return await this.rubricConfigService.createRubric(dto);
+	}
+
+	@Get('course/:courseId')
+	async getRubricByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
+		return await this.rubricConfigService.getRubricByCourse(courseId);
+	}
+
+	@Get('rubric/:rubricId')
+	async getRubricWithDetails(@Param('rubricId', ParseIntPipe) rubricId: number) {
+		return await this.rubricConfigService.getRubricById(rubricId);
+	}
+
+	// TODO: Implementar @Post('import-excel') con FileInterceptor para importación masiva de rúbricas.
+	// Esto reemplazará el Excel masivo anterior según el plan de migración.
 
 	@SwaggerRubricCreate()
 	async create(@Body() dto: CreateRubricDto) {
@@ -22,7 +44,7 @@ export class RubricController extends BaseController<RubricService> {
 
 	@SwaggerRubricDelete()
 	async delete(@Param('id') id: number) {
-		return await super.delete(id);
+		return await this.service.delete(id);
 	}
 
 	@SwaggerRubricGetAll()
