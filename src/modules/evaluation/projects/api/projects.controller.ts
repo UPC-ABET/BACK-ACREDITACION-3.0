@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, Post, Get, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProjectController,
@@ -10,12 +10,31 @@ import {
 	SwaggerProjectGetByFilters,
 } from './docs/projects.swagger';
 import { ProjectService } from './projects.service';
+import { ProjectConfigService } from './project-config.service';
 import { CreateProjectDto, UpdateProjectDto, FilterProjectDto } from '../model/projects.dtos';
 
 @SwaggerProjectController()
 export class ProjectController extends BaseController<ProjectService> {
-	constructor(private readonly service: ProjectService) {
+	constructor(
+		private readonly service: ProjectService,
+		private readonly projectConfigService: ProjectConfigService,
+	) {
 		super(service);
+	}
+
+	@Post('create-full')
+	async createProjectFull(@Body() dto: CreateProjectDto) {
+		return await this.projectConfigService.createProject(dto);
+	}
+
+	@Get('evaluator/:evaluatorId')
+	async getProjectsByEvaluator(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
+		return await this.projectConfigService.getProjectsByEvaluator(evaluatorId);
+	}
+
+	@Get('project/:projectId')
+	async getProjectWithDetails(@Param('projectId', ParseIntPipe) projectId: number) {
+		return await this.projectConfigService.getProjectById(projectId);
 	}
 
 	@SwaggerProjectCreate()
