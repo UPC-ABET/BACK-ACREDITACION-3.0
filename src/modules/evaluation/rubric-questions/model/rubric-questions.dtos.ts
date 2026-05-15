@@ -17,9 +17,10 @@ export class CreateRubricQuestionDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	rubric_id: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	outcome_id: number;
+	@ApiProperty({ example: 1, required: false })
+	outcome_id?: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'question_es', en: 'question_en' }, required: true })
