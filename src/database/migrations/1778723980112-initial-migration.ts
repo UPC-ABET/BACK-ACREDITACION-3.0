@@ -398,10 +398,10 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_e83ae3bbb89a4a8140408cc5ee4" FOREIGN KEY ("project_evaluator_id") REFERENCES "evaluation"."project_evaluators"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_rubrics_rubric_type" FOREIGN KEY ("rubric_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_8e2f1c4d5a6b7e8f9a0b1c2d3e4" FOREIGN KEY ("rubric_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_rubrics_grade_type" FOREIGN KEY ("grade_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_9f3a2b5c6d7e8f9a0b1c2d3e4f5" FOREIGN KEY ("grade_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_f23cab684bfd6263435e05121c4" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -446,8 +446,8 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 		await queryRunner.query(`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_0f54742a01d56561986c77b0aa2"`);
 		await queryRunner.query(`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_6b7a0e963995aac32b706b65b1e"`);
 		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_f23cab684bfd6263435e05121c4"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_rubrics_grade_type"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_rubrics_rubric_type"`);
+		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_9f3a2b5c6d7e8f9a0b1c2d3e4f5"`);
+		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_8e2f1c4d5a6b7e8f9a0b1c2d3e4"`);
 		await queryRunner.query(`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_e83ae3bbb89a4a8140408cc5ee4"`);
 		await queryRunner.query(`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_d8115d6a5ea8c9170bfd417f525"`);
 		await queryRunner.query(`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_c3ecb1a05e9f7f41142457de284"`);

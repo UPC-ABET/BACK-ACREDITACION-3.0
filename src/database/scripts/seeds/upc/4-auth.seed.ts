@@ -19,7 +19,7 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			is_admin
 		)
 		SELECT
-			v.document_type_id,
+			dt.id,
 			v.document_code,
 			v.first_name,
 			v.last_name,
@@ -29,13 +29,15 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			v.is_admin
 		FROM (
 			VALUES
-				('101001', 70000001, 'Administrador', 'General', 'admin@upc.edu.pe', '+51990000001', $1, true),
-				('101002', 70000002, 'Claudia', 'Calidad', 'calidad@upc.edu.pe', '+51990000002', $2, true),
-				('101003', 70000003, 'Juan', 'Perez Rodriguez', 'prof.juan.perez@upc.edu.pe', '+51990000003', $3, false),
-				('101004', 70000004, 'Maria', 'Garcia Torres', 'prof.maria.garcia@upc.edu.pe', '+51990000004', $4, false),
-				('101005', 70000005, 'Luis', 'Ramirez Vega', 'student.luis.ramirez@upc.edu.pe', '+51990000005', $5, false),
-				('101006', 70000006, 'Sofia', 'Torres Rojas', 'student.sofia.torres@upc.edu.pe', '+51990000006', $6, false)
-		) AS v(document_type_id, document_code, first_name, last_name, email, phone, password, is_admin)
+				('TG101-T001', 70000001, 'Administrador', 'General', 'admin@upc.edu.pe', '+51990000001', $1, true),
+				('TG101-T001', 70000002, 'Claudia', 'Calidad', 'calidad@upc.edu.pe', '+51990000002', $2, true),
+				('TG101-T001', 70000003, 'Juan', 'Perez Rodriguez', 'prof.juan.perez@upc.edu.pe', '+51990000003', $3, false),
+				('TG101-T001', 70000004, 'Maria', 'Garcia Torres', 'prof.maria.garcia@upc.edu.pe', '+51990000004', $4, false),
+				('TG101-T001', 70000005, 'Luis', 'Ramirez Vega', 'student.luis.ramirez@upc.edu.pe', '+51990000005', $5, false),
+				('TG101-T001', 70000006, 'Sofia', 'Torres Rojas', 'student.sofia.torres@upc.edu.pe', '+51990000006', $6, false)
+		) AS v(document_type_code, document_code, first_name, last_name, email, phone, password, is_admin)
+		JOIN "core"."types" dt
+			ON dt.code = v.document_type_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."users" u WHERE u.email = v.email
 		);
