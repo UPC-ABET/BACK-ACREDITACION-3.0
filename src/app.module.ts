@@ -119,9 +119,7 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 				username: configService.get<string>('DB_USER'),
 				password: configService.get<string>('DB_PASSWORD'),
 				database: configService.get<string>('DB_NAME'),
-				ssl: {
-					rejectUnauthorized: false,
-				},
+				ssl: (configService.get<string>('DB_SSL') ?? 'false').toLowerCase() === 'true' ? { rejectUnauthorized: false } : false,
 				synchronize: false,
 				entities: [__dirname + '/**/*.entity{.ts,.js}'],
 				timezone: 'Z',
