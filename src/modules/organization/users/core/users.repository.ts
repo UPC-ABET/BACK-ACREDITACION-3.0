@@ -11,4 +11,19 @@ export class UserRepository extends BaseRepostitory {
 	) {
 		super(repository, dataSource);
 	}
+
+	async findActiveByEmailWithPassword(email: string) {
+		const { repository, queryRunner } = await this.getRepository();
+
+		try {
+			return await repository
+				.createQueryBuilder('user')
+				.addSelect('user.password')
+				.where('LOWER(user.email) = LOWER(:email)', { email })
+				.andWhere('user.is_active = :isActive', { isActive: true })
+				.getOne();
+		} finally {
+			await queryRunner.release();
+		}
+	}
 }

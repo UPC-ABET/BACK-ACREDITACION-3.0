@@ -13,6 +13,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
+import { AuthModule } from './modules/auth/auth.module';
 
 // ACADEMIC MODULES
 import { AcademicPeriodModule } from './modules/academic/academic-periods/academic-periods.module';
@@ -134,6 +135,7 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		}),
 
 		/* MODULES */
+		AuthModule,
 		UserModule,
 		AcademicPeriodModule,
 		CourseOutcomeMappingModule,

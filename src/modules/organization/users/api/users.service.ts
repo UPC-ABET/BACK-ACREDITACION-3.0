@@ -60,21 +60,25 @@ export class UserService extends BaseService<UserRepository> {
 		return this.signJWTWithRoles(user, role);
 	}
 
-	async getUser(user_id?: number | null, email?: string | null) {
+	async getUser(user_id?: number | null, email?: string | null, includePassword = false) {
 		if (user_id) {
 			return await this.baseRepository.findOneByCondition({
 				where: {
 					id: user_id,
-					is_active: 1,
+					is_active: true,
 				},
 			});
 		}
 
 		if (email) {
+			if (includePassword) {
+				return await this.repository.findActiveByEmailWithPassword(email);
+			}
+
 			return await this.baseRepository.findOneByCondition({
 				where: {
 					email,
-					is_active: 1,
+					is_active: true,
 				},
 			});
 		}
@@ -94,7 +98,7 @@ export class UserService extends BaseService<UserRepository> {
 	}
 
 	async loginByCredentials(email: string, password: string, role?: RoleCode) {
-		const user = await this.getUser(null, email);
+		const user = await this.getUser(null, email, true);
 		const accessToken = await this.createUserLogin(user, password, role);
 
 		return {
