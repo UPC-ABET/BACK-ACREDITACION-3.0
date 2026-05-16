@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 
@@ -14,13 +14,15 @@ export class CreateIfcDto extends BaseDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_course_id: number;
+	course_id: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	academic_period_id: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'information_example', required: false })
-	information?: string;
+	@ApiProperty({ example: { key: 'information_value' }, required: false })
+	information?: any;
 }
 
 export class UpdateIfcDto extends BaseDto {
@@ -36,13 +38,16 @@ export class UpdateIfcDto extends BaseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	course_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'information_example', required: false })
-	information?: string;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	academic_period_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'information_value' }, required: false })
+	information?: any;
 }
 
 export class FilterIfcDto extends BaseDto {
@@ -56,9 +61,13 @@ export class FilterIfcDto extends BaseDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	course_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'information_example', required: false })
-	information?: string;
+	@ApiProperty({ example: 1, required: false })
+	academic_period_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'information_value' }, required: false })
+	information?: any;
 }

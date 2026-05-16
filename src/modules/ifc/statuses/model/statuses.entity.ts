@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextMediumColumn, IntegerFKIDColumn, IntegerColumn, DateColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, DateColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { IfcEntity } from 'src/modules/evidence/ifcs/model/ifcs.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
@@ -17,8 +18,8 @@ export class StatusEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	staff_id: number;
 
-	@TextMediumColumn({ nullable: true })
-	commentary: string;
+	@JsonColumn({ nullable: true })
+	comment: I18nText;
 
 	@DateColumn({ nullable: false })
 	register_at: Date;

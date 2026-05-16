@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextMediumColumn, IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
@@ -8,8 +9,8 @@ import { ProgramEntity } from 'src/modules/academic/programs/model/programs.enti
 export class ActionEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@TextMediumColumn({ nullable: false })
-	description: string;
+	@JsonColumn({ nullable: false })
+	description: I18nText;
 
 	@IntegerColumn({ nullable: false })
 	correlative: number;

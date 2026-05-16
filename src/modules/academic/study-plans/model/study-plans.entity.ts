@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
 @Entity({ name: 'study_plans', schema: 'academic' })
@@ -13,11 +14,11 @@ export class StudyPlanEntity extends BaseEntity {
 	@CodeColumn({ nullable: false, length: 10 })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: false })
-	description: string;
+	@JsonColumn({ nullable: false })
+	description: I18nText;
 
 	// %% RELACIONES
 

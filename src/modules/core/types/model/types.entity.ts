@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { TypeGroupEntity } from 'src/modules/core/type-groups/model/type-groups.entity';
 
 @Entity({ name: 'types', schema: 'core' })
@@ -8,16 +9,16 @@ export class TypeEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
 	@IntegerFKIDColumn({ nullable: false })
-	type_group_id: string;
+	type_group_id: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: true })
+	description: I18nText;
 
 	// %% RELACIONES
 

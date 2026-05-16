@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreatePlanDto extends BaseDto {
 	@IsOptional()
@@ -20,16 +21,14 @@ export class CreatePlanDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	academic_period_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: true })
-	name: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	name: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
@@ -57,16 +56,14 @@ export class UpdatePlanDto extends BaseDto {
 	academic_period_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@IsBoolean()
@@ -92,12 +89,12 @@ export class FilterPlanDto extends BaseDto {
 	academic_period_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })

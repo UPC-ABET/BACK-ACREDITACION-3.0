@@ -100,6 +100,10 @@ function replaceOrAppend(content: string, className: string, newBlock: string) {
 
 /* ---------------- IMPORTS (MERGE INTELIGENTE) ---------------- */
 
+// 🔥 fuentes que SIEMPRE deben importarse con `import type` (tipos puros,
+// requeridos por `isolatedModules` cuando se usan en signaturas decoradas)
+const TYPE_ONLY_SOURCES = new Set(['src/shared/types/i18n']);
+
 function extractExistingImports(content: string) {
 	const lines = content.split('\n');
 
@@ -108,7 +112,7 @@ function extractExistingImports(content: string) {
 	for (const line of lines) {
 		if (!line.startsWith('import')) continue;
 
-		const match = line.match(/import\s+{([^}]+)}\s+from\s+'([^']+)'/);
+		const match = line.match(/import\s+(?:type\s+)?{([^}]+)}\s+from\s+'([^']+)'/);
 		if (!match) continue;
 
 		const names = match[1].split(',').map((x) => x.trim());
@@ -137,11 +141,14 @@ function buildRequiredImports(content: string) {
 	if (content.includes('@IsBoolean')) add('class-validator', 'IsBoolean');
 	if (content.includes('@IsOptional')) add('class-validator', 'IsOptional');
 	if (content.includes('@IsDate')) add('class-validator', 'IsDate');
+	if (content.includes('@IsObject')) add('class-validator', 'IsObject');
 	if (content.includes('@Length')) add('class-validator', 'Length');
 
 	if (content.includes('@ApiProperty')) add('@nestjs/swagger', 'ApiProperty');
 
 	if (content.includes('extends BaseDto')) add('src/commons/base.dtos', 'BaseDto');
+
+	if (/[:\s]I18nText\b/.test(content)) add('src/shared/types/i18n', 'I18nText');
 
 	return imports;
 }
@@ -166,7 +173,8 @@ function mergeImports(content: string) {
 		}
 
 		if (names.size) {
-			finalImports.push(`import { ${[...names].sort().join(', ')} } from '${source}';`);
+			const kw = TYPE_ONLY_SOURCES.has(source) ? 'import type' : 'import';
+			finalImports.push(`${kw} { ${[...names].sort().join(', ')} } from '${source}';`);
 		}
 	});
 
@@ -197,7 +205,7 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 	const updateDto = buildUpdateDto(entity, updateFields);
 	const filterDto = buildFilterDto(entity, filterFields);
 
-	let content = '';
+	let content: string;
 
 	if (fs.existsSync(outputPath)) {
 		content = fs.readFileSync(outputPath, 'utf-8');

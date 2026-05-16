@@ -1,10 +1,12 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextMediumColumn, IntegerFKIDColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, BooleanColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
+import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
+import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
 import { InstrumentEntity } from 'src/modules/evidence/instruments/model/instruments.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
-import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 
 @Entity({ name: 'findings', schema: 'improvement' })
 export class FindingEntity extends BaseEntity {
@@ -22,11 +24,14 @@ export class FindingEntity extends BaseEntity {
 	@IntegerColumn({ nullable: false })
 	correlative: number;
 
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: true })
+	description: I18nText;
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_course_id: number;
+	course_id: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	academic_period_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	campus_id: number;
@@ -47,9 +52,13 @@ export class FindingEntity extends BaseEntity {
 	@JoinColumn({ name: 'staff_id' })
 	staff: StaffEntity;
 
-	@ManyToOne(() => StudyPlanCourseEntity)
-	@JoinColumn({ name: 'study_plan_course_id' })
-	study_plan_course: StudyPlanCourseEntity;
+	@ManyToOne(() => CourseEntity)
+	@JoinColumn({ name: 'course_id' })
+	course: CourseEntity;
+
+	@ManyToOne(() => AcademicPeriodEntity)
+	@JoinColumn({ name: 'academic_period_id' })
+	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id' })

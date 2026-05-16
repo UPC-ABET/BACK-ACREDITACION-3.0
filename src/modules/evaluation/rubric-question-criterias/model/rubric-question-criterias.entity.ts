@@ -1,6 +1,7 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerColumn, DecimalColumn } from 'src/commons/configs/db.configs';
+import { IntegerColumn, DecimalColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'rubric_question_criterias', schema: 'evaluation' })
 export class RubricQuestionCriteriaEntity extends BaseEntity {
@@ -12,8 +13,8 @@ export class RubricQuestionCriteriaEntity extends BaseEntity {
 	@IntegerColumn({ nullable: false })
 	rubric_scale_id: number;
 
-	@TextLargeColumn({ nullable: false })
-	criteria: string;
+	@JsonColumn({ nullable: false })
+	criteria: I18nText;
 
 	@DecimalColumn({ nullable: false })
 	min_value: number;

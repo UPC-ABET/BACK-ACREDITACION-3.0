@@ -250,6 +250,12 @@ function injectImports(content: string, fields: FieldRelation[], entityName: str
 
 	const body = lines.filter((l) => !l.startsWith('import'));
 
+	// 🔥 preservar imports `import type` (los tipos no se infieren del cuerpo)
+	const preservedTypeImports = lines.filter((l) => l.startsWith('import type '));
+
+	// 🔥 detectar @Entity con extras como @Unique para mantener el decorador
+	const extraEntityDecorators = lines.filter((l) => l.startsWith('@Unique(') || l.startsWith('@Index('));
+
 	const entitySet = new Set<string>();
 
 	fields.forEach((f) => {
@@ -267,13 +273,18 @@ function injectImports(content: string, fields: FieldRelation[], entityName: str
 
 	const imports: string[] = [];
 
-	imports.push(`import { Entity, ManyToOne, OneToOne, OneToMany, JoinColumn } from 'typeorm';`);
+	imports.push(
+		`import { Entity, ManyToOne, OneToOne, OneToMany, JoinColumn${extraEntityDecorators.some((l) => l.startsWith('@Unique(')) ? ', Unique' : ''}${extraEntityDecorators.some((l) => l.startsWith('@Index(')) ? ', Index' : ''} } from 'typeorm';`,
+	);
 	imports.push(`import { BaseEntity } from 'src/commons/base.entity';`);
 
 	const dbDecorators = extractDbDecorators(content);
 	if (dbDecorators.length) {
 		imports.push(`import { ${dbDecorators.join(', ')} } from 'src/commons/configs/db.configs';`);
 	}
+
+	// 🔥 re-inyectar imports `import type` originales
+	preservedTypeImports.forEach((l) => imports.push(l));
 
 	[...entitySet].sort().forEach((entity) => {
 		const config = Object.values(ENTITY_CONFIG).find((c) => c.entity === entity);

@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextMediumColumn, TextLargeColumn, IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
 @Entity({ name: 'notification_messages', schema: 'survey' })
@@ -13,14 +14,14 @@ export class NotificationMessageEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	program_id: number;
 
-	@TextMediumColumn({ nullable: false })
-	title: string;
+	@JsonColumn({ nullable: false })
+	title: I18nText;
 
-	@TextLargeColumn({ nullable: false })
-	body: string;
+	@JsonColumn({ nullable: false })
+	body: I18nText;
 
 	@JsonColumn()
-	cc_receivers: any;
+	cc_receivers: unknown;
 
 	// %% RELACIONES
 

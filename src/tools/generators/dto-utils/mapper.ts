@@ -1,6 +1,6 @@
 import { DB_LENGTH_CODE, DB_LENGTH_EMAIL, DB_LENGTH_NAME, DB_LENGTH_PHONE, DB_LENGTH_TEXT_LARGE, DB_LENGTH_TEXT_MEDIUM, DB_LENGTH_TEXT_SHORT } from 'src/commons/configs/db.configs';
 
-export function mapTypeFromDecorator(decorators: string[], name: string) {
+export function mapTypeFromDecorator(decorators: string[], name: string, tsType?: string) {
 	if (decorators.includes('EmailColumn')) return 'string';
 	if (decorators.includes('PhoneColumn')) return 'string';
 	if (decorators.includes('NameColumn')) return 'string';
@@ -18,7 +18,11 @@ export function mapTypeFromDecorator(decorators: string[], name: string) {
 
 	if (decorators.includes('DateColumn')) return 'Date';
 
-	if (decorators.includes('JsonColumn')) return 'any';
+	if (decorators.includes('JsonColumn')) {
+		// 🔥 si la entidad declara el tipo como `I18nText`, propagar al DTO
+		if (tsType === 'I18nText') return 'I18nText';
+		return 'any';
+	}
 
 	// 🔥 RELACIÓN FK fallback
 	if (name.endsWith('_id')) return 'number';
@@ -32,6 +36,7 @@ export function mapValidator(type: string) {
 	if (type === 'number') return '@IsNumber()';
 	if (type === 'boolean') return '@IsBoolean()';
 	if (type === 'Date') return '@IsDate()';
+	if (type === 'I18nText') return '@IsObject()';
 
 	return '';
 }
@@ -51,6 +56,10 @@ export function mapLength(decorators: string[]) {
 }
 
 export function mapExample(type: string, name: string, decorators: string[] = []) {
+	if (type === 'I18nText') {
+		return `{ es: '${name}_es', en: '${name}_en' }`;
+	}
+
 	if (decorators.includes('JsonColumn')) {
 		return `{ key: "${name}_value" }`;
 	}

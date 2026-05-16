@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerFKIDColumn, DecimalColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, DecimalColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 
@@ -17,8 +18,8 @@ export class ScoreEntity extends BaseEntity {
 	@DecimalColumn({ nullable: false })
 	score: number;
 
-	@TextLargeColumn({ nullable: true })
-	commentaries: string;
+	@JsonColumn({ nullable: true })
+	commentaries: I18nText;
 
 	// %% RELACIONES
 

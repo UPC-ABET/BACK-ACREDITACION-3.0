@@ -1,18 +1,37 @@
-import { runTenantSeed } from '../seed-runner';
+import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('accreditation module', async (tenantDataSource) => {
+	const accreditorValues = [
+		[
+			'ACC_SINEACE',
+			i18n('Sistema Nacional de Evaluacion, Acreditacion y Certificacion de la Calidad Educativa', 'National System of Evaluation, Accreditation and Certification of Educational Quality'),
+		],
+		[
+			'ACC_ICACIT',
+			i18n('Instituto de Calidad y Acreditacion de Programas de Computacion, Ingenieria y Tecnologia', 'Institute of Quality and Accreditation of Computing, Engineering and Technology Programs'),
+		],
+	]
+		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "accreditation"."accreditors" (code, name)
 		SELECT v.code, v.name
 		FROM (
 			VALUES
-				('ACC_SINEACE', 'Sistema Nacional de Evaluacion, Acreditacion y Certificacion de la Calidad Educativa'),
-				('ACC_ICACIT', 'Instituto de Calidad y Acreditacion de Programas de Computacion, Ingenieria y Tecnologia')
+				${accreditorValues}
 		) AS v(code, name)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "accreditation"."accreditors" a WHERE a.code = v.code
 		);
 	`);
+
+	const commissionValues = [
+		['ACC_ICACIT', 'COM_SOFT_2026', i18n('Comision de acreditacion de Ingenieria de Software', 'Software Engineering accreditation commission')],
+		['ACC_SINEACE', 'COM_ADMIN_2026', i18n('Comision de acreditacion de Administracion', 'Business Administration accreditation commission')],
+	]
+		.map(([accreditorCode, code, name]) => `('${accreditorCode}', '${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "accreditation"."commissions" (accreditor_id, code, name)
@@ -20,8 +39,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		FROM "accreditation"."accreditors" accreditor
 		JOIN (
 			VALUES
-				('ACC_ICACIT', 'COM_SOFT_2026', 'Comision de acreditacion de Ingenieria de Software'),
-				('ACC_SINEACE', 'COM_ADMIN_2026', 'Comision de acreditacion de Administracion')
+				${commissionValues}
 		) AS v(accreditor_code, code, name)
 			ON accreditor.code = v.accreditor_code
 		WHERE NOT EXISTS (
@@ -59,6 +77,46 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		);
 	`);
 
+	const outcomeValues = [
+		[
+			'COM_SOFT_2026',
+			'PROG_SOFT',
+			'OUT_SOFT_01',
+			i18n('Pensamiento critico', 'Critical thinking'),
+			i18n('Analiza problemas complejos de ingenieria de software con criterios tecnicos y de negocio.', 'Analyzes complex software engineering problems with technical and business criteria.'),
+		],
+		[
+			'COM_SOFT_2026',
+			'PROG_SOFT',
+			'OUT_SOFT_02',
+			i18n('Comunicacion efectiva', 'Effective communication'),
+			i18n('Comunica decisiones tecnicas a audiencias especializadas y no especializadas.', 'Communicates technical decisions to specialized and non-specialized audiences.'),
+		],
+		[
+			'COM_SOFT_2026',
+			'PROG_SOFT',
+			'OUT_SOFT_03',
+			i18n('Trabajo en equipo', 'Teamwork'),
+			i18n('Colabora en equipos multidisciplinarios durante el ciclo de vida del software.', 'Collaborates in multidisciplinary teams during the software lifecycle.'),
+		],
+		[
+			'COM_SOFT_2026',
+			'PROG_SOFT',
+			'OUT_SOFT_04',
+			i18n('Solucion tecnica', 'Technical solution'),
+			i18n('Disena e implementa soluciones de software sostenibles y verificables.', 'Designs and implements sustainable and verifiable software solutions.'),
+		],
+		[
+			'COM_ADMIN_2026',
+			'PROG_ADMIN',
+			'OUT_ADMIN_01',
+			i18n('Gestion organizacional', 'Organizational management'),
+			i18n('Propone acciones de gestion basadas en informacion confiable.', 'Proposes management actions based on reliable information.'),
+		],
+	]
+		.map(([cCode, pCode, oCode, name, desc]) => `('${cCode}', '${pCode}', '${oCode}', '${name}'::jsonb, '${desc}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "accreditation"."outcomes" (
 			program_commission_id,
@@ -69,11 +127,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		SELECT pc.id, v.outcome_code, v.outcome_name, v.outcome_description
 		FROM (
 			VALUES
-				('COM_SOFT_2026', 'PROG_SOFT', 'OUT_SOFT_01', 'Pensamiento critico', 'Analiza problemas complejos de ingenieria de software con criterios tecnicos y de negocio.'),
-				('COM_SOFT_2026', 'PROG_SOFT', 'OUT_SOFT_02', 'Comunicacion efectiva', 'Comunica decisiones tecnicas a audiencias especializadas y no especializadas.'),
-				('COM_SOFT_2026', 'PROG_SOFT', 'OUT_SOFT_03', 'Trabajo en equipo', 'Colabora en equipos multidisciplinarios durante el ciclo de vida del software.'),
-				('COM_SOFT_2026', 'PROG_SOFT', 'OUT_SOFT_04', 'Solucion tecnica', 'Disena e implementa soluciones de software sostenibles y verificables.'),
-				('COM_ADMIN_2026', 'PROG_ADMIN', 'OUT_ADMIN_01', 'Gestion organizacional', 'Propone acciones de gestion basadas en informacion confiable.')
+				${outcomeValues}
 		) AS v(commission_code, program_code, outcome_code, outcome_name, outcome_description)
 		JOIN "accreditation"."commissions" commission
 			ON commission.code = v.commission_code
@@ -109,7 +163,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		JOIN "academic"."academic_periods" ap
 			ON ap.id = spap.academic_period_id AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" course
-			ON course.name = v.course_name
+			ON course.name->>'es' = v.course_name
 		JOIN "academic"."study_plan_courses" spc
 			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course.id
 		JOIN "core"."types" outcome_type

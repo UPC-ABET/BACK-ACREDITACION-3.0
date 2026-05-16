@@ -1,6 +1,7 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'faculties', schema: 'organization' })
 export class FacultyEntity extends BaseEntity {
@@ -9,8 +10,8 @@ export class FacultyEntity extends BaseEntity {
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
 	// %% RELACIONES
 }

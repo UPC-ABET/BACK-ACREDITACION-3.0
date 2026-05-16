@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateOutcomeConfigDto extends BaseDto {
 	@IsOptional()
@@ -16,16 +17,14 @@ export class CreateOutcomeConfigDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	outcome_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'user_outcome_name_example', required: true })
-	user_outcome_name: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' }, required: true })
+	user_outcome_name: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'user_outcome_description_example', required: false })
-	user_outcome_description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' }, required: false })
+	user_outcome_description?: I18nText;
 }
 
 export class UpdateOutcomeConfigDto extends BaseDto {
@@ -44,16 +43,14 @@ export class UpdateOutcomeConfigDto extends BaseDto {
 	outcome_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'user_outcome_name_example', required: false })
-	user_outcome_name?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' }, required: false })
+	user_outcome_name?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'user_outcome_description_example', required: false })
-	user_outcome_description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' }, required: false })
+	user_outcome_description?: I18nText;
 }
 
 export class FilterOutcomeConfigDto extends BaseDto {
@@ -70,10 +67,10 @@ export class FilterOutcomeConfigDto extends BaseDto {
 	outcome_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'user_outcome_name_example', required: false })
-	user_outcome_name?: string;
+	@ApiProperty({ example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' }, required: false })
+	user_outcome_name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'user_outcome_description_example', required: false })
-	user_outcome_description?: string;
+	@ApiProperty({ example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' }, required: false })
+	user_outcome_description?: I18nText;
 }

@@ -26,6 +26,10 @@ export class CreateNotificationDto extends BaseDto {
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
+	sent_date: Date;
+
+	@IsDate()
+	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
 	max_register_date: Date;
 }
 
@@ -57,6 +61,11 @@ export class UpdateNotificationDto extends BaseDto {
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
+	sent_date?: Date;
+
+	@IsOptional()
+	@IsDate()
+	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
 	max_register_date?: Date;
 }
 
@@ -80,6 +89,10 @@ export class FilterNotificationDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 'token_example', required: false })
 	token?: string;
+
+	@IsOptional()
+	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
+	sent_date?: Date;
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })

@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStaffDto extends BaseDto {
 	@IsOptional()
@@ -20,15 +21,13 @@ export class CreateStaffDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	position_type_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'job_title_example', required: true })
-	job_title: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'job_title_es', en: 'job_title_en' }, required: true })
+	job_title: I18nText;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'job_description_example', required: true })
-	job_description: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'job_description_es', en: 'job_description_en' }, required: true })
+	job_description: I18nText;
 
 	@IsString()
 	@Length(1, 1000)
@@ -62,16 +61,14 @@ export class UpdateStaffDto extends BaseDto {
 	position_type_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'job_title_example', required: false })
-	job_title?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'job_title_es', en: 'job_title_en' }, required: false })
+	job_title?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'job_description_example', required: false })
-	job_description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'job_description_es', en: 'job_description_en' }, required: false })
+	job_description?: I18nText;
 
 	@IsOptional()
 	@IsString()
@@ -104,12 +101,12 @@ export class FilterStaffDto extends BaseDto {
 	position_type_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'job_title_example', required: false })
-	job_title?: string;
+	@ApiProperty({ example: { es: 'job_title_es', en: 'job_title_en' }, required: false })
+	job_title?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'job_description_example', required: false })
-	job_description?: string;
+	@ApiProperty({ example: { es: 'job_description_es', en: 'job_description_en' }, required: false })
+	job_description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 'staff_email_example', required: false })

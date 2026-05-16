@@ -1,6 +1,7 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'projects', schema: 'evaluation' })
 export class ProjectEntity extends BaseEntity {
@@ -9,11 +10,11 @@ export class ProjectEntity extends BaseEntity {
 	@CodeColumn({ nullable: false, unique: true })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: true })
+	description: I18nText;
 
 	// %% RELACIONES
 }

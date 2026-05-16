@@ -1,6 +1,7 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'parameters', schema: 'core' })
 export class ParameterEntity extends BaseEntity {
@@ -9,14 +10,14 @@ export class ParameterEntity extends BaseEntity {
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
-
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
 	@JsonColumn({ nullable: true })
-	value: any;
+	description: I18nText;
+
+	@JsonColumn({ nullable: true })
+	value: unknown;
 
 	// %% RELACIONES
 }

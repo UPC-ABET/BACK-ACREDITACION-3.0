@@ -440,4 +440,18 @@ export const ENTITY_CONFIG: Record<
 		singular: 'notification_message',
 		plural: 'notification_messages',
 	},
+
+	notification_config: {
+		entity: 'NotificationConfigEntity',
+		path: 'ifc/notification-configs',
+		singular: 'notification_config',
+		plural: 'notification_configs',
+	},
+
+	notification_log: {
+		entity: 'NotificationLogEntity',
+		path: 'ifc/notification-log',
+		singular: 'notification_log',
+		plural: 'notification_log',
+	},
 };

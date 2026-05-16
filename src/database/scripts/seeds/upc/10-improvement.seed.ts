@@ -1,6 +1,26 @@
-import { runTenantSeed } from '../seed-runner';
+import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('improvement module', async (tenantDataSource) => {
+	const actionValues = [
+		[
+			i18n('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 'Reinforce algorithmic analysis exercises in Fundamentals of Programming.'),
+			2026101,
+			'TG802-T001',
+			'PROG_SOFT',
+			'AP_2026_1',
+		],
+		[
+			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
+			2026102,
+			'TG802-T001',
+			'PROG_SOFT',
+			'AP_2026_2',
+		],
+		[i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), 2026103, 'TG802-T002', 'PROG_SOFT', 'AP_2026_1'],
+	]
+		.map(([desc, corr, as, pc, apc]) => `('${desc}'::jsonb, ${corr}, '${as}', '${pc}', '${apc}')`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."actions" (
 			description,
@@ -12,9 +32,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		SELECT v.description, v.correlative, action_status.id, program.id, period.id
 		FROM (
 			VALUES
-				('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 2026101, 'TG802-T001', 'PROG_SOFT', 'AP_2026_1'),
-				('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 2026102, 'TG802-T001', 'PROG_SOFT', 'AP_2026_2'),
-				('Actualizar la matriz de evidencias para indicadores de acreditacion.', 2026103, 'TG802-T002', 'PROG_SOFT', 'AP_2026_1')
+				${actionValues}
 		) AS v(description, correlative, action_status_type_code, program_code, academic_period_code)
 		JOIN "core"."types" action_status
 			ON action_status.code = v.action_status_type_code
@@ -23,9 +41,36 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		JOIN "academic"."academic_periods" period
 			ON period.code = v.academic_period_code
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "improvement"."actions" action WHERE action.description = v.description
+			SELECT 1 FROM "improvement"."actions" action WHERE action.correlative = v.correlative
 		);
 	`);
+
+	const findingValues = [
+		[
+			'TG801-T002',
+			'INST_FP_EXAM',
+			'calidad@upc.edu.pe',
+			2026001,
+			i18n('Se identifico necesidad de reforzar la formulacion de algoritmos antes de la implementacion.', 'Need identified to reinforce algorithm formulation before implementation.'),
+			'Fundamentos de Programacion',
+			'AP_2026_1',
+			'CAMPUS_MON',
+			'TG803-T001',
+		],
+		[
+			'TG801-T001',
+			'INST_CAPSTONE',
+			'calidad@upc.edu.pe',
+			2026002,
+			i18n('Los equipos requieren mayor evidencia de colaboracion registrada durante el proyecto.', 'Teams require more recorded collaboration evidence during the project.'),
+			'Proyecto Integrador de Software',
+			'AP_2026_2',
+			'CAMPUS_MON',
+			'TG803-T002',
+		],
+	]
+		.map(([ct, ic, em, corr, desc, cn, pc, cc, fs]) => `('${ct}', '${ic}', '${em}', ${corr}, '${desc}'::jsonb, '${cn}', '${pc}', '${cc}', '${fs}')`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."findings" (
@@ -34,16 +79,16 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			staff_id,
 			correlative,
 			description,
-			study_plan_course_id,
+			course_id,
+			academic_period_id,
 			campus_id,
 			finding_status_type_id
 		)
-		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, spc.id, campus.id, finding_status.id
+		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, course.id, period.id, campus.id, finding_status.id
 		FROM (
 			VALUES
-				('TG801-T002', 'INST_FP_EXAM', 'calidad@upc.edu.pe', 2026001, 'Se identifico necesidad de reforzar la formulacion de algoritmos antes de la implementacion.', 'SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'CAMPUS_MON', 'TG803-T001'),
-				('TG801-T001', 'INST_CAPSTONE', 'calidad@upc.edu.pe', 2026002, 'Los equipos requieren mayor evidencia de colaboracion registrada durante el proyecto.', 'SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', 'CAMPUS_MON', 'TG803-T002')
-		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, study_plan_code, academic_period_code, course_name, campus_code, finding_status_type_code)
+				${findingValues}
+		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, course_name, academic_period_code, campus_code, finding_status_type_code)
 		JOIN "core"."types" criticality
 			ON criticality.code = v.criticality_type_code
 		JOIN "core"."types" finding_status
@@ -52,22 +97,34 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			ON instrument.code = v.instrument_code
 		JOIN "organization"."staff" staff
 			ON staff.staff_email = v.staff_email
-		JOIN "academic"."study_plans" sp
-			ON sp.code = v.study_plan_code
-		JOIN "academic"."study_plan_academic_periods" spap
-			ON spap.study_plan_id = sp.id
-		JOIN "academic"."academic_periods" ap
-			ON ap.id = spap.academic_period_id AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" course
-			ON course.name = v.course_name
-		JOIN "academic"."study_plan_courses" spc
-			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course.id
+			ON course.name->>'es' = v.course_name
+		JOIN "academic"."academic_periods" period
+			ON period.code = v.academic_period_code
 		JOIN "organization"."campuses" campus
 			ON campus.code = v.campus_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "improvement"."findings" finding WHERE finding.correlative = v.correlative
 		);
 	`);
+
+	const findingActionValues = [
+		[
+			2026001,
+			i18n('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 'Reinforce algorithmic analysis exercises in Fundamentals of Programming.'),
+			true,
+			'{"required":["syllabus","exercise-bank"]}',
+		],
+		[
+			2026002,
+			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
+			true,
+			'{"required":["peer-review-log","team-rubric"]}',
+		],
+		[2026001, i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), false, '{"required":["evidence-matrix"]}'],
+	]
+		.map(([fc, desc, ipr, ev]) => `(${fc}, '${desc}'::jsonb, ${ipr}, '${ev}'::jsonb)`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."finding_actions" (
@@ -79,20 +136,37 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		SELECT finding.id, action.id, v.in_plan_required, v.evidences
 		FROM (
 			VALUES
-				(2026001, 'Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', true, '{"required":["syllabus","exercise-bank"]}'::jsonb),
-				(2026002, 'Incorporar revisiones por pares en el Proyecto Integrador de Software.', true, '{"required":["peer-review-log","team-rubric"]}'::jsonb),
-				(2026001, 'Actualizar la matriz de evidencias para indicadores de acreditacion.', false, '{"required":["evidence-matrix"]}'::jsonb)
+				${findingActionValues}
 		) AS v(finding_correlative, action_description, in_plan_required, evidences)
 		JOIN "improvement"."findings" finding
 			ON finding.correlative = v.finding_correlative
 		JOIN "improvement"."actions" action
-			ON action.description = v.action_description
+			ON action.description->>'es' = v.action_description->>'es'
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM "improvement"."finding_actions" fa
 			WHERE fa.finding_id = finding.id AND fa.action_id = action.id
 		);
 	`);
+
+	const planValues = [
+		[
+			'PROG_SOFT',
+			'AP_2026_1',
+			i18n('Plan de mejora de evidencias 2026-1', '2026-1 evidence improvement plan'),
+			i18n('Plan para cerrar brechas detectadas en evidencias de resultados de aprendizaje.', 'Plan to close gaps detected in learning outcome evidence.'),
+			true,
+		],
+		[
+			'PROG_SOFT',
+			'AP_2026_2',
+			i18n('Plan de seguimiento capstone 2026-2', '2026-2 capstone tracking plan'),
+			i18n('Plan para fortalecer seguimiento de equipos en el proyecto integrador.', 'Plan to strengthen team tracking in the integrator project.'),
+			true,
+		],
+	]
+		.map(([pc, ap, name, desc, open]) => `('${pc}', '${ap}', '${name}'::jsonb, '${desc}'::jsonb, ${open as boolean})`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."plans" (
@@ -105,17 +179,31 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		SELECT program.id, period.id, v.name, v.description, v.is_open
 		FROM (
 			VALUES
-				('PROG_SOFT', 'AP_2026_1', 'Plan de mejora de evidencias 2026-1', 'Plan para cerrar brechas detectadas en evidencias de resultados de aprendizaje.', true),
-				('PROG_SOFT', 'AP_2026_2', 'Plan de seguimiento capstone 2026-2', 'Plan para fortalecer seguimiento de equipos en el proyecto integrador.', true)
+				${planValues}
 		) AS v(program_code, academic_period_code, name, description, is_open)
 		JOIN "academic"."programs" program
 			ON program.code = v.program_code
 		JOIN "academic"."academic_periods" period
 			ON period.code = v.academic_period_code
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "improvement"."plans" plan WHERE plan.name = v.name
+			SELECT 1 FROM "improvement"."plans" plan WHERE plan.name->>'es' = v.name->>'es'
 		);
 	`);
+
+	const planActionValues = [
+		[
+			i18n('Plan de mejora de evidencias 2026-1', '2026-1 evidence improvement plan'),
+			2026001,
+			i18n('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 'Reinforce algorithmic analysis exercises in Fundamentals of Programming.'),
+		],
+		[
+			i18n('Plan de seguimiento capstone 2026-2', '2026-2 capstone tracking plan'),
+			2026002,
+			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
+		],
+	]
+		.map(([planName, fc, actionDesc]) => `('${planName}'::jsonb, ${fc}, '${actionDesc}'::jsonb)`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."plan_actions" (
@@ -125,15 +213,14 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		SELECT plan.id, finding_action.id
 		FROM (
 			VALUES
-				('Plan de mejora de evidencias 2026-1', 2026001, 'Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.'),
-				('Plan de seguimiento capstone 2026-2', 2026002, 'Incorporar revisiones por pares en el Proyecto Integrador de Software.')
+				${planActionValues}
 		) AS v(plan_name, finding_correlative, action_description)
 		JOIN "improvement"."plans" plan
-			ON plan.name = v.plan_name
+			ON plan.name->>'es' = v.plan_name->>'es'
 		JOIN "improvement"."findings" finding
 			ON finding.correlative = v.finding_correlative
 		JOIN "improvement"."actions" action
-			ON action.description = v.action_description
+			ON action.description->>'es' = v.action_description->>'es'
 		JOIN "improvement"."finding_actions" finding_action
 			ON finding_action.finding_id = finding.id AND finding_action.action_id = action.id
 		WHERE NOT EXISTS (
@@ -168,11 +255,15 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		SELECT ifc.id, finding.id
 		FROM (
 			VALUES
-				('IFC para medir pensamiento critico y solucion tecnica en Fundamentos de Programacion.', 2026001),
-				('IFC para medir colaboracion y solucion tecnica en Proyecto Integrador.', 2026002)
-		) AS v(ifc_information, finding_correlative)
+				('Fundamentos de Programacion', 'AP_2026_1', 2026001),
+				('Proyecto Integrador de Software', 'AP_2026_2', 2026002)
+		) AS v(course_name, academic_period_code, finding_correlative)
+		JOIN "academic"."courses" course
+			ON course.name->>'es' = v.course_name
+		JOIN "academic"."academic_periods" period
+			ON period.code = v.academic_period_code
 		JOIN "evidence"."ifcs" ifc
-			ON ifc.information = v.ifc_information
+			ON ifc.course_id = course.id AND ifc.academic_period_id = period.id
 		JOIN "improvement"."findings" finding
 			ON finding.correlative = v.finding_correlative
 		WHERE NOT EXISTS (

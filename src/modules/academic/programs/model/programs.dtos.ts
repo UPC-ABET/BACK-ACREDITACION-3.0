@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateProgramDto extends BaseDto {
 	@IsOptional()
@@ -16,15 +17,13 @@ export class CreateProgramDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	modality_type_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: true })
-	name: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	name: I18nText;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'degree_example', required: true })
-	degree: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'degree_es', en: 'degree_en' }, required: true })
+	degree: I18nText;
 }
 
 export class UpdateProgramDto extends BaseDto {
@@ -43,16 +42,14 @@ export class UpdateProgramDto extends BaseDto {
 	modality_type_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'degree_example', required: false })
-	degree?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'degree_es', en: 'degree_en' }, required: false })
+	degree?: I18nText;
 }
 
 export class FilterProgramDto extends BaseDto {
@@ -69,10 +66,10 @@ export class FilterProgramDto extends BaseDto {
 	modality_type_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'degree_example', required: false })
-	degree?: string;
+	@ApiProperty({ example: { es: 'degree_es', en: 'degree_en' }, required: false })
+	degree?: I18nText;
 }

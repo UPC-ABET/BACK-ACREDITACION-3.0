@@ -1,4 +1,4 @@
-import { runTenantSeed } from '../seed-runner';
+import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('academic module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
@@ -16,15 +16,21 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const programValues = [
+		['TG103-T001', 'PROG_SOFT', i18n('Ingenieria de Software', 'Software Engineering'), i18n('Bachiller', 'Bachelor')],
+		['TG103-T001', 'PROG_SIST', i18n('Ingenieria de Sistemas', 'Systems Engineering'), i18n('Bachiller', 'Bachelor')],
+		['TG103-T002', 'PROG_ADMIN', i18n('Administracion de Empresas', 'Business Administration'), i18n('Bachiller', 'Bachelor')],
+	]
+		.map(([modality, code, name, degree]) => `('${modality}', '${code}', '${name}'::jsonb, '${degree}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."programs" (modality_type_id, code, name, degree)
 		SELECT t.id, v.code, v.name, v.degree
 		FROM "core"."types" t
 		JOIN (
 			VALUES
-				('TG103-T001', 'PROG_SOFT', 'Ingenieria de Software', 'Bachiller'),
-				('TG103-T001', 'PROG_SIST', 'Ingenieria de Sistemas', 'Bachiller'),
-				('TG103-T002', 'PROG_ADMIN', 'Administracion de Empresas', 'Bachiller')
+				${programValues}
 		) AS v(modality_type_code, code, name, degree)
 			ON t.code = v.modality_type_code
 		WHERE NOT EXISTS (
@@ -51,19 +57,54 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const courseValues = [
+		[
+			i18n('Fundamentos de Programacion', 'Fundamentals of Programming'),
+			i18n('Curso introductorio de programacion estructurada', 'Introductory structured programming course'),
+			i18n('Construye soluciones basicas usando algoritmos y estructuras de control.', 'Builds basic solutions using algorithms and control structures.'),
+		],
+		[
+			i18n('Ingenieria de Requisitos', 'Requirements Engineering'),
+			i18n('Curso de analisis y especificacion de requisitos', 'Course on requirements analysis and specification'),
+			i18n('Elicita, documenta y valida requisitos de software con stakeholders.', 'Elicits, documents and validates software requirements with stakeholders.'),
+		],
+		[
+			i18n('Proyecto Integrador de Software', 'Software Integrator Project'),
+			i18n('Curso integrador basado en proyecto', 'Project-based capstone course'),
+			i18n('Integra competencias tecnicas, comunicacionales y de trabajo en equipo.', 'Integrates technical, communication and teamwork competencies.'),
+		],
+	]
+		.map(([name, description, lo]) => `('${name}'::jsonb, '${description}'::jsonb, '${lo}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."courses" (name, description, learning_outcome)
 		SELECT v.name, v.description, v.learning_outcome
 		FROM (
 			VALUES
-				('Fundamentos de Programacion', 'Curso introductorio de programacion estructurada', 'Construye soluciones basicas usando algoritmos y estructuras de control.'),
-				('Ingenieria de Requisitos', 'Curso de analisis y especificacion de requisitos', 'Elicita, documenta y valida requisitos de software con stakeholders.'),
-				('Proyecto Integrador de Software', 'Curso integrador basado en proyecto', 'Integra competencias tecnicas, comunicacionales y de trabajo en equipo.')
+				${courseValues}
 		) AS v(name, description, learning_outcome)
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "academic"."courses" c WHERE c.name = v.name
+			SELECT 1 FROM "academic"."courses" c WHERE c.name->>'es' = v.name->>'es'
 		);
 	`);
+
+	const studyPlanValues = [
+		[
+			'PROG_SOFT',
+			'SP_SOFT26',
+			i18n('Plan 2026 Ingenieria de Software', '2026 Software Engineering Plan'),
+			i18n('Plan de estudios base para el programa de Ingenieria de Software', 'Base study plan for the Software Engineering program'),
+		],
+		[
+			'PROG_ADMIN',
+			'SP_ADM26',
+			i18n('Plan 2026 Administracion', '2026 Business Administration Plan'),
+			i18n('Plan de estudios base para Administracion de Empresas', 'Base study plan for Business Administration'),
+		],
+	]
+		.map(([programCode, code, name, description]) => `('${programCode}', '${code}', '${name}'::jsonb, '${description}'::jsonb)`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."study_plans" (program_id, code, name, description)
@@ -71,8 +112,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM "academic"."programs" p
 		JOIN (
 			VALUES
-				('PROG_SOFT', 'SP_SOFT26', 'Plan 2026 Ingenieria de Software', 'Plan de estudios base para el programa de Ingenieria de Software'),
-				('PROG_ADMIN', 'SP_ADM26', 'Plan 2026 Administracion', 'Plan de estudios base para Administracion de Empresas')
+				${studyPlanValues}
 		) AS v(program_code, code, name, description)
 			ON p.code = v.program_code
 		WHERE NOT EXISTS (
@@ -121,7 +161,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		) AS v(study_plan_code, academic_period_code, course_name, is_elective, level_type_code)
 			ON sp.code = v.study_plan_code AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" c
-			ON c.name = v.course_name
+			ON c.name->>'es' = v.course_name
 		JOIN "core"."types" t
 			ON t.code = v.level_type_code
 		WHERE NOT EXISTS (
@@ -169,7 +209,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		JOIN "academic"."academic_periods" ap
 			ON ap.id = spap.academic_period_id AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" course
-			ON course.name = v.course_name
+			ON course.name->>'es' = v.course_name
 		JOIN "academic"."study_plan_courses" spc
 			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course.id
 		JOIN "organization"."campuses" campus
@@ -246,6 +286,18 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const performanceLevelValues = [
+		['AP_2026_1', 'PL_EXCELLENT', i18n('Excelente', 'Excellent'), 4.0, 17.0, 20.0, 20.0],
+		['AP_2026_1', 'PL_EXPECTED', i18n('Esperado', 'Expected'), 3.0, 14.0, 16.999999, 20.0],
+		['AP_2026_1', 'PL_DEVELOPING', i18n('En desarrollo', 'Developing'), 2.0, 11.0, 13.999999, 20.0],
+		['AP_2026_1', 'PL_STARTING', i18n('Inicial', 'Starting'), 1.0, 0.0, 10.999999, 20.0],
+	]
+		.map(
+			([period, code, name, uv, min, max, maxv]) =>
+				`('${period}', '${code}', '${name}'::jsonb, ${(uv as number).toFixed(6)}, ${(min as number).toFixed(6)}, ${(max as number).toFixed(6)}, ${(maxv as number).toFixed(6)})`,
+		)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."performance_levels" (
 			instrument_type_id,
@@ -263,10 +315,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			ON instrument_type.code = 'TG206-T001'
 		JOIN (
 			VALUES
-				('AP_2026_1', 'PL_EXCELLENT', 'Excelente', 4.000000, 17.000000, 20.000000, 20.000000),
-				('AP_2026_1', 'PL_EXPECTED', 'Esperado', 3.000000, 14.000000, 16.999999, 20.000000),
-				('AP_2026_1', 'PL_DEVELOPING', 'En desarrollo', 2.000000, 11.000000, 13.999999, 20.000000),
-				('AP_2026_1', 'PL_STARTING', 'Inicial', 1.000000, 0.000000, 10.999999, 20.000000)
+				${performanceLevelValues}
 		) AS v(academic_period_code, code, name, unique_value, min_score, max_score, max_value)
 			ON ap.code = v.academic_period_code
 		WHERE NOT EXISTS (
@@ -308,6 +357,13 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const chartValues = [
+		['calidad@upc.edu.pe', 'AP_2026_1', 1, 0, i18n('Direccion de Calidad Academica', 'Academic Quality Office'), 'TG903-T002', 'CHART_QUAL_2026'],
+		['prof.juan.perez@upc.edu.pe', 'AP_2026_1', 3, 1, i18n('Coordinacion de Ingenieria de Software', 'Software Engineering Coordination'), 'TG903-T001', 'CHART_SOFT_2026'],
+	]
+		.map(([email, period, lvl, root, title, etCode, ec]) => `('${email}', '${period}', ${lvl}, ${root}, '${title}'::jsonb, '${etCode}', '${ec}')`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."charts" (
 			staff_id,
@@ -321,8 +377,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		SELECT staff.id, ap.id, cl.id, v.root_chart_detail_id, v.level_title, entity_type.id, v.entity_code
 		FROM (
 			VALUES
-				('calidad@upc.edu.pe', 'AP_2026_1', 1, 0, 'Direccion de Calidad Academica', 'TG903-T002', 'CHART_QUAL_2026'),
-				('prof.juan.perez@upc.edu.pe', 'AP_2026_1', 3, 1, 'Coordinacion de Ingenieria de Software', 'TG903-T001', 'CHART_SOFT_2026')
+				${chartValues}
 		) AS v(staff_email, academic_period_code, chart_level_number, root_chart_detail_id, level_title, entity_type_code, entity_code)
 		JOIN "organization"."staff" staff
 			ON staff.staff_email = v.staff_email

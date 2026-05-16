@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStudyPlanDto extends BaseDto {
 	@IsOptional()
@@ -16,15 +17,13 @@ export class CreateStudyPlanDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	program_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: true })
-	name: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	name: I18nText;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: true })
-	description: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: true })
+	description: I18nText;
 }
 
 export class UpdateStudyPlanDto extends BaseDto {
@@ -43,16 +42,14 @@ export class UpdateStudyPlanDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 }
 
 export class FilterStudyPlanDto extends BaseDto {
@@ -69,10 +66,10 @@ export class FilterStudyPlanDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 }

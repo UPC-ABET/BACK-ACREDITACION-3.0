@@ -26,7 +26,10 @@ export function parseEntity(filePath: string) {
 
 		const decorators = prop.getDecorators().map((d) => d.getName());
 
-		const type = mapTypeFromDecorator(decorators, name);
+		// 🔥 leer tipo TS literal (e.g. `I18nText`, `string[]`, `Record<string, X>`)
+		const tsType = prop.getTypeNode()?.getText();
+
+		const type = mapTypeFromDecorator(decorators, name, tsType);
 
 		const isOptional = prop.hasQuestionToken() || prop.getText().includes('nullable: true');
 

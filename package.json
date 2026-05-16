@@ -5,6 +5,9 @@
 	"author": "Francisco Cáceres",
 	"private": true,
 	"license": "UNLICENSED",
+	"engines": {
+		"node": ">=24.0.0"
+	},
 	"scripts": {
 		"build": "nest build",
 		"start": "nest start",
@@ -81,6 +84,7 @@
 		"uuid": "^11.1.0"
 	},
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@nestjs/cli": "^11.0.16",
 		"@nestjs/schematics": "10.0.0",
 		"@nestjs/testing": "^11.0.16",
@@ -91,12 +95,9 @@
 		"@types/node": "^20.11.30",
 		"@types/nodemailer": "^6.4.17",
 		"@types/supertest": "^6.0.0",
-		"@typescript-eslint/eslint-plugin": "^8.57.1",
-		"@typescript-eslint/parser": "^8.57.1",
-		"eslint": "^8.57.1",
-		"eslint-config-prettier": "^6.15.0",
-		"eslint-plugin-prettier": "^2.7.0",
+		"eslint": "^10.4.0",
 		"eslint-plugin-unused-imports": "^4.4.1",
+		"globals": "^17.6.0",
 		"jest": "^29.7.0",
 		"prettier": "^3.8.1",
 		"source-map-support": "^0.5.21",
@@ -106,7 +107,7 @@
 		"tsconfig-paths": "^4.2.0",
 		"typeorm-ts-node-commonjs": "^0.3.20",
 		"typescript": "^5.3.3",
-		"typescript-eslint": "^8.57.1"
+		"typescript-eslint": "^8.59.3"
 	},
 	"jest": {
 		"moduleFileExtensions": [

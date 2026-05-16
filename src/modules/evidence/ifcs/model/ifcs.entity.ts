@@ -1,21 +1,32 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
-import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
+import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
+import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
+
+type IfcInformation = Record<string, { label: I18nText; value: I18nText; order: number }>;
 
 @Entity({ name: 'ifcs', schema: 'evidence' })
 export class IfcEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_course_id: number;
+	course_id: number;
 
-	@TextLargeColumn({ nullable: true })
-	information: string;
+	@IntegerFKIDColumn({ nullable: false })
+	academic_period_id: number;
+
+	@JsonColumn({ nullable: true })
+	information: IfcInformation;
 
 	// %% RELACIONES
 
-	@ManyToOne(() => StudyPlanCourseEntity)
-	@JoinColumn({ name: 'study_plan_course_id' })
-	study_plan_course: StudyPlanCourseEntity;
+	@ManyToOne(() => CourseEntity)
+	@JoinColumn({ name: 'course_id' })
+	course: CourseEntity;
+
+	@ManyToOne(() => AcademicPeriodEntity)
+	@JoinColumn({ name: 'academic_period_id' })
+	academic_period: AcademicPeriodEntity;
 }

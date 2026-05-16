@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateRubricScoreDto extends BaseDto {
 	@IsOptional()
@@ -29,10 +30,9 @@ export class CreateRubricScoreDto extends BaseDto {
 	score: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	commentaries?: I18nText;
 }
 
 export class UpdateRubricScoreDto extends BaseDto {
@@ -66,10 +66,9 @@ export class UpdateRubricScoreDto extends BaseDto {
 	score?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	commentaries?: I18nText;
 }
 
 export class FilterRubricScoreDto extends BaseDto {
@@ -98,6 +97,6 @@ export class FilterRubricScoreDto extends BaseDto {
 	score?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	commentaries?: I18nText;
 }

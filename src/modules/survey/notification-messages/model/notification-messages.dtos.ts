@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateNotificationMessageDto extends BaseDto {
 	@IsOptional()
@@ -20,15 +21,13 @@ export class CreateNotificationMessageDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	program_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'title_example', required: true })
-	title: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
+	title: I18nText;
 
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'body_example', required: true })
-	body: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: true })
+	body: I18nText;
 
 	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: true })
 	cc_receivers: any;
@@ -55,16 +54,14 @@ export class UpdateNotificationMessageDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'title_example', required: false })
-	title?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'body_example', required: false })
-	body?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	body?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
@@ -89,12 +86,12 @@ export class FilterNotificationMessageDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'title_example', required: false })
-	title?: string;
+	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'body_example', required: false })
-	body?: string;
+	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	body?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })

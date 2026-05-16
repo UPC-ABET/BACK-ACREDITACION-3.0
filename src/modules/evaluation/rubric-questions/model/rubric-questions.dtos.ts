@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateRubricQuestionDto extends BaseDto {
 	@IsOptional()
@@ -20,10 +21,9 @@ export class CreateRubricQuestionDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	outcome_id: number;
 
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'question_example', required: true })
-	question: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'question_es', en: 'question_en' }, required: true })
+	question: I18nText;
 }
 
 export class UpdateRubricQuestionDto extends BaseDto {
@@ -47,10 +47,9 @@ export class UpdateRubricQuestionDto extends BaseDto {
 	outcome_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'question_example', required: false })
-	question?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'question_es', en: 'question_en' }, required: false })
+	question?: I18nText;
 }
 
 export class FilterRubricQuestionDto extends BaseDto {
@@ -71,6 +70,6 @@ export class FilterRubricQuestionDto extends BaseDto {
 	outcome_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'question_example', required: false })
-	question?: string;
+	@ApiProperty({ example: { es: 'question_es', en: 'question_en' }, required: false })
+	question?: I18nText;
 }

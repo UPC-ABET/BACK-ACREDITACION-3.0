@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs';
-import { runTenantSeed } from '../seed-runner';
+import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('organization users and staff', async (tenantDataSource) => {
 	const adminPassword = await bcrypt.hash('admin123', 10);
@@ -43,6 +43,25 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 		[adminPassword, adminPassword, professorPassword, professorPassword, studentPassword, studentPassword],
 	);
 
+	const staffValues = [
+		['admin@upc.edu.pe', 'TG901-T001', i18n('Administrador general', 'General administrator'), i18n('Administracion del sistema academico', 'Administration of the academic system')],
+		['calidad@upc.edu.pe', 'TG901-T002', i18n('Coordinadora de calidad', 'Quality coordinator'), i18n('Seguimiento de indicadores de acreditacion', 'Tracking of accreditation indicators')],
+		[
+			'prof.juan.perez@upc.edu.pe',
+			'TG901-T003',
+			i18n('Profesor tiempo completo', 'Full-time professor'),
+			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
+		],
+		[
+			'prof.maria.garcia@upc.edu.pe',
+			'TG901-T003',
+			i18n('Profesora tiempo completo', 'Full-time professor'),
+			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
+		],
+	]
+		.map(([email, code, title, description]) => `('${email}', '${code}', '${title}'::jsonb, '${description}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."staff" (
 			user_id,
@@ -62,10 +81,7 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 		FROM "organization"."users" u
 		JOIN (
 			VALUES
-				('admin@upc.edu.pe', 'TG901-T001', 'Administrador general', 'Administracion del sistema academico'),
-				('calidad@upc.edu.pe', 'TG901-T002', 'Coordinadora de calidad', 'Seguimiento de indicadores de acreditacion'),
-				('prof.juan.perez@upc.edu.pe', 'TG901-T003', 'Profesor tiempo completo', 'Docente del programa de Ingenieria de Software'),
-				('prof.maria.garcia@upc.edu.pe', 'TG901-T003', 'Profesora tiempo completo', 'Docente del programa de Ingenieria de Software')
+				${staffValues}
 		) AS v(email, position_type_code, job_title, job_description)
 			ON u.email = v.email
 		JOIN "core"."types" t

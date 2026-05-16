@@ -1,6 +1,32 @@
-import { runTenantSeed } from '../seed-runner';
+import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('evidence module', async (tenantDataSource) => {
+	const instrumentValues = [
+		[
+			'TG501-T001',
+			'INST_FP_EXAM',
+			i18n('Examen de Fundamentos de Programacion', 'Fundamentals of Programming exam'),
+			i18n('Instrumento para medir solucion algoritmica basica', 'Instrument to measure basic algorithmic solution'),
+			true,
+		],
+		[
+			'TG501-T002',
+			'INST_CAPSTONE',
+			i18n('Proyecto integrador de software', 'Software integrator project'),
+			i18n('Instrumento para medir competencias integradas del programa', 'Instrument to measure integrated program competencies'),
+			true,
+		],
+		[
+			'TG501-T003',
+			'INST_SURVEY_STUDENT',
+			i18n('Encuesta de percepcion estudiantil', 'Student perception survey'),
+			i18n('Instrumento de percepcion para resultados del programa', 'Perception instrument for program outcomes'),
+			false,
+		],
+	]
+		.map(([ctCode, code, name, desc, acc]) => `('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "evidence"."instruments" (
 			constituent_type_id,
@@ -13,9 +39,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		FROM "core"."types" constituent_type
 		JOIN (
 			VALUES
-				('TG501-T001', 'INST_FP_EXAM', 'Examen de Fundamentos de Programacion', 'Instrumento para medir solucion algoritmica basica', true),
-				('TG501-T002', 'INST_CAPSTONE', 'Proyecto integrador de software', 'Instrumento para medir competencias integradas del programa', true),
-				('TG501-T003', 'INST_SURVEY_STUDENT', 'Encuesta de percepcion estudiantil', 'Instrumento de percepcion para resultados del programa', false)
+				${instrumentValues}
 		) AS v(constituent_type_code, code, name, description, is_for_accreditation)
 			ON constituent_type.code = v.constituent_type_code
 		WHERE NOT EXISTS (
@@ -23,30 +47,83 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		);
 	`);
 
+	const ifcValues = [
+		[
+			'Fundamentos de Programacion',
+			'AP_2026_1',
+			JSON.stringify({
+				summary: {
+					label: { es: 'Resumen IFC', en: 'IFC summary' },
+					value: {
+						es: 'IFC para medir pensamiento critico y solucion tecnica en Fundamentos de Programacion.',
+						en: 'IFC measuring critical thinking and technical solution in Fundamentals of Programming.',
+					},
+					order: 1,
+				},
+			}),
+		],
+		[
+			'Proyecto Integrador de Software',
+			'AP_2026_2',
+			JSON.stringify({
+				summary: {
+					label: { es: 'Resumen IFC', en: 'IFC summary' },
+					value: {
+						es: 'IFC para medir colaboracion y solucion tecnica en Proyecto Integrador.',
+						en: 'IFC measuring collaboration and technical solution in the Integrator Project.',
+					},
+					order: 1,
+				},
+			}),
+		],
+	]
+		.map(([courseName, periodCode, info]) => `('${courseName}', '${periodCode}', '${(info as string).replace(/'/g, "''")}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
-		INSERT INTO "evidence"."ifcs" (study_plan_course_id, information)
-		SELECT spc.id, v.information
+		INSERT INTO "evidence"."ifcs" (course_id, academic_period_id, information)
+		SELECT course.id, ap.id, v.information
 		FROM (
 			VALUES
-				('SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'IFC para medir pensamiento critico y solucion tecnica en Fundamentos de Programacion.'),
-				('SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', 'IFC para medir colaboracion y solucion tecnica en Proyecto Integrador.')
-		) AS v(study_plan_code, academic_period_code, course_name, information)
-		JOIN "academic"."study_plans" sp
-			ON sp.code = v.study_plan_code
-		JOIN "academic"."study_plan_academic_periods" spap
-			ON spap.study_plan_id = sp.id
-		JOIN "academic"."academic_periods" ap
-			ON ap.id = spap.academic_period_id AND ap.code = v.academic_period_code
+				${ifcValues}
+		) AS v(course_name, academic_period_code, information)
 		JOIN "academic"."courses" course
-			ON course.name = v.course_name
-		JOIN "academic"."study_plan_courses" spc
-			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course.id
+			ON course.name->>'es' = v.course_name
+		JOIN "academic"."academic_periods" ap
+			ON ap.code = v.academic_period_code
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM "evidence"."ifcs" ifc
-			WHERE ifc.study_plan_course_id = spc.id AND ifc.information = v.information
+			WHERE ifc.course_id = course.id AND ifc.academic_period_id = ap.id
 		);
 	`);
+
+	const surveyValues = [
+		[
+			'TG601-T001',
+			'TG602-T001',
+			'student.luis.ramirez@upc.edu.pe',
+			'AP_2026_1',
+			'CAMPUS_MON',
+			'PROG_SOFT',
+			'SOFT-FP-2026-1-A',
+			i18n('Encuesta de satisfaccion del periodo 2026-1', '2026-1 satisfaction survey'),
+			20260101,
+		],
+		[
+			'TG601-T001',
+			'TG602-T001',
+			'student.sofia.torres@upc.edu.pe',
+			'AP_2026_1',
+			'CAMPUS_MON',
+			'PROG_SOFT',
+			'SOFT-FP-2026-1-A',
+			i18n('Encuesta de satisfaccion del periodo 2026-1', '2026-1 satisfaction survey'),
+			20260102,
+		],
+	]
+		.map(([st, ss, email, ap, c, pg, sc, info, num]) => `('${st}', '${ss}', '${email}', '${ap}', '${c}', '${pg}', '${sc}', '${info}'::jsonb, ${num})`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "evidence"."surveys" (
@@ -63,8 +140,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		SELECT survey_type.id, survey_status.id, student.id, period.id, campus.id, program.id, v.information, v.survey_number, course_section.id
 		FROM (
 			VALUES
-				('TG601-T001', 'TG602-T001', 'student.luis.ramirez@upc.edu.pe', 'AP_2026_1', 'CAMPUS_MON', 'PROG_SOFT', 'SOFT-FP-2026-1-A', 'Encuesta de satisfaccion del periodo 2026-1', 20260101),
-				('TG601-T001', 'TG602-T001', 'student.sofia.torres@upc.edu.pe', 'AP_2026_1', 'CAMPUS_MON', 'PROG_SOFT', 'SOFT-FP-2026-1-A', 'Encuesta de satisfaccion del periodo 2026-1', 20260102)
+				${surveyValues}
 		) AS v(survey_type_code, survey_status_code, student_email, academic_period_code, campus_code, program_code, section_code, information, survey_number)
 		JOIN "core"."types" survey_type
 			ON survey_type.code = v.survey_type_code
@@ -122,6 +198,27 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		);
 	`);
 
+	const evaluationValues = [
+		[
+			'PROJ_SOFT_FP_2026',
+			'student.luis.ramirez@upc.edu.pe',
+			'prof.juan.perez@upc.edu.pe',
+			'TG404-T001',
+			i18n('Proyecto revisado con desempeno esperado alto.', 'Project reviewed with high expected performance.'),
+			'2026-06-10 10:00:00',
+		],
+		[
+			'PROJ_SOFT_FP_2026',
+			'student.sofia.torres@upc.edu.pe',
+			'prof.juan.perez@upc.edu.pe',
+			'TG404-T001',
+			i18n('Proyecto revisado con desempeno esperado.', 'Project reviewed with expected performance.'),
+			'2026-06-10 11:00:00',
+		],
+	]
+		.map(([pc, se, pe, qs, obs, regAt]) => `('${pc}', '${se}', '${pe}', '${qs}', '${obs}'::jsonb, '${regAt}')`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "evidence"."evaluations" (
 			project_student_id,
@@ -133,8 +230,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		SELECT project_student.id, project_evaluator.id, qualification_status.id, v.observation, v.register_at::timestamptz
 		FROM (
 			VALUES
-				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'TG404-T001', 'Proyecto revisado con desempeno esperado alto.', '2026-06-10 10:00:00'),
-				('PROJ_SOFT_FP_2026', 'student.sofia.torres@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'TG404-T001', 'Proyecto revisado con desempeno esperado.', '2026-06-10 11:00:00')
+				${evaluationValues}
 		) AS v(project_code, student_email, professor_email, qualification_status_code, observation, register_at)
 		JOIN "evaluation"."projects" project
 			ON project.code = v.project_code
@@ -164,51 +260,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		);
 	`);
 
-	await tenantDataSource.query(`
-		INSERT INTO "evaluation"."rubric_scores" (
-			evaluation_id,
-			rubric_question_criteria_id,
-			score,
-			commentaries
-		)
-		SELECT evaluation.id, rqc.id, v.score, v.commentaries
-		FROM (
-			VALUES
-				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_01', 'Analiza el problema y define una solucion algoritmica coherente.', 18.000000, 'Analisis claro y completo.'),
-				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_04', 'Implementa la solucion con estructuras de control adecuadas.', 16.000000, 'Implementacion correcta con oportunidades de mejora menores.'),
-				('PROJ_SOFT_FP_2026', 'student.sofia.torres@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_01', 'Analiza el problema y define una solucion algoritmica coherente.', 15.000000, 'Cubre los elementos principales del problema.')
-		) AS v(project_code, student_email, professor_email, outcome_code, question, score, commentaries)
-		JOIN "evaluation"."projects" project
-			ON project.code = v.project_code
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
-		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
-		JOIN "academic"."enrolled_students" enrolled_student
-			ON enrolled_student.student_id = student.id
-		JOIN "academic"."student_section_enrollments" sse
-			ON sse.enrolled_student_id = enrolled_student.id
-		JOIN "evaluation"."project_students" project_student
-			ON project_student.project_id = project.id AND project_student.student_section_enrollment_id = sse.id
-		JOIN "organization"."staff" staff
-			ON staff.staff_email = v.professor_email
-		JOIN "academic"."professors" professor
-			ON professor.staff_id = staff.id
-		JOIN "evaluation"."project_evaluators" project_evaluator
-			ON project_evaluator.project_id = project.id AND project_evaluator.professor_id = professor.id
-		JOIN "evidence"."evaluations" evaluation
-			ON evaluation.project_student_id = project_student.id AND evaluation.project_evaluator_id = project_evaluator.id
-		JOIN "accreditation"."outcomes" outcome
-			ON outcome.outcome_code = v.outcome_code
-		JOIN "evaluation"."rubric_questions" rq
-			ON rq.outcome_id = outcome.id AND rq.question = v.question
-		JOIN "evaluation"."rubric_question_criterias" rqc
-			ON rqc.rubric_question_id = rq.id
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM "evaluation"."rubric_scores" rs
-			WHERE rs.evaluation_id = evaluation.id
-				AND rs.rubric_question_criteria_id = rqc.id
-		);
-	`);
+	// NOTE: rubric_scores insert intentionally omitted in this seed.
+	// rubric_scores requires rubric_outcome_criteria_id (NOT NULL), which is not
+	// covered by this foundational spec. Re-add once that data flow is defined.
 });

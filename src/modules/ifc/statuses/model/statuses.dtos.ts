@@ -1,6 +1,7 @@
-import { IsBoolean, IsDate, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStatusDto extends BaseDto {
 	@IsOptional()
@@ -25,10 +26,9 @@ export class CreateStatusDto extends BaseDto {
 	staff_id: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'commentary_example', required: false })
-	commentary?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
+	comment?: I18nText;
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
@@ -61,10 +61,9 @@ export class UpdateStatusDto extends BaseDto {
 	staff_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'commentary_example', required: false })
-	commentary?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
+	comment?: I18nText;
 
 	@IsOptional()
 	@IsDate()
@@ -94,8 +93,8 @@ export class FilterStatusDto extends BaseDto {
 	staff_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'commentary_example', required: false })
-	commentary?: string;
+	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
+	comment?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })

@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateChartDto extends BaseDto {
 	@IsOptional()
@@ -28,10 +29,9 @@ export class CreateChartDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	root_chart_detail_id: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'level_title_example', required: true })
-	level_title: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: true })
+	level_title: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -69,10 +69,9 @@ export class UpdateChartDto extends BaseDto {
 	root_chart_detail_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'level_title_example', required: false })
-	level_title?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: false })
+	level_title?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -106,8 +105,8 @@ export class FilterChartDto extends BaseDto {
 	root_chart_detail_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'level_title_example', required: false })
-	level_title?: string;
+	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: false })
+	level_title?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

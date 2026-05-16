@@ -62,6 +62,8 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
+import { NotificationConfigModule } from './modules/ifc/notification-configs/notification-configs.module';
+import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
 
 //IMPROVEMENT MODULES
@@ -170,6 +172,8 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		StudentCourseOutcomeGradeModule,
 		SurveyModule,
 		IfcFindingModule,
+		NotificationConfigModule,
+		NotificationLogModule,
 		StatusModule,
 		ActionModule,
 		FindingActionModule,

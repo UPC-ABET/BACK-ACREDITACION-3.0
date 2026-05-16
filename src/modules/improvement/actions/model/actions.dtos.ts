@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateActionDto extends BaseDto {
 	@IsOptional()
@@ -12,10 +13,9 @@ export class CreateActionDto extends BaseDto {
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: true })
-	description: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: true })
+	description: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -45,10 +45,9 @@ export class UpdateActionDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -81,8 +80,8 @@ export class FilterActionDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

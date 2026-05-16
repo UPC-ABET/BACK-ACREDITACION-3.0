@@ -1,33 +1,53 @@
-import { runTenantSeed } from '../seed-runner';
+import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('organization base module', async (tenantDataSource) => {
+	const campusValues = [
+		['CAMPUS_MON', i18n('Campus Monterrico', 'Monterrico Campus')],
+		['CAMPUS_SI', i18n('Campus San Isidro', 'San Isidro Campus')],
+		['CAMPUS_VILLA', i18n('Campus Villa', 'Villa Campus')],
+	]
+		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."campuses" (code, name)
 		SELECT v.code, v.name
 		FROM (
 			VALUES
-				('CAMPUS_MON', 'Campus Monterrico'),
-				('CAMPUS_SI', 'Campus San Isidro'),
-				('CAMPUS_VILLA', 'Campus Villa')
+				${campusValues}
 		) AS v(code, name)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."campuses" c WHERE c.code = v.code
 		);
 	`);
 
+	const facultyValues = [
+		['FAC_ING', i18n('Facultad de Ingenieria', 'Faculty of Engineering')],
+		['FAC_NEG', i18n('Facultad de Negocios', 'Faculty of Business')],
+		['FAC_COM', i18n('Facultad de Comunicaciones', 'Faculty of Communications')],
+	]
+		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."faculties" (code, name)
 		SELECT v.code, v.name
 		FROM (
 			VALUES
-				('FAC_ING', 'Facultad de Ingenieria'),
-				('FAC_NEG', 'Facultad de Negocios'),
-				('FAC_COM', 'Facultad de Comunicaciones')
+				${facultyValues}
 		) AS v(code, name)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."faculties" f WHERE f.code = v.code
 		);
 	`);
+
+	const schoolValues = [
+		['FAC_ING', 'SCH_SOFT', i18n('Escuela de Ingenieria de Software', 'School of Software Engineering')],
+		['FAC_ING', 'SCH_SIST', i18n('Escuela de Ingenieria de Sistemas', 'School of Systems Engineering')],
+		['FAC_NEG', 'SCH_ADMIN', i18n('Escuela de Administracion', 'School of Business Administration')],
+	]
+		.map(([facultyCode, code, name]) => `('${facultyCode}', '${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."schools" (faculty_id, code, name)
@@ -35,9 +55,7 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 		FROM "organization"."faculties" f
 		JOIN (
 			VALUES
-				('FAC_ING', 'SCH_SOFT', 'Escuela de Ingenieria de Software'),
-				('FAC_ING', 'SCH_SIST', 'Escuela de Ingenieria de Sistemas'),
-				('FAC_NEG', 'SCH_ADMIN', 'Escuela de Administracion')
+				${schoolValues}
 		) AS v(faculty_code, code, name)
 			ON f.code = v.faculty_code
 		WHERE NOT EXISTS (

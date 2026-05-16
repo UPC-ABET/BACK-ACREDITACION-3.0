@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateRubricQuestionCriteriaDto extends BaseDto {
 	@IsOptional()
@@ -20,10 +21,9 @@ export class CreateRubricQuestionCriteriaDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	rubric_scale_id: number;
 
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'criteria_example', required: true })
-	criteria: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: true })
+	criteria: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -55,10 +55,9 @@ export class UpdateRubricQuestionCriteriaDto extends BaseDto {
 	rubric_scale_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'criteria_example', required: false })
-	criteria?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })
+	criteria?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -89,8 +88,8 @@ export class FilterRubricQuestionCriteriaDto extends BaseDto {
 	rubric_scale_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'criteria_example', required: false })
-	criteria?: string;
+	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })
+	criteria?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

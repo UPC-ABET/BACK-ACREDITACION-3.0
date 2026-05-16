@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextMediumColumn, IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
 import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/course-sections.entity';
@@ -29,8 +30,8 @@ export class SurveyEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	program_id: number;
 
-	@TextMediumColumn({ nullable: true })
-	information: string;
+	@JsonColumn({ nullable: true })
+	information: I18nText;
 
 	@IntegerColumn({ nullable: true })
 	survey_number: number;

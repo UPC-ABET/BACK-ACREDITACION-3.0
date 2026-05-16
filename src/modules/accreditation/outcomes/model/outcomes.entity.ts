@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextLargeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 
 @Entity({ name: 'outcomes', schema: 'accreditation' })
@@ -13,11 +14,11 @@ export class OutcomeEntity extends BaseEntity {
 	@CodeColumn({ nullable: false })
 	outcome_code: string;
 
-	@NameColumn({ nullable: false })
-	outcome_name: string;
+	@JsonColumn({ nullable: false })
+	outcome_name: I18nText;
 
-	@TextLargeColumn({ nullable: false })
-	outcome_description: string;
+	@JsonColumn({ nullable: false })
+	outcome_description: I18nText;
 
 	// %% RELACIONES
 

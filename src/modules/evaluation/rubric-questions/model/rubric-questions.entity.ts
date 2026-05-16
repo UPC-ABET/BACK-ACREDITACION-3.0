@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 
@@ -14,8 +15,8 @@ export class RubricQuestionEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	outcome_id: number;
 
-	@TextLargeColumn({ nullable: false })
-	question: string;
+	@JsonColumn({ nullable: false })
+	question: I18nText;
 
 	// %% RELACIONES
 

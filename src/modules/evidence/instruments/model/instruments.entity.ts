@@ -1,6 +1,7 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerColumn, BooleanColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'instruments', schema: 'evidence' })
 export class InstrumentEntity extends BaseEntity {
@@ -12,11 +13,11 @@ export class InstrumentEntity extends BaseEntity {
 	@CodeColumn({ nullable: false, unique: true })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: true })
+	description: I18nText;
 
 	@BooleanColumn({ nullable: false, default: true })
 	is_for_accreditation: boolean;

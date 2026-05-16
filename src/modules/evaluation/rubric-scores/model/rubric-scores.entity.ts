@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerFKIDColumn, DecimalColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, DecimalColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
 import { RubricOutcomeCriteriaEntity } from 'src/modules/evaluation/rubric-outcome-criterias/model/rubric-outcome-criterias.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
@@ -21,8 +22,8 @@ export class RubricScoreEntity extends BaseEntity {
 	@DecimalColumn({ nullable: false })
 	score: number;
 
-	@TextLargeColumn({ nullable: true })
-	commentaries: string;
+	@JsonColumn({ nullable: true })
+	commentaries: I18nText;
 
 	// %% RELACIONES
 

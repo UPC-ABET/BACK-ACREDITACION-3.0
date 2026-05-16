@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, IntegerFKIDColumn, IntegerColumn, DecimalColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, IntegerColumn, DecimalColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 
 @Entity({ name: 'performance_levels', schema: 'academic' })
@@ -13,8 +14,8 @@ export class PerformanceLevelEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
 	@CodeColumn({ nullable: false })
 	code: string;

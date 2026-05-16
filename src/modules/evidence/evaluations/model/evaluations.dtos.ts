@@ -1,6 +1,7 @@
-import { IsBoolean, IsDate, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateEvaluationDto extends BaseDto {
 	@IsOptional()
@@ -25,10 +26,9 @@ export class CreateEvaluationDto extends BaseDto {
 	qualification_status_type_id: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'observation_example', required: false })
-	observation?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
+	observation?: I18nText;
 
 	@IsOptional()
 	@IsDate()
@@ -62,10 +62,9 @@ export class UpdateEvaluationDto extends BaseDto {
 	qualification_status_type_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'observation_example', required: false })
-	observation?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
+	observation?: I18nText;
 
 	@IsOptional()
 	@IsDate()
@@ -95,8 +94,8 @@ export class FilterEvaluationDto extends BaseDto {
 	qualification_status_type_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'observation_example', required: false })
-	observation?: string;
+	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
+	observation?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })

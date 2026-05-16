@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateSurveyDto extends BaseDto {
 	@IsOptional()
@@ -37,10 +38,9 @@ export class CreateSurveyDto extends BaseDto {
 	program_id: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'information_example', required: false })
-	information?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
+	information?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -93,10 +93,9 @@ export class UpdateSurveyDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'information_example', required: false })
-	information?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
+	information?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -143,8 +142,8 @@ export class FilterSurveyDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'information_example', required: false })
-	information?: string;
+	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
+	information?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

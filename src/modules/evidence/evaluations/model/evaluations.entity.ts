@@ -1,6 +1,7 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerFKIDColumn, IntegerColumn, DateColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, DateColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 
@@ -17,8 +18,8 @@ export class EvaluationEntity extends BaseEntity {
 	@IntegerColumn({ nullable: false })
 	qualification_status_type_id: number;
 
-	@TextLargeColumn({ nullable: true })
-	observation: string;
+	@JsonColumn({ nullable: true })
+	observation: I18nText;
 
 	@DateColumn({ nullable: true })
 	register_at: Date;
