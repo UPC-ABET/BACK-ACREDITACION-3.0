@@ -35,9 +35,11 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
  */
 @Injectable()
 export class EvaluationSubmissionService {
-	private readonly COMPLETED_STATUS_TYPE_ID = 1;
-	private readonly ASISTIO_STATUS_TYPE_ID = 1;
-	private readonly NR_STATUS_TYPE_ID = 2;
+	private readonly ASISTIO_STATUS_CODE = 'TG404-T001';
+	private readonly NR_STATUS_CODE = 'TG404-T002';
+	private readonly PA_GRADE_TYPE_CODE = 'TG205-T003';
+	private readonly COM_EVALUATOR_CODE = 'TG403-T001';
+	private readonly GER_EVALUATOR_CODE = 'TG403-T002';
 
 	constructor(
 		@InjectRepository(EvaluationEntity)
@@ -83,6 +85,14 @@ export class EvaluationSubmissionService {
 		return type?.code ?? null;
 	}
 
+	private async resolveStatusTypeIdByCode(code: string): Promise<number> {
+		const type = await this.typeRepo.findOne({ where: { code } });
+		if (!type) {
+			throw new BadRequestException(`Tipo de estado de calificación con código '${code}' no encontrado en core.types.`);
+		}
+		return type.id;
+	}
+
 	private async isPaRubric(rubricId?: number, gradeTypeId?: number): Promise<boolean> {
 		if (!gradeTypeId && !rubricId) return false;
 		let gTypeId = gradeTypeId;
@@ -92,7 +102,7 @@ export class EvaluationSubmissionService {
 		}
 		if (!gTypeId) return false;
 		const type = await this.typeRepo.findOne({ where: { id: gTypeId } });
-		return type?.code === 'PA';
+		return type?.code === this.PA_GRADE_TYPE_CODE;
 	}
 
 	private async getRubricForProject(projectId: number): Promise<{ rubric: RubricEntity | null; studyPlanCourseId: number | null }> {
@@ -188,6 +198,7 @@ export class EvaluationSubmissionService {
 		projectEvaluatorId: number,
 		observation: string | null | undefined,
 		scores: Array<{ rubric_question_criteria_id: number; score: number; commentaries?: string }>,
+		asistioStatusTypeId: number,
 	): Promise<EvaluationEntity> {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
@@ -205,7 +216,7 @@ export class EvaluationSubmissionService {
 			evaluation = manager.create(EvaluationEntity, {
 				project_student_id: projectStudentId,
 				project_evaluator_id: projectEvaluatorId,
-				qualification_status_type_id: this.COMPLETED_STATUS_TYPE_ID,
+				qualification_status_type_id: asistioStatusTypeId,
 				observation: observation ?? null,
 				register_at: new Date(),
 				is_active: true,
@@ -283,12 +294,14 @@ export class EvaluationSubmissionService {
 			}
 		}
 
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
+
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
 		await queryRunner.startTransaction();
 
 		try {
-			const evaluation = await this.saveEvaluationScores(queryRunner.manager, dto.project_student_id, dto.project_evaluator_id, dto.observation, dto.scores);
+			const evaluation = await this.saveEvaluationScores(queryRunner.manager, dto.project_student_id, dto.project_evaluator_id, dto.observation, dto.scores, asistioStatusTypeId);
 
 			// Resolver tipo de evaluador
 			const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluator_type_id);
@@ -299,7 +312,7 @@ export class EvaluationSubmissionService {
 
 			let finalOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
 
-			if (evaluatorCode === 'COM') {
+			if (evaluatorCode === this.COM_EVALUATOR_CODE) {
 				// R-NOT-008: COM — promediar todos los COM del proyecto
 				const comEvaluators = await queryRunner.manager.find(ProjectEvaluatorEntity, {
 					where: { project_id: evaluator.project_id, evaluator_type_id: evaluator.evaluator_type_id },
@@ -335,7 +348,7 @@ export class EvaluationSubmissionService {
 
 				// UPSERT con promedios del COM
 				await this.upsertOutcomeGrades(queryRunner.manager, student.student_section_enrollment_id, finalOutcomeGrades);
-			} else if (evaluatorCode === 'GER' && isPa) {
+			} else if (evaluatorCode === this.GER_EVALUATOR_CODE && isPa) {
 				// R-NOT-009: GER en WASC — escribe directo
 				const { outcomeGrades } = await this.aggregateScoresByOutcome(queryRunner.manager, evaluation.id);
 				finalOutcomeGrades = outcomeGrades;
@@ -368,6 +381,9 @@ export class EvaluationSubmissionService {
 	 * Guarda/actualiza la observación de una evaluación (R-NOT-014)
 	 */
 	async saveObservation(dto: SaveObservationDto): Promise<{ success: boolean }> {
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
+		const nrStatusTypeId = await this.resolveStatusTypeIdByCode(this.NR_STATUS_CODE);
+
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
 		await queryRunner.startTransaction();
@@ -384,7 +400,7 @@ export class EvaluationSubmissionService {
 				evaluation = queryRunner.manager.create(EvaluationEntity, {
 					project_student_id: dto.project_student_id,
 					project_evaluator_id: dto.project_evaluator_id,
-					qualification_status_type_id: this.NR_STATUS_TYPE_ID,
+					qualification_status_type_id: nrStatusTypeId,
 					observation: dto.observation?.trim() ?? null,
 					register_at: new Date(),
 				});
@@ -393,9 +409,9 @@ export class EvaluationSubmissionService {
 			}
 
 			if (!evaluation.observation) {
-				evaluation.qualification_status_type_id = this.NR_STATUS_TYPE_ID;
+				evaluation.qualification_status_type_id = nrStatusTypeId;
 			} else {
-				evaluation.qualification_status_type_id = this.ASISTIO_STATUS_TYPE_ID;
+				evaluation.qualification_status_type_id = asistioStatusTypeId;
 			}
 
 			await queryRunner.manager.save(evaluation);
@@ -430,6 +446,8 @@ export class EvaluationSubmissionService {
 
 		const totalCriteria = rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
 
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
+
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
 		await queryRunner.startTransaction();
@@ -461,7 +479,7 @@ export class EvaluationSubmissionService {
 					throw new BadRequestException(`Debe calificar todos los criterios para el alumno ${ps.student_section_enrollment_id}.`);
 				}
 
-				evaluation.qualification_status_type_id = this.ASISTIO_STATUS_TYPE_ID;
+				evaluation.qualification_status_type_id = asistioStatusTypeId;
 				await queryRunner.manager.save(evaluation);
 			}
 

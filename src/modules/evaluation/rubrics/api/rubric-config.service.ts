@@ -24,7 +24,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
  */
 @Injectable()
 export class RubricConfigService {
-	private readonly CAPSTONE_RUBRIC_TYPE_ID = 1;
+	private readonly CAPSTONE_RUBRIC_TYPE_CODE = 'TG401-T001';
 
 	constructor(
 		@InjectRepository(RubricEntity)
@@ -40,12 +40,19 @@ export class RubricConfigService {
 		private readonly dataSource: DataSource,
 	) {}
 
+	private async resolveRubricTypeIdByCode(code: string): Promise<number | null> {
+		const type = await this.typeRepo.findOne({ where: { code } });
+		return type?.id ?? null;
+	}
+
 	/**
 	 * Determina si una rúbrica es de tipo WASC (PA) según su grade_type_id
 	 */
+	private readonly PA_GRADE_TYPE_CODE = 'TG205-T003';
+
 	private async isWascRubric(gradeTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === 'PA';
+		return type?.code === this.PA_GRADE_TYPE_CODE;
 	}
 
 	/**
@@ -125,7 +132,8 @@ export class RubricConfigService {
 			}
 		}
 
-		if (dto.rubric_type_id === this.CAPSTONE_RUBRIC_TYPE_ID) {
+		const capstoneTypeId = await this.resolveRubricTypeIdByCode(this.CAPSTONE_RUBRIC_TYPE_CODE);
+		if (capstoneTypeId && dto.rubric_type_id === capstoneTypeId) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcome_id);
 			if (hasMissingOutcomes) {
 				throw new BadRequestException('Las rúbricas Capstone requieren que todas las preguntas tengan un outcome_id asignado.');
