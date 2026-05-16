@@ -1,13 +1,14 @@
-import { Entity } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'programs', schema: 'academic' })
 export class ProgramEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	modality_type_id: number;
 
 	@CodeColumn({ nullable: false })
@@ -20,4 +21,8 @@ export class ProgramEntity extends BaseEntity {
 	degree: I18nText;
 
 	// %% RELACIONES
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'modality_type_id' })
+	modality_type: TypeEntity;
 }

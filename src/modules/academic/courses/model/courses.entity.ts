@@ -1,11 +1,14 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { JsonColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'courses', schema: 'academic' })
 export class CourseEntity extends BaseEntity {
 	// %% ATRIBUTOS
+
+	@CodeColumn({ nullable: false })
+	code: string;
 
 	@JsonColumn({ nullable: false })
 	name: I18nText;

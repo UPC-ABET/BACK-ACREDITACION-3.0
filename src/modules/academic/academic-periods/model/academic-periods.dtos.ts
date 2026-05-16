@@ -14,7 +14,7 @@ export class CreateAcademicPeriodDto extends BaseDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	modality_type_Id: number;
+	modality_type_id: number;
 
 	@IsString()
 	@Length(1, 1000)
@@ -43,7 +43,7 @@ export class UpdateAcademicPeriodDto extends BaseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_Id?: number;
+	modality_type_id?: number;
 
 	@IsOptional()
 	@IsString()
@@ -73,7 +73,7 @@ export class FilterAcademicPeriodDto extends BaseDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_Id?: number;
+	modality_type_id?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })

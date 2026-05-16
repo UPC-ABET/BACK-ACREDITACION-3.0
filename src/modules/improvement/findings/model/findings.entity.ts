@@ -7,12 +7,13 @@ import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.e
 import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
 import { InstrumentEntity } from 'src/modules/evidence/instruments/model/instruments.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'findings', schema: 'improvement' })
 export class FindingEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	criticality_type_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
@@ -39,10 +40,14 @@ export class FindingEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, default: true })
 	is_automatic: boolean;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	finding_status_type_id: number;
 
 	// %% RELACIONES
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'criticality_type_id' })
+	criticality_type: TypeEntity;
 
 	@ManyToOne(() => InstrumentEntity)
 	@JoinColumn({ name: 'instrument_id' })
@@ -63,4 +68,8 @@ export class FindingEntity extends BaseEntity {
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id' })
 	campus: CampusEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'finding_status_type_id' })
+	finding_status_type: TypeEntity;
 }

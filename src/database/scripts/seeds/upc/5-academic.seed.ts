@@ -2,7 +2,7 @@ import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('academic module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."academic_periods" ("modality_type_Id", code, start_date, end_date)
+		INSERT INTO "academic"."academic_periods" ("modality_type_id", code, start_date, end_date)
 		SELECT t.id, v.code, v.start_date::timestamptz, v.end_date::timestamptz
 		FROM "core"."types" t
 		JOIN (
@@ -59,33 +59,36 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 
 	const courseValues = [
 		[
+			'CRS_FUND_PROG',
 			i18n('Fundamentos de Programacion', 'Fundamentals of Programming'),
 			i18n('Curso introductorio de programacion estructurada', 'Introductory structured programming course'),
 			i18n('Construye soluciones basicas usando algoritmos y estructuras de control.', 'Builds basic solutions using algorithms and control structures.'),
 		],
 		[
+			'CRS_REQ_ENG',
 			i18n('Ingenieria de Requisitos', 'Requirements Engineering'),
 			i18n('Curso de analisis y especificacion de requisitos', 'Course on requirements analysis and specification'),
 			i18n('Elicita, documenta y valida requisitos de software con stakeholders.', 'Elicits, documents and validates software requirements with stakeholders.'),
 		],
 		[
+			'CRS_INT_PROJ',
 			i18n('Proyecto Integrador de Software', 'Software Integrator Project'),
 			i18n('Curso integrador basado en proyecto', 'Project-based capstone course'),
 			i18n('Integra competencias tecnicas, comunicacionales y de trabajo en equipo.', 'Integrates technical, communication and teamwork competencies.'),
 		],
 	]
-		.map(([name, description, lo]) => `('${name}'::jsonb, '${description}'::jsonb, '${lo}'::jsonb)`)
+		.map(([code, name, description, lo]) => `('${code}', '${name}'::jsonb, '${description}'::jsonb, '${lo}'::jsonb)`)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."courses" (name, description, learning_outcome)
-		SELECT v.name, v.description, v.learning_outcome
+		INSERT INTO "academic"."courses" (code, name, description, learning_outcome)
+		SELECT v.code, v.name, v.description, v.learning_outcome
 		FROM (
 			VALUES
 				${courseValues}
-		) AS v(name, description, learning_outcome)
+		) AS v(code, name, description, learning_outcome)
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "academic"."courses" c WHERE c.name->>'es' = v.name->>'es'
+			SELECT 1 FROM "academic"."courses" c WHERE c.code = v.code
 		);
 	`);
 

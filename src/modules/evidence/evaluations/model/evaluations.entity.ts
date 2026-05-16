@@ -1,9 +1,10 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn, DateColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, DateColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'evaluations', schema: 'evidence' })
 export class EvaluationEntity extends BaseEntity {
@@ -15,7 +16,7 @@ export class EvaluationEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	project_evaluator_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	qualification_status_type_id: number;
 
 	@JsonColumn({ nullable: true })
@@ -33,4 +34,8 @@ export class EvaluationEntity extends BaseEntity {
 	@ManyToOne(() => ProjectEvaluatorEntity)
 	@JoinColumn({ name: 'project_evaluator_id' })
 	project_evaluator: ProjectEvaluatorEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'qualification_status_type_id' })
+	qualification_status_type: TypeEntity;
 }

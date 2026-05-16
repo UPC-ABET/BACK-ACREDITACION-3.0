@@ -7,15 +7,16 @@ import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.e
 import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/course-sections.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'surveys', schema: 'evidence' })
 export class SurveyEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	survey_type_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	survey_status_type_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
@@ -40,6 +41,14 @@ export class SurveyEntity extends BaseEntity {
 	course_section_id: number;
 
 	// %% RELACIONES
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'survey_type_id' })
+	survey_type: TypeEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'survey_status_type_id' })
+	survey_status_type: TypeEntity;
 
 	@ManyToOne(() => StudentEntity)
 	@JoinColumn({ name: 'student_id' })

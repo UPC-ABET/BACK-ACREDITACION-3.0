@@ -1,7 +1,8 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { NameColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Entity({ name: 'staff', schema: 'organization' })
@@ -11,7 +12,7 @@ export class StaffEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	user_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	position_type_id: number;
 
 	@JsonColumn({ nullable: false })
@@ -31,4 +32,8 @@ export class StaffEntity extends BaseEntity {
 	@ManyToOne(() => UserEntity)
 	@JoinColumn({ name: 'user_id' })
 	user: UserEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'position_type_id' })
+	position_type: TypeEntity;
 }

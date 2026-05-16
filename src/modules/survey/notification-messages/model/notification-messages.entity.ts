@@ -1,14 +1,15 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notification_messages', schema: 'survey' })
 export class NotificationMessageEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	survey_type_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
@@ -24,6 +25,10 @@ export class NotificationMessageEntity extends BaseEntity {
 	cc_receivers: unknown;
 
 	// %% RELACIONES
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'survey_type_id' })
+	survey_type: TypeEntity;
 
 	@ManyToOne(() => ProgramEntity)
 	@JoinColumn({ name: 'program_id' })

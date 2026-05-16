@@ -4,7 +4,7 @@ Table academic_periods {
   is_active boolean
   created_at timestamp [null]
   updated_at timestamp [null]
-  modality_type_Id int
+  modality_type_id int
   code varchar
   start_date timestamp
   end_date timestamp

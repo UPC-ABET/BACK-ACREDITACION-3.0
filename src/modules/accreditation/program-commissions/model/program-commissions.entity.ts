@@ -1,9 +1,10 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { CommissionEntity } from 'src/modules/accreditation/commissions/model/commissions.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'program_commissions', schema: 'accreditation' })
 export class ProgramCommissionEntity extends BaseEntity {
@@ -18,7 +19,7 @@ export class ProgramCommissionEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	commission_type_id: number;
 
 	// %% RELACIONES
@@ -34,4 +35,8 @@ export class ProgramCommissionEntity extends BaseEntity {
 	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({ name: 'academic_period_id' })
 	academic_period: AcademicPeriodEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'commission_type_id' })
+	commission_type: TypeEntity;
 }

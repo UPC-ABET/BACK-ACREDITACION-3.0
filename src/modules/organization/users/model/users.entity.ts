@@ -1,12 +1,13 @@
-import { Entity } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, PasswordColumn, TextMediumColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { NameColumn, PasswordColumn, TextMediumColumn, IntegerFKIDColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'users', schema: 'organization' })
 export class UserEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@CodeColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	document_type_id: number;
 
 	@IntegerColumn({ nullable: false })
@@ -31,4 +32,8 @@ export class UserEntity extends BaseEntity {
 	is_admin: boolean;
 
 	// %% RELACIONES
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'document_type_id' })
+	document_type: TypeEntity;
 }

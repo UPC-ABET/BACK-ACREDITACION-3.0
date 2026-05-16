@@ -91,7 +91,7 @@
 		"@types/bcrypt": "^5.0.2",
 		"@types/cookie-parser": "^1.4.10",
 		"@types/express": "^5.0.0",
-		"@types/jest": "^29.5.2",
+		"@types/jest": "^29.5.14",
 		"@types/node": "^20.11.30",
 		"@types/nodemailer": "^6.4.17",
 		"@types/supertest": "^6.0.0",
@@ -119,6 +119,9 @@
 		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
 			"^.+\\.(t|j)s$": "ts-jest"
+		},
+		"moduleNameMapper": {
+			"^src/(.*)$": "<rootDir>/$1"
 		},
 		"collectCoverageFrom": [
 			"**/*.(t|j)s"

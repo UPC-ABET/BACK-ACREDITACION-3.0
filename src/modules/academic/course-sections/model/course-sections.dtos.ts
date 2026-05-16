@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 
@@ -23,6 +23,11 @@ export class CreateCourseSectionDto extends BaseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	professor_id: number;
+
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'section_code_example', required: true })
+	section_code: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
@@ -59,6 +64,12 @@ export class UpdateCourseSectionDto extends BaseDto {
 	professor_id?: number;
 
 	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'section_code_example', required: false })
+	section_code?: string;
+
+	@IsOptional()
 	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
 	schedule?: any;
 
@@ -88,6 +99,10 @@ export class FilterCourseSectionDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	professor_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 'section_code_example', required: false })
+	section_code?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'schedule_value' }, required: false })

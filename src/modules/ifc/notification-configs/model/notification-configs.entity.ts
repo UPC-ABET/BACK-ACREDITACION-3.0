@@ -1,9 +1,10 @@
 import { Entity, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { SchoolEntity } from 'src/modules/organization/schools/model/schools.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notification_configs', schema: 'ifc' })
 @Unique('UQ_4689ce4c54254910a1e7ab56b1c', ['school_id', 'academic_period_id', 'trigger_event_id', 'ifc_status_type_id'])
@@ -16,10 +17,10 @@ export class NotificationConfigEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	trigger_event_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	ifc_status_type_id: number;
 
 	@JsonColumn({ nullable: false })
@@ -43,4 +44,8 @@ export class NotificationConfigEntity extends BaseEntity {
 	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({ name: 'academic_period_id' })
 	academic_period: AcademicPeriodEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'ifc_status_type_id' })
+	ifc_status_type: TypeEntity;
 }

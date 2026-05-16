@@ -1,4 +1,3 @@
-// no-override
 import { IsBoolean, IsDate, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
@@ -33,10 +32,9 @@ export class CreateNotificationLogDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	user_id: number;
 
-	@IsOptional()
 	@IsDate()
-	@ApiProperty({ example: '2026-05-16T00:00:00.000Z', required: false })
-	sent_at?: Date;
+	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
+	sent_at: Date;
 }
 
 export class UpdateNotificationLogDto extends BaseDto {
@@ -76,7 +74,7 @@ export class UpdateNotificationLogDto extends BaseDto {
 
 	@IsOptional()
 	@IsDate()
-	@ApiProperty({ example: '2026-05-16T00:00:00.000Z', required: false })
+	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
 	sent_at?: Date;
 }
 
@@ -108,4 +106,8 @@ export class FilterNotificationLogDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	user_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
+	sent_at?: Date;
 }

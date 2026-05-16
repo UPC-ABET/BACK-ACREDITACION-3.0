@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -16,6 +16,11 @@ export class CreateCommissionDto extends BaseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	accreditor_id: number;
+
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'code_example', required: true })
+	code: string;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
@@ -38,6 +43,12 @@ export class UpdateCommissionDto extends BaseDto {
 	accreditor_id?: number;
 
 	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'code_example', required: false })
+	code?: string;
+
+	@IsOptional()
 	@IsObject()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
 	name?: I18nText;
@@ -55,6 +66,10 @@ export class FilterCommissionDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	accreditor_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 'code_example', required: false })
+	code?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })

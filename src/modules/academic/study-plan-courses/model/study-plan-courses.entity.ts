@@ -1,8 +1,9 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, BooleanColumn } from 'src/commons/configs/db.configs';
 import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'study_plan_courses', schema: 'academic' })
 export class StudyPlanCourseEntity extends BaseEntity {
@@ -17,7 +18,7 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, withDefault: false, default: false })
 	is_elective: boolean;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	level_type_id: number;
 
 	// %% RELACIONES
@@ -29,4 +30,8 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	@ManyToOne(() => CourseEntity)
 	@JoinColumn({ name: 'course_id' })
 	course: CourseEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'level_type_id' })
+	level_type: TypeEntity;
 }

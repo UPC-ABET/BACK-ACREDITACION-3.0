@@ -4,6 +4,7 @@ export function mapTypeFromDecorator(decorators: string[], name: string, tsType?
 	if (decorators.includes('EmailColumn')) return 'string';
 	if (decorators.includes('PhoneColumn')) return 'string';
 	if (decorators.includes('NameColumn')) return 'string';
+	if (decorators.includes('CodeColumn')) return 'string';
 	if (decorators.includes('TextShortColumn')) return 'string';
 	if (decorators.includes('TextMediumColumn')) return 'string';
 	if (decorators.includes('TextLargeColumn')) return 'string';

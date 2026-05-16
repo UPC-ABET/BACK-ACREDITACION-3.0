@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -16,6 +16,11 @@ export class CreateOutcomeDto extends BaseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	program_commission_id: number;
+
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'outcome_code_example', required: true })
+	outcome_code: string;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: true })
@@ -42,6 +47,12 @@ export class UpdateOutcomeDto extends BaseDto {
 	program_commission_id?: number;
 
 	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'outcome_code_example', required: false })
+	outcome_code?: string;
+
+	@IsOptional()
 	@IsObject()
 	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: false })
 	outcome_name?: I18nText;
@@ -64,6 +75,10 @@ export class FilterOutcomeDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	program_commission_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 'outcome_code_example', required: false })
+	outcome_code?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: false })

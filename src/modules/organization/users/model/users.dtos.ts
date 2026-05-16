@@ -12,10 +12,10 @@ export class CreateUserDto extends BaseDto {
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
 
-	@IsNumber()
+	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 1, required: true })
-	document_type_id: number;
+	@ApiProperty({ example: 'document_type_id_example', required: true })
+	document_type_id: string;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -57,10 +57,10 @@ export class UpdateUserDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@IsNumber()
+	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 1, required: false })
-	document_type_id?: number;
+	@ApiProperty({ example: 'document_type_id_example', required: false })
+	document_type_id?: string;
 
 	@IsOptional()
 	@IsNumber()
@@ -107,8 +107,8 @@ export class FilterUserDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	document_type_id?: number;
+	@ApiProperty({ example: 'document_type_id_example', required: false })
+	document_type_id?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

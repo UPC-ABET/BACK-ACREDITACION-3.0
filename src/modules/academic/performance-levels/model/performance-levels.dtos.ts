@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -24,6 +24,11 @@ export class CreatePerformanceLevelDto extends BaseDto {
 	@IsObject()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
 	name: I18nText;
+
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'code_example', required: true })
+	code: string;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -68,6 +73,12 @@ export class UpdatePerformanceLevelDto extends BaseDto {
 	name?: I18nText;
 
 	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'code_example', required: false })
+	code?: string;
+
+	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	unique_value?: number;
@@ -108,6 +119,10 @@ export class FilterPerformanceLevelDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
 	name?: I18nText;
+
+	@IsOptional()
+	@ApiProperty({ example: 'code_example', required: false })
+	code?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

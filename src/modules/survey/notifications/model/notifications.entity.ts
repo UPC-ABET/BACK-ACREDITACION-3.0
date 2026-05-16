@@ -1,7 +1,8 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextFullColumn, IntegerFKIDColumn, IntegerColumn, DateColumn } from 'src/commons/configs/db.configs';
+import { TextFullColumn, IntegerFKIDColumn, DateColumn } from 'src/commons/configs/db.configs';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notifications', schema: 'survey' })
 export class NotificationEntity extends BaseEntity {
@@ -10,7 +11,7 @@ export class NotificationEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	survey_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	notification_status_type_id: number;
 
 	@TextFullColumn({ nullable: false })
@@ -27,4 +28,8 @@ export class NotificationEntity extends BaseEntity {
 	@ManyToOne(() => SurveyEntity)
 	@JoinColumn({ name: 'survey_id' })
 	survey: SurveyEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'notification_status_type_id' })
+	notification_status_type: TypeEntity;
 }

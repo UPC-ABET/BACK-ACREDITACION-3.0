@@ -1,8 +1,9 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'course_outcome_mappings', schema: 'academic' })
 export class CourseOutcomeMappingEntity extends BaseEntity {
@@ -14,7 +15,7 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	study_plan_course_id: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	outcome_type_id: number;
 
 	// %% RELACIONES
@@ -26,4 +27,8 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 	@ManyToOne(() => StudyPlanCourseEntity)
 	@JoinColumn({ name: 'study_plan_course_id' })
 	study_plan_course: StudyPlanCourseEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'outcome_type_id' })
+	outcome_type: TypeEntity;
 }

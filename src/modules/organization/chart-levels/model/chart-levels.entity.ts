@@ -1,6 +1,7 @@
-import { Entity } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'chart_levels', schema: 'organization' })
 export class ChartLevelEntity extends BaseEntity {
@@ -9,8 +10,12 @@ export class ChartLevelEntity extends BaseEntity {
 	@IntegerColumn({ nullable: false })
 	level: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	level_type_id: number;
 
 	// %% RELACIONES
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'level_type_id' })
+	level_type: TypeEntity;
 }

@@ -1,5 +1,4 @@
-// no-override
-import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -31,20 +30,18 @@ export class CreateNotificationConfigDto extends BaseDto {
 	ifc_status_type_id: number;
 
 	@IsObject()
-	@ApiProperty({ example: { en: 'IFC update', es: 'Actualizacion IFC' }, required: true })
+	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
 	title: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { en: 'Body text', es: 'Texto del cuerpo' }, required: true })
+	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: true })
 	body: I18nText;
 
-	@IsArray()
-	@ApiProperty({ example: ['TG902-T003'], required: true })
-	to_chart_level_type_ids: string[];
+	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: true })
+	to_chart_level_type_ids: any;
 
-	@IsArray()
-	@ApiProperty({ example: ['TG902-T002'], required: true })
-	cc_chart_level_type_ids: string[];
+	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: true })
+	cc_chart_level_type_ids: any;
 }
 
 export class UpdateNotificationConfigDto extends BaseDto {
@@ -79,23 +76,21 @@ export class UpdateNotificationConfigDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { en: 'IFC update', es: 'Actualizacion IFC' }, required: false })
+	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { en: 'Body text', es: 'Texto del cuerpo' }, required: false })
+	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@IsArray()
-	@ApiProperty({ example: ['TG902-T003'], required: false })
-	to_chart_level_type_ids?: string[];
+	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: false })
+	to_chart_level_type_ids?: any;
 
 	@IsOptional()
-	@IsArray()
-	@ApiProperty({ example: ['TG902-T002'], required: false })
-	cc_chart_level_type_ids?: string[];
+	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: false })
+	cc_chart_level_type_ids?: any;
 }
 
 export class FilterNotificationConfigDto extends BaseDto {
@@ -122,4 +117,20 @@ export class FilterNotificationConfigDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	ifc_status_type_id?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	title?: I18nText;
+
+	@IsOptional()
+	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	body?: I18nText;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: false })
+	to_chart_level_type_ids?: any;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: false })
+	cc_chart_level_type_ids?: any;
 }
