@@ -12,16 +12,10 @@ export class UserRepository extends BaseRepostitory {
 		super(repository, dataSource);
 	}
 
-	async findActiveByEmailWithPassword(email: string) {
+	async findForLogin(email: string): Promise<UserEntity | null> {
 		const { repository, queryRunner } = await this.getRepository();
-
 		try {
-			return await repository
-				.createQueryBuilder('user')
-				.addSelect('user.password')
-				.where('LOWER(user.email) = LOWER(:email)', { email })
-				.andWhere('user.is_active = :isActive', { isActive: true })
-				.getOne();
+			return await repository.createQueryBuilder('user').addSelect('user.password').where('user.email = :email', { email }).andWhere('user.is_active = :active', { active: 1 }).getOne();
 		} finally {
 			await queryRunner.release();
 		}

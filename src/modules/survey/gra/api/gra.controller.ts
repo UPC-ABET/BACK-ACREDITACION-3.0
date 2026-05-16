@@ -1,0 +1,122 @@
+import { Body, Param } from '@nestjs/common';
+import { parseSuccessResponse } from 'src/libs/global.functions';
+import { GraConfigService } from './gra-config.service';
+import { GraNotificationService } from './gra-notification.service';
+import {
+	SwaggerGraController,
+	SwaggerGraConfigCreate,
+	SwaggerGraConfigGetAll,
+	SwaggerGraConfigGetByFilters,
+	SwaggerGraConfigGetById,
+	SwaggerGraConfigUpdate,
+	SwaggerGraConfigDelete,
+	SwaggerGraNotificationSave,
+	SwaggerGraNotificationListStudents,
+	SwaggerGraNotificationDelete,
+	SwaggerGraEmailSend,
+	SwaggerGraTokenValidate,
+	SwaggerGraSurveyGetByToken,
+	SwaggerGraSurveyComplete,
+	SwaggerGraDashboard,
+} from './docs/gra.swagger';
+import {
+	CreateGraConfigDto,
+	UpdateGraConfigDto,
+	FilterGraConfigDto,
+	SaveGraNotificationDto,
+	ListStudentsGraDto,
+	SendGraEmailDto,
+	GetSurveyByTokenDto,
+	CompleteGraSurveyDto,
+	DashboardGraDto,
+} from '../model/gra.dtos';
+
+@SwaggerGraController()
+export class GraController {
+	constructor(
+		private readonly configService: GraConfigService,
+		private readonly notifService: GraNotificationService,
+	) {}
+
+	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
+
+	@SwaggerGraConfigCreate()
+	async configCreate(@Body() dto: CreateGraConfigDto) {
+		return parseSuccessResponse(await this.configService.create(dto));
+	}
+
+	@SwaggerGraConfigGetAll()
+	async configGetAll() {
+		return parseSuccessResponse(await this.configService.getAll());
+	}
+
+	@SwaggerGraConfigGetByFilters()
+	async configGetByFilters(@Body() dto: FilterGraConfigDto) {
+		return parseSuccessResponse(await this.configService.getAll(dto));
+	}
+
+	@SwaggerGraConfigGetById()
+	async configGetById(@Param('id') id: number) {
+		return parseSuccessResponse(await this.configService.getById(Number(id)));
+	}
+
+	@SwaggerGraConfigUpdate()
+	async configUpdate(@Param('id') id: number, @Body() dto: UpdateGraConfigDto) {
+		return parseSuccessResponse(await this.configService.update(Number(id), dto));
+	}
+
+	@SwaggerGraConfigDelete()
+	async configDelete(@Param('id') id: number) {
+		return parseSuccessResponse(await this.configService.delete(Number(id)));
+	}
+
+	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────
+
+	@SwaggerGraNotificationSave()
+	async notificationSave(@Body() dto: SaveGraNotificationDto) {
+		return parseSuccessResponse(await this.notifService.saveNotification(dto));
+	}
+
+	@SwaggerGraNotificationListStudents()
+	async notificationListStudents(@Body() dto: ListStudentsGraDto) {
+		return parseSuccessResponse(await this.notifService.listStudents(dto));
+	}
+
+	@SwaggerGraNotificationDelete()
+	async notificationDelete(@Param('id') id: number) {
+		return parseSuccessResponse(await this.notifService.deleteNotification(Number(id)));
+	}
+
+	// ── EMAIL ENDPOINTS ───────────────────────────────────────────────
+
+	@SwaggerGraEmailSend()
+	async emailSend(@Body() dto: SendGraEmailDto) {
+		return parseSuccessResponse(await this.notifService.sendEmails(dto));
+	}
+
+	// ── TOKEN ENDPOINTS ───────────────────────────────────────────────
+
+	@SwaggerGraTokenValidate()
+	async tokenValidate(@Param('token') token: string) {
+		return parseSuccessResponse(await this.notifService.validateToken(token));
+	}
+
+	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
+
+	@SwaggerGraSurveyGetByToken()
+	async surveyGetByToken(@Body() dto: GetSurveyByTokenDto) {
+		return parseSuccessResponse(await this.notifService.getSurveyByToken(dto));
+	}
+
+	@SwaggerGraSurveyComplete()
+	async surveyComplete(@Body() dto: CompleteGraSurveyDto) {
+		return parseSuccessResponse(await this.notifService.completeSurvey(dto));
+	}
+
+	// ── DASHBOARD ENDPOINTS ───────────────────────────────────────────
+
+	@SwaggerGraDashboard()
+	async dashboardGet(@Body() dto: DashboardGraDto) {
+		return parseSuccessResponse(await this.notifService.getDashboard(dto));
+	}
+}

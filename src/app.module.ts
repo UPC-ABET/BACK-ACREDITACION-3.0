@@ -86,6 +86,7 @@ import { NotificationModule } from './modules/survey/notifications/notifications
 import { OutcomeConfigModule } from './modules/survey/outcome-configs/outcome-configs.module';
 import { ScoreModule } from './modules/survey/scores/scores.module';
 import { PppModule } from './modules/survey/ppp/ppp.module';
+import { GraModule } from './modules/survey/gra/gra.module';
 
 @Module({
 	imports: [
@@ -185,6 +186,7 @@ import { PppModule } from './modules/survey/ppp/ppp.module';
 		OutcomeConfigModule,
 		ScoreModule,
 		PppModule,
+		GraModule,
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,

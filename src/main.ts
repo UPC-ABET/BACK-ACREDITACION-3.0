@@ -23,7 +23,15 @@ async function bootstrap() {
 		origin: (origin, callback) => {
 			if (!origin) return callback(null, true);
 
-			const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:6666', 'http://127.0.0.1:6666', 'http://localhost:7777', 'http://127.0.0.1:7777'];
+			const allowedOrigins = [
+				'http://localhost:3000',
+				'http://127.0.0.1:3000',
+				'http://localhost:6666',
+				'http://127.0.0.1:6666',
+				'http://localhost:7777',
+				'http://127.0.0.1:7777',
+				'http://[::1]:7777',
+			];
 
 			if (allowedOrigins.includes(origin) || origin.endsWith('.base.com')) {
 				callback(null, true);
