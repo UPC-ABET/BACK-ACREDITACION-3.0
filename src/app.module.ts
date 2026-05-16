@@ -13,7 +13,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
-import { AuthModule } from './modules/auth/auth.module';
 
 // ACADEMIC MODULES
 import { AcademicPeriodModule } from './modules/academic/academic-periods/academic-periods.module';
@@ -62,9 +61,6 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
-import { NotificationConfigModule } from './modules/ifc/notification-configs/notification-configs.module';
-import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
-import { NotificationsModule } from './modules/ifc/notifications/notifications.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
 
 //IMPROVEMENT MODULES
@@ -80,7 +76,6 @@ import { CampusModule } from './modules/organization/campuses/campuses.module';
 import { ChartLevelModule } from './modules/organization/chart-levels/chart-levels.module';
 import { ChartModule } from './modules/organization/charts/charts.module';
 import { FacultyModule } from './modules/organization/faculties/faculties.module';
-import { OrgScopeModule } from './modules/organization/org-scope/org-scope.module';
 import { SchoolModule } from './modules/organization/schools/schools.module';
 import { StaffModule } from './modules/organization/staff/staff.module';
 import { UserModule } from './modules/organization/users/users.module';
@@ -90,6 +85,7 @@ import { NotificationMessageModule } from './modules/survey/notification-message
 import { NotificationModule } from './modules/survey/notifications/notifications.module';
 import { OutcomeConfigModule } from './modules/survey/outcome-configs/outcome-configs.module';
 import { ScoreModule } from './modules/survey/scores/scores.module';
+import { PppModule } from './modules/survey/ppp/ppp.module';
 
 @Module({
 	imports: [
@@ -121,7 +117,7 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 				username: configService.get<string>('DB_USER'),
 				password: configService.get<string>('DB_PASSWORD'),
 				database: configService.get<string>('DB_NAME'),
-				ssl: (configService.get<string>('DB_SSL') ?? 'false').toLowerCase() === 'true' ? { rejectUnauthorized: false } : false,
+				ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
 				synchronize: false,
 				entities: [__dirname + '/**/*.entity{.ts,.js}'],
 				timezone: 'Z',
@@ -137,7 +133,6 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		}),
 
 		/* MODULES */
-		AuthModule,
 		UserModule,
 		AcademicPeriodModule,
 		CourseOutcomeMappingModule,
@@ -172,9 +167,6 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		StudentCourseOutcomeGradeModule,
 		SurveyModule,
 		IfcFindingModule,
-		NotificationConfigModule,
-		NotificationLogModule,
-		NotificationsModule,
 		StatusModule,
 		ActionModule,
 		FindingActionModule,
@@ -186,13 +178,13 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		ChartLevelModule,
 		ChartModule,
 		FacultyModule,
-		OrgScopeModule,
 		SchoolModule,
 		StaffModule,
 		NotificationMessageModule,
 		NotificationModule,
 		OutcomeConfigModule,
 		ScoreModule,
+		PppModule,
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,

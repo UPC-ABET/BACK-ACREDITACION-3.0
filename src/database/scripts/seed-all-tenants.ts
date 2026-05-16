@@ -41,7 +41,7 @@ async function run() {
 		console.log('-'.repeat(70));
 
 		try {
-			execSync(`ts-node -r tsconfig-paths/register ${seedPath} ${tenant}`, {
+			execSync(`ts-node -r tsconfig-paths/register "${seedPath}" ${tenant}`, {
 				stdio: 'inherit',
 				cwd: path.join(__dirname, '../../..'),
 			});

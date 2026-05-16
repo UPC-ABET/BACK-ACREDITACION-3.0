@@ -3,8 +3,6 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const sslEnabled = (process.env.DB_SSL ?? 'false').toLowerCase() === 'true';
-
 export default new DataSource({
 	type: 'postgres',
 	host: process.env.DB_HOST,
@@ -12,7 +10,7 @@ export default new DataSource({
 	username: process.env.DB_USER,
 	password: process.env.DB_PASSWORD,
 	database: process.env.DB_NAME,
-	ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+	ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 
 	synchronize: false,
 	logging: false,
