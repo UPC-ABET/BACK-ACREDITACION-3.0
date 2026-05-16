@@ -23,13 +23,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			i18n('Instrumento de percepcion para resultados del programa', 'Perception instrument for program outcomes'),
 			false,
 		],
-		[
-			'TG501-T001',
-			'IFC',
-			i18n('Informe Final del Curso', 'Course Final Report'),
-			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
-			true,
-		],
+		['TG501-T001', 'IFC', i18n('Informe Final del Curso', 'Course Final Report'), i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'), true],
 	]
 		.map(([ctCode, code, name, desc, acc]) => `('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`)
 		.join(',\n\t\t\t');
@@ -298,7 +292,6 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 				AND evaluation.project_evaluator_id = project_evaluator.id
 		);
 	`);
-
 	// NOTE: rubric_scores insert intentionally omitted in this seed.
 	// rubric_scores requires rubric_outcome_criteria_id (NOT NULL), which is not
 	// covered by this foundational spec. Re-add once that data flow is defined.
