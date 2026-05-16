@@ -133,8 +133,8 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		SELECT project_student.id, project_evaluator.id, qualification_status.id, v.observation, v.register_at::timestamptz
 		FROM (
 			VALUES
-				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'TG404-T002', 'Proyecto revisado con desempeno esperado alto.', '2026-06-10 10:00:00'),
-				('PROJ_SOFT_FP_2026', 'student.sofia.torres@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'TG404-T002', 'Proyecto revisado con desempeno esperado.', '2026-06-10 11:00:00')
+				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'TG404-T001', 'Proyecto revisado con desempeno esperado alto.', '2026-06-10 10:00:00'),
+				('PROJ_SOFT_FP_2026', 'student.sofia.torres@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'TG404-T001', 'Proyecto revisado con desempeno esperado.', '2026-06-10 11:00:00')
 		) AS v(project_code, student_email, professor_email, qualification_status_code, observation, register_at)
 		JOIN "evaluation"."projects" project
 			ON project.code = v.project_code
@@ -167,18 +167,17 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "evaluation"."rubric_scores" (
 			evaluation_id,
-			rubric_outcome_criteria_id,
 			rubric_question_criteria_id,
 			score,
 			commentaries
 		)
-		SELECT evaluation.id, roc.id, rqc.id, v.score, v.commentaries
+		SELECT evaluation.id, rqc.id, v.score, v.commentaries
 		FROM (
 			VALUES
-				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_01', 'Analiza el problema y define una solucion algoritmica coherente.', 'SCALE_FP_EXCELLENT', 18.000000, 'Analisis claro y completo.'),
-				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_04', 'Implementa la solucion con estructuras de control adecuadas.', 'SCALE_FP_EXPECTED', 16.000000, 'Implementacion correcta con oportunidades de mejora menores.'),
-				('PROJ_SOFT_FP_2026', 'student.sofia.torres@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_01', 'Analiza el problema y define una solucion algoritmica coherente.', 'SCALE_FP_EXPECTED', 15.000000, 'Cubre los elementos principales del problema.')
-		) AS v(project_code, student_email, professor_email, outcome_code, question, scale_code, score, commentaries)
+				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_01', 'Analiza el problema y define una solucion algoritmica coherente.', 18.000000, 'Analisis claro y completo.'),
+				('PROJ_SOFT_FP_2026', 'student.luis.ramirez@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_04', 'Implementa la solucion con estructuras de control adecuadas.', 16.000000, 'Implementacion correcta con oportunidades de mejora menores.'),
+				('PROJ_SOFT_FP_2026', 'student.sofia.torres@upc.edu.pe', 'prof.juan.perez@upc.edu.pe', 'OUT_SOFT_01', 'Analiza el problema y define una solucion algoritmica coherente.', 15.000000, 'Cubre los elementos principales del problema.')
+		) AS v(project_code, student_email, professor_email, outcome_code, question, score, commentaries)
 		JOIN "evaluation"."projects" project
 			ON project.code = v.project_code
 		JOIN "organization"."users" user_entity
@@ -203,17 +202,12 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			ON outcome.outcome_code = v.outcome_code
 		JOIN "evaluation"."rubric_questions" rq
 			ON rq.outcome_id = outcome.id AND rq.question = v.question
-		JOIN "evaluation"."rubric_outcome_criterias" roc
-			ON roc.outcome_id = outcome.id AND roc.rubric_id = rq.rubric_id
-		JOIN "evaluation"."rubric_scales" scale
-			ON scale.code = v.scale_code
 		JOIN "evaluation"."rubric_question_criterias" rqc
-			ON rqc.rubric_question_id = rq.id AND rqc.rubric_scale_id = scale.id
+			ON rqc.rubric_question_id = rq.id
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM "evaluation"."rubric_scores" rs
 			WHERE rs.evaluation_id = evaluation.id
-				AND rs.rubric_outcome_criteria_id = roc.id
 				AND rs.rubric_question_criteria_id = rqc.id
 		);
 	`);
