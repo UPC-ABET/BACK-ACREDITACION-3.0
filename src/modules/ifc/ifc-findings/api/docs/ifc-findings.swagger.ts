@@ -1,6 +1,14 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ifcFindingsRoutes } from '../../config/ifc-findings.routes';
-import { CreateIfcFindingDto, UpdateIfcFindingDto, FilterIfcFindingDto, ListIfcFindingsDto, IfcFindingRowDto } from '../../model/ifc-findings.dtos';
+import {
+	CreateIfcFindingDto,
+	UpdateIfcFindingDto,
+	FilterIfcFindingDto,
+	ListIfcFindingsDto,
+	IfcFindingRowDto,
+	PatchIfcFindingDto,
+	IfcFindingDetailResponseDto,
+} from '../../model/ifc-findings.dtos';
 
 const cfg = ifcFindingsRoutes.ifc_findings;
 
@@ -14,8 +22,20 @@ export const SwaggerIfcFindingDelete = () => HttpMethodWithSwagger({ ...cfg.oper
 
 export const SwaggerIfcFindingGetAll = () => HttpMethodWithSwagger(cfg.operation.getAll);
 
-export const SwaggerIfcFindingGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
+export const SwaggerIfcFindingGetById = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.getById,
+		param: { name: 'id', type: 'number' },
+		responseType: IfcFindingDetailResponseDto,
+	});
 
 export const SwaggerIfcFindingGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterIfcFindingDto });
 
 export const SwaggerIfcFindingList = () => HttpMethodWithSwagger({ ...cfg.operation.list, body: ListIfcFindingsDto, responseType: [IfcFindingRowDto] });
+
+export const SwaggerIfcFindingPatch = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.patch,
+		param: { name: 'id', type: 'number' },
+		body: PatchIfcFindingDto,
+	});
