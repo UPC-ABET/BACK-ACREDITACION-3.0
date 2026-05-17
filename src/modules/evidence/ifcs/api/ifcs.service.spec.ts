@@ -135,7 +135,10 @@ describe('IfcService.getView', () => {
 	});
 
 	it('exposes requester_in_chain=false when the header reports the requester is not in the chain', async () => {
-		dataSource.query.mockResolvedValueOnce([{ ...headerRow, requester_in_chain: false }]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+		dataSource.query
+			.mockResolvedValueOnce([{ ...headerRow, requester_in_chain: false }])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
 
 		const result = await service.getView(42, 99, 9);
 
@@ -153,9 +156,7 @@ describe('IfcService status transitions', () => {
 		service = new IfcService(repository, dataSource as unknown as DataSource);
 	});
 
-	const ctxRow = (
-		overrides: Partial<{ ifc_course_staff_id: number | null; course_chart_id: number | null; requester_staff_id: number | null; current_status_code: string | null }> = {},
-	) => [
+	const ctxRow = (overrides: Partial<{ ifc_course_staff_id: number | null; course_chart_id: number | null; requester_staff_id: number | null; current_status_code: string | null }> = {}) => [
 		{
 			ifc_course_staff_id: 11,
 			course_chart_id: 500,
@@ -186,17 +187,13 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('submit: rejects with 409 when current status is already SUBMITTED', async () => {
-		dataSource.query
-			.mockResolvedValueOnce(ctxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
-			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes; status fails
+		dataSource.query.mockResolvedValueOnce(ctxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED })).mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes; status fails
 
 		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
 	});
 
 	it('submit: rejects with 403 when requester is not in the course chain', async () => {
-		dataSource.query
-			.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }))
-			.mockResolvedValueOnce([]); // chain check returns no rows
+		dataSource.query.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null })).mockResolvedValueOnce([]); // chain check returns no rows
 
 		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
 	});
@@ -523,25 +520,19 @@ describe('IfcService.patch', () => {
 	];
 
 	it('rejects 409 when current status is SUBMITTED', async () => {
-		em.query
-			.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
-			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes, status fails
+		em.query.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED })).mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes, status fails
 
 		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
 	});
 
 	it('rejects 409 when current status is APPROVED', async () => {
-		em.query
-			.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.APPROVED }))
-			.mockResolvedValueOnce([{ '?column?': 1 }]);
+		em.query.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.APPROVED })).mockResolvedValueOnce([{ '?column?': 1 }]);
 
 		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
 	});
 
 	it('rejects 403 when requester is not in the course chain', async () => {
-		em.query
-			.mockResolvedValueOnce(patchCtxRow({ ifc_course_staff_id: 11, requester_staff_id: 22 }))
-			.mockResolvedValueOnce([]); // chain check returns no rows
+		em.query.mockResolvedValueOnce(patchCtxRow({ ifc_course_staff_id: 11, requester_staff_id: 22 })).mockResolvedValueOnce([]); // chain check returns no rows
 
 		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
 	});

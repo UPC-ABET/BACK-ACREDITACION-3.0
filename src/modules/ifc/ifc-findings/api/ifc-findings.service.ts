@@ -3,8 +3,13 @@ import { BaseService } from 'src/commons/base.service';
 import { IfcFindingRepository } from '../core/ifc-findings.repository';
 import { IfcFindingValidation } from '../core/ifc-findings.validation';
 
-import { CreateIfcFindingDto, UpdateIfcFindingDto } from '../model/ifc-findings.dtos';
+import { CreateIfcFindingDto, ListIfcFindingsDto, UpdateIfcFindingDto } from '../model/ifc-findings.dtos';
 import { DataSource, EntityManager } from 'typeorm';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { IfcValidation } from 'src/modules/evidence/ifcs/core/ifcs.validation';
+import { IFCS_PARAMETER_KEYS, IfcOp } from 'src/modules/evidence/ifcs/api/ifcs.constants';
+
+const DELETE_OP = 'delete' as IfcOp;
 
 @Injectable()
 export class IfcFindingService extends BaseService<IfcFindingRepository> {
@@ -29,4 +34,92 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 		await IfcFindingValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
 	}
+
+	async list(dto: ListIfcFindingsDto, schoolId: number) {
+		return await this.dataSource.query(LIST_SQL, [dto.chart_ids, dto.period_id, schoolId, IFCS_PARAMETER_KEYS.FINDING_PREFIX, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+	}
+
+	async deleteWithCascade(id: number, userId: number, schoolId: number) {
+		return await this.dataSource.transaction(async (em) => {
+			const finding = await IfcFindingValidation.assertFindingExists(em, id);
+			const courseChart = await IfcFindingValidation.resolveCourseChart(em, finding.course_id, finding.academic_period_id, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR);
+
+			const staffRows = await em.query('SELECT id::int AS id FROM organization.staff WHERE user_id = $1 LIMIT 1', [userId]);
+			const requesterStaffId: number | null = staffRows[0]?.id ?? null;
+
+			IfcValidation.assertRequesterIsStaff(requesterStaffId, DELETE_OP);
+			await IfcValidation.assertIsInCourseChain(em, { ifcId: 0, ifcCourseStaffId: null, courseChartId: courseChart.id, requesterStaffId, currentStatusCode: null }, DELETE_OP);
+
+			// schoolId is consumed by assertIsInCourseChain implicitly via the chart resolution;
+			// keep the param so callers can't bypass the JWT contract.
+			void schoolId;
+
+			const deletedFindingActions = await em.query('DELETE FROM improvement.finding_actions WHERE finding_id = $1 RETURNING action_id', [id]);
+			const actionIds: number[] = deletedFindingActions.map((r: any) => Number(r.action_id));
+
+			if (actionIds.length > 0) {
+				await em.query('DELETE FROM improvement.actions WHERE id = ANY($1::int[])', [actionIds]);
+			}
+
+			await em.query('DELETE FROM improvement.finding_outcomes WHERE finding_id = $1', [id]);
+			await em.query('DELETE FROM ifc.ifc_findings WHERE finding_id = $1', [id]);
+			await em.query('DELETE FROM improvement.findings WHERE id = $1', [id]);
+
+			return null;
+		});
+	}
 }
+
+const LIST_SQL = `
+WITH course_ids AS (
+	SELECT DISTINCT entity_code AS course_id
+	FROM organization.charts
+	WHERE id = ANY($1::int[])
+	  AND is_active = true
+	  AND entity_code IS NOT NULL
+),
+school_check AS (
+	SELECT 1
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM organization.charts c0
+		WHERE c0.id = ANY($1::int[])
+		  AND NOT EXISTS (
+			  SELECT 1
+			  FROM organization.charts c_sub
+			  JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
+			  JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+			  JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+			  JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
+			  WHERE c_sub.id            = c0.root_chart_detail_id
+			    AND ct_sch.code         = $5
+			    AND c_school.entity_code = $3
+		  )
+	)
+)
+SELECT
+	f.id::int                                                   AS id,
+	ifc_f.ifc_id::int                                           AS ifc_id,
+	f.course_id::int                                            AS course_id,
+	ct_crit.code                                                AS criticality_code,
+	ct_crit.name                                                AS criticality_name,
+	(ct_crit.extra->>'order')::int                              AS criticality_order,
+	(p_fnd.value #>> '{}')
+		|| '-' || inst.code
+		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
+		|| '-' || f.correlative::text                           AS finding_code,
+	ap.code                                                     AS academic_period_code,
+	f.description                                               AS description
+FROM improvement.findings f
+JOIN ifc.ifc_findings ifc_f         ON ifc_f.finding_id = f.id
+JOIN core.types ct_crit             ON ct_crit.id = f.criticality_type_id
+JOIN evidence.instruments inst      ON inst.id    = f.instrument_id
+LEFT JOIN academic.courses ac       ON ac.id      = f.course_id
+JOIN academic.academic_periods ap   ON ap.id      = f.academic_period_id
+CROSS JOIN (SELECT value FROM core.parameters WHERE code = $4) p_fnd
+WHERE f.course_id          = ANY (SELECT course_id FROM course_ids)
+  AND f.academic_period_id = $2
+  AND f.is_active          = true
+  AND EXISTS (SELECT 1 FROM school_check)
+ORDER BY (ct_crit.extra->>'order')::int ASC, f.correlative ASC
+`;

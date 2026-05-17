@@ -9,6 +9,8 @@ export const ifcFindingsRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar relaciones IFC-hallazgo' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener relación IFC-hallazgo' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar relaciones IFC-hallazgo' },
+			list: { method: 'POST', route: '/list', summary: 'Listar hallazgos asociados a IFCs por nodos del organigrama y período' },
+			deleteCascade: { method: 'DELETE', route: '/:id', summary: 'Eliminar un hallazgo y sus acciones / mapeos / junctions en una sola transacción' },
 		},
 	},
 };
