@@ -1,9 +1,21 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Req } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
-import { SwaggerIfcController, SwaggerIfcCreate, SwaggerIfcUpdate, SwaggerIfcDelete, SwaggerIfcGetAll, SwaggerIfcGetById, SwaggerIfcGetByFilters, SwaggerIfcList } from './docs/ifcs.swagger';
+import {
+	SwaggerIfcController,
+	SwaggerIfcCreate,
+	SwaggerIfcUpdate,
+	SwaggerIfcDelete,
+	SwaggerIfcGetAll,
+	SwaggerIfcGetByFilters,
+	SwaggerIfcList,
+	SwaggerIfcGetView,
+	SwaggerIfcSubmit,
+	SwaggerIfcApprove,
+	SwaggerIfcReject,
+} from './docs/ifcs.swagger';
 import { IfcService } from './ifcs.service';
-import { CreateIfcDto, UpdateIfcDto, FilterIfcDto, ListIfcsDto } from '../model/ifcs.dtos';
+import { CreateIfcDto, UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
 
 @SwaggerIfcController()
 export class IfcController extends BaseController<IfcService> {
@@ -31,11 +43,6 @@ export class IfcController extends BaseController<IfcService> {
 		return await super.getAll();
 	}
 
-	@SwaggerIfcGetById()
-	async getById(@Param('id') id: number) {
-		return await super.getById(id);
-	}
-
 	@SwaggerIfcGetByFilters()
 	async getByFilters(@Body() dto: FilterIfcDto) {
 		return await super.getByFilters(dto);
@@ -44,5 +51,29 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcList()
 	async list(@Body() dto: ListIfcsDto) {
 		return parseSuccessResponse(await this.service.list(dto));
+	}
+
+	@SwaggerIfcGetView()
+	async getView(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+		const result = await this.service.getView(id, req.user.school_id);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcSubmit()
+	async submit(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+		const result = await this.service.submit(id, req.user.userId, req.user.school_id);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcApprove()
+	async approve(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+		const result = await this.service.approve(id, req.user.userId, req.user.school_id);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcReject()
+	async reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectIfcDto, @Req() req: any) {
+		const result = await this.service.reject(id, req.user.userId, req.user.school_id, dto);
+		return parseSuccessResponse(result);
 	}
 }

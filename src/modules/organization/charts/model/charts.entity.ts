@@ -1,11 +1,10 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { ChartLevelEntity } from 'src/modules/organization/chart-levels/model/chart-levels.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
-import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'charts', schema: 'organization' })
 export class ChartEntity extends BaseEntity {
@@ -26,11 +25,11 @@ export class ChartEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	level_title: I18nText;
 
-	@IntegerFKIDColumn({ nullable: false })
-	entity_type_id: number;
+	@IntegerColumn({ nullable: true })
+	entity_type_id: number | null;
 
-	@IntegerColumn({ nullable: false })
-	entity_code: number;
+	@IntegerColumn({ nullable: true })
+	entity_code: number | null;
 
 	// %% RELACIONES
 
@@ -45,8 +44,4 @@ export class ChartEntity extends BaseEntity {
 	@ManyToOne(() => ChartLevelEntity)
 	@JoinColumn({ name: 'chart_level_id' })
 	chart_level: ChartLevelEntity;
-
-	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'entity_type_id' })
-	entity_type: TypeEntity;
 }

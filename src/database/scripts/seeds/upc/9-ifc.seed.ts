@@ -18,30 +18,9 @@ runTenantSeed('ifc status module', async (tenantDataSource) => {
 			i18n('IFC guardado pendiente de envio para el proyecto integrador.', 'IFC saved pending submission for the integrator project.'),
 			'2026-06-16 09:00:00',
 		],
-		[
-			'Algoritmos y Estructuras de Datos',
-			'202502',
-			'TG701-T001',
-			'coord.eiscb@upc.edu.pe',
-			i18n('IFC guardado por el coordinador.', 'IFC saved by the coordinator.'),
-			'2025-09-01 09:00:00',
-		],
-		[
-			'Bases de Datos',
-			'202502',
-			'TG701-T001',
-			'coord.eiscb@upc.edu.pe',
-			i18n('Borrador inicial del IFC.', 'Initial draft of the IFC.'),
-			'2025-09-02 09:00:00',
-		],
-		[
-			'Bases de Datos',
-			'202502',
-			'TG701-T002',
-			'coord.eiscb@upc.edu.pe',
-			i18n('IFC enviado para revision.', 'IFC submitted for review.'),
-			'2025-09-05 14:30:00',
-		],
+		['Algoritmos y Estructuras de Datos', '202502', 'TG701-T001', 'coord.eiscb@upc.edu.pe', i18n('IFC guardado por el coordinador.', 'IFC saved by the coordinator.'), '2025-09-01 09:00:00'],
+		['Bases de Datos', '202502', 'TG701-T001', 'coord.eiscb@upc.edu.pe', i18n('Borrador inicial del IFC.', 'Initial draft of the IFC.'), '2025-09-02 09:00:00'],
+		['Bases de Datos', '202502', 'TG701-T002', 'coord.eiscb@upc.edu.pe', i18n('IFC enviado para revision.', 'IFC submitted for review.'), '2025-09-05 14:30:00'],
 	]
 		.map(([courseName, periodCode, stCode, email, comment, regAt]) => `('${courseName}', '${periodCode}', '${stCode}', '${email}', '${comment}'::jsonb, '${regAt}')`)
 		.join(',\n\t\t\t');

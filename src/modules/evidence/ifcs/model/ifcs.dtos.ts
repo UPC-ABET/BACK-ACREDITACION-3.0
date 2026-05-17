@@ -1,6 +1,7 @@
-import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsPositive } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateIfcDto extends BaseDto {
 	@IsOptional()
@@ -89,4 +90,94 @@ export class ListIfcsDto {
 	@IsPositive()
 	@ApiProperty({ example: 5, required: true, description: 'ID del período académico' })
 	period_id: number;
+}
+
+// --- Request DTO for /reject -------------------------------------------------
+
+export class RejectIfcDto {
+	@ApiProperty({
+		example: { es: 'Faltan evidencias en la sección 3', en: 'Missing evidence in section 3' },
+		required: true,
+		description: 'Motivo de rechazo (jsonb i18n) — el frontend llena al menos el idioma activo',
+	})
+	@IsObject()
+	comment: I18nText;
+}
+
+// --- Response DTOs (Swagger documentation only) ------------------------------
+
+export class IfcCoordinatorDto {
+	@ApiProperty() user_id: number | null;
+	@ApiProperty({ nullable: true }) code: string | null;
+	@ApiProperty() name: string | null;
+}
+
+export class IfcStatusInfoDto {
+	@ApiProperty() code: string;
+	@ApiProperty({ type: Object }) name: I18nText;
+	@ApiProperty() at: string;
+	@ApiProperty({ type: Object, nullable: true }) comment: I18nText | null;
+	@ApiProperty({ nullable: true }) by: string | null;
+}
+
+export class IfcHeaderDto {
+	@ApiProperty() id: number;
+	@ApiProperty({ type: Object }) information: Record<string, unknown>;
+	@ApiProperty({ type: Object }) extra: Record<string, unknown>;
+	@ApiProperty() created_at: string;
+	@ApiProperty() academic_period_code: string;
+	@ApiProperty({ type: Object }) area_label: I18nText;
+	@ApiProperty({ type: Object }) subarea_label: I18nText;
+	@ApiProperty({ type: Object }) course_name: I18nText;
+	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
+	@ApiProperty({ type: () => IfcCoordinatorDto }) coordinator: IfcCoordinatorDto;
+	@ApiProperty({ type: () => IfcStatusInfoDto, nullable: true }) status: IfcStatusInfoDto | null;
+}
+
+export class IfcOutcomeItemDto {
+	@ApiProperty() outcome_code: string;
+	@ApiProperty({ type: Object }) outcome_name: I18nText;
+	@ApiProperty({ type: Object }) outcome_description: I18nText;
+}
+
+export class IfcCommissionGroupDto {
+	@ApiProperty() commission_code: string;
+	@ApiProperty({ type: Object }) commission_name: I18nText;
+	@ApiProperty({ type: [IfcOutcomeItemDto] }) outcomes: IfcOutcomeItemDto[];
+}
+
+export class IfcProgramGroupDto {
+	@ApiProperty() program_code: string;
+	@ApiProperty({ type: Object }) program_name: I18nText;
+	@ApiProperty({ type: [IfcCommissionGroupDto] }) commissions: IfcCommissionGroupDto[];
+}
+
+export class IfcFindingOutcomeDto extends IfcOutcomeItemDto {
+	@ApiProperty({ type: Object }) commission: { code: string; name: I18nText };
+}
+
+export class IfcFindingActionDto {
+	@ApiProperty() id: number;
+	@ApiProperty() code: string;
+	@ApiProperty({ type: Object }) description: I18nText;
+	@ApiProperty() correlative: number;
+	@ApiProperty() completeness_code: string;
+	@ApiProperty({ type: Object }) completeness_name: I18nText;
+}
+
+export class IfcFindingDto {
+	@ApiProperty() id: number;
+	@ApiProperty() code: string;
+	@ApiProperty({ type: Object }) description: I18nText;
+	@ApiProperty() correlative: number;
+	@ApiProperty() is_automatic: boolean;
+	@ApiProperty({ type: Object }) criticality: { code: string; name: I18nText };
+	@ApiProperty({ type: [IfcFindingOutcomeDto] }) outcomes: IfcFindingOutcomeDto[];
+	@ApiProperty({ type: [IfcFindingActionDto] }) actions: IfcFindingActionDto[];
+}
+
+export class IfcViewResponseDto {
+	@ApiProperty({ type: () => IfcHeaderDto }) ifc: IfcHeaderDto;
+	@ApiProperty({ type: [IfcProgramGroupDto] }) outcome_course_result: IfcProgramGroupDto[];
+	@ApiProperty({ type: [IfcFindingDto] }) findings: IfcFindingDto[];
 }

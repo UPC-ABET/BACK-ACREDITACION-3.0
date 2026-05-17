@@ -64,24 +64,9 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			i18n('Profesora tiempo completo', 'Full-time professor'),
 			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
 		],
-		[
-			'admin.eiscb@upc.edu.pe',
-			'TG901-T001',
-			i18n('Administrador EISCB', 'EISCB Administrator'),
-			i18n('Administracion de la escuela EISCB', 'EISCB school administration'),
-		],
-		[
-			'director.eiscb@upc.edu.pe',
-			'TG901-T002',
-			i18n('Director de Escuela EISCB', 'EISCB School Director'),
-			i18n('Direccion academica de la escuela EISCB', 'Academic leadership of EISCB'),
-		],
-		[
-			'coord.eiscb@upc.edu.pe',
-			'TG901-T003',
-			i18n('Coordinador de Curso EISCB', 'EISCB Course Coordinator'),
-			i18n('Coordinacion de cursos de la escuela EISCB', 'Course coordination at EISCB'),
-		],
+		['admin.eiscb@upc.edu.pe', 'TG901-T001', i18n('Administrador EISCB', 'EISCB Administrator'), i18n('Administracion de la escuela EISCB', 'EISCB school administration')],
+		['director.eiscb@upc.edu.pe', 'TG901-T002', i18n('Director de Escuela EISCB', 'EISCB School Director'), i18n('Direccion academica de la escuela EISCB', 'Academic leadership of EISCB')],
+		['coord.eiscb@upc.edu.pe', 'TG901-T003', i18n('Coordinador de Curso EISCB', 'EISCB Course Coordinator'), i18n('Coordinacion de cursos de la escuela EISCB', 'Course coordination at EISCB')],
 	]
 		.map(([email, code, title, description]) => `('${email}', '${code}', '${title}'::jsonb, '${description}'::jsonb)`)
 		.join(',\n\t\t\t');

@@ -1,6 +1,6 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
 @Entity({ name: 'professors', schema: 'academic' })
@@ -9,6 +9,9 @@ export class ProfessorEntity extends BaseEntity {
 
 	@IntegerFKIDColumn({ nullable: false })
 	staff_id: number;
+
+	@CodeColumn({ nullable: false })
+	code: string;
 
 	// %% RELACIONES
 

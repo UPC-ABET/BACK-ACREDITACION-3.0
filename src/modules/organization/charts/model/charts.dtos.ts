@@ -27,20 +27,22 @@ export class CreateChartDto extends BaseDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false, nullable: true })
-	root_chart_detail_id?: number | null;
+	@ApiProperty({ example: 1, required: false })
+	root_chart_detail_id?: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: true })
 	level_title: I18nText;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	entity_type_id: number;
+	@ApiProperty({ example: 1, required: false })
+	entity_type_id?: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	entity_code: number;
+	@ApiProperty({ example: 1, required: false })
+	entity_code?: number;
 }
 
 export class UpdateChartDto extends BaseDto {

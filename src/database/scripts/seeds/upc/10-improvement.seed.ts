@@ -8,12 +8,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'PROG_SOFT',
 			'AP_2026_1',
 		],
-		[
-			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
-			2026102,
-			'PROG_SOFT',
-			'AP_2026_2',
-		],
+		[i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'), 2026102, 'PROG_SOFT', 'AP_2026_2'],
 		[i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), 2026103, 'PROG_SOFT', 'AP_2026_1'],
 		[i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), 2025101, 'CS', '202502'],
 		[i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), 2025102, 'CS', '202502'],

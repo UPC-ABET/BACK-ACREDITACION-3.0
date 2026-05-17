@@ -114,6 +114,7 @@ Table professors {
   created_at timestamp [null]
   updated_at timestamp [null]
   staff_id int
+  code varchar
 }
 
 Table courses {
@@ -293,10 +294,10 @@ Table charts {
   staff_id int
   academic_period_id int
   chart_level_id int
-  root_chart_detail_id int
+  root_chart_detail_id int [null]
   level_title json
-  entity_type_id int
-  entity_code varchar
+  entity_type_id int [null]
+  entity_code int [null]
 }
 
 Table plans {
