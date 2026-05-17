@@ -20,8 +20,8 @@ export class ChartEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	chart_level_id: number;
 
-	@IntegerFKIDColumn({ nullable: false })
-	root_chart_detail_id: number;
+	@IntegerColumn({ nullable: true })
+	root_chart_detail_id: number | null;
 
 	@JsonColumn({ nullable: false })
 	level_title: I18nText;

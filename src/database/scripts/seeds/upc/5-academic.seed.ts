@@ -449,7 +449,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			root_chart_detail_id, level_title, entity_type_id, entity_code
 		)
 		SELECT
-			staff.id, ap.id, cl.id, 0,
+			staff.id, ap.id, cl.id, NULL,
 			'${i18n('Decanato EISCB', "EISCB Dean's Office")}'::jsonb,
 			entity_type.id,
 			(SELECT id FROM "organization"."schools" WHERE code = 'EISCB')

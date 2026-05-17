@@ -25,9 +25,10 @@ export class CreateChartDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	chart_level_id: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	root_chart_detail_id: number;
+	@ApiProperty({ example: 1, required: false, nullable: true })
+	root_chart_detail_id?: number | null;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: true })
