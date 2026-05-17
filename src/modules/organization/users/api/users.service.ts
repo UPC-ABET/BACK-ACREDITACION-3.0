@@ -125,6 +125,38 @@ export class UserService extends BaseService<UserRepository> {
 		};
 	}
 
+	async savePasswordResetToken(user: any, tokenHash: string, expiresAt: string) {
+		const extra = {
+			...(user.extra ?? {}),
+			password_reset: {
+				token_hash: tokenHash,
+				expires_at: expiresAt,
+			},
+		};
+
+		return await this.repository.update(user.id, { extra });
+	}
+
+	async resetPasswordWithToken(user: any, tokenHash: string, newPassword: string) {
+		const resetData = user?.extra?.password_reset;
+
+		if (!user || !resetData?.token_hash || !resetData?.expires_at) {
+			throw new UnauthorizedException('Token de recuperación inválido');
+		}
+
+		if (resetData.token_hash !== tokenHash || new Date(resetData.expires_at).getTime() < Date.now()) {
+			throw new UnauthorizedException('Token de recuperación inválido o expirado');
+		}
+
+		const extra = { ...(user.extra ?? {}) };
+		delete extra.password_reset;
+
+		return await this.repository.update(user.id, {
+			password: await bcrypt.hash(newPassword, 10),
+			extra,
+		});
+	}
+
 	// %% SERVICIOS HEREDADOS
 	async create(dto: CreateUserDto, manager?: EntityManager) {
 		await UserValidation.validateCreate(this.repository, dto);

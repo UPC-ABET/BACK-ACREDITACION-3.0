@@ -1,9 +1,10 @@
-import { Controller, Get, HttpException, HttpStatus, Query, Res, UnauthorizedException } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { HttpException, HttpStatus, Body, Controller, Get, Post, Query, Res, UnauthorizedException } from '@nestjs/common';
+import { ApiQuery, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { saveAccessCookie } from 'src/libs/secure.functions';
+import { ForgotPasswordDto, ResetPasswordDto } from '../model/auth.dtos';
 import { Public } from '../protocols/jwt/decorators/public.decorator';
 import { AuthService } from './auth.service';
 
@@ -58,6 +59,24 @@ export class AuthController {
 		saveAccessCookie(res, result);
 
 		return parseSuccessResponse(result);
+	}
+
+	@Public()
+	@Post('forgot-password')
+	@ApiOperation({ summary: 'Solicitar correo de recuperación de contraseña' })
+	@ApiBody({ type: ForgotPasswordDto })
+	async forgotPassword(@Body() dto: ForgotPasswordDto) {
+		await this.authService.requestPasswordReset(dto.email);
+		return parseSuccessResponse({ message: 'Si el correo existe, se enviará un enlace de recuperación' });
+	}
+
+	@Public()
+	@Post('reset-password')
+	@ApiOperation({ summary: 'Restablecer contraseña con token de recuperación' })
+	@ApiBody({ type: ResetPasswordDto })
+	async resetPassword(@Body() dto: ResetPasswordDto) {
+		await this.authService.resetPassword(dto.email, dto.token, dto.newPassword);
+		return parseSuccessResponse({ message: 'Contraseña actualizada correctamente' });
 	}
 
 	private parseState(state?: string): MicrosoftState {
