@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
 import * as bcrypt from 'bcryptjs';
@@ -6,6 +6,8 @@ import { UserValidation } from '../core/users.validation';
 import { CreateUserDto, ROLE_CODES, RoleCode, UpdateUserDto } from '../model/users.dtos';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager } from 'typeorm';
+import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
+import { usersValidationStrings } from '../config/strings/users.validation';
 
 @Injectable()
 export class UserService extends BaseService<UserRepository> {
@@ -13,12 +15,13 @@ export class UserService extends BaseService<UserRepository> {
 		protected readonly repository: UserRepository,
 		protected readonly dataSource: DataSource,
 		private readonly jwtService: JwtService,
+		private readonly schoolRepository: SchoolRepository,
 	) {
 		super(repository);
 	}
 
 	// %% FUNCIONES
-	signJWTWithRoles(user: any, activeRole?: RoleCode): string {
+	async signJWTWithRoles(user: any, activeRole?: RoleCode, school_id: number | null = null): Promise<string> {
 		const allowedRoles: RoleCode[] = [];
 
 		if (user?.is_admin) {
@@ -43,12 +46,13 @@ export class UserService extends BaseService<UserRepository> {
 			user,
 			activeRole,
 			allowedRoles,
+			school_id,
 		};
 
 		return this.jwtService.sign(payload);
 	}
 
-	async createUserLogin(user: any, passToValidate: string | null, role?: RoleCode): Promise<string> {
+	async createUserLogin(user: any, passToValidate: string | null, role?: RoleCode, school_id: number | null = null): Promise<string> {
 		if (!user) {
 			throw new UnauthorizedException('Credenciales inválidas');
 		}
@@ -57,7 +61,7 @@ export class UserService extends BaseService<UserRepository> {
 			throw new UnauthorizedException('Credenciales inválidas');
 		}
 
-		return this.signJWTWithRoles(user, role);
+		return await this.signJWTWithRoles(user, role, school_id);
 	}
 
 	async getUser(user_id?: number | null, email?: string | null, includePassword = false) {
@@ -87,9 +91,9 @@ export class UserService extends BaseService<UserRepository> {
 	}
 
 	// %% SERVICIOS PROPIOS
-	async loginById(user_id: number, role?: RoleCode) {
+	async loginById(user_id: number, role?: RoleCode, school_id: number | null = null) {
 		const user = await this.getUser(user_id);
-		const accessToken = await this.createUserLogin(user, null, role);
+		const accessToken = await this.createUserLogin(user, null, role, school_id);
 
 		return {
 			user,
@@ -97,9 +101,23 @@ export class UserService extends BaseService<UserRepository> {
 		};
 	}
 
-	async loginByCredentials(email: string, password: string, role?: RoleCode) {
+	async loginByCredentials(school_code: string, email: string, password: string, role?: RoleCode) {
+		const school = await this.schoolRepository.findOneByCondition({
+			where: { code: school_code, is_active: true },
+		});
+
+		if (!school) {
+			throw new HttpException(
+				{
+					message: usersValidationStrings.error.schoolNotFound,
+					errors: [usersValidationStrings.error.schoolNotFound],
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
 		const user = await this.getUser(null, email, true);
-		const accessToken = await this.createUserLogin(user, password, role);
+		const accessToken = await this.createUserLogin(user, password, role, school.id);
 
 		return {
 			user,

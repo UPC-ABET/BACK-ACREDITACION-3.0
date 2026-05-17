@@ -4,6 +4,7 @@ export const usersValidationStrings = {
 		emailExists: 'error.email.exists',
 		notFound: 'error.notFound',
 		invalidCredentials: 'error.invalid.credentials',
+		schoolNotFound: 'error.school.notFound',
 	},
 	result: {
 		createFailed: 'error.created.failed',

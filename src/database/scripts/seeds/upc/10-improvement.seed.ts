@@ -17,6 +17,8 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'AP_2026_2',
 		],
 		[i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), 2026103, 'TG802-T002', 'PROG_SOFT', 'AP_2026_1'],
+		[i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), 2025101, 'TG802-T001', 'CS', '202502'],
+		[i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), 2025102, 'TG802-T002', 'CS', '202502'],
 	]
 		.map(([desc, corr, as, pc, apc]) => `('${desc}'::jsonb, ${corr}, '${as}', '${pc}', '${apc}')`)
 		.join(',\n\t\t\t');
@@ -66,6 +68,28 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'Proyecto Integrador de Software',
 			'AP_2026_2',
 			'CAMPUS_MON',
+			'TG803-T002',
+		],
+		[
+			'TG801-T001',
+			'IFC',
+			'coord.eiscb@upc.edu.pe',
+			2025001,
+			i18n('Brecha en evaluacion algoritmica detectada en el IFC de CC101.', 'Algorithmic-evaluation gap detected in CC101 IFC.'),
+			'Algoritmos y Estructuras de Datos',
+			'202502',
+			'CAMPUS_SM',
+			'TG803-T001',
+		],
+		[
+			'TG801-T003',
+			'IFC',
+			'coord.eiscb@upc.edu.pe',
+			2025002,
+			i18n('Oportunidad de mejora en consultas SQL avanzadas reportada en el IFC de CC102.', 'Improvement opportunity in advanced SQL queries reported in CC102 IFC.'),
+			'Bases de Datos',
+			'202502',
+			'CAMPUS_SM',
 			'TG803-T002',
 		],
 	]
@@ -122,8 +146,11 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'{"required":["peer-review-log","team-rubric"]}',
 		],
 		[2026001, i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), false, '{"required":["evidence-matrix"]}'],
+		// CC101 finding (2025001) → 2 actions. First has evidences=NULL → derived PENDING; second has evidences set → derived IMPLEMENTED.
+		[2025001, i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), true, null],
+		[2025001, i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), true, '{"x":1}'],
 	]
-		.map(([fc, desc, ipr, ev]) => `(${fc}, '${desc}'::jsonb, ${ipr}, '${ev}'::jsonb)`)
+		.map(([fc, desc, ipr, ev]) => `(${fc}, '${desc}'::jsonb, ${ipr}, ${ev === null ? 'NULL' : `'${ev}'::jsonb`})`)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -237,7 +264,11 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			VALUES
 				(2026001, 'OUT_SOFT_01'),
 				(2026001, 'OUT_SOFT_04'),
-				(2026002, 'OUT_SOFT_03')
+				(2026002, 'OUT_SOFT_03'),
+				(2025001, 'A1'),
+				(2025001, 'A2'),
+				(2025002, 'A1'),
+				(2025002, 'A2')
 		) AS v(finding_correlative, outcome_code)
 		JOIN "improvement"."findings" finding
 			ON finding.correlative = v.finding_correlative
@@ -256,7 +287,9 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		FROM (
 			VALUES
 				('Fundamentos de Programacion', 'AP_2026_1', 2026001),
-				('Proyecto Integrador de Software', 'AP_2026_2', 2026002)
+				('Proyecto Integrador de Software', 'AP_2026_2', 2026002),
+				('Algoritmos y Estructuras de Datos', '202502', 2025001),
+				('Bases de Datos', '202502', 2025002)
 		) AS v(course_name, academic_period_code, finding_correlative)
 		JOIN "academic"."courses" course
 			ON course.name->>'es' = v.course_name

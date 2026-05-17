@@ -23,6 +23,13 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			i18n('Instrumento de percepcion para resultados del programa', 'Perception instrument for program outcomes'),
 			false,
 		],
+		[
+			'TG501-T001',
+			'IFC',
+			i18n('Informe Final del Curso', 'Course Final Report'),
+			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
+			true,
+		],
 	]
 		.map(([ctCode, code, name, desc, acc]) => `('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`)
 		.join(',\n\t\t\t');
@@ -73,6 +80,38 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 						en: 'IFC measuring collaboration and technical solution in the Integrator Project.',
 					},
 					order: 1,
+				},
+			}),
+		],
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202502',
+			JSON.stringify({
+				infrastructure: {
+					label: { es: 'Infraestructura', en: 'Infrastructure' },
+					value: { es: 'Laboratorio con 30 PCs y proyector.', en: 'Lab with 30 PCs and a projector.' },
+					order: 1,
+				},
+				methodology: {
+					label: { es: 'Metodologia', en: 'Methodology' },
+					value: { es: 'Aprendizaje basado en problemas.', en: 'Problem-based learning.' },
+					order: 2,
+				},
+			}),
+		],
+		[
+			'Bases de Datos',
+			'202502',
+			JSON.stringify({
+				infrastructure: {
+					label: { es: 'Infraestructura', en: 'Infrastructure' },
+					value: { es: 'Servidor de base de datos compartido y entorno cloud.', en: 'Shared database server and cloud environment.' },
+					order: 1,
+				},
+				methodology: {
+					label: { es: 'Metodologia', en: 'Methodology' },
+					value: { es: 'Casos practicos sobre datasets reales.', en: 'Case studies on real datasets.' },
+					order: 2,
 				},
 			}),
 		],

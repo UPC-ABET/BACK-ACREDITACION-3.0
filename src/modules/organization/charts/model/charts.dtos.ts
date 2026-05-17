@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -37,10 +37,9 @@ export class CreateChartDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	entity_type_id: number;
 
-	@IsString()
-	@Length(1, 50)
-	@ApiProperty({ example: 'entity_code_example', required: true })
-	entity_code: string;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	entity_code: number;
 }
 
 export class UpdateChartDto extends BaseDto {
@@ -84,10 +83,9 @@ export class UpdateChartDto extends BaseDto {
 	entity_type_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 50)
-	@ApiProperty({ example: 'entity_code_example', required: false })
-	entity_code?: string;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	entity_code?: number;
 }
 
 export class FilterChartDto extends BaseDto {
@@ -124,6 +122,6 @@ export class FilterChartDto extends BaseDto {
 	entity_type_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'entity_code_example', required: false })
-	entity_code?: string;
+	@ApiProperty({ example: 1, required: false })
+	entity_code?: number;
 }

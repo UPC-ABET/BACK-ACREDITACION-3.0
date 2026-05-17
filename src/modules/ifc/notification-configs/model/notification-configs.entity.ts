@@ -7,7 +7,7 @@ import { SchoolEntity } from 'src/modules/organization/schools/model/schools.ent
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notification_configs', schema: 'ifc' })
-@Unique('UQ_4689ce4c54254910a1e7ab56b1c', ['school_id', 'academic_period_id', 'trigger_event_id', 'ifc_status_type_id'])
+@Unique('UQ_4689ce4c54254910a1e7ab56b1c', ['school_id', 'academic_period_id', 'trigger_type_id', 'ifc_status_type_id'])
 export class NotificationConfigEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
@@ -18,7 +18,7 @@ export class NotificationConfigEntity extends BaseEntity {
 	academic_period_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	trigger_event_id: number;
+	trigger_type_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	ifc_status_type_id: number;
@@ -44,6 +44,10 @@ export class NotificationConfigEntity extends BaseEntity {
 	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({ name: 'academic_period_id' })
 	academic_period: AcademicPeriodEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'trigger_type_id' })
+	trigger_type: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'ifc_status_type_id' })

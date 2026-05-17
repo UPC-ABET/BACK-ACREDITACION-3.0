@@ -1,6 +1,6 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { IntegerColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { ChartLevelEntity } from 'src/modules/organization/chart-levels/model/chart-levels.entity';
@@ -29,8 +29,8 @@ export class ChartEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	entity_type_id: number;
 
-	@CodeColumn({ nullable: false })
-	entity_code: string;
+	@IntegerColumn({ nullable: false })
+	entity_code: number;
 
 	// %% RELACIONES
 

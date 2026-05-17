@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticationResult, ConfidentialClientApplication, Configuration } from '@azure/msal-node';
 import { UserService } from 'src/modules/organization/users/api/users.service';
+import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
 
 type MicrosoftIdTokenClaims = {
 	email?: string;
@@ -17,7 +18,20 @@ export class AuthService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly userService: UserService,
+		private readonly schoolRepository: SchoolRepository,
 	) {}
+
+	async resolveSchoolIdByCode(school_code: string): Promise<number> {
+		const school = await this.schoolRepository.findOneByCondition({
+			where: { code: school_code, is_active: true },
+		});
+
+		if (!school) {
+			throw new HttpException({ message: 'error.school.notFound', errors: ['error.school.notFound'] }, HttpStatus.BAD_REQUEST);
+		}
+
+		return school.id;
+	}
 
 	async buildMicrosoftLoginUrl(state: string) {
 		const msalClient = this.createMsalClient();
@@ -31,13 +45,13 @@ export class AuthService {
 		});
 	}
 
-	async loginWithMicrosoftCode(code: string) {
+	async loginWithMicrosoftCode(code: string, school_id: number) {
 		const tokenResponse = await this.acquireMicrosoftTokenByCode(code);
 		const claims = tokenResponse.idTokenClaims as MicrosoftIdTokenClaims;
 		const email = this.getEmailFromResult(tokenResponse, claims);
 		const user = await this.userService.getUser(null, email);
 
-		const accessToken = await this.userService.createUserLogin(user, null);
+		const accessToken = await this.userService.createUserLogin(user, null, undefined, school_id);
 
 		return {
 			user,

@@ -5,6 +5,7 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 		['CAMPUS_MON', i18n('Campus Monterrico', 'Monterrico Campus')],
 		['CAMPUS_SI', i18n('Campus San Isidro', 'San Isidro Campus')],
 		['CAMPUS_VILLA', i18n('Campus Villa', 'Villa Campus')],
+		['CAMPUS_SM', i18n('Campus San Miguel', 'San Miguel Campus')],
 	]
 		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
 		.join(',\n\t\t\t');
@@ -45,6 +46,15 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 		['FAC_ING', 'SCH_SOFT', i18n('Escuela de Ingenieria de Software', 'School of Software Engineering')],
 		['FAC_ING', 'SCH_SIST', i18n('Escuela de Ingenieria de Sistemas', 'School of Systems Engineering')],
 		['FAC_NEG', 'SCH_ADMIN', i18n('Escuela de Administracion', 'School of Business Administration')],
+		['FAC_ING', 'EISCB', i18n('Escuela de Ingenieria de Software', 'School of Software Engineering')],
+		['FAC_ING', 'EISCC', i18n('Escuela de Ingenieria de Ciencias de la Computacion', 'School of Computer Science Engineering')],
+		['FAC_ING', 'INGGMI', i18n('Ingenieria GMI', 'GMI Engineering')],
+		['FAC_ING', 'INGGEM', i18n('Ingenieria GEM', 'GEM Engineering')],
+		['FAC_ING', 'ESCEL', i18n('Escuela de Electronica', 'School of Electronics')],
+		['FAC_ING', 'INGAMB', i18n('Ingenieria Ambiental', 'Environmental Engineering')],
+		['FAC_ING', 'INGBIO', i18n('Ingenieria Biomedica', 'Biomedical Engineering')],
+		['FAC_ING', 'INGCIV', i18n('Ingenieria Civil', 'Civil Engineering')],
+		['FAC_ING', 'INGIND', i18n('Ingenieria Industrial', 'Industrial Engineering')],
 	]
 		.map(([facultyCode, code, name]) => `('${facultyCode}', '${code}', '${name}'::jsonb)`)
 		.join(',\n\t\t\t');
@@ -71,7 +81,10 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 			VALUES
 				(1, 'TG902-T001'),
 				(2, 'TG902-T002'),
-				(3, 'TG902-T003')
+				(3, 'TG902-T003'),
+				(4, 'TG902-T004'),
+				(5, 'TG902-T005'),
+				(6, 'TG902-T006')
 		) AS v(level, level_type_code)
 			ON t.code = v.level_type_code
 		WHERE NOT EXISTS (

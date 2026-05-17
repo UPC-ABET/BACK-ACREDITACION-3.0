@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 
@@ -12,10 +12,9 @@ export class CreateUserDto extends BaseDto {
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
 
-	@IsString()
-	@Length(1, 50)
-	@ApiProperty({ example: 'document_type_id_example', required: true })
-	document_type_id: string;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	document_type_id: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -57,10 +56,9 @@ export class UpdateUserDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 50)
-	@ApiProperty({ example: 'document_type_id_example', required: false })
-	document_type_id?: string;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	document_type_id?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -107,8 +105,8 @@ export class FilterUserDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 'document_type_id_example', required: false })
-	document_type_id?: string;
+	@ApiProperty({ example: 1, required: false })
+	document_type_id?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
@@ -137,6 +135,15 @@ export class FilterUserDto extends BaseDto {
 
 // %% OTHERS DTO
 export class LoginUserByCredentialsDto {
+	@IsString()
+	@IsNotEmpty()
+	@ApiProperty({
+		example: 'EISCB',
+		required: true,
+		description: 'Código de la escuela seleccionada por el usuario',
+	})
+	school_code: string;
+
 	@IsEmail()
 	@ApiProperty({
 		example: 'juan.perez@example.com',

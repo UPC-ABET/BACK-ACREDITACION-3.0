@@ -23,7 +23,7 @@ export class CreateNotificationConfigDto extends BaseDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	trigger_event_id: number;
+	trigger_type_id: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -67,7 +67,7 @@ export class UpdateNotificationConfigDto extends BaseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	trigger_event_id?: number;
+	trigger_type_id?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -112,7 +112,7 @@ export class FilterNotificationConfigDto extends BaseDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	trigger_event_id?: number;
+	trigger_type_id?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
