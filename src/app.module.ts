@@ -79,6 +79,7 @@ import { CampusModule } from './modules/organization/campuses/campuses.module';
 import { ChartLevelModule } from './modules/organization/chart-levels/chart-levels.module';
 import { ChartModule } from './modules/organization/charts/charts.module';
 import { FacultyModule } from './modules/organization/faculties/faculties.module';
+import { OrgScopeModule } from './modules/organization/org-scope/org-scope.module';
 import { SchoolModule } from './modules/organization/schools/schools.module';
 import { StaffModule } from './modules/organization/staff/staff.module';
 import { UserModule } from './modules/organization/users/users.module';
@@ -183,6 +184,7 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		ChartLevelModule,
 		ChartModule,
 		FacultyModule,
+		OrgScopeModule,
 		SchoolModule,
 		StaffModule,
 		NotificationMessageModule,

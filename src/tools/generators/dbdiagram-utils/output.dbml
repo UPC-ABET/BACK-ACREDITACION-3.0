@@ -320,7 +320,6 @@ Table actions {
   updated_at timestamp [null]
   description json
   correlative int
-  action_status_type_id int
   program_id int
   academic_period_id int
 }
@@ -353,7 +352,6 @@ Table findings {
   academic_period_id int
   campus_id int
   is_automatic boolean
-  finding_status_type_id int
 }
 
 Table finding_actions {

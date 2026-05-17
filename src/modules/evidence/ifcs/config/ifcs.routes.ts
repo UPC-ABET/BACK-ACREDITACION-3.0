@@ -9,6 +9,7 @@ export const ifcsRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar IFCs' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener IFC' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar IFCs' },
+			list: { method: 'POST', route: '/list', summary: 'Listar IFCs por nodos de organigrama' },
 		},
 	},
 };

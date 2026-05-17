@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsPositive } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 
@@ -70,4 +70,23 @@ export class FilterIfcDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'information_value' }, required: false })
 	information?: any;
+}
+
+// %% OTHERS DTO
+
+export class ListIfcsDto {
+	@IsArray()
+	@ArrayNotEmpty()
+	@IsInt({ each: true })
+	@ApiProperty({
+		example: [310, 311, 312],
+		required: true,
+		description: 'IDs de nodos de chart (todos nivel Coordinador de Curso)',
+	})
+	chart_ids: number[];
+
+	@IsInt()
+	@IsPositive()
+	@ApiProperty({ example: 5, required: true, description: 'ID del período académico' })
+	period_id: number;
 }

@@ -1,6 +1,6 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ifcsRoutes } from '../../config/ifcs.routes';
-import { CreateIfcDto, UpdateIfcDto, FilterIfcDto } from '../../model/ifcs.dtos';
+import { CreateIfcDto, UpdateIfcDto, FilterIfcDto, ListIfcsDto } from '../../model/ifcs.dtos';
 
 const cfg = ifcsRoutes.ifcs;
 
@@ -17,3 +17,5 @@ export const SwaggerIfcGetAll = () => HttpMethodWithSwagger(cfg.operation.getAll
 export const SwaggerIfcGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
 export const SwaggerIfcGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterIfcDto });
+
+export const SwaggerIfcList = () => HttpMethodWithSwagger({ ...cfg.operation.list, body: ListIfcsDto });

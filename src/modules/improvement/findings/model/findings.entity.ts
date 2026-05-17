@@ -40,9 +40,6 @@ export class FindingEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, default: true })
 	is_automatic: boolean;
 
-	@IntegerFKIDColumn({ nullable: false })
-	finding_status_type_id: number;
-
 	// %% RELACIONES
 
 	@ManyToOne(() => TypeEntity)
@@ -68,8 +65,4 @@ export class FindingEntity extends BaseEntity {
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id' })
 	campus: CampusEntity;
-
-	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'finding_status_type_id' })
-	finding_status_type: TypeEntity;
 }

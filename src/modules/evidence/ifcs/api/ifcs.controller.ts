@@ -1,8 +1,9 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerIfcController, SwaggerIfcCreate, SwaggerIfcUpdate, SwaggerIfcDelete, SwaggerIfcGetAll, SwaggerIfcGetById, SwaggerIfcGetByFilters } from './docs/ifcs.swagger';
+import { parseSuccessResponse } from 'src/libs/global.functions';
+import { SwaggerIfcController, SwaggerIfcCreate, SwaggerIfcUpdate, SwaggerIfcDelete, SwaggerIfcGetAll, SwaggerIfcGetById, SwaggerIfcGetByFilters, SwaggerIfcList } from './docs/ifcs.swagger';
 import { IfcService } from './ifcs.service';
-import { CreateIfcDto, UpdateIfcDto, FilterIfcDto } from '../model/ifcs.dtos';
+import { CreateIfcDto, UpdateIfcDto, FilterIfcDto, ListIfcsDto } from '../model/ifcs.dtos';
 
 @SwaggerIfcController()
 export class IfcController extends BaseController<IfcService> {
@@ -38,5 +39,10 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcGetByFilters()
 	async getByFilters(@Body() dto: FilterIfcDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerIfcList()
+	async list(@Body() dto: ListIfcsDto) {
+		return parseSuccessResponse(await this.service.list(dto));
 	}
 }
