@@ -87,6 +87,7 @@ import { OutcomeConfigModule } from './modules/survey/outcome-configs/outcome-co
 import { ScoreModule } from './modules/survey/scores/scores.module';
 import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
+import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 
 @Module({
 	imports: [
@@ -187,6 +188,7 @@ import { GraModule } from './modules/survey/gra/gra.module';
 		ScoreModule,
 		PppModule,
 		GraModule,
+		LcfcModule,
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,
