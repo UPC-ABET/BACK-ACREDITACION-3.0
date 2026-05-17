@@ -1,4 +1,5 @@
-import { Body, Param, ParseIntPipe, Query, Req } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query, Req, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
@@ -15,9 +16,12 @@ import {
 	SwaggerIfcReject,
 	SwaggerIfcPatch,
 	SwaggerIfcPrefill,
+	SwaggerIfcPdf,
+	SwaggerIfcPdfBulk,
+	SwaggerIfcStatusReport,
 } from './docs/ifcs.swagger';
 import { IfcService } from './ifcs.service';
-import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
+import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcPdfQueryDto, IfcPdfBulkDto, IfcStatusReportDto } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 
 @SwaggerIfcController()
@@ -92,4 +96,31 @@ export class IfcController extends BaseController<IfcService> {
 		const result = await this.service.patch(id, dto, req.user.userId, req.user.school_id);
 		return parseSuccessResponse(result);
 	}
+
+	@SwaggerIfcPdf()
+	async pdf(@Param('id', ParseIntPipe) id: number, @Query() query: IfcPdfQueryDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
+		const lang = (query.lang ?? 'es') as 'es' | 'en';
+		const { pdf, filename } = await this.service.generatePdf(id, req.user.userId, req.user.school_id, lang);
+		writeBinary(res, pdf, filename, 'application/pdf');
+	}
+
+	@SwaggerIfcPdfBulk()
+	async pdfBulk(@Body() dto: IfcPdfBulkDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
+		const { zip, filename } = await this.service.generatePdfBulk(dto.ifc_ids, req.user.userId, req.user.school_id, dto.lang);
+		writeBinary(res, zip, filename, 'application/zip');
+	}
+
+	@SwaggerIfcStatusReport()
+	async statusReport(@Body() dto: IfcStatusReportDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
+		const { xlsx, filename } = await this.service.generateStatusReport(dto, req.user.school_id);
+		writeBinary(res, xlsx, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	}
+}
+
+function writeBinary(res: Response, body: Buffer, filename: string, contentType: string) {
+	const encoded = encodeURIComponent(filename);
+	res.setHeader('Content-Type', contentType);
+	res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encoded}`);
+	res.setHeader('Content-Length', body.length.toString());
+	res.end(body);
 }

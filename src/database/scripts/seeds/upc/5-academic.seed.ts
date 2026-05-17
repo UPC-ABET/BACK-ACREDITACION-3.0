@@ -199,14 +199,21 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const professorRows: Array<[string, string]> = [
+		['prof.juan.perez@upc.edu.pe', 'PROF-001'],
+		['prof.maria.garcia@upc.edu.pe', 'PROF-002'],
+		['coord.eiscb@upc.edu.pe', 'PROF-003'],
+	];
+	const professorValues = professorRows.map(([email, code]) => `('${email}', '${code}')`).join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."professors" (staff_id)
-		SELECT s.id
-		FROM "organization"."staff" s
-		WHERE s.staff_email IN ('prof.juan.perez@upc.edu.pe', 'prof.maria.garcia@upc.edu.pe')
-			AND NOT EXISTS (
-				SELECT 1 FROM "academic"."professors" p WHERE p.staff_id = s.id
-			);
+		INSERT INTO "academic"."professors" (staff_id, code)
+		SELECT s.id, v.code
+		FROM (VALUES ${professorValues}) AS v(staff_email, code)
+		JOIN "organization"."staff" s ON s.staff_email = v.staff_email
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "academic"."professors" p WHERE p.staff_id = s.id
+		);
 	`);
 
 	await tenantDataSource.query(`

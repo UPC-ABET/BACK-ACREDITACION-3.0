@@ -1,8 +1,13 @@
 import { DataSource } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { IfcService } from './ifcs.service';
+
+const pdfRenderer = {
+	htmlToPdf: jest.fn().mockResolvedValue(Buffer.from('%PDF-')),
+	filesToZip: jest.fn().mockResolvedValue(Buffer.from('zip')),
+};
 import { IfcRepository } from '../core/ifcs.repository';
-import { ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
+import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
@@ -14,7 +19,7 @@ describe('IfcService.list', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
 	});
 
 	it('forwards chart_ids, period_id, and the COURSE type code to the SQL query', async () => {
@@ -49,7 +54,7 @@ describe('IfcService.getView', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
 	});
 
 	const headerRow = {
@@ -153,7 +158,7 @@ describe('IfcService status transitions', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
 	});
 
 	const ctxRow = (overrides: Partial<{ ifc_course_staff_id: number | null; course_chart_id: number | null; requester_staff_id: number | null; current_status_code: string | null }> = {}) => [
@@ -266,7 +271,7 @@ describe('IfcService.prefill', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
 	});
 
 	const headerRow = {
@@ -325,7 +330,7 @@ describe('IfcService.createIfc', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(repository, dataSource as unknown as DataSource);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
 	});
 
 	const baseDto = (overrides: Partial<CreateIfcDto> = {}): CreateIfcDto => ({
@@ -498,7 +503,7 @@ describe('IfcService.patch', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(repository, dataSource as unknown as DataSource);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
 	});
 
 	const baseDto = (overrides: Partial<IfcContentDto> = {}): IfcContentDto => ({
@@ -568,5 +573,100 @@ describe('IfcService.patch', () => {
 
 		const statusInsert = em.query.mock.calls[6];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SAVED);
+	});
+});
+
+describe('IfcService.generateStatusReport', () => {
+	let service: IfcService;
+	let dataSource: { query: jest.Mock };
+	const repository = {} as IfcRepository;
+
+	beforeEach(() => {
+		dataSource = { query: jest.fn() };
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+	});
+
+	const statusTypes = [
+		{ code: 'TG701-T001', name: { es: 'Guardado', en: 'Saved' } },
+		{ code: 'TG701-T002', name: { es: 'Enviado', en: 'Submitted' } },
+		{ code: 'TG701-T003', name: { es: 'Aprobado', en: 'Approved' } },
+		{ code: 'TG701-T004', name: { es: 'Observado', en: 'Observed' } },
+		{ code: 'TG701-T005', name: { es: 'Sin Registro', en: 'Unregistered' } },
+	];
+
+	const dto: IfcStatusReportDto = { chart_ids: [310, 311], period_id: 5, lang: 'es' };
+
+	it('calls STATUS_REPORT_SQL with the six expected positional params and builds <School>_<Program> filename for a single-program scope', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]) // REPORT_CODES_SQL
+			.mockResolvedValueOnce(statusTypes) // status type lookup
+			.mockResolvedValueOnce([]); // STATUS_REPORT_SQL → empty rows
+
+		const { xlsx, filename } = await service.generateStatusReport(dto, 9);
+
+		expect(Buffer.isBuffer(xlsx)).toBe(true);
+		expect(xlsx.length).toBeGreaterThan(0);
+		expect(filename).toBe('Reporte_Estado_IFC_EISCB_CS.xlsx');
+
+		const [, statusReportParams] = dataSource.query.mock.calls[2];
+		expect(statusReportParams).toEqual([[310, 311], 5, 9, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, 'es']);
+	});
+
+	it('drops the program suffix when chart_ids span multiple programs', async () => {
+		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS', 'PROG_SOFT'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce([]);
+
+		const { filename } = await service.generateStatusReport(dto, 9);
+		expect(filename).toBe('Reporte_Estado_IFC_EISCB.xlsx');
+	});
+
+	it('falls back to IFC when REPORT_CODES_SQL returns no school code', async () => {
+		dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce([]);
+
+		const { filename } = await service.generateStatusReport(dto, 9);
+		expect(filename).toBe('Reporte_Estado_IFC_IFC.xlsx');
+	});
+
+	it('uses the English filename prefix when lang=en', async () => {
+		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce([]);
+
+		const { filename } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
+		expect(filename).toBe('Status_Report_IFC_EISCB_CS.xlsx');
+	});
+
+	it('renders an XLSX where rows with status_code=null map to TG701-T005 / "Sin Registro"', async () => {
+		const ExcelJS = require('exceljs');
+		const rows = [
+			{ course_name: 'Curso A', area_label: 'Área 1', program_label: 'Carrera X', coordinator_name: 'Ada Lovelace', coordinator_email: 'ada@example.com', coordinator_code: 'P1', status_code: null },
+			{ course_name: 'Curso B', area_label: 'Área 1', program_label: 'Carrera X', coordinator_name: null, coordinator_email: null, coordinator_code: null, status_code: 'TG701-T003' },
+		];
+		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce(rows);
+
+		const { xlsx } = await service.generateStatusReport(dto, 9);
+
+		const wb = new ExcelJS.Workbook();
+		await wb.xlsx.load(xlsx);
+		const ws = wb.worksheets[0];
+		expect(ws.getRow(1).getCell(1).value).toBe('Curso');
+		expect(ws.getRow(2).getCell(1).value).toBe('Curso A');
+		expect(ws.getRow(2).getCell(4).value).toBe('Sin Registro');
+		expect(ws.getRow(2).getCell(5).value).toBe('Ada Lovelace');
+		expect(ws.getRow(3).getCell(4).value).toBe('Aprobado');
+		expect(ws.getRow(3).getCell(5).value).toBe('—');
+		expect(ws.getRow(3).getCell(6).value).toBe('—');
+		expect(ws.getRow(3).getCell(7).value).toBe('—');
+	});
+
+	it('uses the en label for UNREGISTERED when lang=en', async () => {
+		const ExcelJS = require('exceljs');
+		const rows = [{ course_name: 'Course A', area_label: 'Area 1', program_label: 'Program X', coordinator_name: 'Ada', coordinator_email: 'a@x', coordinator_code: 'P1', status_code: null }];
+		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce(rows);
+
+		const { xlsx } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
+
+		const wb = new ExcelJS.Workbook();
+		await wb.xlsx.load(xlsx);
+		const ws = wb.worksheets[0];
+		expect(ws.getRow(1).getCell(1).value).toBe('Course');
+		expect(ws.getRow(2).getCell(4).value).toBe('Unregistered');
 	});
 });

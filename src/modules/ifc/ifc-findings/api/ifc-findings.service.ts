@@ -88,10 +88,7 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 		]);
 
 		if (findingRows.length === 0) {
-			throw new HttpException(
-				{ message: ifcFindingsValidationStrings.result.viewFailed, errors: [ifcFindingsValidationStrings.error.notFound] },
-				HttpStatus.NOT_FOUND,
-			);
+			throw new HttpException({ message: ifcFindingsValidationStrings.result.viewFailed, errors: [ifcFindingsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
 		}
 
 		const row = findingRows[0];
@@ -151,10 +148,7 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 			[findingId, TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId],
 		);
 		if (rows.length === 0) {
-			throw new HttpException(
-				{ message: ifcFindingsValidationStrings.result.patchFailed, errors: [ifcFindingsValidationStrings.error.notFound] },
-				HttpStatus.NOT_FOUND,
-			);
+			throw new HttpException({ message: ifcFindingsValidationStrings.result.patchFailed, errors: [ifcFindingsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
 		}
 	}
 }

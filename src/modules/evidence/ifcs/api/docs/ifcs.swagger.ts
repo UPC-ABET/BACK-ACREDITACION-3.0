@@ -1,6 +1,6 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ifcsRoutes } from '../../config/ifcs.routes';
-import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcViewResponseDto } from '../../model/ifcs.dtos';
+import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcViewResponseDto, IfcPdfQueryDto, IfcPdfBulkDto, IfcStatusReportDto } from '../../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto, IfcPrefillResponseDto } from '../../model/ifcs-content.dtos';
 
 const cfg = ifcsRoutes.ifcs;
@@ -57,4 +57,26 @@ export const SwaggerIfcPrefill = () =>
 		...cfg.operation.prefill,
 		query: IfcPrefillQueryDto,
 		responseType: IfcPrefillResponseDto,
+	});
+
+export const SwaggerIfcPdf = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.pdf,
+		param: { name: 'id', type: 'number' },
+		query: IfcPdfQueryDto,
+		produces: 'application/pdf',
+	});
+
+export const SwaggerIfcPdfBulk = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.pdfBulk,
+		body: IfcPdfBulkDto,
+		produces: 'application/zip',
+	});
+
+export const SwaggerIfcStatusReport = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.statusReport,
+		body: IfcStatusReportDto,
+		produces: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 	});

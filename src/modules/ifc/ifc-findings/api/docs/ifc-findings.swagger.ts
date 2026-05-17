@@ -1,14 +1,6 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ifcFindingsRoutes } from '../../config/ifc-findings.routes';
-import {
-	CreateIfcFindingDto,
-	UpdateIfcFindingDto,
-	FilterIfcFindingDto,
-	ListIfcFindingsDto,
-	IfcFindingRowDto,
-	PatchIfcFindingDto,
-	IfcFindingDetailResponseDto,
-} from '../../model/ifc-findings.dtos';
+import { CreateIfcFindingDto, UpdateIfcFindingDto, FilterIfcFindingDto, ListIfcFindingsDto, IfcFindingRowDto, PatchIfcFindingDto, IfcFindingDetailResponseDto } from '../../model/ifc-findings.dtos';
 
 const cfg = ifcFindingsRoutes.ifc_findings;
 

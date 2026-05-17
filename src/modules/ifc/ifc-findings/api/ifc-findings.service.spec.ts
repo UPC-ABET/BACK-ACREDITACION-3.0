@@ -120,7 +120,10 @@ describe('IfcFindingService.patch', () => {
 	});
 
 	it('passes the resolved courseChartId + requester staff_id to assertIsInCourseChain', async () => {
-		em.query.mockResolvedValueOnce([{ id: 11 }]).mockResolvedValueOnce([{ '?column?': 1 }]).mockResolvedValueOnce(undefined);
+		em.query
+			.mockResolvedValueOnce([{ id: 11 }])
+			.mockResolvedValueOnce([{ '?column?': 1 }])
+			.mockResolvedValueOnce(undefined);
 
 		await service.patch(201, dto, 7, 9);
 

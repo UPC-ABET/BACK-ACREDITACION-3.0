@@ -1,6 +1,7 @@
 // no-override
 
-import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -96,6 +97,47 @@ export class ListIfcsDto {
 
 // --- Request DTO for /reject -------------------------------------------------
 
+export class IfcPdfQueryDto {
+	@ApiProperty({ example: 'es', required: false, enum: ['es', 'en'] })
+	@IsOptional()
+	@IsIn(['es', 'en'])
+	lang?: 'es' | 'en';
+}
+
+export class IfcPdfBulkDto {
+	@ApiProperty({ example: [88, 91, 104], required: true })
+	@IsArray()
+	@ArrayNotEmpty()
+	@ArrayMaxSize(50)
+	@IsInt({ each: true })
+	@Type(() => Number)
+	ifc_ids: number[];
+
+	@ApiProperty({ example: 'es', required: true, enum: ['es', 'en'] })
+	@IsIn(['es', 'en'])
+	lang: 'es' | 'en';
+}
+
+export class IfcStatusReportDto {
+	@ApiProperty({ example: [310, 311, 312], required: true })
+	@IsArray()
+	@ArrayNotEmpty()
+	@ArrayMaxSize(500)
+	@IsInt({ each: true })
+	@Type(() => Number)
+	chart_ids: number[];
+
+	@ApiProperty({ example: 5, required: true })
+	@IsInt()
+	@IsPositive()
+	@Type(() => Number)
+	period_id: number;
+
+	@ApiProperty({ example: 'es', required: true, enum: ['es', 'en'] })
+	@IsIn(['es', 'en'])
+	lang: 'es' | 'en';
+}
+
 export class RejectIfcDto {
 	@ApiProperty({
 		example: { es: 'Faltan evidencias en la sección 3', en: 'Missing evidence in section 3' },
@@ -128,8 +170,10 @@ export class IfcHeaderDto {
 	@ApiProperty({ type: Object }) extra: Record<string, unknown>;
 	@ApiProperty() created_at: string;
 	@ApiProperty() academic_period_code: string;
+	@ApiProperty({ type: Object }) program_label: I18nText;
 	@ApiProperty({ type: Object }) area_label: I18nText;
 	@ApiProperty({ type: Object }) subarea_label: I18nText;
+	@ApiProperty({ nullable: true }) course_code: string | null;
 	@ApiProperty({ type: Object }) course_name: I18nText;
 	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
 	@ApiProperty({ type: () => IfcCoordinatorDto }) coordinator: IfcCoordinatorDto;

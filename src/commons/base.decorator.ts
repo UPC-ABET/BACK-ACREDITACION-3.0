@@ -25,11 +25,13 @@ export function HttpMethodWithSwagger(data: {
 	body?: any;
 	query?: any;
 	responseType?: any;
+	produces?: string;
 }) {
 	const paramDecorators = !data.params ? [] : data.params.map((param) => ApiParam({ name: param.name, description: param.description, type: param.type }));
 	const singleParamDecorator = data.param ? [ApiParam({ name: data.param.name, description: data.param.description ?? data.param.name, type: data.param.type })] : [];
 	const bodyDecorator = data.body ? [ApiBody({ type: data.body })] : [];
 	const queryDecorator = data.query ? [ApiQuery({ type: data.query })] : [];
+	const producesDecorator = data.produces ? [ApiProduces(data.produces)] : [];
 	const responseDecorator = data.responseType
 		? ApiResponse({ status: 200, description: data.s200 ?? strings_swagger.status_response.s200, type: data.responseType })
 		: ApiResponse({ status: 200, description: data.s200 ?? strings_swagger.status_response.s200 });
@@ -43,5 +45,6 @@ export function HttpMethodWithSwagger(data: {
 		...singleParamDecorator,
 		...bodyDecorator,
 		...queryDecorator,
+		...producesDecorator,
 	);
 }

@@ -11,6 +11,7 @@ export const ifcsValidationStrings = {
 		notEditable: 'error.ifc.notEditable',
 		findingTempIdMissing: 'error.ifc.findingTempIdMissing',
 		ifcInstrumentMissing: 'error.ifc.ifcInstrumentMissing',
+		pdfRequiresApproved: 'error.ifc.pdfRequiresApproved',
 	},
 	result: {
 		createFailed: 'error.ifc.createFailed',
@@ -22,5 +23,8 @@ export const ifcsValidationStrings = {
 		rejectFailed: 'error.ifc.rejectFailed',
 		patchFailed: 'error.ifc.patchFailed',
 		prefillFailed: 'error.ifc.prefillFailed',
+		pdfFailed: 'error.ifc.pdfFailed',
+		pdfBulkFailed: 'error.ifc.pdfBulkFailed',
+		statusReportFailed: 'error.ifc.statusReportFailed',
 	},
 };

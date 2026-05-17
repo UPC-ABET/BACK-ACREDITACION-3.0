@@ -15,6 +15,9 @@ export const ifcsRoutes = {
 			reject: { method: 'POST', route: '/:id/reject', summary: 'Rechazar el IFC con un motivo (queda en estado OBSERVED)' },
 			patch: { method: 'PATCH', route: '/:id', summary: 'Actualizar el IFC (información, hallazgos, acciones) y registrar un nuevo estado' },
 			prefill: { method: 'GET', route: '/prefill', summary: 'Obtener cabecera + resultado de logros para el formulario en modo creación' },
+			pdf: { method: 'GET', route: '/:id/pdf', summary: 'Generar y descargar el IFC en PDF' },
+			pdfBulk: { method: 'POST', route: '/pdf/bulk', summary: 'Generar un ZIP con los PDFs de varios IFCs (lote)' },
+			statusReport: { method: 'POST', route: '/status-report', summary: 'Generar y descargar un reporte Excel del estado de los IFCs en el alcance' },
 		},
 	},
 };
