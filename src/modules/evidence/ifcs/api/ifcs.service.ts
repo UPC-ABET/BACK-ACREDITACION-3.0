@@ -1,14 +1,15 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { IfcRepository } from '../core/ifcs.repository';
-import { IfcValidation, IfcTransitionContext, IfcTransitionOp } from '../core/ifcs.validation';
+import { IfcValidation, IfcTransitionContext } from '../core/ifcs.validation';
 
-import { CreateIfcDto, ListIfcsDto, RejectIfcDto, UpdateIfcDto } from '../model/ifcs.dtos';
+import { ListIfcsDto, RejectIfcDto, UpdateIfcDto } from '../model/ifcs.dtos';
+import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
-import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
+import { IFCS_PARAMETER_KEYS, IFC_INSTRUMENT_CODE, IFC_OPS, IfcOp } from './ifcs.constants';
 
 @Injectable()
 export class IfcService extends BaseService<IfcRepository> {
@@ -17,11 +18,6 @@ export class IfcService extends BaseService<IfcRepository> {
 		protected readonly dataSource: DataSource,
 	) {
 		super(repository);
-	}
-
-	async create(dto: CreateIfcDto, manager?: EntityManager) {
-		await IfcValidation.validateCreate(this.repository, dto);
-		return await super.create(dto, manager);
 	}
 
 	async update(id: number, dto: UpdateIfcDto, manager?: EntityManager) {
@@ -38,11 +34,11 @@ export class IfcService extends BaseService<IfcRepository> {
 		return await this.dataSource.query(LIST_SQL, [dto.chart_ids, dto.period_id, TYPE_CODES.ENTITY_TYPE.COURSE]);
 	}
 
-	async getView(id: number, schoolId: number) {
+	async getView(id: number, userId: number, schoolId: number) {
 		const [headerRows, findingRows, outcomeCourseRows] = await Promise.all([
-			this.dataSource.query(HEADER_SQL, [id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]),
+			this.dataSource.query(HEADER_SQL, [id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]),
 			this.dataSource.query(FINDINGS_SQL, [id, IFCS_PARAMETER_KEYS.FINDING_PREFIX]),
-			this.dataSource.query(OUTCOME_COURSE_SQL, [id]),
+			this.dataSource.query(OUTCOME_COURSE_BY_IFC_SQL, [id]),
 		]);
 
 		if (headerRows.length === 0) {
@@ -67,28 +63,251 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async submit(ifcId: number, userId: number, schoolId: number) {
-		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, 'submit');
-		IfcValidation.assertOwnCoordinator(ctx, 'submit');
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [null, TYPE_CODES.IFC_STATUS.SAVED], 'submit');
-		return await this.insertStatus(ctx, TYPE_CODES.IFC_STATUS.SUBMITTED, null);
+		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT);
+		await IfcValidation.assertIsInCourseChain(this.dataSource, ctx, IFC_OPS.SUBMIT);
+		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [null, TYPE_CODES.IFC_STATUS.SAVED], IFC_OPS.SUBMIT);
+		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.SUBMITTED, null);
 	}
 
 	async approve(ifcId: number, userId: number, schoolId: number) {
-		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, 'approve');
-		IfcValidation.assertNotOwnCoordinator(ctx, 'approve');
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], 'approve');
-		return await this.insertStatus(ctx, TYPE_CODES.IFC_STATUS.APPROVED, null);
+		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE);
+		IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.APPROVE);
+		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], IFC_OPS.APPROVE);
+		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.APPROVED, null);
 	}
 
 	async reject(ifcId: number, userId: number, schoolId: number, dto: RejectIfcDto) {
-		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, 'reject');
-		IfcValidation.assertNotOwnCoordinator(ctx, 'reject');
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], 'reject');
-		return await this.insertStatus(ctx, TYPE_CODES.IFC_STATUS.OBSERVED, dto.comment);
+		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT);
+		IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.REJECT);
+		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], IFC_OPS.REJECT);
+		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.OBSERVED, dto.comment);
 	}
 
-	private async loadTransitionContext(ifcId: number, userId: number, schoolId: number, op: IfcTransitionOp): Promise<IfcTransitionContext> {
-		const rows = await this.dataSource.query(TRANSITION_CONTEXT_SQL, [ifcId, schoolId, userId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+	async prefill(query: IfcPrefillQueryDto, schoolId: number) {
+		const [headerRows, outcomeRows] = await Promise.all([
+			this.dataSource.query(PREFILL_HEADER_SQL, [query.chart_id, query.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]),
+			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chart_id]),
+		]);
+
+		IfcValidation.assertChartFound(headerRows, 'prefill');
+
+		return {
+			...headerRows[0],
+			coordinator_user_id: headerRows[0].coordinator_user_id === null ? null : Number(headerRows[0].coordinator_user_id),
+			outcome_course_result: this.groupOutcomeRows(outcomeRows),
+		};
+	}
+
+	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number) {
+		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
+		return await this.dataSource.transaction(async (em) => {
+			const chartRows = await em.query(CHART_RESOLUTION_SQL, [dto.chart_id, dto.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]);
+			IfcValidation.assertChartFound(chartRows, op);
+
+			const row = chartRows[0];
+			const courseId = Number(row.course_id);
+			const ifcCourseStaffId = row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id);
+			const requesterStaffId = row.requester_staff_id === null ? null : Number(row.requester_staff_id);
+			const programId = row.program_id === null ? null : Number(row.program_id);
+
+			IfcValidation.assertRequesterIsStaff(requesterStaffId, op);
+			await IfcValidation.assertIsInCourseChain(em, { ifcId: 0, ifcCourseStaffId, courseChartId: dto.chart_id, requesterStaffId, currentStatusCode: null }, op);
+
+			await IfcValidation.assertNoIfcExists(em, courseId, dto.period_id, op);
+
+			const ifcInsert = await em.query(`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`, [
+				courseId,
+				dto.period_id,
+				JSON.stringify(dto.information ?? {}),
+			]);
+			const ifcId = Number(ifcInsert[0].id);
+
+			await this.resolveFindingsAndActions(em, {
+				ifcId,
+				courseId,
+				periodId: dto.period_id,
+				programId,
+				requesterStaffId: requesterStaffId!,
+				op,
+				findings: dto.findings,
+				actions: dto.actions,
+				deletedFindingIds: dto.deleted_finding_ids,
+				deletedActionIds: dto.deleted_action_ids,
+			});
+
+			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
+			await this.insertStatus(em, ifcId, requesterStaffId!, newStatusCode, null);
+
+			return { id: ifcId };
+		});
+	}
+
+	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
+		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.PATCH;
+		return await this.dataSource.transaction(async (em) => {
+			const ctx = await this.loadTransitionContext(id, userId, schoolId, op, em);
+			await IfcValidation.assertIsInCourseChain(em, ctx, op);
+			IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
+
+			const ifcRows = await em.query(`SELECT course_id, academic_period_id FROM evidence.ifcs WHERE id = $1`, [id]);
+			const courseId = Number(ifcRows[0].course_id);
+			const periodId = Number(ifcRows[0].academic_period_id);
+
+			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [courseId, periodId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR]);
+			const programId = programRows[0]?.program_id === undefined || programRows[0]?.program_id === null ? null : Number(programRows[0].program_id);
+
+			await em.query(`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`, [JSON.stringify(dto.information ?? {}), id]);
+
+			await this.resolveFindingsAndActions(em, {
+				ifcId: id,
+				courseId,
+				periodId,
+				programId,
+				requesterStaffId: ctx.requesterStaffId!,
+				op,
+				findings: dto.findings,
+				actions: dto.actions,
+				deletedFindingIds: dto.deleted_finding_ids,
+				deletedActionIds: dto.deleted_action_ids,
+			});
+
+			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
+			await this.insertStatus(em, id, ctx.requesterStaffId!, newStatusCode, null);
+
+			return { id };
+		});
+	}
+
+	private async resolveFindingsAndActions(
+		em: EntityManager,
+		input: {
+			ifcId: number;
+			courseId: number;
+			periodId: number;
+			programId: number | null;
+			requesterStaffId: number;
+			op: IfcOp;
+			findings: { tempId: string; id: number | null; description: I18nText; criticality_code: string }[];
+			actions: { tempId: string; id: number | null; description: I18nText; finding_temp_id: string }[];
+			deletedFindingIds?: number[];
+			deletedActionIds?: number[];
+		},
+	) {
+		// 1. Deletes (orphans first)
+		for (const actionId of input.deletedActionIds ?? []) {
+			await em.query(`DELETE FROM improvement.finding_actions WHERE action_id = $1`, [actionId]);
+			await em.query(`DELETE FROM improvement.actions WHERE id = $1`, [actionId]);
+		}
+		for (const findingId of input.deletedFindingIds ?? []) {
+			await em.query(`DELETE FROM improvement.finding_outcomes WHERE finding_id = $1`, [findingId]);
+			await em.query(`DELETE FROM improvement.finding_actions WHERE finding_id = $1`, [findingId]);
+			await em.query(`DELETE FROM ifc.ifc_findings WHERE finding_id = $1`, [findingId]);
+			await em.query(`DELETE FROM improvement.findings WHERE id = $1`, [findingId]);
+		}
+
+		// 2. Resolve the IFC instrument id ONCE — every finding raised from this form uses it.
+		const instrumentRows = await em.query(`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`, [IFC_INSTRUMENT_CODE]);
+		const ifcInstrumentId: number | undefined = instrumentRows[0]?.id;
+		if (!ifcInstrumentId) {
+			throw new HttpException({ message: ifcsValidationStrings.result[`${input.op}Failed`], errors: [ifcsValidationStrings.error.ifcInstrumentMissing] }, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		// 3. Resolve criticality codes → type ids in one shot
+		const criticalityCodes = Array.from(new Set(input.findings.map((f) => f.criticality_code)));
+		const criticalityRows = criticalityCodes.length ? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [criticalityCodes]) : [];
+		const criticalityByCode = new Map<string, number>(criticalityRows.map((r: any) => [r.code, Number(r.id)]));
+
+		// 4. Findings upsert — single correlative base for (ifcInstrumentId, courseId)
+		const hasNewFinding = input.findings.some((f) => f.id === null);
+		let nextFindingCorrelative = 0;
+		if (hasNewFinding) {
+			const base = await em.query(
+				`SELECT COALESCE(MAX(correlative), 0)::int AS c
+				 FROM improvement.findings
+				 WHERE instrument_id = $1
+				   AND ((course_id IS NULL AND $2::int IS NULL) OR course_id = $2)`,
+				[ifcInstrumentId, input.courseId],
+			);
+			nextFindingCorrelative = Number(base[0]?.c ?? 0);
+		}
+
+		const tempIdToId = new Map<string, number>();
+		for (const f of input.findings) {
+			const critId = criticalityByCode.get(f.criticality_code);
+			if (!critId) {
+				throw new HttpException({ message: ifcsValidationStrings.result[`${input.op}Failed`], errors: [`error.ifc.criticalityNotFound:${f.criticality_code}`] }, HttpStatus.BAD_REQUEST);
+			}
+
+			let realId: number;
+			if (f.id === null) {
+				nextFindingCorrelative += 1;
+				const insertRow = await em.query(
+					`INSERT INTO improvement.findings (criticality_type_id, instrument_id, staff_id, correlative, description, course_id, academic_period_id, campus_id, is_automatic, is_active)
+					 VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NULL, false, true)
+					 RETURNING id`,
+					[critId, ifcInstrumentId, input.requesterStaffId, nextFindingCorrelative, JSON.stringify(f.description), input.courseId, input.periodId],
+				);
+				realId = Number(insertRow[0].id);
+
+				await em.query(
+					`INSERT INTO ifc.ifc_findings (ifc_id, finding_id, is_active)
+					 SELECT $1, $2, true
+					 WHERE NOT EXISTS (SELECT 1 FROM ifc.ifc_findings WHERE ifc_id = $1 AND finding_id = $2)`,
+					[input.ifcId, realId],
+				);
+			} else {
+				// Update preserves instrument_id — pre-existing findings keep their original instrument.
+				await em.query(`UPDATE improvement.findings SET description = $1::jsonb, criticality_type_id = $2, updated_at = NOW() WHERE id = $3`, [JSON.stringify(f.description), critId, f.id]);
+				realId = f.id;
+			}
+			tempIdToId.set(f.tempId, realId);
+		}
+
+		// 5. Actions upsert — single correlative base for (ifcInstrumentId, courseId)
+		const hasNewAction = input.actions.some((a) => a.id === null);
+		let nextActionCorrelative = 0;
+		if (hasNewAction) {
+			const base = await em.query(
+				`SELECT COALESCE(MAX(a.correlative), 0)::int AS c
+				 FROM improvement.actions a
+				 JOIN improvement.finding_actions fa ON fa.action_id = a.id
+				 JOIN improvement.findings f         ON f.id          = fa.finding_id
+				 WHERE f.instrument_id = $1
+				   AND ((f.course_id IS NULL AND $2::int IS NULL) OR f.course_id = $2)`,
+				[ifcInstrumentId, input.courseId],
+			);
+			nextActionCorrelative = Number(base[0]?.c ?? 0);
+		}
+
+		for (const a of input.actions) {
+			const findingId = tempIdToId.get(a.finding_temp_id);
+			IfcValidation.assertFindingTempIdResolved(findingId, input.op);
+
+			if (a.id === null) {
+				nextActionCorrelative += 1;
+				const insertedAction = await em.query(
+					`INSERT INTO improvement.actions (description, correlative, program_id, academic_period_id, is_active)
+					 VALUES ($1::jsonb, $2, $3, $4, true)
+					 RETURNING id`,
+					[JSON.stringify(a.description), nextActionCorrelative, input.programId, input.periodId],
+				);
+				const actionId = Number(insertedAction[0].id);
+
+				await em.query(
+					`INSERT INTO improvement.finding_actions (finding_id, action_id, in_plan_required, evidences, is_active)
+					 VALUES ($1, $2, false, NULL, true)`,
+					[findingId, actionId],
+				);
+			} else {
+				await em.query(`UPDATE improvement.actions SET description = $1::jsonb, updated_at = NOW() WHERE id = $2`, [JSON.stringify(a.description), a.id]);
+				await em.query(`UPDATE improvement.finding_actions SET finding_id = $1 WHERE action_id = $2 AND finding_id <> $1`, [findingId, a.id]);
+			}
+		}
+	}
+
+	private async loadTransitionContext(ifcId: number, userId: number, schoolId: number, op: IfcOp, em?: EntityManager): Promise<IfcTransitionContext> {
+		const params = [ifcId, schoolId, userId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL];
+		const rows = em ? await em.query(TRANSITION_CONTEXT_SQL, params) : await this.dataSource.query(TRANSITION_CONTEXT_SQL, params);
 
 		if (rows.length === 0) {
 			throw new HttpException({ message: ifcsValidationStrings.result[`${op}Failed`], errors: [ifcsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
@@ -97,8 +316,9 @@ export class IfcService extends BaseService<IfcRepository> {
 		const row = rows[0];
 		const ctx: IfcTransitionContext = {
 			ifcId,
-			ifcCourseStaffId: row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id),
-			requesterStaffId: row.requester_staff_id === null ? null : Number(row.requester_staff_id),
+			ifcCourseStaffId: row.ifc_course_staff_id == null ? null : Number(row.ifc_course_staff_id),
+			courseChartId: row.course_chart_id == null ? null : Number(row.course_chart_id),
+			requesterStaffId: row.requester_staff_id == null ? null : Number(row.requester_staff_id),
 			currentStatusCode: row.current_status_code ?? null,
 		};
 
@@ -106,9 +326,36 @@ export class IfcService extends BaseService<IfcRepository> {
 		return ctx;
 	}
 
-	private async insertStatus(ctx: IfcTransitionContext, newStatusCode: string, comment: I18nText | null) {
-		const rows = await this.dataSource.query(INSERT_STATUS_SQL, [ctx.ifcId, newStatusCode, ctx.requesterStaffId, comment ? JSON.stringify(comment) : null]);
+	private async insertStatus(em: EntityManager | undefined, ifcId: number, requesterStaffId: number | null, newStatusCode: string, comment: I18nText | null) {
+		const params = [ifcId, newStatusCode, requesterStaffId, comment ? JSON.stringify(comment) : null];
+		const rows = em ? await em.query(INSERT_STATUS_SQL, params) : await this.dataSource.query(INSERT_STATUS_SQL, params);
 		return rows[0];
+	}
+
+	private groupOutcomeRows(rows: any[]) {
+		const programIndex = new Map<string, { program_code: string; program_name: I18nText; commissions: Map<string, any> }>();
+		for (const row of rows) {
+			let pg = programIndex.get(row.program_code);
+			if (!pg) {
+				pg = { program_code: row.program_code, program_name: row.program_name, commissions: new Map() };
+				programIndex.set(row.program_code, pg);
+			}
+			let cm = pg.commissions.get(row.commission_code);
+			if (!cm) {
+				cm = { commission_code: row.commission_code, commission_name: row.commission_name, outcomes: [] as any[] };
+				pg.commissions.set(row.commission_code, cm);
+			}
+			cm.outcomes.push({
+				outcome_code: row.outcome_code,
+				outcome_name: row.outcome_name,
+				outcome_description: row.outcome_description,
+			});
+		}
+		return Array.from(programIndex.values()).map((pg) => ({
+			program_code: pg.program_code,
+			program_name: pg.program_name,
+			commissions: Array.from(pg.commissions.values()),
+		}));
 	}
 
 	private assembleViewResponse(input: { header: any; findingRows: any[]; outcomeCourseRows: any[]; findingOutcomeRows: any[]; findingActionRows: any[] }) {
@@ -138,6 +385,7 @@ export class IfcService extends BaseService<IfcRepository> {
 						by: header.status_by_name ?? null,
 					}
 				: null,
+			requester_in_chain: Boolean(header.requester_in_chain),
 		};
 
 		const outcomesByFinding = new Map<number, any[]>();
@@ -182,32 +430,7 @@ export class IfcService extends BaseService<IfcRepository> {
 			};
 		});
 
-		const programIndex = new Map<string, { program_code: string; program_name: I18nText; commissions: Map<string, any> }>();
-		for (const row of outcomeCourseRows) {
-			let pg = programIndex.get(row.program_code);
-			if (!pg) {
-				pg = { program_code: row.program_code, program_name: row.program_name, commissions: new Map() };
-				programIndex.set(row.program_code, pg);
-			}
-			let cm = pg.commissions.get(row.commission_code);
-			if (!cm) {
-				cm = { commission_code: row.commission_code, commission_name: row.commission_name, outcomes: [] as any[] };
-				pg.commissions.set(row.commission_code, cm);
-			}
-			cm.outcomes.push({
-				outcome_code: row.outcome_code,
-				outcome_name: row.outcome_name,
-				outcome_description: row.outcome_description,
-			});
-		}
-
-		const outcome_course_result = Array.from(programIndex.values()).map((pg) => ({
-			program_code: pg.program_code,
-			program_name: pg.program_name,
-			commissions: Array.from(pg.commissions.values()),
-		}));
-
-		return { ifc, outcome_course_result, findings };
+		return { ifc, outcome_course_result: this.groupOutcomeRows(outcomeCourseRows), findings };
 	}
 }
 
@@ -253,7 +476,10 @@ ORDER BY c.id
 `;
 
 const HEADER_SQL = `
-WITH course_chart AS (
+-- NOTE: WITH RECURSIVE is required at the top of the WITH block because chain_up is
+-- self-referential. The RECURSIVE keyword applies to the whole block — the non-recursive
+-- CTEs (course_chart, school_check, requester_staff) coexist under it without issue.
+WITH RECURSIVE course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
 	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
@@ -274,6 +500,24 @@ school_check AS (
 	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
 	WHERE ct_sch.code = $4
 	  AND c_school.entity_code = $2
+),
+chain_up AS (
+	SELECT id, root_chart_detail_id, staff_id
+	FROM organization.charts
+	WHERE id = (SELECT id FROM course_chart) AND is_active = true
+
+	UNION ALL
+
+	SELECT c.id, c.root_chart_detail_id, c.staff_id
+	FROM organization.charts c
+	JOIN chain_up cu ON c.id = cu.root_chart_detail_id
+	WHERE c.is_active = true
+),
+requester_staff AS (
+	SELECT s.id AS staff_id
+	FROM organization.staff s
+	WHERE s.user_id = $5
+	LIMIT 1
 )
 SELECT
 	i.id                                            AS ifc_id,
@@ -292,7 +536,12 @@ SELECT
 	ifc_st.name                                     AS status_name,
 	latest_status.register_at                       AS status_at,
 	latest_status.comment                           AS status_comment,
-	u_by.first_name || ' ' || u_by.last_name        AS status_by_name
+	u_by.first_name || ' ' || u_by.last_name        AS status_by_name,
+	EXISTS (
+		SELECT 1
+		FROM chain_up cu, requester_staff rs
+		WHERE cu.staff_id = rs.staff_id
+	)                                               AS requester_in_chain
 FROM evidence.ifcs i
 JOIN academic.academic_periods ap ON ap.id = i.academic_period_id
 JOIN academic.courses          ac ON ac.id = i.course_id
@@ -379,7 +628,7 @@ WHERE fa.finding_id = ANY($1::int[])
 ORDER BY fa.finding_id, a.correlative
 `;
 
-const OUTCOME_COURSE_SQL = `
+const OUTCOME_COURSE_BY_IFC_SQL = `
 SELECT
 	p.code                              AS program_code,
 	p.name                              AS program_name,
@@ -399,9 +648,30 @@ WHERE i.id = $1
 ORDER BY p.code, comm.code, o.outcome_code
 `;
 
+const OUTCOME_COURSE_BY_CHART_SQL = `
+SELECT
+	p.code                              AS program_code,
+	p.name                              AS program_name,
+	comm.code                           AS commission_code,
+	comm.name                           AS commission_name,
+	o.outcome_code                      AS outcome_code,
+	o.outcome_name                      AS outcome_name,
+	o.outcome_description               AS outcome_description
+FROM organization.charts c_course
+JOIN academic.courses ac                    ON ac.id = c_course.entity_code
+JOIN academic.study_plan_courses spc        ON spc.course_id = ac.id
+JOIN academic.course_outcome_mappings m     ON m.study_plan_course_id = spc.id
+JOIN accreditation.outcomes o               ON o.id    = m.outcome_id
+JOIN accreditation.program_commissions pc   ON pc.id   = o.program_commission_id
+JOIN academic.programs p                    ON p.id    = pc.program_id
+JOIN accreditation.commissions comm         ON comm.id = pc.commission_id
+WHERE c_course.id = $1
+ORDER BY p.code, comm.code, o.outcome_code
+`;
+
 const TRANSITION_CONTEXT_SQL = `
 WITH course_chart AS (
-	SELECT c.staff_id
+	SELECT c.id AS course_chart_id, c.staff_id
 	FROM organization.charts c
 	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
 	JOIN core.types ct                ON ct.id = cl.level_type_id
@@ -433,9 +703,10 @@ school_check AS (
 	  )
 )
 SELECT
-	(SELECT staff_id FROM course_chart)::int   AS ifc_course_staff_id,
-	rs.id::int                                  AS requester_staff_id,
-	ifc_st.code                                 AS current_status_code
+	(SELECT course_chart_id FROM course_chart)::int AS course_chart_id,
+	(SELECT staff_id FROM course_chart)::int        AS ifc_course_staff_id,
+	rs.id::int                                       AS requester_staff_id,
+	ifc_st.code                                      AS current_status_code
 FROM evidence.ifcs i
 LEFT JOIN organization.staff rs ON rs.user_id = $3
 LEFT JOIN LATERAL (
@@ -468,4 +739,98 @@ FROM new_status ns
 JOIN core.types t       ON t.id  = ns.status_type_id
 LEFT JOIN organization.staff st ON st.id = ns.staff_id
 LEFT JOIN organization.users u  ON u.id  = st.user_id
+`;
+
+const PREFILL_HEADER_SQL = `
+WITH course_chart AS (
+	SELECT c.*
+	FROM organization.charts c
+	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
+	JOIN core.types ct                ON ct.id = cl.level_type_id
+	WHERE c.id                  = $1
+	  AND ct.code               = $4
+	  AND c.academic_period_id  = $2
+	  AND c.is_active           = true
+	LIMIT 1
+),
+school_check AS (
+	SELECT 1
+	FROM course_chart cc
+	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_detail_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
+	WHERE ct_sch.code = $5
+	  AND c_school.entity_code = $3
+)
+SELECT
+	ap.code                                         AS academic_period_code,
+	c_area.level_title                              AS area_label,
+	c_sub.level_title                               AS subarea_label,
+	ac.name                                         AS course_name,
+	ac.learning_outcome                             AS course_learning_outcome,
+	coord_u.id::int                                 AS coordinator_user_id,
+	coord_prof.code                                 AS coordinator_code,
+	coord_u.first_name || ' ' || coord_u.last_name  AS coordinator_name
+FROM course_chart c_course
+JOIN academic.academic_periods ap   ON ap.id = c_course.academic_period_id
+JOIN academic.courses          ac   ON ac.id = c_course.entity_code
+JOIN organization.charts c_sub      ON c_sub.id  = c_course.root_chart_detail_id
+JOIN organization.charts c_area     ON c_area.id = c_sub.root_chart_detail_id
+LEFT JOIN organization.staff   coord_st   ON coord_st.id   = c_course.staff_id
+LEFT JOIN organization.users   coord_u    ON coord_u.id    = coord_st.user_id
+LEFT JOIN academic.professors  coord_prof ON coord_prof.staff_id = coord_st.id
+WHERE EXISTS (SELECT 1 FROM school_check)
+`;
+
+const CHART_RESOLUTION_SQL = `
+WITH course_chart AS (
+	SELECT c.*
+	FROM organization.charts c
+	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
+	JOIN core.types ct                ON ct.id = cl.level_type_id
+	WHERE c.id                  = $1
+	  AND ct.code               = $4
+	  AND c.academic_period_id  = $2
+	  AND c.is_active           = true
+	LIMIT 1
+),
+school_check AS (
+	SELECT 1
+	FROM course_chart cc
+	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_detail_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
+	WHERE ct_sch.code = $5
+	  AND c_school.entity_code = $3
+)
+SELECT
+	c_course.entity_code::int    AS course_id,
+	c_course.staff_id::int       AS ifc_course_staff_id,
+	c_program.entity_code::int   AS program_id,
+	rs.id::int                    AS requester_staff_id
+FROM course_chart c_course
+JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
+JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
+JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+LEFT JOIN organization.staff rs    ON rs.user_id = $6
+WHERE EXISTS (SELECT 1 FROM school_check)
+`;
+
+const PROGRAM_BY_COURSE_PERIOD_SQL = `
+SELECT c_program.entity_code::int AS program_id
+FROM organization.charts c_course
+JOIN organization.chart_levels cl  ON cl.id = c_course.chart_level_id
+JOIN core.types ct                 ON ct.id = cl.level_type_id
+JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
+JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
+JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+WHERE c_course.entity_code        = $1
+  AND c_course.academic_period_id = $2
+  AND ct.code                     = $3
+  AND c_course.is_active          = true
+LIMIT 1
 `;

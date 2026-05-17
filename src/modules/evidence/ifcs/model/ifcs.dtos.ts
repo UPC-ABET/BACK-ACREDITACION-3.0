@@ -1,3 +1,5 @@
+// no-override
+
 import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
@@ -132,6 +134,8 @@ export class IfcHeaderDto {
 	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
 	@ApiProperty({ type: () => IfcCoordinatorDto }) coordinator: IfcCoordinatorDto;
 	@ApiProperty({ type: () => IfcStatusInfoDto, nullable: true }) status: IfcStatusInfoDto | null;
+	@ApiProperty({ description: 'True when the requester is the own coordinator OR any ancestor of the course in the chart tree. Drives the Edit button on the view page.' })
+	requester_in_chain: boolean;
 }
 
 export class IfcOutcomeItemDto {

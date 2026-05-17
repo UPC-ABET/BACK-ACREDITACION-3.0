@@ -46,7 +46,6 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Se identifico necesidad de reforzar la formulacion de algoritmos antes de la implementacion.', 'Need identified to reinforce algorithm formulation before implementation.'),
 			'Fundamentos de Programacion',
 			'AP_2026_1',
-			'CAMPUS_MON',
 		],
 		[
 			'TG801-T001',
@@ -56,30 +55,27 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Los equipos requieren mayor evidencia de colaboracion registrada durante el proyecto.', 'Teams require more recorded collaboration evidence during the project.'),
 			'Proyecto Integrador de Software',
 			'AP_2026_2',
-			'CAMPUS_MON',
 		],
 		[
 			'TG801-T001',
-			'IFC',
+			'INST_IFC',
 			'coord.eiscb@upc.edu.pe',
 			2025001,
 			i18n('Brecha en evaluacion algoritmica detectada en el IFC de CC101.', 'Algorithmic-evaluation gap detected in CC101 IFC.'),
 			'Algoritmos y Estructuras de Datos',
 			'202502',
-			'CAMPUS_SM',
 		],
 		[
 			'TG801-T003',
-			'IFC',
+			'INST_IFC',
 			'coord.eiscb@upc.edu.pe',
 			2025002,
 			i18n('Oportunidad de mejora en consultas SQL avanzadas reportada en el IFC de CC102.', 'Improvement opportunity in advanced SQL queries reported in CC102 IFC.'),
 			'Bases de Datos',
 			'202502',
-			'CAMPUS_SM',
 		],
 	]
-		.map(([ct, ic, em, corr, desc, cn, pc, cc]) => `('${ct}', '${ic}', '${em}', ${corr}, '${desc}'::jsonb, '${cn}', '${pc}', '${cc}')`)
+		.map(([ct, ic, em, corr, desc, cn, pc]) => `('${ct}', '${ic}', '${em}', ${corr}, '${desc}'::jsonb, '${cn}', '${pc}')`)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -90,14 +86,13 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			correlative,
 			description,
 			course_id,
-			academic_period_id,
-			campus_id
+			academic_period_id
 		)
-		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, course.id, period.id, campus.id
+		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, course.id, period.id
 		FROM (
 			VALUES
 				${findingValues}
-		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, course_name, academic_period_code, campus_code)
+		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, course_name, academic_period_code)
 		JOIN "core"."types" criticality
 			ON criticality.code = v.criticality_type_code
 		JOIN "evidence"."instruments" instrument
@@ -108,8 +103,6 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			ON course.name->>'es' = v.course_name
 		JOIN "academic"."academic_periods" period
 			ON period.code = v.academic_period_code
-		JOIN "organization"."campuses" campus
-			ON campus.code = v.campus_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "improvement"."findings" finding WHERE finding.correlative = v.correlative
 		);

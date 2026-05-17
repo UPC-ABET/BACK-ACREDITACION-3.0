@@ -23,7 +23,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			i18n('Instrumento de percepcion para resultados del programa', 'Perception instrument for program outcomes'),
 			false,
 		],
-		['TG501-T001', 'IFC', i18n('Informe Final del Curso', 'Course Final Report'), i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'), true],
+		['TG501-T001', 'INST_IFC', i18n('Informe Final del Curso', 'Course Final Report'), i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'), true],
 	]
 		.map(([ctCode, code, name, desc, acc]) => `('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`)
 		.join(',\n\t\t\t');

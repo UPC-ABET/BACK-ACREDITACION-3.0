@@ -34,7 +34,7 @@ export class FindingEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
-	@IntegerFKIDColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: true })
 	campus_id: number;
 
 	@BooleanColumn({ nullable: false, default: true })

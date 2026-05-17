@@ -3,7 +3,7 @@ export const ifcsRoutes = {
 		route: 'ifcs',
 		tag: 'IFCs',
 		operation: {
-			create: { method: 'POST', route: '/create', summary: 'Registrar IFC' },
+			create: { method: 'POST', route: '/create', summary: 'Crear un IFC nuevo con contenido y hallazgos en una sola transacción' },
 			update: { method: 'PUT', route: '/update/:id', summary: 'Actualizar IFC' },
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar IFC' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar IFCs' },
@@ -13,6 +13,8 @@ export const ifcsRoutes = {
 			submit: { method: 'POST', route: '/:id/submit', summary: 'Enviar el IFC a revisión' },
 			approve: { method: 'POST', route: '/:id/approve', summary: 'Aprobar el IFC' },
 			reject: { method: 'POST', route: '/:id/reject', summary: 'Rechazar el IFC con un motivo (queda en estado OBSERVED)' },
+			patch: { method: 'PATCH', route: '/:id', summary: 'Actualizar el IFC (información, hallazgos, acciones) y registrar un nuevo estado' },
+			prefill: { method: 'GET', route: '/prefill', summary: 'Obtener cabecera + resultado de logros para el formulario en modo creación' },
 		},
 	},
 };

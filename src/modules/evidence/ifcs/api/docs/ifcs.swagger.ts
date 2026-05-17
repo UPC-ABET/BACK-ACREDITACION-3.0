@@ -1,6 +1,7 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ifcsRoutes } from '../../config/ifcs.routes';
-import { CreateIfcDto, UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcViewResponseDto } from '../../model/ifcs.dtos';
+import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcViewResponseDto } from '../../model/ifcs.dtos';
+import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto, IfcPrefillResponseDto } from '../../model/ifcs-content.dtos';
 
 const cfg = ifcsRoutes.ifcs;
 
@@ -42,4 +43,18 @@ export const SwaggerIfcReject = () =>
 		...cfg.operation.reject,
 		param: { name: 'id', type: 'number' },
 		body: RejectIfcDto,
+	});
+
+export const SwaggerIfcPatch = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.patch,
+		param: { name: 'id', type: 'number' },
+		body: IfcContentDto,
+	});
+
+export const SwaggerIfcPrefill = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.prefill,
+		query: IfcPrefillQueryDto,
+		responseType: IfcPrefillResponseDto,
 	});

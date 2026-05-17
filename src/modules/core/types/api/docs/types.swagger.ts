@@ -17,3 +17,9 @@ export const SwaggerTypeGetAll = () => HttpMethodWithSwagger(cfg.operation.getAl
 export const SwaggerTypeGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
 export const SwaggerTypeGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterTypeDto });
+
+export const SwaggerTypesByGroupCode = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.byGroupCode,
+		param: { name: 'code', type: 'string' },
+	});
