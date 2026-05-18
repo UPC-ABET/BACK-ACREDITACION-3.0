@@ -19,10 +19,7 @@ export class GraConfigRepository extends BaseRepostitory {
 	async findAllGra(filters?: { program_id?: number; academic_period_id?: number; is_active?: boolean; is_visible?: boolean }): Promise<OutcomeConfigEntity[]> {
 		const { repository, queryRunner } = await this.getRepository();
 		try {
-			const qb = repository
-				.createQueryBuilder('oc')
-				.leftJoinAndSelect('oc.outcome', 'outcome')
-				.where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+			const qb = repository.createQueryBuilder('oc').leftJoinAndSelect('oc.outcome', 'outcome').where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
 			if (filters?.program_id !== undefined) {
 				qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.program_id });

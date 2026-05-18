@@ -34,7 +34,19 @@ export class GraNotificationRepository extends BaseRepostitory {
 		graSurveyTypeId: number,
 		scheduledStatusId: number,
 		filters: { academic_period_id: number; program_id?: number },
-	): Promise<{ notification_id: number; token: string; max_register_date: string; survey_id: number; student_id: number; student_name: string; student_code: string; student_email: string; program_name: string }[]> {
+	): Promise<
+		{
+			notification_id: number;
+			token: string;
+			max_register_date: string;
+			survey_id: number;
+			student_id: number;
+			student_name: string;
+			student_code: string;
+			student_email: string;
+			program_name: string;
+		}[]
+	> {
 		const { queryRunner } = await this.getRepository();
 		try {
 			let query = `

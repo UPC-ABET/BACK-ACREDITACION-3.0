@@ -79,7 +79,7 @@ export class GraSurveyRepository extends BaseRepostitory {
 		const { queryRunner } = await this.getRepository();
 		try {
 			const rows = await queryRunner.manager.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
-				return rows?.[0]?.id ?? null;
+			return rows?.[0]?.id ?? null;
 		} finally {
 			await queryRunner.release();
 		}

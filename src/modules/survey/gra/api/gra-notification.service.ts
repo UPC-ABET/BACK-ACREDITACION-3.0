@@ -243,10 +243,12 @@ export class GraNotificationService {
 				const existing = await queryRunner.manager.query(`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`, [tokenData!.survey_id, outcomeId]);
 
 				if (existing?.length > 0) {
-					await queryRunner.manager.query(
-						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-						[item.score, item.commentaries ?? null, tokenData!.survey_id, outcomeId],
-					);
+					await queryRunner.manager.query(`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`, [
+						item.score,
+						item.commentaries ?? null,
+						tokenData!.survey_id,
+						outcomeId,
+					]);
 				} else {
 					await queryRunner.manager.query(`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`, [
 						tokenData!.survey_id,
