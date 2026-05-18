@@ -1,6 +1,14 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { lcfcRoutes } from '../../config/lcfc.routes';
-import { GenerateLcfcConfigDto, FilterLcfcConfigDto, UpdateLcfcConfigStatusDto, SendLcfcNotificationDto, GetLcfcSurveyByTokenDto, CompleteLcfcSurveyDto, DashboardLcfcDto } from '../../model/lcfc.dtos';
+import {
+	GenerateLcfcConfigDto,
+	FilterLcfcConfigDto,
+	UpdateLcfcConfigStatusDto,
+	SendLcfcNotificationDto,
+	GetLcfcSurveyByTokenDto,
+	CompleteLcfcSurveyDto,
+	DashboardLcfcDto,
+} from '../../model/lcfc.dtos';
 
 const cfg = lcfcRoutes;
 
@@ -16,8 +24,7 @@ export const SwaggerLcfcConfigUpdateStatus = () => HttpMethodWithSwagger({ ...cf
 export const SwaggerLcfcNotificationSend = () => HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 
 // ── TOKEN ──
-export const SwaggerLcfcTokenValidate = () =>
-	HttpMethodWithSwagger({ ...cfg.token.validate, params: [{ name: 'token', description: 'Token UUID de la encuesta LCFC', type: String }] });
+export const SwaggerLcfcTokenValidate = () => HttpMethodWithSwagger({ ...cfg.token.validate, params: [{ name: 'token', description: 'Token UUID de la encuesta LCFC', type: String }] });
 
 // ── SURVEY ──
 export const SwaggerLcfcSurveyGetByToken = () => HttpMethodWithSwagger({ ...cfg.survey.getByToken, body: GetLcfcSurveyByTokenDto });

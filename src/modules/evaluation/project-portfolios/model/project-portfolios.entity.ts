@@ -1,6 +1,6 @@
 import { Entity, Column } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, NameColumn, TextMediumColumn, TextLargeColumn, IntegerFKIDColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, NameColumn, TextMediumColumn, TextLargeColumn, IntegerFKIDColumn, BooleanColumn } from 'src/commons/configs/db.configs';
 
 /**
  * Estados que maneja el sistema antiguo (ProjectPortfolioStatus.cs).

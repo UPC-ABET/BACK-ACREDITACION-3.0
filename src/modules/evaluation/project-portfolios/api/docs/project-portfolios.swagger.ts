@@ -20,16 +20,13 @@ export const SwaggerProjectPortfolioGetCareers = () => HttpMethodWithSwagger(cfg
 export const SwaggerProjectPortfolioGetAccess = () => HttpMethodWithSwagger(cfg.operation.getAccess);
 export const SwaggerProjectPortfolioListRoles = () => HttpMethodWithSwagger(cfg.operation.listRoles);
 
-export const SwaggerProjectPortfolioGetAllPaginated = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.getAllPaginated, body: PaginatedProjectPortfolioRequestDto });
+export const SwaggerProjectPortfolioGetAllPaginated = () => HttpMethodWithSwagger({ ...cfg.operation.getAllPaginated, body: PaginatedProjectPortfolioRequestDto });
 
-export const SwaggerProjectPortfolioGetById = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.getById, params: [{ name: 'id', description: 'ID del portafolio', type: Number }] });
+export const SwaggerProjectPortfolioGetById = () => HttpMethodWithSwagger({ ...cfg.operation.getById, params: [{ name: 'id', description: 'ID del portafolio', type: Number }] });
 
 export const SwaggerProjectPortfolioCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateProjectPortfolioDto });
 export const SwaggerProjectPortfolioUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateProjectPortfolioDto });
-export const SwaggerProjectPortfolioDelete = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.delete, params: [{ name: 'id', description: 'ID del portafolio', type: Number }] });
+export const SwaggerProjectPortfolioDelete = () => HttpMethodWithSwagger({ ...cfg.operation.delete, params: [{ name: 'id', description: 'ID del portafolio', type: Number }] });
 
 export const SwaggerProjectPortfolioGetBulkUploadTemplate = () => HttpMethodWithSwagger(cfg.operation.getBulkUploadTemplate);
 export const SwaggerProjectPortfolioGetBulkUploadTemplateFile = () => HttpMethodWithSwagger(cfg.operation.getBulkUploadTemplateFile);
@@ -40,16 +37,10 @@ export const SwaggerProjectPortfolioGetCompanies = () => HttpMethodWithSwagger(c
 export const SwaggerProjectPortfolioUnassignStudent = () => HttpMethodWithSwagger(cfg.operation.unassignStudent);
 export const SwaggerProjectPortfolioGetTotalTeacherProjects = () => HttpMethodWithSwagger(cfg.operation.getTotalTeacherProjects);
 
-export const SwaggerProjectPortfolioUpdateManager = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.updateManager, body: UpdateProjectPortfolioManagerDto });
-export const SwaggerProjectPortfolioAutoAssignPartner = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.autoAssignPartner, body: AutoAssignPartnerDto });
-export const SwaggerProjectPortfolioExport = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.export, body: PaginatedProjectPortfolioRequestDto });
+export const SwaggerProjectPortfolioUpdateManager = () => HttpMethodWithSwagger({ ...cfg.operation.updateManager, body: UpdateProjectPortfolioManagerDto });
+export const SwaggerProjectPortfolioAutoAssignPartner = () => HttpMethodWithSwagger({ ...cfg.operation.autoAssignPartner, body: AutoAssignPartnerDto });
+export const SwaggerProjectPortfolioExport = () => HttpMethodWithSwagger({ ...cfg.operation.export, body: PaginatedProjectPortfolioRequestDto });
 export const SwaggerProjectPortfolioGetTeachers = () => HttpMethodWithSwagger(cfg.operation.getTeachers);
-export const SwaggerProjectPortfolioMigrate = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.migrate, body: MigrateProjectPortfoliosDto });
-export const SwaggerProjectPortfolioManagementAssign = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.managementAssign, body: ManagementAssignDto });
-export const SwaggerProjectPortfolioMigrateFromDatabase = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.migrateFromDatabase, body: MigrateFromDatabaseDto });
+export const SwaggerProjectPortfolioMigrate = () => HttpMethodWithSwagger({ ...cfg.operation.migrate, body: MigrateProjectPortfoliosDto });
+export const SwaggerProjectPortfolioManagementAssign = () => HttpMethodWithSwagger({ ...cfg.operation.managementAssign, body: ManagementAssignDto });
+export const SwaggerProjectPortfolioMigrateFromDatabase = () => HttpMethodWithSwagger({ ...cfg.operation.migrateFromDatabase, body: MigrateFromDatabaseDto });

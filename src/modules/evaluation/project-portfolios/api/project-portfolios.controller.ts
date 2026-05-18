@@ -114,12 +114,7 @@ export class ProjectPortfolioController {
 
 	@SwaggerProjectPortfolioBulkUpload()
 	@UseInterceptors(FileInterceptor('file'))
-	async bulkUpload(
-		@Param('periodoAcademicoId') periodoAcademicoId: number,
-		@Param('college') college: string,
-		@Param('IdModalidad') idModalidad: number,
-		@UploadedFile() file: any,
-	) {
+	async bulkUpload(@Param('periodoAcademicoId') periodoAcademicoId: number, @Param('college') college: string, @Param('IdModalidad') idModalidad: number, @UploadedFile() file: any) {
 		return parseSuccessResponse(await this.service.bulkUpload(college, Number(periodoAcademicoId), Number(idModalidad), file));
 	}
 

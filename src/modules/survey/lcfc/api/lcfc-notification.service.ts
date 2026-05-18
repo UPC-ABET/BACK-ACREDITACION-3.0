@@ -56,9 +56,7 @@ export class LcfcNotificationService {
 		}
 
 		// 2. Collect active course_section_ids, applying optional filters
-		let courseSectionIds = activeConfigs
-			.map((c) => (c.extra as any)?.course_section_id as number)
-			.filter((id): id is number => typeof id === 'number');
+		let courseSectionIds = activeConfigs.map((c) => (c.extra as any)?.course_section_id as number).filter((id): id is number => typeof id === 'number');
 
 		if (dto.campus_id) {
 			const campusId = dto.campus_id;
@@ -135,10 +133,10 @@ export class LcfcNotificationService {
 				} else {
 					alreadyExisted++;
 					// Include existing pending notifications so we can re-send if needed
-					const existingNotif = await queryRunner.manager.query(
-						`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
-						[existingSurvey.id, scheduledStatusId],
-					);
+					const existingNotif = await queryRunner.manager.query(`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`, [
+						existingSurvey.id,
+						scheduledStatusId,
+					]);
 
 					if (existingNotif?.[0]) {
 						pendingNotifications.push({

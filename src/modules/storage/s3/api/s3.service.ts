@@ -35,9 +35,7 @@ export class S3Service {
 
 	private ensureConfigured(): void {
 		if (!this.bucket || !this.region || !this.accessKeyId || !this.secretAccessKey) {
-			throw new InternalServerErrorException(
-				'AWS S3 no está configurado: faltan AWS_BUCKET_NAME / AWS_REGION / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY en .env',
-			);
+			throw new InternalServerErrorException('AWS S3 no está configurado: faltan AWS_BUCKET_NAME / AWS_REGION / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY en .env');
 		}
 	}
 
