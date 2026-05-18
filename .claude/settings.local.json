@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls c:/Users/YOLKA/Desktop/ABET/)",
+      "Read(//c/Users/YOLKA/Desktop/ABET/**)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}
