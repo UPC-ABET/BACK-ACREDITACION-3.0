@@ -13,6 +13,19 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 import { ProjectEntity } from 'src/modules/evaluation/projects/model/projects.entity';
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import type { I18nText } from 'src/shared/types/i18n';
+
+const toI18n = (text: string): I18nText => ({ es: text, en: text });
+const i18nText = (val: I18nText | string | null | undefined): I18nText | null => {
+	if (!val) return null;
+	if (typeof val === 'string') return toI18n(val);
+	return val;
+};
+const i18nTrim = (val: I18nText | null | undefined): string | null => {
+	if (!val) return null;
+	const text = typeof val === 'string' ? val : (val.es ?? Object.values(val)[0] ?? '');
+	return text.trim();
+};
 
 /**
  * EvaluationSubmissionService
@@ -234,14 +247,14 @@ export class EvaluationSubmissionService {
 
 			if (existingScore) {
 				existingScore.score = scoreDto.score;
-				existingScore.commentaries = scoreDto.commentaries ?? existingScore.commentaries;
+				existingScore.commentaries = i18nText(scoreDto.commentaries) ?? existingScore.commentaries;
 				await manager.save(existingScore);
 			} else {
 				const newScore = manager.create(RubricScoreEntity, {
 					evaluation_id: evaluation.id,
 					rubric_question_criteria_id: scoreDto.rubric_question_criteria_id,
 					score: scoreDto.score,
-					commentaries: scoreDto.commentaries,
+					commentaries: i18nText(scoreDto.commentaries),
 					is_active: true,
 				});
 				await manager.save(newScore);
@@ -401,14 +414,14 @@ export class EvaluationSubmissionService {
 					project_student_id: dto.project_student_id,
 					project_evaluator_id: dto.project_evaluator_id,
 					qualification_status_type_id: nrStatusTypeId,
-					observation: dto.observation?.trim() ?? null,
+					observation: i18nText(dto.observation),
 					register_at: new Date(),
 				});
 			} else {
-				evaluation.observation = dto.observation?.trim() ?? null;
+				evaluation.observation = i18nText(dto.observation);
 			}
 
-			if (!evaluation.observation) {
+			if (!evaluation.observation || !i18nTrim(evaluation.observation)) {
 				evaluation.qualification_status_type_id = nrStatusTypeId;
 			} else {
 				evaluation.qualification_status_type_id = asistioStatusTypeId;
@@ -467,7 +480,7 @@ export class EvaluationSubmissionService {
 					throw new BadRequestException(`Debe calificar al alumno con enrollment ${ps.student_section_enrollment_id}.`);
 				}
 
-				if (!dto.is_pa && (!evaluation.observation || !evaluation.observation.trim())) {
+				if (!dto.is_pa && !i18nTrim(evaluation.observation)) {
 					throw new BadRequestException(`Debe ingresar y guardar las observaciones para el alumno ${ps.student_section_enrollment_id}.`);
 				}
 

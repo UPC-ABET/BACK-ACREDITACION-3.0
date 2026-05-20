@@ -9,6 +9,9 @@ import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-ques
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import type { I18nText } from 'src/shared/types/i18n';
+
+const toI18n = (text: string): I18nText => ({ es: text, en: text });
 
 /**
  * RubricConfigService
@@ -167,7 +170,7 @@ export class RubricConfigService {
 				const question = queryRunner.manager.create(RubricQuestionEntity, {
 					rubric_id: savedRubric.id,
 					outcome_id: questionDto.outcome_id,
-					question: questionDto.question,
+					question: toI18n(questionDto.question),
 					is_active: true,
 				});
 				const savedQuestion = await queryRunner.manager.save(question);
@@ -175,7 +178,7 @@ export class RubricConfigService {
 				const criteriaEntities = questionDto.criterias.map((criteriaDto) =>
 					queryRunner.manager.create(RubricQuestionCriteriaEntity, {
 						rubric_question_id: savedQuestion.id,
-						criteria: criteriaDto.criteria,
+						criteria: toI18n(criteriaDto.criteria),
 						min_value: criteriaDto.min_value,
 						max_value: criteriaDto.max_value,
 						is_active: true,
