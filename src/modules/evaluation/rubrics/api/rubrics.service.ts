@@ -2,15 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { RubricRepository } from '../core/rubrics.repository';
 import { RubricValidation } from '../core/rubrics.validation';
-
-import { CreateRubricDto, UpdateRubricDto } from '../model/rubrics.dtos';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { CreateRubricDto, CreateRubricCriteriaDto, CreateRubricQuestionDto, UpdateRubricDto } from '../model/rubrics.dtos';
+import { DataSource, DeepPartial, EntityManager, In } from 'typeorm';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { RubricConfigService } from './rubric-config.service';
 import { RubricEntity } from '../model/rubrics.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Injectable()
 export class RubricService extends BaseService<RubricRepository> {
@@ -22,30 +22,127 @@ export class RubricService extends BaseService<RubricRepository> {
 		super(repository);
 	}
 
-	// Determina si una rúbrica está siendo utilizada en alguna calificación registrada
+	// ── Helpers ───────────────────────────────────────────────────────────
+
+	private normalizeI18n(value: I18nText | string): I18nText {
+		return typeof value === 'string' ? { en: value, es: value } : value;
+	}
+
+	// ── Sincronización de criterias ───────────────────────────────────────
+
+	private async syncCriterias(
+		questionId: number,
+		criterias: CreateRubricCriteriaDto[],
+		manager: EntityManager,
+	): Promise<void> {
+		const criteriaRepo = manager.getRepository(RubricQuestionCriteriaEntity);
+
+		const incomingIds = criterias.filter((c) => c.id).map((c) => c.id as number);
+
+		// Borrar las que ya no vienen (si criterias = [] borra todas)
+		const existing = await criteriaRepo.find({ where: { rubric_question_id: questionId } });
+		const toDelete = existing.filter((c) => !incomingIds.includes(c.id));
+		if (toDelete.length > 0) {
+			await criteriaRepo.delete(toDelete.map((c) => c.id));
+		}
+
+		// Actualizar las que tienen id
+		const toUpdate = criterias.filter((c) => c.id);
+		for (const c of toUpdate) {
+			await criteriaRepo.update(c.id as number, {
+				criteria: this.normalizeI18n(c.criteria),
+				min_value: c.min_value,
+				max_value: c.max_value,
+			});
+		}
+
+		// Insertar las nuevas (sin id)
+		const toInsert = criterias.filter((c) => !c.id);
+		if (toInsert.length > 0) {
+			await criteriaRepo.save(
+				toInsert.map((c) => ({
+					rubric_question_id: questionId,
+					criteria: this.normalizeI18n(c.criteria),
+					min_value: c.min_value,
+					max_value: c.max_value,
+				})) as DeepPartial<RubricQuestionCriteriaEntity>[],
+			);
+		}
+	}
+
+	// ── Sincronización de questions ───────────────────────────────────────
+
+	private async syncQuestions(
+		rubricId: number,
+		questions: CreateRubricQuestionDto[],
+		manager: EntityManager,
+	): Promise<void> {
+		const questionRepo = manager.getRepository(RubricQuestionEntity);
+		const criteriaRepo = manager.getRepository(RubricQuestionCriteriaEntity);
+
+		const incomingIds = questions.filter((q) => q.id).map((q) => q.id as number);
+
+		// Borrar questions que ya no vienen (y sus criterias primero)
+		const existing = await questionRepo.find({ where: { rubric_id: rubricId } });
+		const toDelete = existing.filter((q) => !incomingIds.includes(q.id));
+		if (toDelete.length > 0) {
+			const deletedIds = toDelete.map((q) => q.id);
+			await criteriaRepo.delete({ rubric_question_id: In(deletedIds) });
+			await questionRepo.delete(deletedIds);
+		}
+
+		// Actualizar las que tienen id
+		const toUpdate = questions.filter((q) => q.id);
+		for (const q of toUpdate) {
+			const { criterias, id, ...questionData } = q;
+			await questionRepo.update(id as number, {
+				...questionData,
+				question: this.normalizeI18n(q.question),
+			});
+			if (criterias !== undefined) {
+				await this.syncCriterias(id as number, criterias, manager);
+			}
+		}
+
+		// Insertar las nuevas (sin id)
+		const toInsert = questions.filter((q) => !q.id);
+		for (const q of toInsert) {
+			const { criterias, ...questionData } = q;
+			const saved = await questionRepo.save({
+				...questionData,
+				rubric_id: rubricId,
+				question: this.normalizeI18n(q.question),
+			} as DeepPartial<RubricQuestionEntity>);
+
+			if (criterias && criterias.length > 0) {
+				await criteriaRepo.save(
+					criterias.map((c) => ({
+						rubric_question_id: saved.id,
+						criteria: this.normalizeI18n(c.criteria),
+						min_value: c.min_value,
+						max_value: c.max_value,
+					})) as DeepPartial<RubricQuestionCriteriaEntity>[],
+				);
+			}
+		}
+	}
+
+	// ── isRubricUsed ──────────────────────────────────────────────────────
+
 	private async isRubricUsed(rubricId: number): Promise<boolean> {
 		const questions = await this.dataSource.getRepository(RubricQuestionEntity).find({
 			where: { rubric_id: rubricId },
 		});
-
 		if (questions.length === 0) return false;
 
 		const questionIds = questions.map((q) => q.id);
-
-		// Obtener criterios asociados a estas preguntas
 		const criteriaList = await this.dataSource.getRepository(RubricQuestionCriteriaEntity).find({
 			where: { rubric_question_id: In(questionIds) },
 		});
-
 		if (criteriaList.length === 0) return false;
 
-		const criteriaIds = criteriaList.map((c) => c.id);
-
-		// Verificar si hay scores asociados a estos criterios
 		return await this.dataSource.getRepository(RubricScoreEntity).exists({
-			where: {
-				rubric_question_criteria_id: In(criteriaIds),
-			},
+			where: { rubric_question_criteria_id: In(criteriaList.map((c) => c.id)) },
 		});
 	}
 
@@ -76,6 +173,7 @@ export class RubricService extends BaseService<RubricRepository> {
 
 		return raw.map((row: { program_id: number }) => row.program_id);
 	}
+	// ── CRUD ──────────────────────────────────────────────────────────────
 
 	async create(dto: CreateRubricDto, manager?: EntityManager) {
 		await RubricValidation.validateCreate(this.repository, dto);
@@ -84,7 +182,34 @@ export class RubricService extends BaseService<RubricRepository> {
 
 	async update(id: number, dto: UpdateRubricDto, manager?: EntityManager) {
 		await RubricValidation.validateUpdate(this.repository, id, dto);
-		return await super.update(id, dto, manager);
+
+		const { questions, ...rubricData } = dto;
+
+		// Actualizar solo campos escalares de la rúbrica sin cargar relations
+		// para que TypeORM no intente sincronizar questions en el save
+		const rubricRepo = this.dataSource.getRepository(RubricEntity);
+		const entity = await rubricRepo.findOne({ where: { id }, relations: [] });
+		if (!entity) throw new Error(`No se encontró la rúbrica con ID: ${id}`);
+		Object.assign(entity, rubricData);
+		await rubricRepo.save(entity);
+
+		// Sincronizar questions en transacción separada
+		if (questions !== undefined) {
+			const queryRunner = this.dataSource.createQueryRunner();
+			await queryRunner.connect();
+			await queryRunner.startTransaction();
+			try {
+				await this.syncQuestions(id, questions, queryRunner.manager);
+				await queryRunner.commitTransaction();
+			} catch (error) {
+				await queryRunner.rollbackTransaction();
+				throw error;
+			} finally {
+				await queryRunner.release();
+			}
+		}
+
+		return await this.repository.findOneById(id);
 	}
 
 	async getAllWithFilters(filters?: { schoolId?: number; programId?: number; academicPeriodId?: number; courseId?: number }) {
@@ -120,33 +245,22 @@ export class RubricService extends BaseService<RubricRepository> {
 
 		const rubrics = await qb.getMany();
 
-		const rubricsWithUsage = await Promise.all(
+		return await Promise.all(
 			rubrics.map(async (rubric) => ({
 				...rubric,
 				isUsed: await this.isRubricUsed(rubric.id),
 			})),
 		);
-
-		return rubricsWithUsage;
 	}
 
 	async getById(id: number) {
 		const rubricWithContext = await this.rubricConfigService.getRubricWithContextData(id);
-
 		return {
 			...rubricWithContext,
 			isUsed: await this.isRubricUsed(id),
 		} as any;
 	}
 
-	/**
-	 * Borra una rúbrica con cascada (R-RUB-018).
-	 *
-	 * Retorna:
-	 * - code 0: eliminado exitosamente
-	 * - code 1: tiene calificaciones (no se permite)
-	 * - code 2: no existe
-	 */
 	async delete(id: number, manager?: EntityManager): Promise<{ code: number; message: string; data: any }> {
 		const rubric = await this.repository.findOneById(id);
 		if (!rubric) {
@@ -158,17 +272,15 @@ export class RubricService extends BaseService<RubricRepository> {
 		await queryRunner.startTransaction();
 
 		try {
-			const questions = await queryRunner.manager.find(RubricQuestionEntity, {
-				where: { rubric_id: id },
-			});
+			const questions = await queryRunner.manager.find(RubricQuestionEntity, { where: { rubric_id: id } });
 			const questionIds = questions.map((q) => q.id);
 
-			// Verificar si hay scores asociados
 			if (questionIds.length > 0) {
 				const criteriaList = await queryRunner.manager.find(RubricQuestionCriteriaEntity, {
 					where: { rubric_question_id: In(questionIds) },
 				});
 				const criteriaIds = criteriaList.map((c) => c.id);
+
 				if (criteriaIds.length > 0) {
 					const scoreCount = await queryRunner.manager.count(RubricScoreEntity, {
 						where: { rubric_question_criteria_id: In(criteriaIds) },
@@ -179,13 +291,10 @@ export class RubricService extends BaseService<RubricRepository> {
 					}
 				}
 
-				// Eliminar criterios
 				await queryRunner.manager.delete(RubricQuestionCriteriaEntity, { rubric_question_id: In(questionIds) });
 			}
 
-			// Eliminar preguntas
 			await queryRunner.manager.delete(RubricQuestionEntity, { rubric_id: id });
-			// Eliminar rúbrica
 			await queryRunner.manager.delete(rubric.constructor, id);
 
 			await queryRunner.commitTransaction();
