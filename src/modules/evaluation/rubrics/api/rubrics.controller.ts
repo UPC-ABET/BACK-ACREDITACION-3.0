@@ -55,10 +55,10 @@ export class RubricController extends BaseController<RubricService> {
 	@ApiQuery({ name: 'academic_period_id', required: false, type: Number, description: 'ID del período académico' })
 	@ApiQuery({ name: 'course_id', required: false, type: Number, description: 'ID del curso' })
 	async getAll(
-		@Query('school_id', ParseIntPipe) schoolId?: number,
-		@Query('program_id', ParseIntPipe) programId?: number,
-		@Query('academic_period_id', ParseIntPipe) academicPeriodId?: number,
-		@Query('course_id', ParseIntPipe) courseId?: number,
+		@Query('school_id', new ParseIntPipe({ optional: true })) schoolId?: number,
+		@Query('program_id', new ParseIntPipe({ optional: true })) programId?: number,
+		@Query('academic_period_id', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
+		@Query('course_id', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
 		const hasFilters = schoolId || programId || academicPeriodId || courseId;
 		if (hasFilters) {
