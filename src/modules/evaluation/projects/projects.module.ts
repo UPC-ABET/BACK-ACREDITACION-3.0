@@ -8,9 +8,10 @@ import { ProjectRepository } from './core/projects.repository';
 import { ProjectService } from './api/projects.service';
 import { ProjectController } from './api/projects.controller';
 import { ProjectConfigService } from './api/project-config.service';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([ProjectEntity, ProjectStudentEntity, ProjectEvaluatorEntity])],
+	imports: [TypeOrmModule.forFeature([ProjectEntity, ProjectStudentEntity, ProjectEvaluatorEntity, TypeEntity])],
 	controllers: [ProjectController],
 	providers: [ProjectService, ProjectRepository, ProjectConfigService],
 	exports: [ProjectService, ProjectRepository, ProjectConfigService],

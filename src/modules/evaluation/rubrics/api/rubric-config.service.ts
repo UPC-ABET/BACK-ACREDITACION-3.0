@@ -10,6 +10,8 @@ import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import type { I18nText } from 'src/shared/types/i18n';
+import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
+import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 
 const toI18n = (text: string): I18nText => ({ es: text, en: text });
 
@@ -40,8 +42,12 @@ export class RubricConfigService {
 		private readonly criteriaRepo: Repository<RubricQuestionCriteriaEntity>,
 		@InjectRepository(TypeEntity)
 		private readonly typeRepo: Repository<TypeEntity>,
+		@InjectRepository(ProgramCommissionEntity)
+		private readonly programCommissionRepo: Repository<ProgramCommissionEntity>,
+		@InjectRepository(OutcomeEntity)
+		private readonly outcomeRepo: Repository<OutcomeEntity>,
 		private readonly dataSource: DataSource,
-	) {}
+	) { }
 
 	private async resolveRubricTypeIdByCode(code: string): Promise<number | null> {
 		const type = await this.typeRepo.findOne({ where: { code } });
@@ -241,4 +247,171 @@ export class RubricConfigService {
 
 		return rubric;
 	}
+
+	/**
+	 * Obtiene una rúbrica por ID con estructura normalizada para frontend:
+	 * - rubric: información base
+	 * - commissions: array de comisiones con outcomeIds
+	 * - outcomes: array de outcomes con questionIds
+	 * - questions: array de preguntas con criterias
+	 */
+	async getRubricWithContextData(id: number): Promise<any> {
+		// 1. Obtener rúbrica con relaciones directas
+		const rubric = await this.rubricRepo.findOne({
+			where: { id },
+			relations: [
+				'questions',
+				'questions.criterias',
+				'questions.outcome',
+				'grade_type',
+				'rubric_type',
+				'study_plan_course',
+				'study_plan_course.course',
+				'study_plan_course.study_plan_academic_period',
+				'study_plan_course.study_plan_academic_period.study_plan',
+				'study_plan_course.study_plan_academic_period.study_plan.program',
+				'study_plan_course.study_plan_academic_period.academic_period',
+			],
+		});
+
+		if (!rubric) {
+			throw new NotFoundException('Rúbrica no encontrada.');
+		}
+
+		// 2. Obtener comisiones del programa para el período académico
+		const programId = rubric.study_plan_course?.study_plan_academic_period?.study_plan?.program_id;
+		const academicPeriodId = rubric.study_plan_course?.study_plan_academic_period?.academic_period_id;
+
+		let commissions: ProgramCommissionEntity[] = [];
+		if (programId && academicPeriodId) {
+			commissions = await this.programCommissionRepo.find({
+				where: {
+					program_id: programId,
+					academic_period_id: academicPeriodId,
+				},
+				relations: ['commission'],
+			});
+		}
+
+		// 3. Normalizar datos: crear arrays sin anidamiento profundo
+		const outcomeToQuestions = new Map<number, number[]>();
+		const commissionToOutcomes = new Map<number, number[]>();
+
+		const questionsMap = new Map<number, any>();
+		const outcomesMap = new Map<number, any>();
+
+		(rubric.questions || []).forEach((q) => {
+			questionsMap.set(q.id, {
+				id: q.id,
+				text: q.question,
+				outcomeId: q.outcome_id,
+				criterias: (q.criterias || []).map((c) => ({
+					id: c.id,
+					text: c.criteria,
+					min_value: c.min_value,
+					max_value: c.max_value,
+				})),
+			});
+
+			if (q.outcome_id) {
+				if (!outcomeToQuestions.has(q.outcome_id)) {
+					outcomeToQuestions.set(q.outcome_id, []);
+				}
+				outcomeToQuestions.get(q.outcome_id)!.push(q.id);
+
+				if (q.outcome && !outcomesMap.has(q.outcome.id)) {
+					outcomesMap.set(q.outcome.id, {
+						id: q.outcome.id,
+						code: q.outcome.outcome_code,
+						name: q.outcome.outcome_name,
+						description: q.outcome.outcome_description,
+						program_commission_id: q.outcome.program_commission_id,
+					});
+				}
+			}
+		});
+
+		(Array.from(outcomesMap.values()) as any).forEach((outcome: any) => {
+			const commission = commissions.find((c) => c.id === outcome.program_commission_id);
+			if (commission) {
+				if (!commissionToOutcomes.has(commission.id)) {
+					commissionToOutcomes.set(commission.id, []);
+				}
+				commissionToOutcomes.get(commission.id)!.push(outcome.id);
+			}
+		});
+
+		// 4. Construir respuesta normalizada
+		return {
+			rubric: {
+				id: rubric.id,
+				rubric_type_id: rubric.rubric_type_id,
+				grade_type_id: rubric.grade_type_id,
+				study_plan_course_id: rubric.study_plan_course_id,
+				is_active: rubric.is_active ?? false,
+				created_at: rubric.created_at,
+				rubric_type: rubric.rubric_type
+					? {
+						id: rubric.rubric_type.id,
+						code: rubric.rubric_type.code,
+						name: rubric.rubric_type.name,
+					}
+					: undefined,
+				grade_type: rubric.grade_type
+					? {
+						id: rubric.grade_type.id,
+						code: rubric.grade_type.code,
+						name: rubric.grade_type.name,
+					}
+					: undefined,
+			},
+			course: rubric.study_plan_course?.course
+				? {
+					id: rubric.study_plan_course.course.id,
+					name: rubric.study_plan_course.course.name,
+					description: rubric.study_plan_course.course.description,
+					learning_outcome: rubric.study_plan_course.course.learning_outcome,
+				}
+				: undefined,
+			academicPeriod: rubric.study_plan_course?.study_plan_academic_period?.academic_period
+				? {
+					id: rubric.study_plan_course.study_plan_academic_period.academic_period.id,
+					code: rubric.study_plan_course.study_plan_academic_period.academic_period.code,
+					start_date: rubric.study_plan_course.study_plan_academic_period.academic_period.start_date,
+					end_date: rubric.study_plan_course.study_plan_academic_period.academic_period.end_date,
+				}
+				: undefined,
+			studyPlan: rubric.study_plan_course?.study_plan_academic_period?.study_plan
+				? {
+					id: rubric.study_plan_course.study_plan_academic_period.study_plan.id,
+					code: rubric.study_plan_course.study_plan_academic_period.study_plan.code,
+					name: rubric.study_plan_course.study_plan_academic_period.study_plan.name,
+				}
+				: undefined,
+			program: rubric.study_plan_course?.study_plan_academic_period?.study_plan?.program
+				? {
+					id: rubric.study_plan_course.study_plan_academic_period.study_plan.program.id,
+					code: rubric.study_plan_course.study_plan_academic_period.study_plan.program.code,
+					name: rubric.study_plan_course.study_plan_academic_period.study_plan.program.name,
+					degree: rubric.study_plan_course.study_plan_academic_period.study_plan.program.degree,
+				}
+				: undefined,
+			commissions: commissions.map((c) => ({
+				id: c.id,
+				code: c.commission?.code,
+				name: c.commission?.name,
+				outcomeIds: commissionToOutcomes.get(c.id) || [],
+			})),
+			outcomes: Array.from(outcomesMap.values()).map((outcome: any) => ({
+				id: outcome.id,
+				code: outcome.code,
+				name: outcome.name,
+				description: outcome.description,
+				questionIds: outcomeToQuestions.get(outcome.id) || [],
+			})),
+			questions: Array.from(questionsMap.values()),
+			isUsed: false,
+		};
+	}
+
 }
