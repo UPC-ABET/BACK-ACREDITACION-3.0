@@ -3,6 +3,7 @@ import { runTenantSeed, i18n } from '../seed-runner';
 runTenantSeed('core type catalogs', async (tenantDataSource) => {
 	const typeGroupRows: Array<[string, string, string]> = [
 		['TG101', i18n('Tipo de documento', 'Document type'), i18n('Documentos y valores base para usuarios', 'Documents and base values for users')],
+		['TG102', i18n('Modalidad de programa', 'Program modality'), i18n('Modalidades del programa academico (Regular, EPE)', 'Academic program modalities (Regular, EPE)')],
 		['TG103', i18n('Modalidad de ensenanza', 'Teaching modality'), i18n('Modalidades academicas generales', 'General academic modalities')],
 		['TG202', i18n('Modalidad de graduacion', 'Graduation modality'), i18n('Modalidades de egreso del estudiante', 'Student graduation modalities')],
 		['TG203', i18n('Nivel academico', 'Academic level'), i18n('Niveles de cursos en el plan de estudios', 'Course levels in the study plan')],
@@ -46,6 +47,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		['TG101', 'TG101-T001', i18n('DNI', 'National ID'), i18n('Documento Nacional de Identidad', 'National Identity Document'), '{}'],
 		['TG101', 'TG101-T002', i18n('Pasaporte', 'Passport'), i18n('Pasaporte internacional', 'International passport'), '{}'],
 		['TG101', 'TG101-T003', i18n('Carne de extranjeria', 'Foreigner card'), i18n('Carne de extranjeria', 'Foreigner residence card'), '{}'],
+		['TG102', 'TG102-T001', i18n('Regular', 'Regular'), i18n('Programa en modalidad regular', 'Regular program modality'), '{}'],
+		['TG102', 'TG102-T002', i18n('EPE', 'EPE'), i18n('Programa para Personas con Experiencia Laboral', 'Program for People with Work Experience'), '{}'],
 		['TG103', 'TG103-T001', i18n('Presencial', 'In-person'), i18n('Educacion presencial', 'In-person education'), '{"mode":"in-person"}'],
 		['TG103', 'TG103-T002', i18n('Virtual', 'Virtual'), i18n('Educacion virtual', 'Online education'), '{"mode":"online"}'],
 		['TG103', 'TG103-T003', i18n('Hibrida', 'Hybrid'), i18n('Educacion hibrida', 'Hybrid education'), '{"mode":"hybrid"}'],

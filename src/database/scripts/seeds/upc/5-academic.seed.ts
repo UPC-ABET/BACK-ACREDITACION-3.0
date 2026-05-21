@@ -7,9 +7,9 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM "core"."types" t
 		JOIN (
 			VALUES
-				('TG103-T001', 'AP_2026_1', '2026-03-18', '2026-07-20'),
-				('TG103-T001', 'AP_2026_2', '2026-08-17', '2026-12-18'),
-				('TG103-T001', '202502', '2025-08-15', '2025-12-15')
+				('TG102-T001', 'AP_2026_1', '2026-03-18', '2026-07-20'),
+				('TG102-T001', 'AP_2026_2', '2026-08-17', '2026-12-18'),
+				('TG102-T001', '202502', '2025-08-15', '2025-12-15')
 		) AS v(modality_type_code, code, start_date, end_date)
 			ON t.code = v.modality_type_code
 		WHERE NOT EXISTS (
@@ -18,10 +18,10 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	const programValues = [
-		['TG103-T001', 'PROG_SOFT', i18n('Ingenieria de Software', 'Software Engineering'), i18n('Bachiller', 'Bachelor')],
-		['TG103-T001', 'PROG_SIST', i18n('Ingenieria de Sistemas', 'Systems Engineering'), i18n('Bachiller', 'Bachelor')],
-		['TG103-T002', 'PROG_ADMIN', i18n('Administracion de Empresas', 'Business Administration'), i18n('Bachiller', 'Bachelor')],
-		['TG103-T001', 'CS', i18n('Ciencias de la Computacion', 'Computer Science'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'PROG_SOFT', i18n('Ingenieria de Software', 'Software Engineering'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'PROG_SIST', i18n('Ingenieria de Sistemas', 'Systems Engineering'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'PROG_ADMIN', i18n('Administracion de Empresas', 'Business Administration'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'CS', i18n('Ciencias de la Computacion', 'Computer Science'), i18n('Bachiller', 'Bachelor')],
 	]
 		.map(([modality, code, name, degree]) => `('${modality}', '${code}', '${name}'::jsonb, '${degree}'::jsonb)`)
 		.join(',\n\t\t\t');

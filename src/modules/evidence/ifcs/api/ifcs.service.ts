@@ -385,7 +385,7 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
-		return await this.dataSource.transaction(async (em) => {
+		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
 			const chartRows = await em.query(CHART_RESOLUTION_SQL, [dto.chart_id, dto.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]);
 			IfcValidation.assertChartFound(chartRows, op);
 
@@ -425,11 +425,26 @@ export class IfcService extends BaseService<IfcRepository> {
 
 			return { id: ifcId };
 		});
+
+		if (!dto.submit) return { id: ifcId };
+
+		const notification: DispatchResult =
+			Number.isFinite(dto.chart_id) && Number.isFinite(dto.period_id)
+				? await this.dispatcher.dispatch({
+						chartId: dto.chart_id,
+						periodId: dto.period_id,
+						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
+						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
+						notifierUserId: userId,
+					})
+				: { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_course_chart' };
+
+		return { id: ifcId, notification };
 	}
 
 	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.PATCH;
-		return await this.dataSource.transaction(async (em) => {
+		const { courseChartId, periodId } = await this.dataSource.transaction(async (em) => {
 			const ctx = await this.loadTransitionContext(id, userId, schoolId, op, em);
 			await IfcValidation.assertIsInCourseChain(em, ctx, op);
 			IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
@@ -459,8 +474,23 @@ export class IfcService extends BaseService<IfcRepository> {
 			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
 			await this.insertStatus(em, id, ctx.requesterStaffId!, newStatusCode, null);
 
-			return { id };
+			return { courseChartId: ctx.courseChartId, periodId };
 		});
+
+		if (!dto.submit) return { id };
+
+		const notification: DispatchResult =
+			courseChartId !== null && Number.isFinite(periodId)
+				? await this.dispatcher.dispatch({
+						chartId: courseChartId,
+						periodId,
+						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
+						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
+						notifierUserId: userId,
+					})
+				: { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_course_chart' };
+
+		return { id, notification };
 	}
 
 	private async resolveFindingsAndActions(
