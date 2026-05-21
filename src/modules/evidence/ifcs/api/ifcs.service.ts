@@ -12,6 +12,7 @@ import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFCS_PARAMETER_KEYS, IFC_INSTRUMENT_CODE, IFC_OPS, IfcOp } from './ifcs.constants';
 import { PDF_LABELS, PdfRendererService, PDF_STYLES, UPC_LOGO_DATA_URI } from './pdf-renderer.service';
 import * as ExcelJS from 'exceljs';
+import { NotificationDispatcherService, DispatchResult } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 
 interface StatusReportRow {
 	course_name: string;
@@ -29,8 +30,62 @@ export class IfcService extends BaseService<IfcRepository> {
 		protected readonly repository: IfcRepository,
 		protected readonly dataSource: DataSource,
 		private readonly pdfRenderer: PdfRendererService,
+		private readonly dispatcher: NotificationDispatcherService,
 	) {
 		super(repository);
+	}
+
+	async resolveCurrentStatusCode(chartId: number, periodId: number): Promise<string> {
+		const rows = await this.dataSource.query(
+			`
+			SELECT COALESCE(
+				(SELECT t.code FROM ifc.statuses s
+				   JOIN core.types t ON t.id = s.status_type_id
+				   JOIN evidence.ifcs i ON i.id = s.ifc_id
+				   JOIN organization.charts c ON c.entity_code = i.course_id AND c.academic_period_id = i.academic_period_id
+				   WHERE c.id = $1 AND i.academic_period_id = $2
+				   ORDER BY s.register_at DESC LIMIT 1),
+				$3
+			) AS code
+			`,
+			[chartId, periodId, TYPE_CODES.IFC_STATUS.UNREGISTERED],
+		);
+		return rows[0]?.code ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
+	}
+
+	async notify(chartId: number, periodId: number, userId: number): Promise<DispatchResult> {
+		const statusCode = await this.resolveCurrentStatusCode(chartId, periodId);
+		return await this.dispatcher.dispatch({
+			chartId,
+			periodId,
+			triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.MANUAL,
+			ifcStatusCode: statusCode,
+			notifierUserId: userId,
+		});
+	}
+
+	async notifyAll(chartIds: number[], periodId: number, userId: number) {
+		const sent: number[] = [];
+		const skipped: number[] = [];
+		const errors: Array<{ chart_id: number; message: string }> = [];
+
+		for (const chartId of chartIds) {
+			try {
+				const statusCode = await this.resolveCurrentStatusCode(chartId, periodId);
+				const result = await this.dispatcher.dispatch({
+					chartId,
+					periodId,
+					triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.MANUAL,
+					ifcStatusCode: statusCode,
+					notifierUserId: userId,
+				});
+				if (result.sent) sent.push(chartId);
+				else skipped.push(chartId);
+			} catch (e) {
+				errors.push({ chart_id: chartId, message: (e as Error).message });
+			}
+		}
+		return { sent, skipped, errors };
 	}
 
 	async generatePdf(ifcId: number, userId: number, schoolId: number, lang: 'es' | 'en') {
@@ -281,7 +336,22 @@ export class IfcService extends BaseService<IfcRepository> {
 		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT);
 		await IfcValidation.assertIsInCourseChain(this.dataSource, ctx, IFC_OPS.SUBMIT);
 		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [null, TYPE_CODES.IFC_STATUS.SAVED], IFC_OPS.SUBMIT);
-		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.SUBMITTED, null);
+		await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.SUBMITTED, null);
+
+		const periodRows = await this.dataSource.query(`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`, [ifcId]);
+		const periodId = Number(periodRows[0]?.academic_period_id);
+		const notification: DispatchResult =
+			ctx.courseChartId !== null && Number.isFinite(periodId)
+				? await this.dispatcher.dispatch({
+						chartId: ctx.courseChartId,
+						periodId,
+						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
+						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
+						notifierUserId: userId,
+					})
+				: { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_course_chart' };
+
+		return { id: ifcId, notification };
 	}
 
 	async approve(ifcId: number, userId: number, schoolId: number) {

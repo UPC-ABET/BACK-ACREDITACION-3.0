@@ -138,6 +138,49 @@ export class IfcStatusReportDto {
 	lang: 'es' | 'en';
 }
 
+export class IfcNotifyDto {
+	@ApiProperty({ example: 310, required: true })
+	@IsInt()
+	@IsPositive()
+	@Type(() => Number)
+	chart_id: number;
+
+	@ApiProperty({ example: 5, required: true })
+	@IsInt()
+	@IsPositive()
+	@Type(() => Number)
+	period_id: number;
+}
+
+export class IfcNotifyAllDto {
+	@ApiProperty({ example: [310, 311, 312], required: true })
+	@IsArray()
+	@ArrayNotEmpty()
+	@ArrayMaxSize(500)
+	@IsInt({ each: true })
+	@Type(() => Number)
+	chart_ids: number[];
+
+	@ApiProperty({ example: 5, required: true })
+	@IsInt()
+	@IsPositive()
+	@Type(() => Number)
+	period_id: number;
+}
+
+export class NotificationDispatchResultDto {
+	@ApiProperty({ example: true }) sent: boolean;
+	@ApiProperty({ example: 1 }) recipients_count: number;
+	@ApiProperty({ example: 2 }) cc_count: number;
+	@ApiProperty({ nullable: true }) reason: string | null;
+}
+
+export class NotifyAllResultDto {
+	@ApiProperty({ example: [310, 312] }) sent: number[];
+	@ApiProperty({ example: [311] }) skipped: number[];
+	@ApiProperty({ example: [] }) errors: Array<{ chart_id: number; message: string }>;
+}
+
 export class RejectIfcDto {
 	@ApiProperty({
 		example: { es: 'Faltan evidencias en la sección 3', en: 'Missing evidence in section 3' },

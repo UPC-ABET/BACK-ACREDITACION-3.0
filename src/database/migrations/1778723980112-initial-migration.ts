@@ -122,7 +122,7 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, CONSTRAINT "PK_25e7784b69fbdb82b911ca6aa88" PRIMARY KEY ("id"), CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_log" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "notified_staff_id" integer NOT NULL, "notifier_staff_id" integer NOT NULL, "user_id" integer NOT NULL, "sent_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "ifc"."notification_log" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "cc_staff_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "provider_message_id" varchar(500) NULL, CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, CONSTRAINT "PK_88157a8406d1bbca75ccac829d1" PRIMARY KEY ("id"))`,
@@ -347,19 +347,16 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`ALTER TABLE "organization"."users" ADD CONSTRAINT "FK_9e86f4e5144e5f0c754ec343bea" FOREIGN KEY ("document_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_a629bdf7af991a09332156cf090" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_a629bdf7af991a09332156cf090" FOREIGN KEY ("chart_id") REFERENCES "organization"."charts"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_9f050e51dcc8c94037242889065" FOREIGN KEY ("notified_staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_9f050e51dcc8c94037242889065" FOREIGN KEY ("notification_config_id") REFERENCES "ifc"."notification_configs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_710e611b0159d1e6c85ea1fd260" FOREIGN KEY ("notifier_staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_273a2def92ca98ca5b08cc44def" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_8a2b5e2c7c1f4a3e9d6b0c1a8f2" FOREIGN KEY ("notifier_user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_12ff6a3275ca209d440644c1eed" FOREIGN KEY ("student_id") REFERENCES "academic"."students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -460,8 +457,7 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 		await queryRunner.query(`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_3f9b6366ae909fd085358b64803"`);
 		await queryRunner.query(`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_c805f90e056db372ebdfb6423b6"`);
 		await queryRunner.query(`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_12ff6a3275ca209d440644c1eed"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_273a2def92ca98ca5b08cc44def"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_710e611b0159d1e6c85ea1fd260"`);
+		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_8a2b5e2c7c1f4a3e9d6b0c1a8f2"`);
 		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_9f050e51dcc8c94037242889065"`);
 		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_a629bdf7af991a09332156cf090"`);
 		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91"`);

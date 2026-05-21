@@ -76,14 +76,14 @@ runTenantSeed('core module', async (tenantDataSource) => {
 			 $$ {"es":"Variables de notificacion IFC","en":"IFC notification variables"} $$,
 			 $$ {"es":"Variables disponibles en plantillas de notificacion","en":"Variables available in notification templates"} $$,
 			 $$ [
-				{"var":"{{coordinator_name}}","description":{"es":"Nombre completo del coordinador de curso","en":"Course coordinator full name"},"valid_status_type_ids":null},
-				{"var":"{{course_name}}","description":{"es":"Nombre del curso","en":"Course name"},"valid_status_type_ids":null},
-				{"var":"{{academic_period}}","description":{"es":"Codigo del periodo academico","en":"Academic period code"},"valid_status_type_ids":null},
-				{"var":"{{notifier_name}}","description":{"es":"Nombre de quien envio la notificacion","en":"Notifier name"},"valid_status_type_ids":null},
-				{"var":"{{ifc_link}}","description":{"es":"Enlace directo al IFC","en":"Direct link to the IFC"},"valid_status_type_ids":null},
-				{"var":"{{observer_name}}","description":{"es":"Quien observo el IFC","en":"Who observed the IFC"},"valid_status_type_ids":["TG701-T004"]},
-				{"var":"{{comment}}","description":{"es":"Comentario de observacion","en":"Observation comment"},"valid_status_type_ids":["TG701-T004"]},
-				{"var":"{{submitter_name}}","description":{"es":"Quien envio el IFC","en":"Who submitted the IFC"},"valid_status_type_ids":["TG701-T002"]}
+				{"var":"{{coordinator_name}}","description":{"es":"Nombre completo del coordinador de curso","en":"Course coordinator full name"},"valid_status_codes":null},
+				{"var":"{{course_name}}","description":{"es":"Nombre del curso","en":"Course name"},"valid_status_codes":null},
+				{"var":"{{academic_period}}","description":{"es":"Codigo del periodo academico","en":"Academic period code"},"valid_status_codes":null},
+				{"var":"{{notifier_name}}","description":{"es":"Nombre de quien envio la notificacion","en":"Notifier name"},"valid_status_codes":null},
+				{"var":"{{ifc_link}}","description":{"es":"Enlace directo al IFC","en":"Direct link to the IFC"},"valid_status_codes":null},
+				{"var":"{{observer_name}}","description":{"es":"Quien observo el IFC","en":"Who observed the IFC"},"valid_status_codes":["TG701-T004"]},
+				{"var":"{{comment}}","description":{"es":"Comentario de observacion","en":"Observation comment"},"valid_status_codes":["TG701-T004"]},
+				{"var":"{{submitter_name}}","description":{"es":"Quien envio el IFC","en":"Who submitted the IFC"},"valid_status_codes":["TG701-T002"]}
 			 ] $$
 			)
 		) AS v(code, name, description, value)

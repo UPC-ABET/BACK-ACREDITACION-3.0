@@ -6,6 +6,9 @@ const pdfRenderer = {
 	htmlToPdf: jest.fn().mockResolvedValue(Buffer.from('%PDF-')),
 	filesToZip: jest.fn().mockResolvedValue(Buffer.from('zip')),
 };
+const dispatcher = {
+	dispatch: jest.fn().mockResolvedValue({ sent: false, recipients_count: 0, cc_count: 0, reason: 'no_config' }),
+};
 import { IfcRepository } from '../core/ifcs.repository';
 import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
@@ -19,7 +22,7 @@ describe('IfcService.list', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	it('forwards chart_ids, period_id, and the COURSE type code to the SQL query', async () => {
@@ -54,7 +57,7 @@ describe('IfcService.getView', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	const headerRow = {
@@ -158,7 +161,7 @@ describe('IfcService status transitions', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	const ctxRow = (overrides: Partial<{ ifc_course_staff_id: number | null; course_chart_id: number | null; requester_staff_id: number | null; current_status_code: string | null }> = {}) => [
@@ -177,11 +180,15 @@ describe('IfcService status transitions', () => {
 		dataSource.query
 			.mockResolvedValueOnce(ctxRow({ current_status_code: null })) // transition context
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
-			.mockResolvedValueOnce([insertedRow]); // insertStatus
+			.mockResolvedValueOnce([insertedRow]) // insertStatus
+			.mockResolvedValueOnce([{ academic_period_id: 5 }]); // fetch period for dispatch
+
+		const dispatchResult = { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_config' as const };
+		dispatcher.dispatch.mockResolvedValueOnce(dispatchResult);
 
 		const result = await service.submit(42, 99, 9);
 
-		expect(result).toBe(insertedRow);
+		expect(result).toEqual({ id: 42, notification: dispatchResult });
 		const [, chainParams] = dataSource.query.mock.calls[1];
 		expect(chainParams).toEqual([500, 11]);
 		const [, insertParams] = dataSource.query.mock.calls[2];
@@ -207,9 +214,10 @@ describe('IfcService status transitions', () => {
 		dataSource.query
 			.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }))
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check finds requester on an ancestor
-			.mockResolvedValueOnce([insertedRow]);
+			.mockResolvedValueOnce([insertedRow])
+			.mockResolvedValueOnce([{ academic_period_id: 5 }]); // fetch period for dispatch
 
-		await expect(service.submit(42, 99, 9)).resolves.toBe(insertedRow);
+		await expect(service.submit(42, 99, 9)).resolves.toMatchObject({ id: 42, notification: expect.any(Object) });
 	});
 
 	it('approve: rejects with 403 when requester is the own coordinator', async () => {
@@ -271,7 +279,7 @@ describe('IfcService.prefill', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	const headerRow = {
@@ -330,7 +338,7 @@ describe('IfcService.createIfc', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	const baseDto = (overrides: Partial<CreateIfcDto> = {}): CreateIfcDto => ({
@@ -503,7 +511,7 @@ describe('IfcService.patch', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	const baseDto = (overrides: Partial<IfcContentDto> = {}): IfcContentDto => ({
@@ -583,7 +591,7 @@ describe('IfcService.generateStatusReport', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any);
+		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
 	});
 
 	const statusTypes = [
@@ -613,7 +621,10 @@ describe('IfcService.generateStatusReport', () => {
 	});
 
 	it('drops the program suffix when chart_ids span multiple programs', async () => {
-		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS', 'PROG_SOFT'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce([]);
+		dataSource.query
+			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS', 'PROG_SOFT'] }])
+			.mockResolvedValueOnce(statusTypes)
+			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport(dto, 9);
 		expect(filename).toBe('Reporte_Estado_IFC_EISCB.xlsx');
@@ -627,7 +638,10 @@ describe('IfcService.generateStatusReport', () => {
 	});
 
 	it('uses the English filename prefix when lang=en', async () => {
-		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce([]);
+		dataSource.query
+			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }])
+			.mockResolvedValueOnce(statusTypes)
+			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
 		expect(filename).toBe('Status_Report_IFC_EISCB_CS.xlsx');
@@ -636,10 +650,21 @@ describe('IfcService.generateStatusReport', () => {
 	it('renders an XLSX where rows with status_code=null map to TG701-T005 / "Sin Registro"', async () => {
 		const ExcelJS = require('exceljs');
 		const rows = [
-			{ course_name: 'Curso A', area_label: 'Área 1', program_label: 'Carrera X', coordinator_name: 'Ada Lovelace', coordinator_email: 'ada@example.com', coordinator_code: 'P1', status_code: null },
+			{
+				course_name: 'Curso A',
+				area_label: 'Área 1',
+				program_label: 'Carrera X',
+				coordinator_name: 'Ada Lovelace',
+				coordinator_email: 'ada@example.com',
+				coordinator_code: 'P1',
+				status_code: null,
+			},
 			{ course_name: 'Curso B', area_label: 'Área 1', program_label: 'Carrera X', coordinator_name: null, coordinator_email: null, coordinator_code: null, status_code: 'TG701-T003' },
 		];
-		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce(rows);
+		dataSource.query
+			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }])
+			.mockResolvedValueOnce(statusTypes)
+			.mockResolvedValueOnce(rows);
 
 		const { xlsx } = await service.generateStatusReport(dto, 9);
 
@@ -659,7 +684,10 @@ describe('IfcService.generateStatusReport', () => {
 	it('uses the en label for UNREGISTERED when lang=en', async () => {
 		const ExcelJS = require('exceljs');
 		const rows = [{ course_name: 'Course A', area_label: 'Area 1', program_label: 'Program X', coordinator_name: 'Ada', coordinator_email: 'a@x', coordinator_code: 'P1', status_code: null }];
-		dataSource.query.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce(rows);
+		dataSource.query
+			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }])
+			.mockResolvedValueOnce(statusTypes)
+			.mockResolvedValueOnce(rows);
 
 		const { xlsx } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
 

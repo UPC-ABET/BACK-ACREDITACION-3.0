@@ -18,6 +18,8 @@ export const ifcsRoutes = {
 			pdf: { method: 'GET', route: '/:id/pdf', summary: 'Generar y descargar el IFC en PDF' },
 			pdfBulk: { method: 'POST', route: '/pdf/bulk', summary: 'Generar un ZIP con los PDFs de varios IFCs (lote)' },
 			statusReport: { method: 'POST', route: '/status-report', summary: 'Generar y descargar un reporte Excel del estado de los IFCs en el alcance' },
+			notify: { method: 'POST', route: '/notify', summary: 'Notificar manualmente al coordinador de un curso (envío único)' },
+			notifyAll: { method: 'POST', route: '/notify-all', summary: 'Notificar manualmente al lote de cursos en el alcance' },
 		},
 	},
 };

@@ -3,7 +3,7 @@ import { BaseService } from 'src/commons/base.service';
 import { NotificationConfigRepository } from '../core/notification-configs.repository';
 import { NotificationConfigValidation } from '../core/notification-configs.validation';
 
-import { CreateNotificationConfigDto, UpdateNotificationConfigDto } from '../model/notification-configs.dtos';
+import { CreateNotificationConfigDto, UpdateNotificationConfigDto, UpsertNotificationConfigDto } from '../model/notification-configs.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()
@@ -28,5 +28,84 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 	async delete(id: number, manager?: EntityManager) {
 		await NotificationConfigValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async byPeriod(schoolId: number, periodId: number) {
+		return await this.dataSource.query(
+			`
+			SELECT
+				nc.id::int                       AS id,
+				nc.school_id::int                AS school_id,
+				nc.academic_period_id::int       AS academic_period_id,
+				nc.trigger_type_id::int          AS trigger_type_id,
+				nc.ifc_status_type_id::int       AS ifc_status_type_id,
+				nc.title                         AS title,
+				nc.body                          AS body,
+				nc.to_chart_level_type_ids       AS to_chart_level_type_ids,
+				nc.cc_chart_level_type_ids       AS cc_chart_level_type_ids,
+				nc.is_active                     AS is_active,
+				ct_trigger.code                  AS trigger_code,
+				ct_trigger.name                  AS trigger_name,
+				ct_status.code                   AS status_code,
+				ct_status.name                   AS status_name
+			FROM ifc.notification_configs nc
+			JOIN core.types ct_trigger ON ct_trigger.id = nc.trigger_type_id
+			JOIN core.types ct_status  ON ct_status.id  = nc.ifc_status_type_id
+			WHERE nc.school_id          = $1
+			  AND nc.academic_period_id = $2
+			  AND nc.is_active          = true
+			ORDER BY ct_trigger.code, ct_status.code
+			`,
+			[schoolId, periodId],
+		);
+	}
+
+	async upsert(schoolId: number, dto: UpsertNotificationConfigDto) {
+		const rows = await this.dataSource.query(
+			`
+			INSERT INTO ifc.notification_configs
+				(school_id, academic_period_id, trigger_type_id, ifc_status_type_id,
+				 title, body, to_chart_level_type_ids, cc_chart_level_type_ids, is_active)
+			VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8::jsonb, $9)
+			ON CONFLICT ON CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" DO UPDATE
+			SET title                     = EXCLUDED.title,
+				body                      = EXCLUDED.body,
+				to_chart_level_type_ids   = EXCLUDED.to_chart_level_type_ids,
+				cc_chart_level_type_ids   = EXCLUDED.cc_chart_level_type_ids,
+				is_active                 = EXCLUDED.is_active,
+				updated_at                = NOW()
+			RETURNING id::int                       AS id,
+					  school_id::int                AS school_id,
+					  academic_period_id::int       AS academic_period_id,
+					  trigger_type_id::int          AS trigger_type_id,
+					  ifc_status_type_id::int       AS ifc_status_type_id,
+					  title, body,
+					  to_chart_level_type_ids, cc_chart_level_type_ids,
+					  is_active
+			`,
+			[
+				schoolId,
+				dto.academic_period_id,
+				dto.trigger_type_id,
+				dto.ifc_status_type_id,
+				JSON.stringify(dto.title),
+				JSON.stringify(dto.body),
+				JSON.stringify(dto.to_chart_level_type_ids ?? []),
+				JSON.stringify(dto.cc_chart_level_type_ids ?? []),
+				dto.is_active ?? true,
+			],
+		);
+		return rows[0];
+	}
+
+	async softDelete(schoolId: number, id: number) {
+		await this.dataSource.query(
+			`
+			UPDATE ifc.notification_configs
+			SET is_active = false, updated_at = NOW()
+			WHERE id = $1 AND school_id = $2
+			`,
+			[id, schoolId],
+		);
 	}
 }

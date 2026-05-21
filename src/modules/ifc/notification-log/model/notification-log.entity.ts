@@ -1,52 +1,51 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, DateColumn } from 'src/commons/configs/db.configs';
-import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
-import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
-import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
+import { EmailColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import { ChartEntity } from 'src/modules/organization/charts/model/charts.entity';
+import { IfcEntity } from 'src/modules/evidence/ifcs/model/ifcs.entity';
+import { NotificationConfigEntity } from 'src/modules/ifc/notification-configs/model/notification-configs.entity';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Entity({ name: 'notification_log', schema: 'ifc' })
 export class NotificationLogEntity extends BaseEntity {
 	// %% ATRIBUTOS
 
-	@IntegerFKIDColumn({ nullable: false })
-	course_id: number;
+	@IntegerFKIDColumn({ nullable: true })
+	ifc_id: number | null;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	chart_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	notified_staff_id: number;
+	notification_config_id: number;
 
-	@IntegerFKIDColumn({ nullable: false })
-	notifier_staff_id: number;
+	@IntegerFKIDColumn({ nullable: true })
+	notifier_user_id: number | null;
 
-	@IntegerFKIDColumn({ nullable: false })
-	user_id: number;
+	@JsonColumn({ nullable: false })
+	to_staff_ids: number[];
 
-	@DateColumn({ nullable: false })
-	sent_at: Date;
+	@JsonColumn({ nullable: false })
+	cc_staff_ids: number[];
+
+	@EmailColumn({ nullable: true })
+	provider_message_id: string | null;
 
 	// %% RELACIONES
 
-	@ManyToOne(() => CourseEntity)
-	@JoinColumn({ name: 'course_id' })
-	course: CourseEntity;
+	@ManyToOne(() => IfcEntity)
+	@JoinColumn({ name: 'ifc_id' })
+	ifc: IfcEntity | null;
 
-	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
-	academic_period: AcademicPeriodEntity;
+	@ManyToOne(() => ChartEntity)
+	@JoinColumn({ name: 'chart_id' })
+	chart: ChartEntity;
 
-	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'notified_staff_id' })
-	notified_staff: StaffEntity;
-
-	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'notifier_staff_id' })
-	notifier_staff: StaffEntity;
+	@ManyToOne(() => NotificationConfigEntity)
+	@JoinColumn({ name: 'notification_config_id' })
+	notification_config: NotificationConfigEntity;
 
 	@ManyToOne(() => UserEntity)
-	@JoinColumn({ name: 'user_id' })
-	user: UserEntity;
+	@JoinColumn({ name: 'notifier_user_id' })
+	notifier_user: UserEntity | null;
 }

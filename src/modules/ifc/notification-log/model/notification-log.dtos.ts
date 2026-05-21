@@ -1,4 +1,4 @@
-import { IsBoolean, IsDate, IsNumber, IsOptional } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 
@@ -12,29 +12,38 @@ export class CreateNotificationLogDto extends BaseDto {
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	course_id: number;
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 42, required: false, nullable: true })
+	ifc_id?: number | null;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	@IsInt()
+	@ApiProperty({ example: 310, required: true })
+	chart_id: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	notified_staff_id: number;
+	@IsInt()
+	@ApiProperty({ example: 7, required: true })
+	notification_config_id: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	notifier_staff_id: number;
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 99, required: false, nullable: true })
+	notifier_user_id?: number | null;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	user_id: number;
+	@IsArray()
+	@IsInt({ each: true })
+	@ApiProperty({ example: [11], required: true })
+	to_staff_ids: number[];
 
-	@IsDate()
-	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	sent_at: Date;
+	@IsArray()
+	@IsInt({ each: true })
+	@ApiProperty({ example: [12, 13], required: true })
+	cc_staff_ids: number[];
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: 'pm-abc-123', required: false, nullable: true })
+	provider_message_id?: string | null;
 }
 
 export class UpdateNotificationLogDto extends BaseDto {
@@ -48,34 +57,41 @@ export class UpdateNotificationLogDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	@IsInt()
+	@ApiProperty({ example: 42, required: false, nullable: true })
+	ifc_id?: number | null;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	@IsInt()
+	@ApiProperty({ example: 310, required: false })
+	chart_id?: number;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	notified_staff_id?: number;
+	@IsInt()
+	@ApiProperty({ example: 7, required: false })
+	notification_config_id?: number;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	notifier_staff_id?: number;
+	@IsInt()
+	@ApiProperty({ example: 99, required: false, nullable: true })
+	notifier_user_id?: number | null;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	user_id?: number;
+	@IsArray()
+	@IsInt({ each: true })
+	@ApiProperty({ example: [11], required: false })
+	to_staff_ids?: number[];
 
 	@IsOptional()
-	@IsDate()
-	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	sent_at?: Date;
+	@IsArray()
+	@IsInt({ each: true })
+	@ApiProperty({ example: [12, 13], required: false })
+	cc_staff_ids?: number[];
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: 'pm-abc-123', required: false, nullable: true })
+	provider_message_id?: string | null;
 }
 
 export class FilterNotificationLogDto extends BaseDto {
@@ -88,26 +104,22 @@ export class FilterNotificationLogDto extends BaseDto {
 	is_active?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	@ApiProperty({ example: 42, required: false })
+	ifc_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	@ApiProperty({ example: 310, required: false })
+	chart_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	notified_staff_id?: number;
+	@ApiProperty({ example: 7, required: false })
+	notification_config_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	notifier_staff_id?: number;
+	@ApiProperty({ example: 99, required: false })
+	notifier_user_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	user_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	sent_at?: Date;
+	@ApiProperty({ example: 'pm-abc-123', required: false })
+	provider_message_id?: string;
 }

@@ -9,6 +9,9 @@ export const notificationConfigsRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar configuraciones de notificacion IFC' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener configuracion de notificacion IFC' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar configuraciones de notificacion IFC' },
+			byPeriod: { method: 'GET', route: '/by-period', summary: 'Listar configuraciones de notificación de la escuela del usuario para un período' },
+			upsert: { method: 'POST', route: '/upsert', summary: 'Crear o actualizar (por UNIQUE) una configuración de notificación' },
+			softDelete: { method: 'DELETE', route: '/:id', summary: 'Marcar una configuración como inactiva (is_active=false)' },
 		},
 	},
 };

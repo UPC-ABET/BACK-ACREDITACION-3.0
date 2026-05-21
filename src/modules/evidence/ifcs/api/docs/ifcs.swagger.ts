@@ -1,6 +1,19 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ifcsRoutes } from '../../config/ifcs.routes';
-import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcViewResponseDto, IfcPdfQueryDto, IfcPdfBulkDto, IfcStatusReportDto } from '../../model/ifcs.dtos';
+import {
+	UpdateIfcDto,
+	FilterIfcDto,
+	ListIfcsDto,
+	RejectIfcDto,
+	IfcViewResponseDto,
+	IfcPdfQueryDto,
+	IfcPdfBulkDto,
+	IfcStatusReportDto,
+	IfcNotifyDto,
+	IfcNotifyAllDto,
+	NotificationDispatchResultDto,
+	NotifyAllResultDto,
+} from '../../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto, IfcPrefillResponseDto } from '../../model/ifcs-content.dtos';
 
 const cfg = ifcsRoutes.ifcs;
@@ -79,4 +92,18 @@ export const SwaggerIfcStatusReport = () =>
 		...cfg.operation.statusReport,
 		body: IfcStatusReportDto,
 		produces: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	});
+
+export const SwaggerIfcNotify = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.notify,
+		body: IfcNotifyDto,
+		responseType: NotificationDispatchResultDto,
+	});
+
+export const SwaggerIfcNotifyAll = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.notifyAll,
+		body: IfcNotifyAllDto,
+		responseType: NotifyAllResultDto,
 	});

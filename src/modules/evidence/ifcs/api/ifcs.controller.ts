@@ -19,9 +19,11 @@ import {
 	SwaggerIfcPdf,
 	SwaggerIfcPdfBulk,
 	SwaggerIfcStatusReport,
+	SwaggerIfcNotify,
+	SwaggerIfcNotifyAll,
 } from './docs/ifcs.swagger';
 import { IfcService } from './ifcs.service';
-import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcPdfQueryDto, IfcPdfBulkDto, IfcStatusReportDto } from '../model/ifcs.dtos';
+import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcPdfQueryDto, IfcPdfBulkDto, IfcStatusReportDto, IfcNotifyDto, IfcNotifyAllDto } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 
 @SwaggerIfcController()
@@ -114,6 +116,18 @@ export class IfcController extends BaseController<IfcService> {
 	async statusReport(@Body() dto: IfcStatusReportDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
 		const { xlsx, filename } = await this.service.generateStatusReport(dto, req.user.school_id);
 		writeBinary(res, xlsx, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	}
+
+	@SwaggerIfcNotify()
+	async notify(@Body() dto: IfcNotifyDto, @Req() req: any) {
+		const result = await this.service.notify(dto.chart_id, dto.period_id, req.user.userId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcNotifyAll()
+	async notifyAll(@Body() dto: IfcNotifyAllDto, @Req() req: any) {
+		const result = await this.service.notifyAll(dto.chart_ids, dto.period_id, req.user.userId);
+		return parseSuccessResponse(result);
 	}
 }
 
