@@ -275,6 +275,14 @@ export class RubricConfigService {
 				'study_plan_course.study_plan_academic_period.study_plan.program',
 				'study_plan_course.study_plan_academic_period.academic_period',
 			],
+			order: {
+				questions: {
+					id: 'ASC',
+					criterias: {
+						id: 'ASC',
+					},
+				},
+			},
 		});
 
 		if (!rubric) {
@@ -308,12 +316,14 @@ export class RubricConfigService {
 				id: q.id,
 				text: q.question,
 				outcomeId: q.outcome_id,
-				criterias: (q.criterias || []).map((c) => ({
-					id: c.id,
-					text: c.criteria,
-					min_value: c.min_value,
-					max_value: c.max_value,
-				})),
+				criterias: (q.criterias || [])
+					.sort((a, b) => a.id - b.id)
+					.map((c) => ({
+						id: c.id,
+						text: c.criteria,
+						min_value: c.min_value,
+						max_value: c.max_value,
+					})),
 			});
 
 			if (q.outcome_id) {
