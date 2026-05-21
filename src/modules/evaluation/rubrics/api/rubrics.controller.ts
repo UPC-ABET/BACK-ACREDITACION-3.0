@@ -60,11 +60,8 @@ export class RubricController extends BaseController<RubricService> {
 		@Query('academic_period_id', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
 		@Query('course_id', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
-		const hasFilters = schoolId || programId || academicPeriodId || courseId;
-		if (hasFilters) {
-			return parseSuccessResponse(await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }));
-		}
-		return parseSuccessResponse(await this.service.getAll());
+		return parseSuccessResponse(await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }));
+
 	}
 
 	@SwaggerRubricGetById()
