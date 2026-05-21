@@ -19,10 +19,6 @@ export class CreateProjectStudentDto extends BaseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	student_section_enrollment_id: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	evaluator_type_id: number;
 }
 
 export class UpdateProjectStudentDto extends BaseDto {
@@ -44,11 +40,6 @@ export class UpdateProjectStudentDto extends BaseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	student_section_enrollment_id?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	evaluator_type_id?: number;
 }
 
 export class FilterProjectStudentDto extends BaseDto {
@@ -67,8 +58,4 @@ export class FilterProjectStudentDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	student_section_enrollment_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	evaluator_type_id?: number;
 }
