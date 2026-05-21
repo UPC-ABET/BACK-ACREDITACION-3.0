@@ -1,4 +1,4 @@
-import { EntityManager, FindOneOptions, IsNull, DataSource, Repository, QueryRunner } from 'typeorm';
+import { EntityManager, FindOneOptions, IsNull, DataSource, Repository, QueryRunner, FindOperator } from 'typeorm';
 import { IBaseRepository } from './ibase.repository';
 
 export abstract class BaseRepostitory implements IBaseRepository {
@@ -136,13 +136,19 @@ export abstract class BaseRepostitory implements IBaseRepository {
 			return obj.map(this.transformNullToIsNull.bind(this));
 		}
 
+		if (obj instanceof FindOperator) {
+			return obj;
+		}
+
 		if (obj !== null && typeof obj === 'object') {
 			const newObj: any = {};
 
 			for (const key in obj) {
 				const value = obj[key];
 
-				if (value === null) {
+				if (value instanceof FindOperator) {
+					newObj[key] = value;
+				} else if (value === null) {
 					newObj[key] = IsNull();
 				} else {
 					newObj[key] = this.transformNullToIsNull(value);
