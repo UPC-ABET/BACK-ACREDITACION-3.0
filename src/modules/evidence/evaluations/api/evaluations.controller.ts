@@ -1,4 +1,4 @@
-import { Body, Param, Post, Get, ParseIntPipe, Put } from '@nestjs/common';
+import { Body, Param, Post, Get, ParseIntPipe, Patch } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerEvaluationController,
@@ -27,7 +27,7 @@ export class EvaluationController extends BaseController<EvaluationService> {
 		return await this.submissionService.submitEvaluation(dto);
 	}
 
-	@Put('observation')
+	@Patch('observation')
 	async saveObservation(@Body() dto: SaveObservationDto) {
 		return await this.submissionService.saveObservation(dto);
 	}
