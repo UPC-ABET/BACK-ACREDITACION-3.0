@@ -1,4 +1,4 @@
-import { applyDecorators, Controller, Delete, Get, Post, Put } from '@nestjs/common';
+import { applyDecorators, Controller, Delete, Get, Post, Put, Patch } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBody, ApiParam, ApiTags, ApiConsumes, ApiProduces } from '@nestjs/swagger';
 import { strings_swagger } from './swagger.strings';
 
@@ -6,6 +6,7 @@ const methodDecorators = {
 	POST: Post,
 	GET: Get,
 	PUT: Put,
+	PATCH: Patch,
 	DELETE: Delete,
 };
 export function ControllerWithTags(data: { tag: string; route: string }) {
