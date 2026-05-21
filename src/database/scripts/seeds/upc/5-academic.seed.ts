@@ -455,7 +455,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			'${i18n('Decanato EISCB', "EISCB Dean's Office")}'::jsonb,
 			NULL, NULL
 		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'admin.eiscb@upc.edu.pe'
+		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'dean.eiscb@upc.edu.pe'
 		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
 		JOIN "organization"."chart_levels" cl   ON cl.level = 1
 		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T001'
@@ -484,7 +484,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			entity_type.id,
 			(SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
 		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'admin.eiscb@upc.edu.pe'
+		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
 		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
 		JOIN "organization"."chart_levels" cl   ON cl.level = 2
 		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T002'
@@ -518,7 +518,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			entity_type.id,
 			(SELECT id FROM "academic"."programs" WHERE code = 'CS')
 		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
+		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'prog-coord.eiscb@upc.edu.pe'
 		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
 		JOIN "organization"."chart_levels" cl   ON cl.level = 3
 		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T003'
@@ -551,7 +551,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			'${i18n('Coordinacion de Area CS', 'CS Area Coordination')}'::jsonb,
 			NULL, NULL
 		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
+		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'area-coord.eiscb@upc.edu.pe'
 		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
 		JOIN "organization"."chart_levels" cl   ON cl.level = 4
 		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T004'
@@ -579,7 +579,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			'${i18n('Coordinacion de Subarea CS', 'CS Subarea Coordination')}'::jsonb,
 			NULL, NULL
 		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
+		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'subarea-coord.eiscb@upc.edu.pe'
 		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
 		JOIN "organization"."chart_levels" cl   ON cl.level = 5
 		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T005'

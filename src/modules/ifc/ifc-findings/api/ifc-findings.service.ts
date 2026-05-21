@@ -98,7 +98,7 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				finding_code: row.finding_code,
 				academic_period_code: row.academic_period_code,
 				description: row.description,
-				criticality: { code: row.criticality_code, name: row.criticality_name },
+				criticality: { code: row.criticality_code, name: row.criticality_name, color: row.criticality_color ?? null },
 			},
 			actions: actionRows,
 		};
@@ -186,6 +186,7 @@ SELECT
 	f.course_id::int                                            AS course_id,
 	ct_crit.code                                                AS criticality_code,
 	ct_crit.name                                                AS criticality_name,
+	(ct_crit.extra->>'color')                                   AS criticality_color,
 	(ct_crit.extra->>'order')::int                              AS criticality_order,
 	(p_fnd.value #>> '{}')
 		|| '-' || inst.code
@@ -233,7 +234,8 @@ SELECT
 	ap.code                                                  AS academic_period_code,
 	f.description                                            AS description,
 	ct_crit.code                                             AS criticality_code,
-	ct_crit.name                                             AS criticality_name
+	ct_crit.name                                             AS criticality_name,
+	(ct_crit.extra->>'color')                                AS criticality_color
 FROM improvement.findings f
 JOIN core.types ct_crit             ON ct_crit.id = f.criticality_type_id
 JOIN evidence.instruments inst      ON inst.id    = f.instrument_id

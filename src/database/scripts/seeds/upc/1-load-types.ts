@@ -90,14 +90,14 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		['TG601', 'TG601-T002', i18n('Egresados', 'Graduates'), i18n('Encuesta a egresados', 'Graduate survey'), '{}'],
 		['TG602', 'TG602-T001', i18n('Activa', 'Active'), i18n('Encuesta activa', 'Active survey'), '{}'],
 		['TG602', 'TG602-T002', i18n('Cerrada', 'Closed'), i18n('Encuesta cerrada', 'Closed survey'), '{}'],
-		['TG701', 'TG701-T001', i18n('Guardado', 'Saved'), i18n('IFC guardado', 'IFC saved'), '{}'],
-		['TG701', 'TG701-T002', i18n('Enviado', 'Submitted'), i18n('IFC enviado a revision', 'IFC submitted for review'), '{}'],
-		['TG701', 'TG701-T003', i18n('Aprobado', 'Approved'), i18n('IFC aprobado', 'IFC approved'), '{}'],
-		['TG701', 'TG701-T004', i18n('Observado', 'Observed'), i18n('IFC observado', 'IFC observed'), '{}'],
-		['TG701', 'TG701-T005', i18n('Sin Registrar', 'Unregistered'), i18n('IFC sin registrar (derivado)', 'Unregistered IFC (derived)'), '{}'],
-		['TG801', 'TG801-T001', i18n('Critico', 'Critical'), i18n('Criticidad alta', 'High criticality'), '{"order":1}'],
-		['TG801', 'TG801-T002', i18n('Preocupante', 'Worrying'), i18n('Criticidad media', 'Medium criticality'), '{"order":2}'],
-		['TG801', 'TG801-T003', i18n('Normal', 'Normal'), i18n('Criticidad baja', 'Low criticality'), '{"order":3}'],
+		['TG701', 'TG701-T001', i18n('Guardado', 'Saved'), i18n('IFC guardado', 'IFC saved'), '{"color":"#3b82f6"}'],
+		['TG701', 'TG701-T002', i18n('Enviado', 'Submitted'), i18n('IFC enviado a revision', 'IFC submitted for review'), '{"color":"#d97706"}'],
+		['TG701', 'TG701-T003', i18n('Aprobado', 'Approved'), i18n('IFC aprobado', 'IFC approved'), '{"color":"#16a34a"}'],
+		['TG701', 'TG701-T004', i18n('Observado', 'Observed'), i18n('IFC observado', 'IFC observed'), '{"color":"#ef4444"}'],
+		['TG701', 'TG701-T005', i18n('Sin Registrar', 'Unregistered'), i18n('IFC sin registrar (derivado)', 'Unregistered IFC (derived)'), '{"color":"#6b7280"}'],
+		['TG801', 'TG801-T001', i18n('Critico', 'Critical'), i18n('Criticidad alta', 'High criticality'), '{"order":1,"color":"#dc2626"}'],
+		['TG801', 'TG801-T002', i18n('Preocupante', 'Worrying'), i18n('Criticidad media', 'Medium criticality'), '{"order":2,"color":"#f97316"}'],
+		['TG801', 'TG801-T003', i18n('Normal', 'Normal'), i18n('Criticidad baja', 'Low criticality'), '{"order":3,"color":"#64748b"}'],
 		['TG901', 'TG901-T001', i18n('Administrador', 'Administrator'), i18n('Administrador del sistema', 'System administrator'), '{}'],
 		['TG901', 'TG901-T002', i18n('Coordinador de calidad', 'Quality coordinator'), i18n('Coordinador de calidad academica', 'Academic quality coordinator'), '{}'],
 		['TG901', 'TG901-T003', i18n('Profesor', 'Professor'), i18n('Docente del programa', 'Program professor'), '{}'],
@@ -132,5 +132,30 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "core"."types" t WHERE t.code = v.code
 		);
+	`);
+
+	// Patch the `color` field into `extra` for IFC statuses (TG701) and criticality (TG801)
+	// even if the type rows already existed before this seed ran. Idempotent: merging the
+	// same patch is a no-op. Uses jsonb concatenation (`||`) which overwrites matching keys.
+	const colorPatches: Array<[string, string]> = [
+		['TG701-T001', '{"color":"#3b82f6"}'],
+		['TG701-T002', '{"color":"#d97706"}'],
+		['TG701-T003', '{"color":"#16a34a"}'],
+		['TG701-T004', '{"color":"#ef4444"}'],
+		['TG701-T005', '{"color":"#6b7280"}'],
+		['TG801-T001', '{"color":"#dc2626"}'],
+		['TG801-T002', '{"color":"#f97316"}'],
+		['TG801-T003', '{"color":"#64748b"}'],
+	];
+	const colorPatchValues = colorPatches.map(([code, patch]) => `('${code}', '${patch}'::jsonb)`).join(',\n\t\t\t');
+
+	await tenantDataSource.query(`
+		UPDATE "core"."types" t
+		SET extra = COALESCE(t.extra, '{}'::jsonb) || v.patch
+		FROM (
+			VALUES
+				${colorPatchValues}
+		) AS v(code, patch)
+		WHERE t.code = v.code;
 	`);
 });

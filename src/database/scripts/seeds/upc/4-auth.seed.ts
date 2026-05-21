@@ -38,7 +38,11 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 				('TG101-T001', 70000006, 'Sofia', 'Torres Rojas', 'student.sofia.torres@upc.edu.pe', '+51990000006', $6, false),
 				('TG101-T001', 80000001, 'Ana', 'Admin', 'admin.eiscb@upc.edu.pe', '+51999900001', $7, true),
 				('TG101-T001', 80000002, 'Diego', 'Director', 'director.eiscb@upc.edu.pe', '+51999900002', $7, false),
-				('TG101-T001', 80000003, 'Camila', 'Coord', 'coord.eiscb@upc.edu.pe', '+51999900003', $7, false)
+				('TG101-T001', 80000003, 'Camila', 'Coord', 'coord.eiscb@upc.edu.pe', '+51999900003', $7, false),
+				('TG101-T001', 80000004, 'Carla', 'Decano', 'dean.eiscb@upc.edu.pe', '+51999900004', $7, false),
+				('TG101-T001', 80000005, 'Sara', 'Programa', 'prog-coord.eiscb@upc.edu.pe', '+51999900005', $7, false),
+				('TG101-T001', 80000006, 'Bruno', 'Area', 'area-coord.eiscb@upc.edu.pe', '+51999900006', $7, false),
+				('TG101-T001', 80000007, 'Pablo', 'Subarea', 'subarea-coord.eiscb@upc.edu.pe', '+51999900007', $7, false)
 		) AS v(document_type_code, document_code, first_name, last_name, email, phone, password, is_admin)
 		JOIN "core"."types" dt
 			ON dt.code = v.document_type_code
@@ -67,6 +71,10 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 		['admin.eiscb@upc.edu.pe', 'TG901-T001', i18n('Administrador EISCB', 'EISCB Administrator'), i18n('Administracion de la escuela EISCB', 'EISCB school administration')],
 		['director.eiscb@upc.edu.pe', 'TG901-T002', i18n('Director de Escuela EISCB', 'EISCB School Director'), i18n('Direccion academica de la escuela EISCB', 'Academic leadership of EISCB')],
 		['coord.eiscb@upc.edu.pe', 'TG901-T003', i18n('Coordinador de Curso EISCB', 'EISCB Course Coordinator'), i18n('Coordinacion de cursos de la escuela EISCB', 'Course coordination at EISCB')],
+		['dean.eiscb@upc.edu.pe', 'TG901-T001', i18n('Decano EISCB', 'EISCB Dean'), i18n('Decanato de la facultad', 'Faculty dean')],
+		['prog-coord.eiscb@upc.edu.pe', 'TG901-T002', i18n('Coordinadora de Carrera EISCB', 'EISCB Program Coordinator'), i18n('Coordinacion de la carrera CS', 'CS program coordination')],
+		['area-coord.eiscb@upc.edu.pe', 'TG901-T002', i18n('Coordinador de Area EISCB', 'EISCB Area Coordinator'), i18n('Coordinacion del area academica', 'Academic area coordination')],
+		['subarea-coord.eiscb@upc.edu.pe', 'TG901-T002', i18n('Coordinador de Subarea EISCB', 'EISCB Subarea Coordinator'), i18n('Coordinacion de subarea academica', 'Academic subarea coordination')],
 	]
 		.map(([email, code, title, description]) => `('${email}', '${code}', '${title}'::jsonb, '${description}'::jsonb)`)
 		.join(',\n\t\t\t');

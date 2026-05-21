@@ -202,6 +202,7 @@ export class IfcCoordinatorDto {
 export class IfcStatusInfoDto {
 	@ApiProperty() code: string;
 	@ApiProperty({ type: Object }) name: I18nText;
+	@ApiProperty({ nullable: true, example: '#22c55e' }) color: string | null;
 	@ApiProperty() at: string;
 	@ApiProperty({ type: Object, nullable: true }) comment: I18nText | null;
 	@ApiProperty({ nullable: true }) by: string | null;
@@ -262,7 +263,7 @@ export class IfcFindingDto {
 	@ApiProperty({ type: Object }) description: I18nText;
 	@ApiProperty() correlative: number;
 	@ApiProperty() is_automatic: boolean;
-	@ApiProperty({ type: Object }) criticality: { code: string; name: I18nText };
+	@ApiProperty({ type: Object }) criticality: { code: string; name: I18nText; color: string | null };
 	@ApiProperty({ type: [IfcFindingOutcomeDto] }) outcomes: IfcFindingOutcomeDto[];
 	@ApiProperty({ type: [IfcFindingActionDto] }) actions: IfcFindingActionDto[];
 }

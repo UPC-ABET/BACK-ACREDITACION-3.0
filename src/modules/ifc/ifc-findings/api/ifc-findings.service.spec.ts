@@ -59,7 +59,7 @@ describe('IfcFindingService.getDetail', () => {
 				finding_code: headerRow.finding_code,
 				academic_period_code: headerRow.academic_period_code,
 				description: headerRow.description,
-				criticality: { code: headerRow.criticality_code, name: headerRow.criticality_name },
+				criticality: { code: headerRow.criticality_code, name: headerRow.criticality_name, color: null },
 			},
 			actions: [actionRow],
 		});

@@ -667,6 +667,7 @@ export class IfcService extends BaseService<IfcRepository> {
 				? {
 						code: header.status_code,
 						name: header.status_name,
+						color: header.status_color ?? null,
 						at: header.status_at,
 						comment: header.status_comment ?? null,
 						by: header.status_by_name ?? null,
@@ -711,7 +712,7 @@ export class IfcService extends BaseService<IfcRepository> {
 				description: row.finding_description,
 				correlative: row.finding_correlative,
 				is_automatic: row.is_automatic,
-				criticality: { code: row.criticality_code, name: row.criticality_name },
+				criticality: { code: row.criticality_code, name: row.criticality_name, color: row.criticality_color ?? null },
 				outcomes: outcomesByFinding.get(fid) ?? [],
 				actions: actionsByFinding.get(fid) ?? [],
 			};
@@ -756,7 +757,8 @@ SELECT
 		'created_at',   i.created_at,
 		'updated_at',   i.updated_at,
 		'status_code',  ifc_st.code,
-		'status_label', ifc_st.name
+		'status_label', ifc_st.name,
+		'status_color', ifc_st.extra->>'color'
 	) END                                              AS ifc
 FROM organization.charts c
 JOIN core.types ct_entity            ON ct_entity.id = c.entity_type_id
@@ -843,6 +845,7 @@ SELECT
 	coord_u.first_name || ' ' || coord_u.last_name  AS coordinator_name,
 	ifc_st.code                                     AS status_code,
 	ifc_st.name                                     AS status_name,
+	(ifc_st.extra->>'color')                        AS status_color,
 	latest_status.register_at                       AS status_at,
 	latest_status.comment                           AS status_comment,
 	u_by.first_name || ' ' || u_by.last_name        AS status_by_name,
@@ -886,7 +889,8 @@ SELECT
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
 		|| '-' || f.correlative::text  AS finding_code,
 	crit.code                          AS criticality_code,
-	crit.name                          AS criticality_name
+	crit.name                          AS criticality_name,
+	(crit.extra->>'color')             AS criticality_color
 FROM ifc.ifc_findings ifc_f
 JOIN improvement.findings f      ON f.id    = ifc_f.finding_id
 JOIN core.types crit             ON crit.id = f.criticality_type_id
