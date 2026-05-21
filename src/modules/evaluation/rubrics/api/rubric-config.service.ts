@@ -13,7 +13,10 @@ import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 
-const toI18n = (text: string): I18nText => ({ es: text, en: text });
+const toI18n = (text: I18nText | string): I18nText => {
+	if (typeof text === 'string') return { es: text, en: text };
+	return text;
+};
 
 /**
  * RubricConfigService

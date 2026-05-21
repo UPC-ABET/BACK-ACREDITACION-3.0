@@ -16,10 +16,14 @@ export class ScoreDetailDto {
 	score: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'Good performance', required: false })
-	commentaries?: string;
+	@ApiProperty({
+		oneOf: [
+			{ type: 'string', example: 'Good performance' },
+			{ type: 'object', example: { es: 'Buen desempeño', en: 'Good performance' } },
+		],
+		required: false,
+	})
+	commentaries?: I18nText | string;
 }
 
 export class SubmitEvaluationDto extends BaseDto {
@@ -34,10 +38,14 @@ export class SubmitEvaluationDto extends BaseDto {
 	project_evaluator_id: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'Overall observation', required: false })
-	observation?: string;
+	@ApiProperty({
+		oneOf: [
+			{ type: 'string', example: 'Overall observation' },
+			{ type: 'object', example: { es: 'Observación general', en: 'Overall observation' } },
+		],
+		required: false,
+	})
+	observation?: I18nText | string;
 
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -136,10 +144,14 @@ export class SaveObservationDto extends BaseDto {
 	project_evaluator_id: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'Student observation', required: false })
-	observation?: string;
+	@ApiProperty({
+		oneOf: [
+			{ type: 'string', example: 'Student observation' },
+			{ type: 'object', example: { es: 'Observación del alumno', en: 'Student observation' } },
+		],
+		required: false,
+	})
+	observation?: I18nText | string;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })

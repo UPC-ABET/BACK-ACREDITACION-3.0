@@ -209,8 +209,8 @@ export class EvaluationSubmissionService {
 		manager: any,
 		projectStudentId: number,
 		projectEvaluatorId: number,
-		observation: string | null | undefined,
-		scores: Array<{ rubric_question_criteria_id: number; score: number; commentaries?: string }>,
+		observation: I18nText | string | null | undefined,
+		scores: Array<{ rubric_question_criteria_id: number; score: number; commentaries?: I18nText | string }>,
 		asistioStatusTypeId: number,
 	): Promise<EvaluationEntity> {
 		let evaluation = await manager.findOne(EvaluationEntity, {
@@ -222,7 +222,7 @@ export class EvaluationSubmissionService {
 
 		if (evaluation) {
 			if (observation !== undefined) {
-				evaluation.observation = observation;
+				evaluation.observation = i18nText(observation);
 			}
 			await manager.save(evaluation);
 		} else {
@@ -230,7 +230,7 @@ export class EvaluationSubmissionService {
 				project_student_id: projectStudentId,
 				project_evaluator_id: projectEvaluatorId,
 				qualification_status_type_id: asistioStatusTypeId,
-				observation: observation ?? null,
+				observation: i18nText(observation),
 				register_at: new Date(),
 				is_active: true,
 			});

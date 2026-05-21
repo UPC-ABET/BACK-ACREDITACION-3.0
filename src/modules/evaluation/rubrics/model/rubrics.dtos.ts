@@ -1,13 +1,18 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, IsNotEmpty, IsArray, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import { Type } from 'class-transformer';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateRubricCriteriaDto {
-	@IsString()
-	@IsNotEmpty()
-	@ApiProperty({ example: 'Criteria description', required: true })
-	criteria: string;
+	@ApiProperty({
+		oneOf: [
+			{ type: 'string', example: 'Criteria description' },
+			{ type: 'object', example: { es: 'Descripción del criterio', en: 'Criteria description' } },
+		],
+		required: true,
+	})
+	criteria: I18nText | string;
 
 	@IsNumber()
 	@ApiProperty({ example: 0, required: true })
@@ -24,10 +29,14 @@ export class CreateRubricQuestionDto {
 	@ApiProperty({ example: 1, required: false })
 	outcome_id?: number;
 
-	@IsString()
-	@IsNotEmpty()
-	@ApiProperty({ example: 'Question text', required: true })
-	question: string;
+	@ApiProperty({
+		oneOf: [
+			{ type: 'string', example: 'Question text' },
+			{ type: 'object', example: { es: 'Texto de la pregunta', en: 'Question text' } },
+		],
+		required: true,
+	})
+	question: I18nText | string;
 
 	@IsArray()
 	@ValidateNested({ each: true })
