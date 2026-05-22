@@ -91,11 +91,14 @@ export class FilterCourseDto extends BaseDto {
 	// Filters by related entities
 
     @IsOptional() @IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
     academic_period_id?: number;
 
     @IsOptional() @IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
     program_id?: number;
 
     @IsOptional() @IsString()
+	@ApiProperty({ example: 'EISC', required: false, description: 'Código de la escuela' })
     school_code?: string;
 }
