@@ -12,6 +12,17 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		[i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), 2026103, 'PROG_SOFT', 'AP_2026_1'],
 		[i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), 2025101, 'CS', '202502'],
 		[i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), 2025102, 'CS', '202502'],
+		// Previous-action demo: prior-period actions for "Proyecto Integrador de Software".
+		// They live in AP_2026_1 (year 2026, earlier than AP_2026_2) and surface when viewing
+		// or prefilling the IFC for that course in AP_2026_2.
+		[i18n('Accion previa: ajustar rubricas del proyecto integrador.', 'Previous action: adjust integrator project rubrics.'), 2026801, 'PROG_SOFT', 'AP_2026_1'],
+		[i18n('Accion previa: anadir checkpoint mensual al proyecto integrador.', 'Previous action: add monthly checkpoint to integrator project.'), 2026802, 'PROG_SOFT', 'AP_2026_1'],
+		// CS prior actions in AP_2026_1 (year 2026, earlier than 202601). These surface as
+		// previous_actions when viewing the 202601 IFCs (CC101 / CC102) or prefilling CC103.
+		[i18n('Accion previa: refactorizar el banco de ejercicios algoritmicos.', 'Previous action: refactor the algorithmic exercise bank.'), 2026901, 'CS', 'AP_2026_1'],
+		[i18n('Accion previa: incorporar checkpoints semanales en CC101.', 'Previous action: add weekly checkpoints to CC101.'), 2026902, 'CS', 'AP_2026_1'],
+		[i18n('Accion previa: anadir taller de seguridad SQL en CC102.', 'Previous action: add SQL security workshop to CC102.'), 2026903, 'CS', 'AP_2026_1'],
+		[i18n('Accion previa: incorporar catalogo de patrones de diseno en CC103.', 'Previous action: add a design-patterns catalog to CC103.'), 2026904, 'CS', 'AP_2026_1'],
 	]
 		.map(([desc, corr, pc, apc]) => `('${desc}'::jsonb, ${corr}, '${pc}', '${apc}')`)
 		.join(',\n\t\t\t');
@@ -74,6 +85,45 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'Bases de Datos',
 			'202502',
 		],
+		// Previous-action demo: a finding on "Proyecto Integrador de Software" in AP_2026_1.
+		// Its finding_actions wire actions 2026801 / 2026802 into the course's history.
+		[
+			'TG801-T002',
+			'INST_CAPSTONE',
+			'calidad@upc.edu.pe',
+			2026801,
+			i18n('Hallazgo previo: criterios de evaluacion del proyecto integrador requieren ajustes.', 'Previous finding: integrator project evaluation criteria need adjustments.'),
+			'Proyecto Integrador de Software',
+			'AP_2026_1',
+		],
+		// Prior CS findings in AP_2026_1 (one per CS course) — feed previous_actions in 202601.
+		[
+			'TG801-T002',
+			'INST_IFC',
+			'coord.eiscb@upc.edu.pe',
+			2026901,
+			i18n('Hallazgo previo: brechas algoritmicas detectadas en CC101.', 'Previous finding: algorithmic gaps detected in CC101.'),
+			'Algoritmos y Estructuras de Datos',
+			'AP_2026_1',
+		],
+		[
+			'TG801-T001',
+			'INST_IFC',
+			'coord.eiscb@upc.edu.pe',
+			2026902,
+			i18n('Hallazgo previo: vulnerabilidades de inyeccion SQL reportadas en CC102.', 'Previous finding: SQL injection vulnerabilities reported in CC102.'),
+			'Bases de Datos',
+			'AP_2026_1',
+		],
+		[
+			'TG801-T003',
+			'INST_IFC',
+			'coord.eiscb@upc.edu.pe',
+			2026903,
+			i18n('Hallazgo previo: falta cobertura de patrones de diseno en CC103.', 'Previous finding: insufficient design-patterns coverage in CC103.'),
+			'Ingenieria de Software',
+			'AP_2026_1',
+		],
 	]
 		.map(([ct, ic, em, corr, desc, cn, pc]) => `('${ct}', '${ic}', '${em}', ${corr}, '${desc}'::jsonb, '${cn}', '${pc}')`)
 		.join(',\n\t\t\t');
@@ -113,18 +163,59 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			2026001,
 			i18n('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 'Reinforce algorithmic analysis exercises in Fundamentals of Programming.'),
 			true,
-			'{"required":["syllabus","exercise-bank"]}',
+			i18n('Silabo y banco de ejercicios disponibles en el aula virtual.', 'Syllabus and exercise bank available in the virtual classroom.'),
 		],
 		[
 			2026002,
 			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
 			true,
-			'{"required":["peer-review-log","team-rubric"]}',
+			i18n('Bitacora de revisiones por pares y rubrica de equipos.', 'Peer-review log and team rubric.'),
 		],
-		[2026001, i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), false, '{"required":["evidence-matrix"]}'],
+		[
+			2026001,
+			i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'),
+			false,
+			i18n('Matriz de evidencias actualizada y publicada.', 'Evidence matrix updated and published.'),
+		],
 		// CC101 finding (2025001) → 2 actions. First has evidences=NULL → derived PENDING; second has evidences set → derived IMPLEMENTED.
 		[2025001, i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), true, null],
-		[2025001, i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), true, '{"x":1}'],
+		[2025001, i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), true, i18n('Plan piloto ejecutado en dos secciones.', 'Pilot plan executed in two sections.')],
+		// Previous-action demo: finding 2026801 (Proyecto Integrador @ AP_2026_1) → both prior actions.
+		// First stays PENDING (no evidences); second is IMPLEMENTED with evidence text.
+		[2026801, i18n('Accion previa: ajustar rubricas del proyecto integrador.', 'Previous action: adjust integrator project rubrics.'), false, null],
+		[
+			2026801,
+			i18n('Accion previa: anadir checkpoint mensual al proyecto integrador.', 'Previous action: add monthly checkpoint to integrator project.'),
+			false,
+			i18n('Checkpoint mensual programado y comunicado a los equipos.', 'Monthly checkpoint scheduled and communicated to teams.'),
+		],
+		// CC101 → 2 actions (one IMPLEMENTED with evidence, one PENDING with null)
+		[
+			2026901,
+			i18n('Accion previa: refactorizar el banco de ejercicios algoritmicos.', 'Previous action: refactor the algorithmic exercise bank.'),
+			false,
+			i18n('Banco de ejercicios refactorizado y publicado en el aula virtual.', 'Exercise bank refactored and published in the virtual classroom.'),
+		],
+		[
+			2026901,
+			i18n('Accion previa: incorporar checkpoints semanales en CC101.', 'Previous action: add weekly checkpoints to CC101.'),
+			false,
+			null,
+		],
+		// CC102 → 1 action IMPLEMENTED.
+		[
+			2026902,
+			i18n('Accion previa: anadir taller de seguridad SQL en CC102.', 'Previous action: add SQL security workshop to CC102.'),
+			false,
+			i18n('Taller de seguridad SQL ejecutado con 24 estudiantes.', 'SQL security workshop run with 24 students.'),
+		],
+		// CC103 → 1 action PENDING (visible on prefill since CC103 has no IFC in 202601).
+		[
+			2026903,
+			i18n('Accion previa: incorporar catalogo de patrones de diseno en CC103.', 'Previous action: add a design-patterns catalog to CC103.'),
+			false,
+			null,
+		],
 	]
 		.map(([fc, desc, ipr, ev]) => `(${fc}, '${desc}'::jsonb, ${ipr}, ${ev === null ? 'NULL' : `'${ev}'::jsonb`})`)
 		.join(',\n\t\t\t');
@@ -167,6 +258,15 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Plan para fortalecer seguimiento de equipos en el proyecto integrador.', 'Plan to strengthen team tracking in the integrator project.'),
 			true,
 		],
+		// CS plan in AP_2026_1 — lets us demonstrate Path A (source='both') for CC101's
+		// IFC in 202601: an action reachable via both the plan chain and the action's period.
+		[
+			'CS',
+			'AP_2026_1',
+			i18n('Plan de mejora CS 2026-1', '2026-1 CS improvement plan'),
+			i18n('Plan para cerrar brechas algoritmicas detectadas en cursos base de CS.', 'Plan to close algorithmic gaps detected in core CS courses.'),
+			true,
+		],
 	]
 		.map(([pc, ap, name, desc, open]) => `('${pc}', '${ap}', '${name}'::jsonb, '${desc}'::jsonb, ${open as boolean})`)
 		.join(',\n\t\t\t');
@@ -203,6 +303,21 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Plan de seguimiento capstone 2026-2', '2026-2 capstone tracking plan'),
 			2026002,
 			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
+		],
+		// Previous-action demo: link one prior action to the AP_2026_1 plan so it surfaces
+		// via Path A (plan chain) in addition to Path B (direct). Yields source='both'.
+		// The second prior action (2026802) stays plan-less → source='direct'.
+		[
+			i18n('Plan de mejora de evidencias 2026-1', '2026-1 evidence improvement plan'),
+			2026801,
+			i18n('Accion previa: ajustar rubricas del proyecto integrador.', 'Previous action: adjust integrator project rubrics.'),
+		],
+		// CC101: tie the refactor-exercise-bank action to the CS plan → source='both'.
+		// The "weekly checkpoints" action stays plan-less → source='direct'.
+		[
+			i18n('Plan de mejora CS 2026-1', '2026-1 CS improvement plan'),
+			2026901,
+			i18n('Accion previa: refactorizar el banco de ejercicios algoritmicos.', 'Previous action: refactor the algorithmic exercise bank.'),
 		],
 	]
 		.map(([planName, fc, actionDesc]) => `('${planName}'::jsonb, ${fc}, '${actionDesc}'::jsonb)`)

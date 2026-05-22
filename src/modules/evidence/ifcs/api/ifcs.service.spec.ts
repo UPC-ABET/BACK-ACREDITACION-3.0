@@ -62,6 +62,8 @@ describe('IfcService.getView', () => {
 
 	const headerRow = {
 		ifc_id: 42,
+		course_id: 17,
+		academic_period_id: 5,
 		information: { foo: 'bar' },
 		extra: {},
 		ifc_created_at: '2026-01-01T00:00:00Z',
@@ -81,17 +83,18 @@ describe('IfcService.getView', () => {
 		requester_in_chain: true,
 	};
 
-	it('calls the five SQL queries with the correct positional params', async () => {
+	it('calls the six SQL queries with the correct positional params', async () => {
 		dataSource.query
 			.mockResolvedValueOnce([headerRow]) // HEADER
 			.mockResolvedValueOnce([{ finding_id: 1 }]) // FINDINGS
 			.mockResolvedValueOnce([]) // OUTCOME_COURSE
 			.mockResolvedValueOnce([]) // FINDING_OUTCOMES
-			.mockResolvedValueOnce([]); // FINDING_ACTIONS
+			.mockResolvedValueOnce([]) // FINDING_ACTIONS
+			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
 		await service.getView(42, 99, 9);
 
-		expect(dataSource.query).toHaveBeenCalledTimes(5);
+		expect(dataSource.query).toHaveBeenCalledTimes(6);
 
 		const [, headerParams] = dataSource.query.mock.calls[0];
 		expect(headerParams).toEqual([42, 9, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, 99]);
@@ -107,6 +110,9 @@ describe('IfcService.getView', () => {
 
 		const [, finActionParams] = dataSource.query.mock.calls[4];
 		expect(finActionParams).toEqual([[1], IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
+
+		const [, prevActionParams] = dataSource.query.mock.calls[5];
+		expect(prevActionParams).toEqual([17, 5, 42, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
 	});
 
 	it('throws 404 when headerRows is empty', async () => {
@@ -120,22 +126,24 @@ describe('IfcService.getView', () => {
 		});
 	});
 
-	it('skips finding outcome / action queries when no findings exist', async () => {
+	it('skips finding outcome / action queries when no findings exist, but still loads previous actions', async () => {
 		dataSource.query
 			.mockResolvedValueOnce([headerRow])
 			.mockResolvedValueOnce([]) // no findings
-			.mockResolvedValueOnce([]);
+			.mockResolvedValueOnce([]) // OUTCOME_COURSE
+			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
 		const result = await service.getView(42, 99, 9);
 
-		expect(dataSource.query).toHaveBeenCalledTimes(3);
+		expect(dataSource.query).toHaveBeenCalledTimes(4);
 		expect(result.findings).toEqual([]);
 		expect(result.ifc.requester_in_chain).toBe(true);
+		expect(result.previous_actions).toEqual([]);
 	});
 
 	it('emits status: null when the header has no status_code', async () => {
 		const noStatus = { ...headerRow, status_code: null, status_name: null, status_at: null };
-		dataSource.query.mockResolvedValueOnce([noStatus]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+		dataSource.query.mockResolvedValueOnce([noStatus]).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
 		const result = await service.getView(42, 99, 9);
 
@@ -145,6 +153,7 @@ describe('IfcService.getView', () => {
 	it('exposes requester_in_chain=false when the header reports the requester is not in the chain', async () => {
 		dataSource.query
 			.mockResolvedValueOnce([{ ...headerRow, requester_in_chain: false }])
+			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
@@ -283,6 +292,7 @@ describe('IfcService.prefill', () => {
 	});
 
 	const headerRow = {
+		course_id: 17,
 		academic_period_code: 'AP_2026_1',
 		area_label: { es: 'Área' },
 		subarea_label: { es: 'Subárea' },
@@ -293,16 +303,18 @@ describe('IfcService.prefill', () => {
 		coordinator_name: 'Ada Lovelace',
 	};
 
-	it('calls the two SQL queries with the correct positional params', async () => {
-		dataSource.query.mockResolvedValueOnce([headerRow]).mockResolvedValueOnce([]);
+	it('calls the three SQL queries with the correct positional params', async () => {
+		dataSource.query.mockResolvedValueOnce([headerRow]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
 		await service.prefill({ chart_id: 310, period_id: 5 }, 9);
 
-		expect(dataSource.query).toHaveBeenCalledTimes(2);
+		expect(dataSource.query).toHaveBeenCalledTimes(3);
 		const [, headerParams] = dataSource.query.mock.calls[0];
 		expect(headerParams).toEqual([310, 5, 9, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
 		const [, outcomeParams] = dataSource.query.mock.calls[1];
 		expect(outcomeParams).toEqual([310]);
+		const [, prevActionParams] = dataSource.query.mock.calls[2];
+		expect(prevActionParams).toEqual([17, 5, null, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
 	});
 
 	it('returns 404 when the header is empty (chart not in school)', async () => {
@@ -312,16 +324,20 @@ describe('IfcService.prefill', () => {
 	});
 
 	it('merges header + grouped outcome rows', async () => {
-		dataSource.query.mockResolvedValueOnce([headerRow]).mockResolvedValueOnce([
-			{ program_code: 'PR1', program_name: { es: 'Prog 1' }, commission_code: 'C1', commission_name: { es: 'Com 1' }, outcome_code: 'O1', outcome_name: { es: 'OC1' }, outcome_description: {} },
-			{ program_code: 'PR1', program_name: { es: 'Prog 1' }, commission_code: 'C1', commission_name: { es: 'Com 1' }, outcome_code: 'O2', outcome_name: { es: 'OC2' }, outcome_description: {} },
-		]);
+		dataSource.query
+			.mockResolvedValueOnce([headerRow])
+			.mockResolvedValueOnce([
+				{ program_code: 'PR1', program_name: { es: 'Prog 1' }, commission_code: 'C1', commission_name: { es: 'Com 1' }, outcome_code: 'O1', outcome_name: { es: 'OC1' }, outcome_description: {} },
+				{ program_code: 'PR1', program_name: { es: 'Prog 1' }, commission_code: 'C1', commission_name: { es: 'Com 1' }, outcome_code: 'O2', outcome_name: { es: 'OC2' }, outcome_description: {} },
+			])
+			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
 		const result = await service.prefill({ chart_id: 310, period_id: 5 }, 9);
 
 		expect(result.outcome_course_result).toHaveLength(1);
 		expect(result.outcome_course_result[0].commissions[0].outcomes).toHaveLength(2);
 		expect(result.coordinator_user_id).toBe(7);
+		expect(result.previous_actions).toEqual([]);
 	});
 });
 
@@ -561,7 +577,7 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED, name: { es: 'Enviado' }, at: '2026', comment: null, by: 'me' }]); // insertStatus
 
 		const result = await service.patch(42, baseDto({ submit: true }), 99, 9);
-		expect(result).toEqual({ id: 42 });
+		expect(result).toMatchObject({ id: 42, notification: { sent: false, reason: 'no_config' } });
 
 		const statusInsert = em.query.mock.calls[6];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
