@@ -9,6 +9,7 @@ export const professorsRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar profesores' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener profesor' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar profesores' },
+			getByUserId: { method: 'GET', route: '/get-by-user-id/:userId', summary: 'Obtener profesor por ID de usuario' },
 		},
 	},
 };

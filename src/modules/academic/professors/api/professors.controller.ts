@@ -8,6 +8,7 @@ import {
 	SwaggerProfessorGetAll,
 	SwaggerProfessorGetById,
 	SwaggerProfessorGetByFilters,
+	SwaggerProfessorGetByUserId,
 } from './docs/professors.swagger';
 import { ProfessorService } from './professors.service';
 import { CreateProfessorDto, UpdateProfessorDto, FilterProfessorDto } from '../model/professors.dtos';
@@ -46,5 +47,10 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	@SwaggerProfessorGetByFilters()
 	async getByFilters(@Body() dto: FilterProfessorDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerProfessorGetByUserId()
+	async getByUserId(@Param('userId') user_id: number) {
+		return await this.service.getByUserId(user_id);
 	}
 }

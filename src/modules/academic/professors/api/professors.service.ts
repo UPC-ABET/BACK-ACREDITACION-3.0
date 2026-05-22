@@ -29,4 +29,8 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 		await ProfessorValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
 	}
+
+	async getByUserId(user_id: number) {
+    return await this.repository.getByUserId(user_id);
+}
 }
