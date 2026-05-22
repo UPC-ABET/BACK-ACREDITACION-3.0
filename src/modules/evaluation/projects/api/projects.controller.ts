@@ -29,10 +29,10 @@ export class ProjectController extends BaseController<ProjectService> {
 		return parseSuccessResponse(await this.projectConfigService.createProject(dto));
 	}
 
-	@Get('evaluator/:evaluatorId')
+	@Get('professor/:professorId')
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
-	async getProjectsByEvaluator(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
-		return parseSuccessResponse(await this.projectConfigService.getProjectsByEvaluator(evaluatorId));
+	async getProjectsByProfessor(@Param('professorId', ParseIntPipe) professorId: number) {
+		return parseSuccessResponse(await this.projectConfigService.getProjectsByProfessor(professorId));
 	}
 
 	@Get('project/:projectId')

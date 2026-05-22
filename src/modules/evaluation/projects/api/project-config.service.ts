@@ -117,9 +117,9 @@ export class ProjectConfigService {
 	}
 
 	/**
-	 * Obtiene todos los proyectos asignados a un evaluador
+	 * Obtiene todos los proyectos asignados a un profesor evaluador
 	 */
-	async getProjectsByEvaluator(evaluatorId: number): Promise<ProjectEvaluatorResponseDto[]> {
+	async getProjectsByProfessor(professorId: number): Promise<ProjectEvaluatorResponseDto[]> {
 		const projectEvaluators = await this.projectEvaluatorRepo
 			.createQueryBuilder('pe')
 			.leftJoinAndSelect('pe.evaluator_type', 'etype')
@@ -135,7 +135,7 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('sse.course_section', 'cs')
 			.leftJoinAndSelect('cs.study_plan_course', 'spc')
 			.leftJoinAndSelect('spc.course', 'c')
-			.where('pe.professor_id = :evaluatorId', { evaluatorId })
+			.where('pe.professor_id = :professorId', { professorId })
 			.getMany();
 
 		return projectEvaluators.map((pe) => {
