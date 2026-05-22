@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn, Column } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { NameColumn, IntegerFKIDColumn, DateColumn } from 'src/commons/configs/db.configs';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
@@ -18,6 +18,9 @@ export class AcademicPeriodEntity extends BaseEntity {
 
 	@DateColumn({ nullable: false })
 	end_date: Date;
+
+	@Column({ type: 'int', insert: false, update: false })
+	year: number;
 
 	// %% RELACIONES
 

@@ -316,19 +316,22 @@ export class IfcService extends BaseService<IfcRepository> {
 		}
 
 		const findingIds = findingRows.map((r: any) => Number(r.finding_id));
-		const [findingOutcomeRows, findingActionRows] = await Promise.all([
+		const header = headerRows[0];
+		const [findingOutcomeRows, findingActionRows, previousActions] = await Promise.all([
 			findingIds.length ? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds]) : Promise.resolve([]),
 			findingIds.length
 				? this.dataSource.query(FINDING_ACTIONS_SQL, [findingIds, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED])
 				: Promise.resolve([]),
+			this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
 		]);
 
 		return this.assembleViewResponse({
-			header: headerRows[0],
+			header,
 			findingRows,
 			outcomeCourseRows,
 			findingOutcomeRows,
 			findingActionRows,
+			previousActions,
 		});
 	}
 
@@ -375,11 +378,14 @@ export class IfcService extends BaseService<IfcRepository> {
 		]);
 
 		IfcValidation.assertChartFound(headerRows, 'prefill');
+		const header = headerRows[0];
+		const previous_actions = await this.loadPreviousActions(Number(header.course_id), query.period_id, null);
 
 		return {
-			...headerRows[0],
-			coordinator_user_id: headerRows[0].coordinator_user_id === null ? null : Number(headerRows[0].coordinator_user_id),
+			...header,
+			coordinator_user_id: header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
 			outcome_course_result: this.groupOutcomeRows(outcomeRows),
+			previous_actions,
 		};
 	}
 
@@ -673,8 +679,33 @@ export class IfcService extends BaseService<IfcRepository> {
 		}));
 	}
 
-	private assembleViewResponse(input: { header: any; findingRows: any[]; outcomeCourseRows: any[]; findingOutcomeRows: any[]; findingActionRows: any[] }) {
-		const { header, findingRows, outcomeCourseRows, findingOutcomeRows, findingActionRows } = input;
+	private async loadPreviousActions(courseId: number, activePeriodId: number, excludeIfcId: number | null) {
+		const rows = await this.dataSource.query(PREVIOUS_ACTIONS_SQL, [
+			courseId,
+			activePeriodId,
+			excludeIfcId,
+			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+		]);
+		return rows.map((r: any) => ({
+			id: Number(r.id),
+			finding_action_id: Number(r.finding_action_id),
+			finding_id: Number(r.finding_id),
+			code: r.code,
+			correlative: Number(r.correlative),
+			description: r.description,
+			evidences: r.evidences,
+			completeness_code: r.completeness_code,
+			completeness_name: r.completeness_name,
+			academic_period_id: Number(r.academic_period_id),
+			academic_period_code: r.academic_period_code,
+			source: r.source as 'plan' | 'direct' | 'both',
+		}));
+	}
+
+	private assembleViewResponse(input: { header: any; findingRows: any[]; outcomeCourseRows: any[]; findingOutcomeRows: any[]; findingActionRows: any[]; previousActions: any[] }) {
+		const { header, findingRows, outcomeCourseRows, findingOutcomeRows, findingActionRows, previousActions } = input;
 
 		const ifc = {
 			id: Number(header.ifc_id),
@@ -748,7 +779,7 @@ export class IfcService extends BaseService<IfcRepository> {
 			};
 		});
 
-		return { ifc, outcome_course_result: this.groupOutcomeRows(outcomeCourseRows), findings };
+		return { ifc, outcome_course_result: this.groupOutcomeRows(outcomeCourseRows), findings, previous_actions: previousActions };
 	}
 }
 
@@ -860,6 +891,8 @@ requester_staff AS (
 )
 SELECT
 	i.id                                            AS ifc_id,
+	i.course_id::int                                AS course_id,
+	i.academic_period_id::int                       AS academic_period_id,
 	i.information,
 	i.extra,
 	i.created_at                                    AS ifc_created_at,
@@ -1112,6 +1145,7 @@ SELECT
 	ap.code                                         AS academic_period_code,
 	c_area.level_title                              AS area_label,
 	c_sub.level_title                               AS subarea_label,
+	ac.id::int                                      AS course_id,
 	ac.name                                         AS course_name,
 	ac.learning_outcome                             AS course_learning_outcome,
 	coord_u.id::int                                 AS coordinator_user_id,
@@ -1271,4 +1305,89 @@ WHERE c_course.entity_code        = $1
   AND ct.code                     = $3
   AND c_course.is_active          = true
 LIMIT 1
+`;
+
+// $1 = course_id, $2 = active_period_id, $3 = exclude_ifc_id (nullable),
+// $4 = action prefix parameter key, $5 = PENDING type code, $6 = IMPLEMENTED type code
+// Emits one row per (action, finding_action) pair reachable via either:
+//   - via_plan:   plans whose period is in the same year and STRICTLY earlier than the
+//                 active period → plan_actions → finding_actions → actions
+//                 (course scope via findings.course_id)
+//   - via_action: actions whose own period is in the same year and STRICTLY earlier than
+//                 the active period (course scope via finding_actions → findings.course_id)
+// Each row carries the same fields as the IFC view's per-finding action rows:
+//   id, finding_action_id, finding_id, code, correlative, description, evidences,
+//   completeness_code, completeness_name, academic_period_id, academic_period_code, source
+// When $3 is non-null, drops pairs whose finding is already in that IFC (via ifc.ifc_findings).
+const PREVIOUS_ACTIONS_SQL = `
+WITH active AS (
+	SELECT year, start_date FROM academic.academic_periods WHERE id = $2
+),
+via_plan AS (
+	SELECT DISTINCT fa.id AS finding_action_id, a.id AS action_id
+	FROM improvement.plans p
+	JOIN academic.academic_periods plan_ap ON plan_ap.id = p.academic_period_id
+	JOIN improvement.plan_actions pa       ON pa.plan_id = p.id
+	JOIN improvement.finding_actions fa    ON fa.id      = pa.finding_action_id
+	JOIN improvement.findings f            ON f.id       = fa.finding_id
+	JOIN improvement.actions a             ON a.id       = fa.action_id
+	CROSS JOIN active
+	WHERE f.course_id        = $1
+	  AND plan_ap.year       = active.year
+	  AND plan_ap.start_date < active.start_date
+),
+via_action AS (
+	SELECT DISTINCT fa.id AS finding_action_id, a.id AS action_id
+	FROM improvement.actions a
+	JOIN academic.academic_periods action_ap ON action_ap.id = a.academic_period_id
+	JOIN improvement.finding_actions fa      ON fa.action_id = a.id
+	JOIN improvement.findings f              ON f.id         = fa.finding_id
+	CROSS JOIN active
+	WHERE f.course_id          = $1
+	  AND action_ap.year       = active.year
+	  AND action_ap.start_date < active.start_date
+),
+candidates AS (
+	SELECT finding_action_id, action_id FROM via_plan
+	UNION
+	SELECT finding_action_id, action_id FROM via_action
+)
+SELECT
+	a.id::int                AS id,
+	fa.id::int               AS finding_action_id,
+	fa.finding_id::int       AS finding_id,
+	a.correlative::int       AS correlative,
+	a.description            AS description,
+	fa.evidences             AS evidences,
+	CASE WHEN fa.evidences IS NULL THEN $5 ELSE $6 END  AS completeness_code,
+	comp.name                AS completeness_name,
+	(p_acn.value #>> '{}')
+		|| '-' || inst.code
+		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
+		|| '-' || a.correlative::text                   AS code,
+	a.academic_period_id::int AS academic_period_id,
+	ap.code                  AS academic_period_code,
+	CASE
+		WHEN EXISTS (SELECT 1 FROM via_plan vp WHERE vp.finding_action_id = fa.id AND vp.action_id = a.id)
+		 AND EXISTS (SELECT 1 FROM via_action va WHERE va.finding_action_id = fa.id AND va.action_id = a.id) THEN 'both'
+		WHEN EXISTS (SELECT 1 FROM via_plan vp WHERE vp.finding_action_id = fa.id AND vp.action_id = a.id) THEN 'plan'
+		ELSE 'direct'
+	END                      AS source
+FROM candidates c
+JOIN improvement.finding_actions fa ON fa.id = c.finding_action_id
+JOIN improvement.actions a          ON a.id  = c.action_id
+JOIN improvement.findings f         ON f.id  = fa.finding_id
+JOIN academic.academic_periods ap   ON ap.id = a.academic_period_id
+JOIN evidence.instruments inst      ON inst.id = f.instrument_id
+LEFT JOIN academic.courses ac       ON ac.id   = f.course_id
+CROSS JOIN (SELECT value FROM core.parameters WHERE code = $4) p_acn
+LEFT JOIN core.types comp           ON comp.code = (CASE WHEN fa.evidences IS NULL THEN $5 ELSE $6 END)
+WHERE $3::int IS NULL
+   OR NOT EXISTS (
+		SELECT 1
+		FROM ifc.ifc_findings ifj
+		WHERE ifj.ifc_id     = $3::int
+		  AND ifj.finding_id = fa.finding_id
+	)
+ORDER BY a.correlative ASC, fa.id ASC
 `;

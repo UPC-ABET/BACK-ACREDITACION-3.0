@@ -61,7 +61,8 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			VALUES
 				('COM_SOFT_2026', 'PROG_SOFT', 'AP_2026_1', 'TG301-T001'),
 				('COM_ADMIN_2026', 'PROG_ADMIN', 'AP_2026_1', 'TG301-T001'),
-				('COM_CS', 'CS', '202502', 'TG301-T001')
+				('COM_CS', 'CS', '202502', 'TG301-T001'),
+				('COM_CS', 'CS', '202601', 'TG301-T001')
 		) AS v(commission_code, program_code, academic_period_code, commission_type_code)
 		JOIN "accreditation"."commissions" commission
 			ON commission.code = v.commission_code
@@ -80,10 +81,14 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		);
 	`);
 
+	// outcome_code has a global UNIQUE constraint, so each outcome is anchored to a single
+	// program_commission (one specific period). When a commission spans multiple periods,
+	// the outcome is still defined once — pin it explicitly by academic_period_code here.
 	const outcomeValues = [
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
+			'AP_2026_1',
 			'OUT_SOFT_01',
 			i18n('Pensamiento critico', 'Critical thinking'),
 			i18n('Analiza problemas complejos de ingenieria de software con criterios tecnicos y de negocio.', 'Analyzes complex software engineering problems with technical and business criteria.'),
@@ -91,6 +96,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
+			'AP_2026_1',
 			'OUT_SOFT_02',
 			i18n('Comunicacion efectiva', 'Effective communication'),
 			i18n('Comunica decisiones tecnicas a audiencias especializadas y no especializadas.', 'Communicates technical decisions to specialized and non-specialized audiences.'),
@@ -98,6 +104,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
+			'AP_2026_1',
 			'OUT_SOFT_03',
 			i18n('Trabajo en equipo', 'Teamwork'),
 			i18n('Colabora en equipos multidisciplinarios durante el ciclo de vida del software.', 'Collaborates in multidisciplinary teams during the software lifecycle.'),
@@ -105,6 +112,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
+			'AP_2026_1',
 			'OUT_SOFT_04',
 			i18n('Solucion tecnica', 'Technical solution'),
 			i18n('Disena e implementa soluciones de software sostenibles y verificables.', 'Designs and implements sustainable and verifiable software solutions.'),
@@ -112,6 +120,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_ADMIN_2026',
 			'PROG_ADMIN',
+			'AP_2026_1',
 			'OUT_ADMIN_01',
 			i18n('Gestion organizacional', 'Organizational management'),
 			i18n('Propone acciones de gestion basadas en informacion confiable.', 'Proposes management actions based on reliable information.'),
@@ -119,6 +128,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_CS',
 			'CS',
+			'202502',
 			'A1',
 			i18n('Pensamiento computacional', 'Computational thinking'),
 			i18n('Aplica pensamiento computacional para resolver problemas.', 'Applies computational thinking to solve problems.'),
@@ -126,12 +136,13 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_CS',
 			'CS',
+			'202502',
 			'A2',
 			i18n('Comunicacion tecnica', 'Technical communication'),
 			i18n('Comunica resultados tecnicos a audiencias diversas.', 'Communicates technical results to diverse audiences.'),
 		],
 	]
-		.map(([cCode, pCode, oCode, name, desc]) => `('${cCode}', '${pCode}', '${oCode}', '${name}'::jsonb, '${desc}'::jsonb)`)
+		.map(([cCode, pCode, apCode, oCode, name, desc]) => `('${cCode}', '${pCode}', '${apCode}', '${oCode}', '${name}'::jsonb, '${desc}'::jsonb)`)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -145,13 +156,17 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		FROM (
 			VALUES
 				${outcomeValues}
-		) AS v(commission_code, program_code, outcome_code, outcome_name, outcome_description)
+		) AS v(commission_code, program_code, academic_period_code, outcome_code, outcome_name, outcome_description)
 		JOIN "accreditation"."commissions" commission
 			ON commission.code = v.commission_code
 		JOIN "academic"."programs" program
 			ON program.code = v.program_code
+		JOIN "academic"."academic_periods" period
+			ON period.code = v.academic_period_code
 		JOIN "accreditation"."program_commissions" pc
-			ON pc.commission_id = commission.id AND pc.program_id = program.id
+			ON pc.commission_id = commission.id
+				AND pc.program_id = program.id
+				AND pc.academic_period_id = period.id
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "accreditation"."outcomes" outcome WHERE outcome.outcome_code = v.outcome_code
 		);
@@ -175,7 +190,14 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 				('A1', 'SP_CS_2502', '202502', 'Bases de Datos', 'TG302-T001'),
 				('A2', 'SP_CS_2502', '202502', 'Bases de Datos', 'TG302-T001'),
 				('A1', 'SP_CS_2502', '202502', 'Ingenieria de Software', 'TG302-T001'),
-				('A2', 'SP_CS_2502', '202502', 'Ingenieria de Software', 'TG302-T001')
+				('A2', 'SP_CS_2502', '202502', 'Ingenieria de Software', 'TG302-T001'),
+				-- Mirror the CS outcome mappings for 202601 so prefill/view IFC resolves outcomes.
+				('A1', 'SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', 'TG302-T001'),
+				('A2', 'SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', 'TG302-T001'),
+				('A1', 'SP_CS_2502', '202601', 'Bases de Datos', 'TG302-T001'),
+				('A2', 'SP_CS_2502', '202601', 'Bases de Datos', 'TG302-T001'),
+				('A1', 'SP_CS_2502', '202601', 'Ingenieria de Software', 'TG302-T001'),
+				('A2', 'SP_CS_2502', '202601', 'Ingenieria de Software', 'TG302-T001')
 		) AS v(outcome_code, study_plan_code, academic_period_code, course_name, outcome_type_code)
 		JOIN "accreditation"."outcomes" outcome
 			ON outcome.outcome_code = v.outcome_code

@@ -1,6 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateFindingActionDto extends BaseDto {
 	@IsOptional()
@@ -24,8 +25,10 @@ export class CreateFindingActionDto extends BaseDto {
 	@ApiProperty({ example: true, required: true })
 	in_plan_required: boolean;
 
-	@ApiProperty({ example: { key: 'evidences_value' }, required: true })
-	evidences: any;
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'Evidencia en español', en: 'Evidence in English' }, required: false, nullable: true })
+	evidences?: I18nText | null;
 }
 
 export class UpdateFindingActionDto extends BaseDto {
@@ -54,8 +57,9 @@ export class UpdateFindingActionDto extends BaseDto {
 	in_plan_required?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'evidences_value' }, required: false })
-	evidences?: any;
+	@IsObject()
+	@ApiProperty({ example: { es: 'Evidencia en español', en: 'Evidence in English' }, required: false, nullable: true })
+	evidences?: I18nText | null;
 }
 
 export class FilterFindingActionDto extends BaseDto {
@@ -80,6 +84,7 @@ export class FilterFindingActionDto extends BaseDto {
 	in_plan_required?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'evidences_value' }, required: false })
-	evidences?: any;
+	@IsObject()
+	@ApiProperty({ example: { es: 'Evidencia en español', en: 'Evidence in English' }, required: false, nullable: true })
+	evidences?: I18nText | null;
 }
