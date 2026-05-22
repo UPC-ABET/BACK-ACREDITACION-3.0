@@ -12,6 +12,11 @@ import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/
 import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/model/enrolled-students.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { ProjectEntity } from '../model/projects.entity';
+import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
+import { UserEntity } from 'src/modules/organization/users/model/users.entity';
+import { ProfessorEntity } from 'src/modules/academic/professors/model/professors.entity';
+import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 // Origanization types for school and program
 const SCHOOL_TYPE_CODE = 'TG903-T001';
@@ -41,11 +46,67 @@ export class ProjectService extends BaseService<ProjectRepository> {
 		return await super.delete(id, manager);
 	}
 
-	async getByFilters(filters: FilterProjectDto): Promise<ProjectEntity[]> {
+	async getByFilters(filters: FilterProjectDto): Promise<any[]> {
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectEntity, 'project')
 			.leftJoinAndSelect('project.students', 'ps')
-			.leftJoinAndSelect('project.evaluators', 'pe');
+			.leftJoinAndSelect('project.evaluators', 'pe')
+			.leftJoin(
+				StudentSectionEnrollmentEntity,
+				'sse_enrich',
+				'sse_enrich.id = ps.student_section_enrollment_id',
+			)
+			.leftJoin(
+				EnrolledStudentEntity,
+				'es_enrich',
+				'es_enrich.id = sse_enrich.enrolled_student_id',
+			)
+			.leftJoin(
+				StudentEntity,
+				'st_enrich',
+				'st_enrich.id = es_enrich.student_id',
+			)
+			.leftJoin(
+				UserEntity,
+				'u_enrich',
+				'u_enrich.id = st_enrich.user_id',
+			)
+			.leftJoin(
+				CourseSectionEntity,
+				'cs_enrich',
+				'cs_enrich.id = sse_enrich.course_section_id',
+			)
+			.leftJoin(
+				ProfessorEntity,
+				'prof_enrich',
+				'prof_enrich.id = pe.professor_id',
+			)
+			.leftJoin(
+				StaffEntity,
+				'staff_enrich',
+				'staff_enrich.id = prof_enrich.staff_id',
+			)
+			.leftJoin(
+				UserEntity,
+				'u_prof_enrich',
+				'u_prof_enrich.id = staff_enrich.user_id',
+			)
+			.leftJoin(
+				TypeEntity,
+				'eval_type_enrich',
+				'eval_type_enrich.id = pe.evaluator_type_id',
+			)
+			.addSelect([
+				'u_enrich.first_name',
+				'u_enrich.last_name',
+				'st_enrich.id',
+				'cs_enrich.section_code',
+				'cs_enrich.id',
+				'u_prof_enrich.first_name',
+				'u_prof_enrich.last_name',
+				'eval_type_enrich.name',
+				'eval_type_enrich.code',
+			]);
 
 		// ── Filters ─────────────────────────────────────────────
 
@@ -69,21 +130,21 @@ export class ProjectService extends BaseService<ProjectRepository> {
 			filters.course_id ||
 			filters.academic_period_id ||
 			filters.program_id ||
-			filters.school_code
+			filters.school_id
 		);
 		const needsCourseSection = !!(
 			filters.course_id ||
 			filters.academic_period_id ||
 			filters.program_id ||
-			filters.school_code
+			filters.school_id
 		);
-		const needsSpc = needsCourseSection; 
+		const needsSpc = needsCourseSection;
 		const needsSpap = !!(
 			filters.academic_period_id ||
 			filters.program_id ||
-			filters.school_code
+			filters.school_id
 		);
-		const needsSp = !!(filters.program_id || filters.school_code);
+		const needsSp = !!(filters.program_id || filters.school_id);
 
 		// ── JOIN: Student Section Enrollment ────────────────────────────
 
@@ -151,27 +212,60 @@ export class ProjectService extends BaseService<ProjectRepository> {
 		}
 
 		// ── School ──────────────────────────────────────────────────────
-		if (filters.school_code) {
+		if (filters.school_id) {
 			qb.andWhere(
 				`sp.program_id IN (
-					SELECT ch_prog.entity_code
-					FROM   organization.charts   ch_prog
-					INNER JOIN core.types        t_prog
-					       ON  t_prog.id   = ch_prog.entity_type_id
-					       AND t_prog.code = '${PROGRAM_TYPE_CODE}'
-					INNER JOIN organization.charts ch_sch
-					       ON  ch_sch.id   = ch_prog.root_chart_detail_id
-					INNER JOIN core.types        t_sch
-					       ON  t_sch.id    = ch_sch.entity_type_id
-					       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
-					INNER JOIN organization.schools sch
-					       ON  sch.id      = ch_sch.entity_code
-					WHERE  sch.code = :school_code
-				)`,
+                SELECT ch_prog.entity_code
+                FROM   organization.charts   ch_prog
+                INNER JOIN core.types        t_prog
+                       ON  t_prog.id   = ch_prog.entity_type_id
+                       AND t_prog.code = '${PROGRAM_TYPE_CODE}'
+                INNER JOIN organization.charts ch_sch
+                       ON  ch_sch.id   = ch_prog.root_chart_detail_id
+                INNER JOIN core.types        t_sch
+                       ON  t_sch.id    = ch_sch.entity_type_id
+                       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
+                INNER JOIN organization.schools sch
+                       ON  sch.id      = ch_sch.entity_code
+                WHERE  sch.id = :school_id
+            )`,
 			);
-			qb.setParameter('school_code', filters.school_code);
+			qb.setParameter('school_id', filters.school_id);
 		}
 
-		return await qb.getMany();
+		const { entities, raw } = await qb.getRawAndEntities();
+
+		return entities.map((project) => {
+			const projectRaws = raw.filter(r => r.project_id === project.id);
+
+			return {
+				...project,
+				students: project.students.map(student => {
+					const studentRaw = projectRaws.find(r => r.ps_id === student.id);
+					return {
+						...student,
+						student_info: studentRaw ? {
+							first_name: studentRaw.u_enrich_first_name,
+							last_name: studentRaw.u_enrich_last_name,
+							student_id: studentRaw.st_enrich_id,
+							section_code: studentRaw.cs_enrich_section_code,
+							section_id: studentRaw.cs_enrich_id,
+						} : null,
+					};
+				}),
+				evaluators: project.evaluators.map(evaluator => {
+					const evalRaw = projectRaws.find(r => r.pe_id === evaluator.id);
+					return {
+						...evaluator,
+						evaluator_info: evalRaw ? {
+							first_name: evalRaw.u_prof_enrich_first_name,
+							last_name: evalRaw.u_prof_enrich_last_name,
+							evaluator_type_name: evalRaw.eval_type_enrich_name,
+							evaluator_type_code: evalRaw.eval_type_enrich_code,
+						} : null,
+					};
+				}),
+			};
+		});
 	}
 }

@@ -1,4 +1,4 @@
-import { IsBoolean, IsObject, IsOptional, IsString, Length, IsArray, IsInt, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional, IsString, Length, IsArray, IsInt, IsNotEmpty, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -123,6 +123,7 @@ export class FilterProjectDto extends BaseDto {
 
 	// ── Filtros contextuales ──────────────────────────────────────────────
 	@IsOptional()
+	@IsNumber()
 	@ApiProperty({
 		example: 5,
 		required: false,
@@ -131,6 +132,7 @@ export class FilterProjectDto extends BaseDto {
 	academic_period_id?: number;
 
 	@IsOptional()
+	@IsNumber()
 	@ApiProperty({
 		example: 3,
 		required: false,
@@ -139,16 +141,12 @@ export class FilterProjectDto extends BaseDto {
 	program_id?: number;
 
 	@IsOptional()
-	@IsString()
-	@ApiProperty({
-		example: 'EISCB',
-		required: false,
-		description:
-			'Código de la escuela'
-	})
-	school_code?: string;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
+	school_id?: number;
 
 	@IsOptional()
+	@IsNumber()
 	@ApiProperty({
 		example: 12,
 		required: false,
@@ -166,6 +164,7 @@ export class FilterProjectDto extends BaseDto {
 	student_id?: number;
 
 	@IsOptional()
+	@IsNumber()
 	@ApiProperty({
 		example: 8,
 		required: false,

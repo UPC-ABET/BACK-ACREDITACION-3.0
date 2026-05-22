@@ -46,9 +46,9 @@ export class CourseService extends BaseService<CourseRepository> {
 		if (filters.is_active !== undefined) qb.andWhere('c.is_active = :is_active', { is_active: filters.is_active });
 
 		// ── Flags ────────────────────────────────────────────────────────────
-		const needsSpc = !!(filters.academic_period_id || filters.program_id || filters.school_code);
+		const needsSpc = !!(filters.academic_period_id || filters.program_id || filters.school_id);
 		const needsSpap = needsSpc;
-		const needsSp = !!(filters.program_id || filters.school_code);
+		const needsSp = !!(filters.program_id || filters.school_id);
 
 		// ── JOINs ────────────────────────────────────────────────────────────
 		if (needsSpc) {
@@ -71,9 +71,9 @@ export class CourseService extends BaseService<CourseRepository> {
 		}
 
 		// ── School ──────────────────────────────────────────────────────────
-		if (filters.school_code) {
-			qb.andWhere(
-				`sp.program_id IN (
+		 if (filters.school_id) {
+        qb.andWhere(
+            `sp.program_id IN (
                 SELECT ch_prog.entity_code
                 FROM   organization.charts   ch_prog
                 INNER JOIN core.types        t_prog
@@ -86,11 +86,11 @@ export class CourseService extends BaseService<CourseRepository> {
                        AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
                 INNER JOIN organization.schools sch
                        ON  sch.id      = ch_sch.entity_code
-                WHERE  sch.code = :school_code
+                WHERE  sch.id = :school_id
             )`,
-			);
-			qb.setParameter('school_code', filters.school_code);
-		}
+        );
+        qb.setParameter('school_id', filters.school_id);
+    }
 
 		return await qb.getMany();
 	}

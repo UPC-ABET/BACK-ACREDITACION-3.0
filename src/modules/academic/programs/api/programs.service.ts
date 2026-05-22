@@ -46,7 +46,7 @@ export class ProgramService extends BaseService<ProgramRepository> {
 		if (filters.modality_type_id) qb.andWhere('prog.modality_type_id = :modality_type_id', { modality_type_id: filters.modality_type_id });
 
 		// ── Flags ────────────────────────────────────────────────────────────
-		const needsSp = !!(filters.academic_period_id || filters.school_code);
+		const needsSp = !!(filters.academic_period_id || filters.school_id);
 		const needsSpap = !!filters.academic_period_id;
 
 		// ── JOINs ────────────────────────────────────────────────────────────
@@ -61,27 +61,27 @@ export class ProgramService extends BaseService<ProgramRepository> {
 		}
 
 		// ── School ──────────────────────────────────────────────────────────
-		if (filters.school_code) {
+		// ── School ──────────────────────────────────────────────────────────
+		if (filters.school_id) {
 			qb.andWhere(
 				`prog.id IN (
-                SELECT ch_prog.entity_code
-                FROM   organization.charts   ch_prog
-                INNER JOIN core.types        t_prog
-                       ON  t_prog.id   = ch_prog.entity_type_id
-                       AND t_prog.code = '${PROGRAM_TYPE_CODE}'
-                INNER JOIN organization.charts ch_sch
-                       ON  ch_sch.id   = ch_prog.root_chart_detail_id
-                INNER JOIN core.types        t_sch
-                       ON  t_sch.id    = ch_sch.entity_type_id
-                       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
-                INNER JOIN organization.schools sch
-                       ON  sch.id      = ch_sch.entity_code
-                WHERE  sch.code = :school_code
-            )`,
+            SELECT ch_prog.entity_code
+            FROM   organization.charts   ch_prog
+            INNER JOIN core.types        t_prog
+                   ON  t_prog.id   = ch_prog.entity_type_id
+                   AND t_prog.code = '${PROGRAM_TYPE_CODE}'
+            INNER JOIN organization.charts ch_sch
+                   ON  ch_sch.id   = ch_prog.root_chart_detail_id
+            INNER JOIN core.types        t_sch
+                   ON  t_sch.id    = ch_sch.entity_type_id
+                   AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
+            INNER JOIN organization.schools sch
+                   ON  sch.id      = ch_sch.entity_code
+            WHERE  sch.id = :school_id
+        )`,
 			);
-			qb.setParameter('school_code', filters.school_code);
+			qb.setParameter('school_id', filters.school_id);
 		}
-
 		return await qb.getMany();
 	}
 }
