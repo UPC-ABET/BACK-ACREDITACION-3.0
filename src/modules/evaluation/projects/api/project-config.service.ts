@@ -4,7 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { ProjectEntity } from '../model/projects.entity';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
-import { CreateProjectDto } from '../model/projects.dtos';
+import { CreateProjectDto, ProjectEvaluatorResponseDto } from '../model/projects.dtos';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 /**
@@ -119,14 +119,57 @@ export class ProjectConfigService {
 	/**
 	 * Obtiene todos los proyectos asignados a un evaluador
 	 */
-	async getProjectsByEvaluator(evaluatorId: number): Promise<ProjectEntity[]> {
+	async getProjectsByEvaluator(evaluatorId: number): Promise<ProjectEvaluatorResponseDto[]> {
 		const projects = await this.projectRepo
 			.createQueryBuilder('p')
 			.leftJoinAndSelect('p.evaluators', 'e')
+			.leftJoinAndSelect('e.evaluator_type', 'etype')
+			.leftJoinAndSelect('e.professor', 'eprof')
+			.leftJoinAndSelect('eprof.staff', 'estaff')
+			.leftJoinAndSelect('estaff.user', 'euser')
 			.leftJoinAndSelect('p.students', 's')
-			.where('e.id = :evaluatorId', { evaluatorId })
+			.leftJoinAndSelect('s.student_section_enrollment', 'sse')
+			.leftJoinAndSelect('sse.enrolled_student', 'es')
+			.leftJoinAndSelect('es.student', 'stu')
+			.leftJoinAndSelect('stu.user', 'suser')
+			.leftJoinAndSelect('sse.course_section', 'cs')
+			.leftJoinAndSelect('cs.study_plan_course', 'spc')
+			.leftJoinAndSelect('spc.course', 'c')
+			.where('e.professor_id = :evaluatorId', { evaluatorId })
 			.getMany();
 
-		return projects;
+		return projects.map((p) => {
+			const evaluator = p.evaluators?.find((ev) => ev.professor_id === evaluatorId);
+			const courseName = p.students?.[0]?.student_section_enrollment?.course_section?.study_plan_course?.course?.name;
+
+			const resolvedCourseName = typeof courseName === 'string' ? courseName : courseName?.es || courseName?.en || '';
+
+			return {
+				project_id: p.id,
+				project_code: p.code || '',
+				project_name: p.name,
+				evaluation_date: p.created_at,
+				course_name: resolvedCourseName,
+				evaluator: evaluator
+					? {
+							id: evaluator.id,
+							first_name: evaluator.professor?.staff?.user?.first_name || '',
+							last_name: evaluator.professor?.staff?.user?.last_name || '',
+							email: evaluator.professor?.staff?.user?.email || '',
+							evaluator_type: evaluator.evaluator_type?.code || '',
+						}
+					: null,
+				students: (p.students || []).map((s) => {
+					const user = s.student_section_enrollment?.enrolled_student?.student?.user;
+					return {
+						id: s.id,
+						first_name: user?.first_name || '',
+						last_name: user?.last_name || '',
+						email: user?.email || '',
+						student_code: user?.document_code ? String(user.document_code) : '',
+					};
+				}),
+			};
+		}) as any;
 	}
 }

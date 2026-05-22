@@ -96,7 +96,65 @@ export class UpdateProjectDto extends BaseDto {
 	evaluator_professor_ids?: number[];
 }
 
+export class EvaluatorInfoDto {
+	@ApiProperty()
+	id: number;
+
+	@ApiProperty()
+	first_name: string;
+
+	@ApiProperty()
+	last_name: string;
+
+	@ApiProperty()
+	email: string;
+
+	@ApiProperty()
+	evaluator_type: string; // DOC, COM, GER...
+}
+
+export class StudentInfoDto {
+	@ApiProperty()
+	id: number; // project_student_id
+
+	@ApiProperty()
+	first_name: string;
+
+	@ApiProperty()
+	last_name: string;
+
+	@ApiProperty()
+	email: string;
+
+	@ApiProperty()
+	student_code: string;
+}
+
+export class ProjectEvaluatorResponseDto {
+	@ApiProperty()
+	project_id: number;
+
+	@ApiProperty()
+	project_code: string;
+
+	@ApiProperty()
+	project_name: I18nText;
+
+	@ApiProperty()
+	evaluation_date: Date;
+
+	@ApiProperty()
+	course_name: string;
+
+	@ApiProperty({ type: EvaluatorInfoDto })
+	evaluator: EvaluatorInfoDto;
+
+	@ApiProperty({ type: [StudentInfoDto] })
+	students: StudentInfoDto[];
+}
+
 export class FilterProjectDto extends BaseDto {
+
 
 	// ── Filtros propios del proyecto ──────────────────────────────────────
 	@IsOptional()

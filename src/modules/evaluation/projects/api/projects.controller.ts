@@ -1,4 +1,5 @@
 import { Body, Param, Post, Get, ParseIntPipe } from '@nestjs/common';
+import { ApiOkResponse } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProjectController,
@@ -11,7 +12,7 @@ import {
 } from './docs/projects.swagger';
 import { ProjectService } from './projects.service';
 import { ProjectConfigService } from './project-config.service';
-import { CreateProjectDto, UpdateProjectDto, FilterProjectDto } from '../model/projects.dtos';
+import { CreateProjectDto, UpdateProjectDto, FilterProjectDto, ProjectEvaluatorResponseDto } from '../model/projects.dtos';
 
 @SwaggerProjectController()
 export class ProjectController extends BaseController<ProjectService> {
@@ -28,6 +29,7 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@Get('evaluator/:evaluatorId')
+	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
 	async getProjectsByEvaluator(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
 		return await this.projectConfigService.getProjectsByEvaluator(evaluatorId);
 	}
