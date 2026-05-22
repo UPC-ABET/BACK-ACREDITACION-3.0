@@ -97,23 +97,79 @@ export class UpdateProjectDto extends BaseDto {
 }
 
 export class FilterProjectDto extends BaseDto {
+
+	// ── Filtros propios del proyecto ──────────────────────────────────────
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
-	extra?: any;
+	@IsString()
+	@ApiProperty({ example: 'PROJ-001', required: false })
+	code?: string;
 
 	@IsOptional()
+	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 'code_example', required: false })
-	code?: string;
-
-	@IsOptional()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nombre', en: 'name' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descripción', en: 'description' }, required: false })
 	description?: I18nText;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	extra?: any;
+
+	// ── Filtros contextuales ──────────────────────────────────────────────
+	@IsOptional()
+	@ApiProperty({
+		example: 5,
+		required: false,
+		description: 'ID del periodo académico',
+	})
+	academic_period_id?: number;
+
+	@IsOptional()
+	@ApiProperty({
+		example: 3,
+		required: false,
+		description: 'ID del programa/carrera',
+	})
+	program_id?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'EISCB',
+		required: false,
+		description:
+			'Código de la escuela'
+	})
+	school_code?: string;
+
+	@IsOptional()
+	@ApiProperty({
+		example: 12,
+		required: false,
+		description: 'ID del curso (academic.courses)',
+	})
+	course_id?: number;
+
+	// ── Filtros por personas ──────────────────────────────────────────────
+	@IsOptional()
+	@ApiProperty({
+		example: 15,
+		required: false,
+		description: 'ID del estudiante.',
+	})
+	student_id?: number;
+
+	@IsOptional()
+	@ApiProperty({
+		example: 8,
+		required: false,
+		description: 'ID del profesor evaluador.',
+	})
+	professor_id?: number;
 }

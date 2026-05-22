@@ -87,4 +87,12 @@ export class FilterProgramDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: { es: 'degree_es', en: 'degree_en' }, required: false })
 	degree?: I18nText;
+
+	// Filters by related entities
+
+	@IsOptional() @IsNumber()
+	academic_period_id?: number;
+
+	@IsOptional() @IsString()
+	school_code?: string;
 }

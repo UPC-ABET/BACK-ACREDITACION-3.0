@@ -1,4 +1,4 @@
-import { IsBoolean, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -87,4 +87,15 @@ export class FilterCourseDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: { es: 'learning_outcome_es', en: 'learning_outcome_en' }, required: false })
 	learning_outcome?: I18nText;
+
+	// Filters by related entities
+
+    @IsOptional() @IsNumber()
+    academic_period_id?: number;
+
+    @IsOptional() @IsNumber()
+    program_id?: number;
+
+    @IsOptional() @IsString()
+    school_code?: string;
 }
