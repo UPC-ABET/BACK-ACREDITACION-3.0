@@ -52,38 +52,38 @@ runTenantSeed('core module', async (tenantDataSource) => {
 		INSERT INTO "core"."parameters" (code, name, description, value)
 		SELECT v.code, v.name::jsonb, v.description::jsonb, v.value::jsonb
 		FROM (VALUES
-			('LANGUAGES',
+			('PARAMETER_LANGUAGES',
 			 $$ {"es":"Idiomas","en":"Languages"} $$,
 			 $$ {"es":"Codigos de idiomas soportados","en":"Supported language codes"} $$,
 			 $$ ["en","es"] $$
 			),
-			('FND_PREFIX',
+			('PARAMETER_FINDING_PREFIX',
 			 $$ {"es":"Prefijo de hallazgo","en":"Finding prefix"} $$,
 			 $$ {"es":"Prefijo para codigos generados de hallazgos","en":"Prefix used to compose finding codes"} $$,
 			 $$ "H" $$
 			),
-			('ACN_PREFIX',
+			('PARAMETER_ACTION_PREFIX',
 			 $$ {"es":"Prefijo de accion","en":"Action prefix"} $$,
 			 $$ {"es":"Prefijo para codigos generados de acciones","en":"Prefix used to compose action codes"} $$,
 			 $$ "A" $$
 			),
-			('IFC_FIELDS',
+			('PARAMETER_IFC_FIELDS',
 			 $$ {"es":"Campos del IFC","en":"IFC fields"} $$,
 			 $$ {"es":"Definicion de los campos dinamicos del IFC (key, label, required, order)","en":"Dynamic IFC field definitions (key, label, required, order)"} $$,
 			 $$ [] $$
 			),
-			('IFC_NOTIFICATION_VARS',
+			('PARAMETER_IFC_NOTIFICATION_VARS',
 			 $$ {"es":"Variables de notificacion IFC","en":"IFC notification variables"} $$,
 			 $$ {"es":"Variables disponibles en plantillas de notificacion","en":"Variables available in notification templates"} $$,
 			 $$ [
-				{"var":"{{coordinator_name}}","description":{"es":"Nombre completo del coordinador de curso","en":"Course coordinator full name"},"valid_status_type_ids":null},
-				{"var":"{{course_name}}","description":{"es":"Nombre del curso","en":"Course name"},"valid_status_type_ids":null},
-				{"var":"{{academic_period}}","description":{"es":"Codigo del periodo academico","en":"Academic period code"},"valid_status_type_ids":null},
-				{"var":"{{notifier_name}}","description":{"es":"Nombre de quien envio la notificacion","en":"Notifier name"},"valid_status_type_ids":null},
-				{"var":"{{ifc_link}}","description":{"es":"Enlace directo al IFC","en":"Direct link to the IFC"},"valid_status_type_ids":null},
-				{"var":"{{observer_name}}","description":{"es":"Quien observo el IFC","en":"Who observed the IFC"},"valid_status_type_ids":["TG701-T004"]},
-				{"var":"{{comment}}","description":{"es":"Comentario de observacion","en":"Observation comment"},"valid_status_type_ids":["TG701-T004"]},
-				{"var":"{{submitter_name}}","description":{"es":"Quien envio el IFC","en":"Who submitted the IFC"},"valid_status_type_ids":["TG701-T002"]}
+				{"var":"{{coordinator_name}}","description":{"es":"Nombre completo del coordinador de curso","en":"Course coordinator full name"},"valid_status_codes":null},
+				{"var":"{{course_name}}","description":{"es":"Nombre del curso","en":"Course name"},"valid_status_codes":null},
+				{"var":"{{academic_period}}","description":{"es":"Codigo del periodo academico","en":"Academic period code"},"valid_status_codes":null},
+				{"var":"{{notifier_name}}","description":{"es":"Nombre de quien envio la notificacion","en":"Notifier name"},"valid_status_codes":null},
+				{"var":"{{ifc_link}}","description":{"es":"Enlace directo al IFC","en":"Direct link to the IFC"},"valid_status_codes":null},
+				{"var":"{{observer_name}}","description":{"es":"Quien observo el IFC","en":"Who observed the IFC"},"valid_status_codes":["TG701-T004"]},
+				{"var":"{{comment}}","description":{"es":"Comentario de observacion","en":"Observation comment"},"valid_status_codes":["TG701-T004"]},
+				{"var":"{{submitter_name}}","description":{"es":"Quien envio el IFC","en":"Who submitted the IFC"},"valid_status_codes":["TG701-T002"]}
 			 ] $$
 			)
 		) AS v(code, name, description, value)

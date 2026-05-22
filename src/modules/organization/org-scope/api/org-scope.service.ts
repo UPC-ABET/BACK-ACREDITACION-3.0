@@ -1,0 +1,110 @@
+import { Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import type { I18nText } from 'src/shared/types/i18n';
+
+interface ScopeRow {
+	id: number;
+	parent_id: number | null;
+	level_num: number;
+	type_code: string;
+	label: I18nText;
+	is_anchor: boolean;
+}
+
+@Injectable()
+export class OrgScopeService {
+	constructor(private readonly dataSource: DataSource) {}
+
+	async getScope(userId: number, schoolId: number | null, periodId: number) {
+		if (schoolId === null || schoolId === undefined) {
+			return { highest_level: null, levels: [] };
+		}
+
+		const rows: ScopeRow[] = await this.dataSource.query(SCOPE_SQL, [userId, schoolId, periodId, TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR]);
+
+		if (rows.length === 0) return { highest_level: null, levels: [] };
+
+		const byLevel = new Map<number, { type_code: string; options: any[] }>();
+		for (const r of rows) {
+			const entry = byLevel.get(r.level_num) ?? { type_code: r.type_code, options: [] };
+			entry.options.push({ id: r.id, label: r.label, parent_id: r.parent_id });
+			byLevel.set(r.level_num, entry);
+		}
+
+		const anchorLevels = rows.filter((r) => r.is_anchor).map((r) => r.level_num);
+		const highest_level = anchorLevels.length ? Math.min(...anchorLevels) : null;
+
+		const levels = [...byLevel.entries()].sort(([a], [b]) => a - b).map(([level_num, v]) => ({ level_num, type_code: v.type_code, options: v.options }));
+
+		return { highest_level, levels };
+	}
+}
+
+const SCOPE_SQL = `
+WITH RECURSIVE
+school_root AS (
+	SELECT c.id
+	FROM organization.charts c
+	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
+	JOIN core.types ct ON ct.id = cl.level_type_id
+	WHERE ct.code              = $4
+	  AND c.entity_code        = $2
+	  AND c.academic_period_id = $3
+	  AND c.is_active          = true
+	LIMIT 1
+),
+school_subtree AS (
+	SELECT c.id FROM organization.charts c JOIN school_root sr ON c.id = sr.id
+	UNION ALL
+	SELECT c.id FROM organization.charts c JOIN school_subtree st ON c.root_chart_detail_id = st.id
+),
+user_anchors AS (
+	SELECT c.id
+	FROM organization.charts c
+	JOIN school_subtree st     ON c.id        = st.id
+	JOIN organization.staff s  ON s.id        = c.staff_id
+	WHERE s.user_id            = $1
+	  AND c.academic_period_id = $3
+	  AND c.is_active          = true
+),
+anchors AS (
+	SELECT id FROM user_anchors
+	UNION
+	SELECT sr.id FROM school_root sr
+	WHERE NOT EXISTS (SELECT 1 FROM user_anchors)
+),
+ancestors AS (
+	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title
+	FROM organization.charts c
+	JOIN anchors a ON c.id = a.id
+	UNION ALL
+	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title
+	FROM organization.charts c
+	JOIN ancestors anc ON c.id = anc.root_chart_detail_id
+),
+descendants AS (
+	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title
+	FROM organization.charts c
+	JOIN anchors a ON c.id = a.id
+	UNION ALL
+	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title
+	FROM organization.charts c
+	JOIN descendants d ON c.root_chart_detail_id = d.id
+),
+scope AS (
+	SELECT DISTINCT id, root_chart_detail_id, chart_level_id, level_title
+	FROM (SELECT * FROM ancestors UNION SELECT * FROM descendants) combined
+)
+SELECT
+	s.id::int                                           AS id,
+	s.root_chart_detail_id::int                         AS parent_id,
+	cl.level                                            AS level_num,
+	ct.code                                             AS type_code,
+	s.level_title                                       AS label,
+	EXISTS(SELECT 1 FROM anchors a WHERE a.id = s.id)   AS is_anchor
+FROM scope s
+JOIN organization.chart_levels cl ON s.chart_level_id = cl.id
+JOIN core.types ct               ON ct.id = cl.level_type_id
+ORDER BY level_num ASC, s.id ASC
+`;

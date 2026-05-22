@@ -34,14 +34,11 @@ export class FindingEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
-	@IntegerFKIDColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: true })
 	campus_id: number;
 
 	@BooleanColumn({ nullable: false, default: true })
 	is_automatic: boolean;
-
-	@IntegerFKIDColumn({ nullable: false })
-	finding_status_type_id: number;
 
 	// %% RELACIONES
 
@@ -68,8 +65,4 @@ export class FindingEntity extends BaseEntity {
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id' })
 	campus: CampusEntity;
-
-	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'finding_status_type_id' })
-	finding_status_type: TypeEntity;
 }

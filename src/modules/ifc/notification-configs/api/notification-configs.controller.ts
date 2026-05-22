@@ -1,5 +1,6 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, HttpException, HttpStatus, Param, ParseIntPipe, Query, Req } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
 	SwaggerNotificationConfigController,
 	SwaggerNotificationConfigCreate,
@@ -8,9 +9,19 @@ import {
 	SwaggerNotificationConfigGetAll,
 	SwaggerNotificationConfigGetById,
 	SwaggerNotificationConfigGetByFilters,
+	SwaggerNotificationConfigsByPeriod,
+	SwaggerNotificationConfigsUpsert,
+	SwaggerNotificationConfigsSoftDelete,
 } from './docs/notification-configs.swagger';
 import { NotificationConfigService } from './notification-configs.service';
-import { CreateNotificationConfigDto, UpdateNotificationConfigDto, FilterNotificationConfigDto } from '../model/notification-configs.dtos';
+import {
+	CreateNotificationConfigDto,
+	UpdateNotificationConfigDto,
+	FilterNotificationConfigDto,
+	UpsertNotificationConfigDto,
+	NotificationConfigsByPeriodQueryDto,
+} from '../model/notification-configs.dtos';
+import { notificationConfigsValidationStrings } from '../config/strings/notification-configs.validation';
 
 @SwaggerNotificationConfigController()
 export class NotificationConfigController extends BaseController<NotificationConfigService> {
@@ -46,5 +57,32 @@ export class NotificationConfigController extends BaseController<NotificationCon
 	@SwaggerNotificationConfigGetByFilters()
 	async getByFilters(@Body() dto: FilterNotificationConfigDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerNotificationConfigsByPeriod()
+	async byPeriod(@Query() q: NotificationConfigsByPeriodQueryDto, @Req() req: any) {
+		this.assertAdmin(req);
+		const rows = await this.service.byPeriod(req.user.school_id, q.period_id);
+		return parseSuccessResponse(rows);
+	}
+
+	@SwaggerNotificationConfigsUpsert()
+	async upsert(@Body() dto: UpsertNotificationConfigDto, @Req() req: any) {
+		this.assertAdmin(req);
+		const row = await this.service.upsert(req.user.school_id, dto);
+		return parseSuccessResponse(row);
+	}
+
+	@SwaggerNotificationConfigsSoftDelete()
+	async softDelete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+		this.assertAdmin(req);
+		await this.service.softDelete(req.user.school_id, id);
+		return parseSuccessResponse(null);
+	}
+
+	private assertAdmin(req: any) {
+		if (req.user?.user?.is_admin !== true) {
+			throw new HttpException({ message: notificationConfigsValidationStrings.result.adminOnly, errors: [notificationConfigsValidationStrings.error.notAdmin] }, HttpStatus.FORBIDDEN);
+		}
 	}
 }

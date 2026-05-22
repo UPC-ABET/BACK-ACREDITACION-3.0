@@ -1,6 +1,13 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { notificationConfigsRoutes } from '../../config/notification-configs.routes';
-import { CreateNotificationConfigDto, UpdateNotificationConfigDto, FilterNotificationConfigDto } from '../../model/notification-configs.dtos';
+import {
+	CreateNotificationConfigDto,
+	UpdateNotificationConfigDto,
+	FilterNotificationConfigDto,
+	UpsertNotificationConfigDto,
+	NotificationConfigsByPeriodQueryDto,
+	NotificationConfigViewDto,
+} from '../../model/notification-configs.dtos';
 
 const cfg = notificationConfigsRoutes.notification_configs;
 
@@ -17,3 +24,23 @@ export const SwaggerNotificationConfigGetAll = () => HttpMethodWithSwagger(cfg.o
 export const SwaggerNotificationConfigGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
 export const SwaggerNotificationConfigGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterNotificationConfigDto });
+
+export const SwaggerNotificationConfigsByPeriod = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.byPeriod,
+		query: NotificationConfigsByPeriodQueryDto,
+		responseType: NotificationConfigViewDto,
+	});
+
+export const SwaggerNotificationConfigsUpsert = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.upsert,
+		body: UpsertNotificationConfigDto,
+		responseType: NotificationConfigViewDto,
+	});
+
+export const SwaggerNotificationConfigsSoftDelete = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.softDelete,
+		param: { name: 'id', type: 'number' },
+	});

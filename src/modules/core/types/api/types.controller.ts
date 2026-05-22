@@ -1,6 +1,16 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerTypeController, SwaggerTypeCreate, SwaggerTypeUpdate, SwaggerTypeDelete, SwaggerTypeGetAll, SwaggerTypeGetById, SwaggerTypeGetByFilters } from './docs/types.swagger';
+import { parseSuccessResponse } from 'src/libs/global.functions';
+import {
+	SwaggerTypeController,
+	SwaggerTypeCreate,
+	SwaggerTypeUpdate,
+	SwaggerTypeDelete,
+	SwaggerTypeGetAll,
+	SwaggerTypeGetById,
+	SwaggerTypeGetByFilters,
+	SwaggerTypesByGroupCode,
+} from './docs/types.swagger';
 import { TypeService } from './types.service';
 import { CreateTypeDto, UpdateTypeDto, FilterTypeDto } from '../model/types.dtos';
 
@@ -38,5 +48,10 @@ export class TypeController extends BaseController<TypeService> {
 	@SwaggerTypeGetByFilters()
 	async getByFilters(@Body() dto: FilterTypeDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerTypesByGroupCode()
+	async byGroupCode(@Param('code') code: string) {
+		return parseSuccessResponse(await this.service.findByGroupCode(code));
 	}
 }

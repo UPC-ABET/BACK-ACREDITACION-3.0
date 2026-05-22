@@ -23,10 +23,6 @@ export class CreateActionDto extends BaseDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	action_status_type_id: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
 	program_id: number;
 
 	@IsNumber()
@@ -57,11 +53,6 @@ export class UpdateActionDto extends BaseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	action_status_type_id?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
 	program_id?: number;
 
 	@IsOptional()
@@ -86,10 +77,6 @@ export class FilterActionDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	correlative?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	action_status_type_id?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

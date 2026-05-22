@@ -29,4 +29,15 @@ export class TypeService extends BaseService<TypeRepository> {
 		await TypeValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
 	}
+
+	async findByGroupCode(groupCode: string) {
+		return await this.dataSource.query(
+			`SELECT t.id::int AS id, t.code, t.name, t.description
+			 FROM core.types t
+			 JOIN core.type_groups g ON g.id = t.type_group_id
+			 WHERE g.code = $1 AND t.is_active = true
+			 ORDER BY t.code`,
+			[groupCode],
+		);
+	}
 }

@@ -5,39 +5,29 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		[
 			i18n('Reforzar ejercicios de analisis algoritmico en Fundamentos de Programacion.', 'Reinforce algorithmic analysis exercises in Fundamentals of Programming.'),
 			2026101,
-			'TG802-T001',
 			'PROG_SOFT',
 			'AP_2026_1',
 		],
-		[
-			i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'),
-			2026102,
-			'TG802-T001',
-			'PROG_SOFT',
-			'AP_2026_2',
-		],
-		[i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), 2026103, 'TG802-T002', 'PROG_SOFT', 'AP_2026_1'],
-		[i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), 2025101, 'TG802-T001', 'CS', '202502'],
-		[i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), 2025102, 'TG802-T002', 'CS', '202502'],
+		[i18n('Incorporar revisiones por pares en el Proyecto Integrador de Software.', 'Incorporate peer reviews into the Software Integrator Project.'), 2026102, 'PROG_SOFT', 'AP_2026_2'],
+		[i18n('Actualizar la matriz de evidencias para indicadores de acreditacion.', 'Update the evidence matrix for accreditation indicators.'), 2026103, 'PROG_SOFT', 'AP_2026_1'],
+		[i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), 2025101, 'CS', '202502'],
+		[i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), 2025102, 'CS', '202502'],
 	]
-		.map(([desc, corr, as, pc, apc]) => `('${desc}'::jsonb, ${corr}, '${as}', '${pc}', '${apc}')`)
+		.map(([desc, corr, pc, apc]) => `('${desc}'::jsonb, ${corr}, '${pc}', '${apc}')`)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "improvement"."actions" (
 			description,
 			correlative,
-			action_status_type_id,
 			program_id,
 			academic_period_id
 		)
-		SELECT v.description, v.correlative, action_status.id, program.id, period.id
+		SELECT v.description, v.correlative, program.id, period.id
 		FROM (
 			VALUES
 				${actionValues}
-		) AS v(description, correlative, action_status_type_code, program_code, academic_period_code)
-		JOIN "core"."types" action_status
-			ON action_status.code = v.action_status_type_code
+		) AS v(description, correlative, program_code, academic_period_code)
 		JOIN "academic"."programs" program
 			ON program.code = v.program_code
 		JOIN "academic"."academic_periods" period
@@ -56,8 +46,6 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Se identifico necesidad de reforzar la formulacion de algoritmos antes de la implementacion.', 'Need identified to reinforce algorithm formulation before implementation.'),
 			'Fundamentos de Programacion',
 			'AP_2026_1',
-			'CAMPUS_MON',
-			'TG803-T001',
 		],
 		[
 			'TG801-T001',
@@ -67,33 +55,27 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Los equipos requieren mayor evidencia de colaboracion registrada durante el proyecto.', 'Teams require more recorded collaboration evidence during the project.'),
 			'Proyecto Integrador de Software',
 			'AP_2026_2',
-			'CAMPUS_MON',
-			'TG803-T002',
 		],
 		[
 			'TG801-T001',
-			'IFC',
+			'INST_IFC',
 			'coord.eiscb@upc.edu.pe',
 			2025001,
 			i18n('Brecha en evaluacion algoritmica detectada en el IFC de CC101.', 'Algorithmic-evaluation gap detected in CC101 IFC.'),
 			'Algoritmos y Estructuras de Datos',
 			'202502',
-			'CAMPUS_SM',
-			'TG803-T001',
 		],
 		[
 			'TG801-T003',
-			'IFC',
+			'INST_IFC',
 			'coord.eiscb@upc.edu.pe',
 			2025002,
 			i18n('Oportunidad de mejora en consultas SQL avanzadas reportada en el IFC de CC102.', 'Improvement opportunity in advanced SQL queries reported in CC102 IFC.'),
 			'Bases de Datos',
 			'202502',
-			'CAMPUS_SM',
-			'TG803-T002',
 		],
 	]
-		.map(([ct, ic, em, corr, desc, cn, pc, cc, fs]) => `('${ct}', '${ic}', '${em}', ${corr}, '${desc}'::jsonb, '${cn}', '${pc}', '${cc}', '${fs}')`)
+		.map(([ct, ic, em, corr, desc, cn, pc]) => `('${ct}', '${ic}', '${em}', ${corr}, '${desc}'::jsonb, '${cn}', '${pc}')`)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -104,19 +86,15 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			correlative,
 			description,
 			course_id,
-			academic_period_id,
-			campus_id,
-			finding_status_type_id
+			academic_period_id
 		)
-		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, course.id, period.id, campus.id, finding_status.id
+		SELECT criticality.id, instrument.id, staff.id, v.correlative, v.description, course.id, period.id
 		FROM (
 			VALUES
 				${findingValues}
-		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, course_name, academic_period_code, campus_code, finding_status_type_code)
+		) AS v(criticality_type_code, instrument_code, staff_email, correlative, description, course_name, academic_period_code)
 		JOIN "core"."types" criticality
 			ON criticality.code = v.criticality_type_code
-		JOIN "core"."types" finding_status
-			ON finding_status.code = v.finding_status_type_code
 		JOIN "evidence"."instruments" instrument
 			ON instrument.code = v.instrument_code
 		JOIN "organization"."staff" staff
@@ -125,8 +103,6 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			ON course.name->>'es' = v.course_name
 		JOIN "academic"."academic_periods" period
 			ON period.code = v.academic_period_code
-		JOIN "organization"."campuses" campus
-			ON campus.code = v.campus_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "improvement"."findings" finding WHERE finding.correlative = v.correlative
 		);

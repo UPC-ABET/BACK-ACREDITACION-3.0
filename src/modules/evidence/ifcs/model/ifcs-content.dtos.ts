@@ -1,0 +1,120 @@
+// no-override
+
+import { ApiProperty } from '@nestjs/swagger';
+import { ArrayUnique, IsArray, IsBoolean, IsInt, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import type { I18nText } from 'src/shared/types/i18n';
+
+export class IfcFindingPayloadDto {
+	@ApiProperty({ example: 'a1f6-uuid', required: true, description: 'Cliente: UUID que identifica al hallazgo en la sesión actual (referenciado por acciones)' })
+	@IsString()
+	tempId: string;
+
+	@ApiProperty({ example: 10, nullable: true, required: true, description: 'null = nuevo; número = id existente a actualizar' })
+	@IsOptional()
+	@IsInt()
+	id: number | null;
+
+	@ApiProperty({ example: { es: 'Brecha detectada', en: 'Gap detected' }, required: true })
+	@IsObject()
+	description: I18nText;
+
+	@ApiProperty({ example: 'TG801-T001', required: true, description: 'Código de TYPE_CODES.CRITICALITY.*' })
+	@IsString()
+	criticality_code: string;
+}
+
+export class IfcActionPayloadDto {
+	@ApiProperty({ example: 'b2c4-uuid', required: true })
+	@IsString()
+	tempId: string;
+
+	@ApiProperty({ example: 5, nullable: true, required: true })
+	@IsOptional()
+	@IsInt()
+	id: number | null;
+
+	@ApiProperty({ example: { es: 'Implementar X', en: 'Implement X' }, required: true })
+	@IsObject()
+	description: I18nText;
+
+	@ApiProperty({ example: 'a1f6-uuid', required: true, description: 'tempId del hallazgo al que pertenece (se resuelve a finding_id en el backend)' })
+	@IsString()
+	finding_temp_id: string;
+}
+
+export class IfcContentDto {
+	@ApiProperty({ example: false, required: true, description: 'true = al guardar, transicionar a SUBMITTED; false = quedar en SAVED' })
+	@IsBoolean()
+	submit: boolean;
+
+	@ApiProperty({
+		example: { infrastructure: { es: 'Lab con 30 PCs', en: 'Lab with 30 PCs' } },
+		required: false,
+		description: 'Map keyed por `PARAMETER_IFC_FIELDS[].key` → valor I18nText. Almacenado tal cual en evidence.ifcs.information.',
+	})
+	@IsOptional()
+	@IsObject()
+	information?: Record<string, I18nText>;
+
+	@ApiProperty({ type: [IfcFindingPayloadDto], required: true })
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => IfcFindingPayloadDto)
+	findings: IfcFindingPayloadDto[];
+
+	@ApiProperty({ type: [IfcActionPayloadDto], required: true })
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => IfcActionPayloadDto)
+	actions: IfcActionPayloadDto[];
+
+	@ApiProperty({ example: [7], required: false })
+	@IsOptional()
+	@IsArray()
+	@IsInt({ each: true })
+	@ArrayUnique()
+	deleted_finding_ids?: number[];
+
+	@ApiProperty({ example: [3], required: false })
+	@IsOptional()
+	@IsArray()
+	@IsInt({ each: true })
+	@ArrayUnique()
+	deleted_action_ids?: number[];
+}
+
+export class CreateIfcDto extends IfcContentDto {
+	@ApiProperty({ example: 310, required: true, description: 'id del nodo chart del coordinador del curso (level COURSE_COORDINATOR)' })
+	@IsInt()
+	chart_id: number;
+
+	@ApiProperty({ example: 5, required: true })
+	@IsInt()
+	period_id: number;
+}
+
+export class IfcPrefillQueryDto {
+	@ApiProperty({ example: 310, required: true })
+	@IsInt()
+	@Type(() => Number)
+	chart_id: number;
+
+	@ApiProperty({ example: 5, required: true })
+	@IsInt()
+	@Type(() => Number)
+	period_id: number;
+}
+
+export class IfcPrefillResponseDto {
+	@ApiProperty({ type: Object }) course_name: I18nText;
+	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
+	@ApiProperty({ type: Object }) area_label: I18nText;
+	@ApiProperty({ type: Object }) subarea_label: I18nText;
+	@ApiProperty() academic_period_code: string;
+	@ApiProperty({ nullable: true }) coordinator_code: string | null;
+	@ApiProperty({ nullable: true }) coordinator_name: string | null;
+	@ApiProperty({ nullable: true }) coordinator_user_id: number | null;
+	@ApiProperty({ type: 'array', items: { type: 'object' } })
+	outcome_course_result: any[];
+}

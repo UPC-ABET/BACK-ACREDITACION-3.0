@@ -27,6 +27,7 @@ async function run() {
 		'9-ifc.seed.ts',
 		'10-improvement.seed.ts',
 		'11-survey.seed.ts',
+		'12-notifications.seed.ts',
 	];
 
 	const seedsDir = path.join(__dirname, 'seeds', 'upc');
