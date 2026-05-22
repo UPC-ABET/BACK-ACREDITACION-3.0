@@ -98,7 +98,10 @@ export class UpdateProjectDto extends BaseDto {
 
 export class EvaluatorInfoDto {
 	@ApiProperty()
-	id: number;
+	id: number; // project_evaluator_id
+
+	@ApiProperty()
+	professor_id: number;
 
 	@ApiProperty()
 	first_name: string;
