@@ -12,6 +12,7 @@ import {
 import { EvaluationService } from './evaluations.service';
 import { EvaluationSubmissionService } from './evaluation-submission.service';
 import { CreateEvaluationDto, UpdateEvaluationDto, FilterEvaluationDto, SubmitEvaluationDto, SaveObservationDto, FinalizeProjectDto } from '../model/evaluations.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 
 @SwaggerEvaluationController()
 export class EvaluationController extends BaseController<EvaluationService> {
@@ -24,32 +25,32 @@ export class EvaluationController extends BaseController<EvaluationService> {
 
 	@Post('submit')
 	async submitEvaluation(@Body() dto: SubmitEvaluationDto) {
-		return await this.submissionService.submitEvaluation(dto);
+		return parseSuccessResponse(await this.submissionService.submitEvaluation(dto));
 	}
 
 	@Patch('observation')
 	async saveObservation(@Body() dto: SaveObservationDto) {
-		return await this.submissionService.saveObservation(dto);
+		return parseSuccessResponse(await this.submissionService.saveObservation(dto));
 	}
 
 	@Post('finalize')
 	async finalizeProject(@Body() dto: FinalizeProjectDto) {
-		return await this.submissionService.finalizeProject(dto);
+		return  parseSuccessResponse(await this.submissionService.finalizeProject(dto));
 	}
 
 	@Get('student/:studentId')
 	async getStudentEvaluations(@Param('studentId', ParseIntPipe) studentId: number) {
-		return await this.submissionService.getStudentEvaluations(studentId);
+		return parseSuccessResponse(await this.submissionService.getStudentEvaluations(studentId)	);
 	}
 
 	@Get('evaluator/:evaluatorId')
 	async getEvaluatorEvaluations(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
-		return await this.submissionService.getEvaluatorEvaluations(evaluatorId);
+		return parseSuccessResponse(await this.submissionService.getEvaluatorEvaluations(evaluatorId));
 	}
 
 	@Get('evaluation/:evaluationId')
 	async getEvaluationWithScores(@Param('evaluationId', ParseIntPipe) evaluationId: number) {
-		return await this.submissionService.getEvaluationById(evaluationId);
+		return parseSuccessResponse(await this.submissionService.getEvaluationById(evaluationId));
 	}
 
 	// TODO: Agregar GET project/:projectId/report

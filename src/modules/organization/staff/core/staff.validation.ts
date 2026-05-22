@@ -7,13 +7,13 @@ export class StaffValidation {
 		const errors: Array<string> = [];
 
 		const userExists = await repo.findOneByCondition({
-			where: { userId: data.userId },
+			where: { user_id: data.userId },
 		});
 
 		if (userExists) errors.push(staffValidationStrings.error.userExists);
 
 		const staffEmailExists = await repo.findOneByCondition({
-			where: { staffEmail: data.staffEmail },
+			where: { staff_email: data.staffEmail },
 		});
 
 		if (staffEmailExists) errors.push(staffValidationStrings.error.staffEmailExists);
@@ -37,7 +37,7 @@ export class StaffValidation {
 
 		if (data.userId) {
 			const userExists = await repo.findOneByCondition({
-				where: { userId: data.userId },
+				where: { user_id: data.userId },
 			});
 
 			if (userExists && userExists.id !== id) {
@@ -47,7 +47,7 @@ export class StaffValidation {
 
 		if (data.staffEmail) {
 			const staffEmailExists = await repo.findOneByCondition({
-				where: { staffEmail: data.staffEmail },
+				where: { staff_email: data.staffEmail },
 			});
 
 			if (staffEmailExists && staffEmailExists.id !== id) {
