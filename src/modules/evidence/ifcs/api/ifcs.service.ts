@@ -391,6 +391,7 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
+		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
 			const chartRows = await em.query(CHART_RESOLUTION_SQL, [dto.chart_id, dto.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]);
 			IfcValidation.assertChartFound(chartRows, op);
@@ -450,6 +451,7 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.PATCH;
+		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { courseChartId, periodId } = await this.dataSource.transaction(async (em) => {
 			const ctx = await this.loadTransitionContext(id, userId, schoolId, op, em);
 			await IfcValidation.assertIsInCourseChain(em, ctx, op);

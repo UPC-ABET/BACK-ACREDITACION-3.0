@@ -12,6 +12,8 @@ export const ifcsValidationStrings = {
 		findingTempIdMissing: 'error.ifc.findingTempIdMissing',
 		ifcInstrumentMissing: 'error.ifc.ifcInstrumentMissing',
 		pdfRequiresApproved: 'error.ifc.pdfRequiresApproved',
+		findingsRequired: 'error.ifc.findingsRequired',
+		actionsRequiredPerFinding: 'error.ifc.actionsRequiredPerFinding',
 	},
 	result: {
 		createFailed: 'error.ifc.createFailed',

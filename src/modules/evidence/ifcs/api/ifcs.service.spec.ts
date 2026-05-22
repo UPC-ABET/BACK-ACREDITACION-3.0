@@ -362,8 +362,8 @@ describe('IfcService.createIfc', () => {
 		period_id: 5,
 		submit: false,
 		information: {},
-		findings: [],
-		actions: [],
+		findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+		actions: [{ tempId: 'tA', id: null, description: { es: 'a' }, finding_temp_id: 'tF' }],
 		...overrides,
 	});
 
@@ -413,12 +413,21 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([]) // INSERT ifc_findings
 			.mockResolvedValueOnce([{ id: 202 }]) // INSERT finding 2 returning 202
 			.mockResolvedValueOnce([]) // INSERT ifc_findings
+			.mockResolvedValueOnce([{ c: 0 }]) // action base correlative
+			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action 1
+			.mockResolvedValueOnce([]) // INSERT finding_actions 1
+			.mockResolvedValueOnce([{ id: 302 }]) // INSERT action 2
+			.mockResolvedValueOnce([]) // INSERT finding_actions 2
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 'Guardado' }, at: '2026', comment: null, by: 'me' }]); // insertStatus
 
 		const dto = baseDto({
 			findings: [
 				{ tempId: 't1', id: null, description: { es: 'a' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL },
 				{ tempId: 't2', id: null, description: { es: 'b' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL },
+			],
+			actions: [
+				{ tempId: 'a1', id: null, description: { es: 'A1' }, finding_temp_id: 't1' },
+				{ tempId: 'a2', id: null, description: { es: 'A2' }, finding_temp_id: 't2' },
 			],
 		});
 
@@ -432,22 +441,29 @@ describe('IfcService.createIfc', () => {
 		expect(firstInsert[1][3]).toBe(5); // base 4 + 1
 		expect(secondInsert[1][3]).toBe(6); // base 4 + 2
 
-		const statusInsert = em.query.mock.calls[11];
+		const statusInsert = em.query.mock.calls[16];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SAVED);
 	});
 
-	it('inserts SUBMITTED status when submit=true (no findings → no instrument lookup either)', async () => {
+	it('inserts SUBMITTED status when submit=true', async () => {
 		em.query
 			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }])
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 999 }])
-			.mockResolvedValueOnce([{ id: 77 }]) // resolve IFC instrument id (always queried)
+			.mockResolvedValueOnce([{ id: 77 }]) // resolve IFC instrument id
+			.mockResolvedValueOnce([{ id: 7, code: TYPE_CODES.CRITICALITY.NORMAL }]) // criticality
+			.mockResolvedValueOnce([{ c: 0 }]) // findings correlative
+			.mockResolvedValueOnce([{ id: 201 }]) // INSERT finding
+			.mockResolvedValueOnce([]) // INSERT ifc_findings
+			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
+			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
+			.mockResolvedValueOnce([]) // INSERT finding_actions
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED, name: { es: 'Enviado' }, at: '2026', comment: null, by: 'me' }]);
 
 		await service.createIfc(baseDto({ submit: true }), 99, 9);
 
-		const statusInsert = em.query.mock.calls[5];
+		const statusInsert = em.query.mock.calls[12];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
 	});
 
@@ -479,7 +495,14 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check — requester found on ancestor
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 999 }])
-			.mockResolvedValueOnce([{ id: 77 }])
+			.mockResolvedValueOnce([{ id: 77 }]) // instrument
+			.mockResolvedValueOnce([{ id: 7, code: TYPE_CODES.CRITICALITY.NORMAL }]) // criticality
+			.mockResolvedValueOnce([{ c: 0 }]) // findings correlative
+			.mockResolvedValueOnce([{ id: 201 }]) // INSERT finding
+			.mockResolvedValueOnce([]) // INSERT ifc_findings
+			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
+			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
+			.mockResolvedValueOnce([]) // INSERT finding_actions
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 's' }, at: '2026', comment: null, by: 'me' }]);
 
 		await expect(service.createIfc(baseDto(), 99, 9)).resolves.toEqual({ id: 999 });
@@ -512,6 +535,20 @@ describe('IfcService.createIfc', () => {
 		expect(findingActionInsert[1][0]).toBe(201);
 		expect(findingActionInsert[1][1]).toBe(301);
 	});
+
+	it('rejects 400 when findings array is empty', async () => {
+		await expect(service.createIfc(baseDto({ findings: [], actions: [] }), 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		expect(em.query).not.toHaveBeenCalled();
+	});
+
+	it('rejects 400 when a finding has no matching action', async () => {
+		const dto = baseDto({
+			findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+			actions: [],
+		});
+		await expect(service.createIfc(dto, 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		expect(em.query).not.toHaveBeenCalled();
+	});
 });
 
 describe('IfcService.patch', () => {
@@ -533,8 +570,8 @@ describe('IfcService.patch', () => {
 	const baseDto = (overrides: Partial<IfcContentDto> = {}): IfcContentDto => ({
 		submit: false,
 		information: {},
-		findings: [],
-		actions: [],
+		findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+		actions: [{ tempId: 'tA', id: null, description: { es: 'a' }, finding_temp_id: 'tF' }],
 		...overrides,
 	});
 
@@ -574,12 +611,19 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ program_id: 50 }]) // program lookup
 			.mockResolvedValueOnce([]) // UPDATE evidence.ifcs
 			.mockResolvedValueOnce([{ id: 77 }]) // resolve IFC instrument id (inside resolveFindingsAndActions)
+			.mockResolvedValueOnce([{ id: 7, code: TYPE_CODES.CRITICALITY.NORMAL }]) // criticality
+			.mockResolvedValueOnce([{ c: 0 }]) // findings correlative
+			.mockResolvedValueOnce([{ id: 201 }]) // INSERT finding
+			.mockResolvedValueOnce([]) // INSERT ifc_findings
+			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
+			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
+			.mockResolvedValueOnce([]) // INSERT finding_actions
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED, name: { es: 'Enviado' }, at: '2026', comment: null, by: 'me' }]); // insertStatus
 
 		const result = await service.patch(42, baseDto({ submit: true }), 99, 9);
 		expect(result).toMatchObject({ id: 42, notification: { sent: false, reason: 'no_config' } });
 
-		const statusInsert = em.query.mock.calls[6];
+		const statusInsert = em.query.mock.calls[13];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
 	});
 
@@ -591,12 +635,33 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ program_id: 50 }])
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 77 }]) // resolve IFC instrument id
+			.mockResolvedValueOnce([{ id: 7, code: TYPE_CODES.CRITICALITY.NORMAL }]) // criticality
+			.mockResolvedValueOnce([{ c: 0 }]) // findings correlative
+			.mockResolvedValueOnce([{ id: 201 }]) // INSERT finding
+			.mockResolvedValueOnce([]) // INSERT ifc_findings
+			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
+			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
+			.mockResolvedValueOnce([]) // INSERT finding_actions
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 's' }, at: '2026', comment: null, by: 'me' }]);
 
 		await service.patch(42, baseDto({ submit: false }), 99, 9);
 
-		const statusInsert = em.query.mock.calls[6];
+		const statusInsert = em.query.mock.calls[13];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SAVED);
+	});
+
+	it('rejects 400 when findings array is empty', async () => {
+		await expect(service.patch(42, baseDto({ findings: [], actions: [] }), 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		expect(em.query).not.toHaveBeenCalled();
+	});
+
+	it('rejects 400 when a finding has no matching action', async () => {
+		const dto = baseDto({
+			findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+			actions: [],
+		});
+		await expect(service.patch(42, dto, 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		expect(em.query).not.toHaveBeenCalled();
 	});
 });
 
