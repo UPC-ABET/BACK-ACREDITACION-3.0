@@ -1,3 +1,4 @@
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -34,7 +35,30 @@ export class ProjectConfigService {
 		@Inject(forwardRef(() => RubricConfigService))
 		private readonly rubricConfigService: RubricConfigService,
 		private readonly dataSource: DataSource,
-	) { }
+	) {}
+
+	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
+		const raw = await this.dataSource.query(
+			`
+                        WITH RECURSIVE school_tree AS (
+                                SELECT id, root_chart_detail_id, entity_type_id, entity_code
+                                FROM "organization"."charts"
+                                WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $1)
+                                  AND entity_code = $2
+                                UNION ALL
+                                SELECT c.id, c.root_chart_detail_id, c.entity_type_id, c.entity_code
+                                FROM "organization"."charts" c
+                                INNER JOIN school_tree st ON c.root_chart_detail_id = st.id
+                        )
+                        SELECT DISTINCT entity_code AS program_id
+                        FROM school_tree
+                        WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $3)
+                          AND entity_code IS NOT NULL
+                        `,
+			[TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId, TYPE_CODES.ENTITY_TYPE.PROGRAM],
+		);
+		return raw.map((row: { program_id: number }) => row.program_id);
+	}
 
 	private async resolveEvaluatorTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
@@ -169,8 +193,7 @@ export class ProjectConfigService {
 			);
 		}
 
-		// ── 4. Contexto de la rúbrica (preguntas, criterios, outcomes)
-		const rubricContext = await this.rubricConfigService.getRubricWithContextData(rubric.id);
+		const rubricContext = await this.rubricConfigService.getRubricWithContextData(rubric.id).catch(() => null);
 
 		if (!rubricContext) {
 			throw new NotFoundException('Error al cargar el contexto de la rúbrica.');
@@ -226,10 +249,13 @@ export class ProjectConfigService {
 					);
 					return sum + evalSum;
 				}, 0);
-
-				totalGrade = totalMaxScore > 0
-					? Math.round((sumScores * 20) / totalMaxScore * 100) / 100
-					: sumScores;
+				
+				// Escalar a vigesimal
+				if (totalMaxScore > 0) {
+					totalGrade = Math.round(((sumScores * 20) / totalMaxScore) * 100) / 100;
+				} else {
+					totalGrade = sumScores; // Fallback si maxScore = 0
+				}
 			}
 
 			return {
@@ -314,15 +340,15 @@ export class ProjectConfigService {
 	/**
 	 * Obtiene todos los proyectos asignados a un profesor evaluador
 	 */
-	async getProjectsByProfessor(professorId: number): Promise<ProjectEvaluatorResponseDto[]> {
-		const projectEvaluators = await this.projectEvaluatorRepo
+	async getProjectsByProfessor(professorId: number, academicPeriodId?: number, schoolId?: number, gradeTypeId?: number): Promise<ProjectEvaluatorResponseDto[]> {
+		const qb = this.projectEvaluatorRepo
 			.createQueryBuilder('pe')
 			.leftJoinAndSelect('pe.evaluator_type', 'etype')
 			.leftJoinAndSelect('pe.professor', 'eprof')
 			.leftJoinAndSelect('eprof.staff', 'estaff')
 			.leftJoinAndSelect('estaff.user', 'euser')
 			.leftJoinAndSelect('pe.project', 'p')
-			.leftJoinAndSelect('p.evaluators', 'all_pe')           // todos los evaluadores del proyecto
+			.leftJoinAndSelect('p.evaluators', 'all_pe') // todos los evaluadores del proyecto
 			.leftJoinAndSelect('all_pe.professor', 'all_prof')
 			.leftJoinAndSelect('all_prof.staff', 'all_staff')
 			.leftJoinAndSelect('all_staff.user', 'all_user')
@@ -335,8 +361,31 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('sse.course_section', 'cs')
 			.leftJoinAndSelect('cs.study_plan_course', 'spc')
 			.leftJoinAndSelect('spc.course', 'c')
-			.where('pe.professor_id = :professorId', { professorId })
-			.getMany();
+			// Joins adicionales para aplicar filtros
+			.leftJoin('p.rubric', 'rubric')
+			.leftJoin('spc.study_plan', 'sp')
+			.leftJoin('sp.program', 'program')
+			.leftJoin('spc.study_plan_academic_periods', 'sp_ap')
+			.where('pe.professor_id = :professorId', { professorId });
+
+		if (gradeTypeId) {
+			qb.andWhere('rubric.grade_type_id = :gradeTypeId', { gradeTypeId });
+		}
+
+		if (academicPeriodId) {
+			qb.andWhere('sp_ap.academic_period_id = :academicPeriodId', { academicPeriodId });
+		}
+
+		if (schoolId) {
+			const programIds = await this.resolveProgramIdsBySchoolId(schoolId);
+			if (programIds.length > 0) {
+				qb.andWhere('program.id IN (:...programIds)', { programIds });
+			} else {
+				qb.andWhere('1 = 0');
+			}
+		}
+
+		const projectEvaluators = await qb.getMany();
 
 		return projectEvaluators.map((pe) => {
 			const p = pe.project;
