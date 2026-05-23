@@ -61,6 +61,11 @@ export class SubmitEvaluationDto extends BaseDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'Estado de calificación desde core.types (TG404). Si no se envía, se usa ASISTIO por defecto.' })
+	qualification_status_type_id?: number;
 }
 
 export class CreateEvaluationDto extends BaseDto {

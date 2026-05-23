@@ -211,7 +211,8 @@ export class EvaluationSubmissionService {
 		projectEvaluatorId: number,
 		observation: I18nText | string | null | undefined,
 		scores: Array<{ rubric_question_criteria_id: number; score: number; commentaries?: I18nText | string }>,
-		asistioStatusTypeId: number,
+		statusTypeId: number,
+		overrideStatusTypeId?: number,
 	): Promise<EvaluationEntity> {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
@@ -224,12 +225,15 @@ export class EvaluationSubmissionService {
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
 			}
+			if (overrideStatusTypeId !== undefined) {
+				evaluation.qualification_status_type_id = overrideStatusTypeId;
+			}
 			await manager.save(evaluation);
 		} else {
 			evaluation = manager.create(EvaluationEntity, {
 				project_student_id: projectStudentId,
 				project_evaluator_id: projectEvaluatorId,
-				qualification_status_type_id: asistioStatusTypeId,
+				qualification_status_type_id: overrideStatusTypeId ?? statusTypeId,
 				observation: i18nText(observation),
 				register_at: new Date(),
 				is_active: true,
@@ -307,14 +311,14 @@ export class EvaluationSubmissionService {
 			}
 		}
 
-		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
+		const defaultStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
 
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
 		await queryRunner.startTransaction();
 
 		try {
-			const evaluation = await this.saveEvaluationScores(queryRunner.manager, dto.project_student_id, dto.project_evaluator_id, dto.observation, dto.scores, asistioStatusTypeId);
+			const evaluation = await this.saveEvaluationScores(queryRunner.manager, dto.project_student_id, dto.project_evaluator_id, dto.observation, dto.scores, defaultStatusTypeId, dto.qualification_status_type_id);
 
 			// Resolver tipo de evaluador
 			const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluator_type_id);
