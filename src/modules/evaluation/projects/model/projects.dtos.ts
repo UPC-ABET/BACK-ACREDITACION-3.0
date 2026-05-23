@@ -206,6 +206,29 @@ export class ProjectDetailsStudentDto extends StudentInfoDto {
 	total_grade: number | null; // scaled to 20 or raw, nullable if not graded or not eval mode
 }
 
+export class ProjectEvaluatorDetailDto {
+	@ApiProperty()
+	id: number;
+
+	@ApiProperty()
+	professor_id: number;
+
+	@ApiProperty()
+	professor_first_name: string;
+
+	@ApiProperty()
+	professor_last_name: string;
+
+	@ApiProperty()
+	professor_email: string;
+
+	@ApiProperty()
+	evaluator_type_id: number;
+
+	@ApiProperty()
+	evaluator_type_name: string;
+}
+
 export class ProjectDetailsResponseDto {
 	@ApiProperty()
 	project: {
@@ -224,6 +247,9 @@ export class ProjectDetailsResponseDto {
 
 	@ApiProperty({ type: [ProjectDetailsStudentDto] })
 	students: ProjectDetailsStudentDto[];
+
+	@ApiProperty({ type: [ProjectEvaluatorDetailDto] })
+	evaluators: ProjectEvaluatorDetailDto[];
 
 	@ApiProperty()
 	rubric: {

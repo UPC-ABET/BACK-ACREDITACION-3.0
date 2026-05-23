@@ -148,6 +148,9 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('spc.study_plan_academic_period', 'spap')
 			.leftJoinAndSelect('spap.academic_period', 'ap')
 			.leftJoinAndSelect('p.evaluators', 'pe')
+			.leftJoinAndSelect('pe.professor', 'prof')
+			.leftJoinAndSelect('prof.staff', 'staff')
+			.leftJoinAndSelect('staff.user', 'puser')
 			.where('p.id = :projectId', { projectId })
 			.getOne();
 
@@ -305,7 +308,31 @@ export class ProjectConfigService {
 			}),
 		}));
 
-		// ── 9. Response
+		// ── 9. Mapear evaluadores con info del docente y tipo
+		const evaluatorTypeIds = [...new Set((project.evaluators || []).map(e => e.evaluator_type_id))];
+		const evaluatorTypesMap = new Map<number, any>();
+
+		if (evaluatorTypeIds.length > 0) {
+			const types = await this.typeRepo.findByIds(evaluatorTypeIds);
+			types.forEach(t => evaluatorTypesMap.set(t.id, t));
+		}
+
+		const evaluatorDtos = (project.evaluators || []).map((e) => {
+			const professorUser = e.professor?.staff?.user;
+			const evaluatorType = evaluatorTypesMap.get(e.evaluator_type_id);
+
+			return {
+				id: e.id,
+				professor_id: e.professor_id,
+				professor_first_name: professorUser?.first_name || '',
+				professor_last_name: professorUser?.last_name || '',
+				professor_email: professorUser?.email || '',
+				evaluator_type_id: e.evaluator_type_id,
+				evaluator_type_name: evaluatorType?.name || '',
+			};
+		});
+
+		// ── 10. Response
 		return {
 			project: {
 				id: project.id,
@@ -319,6 +346,7 @@ export class ProjectConfigService {
 				code: academicPeriod?.code,
 			},
 			students: studentDtos,
+			evaluators: evaluatorDtos,
 			rubric: {
 				rubric: rubricContext.rubric,
 				course: rubricContext.course,
@@ -338,8 +366,6 @@ export class ProjectConfigService {
 		schoolId?: number,
 		gradeTypeId?: number,
 	): Promise<ProjectEvaluatorResponseDto[]> {
-
-		console.log('START', { professorId, academicPeriodId, schoolId, gradeTypeId });
 
 		// ── QUERY 1 ───────────────────────────────────────────────────────────
 		let filterSql = `
@@ -378,10 +404,8 @@ export class ProjectConfigService {
 		}
 
 		const programIdsPromise = schoolId ? this.resolveProgramIdsBySchoolId(schoolId) : Promise.resolve(null);
-		console.time('programIds');
 		const programIds = await programIdsPromise;
-		console.timeEnd('programIds');
-		console.log('programIds:', programIds);
+	
 
 		if (programIds !== null) {
 			if (programIds.length === 0) return [];
@@ -390,17 +414,13 @@ export class ProjectConfigService {
 			paramIdx++;
 		}
 
-		console.time('q1-full');
 		const rows = await this.dataSource.query(filterSql, params) as { project_id: number }[];
-		console.timeEnd('q1-full');
 
 		const projectIds = rows.map((r) => r.project_id);
 		if (projectIds.length === 0) return [];
 
-		console.log('projectIds:', projectIds);
 
 		// ── QUERY 2: todo en SQL nativo para evitar el producto cartesiano ────
-		console.time('q2');
 		const raw = await this.dataSource.query(`
     SELECT
       p.id              AS project_id,
@@ -438,9 +458,7 @@ export class ProjectConfigService {
     LEFT JOIN academic.courses c                   ON c.id = spc.course_id
     WHERE p.id = ANY($1::int[])
   `, [projectIds]) as any[];
-		console.timeEnd('q2');
 
-		console.log('q2 raw rows:', raw.length);
 
 		// ── Agrupar filas por project_id ──────────────────────────────────────
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
