@@ -78,7 +78,7 @@ export class EvaluationSubmissionService {
 		@InjectRepository(TypeEntity)
 		private readonly typeRepo: Repository<TypeEntity>,
 		private readonly dataSource: DataSource,
-	) {}
+	) { }
 
 	private computeLevel(score: number, maxValue: number): number {
 		if (!maxValue || maxValue === 0) return 1;
@@ -158,7 +158,7 @@ export class EvaluationSubmissionService {
 			}
 			const bucket = scoresByQuestion.get(questionId)!;
 			bucket.scores.push(score);
-			bucket.maxValues.push(score.rubric_question_criteria.max_value);
+			bucket.maxValues.push(score.rubric_question_criteria.max_value) // string, no number
 		}
 
 		let notaRubrica = 0;
@@ -169,7 +169,7 @@ export class EvaluationSubmissionService {
 
 		for (const [questionId, bucket] of scoresByQuestion) {
 			const notaOutcome = bucket.scores.reduce((sum, s) => sum + s.score, 0);
-			const notaMaxOutcome = bucket.maxValues.reduce((sum, mv) => sum + mv, 0);
+			const notaMaxOutcome = bucket.maxValues.reduce((sum, mv) => sum + mv, 0)
 			notaRubrica += notaOutcome;
 			notaMaximaRubrica += notaMaxOutcome;
 			resultByQuestion.set(questionId, { notaOutcome, notaMaxOutcome });
