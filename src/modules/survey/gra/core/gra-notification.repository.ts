@@ -56,13 +56,14 @@ export class GraNotificationRepository extends BaseRepostitory {
 					n.max_register_date,
 					n.survey_id,
 					s.student_id,
-					st.name           AS student_name,
-					st.code           AS student_code,
-					st.institutional_email AS student_email,
-					p.name            AS program_name
+					u.first_name || ' ' || u.last_name AS student_name,
+					u.document_code::text              AS student_code,
+					u.email                            AS student_email,
+					p.name->>'es'                      AS program_name
 				FROM survey.notifications n
 				INNER JOIN evidence.surveys s ON s.id = n.survey_id
 				INNER JOIN academic.students st ON st.id = s.student_id
+				INNER JOIN organization.users u ON u.id = st.user_id
 				INNER JOIN academic.programs p ON p.id = s.program_id
 				WHERE s.survey_type_id = $1
 				  AND n.notification_status_type_id = $2
@@ -107,17 +108,18 @@ export class GraNotificationRepository extends BaseRepostitory {
 					n.id                AS notification_id,
 					n.survey_id,
 					s.student_id,
-					st.name             AS student_name,
-					st.code             AS student_code,
-					st.institutional_email AS student_email,
-					p.name              AS program_name,
-					t.name              AS notification_status,
+					u.first_name || ' ' || u.last_name AS student_name,
+					u.document_code::text              AS student_code,
+					u.email                            AS student_email,
+					p.name->>'es'                      AS program_name,
+					t.name->>'es'                      AS notification_status,
 					n.sent_date,
 					n.max_register_date,
 					n.token
 				FROM survey.notifications n
 				INNER JOIN evidence.surveys s ON s.id = n.survey_id
 				INNER JOIN academic.students st ON st.id = s.student_id
+				INNER JOIN organization.users u ON u.id = st.user_id
 				INNER JOIN academic.programs p ON p.id = s.program_id
 				INNER JOIN core.types t ON t.id = n.notification_status_type_id
 				WHERE s.survey_type_id = $1
@@ -137,11 +139,11 @@ export class GraNotificationRepository extends BaseRepostitory {
 				params.push(filters.campus_id);
 			}
 			if (filters.student_code) {
-				query += ` AND st.code ILIKE $${params.length + 1}`;
+				query += ` AND u.document_code::text ILIKE $${params.length + 1}`;
 				params.push(`%${filters.student_code}%`);
 			}
 
-			query += ` ORDER BY st.name ASC`;
+			query += ` ORDER BY u.first_name ASC`;
 
 			return await queryRunner.manager.query(query, params);
 		} finally {
@@ -185,17 +187,18 @@ export class GraNotificationRepository extends BaseRepostitory {
 					n.id                AS notification_id,
 					n.survey_id,
 					s.student_id,
-					st.name             AS student_name,
-					st.code             AS student_code,
+					u.first_name || ' ' || u.last_name AS student_name,
+					u.document_code::text              AS student_code,
 					s.program_id,
-					p.name              AS program_name,
+					p.name->>'es'                      AS program_name,
 					s.academic_period_id,
 					n.max_register_date,
-					nt.name             AS notification_status,
-					st2.name            AS survey_status
+					nt.name->>'es'                     AS notification_status,
+					st2.name->>'es'                    AS survey_status
 				FROM survey.notifications n
 				INNER JOIN evidence.surveys s ON s.id = n.survey_id
 				INNER JOIN academic.students st ON st.id = s.student_id
+				INNER JOIN organization.users u ON u.id = st.user_id
 				INNER JOIN academic.programs p ON p.id = s.program_id
 				INNER JOIN core.types nt ON nt.id = n.notification_status_type_id
 				INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id

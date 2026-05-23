@@ -63,24 +63,24 @@ export class PppSurveyRepository extends BaseRepostitory {
 	): Promise<{ outcome_id: number; outcome_name: string; avg_score: number; total_surveys: number }[]> {
 		const { queryRunner } = await this.getRepository();
 		try {
-			const params: Record<string, any> = { typeId: pppTypeId };
-			const conditions: string[] = [`s.survey_type_id = :typeId`];
+			const params: any[] = [pppTypeId];
+			const conditions: string[] = [`s.survey_type_id = $1`];
 
 			if (filters?.program_id !== undefined) {
-				conditions.push('s.program_id = :programId');
-				params.programId = filters.program_id;
+				params.push(filters.program_id);
+				conditions.push(`s.program_id = $${params.length}`);
 			}
 			if (filters?.academic_period_id !== undefined) {
-				conditions.push('s.academic_period_id = :periodId');
-				params.periodId = filters.academic_period_id;
+				params.push(filters.academic_period_id);
+				conditions.push(`s.academic_period_id = $${params.length}`);
 			}
 			if (filters?.campus_id !== undefined) {
-				conditions.push('s.campus_id = :campusId');
-				params.campusId = filters.campus_id;
+				params.push(filters.campus_id);
+				conditions.push(`s.campus_id = $${params.length}`);
 			}
 			if (filters?.practice_number !== undefined) {
-				conditions.push('s.survey_number = :practiceNum');
-				params.practiceNum = filters.practice_number;
+				params.push(filters.practice_number);
+				conditions.push(`s.survey_number = $${params.length}`);
 			}
 
 			const whereClause = conditions.join(' AND ');
@@ -97,7 +97,7 @@ export class PppSurveyRepository extends BaseRepostitory {
 				WHERE ${whereClause}
 				GROUP BY sc.outcome_id, oc.user_outcome_name
 				ORDER BY oc.user_outcome_name`,
-				Object.values(params).map((_, i) => params[Object.keys(params)[i]]),
+				params,
 			);
 
 			return result;

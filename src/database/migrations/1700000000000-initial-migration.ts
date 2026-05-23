@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class InitialMigration1778723980112 implements MigrationInterface {
-	name = 'InitialMigration1778723980112';
+export class InitialMigration1700000000000 implements MigrationInterface {
+	name = 'InitialMigration1700000000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "academic"`);

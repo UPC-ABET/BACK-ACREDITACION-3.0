@@ -37,19 +37,20 @@ export class LcfcNotificationRepository extends BaseRepostitory {
 					n.id                   AS notification_id,
 					n.survey_id,
 					s.student_id,
-					st.name                AS student_name,
-					st.code                AS student_code,
+					u.first_name || ' ' || u.last_name AS student_name,
+					u.document_code::text              AS student_code,
 					s.program_id,
-					p.name                 AS program_name,
+					p.name->>'es'                      AS program_name,
 					s.academic_period_id,
 					s.campus_id,
 					s.course_section_id,
 					n.max_register_date,
-					nt.name                AS notification_status,
-					st2.name               AS survey_status
+					nt.name->>'es'                     AS notification_status,
+					st2.name->>'es'                    AS survey_status
 				FROM survey.notifications n
 				INNER JOIN evidence.surveys s ON s.id = n.survey_id
 				INNER JOIN academic.students st ON st.id = s.student_id
+				INNER JOIN organization.users u ON u.id = st.user_id
 				INNER JOIN academic.programs p ON p.id = s.program_id
 				INNER JOIN core.types nt ON nt.id = n.notification_status_type_id
 				INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id
@@ -81,18 +82,19 @@ export class LcfcNotificationRepository extends BaseRepostitory {
 		try {
 			const rows = await queryRunner.manager.query(
 				`SELECT DISTINCT
-					st.id                      AS student_id,
-					st.name                    AS student_name,
-					st.code                    AS student_code,
-					st.institutional_email     AS student_email,
+					st.id                                   AS student_id,
+					u.first_name || ' ' || u.last_name     AS student_name,
+					u.document_code::text                  AS student_code,
+					u.email                                AS student_email,
 					sse.course_section_id,
-					c.name                     AS course_name,
+					c.name->>'es'                          AS course_name,
 					cs.campus_id,
 					sp.program_id,
-					p.name                     AS program_name
+					p.name->>'es'                          AS program_name
 				FROM academic.student_section_enrollments sse
 				INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 				INNER JOIN academic.students st ON st.id = es.student_id
+				INNER JOIN organization.users u ON u.id = st.user_id
 				INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
 				INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
 				INNER JOIN academic.courses c ON c.id = spc.course_id
@@ -100,7 +102,7 @@ export class LcfcNotificationRepository extends BaseRepostitory {
 				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 				INNER JOIN academic.programs p ON p.id = sp.program_id
 				WHERE sse.course_section_id = ANY($1)
-				ORDER BY st.name ASC`,
+				ORDER BY u.first_name ASC`,
 				[courseSectionIds],
 			);
 			return rows ?? [];
@@ -132,19 +134,20 @@ export class LcfcNotificationRepository extends BaseRepostitory {
 		try {
 			let query = `
 				SELECT
-					n.id                   AS notification_id,
+					n.id                                AS notification_id,
 					n.token,
 					n.max_register_date,
 					n.survey_id,
 					s.student_id,
-					st.name                AS student_name,
-					st.code                AS student_code,
-					st.institutional_email AS student_email,
-					c.name                 AS course_name,
-					p.name                 AS program_name
+					u.first_name || ' ' || u.last_name  AS student_name,
+					u.document_code::text               AS student_code,
+					u.email                             AS student_email,
+					c.name->>'es'                       AS course_name,
+					p.name->>'es'                       AS program_name
 				FROM survey.notifications n
 				INNER JOIN evidence.surveys s ON s.id = n.survey_id
 				INNER JOIN academic.students st ON st.id = s.student_id
+				INNER JOIN organization.users u ON u.id = st.user_id
 				INNER JOIN academic.programs p ON p.id = s.program_id
 				INNER JOIN academic.course_sections cs ON cs.id = s.course_section_id
 				INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id

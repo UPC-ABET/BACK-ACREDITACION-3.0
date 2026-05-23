@@ -3,10 +3,11 @@ import { runTenantSeed } from '../seed-runner';
 runTenantSeed('core type catalogs', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "core"."type_groups" (code, name, description)
-		SELECT v.code, v.name, v.description
+		SELECT v.code, jsonb_build_object('es', v.name, 'en', v.name), jsonb_build_object('es', v.description, 'en', v.description)
 		FROM (
 			VALUES
 				('TG101', 'Tipo de documento', 'Documentos y valores base para usuarios'),
+				('TG102', 'Ciclo academico', 'Tipos de ciclo para periodos y programas academicos'),
 				('TG103', 'Modalidad de ensenanza', 'Modalidades academicas generales'),
 				('TG202', 'Modalidad de graduacion', 'Modalidades de egreso del estudiante'),
 				('TG203', 'Nivel academico', 'Niveles de cursos en el plan de estudios'),
@@ -29,7 +30,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				('TG901', 'Cargo del personal', 'Tipos de cargos administrativos y docentes'),
 				('TG902', 'Nivel de organigrama', 'Niveles de estructura organizacional'),
 				('TG903', 'Tipo de entidad organizacional', 'Tipos de entidades en organigrama'),
-				('TG1001', 'Estado de notificacion', 'Estados de notificaciones')
+				('TG1001', 'Estado de notificacion', 'Estados de notificaciones'),
+				('TG1002', 'Disparador de notificacion', 'Tipos de disparadores de notificaciones IFC')
 		) AS v(code, name, description)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "core"."type_groups" tg WHERE tg.code = v.code
@@ -38,13 +40,14 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 
 	await tenantDataSource.query(`
 		INSERT INTO "core"."types" (type_group_id, code, name, description, extra, is_active)
-		SELECT tg.id, v.code, v.name, v.description, v.extra, true
+		SELECT tg.id, v.code, jsonb_build_object('es', v.name, 'en', v.name), jsonb_build_object('es', v.description, 'en', v.description), v.extra, true
 		FROM "core"."type_groups" tg
 		JOIN (
 			VALUES
 				('TG101', 'TG101-T001', 'DNI', 'Documento Nacional de Identidad', '{}'::jsonb),
 				('TG101', 'TG101-T002', 'Pasaporte', 'Pasaporte internacional', '{}'::jsonb),
 				('TG101', 'TG101-T003', 'Carne de extranjeria', 'Carne de extranjeria', '{}'::jsonb),
+				('TG102', 'TG102-T001', 'Semestral', 'Ciclo semestral', '{}'::jsonb),
 				('TG103', 'TG103-T001', 'Presencial', 'Educacion presencial', '{"mode":"in-person"}'::jsonb),
 				('TG103', 'TG103-T002', 'Virtual', 'Educacion virtual', '{"mode":"online"}'::jsonb),
 				('TG103', 'TG103-T003', 'Hibrida', 'Educacion hibrida', '{"mode":"hybrid"}'::jsonb),
@@ -88,6 +91,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				('TG701', 'TG701-T001', 'No medido', 'Indicador sin medicion', '{}'::jsonb),
 				('TG701', 'TG701-T002', 'Analizado', 'Indicador analizado', '{}'::jsonb),
 				('TG701', 'TG701-T003', 'Plan requerido', 'Indicador requiere plan', '{}'::jsonb),
+				('TG701', 'TG701-T004', 'Observado', 'Indicador con observaciones', '{}'::jsonb),
+				('TG701', 'TG701-T005', 'No registrado', 'Indicador sin registro', '{}'::jsonb),
 				('TG801', 'TG801-T001', 'Baja', 'Criticidad baja', '{}'::jsonb),
 				('TG801', 'TG801-T002', 'Media', 'Criticidad media', '{}'::jsonb),
 				('TG801', 'TG801-T003', 'Alta', 'Criticidad alta', '{}'::jsonb),
@@ -103,10 +108,15 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				('TG902', 'TG902-T001', 'Rectorado', 'Nivel rectorado', '{"level":1}'::jsonb),
 				('TG902', 'TG902-T002', 'Facultad', 'Nivel facultad', '{"level":2}'::jsonb),
 				('TG902', 'TG902-T003', 'Escuela', 'Nivel escuela', '{"level":3}'::jsonb),
+				('TG902', 'TG902-T004', 'Area', 'Nivel area', '{"level":4}'::jsonb),
+				('TG902', 'TG902-T005', 'Subarea', 'Nivel subarea', '{"level":5}'::jsonb),
+				('TG902', 'TG902-T006', 'Coordinador de curso', 'Coordinador a nivel de curso', '{"level":6}'::jsonb),
 				('TG903', 'TG903-T001', 'Unidad academica', 'Entidad academica', '{}'::jsonb),
 				('TG903', 'TG903-T002', 'Unidad administrativa', 'Entidad administrativa', '{}'::jsonb),
 				('TG1001', 'TG1001-T001', 'Programada', 'Notificacion programada', '{}'::jsonb),
-				('TG1001', 'TG1001-T002', 'Enviada', 'Notificacion enviada', '{}'::jsonb)
+				('TG1001', 'TG1001-T002', 'Enviada', 'Notificacion enviada', '{}'::jsonb),
+				('TG1002', 'TG1002-T001', 'Manual', 'Disparador manual', '{}'::jsonb),
+				('TG1002', 'TG1002-T002', 'Cambio automatico de estado', 'Disparador por cambio de estado automatico', '{}'::jsonb)
 		) AS v(group_code, code, name, description, extra)
 			ON tg.code = v.group_code
 		WHERE NOT EXISTS (
