@@ -150,7 +150,7 @@ export class ProjectEvaluatorResponseDto {
 	course_name: string;
 
 	@ApiProperty({ type: EvaluatorInfoDto })
-	evaluator: EvaluatorInfoDto;
+	evaluators: EvaluatorInfoDto[];
 
 	@ApiProperty({ type: [StudentInfoDto] })
 	students: StudentInfoDto[];

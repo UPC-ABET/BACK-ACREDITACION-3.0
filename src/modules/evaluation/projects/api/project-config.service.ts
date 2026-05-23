@@ -27,7 +27,7 @@ export class ProjectConfigService {
 		@InjectRepository(TypeEntity)
 		private readonly typeRepo: Repository<TypeEntity>,
 		private readonly dataSource: DataSource,
-	) {}
+	) { }
 
 	private async resolveEvaluatorTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
@@ -127,6 +127,11 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('eprof.staff', 'estaff')
 			.leftJoinAndSelect('estaff.user', 'euser')
 			.leftJoinAndSelect('pe.project', 'p')
+			.leftJoinAndSelect('p.evaluators', 'all_pe')           // todos los evaluadores del proyecto
+			.leftJoinAndSelect('all_pe.professor', 'all_prof')
+			.leftJoinAndSelect('all_prof.staff', 'all_staff')
+			.leftJoinAndSelect('all_staff.user', 'all_user')
+			.leftJoinAndSelect('all_pe.evaluator_type', 'all_etype')
 			.leftJoinAndSelect('p.students', 's')
 			.leftJoinAndSelect('s.student_section_enrollment', 'sse')
 			.leftJoinAndSelect('sse.enrolled_student', 'es')
@@ -143,8 +148,8 @@ export class ProjectConfigService {
 			const courseName =
 				p?.students?.[0]?.student_section_enrollment?.course_section?.study_plan_course?.course?.name;
 
-			const resolvedCourseName = typeof courseName === 'string' 
-				? courseName 
+			const resolvedCourseName = typeof courseName === 'string'
+				? courseName
 				: (courseName?.es || courseName?.en || '');
 
 			return {
@@ -153,18 +158,18 @@ export class ProjectConfigService {
 				project_name: p?.name,
 				evaluation_date: p?.created_at,
 				course_name: resolvedCourseName,
-				evaluator: {
-					id: pe.id, // project_evaluator_id
-					professor_id: pe.professor_id,
-					first_name: pe.professor?.staff?.user?.first_name || '',
-					last_name: pe.professor?.staff?.user?.last_name || '',
-					email: pe.professor?.staff?.user?.email || '',
-					evaluator_type: pe.evaluator_type?.code || '',
-				},
+				evaluators: (p?.evaluators || []).map((allPe) => ({
+					id: allPe.id,
+					professor_id: allPe.professor_id,
+					first_name: allPe.professor?.staff?.user?.first_name || '',
+					last_name: allPe.professor?.staff?.user?.last_name || '',
+					email: allPe.professor?.staff?.user?.email || '',
+					evaluator_type: allPe.evaluator_type?.name || '',
+				})),
 				students: (p?.students || []).map((s) => {
 					const user = s.student_section_enrollment?.enrolled_student?.student?.user;
 					return {
-						id: s.id, // project_student_id
+						id: s.id,
 						first_name: user?.first_name || '',
 						last_name: user?.last_name || '',
 						email: user?.email || '',
