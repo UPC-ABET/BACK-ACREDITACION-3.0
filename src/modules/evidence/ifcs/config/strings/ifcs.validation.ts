@@ -14,6 +14,7 @@ export const ifcsValidationStrings = {
 		pdfRequiresApproved: 'error.ifc.pdfRequiresApproved',
 		findingsRequired: 'error.ifc.findingsRequired',
 		actionsRequiredPerFinding: 'error.ifc.actionsRequiredPerFinding',
+		previousActionNotEligible: 'error.ifc.previousActionNotEligible',
 	},
 	result: {
 		createFailed: 'error.ifc.createFailed',

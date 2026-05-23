@@ -31,7 +31,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				('TG902', 'Nivel de organigrama', 'Niveles de estructura organizacional'),
 				('TG903', 'Tipo de entidad organizacional', 'Tipos de entidades en organigrama'),
 				('TG1001', 'Estado de notificacion', 'Estados de notificaciones'),
-				('TG1002', 'Disparador de notificacion', 'Tipos de disparadores de notificaciones IFC')
+				('TG1002', 'Disparador de notificacion', 'Tipos de disparadores de notificaciones IFC'),
+				('TG1003', 'Completitud de accion', 'Estado derivado de la accion (Pendiente/Implementada)')
 		) AS v(code, name, description)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "core"."type_groups" tg WHERE tg.code = v.code
@@ -116,7 +117,9 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				('TG1001', 'TG1001-T001', 'Programada', 'Notificacion programada', '{}'::jsonb),
 				('TG1001', 'TG1001-T002', 'Enviada', 'Notificacion enviada', '{}'::jsonb),
 				('TG1002', 'TG1002-T001', 'Manual', 'Disparador manual', '{}'::jsonb),
-				('TG1002', 'TG1002-T002', 'Cambio automatico de estado', 'Disparador por cambio de estado automatico', '{}'::jsonb)
+				('TG1002', 'TG1002-T002', 'Cambio automatico de estado', 'Disparador por cambio de estado automatico', '{}'::jsonb),
+				('TG1003', 'TG1003-T001', 'Pendiente', 'Accion sin evidencias', '{"color":"#71717A"}'::jsonb),
+				('TG1003', 'TG1003-T002', 'Implementada', 'Accion con evidencias', '{"color":"#10B981"}'::jsonb)
 		) AS v(group_code, code, name, description, extra)
 			ON tg.code = v.group_code
 		WHERE NOT EXISTS (

@@ -427,6 +427,14 @@ export class IfcService extends BaseService<IfcRepository> {
 				deletedActionIds: dto.deleted_action_ids,
 			});
 
+			await this.applyPreviousActionEvidences(em, {
+				courseId,
+				periodId: dto.period_id,
+				excludeIfcId: null,
+				items: dto.previous_actions,
+				op,
+			});
+
 			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
 			await this.insertStatus(em, ifcId, requesterStaffId!, newStatusCode, null);
 
@@ -477,6 +485,14 @@ export class IfcService extends BaseService<IfcRepository> {
 				actions: dto.actions,
 				deletedFindingIds: dto.deleted_finding_ids,
 				deletedActionIds: dto.deleted_action_ids,
+			});
+
+			await this.applyPreviousActionEvidences(em, {
+				courseId,
+				periodId,
+				excludeIfcId: id,
+				items: dto.previous_actions,
+				op,
 			});
 
 			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
@@ -689,21 +705,61 @@ export class IfcService extends BaseService<IfcRepository> {
 			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
 			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
 		]);
 		return rows.map((r: any) => ({
 			id: Number(r.id),
 			finding_action_id: Number(r.finding_action_id),
-			finding_id: Number(r.finding_id),
+			finding: {
+				id: Number(r.finding_id),
+				code: r.finding_code,
+			},
 			code: r.code,
 			correlative: Number(r.correlative),
 			description: r.description,
 			evidences: r.evidences,
-			completeness_code: r.completeness_code,
-			completeness_name: r.completeness_name,
-			academic_period_id: Number(r.academic_period_id),
-			academic_period_code: r.academic_period_code,
+			completeness: {
+				code: r.completeness_code,
+				name: r.completeness_name,
+				color: r.completeness_color ?? null,
+			},
 			source: r.source as 'plan' | 'direct' | 'both',
 		}));
+	}
+
+	private async applyPreviousActionEvidences(
+		em: EntityManager,
+		input: {
+			courseId: number;
+			periodId: number;
+			excludeIfcId: number | null;
+			items: { finding_action_id: number; evidences: I18nText | null }[] | undefined;
+			op: IfcOp;
+		},
+	) {
+		const items = input.items ?? [];
+		if (items.length === 0) return;
+
+		const rows = await em.query(PREVIOUS_ACTIONS_SQL, [
+			input.courseId,
+			input.periodId,
+			input.excludeIfcId,
+			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
+		]);
+		const allowed = new Set<number>(rows.map((r: any) => Number(r.finding_action_id)));
+
+		for (const item of items) {
+			if (!allowed.has(item.finding_action_id)) {
+				throw new HttpException(
+					{ message: ifcsValidationStrings.result[input.op === IFC_OPS.PATCH ? 'patchFailed' : 'createFailed'], errors: [ifcsValidationStrings.error.previousActionNotEligible] },
+					HttpStatus.BAD_REQUEST,
+				);
+			}
+			await em.query(`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`, [item.evidences === null ? null : JSON.stringify(item.evidences), item.finding_action_id]);
+		}
 	}
 
 	private assembleViewResponse(input: { header: any; findingRows: any[]; outcomeCourseRows: any[]; findingOutcomeRows: any[]; findingActionRows: any[]; previousActions: any[] }) {
@@ -761,8 +817,11 @@ export class IfcService extends BaseService<IfcRepository> {
 				code: row.action_code,
 				description: row.action_description,
 				correlative: row.action_correlative,
-				completeness_code: row.completeness_code,
-				completeness_name: row.completeness_name,
+				completeness: {
+					code: row.completeness_code,
+					name: row.completeness_name,
+					color: row.completeness_color ?? null,
+				},
 			});
 			actionsByFinding.set(fid, arr);
 		}
@@ -994,7 +1053,8 @@ SELECT
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
 		|| '-' || a.correlative::text   AS action_code,
 	CASE WHEN fa.evidences IS NULL THEN $3 ELSE $4 END  AS completeness_code,
-	comp.name                           AS completeness_name
+	comp.name                           AS completeness_name,
+	(comp.extra->>'color')              AS completeness_color
 FROM improvement.finding_actions fa
 JOIN improvement.actions  a      ON a.id    = fa.action_id
 JOIN improvement.findings f      ON f.id    = fa.finding_id
@@ -1017,8 +1077,10 @@ SELECT
 	o.outcome_name                      AS outcome_name,
 	o.outcome_description               AS outcome_description
 FROM evidence.ifcs i
-JOIN academic.study_plan_courses spc        ON spc.course_id = i.course_id
-JOIN academic.course_outcome_mappings m     ON m.study_plan_course_id = spc.id
+JOIN academic.study_plan_courses spc           ON spc.course_id = i.course_id
+JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+                                              AND spap.academic_period_id = i.academic_period_id
+JOIN academic.course_outcome_mappings m        ON m.study_plan_course_id = spc.id
 JOIN accreditation.outcomes o               ON o.id    = m.outcome_id
 JOIN accreditation.program_commissions pc   ON pc.id   = o.program_commission_id
 JOIN academic.programs p                    ON p.id    = pc.program_id
@@ -1037,9 +1099,11 @@ SELECT
 	o.outcome_name                      AS outcome_name,
 	o.outcome_description               AS outcome_description
 FROM organization.charts c_course
-JOIN academic.courses ac                    ON ac.id = c_course.entity_code
-JOIN academic.study_plan_courses spc        ON spc.course_id = ac.id
-JOIN academic.course_outcome_mappings m     ON m.study_plan_course_id = spc.id
+JOIN academic.courses ac                       ON ac.id = c_course.entity_code
+JOIN academic.study_plan_courses spc           ON spc.course_id = ac.id
+JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+                                              AND spap.academic_period_id = c_course.academic_period_id
+JOIN academic.course_outcome_mappings m        ON m.study_plan_course_id = spc.id
 JOIN accreditation.outcomes o               ON o.id    = m.outcome_id
 JOIN accreditation.program_commissions pc   ON pc.id   = o.program_commission_id
 JOIN academic.programs p                    ON p.id    = pc.program_id
@@ -1310,16 +1374,16 @@ LIMIT 1
 `;
 
 // $1 = course_id, $2 = active_period_id, $3 = exclude_ifc_id (nullable),
-// $4 = action prefix parameter key, $5 = PENDING type code, $6 = IMPLEMENTED type code
+// $4 = action prefix parameter key, $5 = PENDING type code, $6 = IMPLEMENTED type code,
+// $7 = finding prefix parameter key.
 // Emits one row per (action, finding_action) pair reachable via either:
 //   - via_plan:   plans whose period is in the same year and STRICTLY earlier than the
 //                 active period → plan_actions → finding_actions → actions
 //                 (course scope via findings.course_id)
 //   - via_action: actions whose own period is in the same year and STRICTLY earlier than
 //                 the active period (course scope via finding_actions → findings.course_id)
-// Each row carries the same fields as the IFC view's per-finding action rows:
-//   id, finding_action_id, finding_id, code, correlative, description, evidences,
-//   completeness_code, completeness_name, academic_period_id, academic_period_code, source
+// Each row carries: id, finding_action_id, finding_id, finding_code, code, correlative,
+//   description, evidences, completeness_code, completeness_name, completeness_color, source.
 // When $3 is non-null, drops pairs whose finding is already in that IFC (via ifc.ifc_findings).
 const PREVIOUS_ACTIONS_SQL = `
 WITH active AS (
@@ -1358,17 +1422,20 @@ SELECT
 	a.id::int                AS id,
 	fa.id::int               AS finding_action_id,
 	fa.finding_id::int       AS finding_id,
+	(p_fnd.value #>> '{}')
+		|| '-' || inst.code
+		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
+		|| '-' || f.correlative::text                   AS finding_code,
 	a.correlative::int       AS correlative,
 	a.description            AS description,
 	fa.evidences             AS evidences,
 	CASE WHEN fa.evidences IS NULL THEN $5 ELSE $6 END  AS completeness_code,
 	comp.name                AS completeness_name,
+	(comp.extra->>'color')   AS completeness_color,
 	(p_acn.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
 		|| '-' || a.correlative::text                   AS code,
-	a.academic_period_id::int AS academic_period_id,
-	ap.code                  AS academic_period_code,
 	CASE
 		WHEN EXISTS (SELECT 1 FROM via_plan vp WHERE vp.finding_action_id = fa.id AND vp.action_id = a.id)
 		 AND EXISTS (SELECT 1 FROM via_action va WHERE va.finding_action_id = fa.id AND va.action_id = a.id) THEN 'both'
@@ -1379,10 +1446,10 @@ FROM candidates c
 JOIN improvement.finding_actions fa ON fa.id = c.finding_action_id
 JOIN improvement.actions a          ON a.id  = c.action_id
 JOIN improvement.findings f         ON f.id  = fa.finding_id
-JOIN academic.academic_periods ap   ON ap.id = a.academic_period_id
 JOIN evidence.instruments inst      ON inst.id = f.instrument_id
 LEFT JOIN academic.courses ac       ON ac.id   = f.course_id
 CROSS JOIN (SELECT value FROM core.parameters WHERE code = $4) p_acn
+CROSS JOIN (SELECT value FROM core.parameters WHERE code = $7) p_fnd
 LEFT JOIN core.types comp           ON comp.code = (CASE WHEN fa.evidences IS NULL THEN $5 ELSE $6 END)
 WHERE $3::int IS NULL
    OR NOT EXISTS (

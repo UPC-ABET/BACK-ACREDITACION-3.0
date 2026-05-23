@@ -32,6 +32,7 @@ describe('IfcFindingService.getDetail', () => {
 		description: { es: 'Acción' },
 		completeness_code: TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 		completeness_name: { es: 'Pendiente' },
+		completeness_color: '#71717A',
 	};
 
 	it('issues both queries with the expected positional params and TYPE_CODES constants', async () => {
@@ -61,7 +62,18 @@ describe('IfcFindingService.getDetail', () => {
 				description: headerRow.description,
 				criticality: { code: headerRow.criticality_code, name: headerRow.criticality_name, color: null },
 			},
-			actions: [actionRow],
+			actions: [
+				{
+					id: actionRow.id,
+					action_code: actionRow.action_code,
+					description: actionRow.description,
+					completeness: {
+						code: actionRow.completeness_code,
+						name: actionRow.completeness_name,
+						color: actionRow.completeness_color,
+					},
+				},
+			],
 		});
 	});
 

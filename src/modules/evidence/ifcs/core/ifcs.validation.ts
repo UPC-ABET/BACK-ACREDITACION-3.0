@@ -196,11 +196,7 @@ export class IfcValidation {
 		}
 	}
 
-	static assertFindingsAndActionsPresent(
-		findings: { tempId: string }[],
-		actions: { finding_temp_id: string }[],
-		op: IfcOp,
-	) {
+	static assertFindingsAndActionsPresent(findings: { tempId: string }[], actions: { finding_temp_id: string }[], op: IfcOp) {
 		const errors: string[] = [];
 
 		if (!findings || findings.length === 0) {

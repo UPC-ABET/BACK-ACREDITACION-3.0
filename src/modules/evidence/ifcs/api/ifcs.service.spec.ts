@@ -112,7 +112,15 @@ describe('IfcService.getView', () => {
 		expect(finActionParams).toEqual([[1], IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
 
 		const [, prevActionParams] = dataSource.query.mock.calls[5];
-		expect(prevActionParams).toEqual([17, 5, 42, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
+		expect(prevActionParams).toEqual([
+			17,
+			5,
+			42,
+			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
+		]);
 	});
 
 	it('throws 404 when headerRows is empty', async () => {
@@ -314,7 +322,15 @@ describe('IfcService.prefill', () => {
 		const [, outcomeParams] = dataSource.query.mock.calls[1];
 		expect(outcomeParams).toEqual([310]);
 		const [, prevActionParams] = dataSource.query.mock.calls[2];
-		expect(prevActionParams).toEqual([17, 5, null, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
+		expect(prevActionParams).toEqual([
+			17,
+			5,
+			null,
+			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
+		]);
 	});
 
 	it('returns 404 when the header is empty (chart not in school)', async () => {
