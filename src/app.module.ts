@@ -14,6 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/protocols/jwt/guards/permissions.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
+import { AuthModule } from './modules/auth/auth.module';
 
 // ACADEMIC MODULES
 import { AcademicPeriodModule } from './modules/academic/academic-periods/academic-periods.module';
@@ -64,6 +65,8 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
+import { NotificationConfigModule } from './modules/ifc/notification-configs/notification-configs.module';
+import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
 
 //IMPROVEMENT MODULES
 import { ActionModule } from './modules/improvement/actions/actions.module';
@@ -81,6 +84,7 @@ import { FacultyModule } from './modules/organization/faculties/faculties.module
 import { SchoolModule } from './modules/organization/schools/schools.module';
 import { StaffModule } from './modules/organization/staff/staff.module';
 import { UserModule } from './modules/organization/users/users.module';
+import { OrgScopeModule } from './modules/organization/org-scope/org-scope.module';
 
 //SURVEY MODULES
 import { NotificationMessageModule } from './modules/survey/notification-messages/notification-messages.module';
@@ -174,8 +178,11 @@ import { S3Module } from './modules/storage/s3/s3.module';
 		InstrumentModule,
 		StudentCourseOutcomeGradeModule,
 		SurveyModule,
+		AuthModule,
 		IfcFindingModule,
 		StatusModule,
+		NotificationConfigModule,
+		NotificationLogModule,
 		ActionModule,
 		FindingActionModule,
 		FindingOutcomeModule,
@@ -188,6 +195,7 @@ import { S3Module } from './modules/storage/s3/s3.module';
 		FacultyModule,
 		SchoolModule,
 		StaffModule,
+		OrgScopeModule,
 		NotificationMessageModule,
 		NotificationModule,
 		OutcomeConfigModule,

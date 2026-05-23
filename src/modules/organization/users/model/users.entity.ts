@@ -1,6 +1,6 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, PasswordColumn, TextMediumColumn, IntegerFKIDColumn, IntegerColumn, BooleanColumn, TextShortColumn } from 'src/commons/configs/db.configs';
+import { NameColumn, PasswordColumn, TextMediumColumn, IntegerFKIDColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'users', schema: 'organization' })
@@ -30,12 +30,6 @@ export class UserEntity extends BaseEntity {
 
 	@BooleanColumn()
 	is_admin: boolean;
-
-	@TextMediumColumn({ nullable: true })
-	password_reset_token: string | null;
-
-	@TextShortColumn({ nullable: true })
-	password_reset_expires_at: string | null;
 
 	// %% RELACIONES
 

@@ -1,8 +1,6 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticationResult, ConfidentialClientApplication, Configuration } from '@azure/msal-node';
-import { createHash, randomBytes } from 'node:crypto';
-import { MailService } from 'src/modules/mail/mail.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
 
@@ -21,7 +19,6 @@ export class AuthService {
 		private readonly configService: ConfigService,
 		private readonly userService: UserService,
 		private readonly schoolRepository: SchoolRepository,
-		private readonly mailService: MailService,
 	) {}
 
 	async resolveSchoolIdByCode(school_code: string): Promise<number> {
@@ -66,34 +63,6 @@ export class AuthService {
 		};
 	}
 
-	async requestPasswordReset(email: string) {
-		const user = await this.userService.getUser(null, email.toLowerCase());
-
-		if (!user) {
-			return;
-		}
-
-		const expiresInMinutes = this.configService.get<number>('PASSWORD_RESET_EXPIRES_MINUTES') ?? 30;
-		const token = randomBytes(32).toString('hex');
-		const tokenHash = this.hashResetToken(token);
-		const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
-
-		await this.userService.savePasswordResetToken(user, tokenHash, expiresAt);
-		await this.mailService.sendPasswordResetEmail({
-			to: user.email,
-			name: `${user.first_name} ${user.last_name}`.trim() || user.email,
-			resetLink: this.buildPasswordResetLink(user.email, token),
-			expiresInMinutes,
-		});
-	}
-
-	async resetPassword(email: string, token: string, newPassword: string) {
-		const user = await this.userService.getUser(null, email.toLowerCase());
-		const tokenHash = this.hashResetToken(token);
-
-		await this.userService.resetPasswordWithToken(user, tokenHash, newPassword);
-	}
-
 	private async acquireMicrosoftTokenByCode(code: string): Promise<AuthenticationResult> {
 		const msalClient = this.createMsalClient();
 		const redirectUri = this.getRequiredConfig('URL_REDIRECT');
@@ -123,20 +92,6 @@ export class AuthService {
 		}
 
 		return email.toLowerCase();
-	}
-
-	private buildPasswordResetLink(email: string, token: string) {
-		const baseUrl = this.configService.get<string>('PASSWORD_RESET_URL') ?? 'http://localhost:3000/reset-password';
-		const url = new URL(baseUrl);
-
-		url.searchParams.set('email', email);
-		url.searchParams.set('token', token);
-
-		return url.toString();
-	}
-
-	private hashResetToken(token: string) {
-		return createHash('sha256').update(token).digest('hex');
 	}
 
 	private createMsalClient() {

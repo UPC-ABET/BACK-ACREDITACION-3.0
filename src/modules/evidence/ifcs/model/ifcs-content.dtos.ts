@@ -1,7 +1,7 @@
 // no-override
 
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsArray, IsBoolean, IsInt, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { ArrayUnique, IsArray, IsBoolean, IsInt, IsObject, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
 
@@ -43,6 +43,22 @@ export class IfcActionPayloadDto {
 	finding_temp_id: string;
 }
 
+export class IfcPreviousActionPayloadDto {
+	@ApiProperty({ example: 4, required: true, description: 'id de improvement.finding_actions (rows previas reutilizadas). Solo se permiten ids devueltos por GET (previous_actions)' })
+	@IsInt()
+	finding_action_id: number;
+
+	@ApiProperty({
+		example: { es: 'Nueva evidencia', en: 'New Evidence' },
+		nullable: true,
+		required: true,
+		description: 'I18nText con la evidencia, o null para volver el estado a Pendiente (limpia evidencias)',
+	})
+	@ValidateIf((_, v) => v !== null)
+	@IsObject()
+	evidences: I18nText | null;
+}
+
 export class IfcContentDto {
 	@ApiProperty({ example: false, required: true, description: 'true = al guardar, transicionar a SUBMITTED; false = quedar en SAVED' })
 	@IsBoolean()
@@ -82,6 +98,18 @@ export class IfcContentDto {
 	@IsInt({ each: true })
 	@ArrayUnique()
 	deleted_action_ids?: number[];
+
+	@ApiProperty({
+		type: [IfcPreviousActionPayloadDto],
+		required: false,
+		description:
+			'Actualiza el campo `evidences` (I18nText|null) de filas de improvement.finding_actions reutilizadas de periodos previos. Solo se aceptan ids del set devuelto por GET (previous_actions).',
+	})
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => IfcPreviousActionPayloadDto)
+	previous_actions?: IfcPreviousActionPayloadDto[];
 }
 
 export class CreateIfcDto extends IfcContentDto {

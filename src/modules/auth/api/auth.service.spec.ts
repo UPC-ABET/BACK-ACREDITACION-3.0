@@ -4,14 +4,12 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
-import { MailService } from 'src/modules/mail/mail.service';
 
 describe('AuthService — MSAL login', () => {
 	let service: AuthService;
 	let userService: { getUser: jest.Mock; createUserLogin: jest.Mock };
 	let schoolRepository: { findOneByCondition: jest.Mock };
 	const configService = { get: jest.fn() } as unknown as ConfigService;
-	const mailService = { sendPasswordResetEmail: jest.fn() } as unknown as MailService;
 
 	beforeEach(() => {
 		userService = {
@@ -21,8 +19,7 @@ describe('AuthService — MSAL login', () => {
 		schoolRepository = {
 			findOneByCondition: jest.fn(),
 		};
-
-		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository, mailService as unknown as MailService);
+		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository);
 	});
 
 	describe('resolveSchoolIdByCode', () => {
