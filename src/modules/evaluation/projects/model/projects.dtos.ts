@@ -121,6 +121,9 @@ export class StudentInfoDto {
 	id: number; // project_student_id
 
 	@ApiProperty()
+	student_id: number;
+
+	@ApiProperty()
 	first_name: string;
 
 	@ApiProperty()

@@ -90,18 +90,105 @@ export class FilterCourseDto extends BaseDto {
 
 	// Filters by related entities
 
-    @IsOptional() 
+    @IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
     academic_period_id?: number;
 
-    @IsOptional() 
+    @IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
     program_id?: number;
 
-    @IsOptional() 
+    @IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
     school_id?: number;
+}
+
+// ── DTOs for Enrolled Students Endpoint ────────────────────────────────────
+
+export class FilterCourseEnrolledStudentsDto extends BaseDto {
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: true,
+		required: false,
+		description: 'Filtrar por estado activo de la matrícula',
+	})
+	is_active?: boolean;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 5,
+		required: false,
+		description: 'ID del período académico',
+	})
+	academic_period_id?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 2,
+		required: false,
+		description: 'ID del campus',
+	})
+	campus_id?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'ID del período académico del plan de estudios',
+	})
+	study_plan_academic_period_id?: number;
+}
+
+export class CourseEnrolledStudentDto {
+	@ApiProperty()
+	id: number; // enrolled_student_id
+
+	@ApiProperty()
+	student_section_enrollment_id: number;
+
+	@ApiProperty()
+	student_id: number;
+
+	@ApiProperty()
+	first_name: string;
+
+	@ApiProperty()
+	last_name: string;
+
+	@ApiProperty()
+	email: string;
+
+	@ApiProperty()
+	student_code: string;
+
+	@ApiProperty()
+	course_section_id: number;
+
+	@ApiProperty()
+	section_code: string;
+
+	@ApiProperty()
+	professor_id: number;
+
+	@ApiProperty()
+	professor_first_name: string;
+
+	@ApiProperty()
+	professor_last_name: string;
+
+	@ApiProperty()
+	campus_id: number;
+
+	@ApiProperty()
+	enrollment_date: Date;
+
+	@ApiProperty()
+	is_active: boolean;
 }

@@ -265,6 +265,7 @@ export class ProjectConfigService {
 
 			return {
 				id: s.id,
+				student_id: s.student_section_enrollment?.enrolled_student?.student_id || 0,
 				first_name: user?.first_name || '',
 				last_name: user?.last_name || '',
 				email: user?.email || '',
@@ -436,6 +437,7 @@ export class ProjectConfigService {
       all_et.name       AS eval_type_name,
       -- estudiantes
       ps.id             AS student_ps_id,
+      stu.id            AS student_id,
       su.first_name     AS stu_first_name,
       su.last_name      AS stu_last_name,
       su.email          AS stu_email,
@@ -499,6 +501,7 @@ export class ProjectConfigService {
 			if (row.student_ps_id && !(project.students as any[]).find((s: any) => s.id === row.student_ps_id)) {
 				(project.students as any[]).push({
 					id: row.student_ps_id,
+					student_id: row.student_id || 0,
 					first_name: row.stu_first_name || '',
 					last_name: row.stu_last_name || '',
 					email: row.stu_email || '',

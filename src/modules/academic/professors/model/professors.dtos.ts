@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 
@@ -45,4 +45,13 @@ export class FilterProfessorDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	staff_id?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'Juan Pérez',
+		required: false,
+		description: 'Search by professor name (first_name or last_name from user)',
+	})
+	search?: string;
 }
