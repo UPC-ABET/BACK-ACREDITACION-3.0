@@ -12,6 +12,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
+import { PermissionsGuard } from './modules/auth/protocols/jwt/guards/permissions.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
 
 // ACADEMIC MODULES
@@ -208,6 +209,10 @@ import { S3Module } from './modules/storage/s3/s3.module';
 		{
 			provide: APP_GUARD,
 			useClass: JwtAuthGuard,
+		},
+		{
+			provide: APP_GUARD,
+			useClass: PermissionsGuard,
 		},
 	],
 })

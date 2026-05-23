@@ -22,7 +22,7 @@ describe('AuthService — MSAL login', () => {
 			findOneByCondition: jest.fn(),
 		};
 
-		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository, mailService);
+		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository, mailService as unknown as MailService);
 	});
 
 	describe('resolveSchoolIdByCode', () => {
@@ -50,7 +50,7 @@ describe('AuthService — MSAL login', () => {
 	});
 
 	describe('loginWithMicrosoftCode', () => {
-		it('calls createUserLogin with the user and null password', async () => {
+		it('forwards the supplied school_id through to createUserLogin', async () => {
 			const fakeUser = { id: 99, email: 'jane.doe@example.com', is_admin: true };
 			const acquireSpy = jest.spyOn(service as unknown as { acquireMicrosoftTokenByCode: jest.Mock }, 'acquireMicrosoftTokenByCode').mockResolvedValueOnce({
 				idTokenClaims: { email: 'jane.doe@example.com', name: 'Jane Doe' },
@@ -63,7 +63,7 @@ describe('AuthService — MSAL login', () => {
 
 			expect(acquireSpy).toHaveBeenCalledWith('auth-code');
 			expect(userService.getUser).toHaveBeenCalledWith(null, 'jane.doe@example.com');
-			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null);
+			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null, undefined, 42);
 			expect(result).toEqual({
 				user: fakeUser,
 				microsoft_profile: { email: 'jane.doe@example.com', name: 'Jane Doe' },
