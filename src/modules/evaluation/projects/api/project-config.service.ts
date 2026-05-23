@@ -35,26 +35,20 @@ export class ProjectConfigService {
 		@Inject(forwardRef(() => RubricConfigService))
 		private readonly rubricConfigService: RubricConfigService,
 		private readonly dataSource: DataSource,
-	) {}
+	) { }
 
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
 		const raw = await this.dataSource.query(
 			`
-                        WITH RECURSIVE school_tree AS (
-                                SELECT id, root_chart_detail_id, entity_type_id, entity_code
-                                FROM "organization"."charts"
-                                WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $1)
-                                  AND entity_code = $2
-                                UNION ALL
-                                SELECT c.id, c.root_chart_detail_id, c.entity_type_id, c.entity_code
-                                FROM "organization"."charts" c
-                                INNER JOIN school_tree st ON c.root_chart_detail_id = st.id
-                        )
-                        SELECT DISTINCT entity_code AS program_id
-                        FROM school_tree
-                        WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $3)
-                          AND entity_code IS NOT NULL
-                        `,
+				SELECT DISTINCT c_child.entity_code AS program_id
+				FROM organization.charts c_school
+				INNER JOIN organization.charts c_child 
+				ON c_child.root_chart_detail_id = c_school.id
+				WHERE c_school.entity_type_id = (SELECT id FROM core.types WHERE code = $1)
+				AND c_school.entity_code = $2
+				AND c_child.entity_type_id = (SELECT id FROM core.types WHERE code = $3)
+				AND c_child.entity_code IS NOT NULL
+			`,
 			[TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId, TYPE_CODES.ENTITY_TYPE.PROGRAM],
 		);
 		return raw.map((row: { program_id: number }) => row.program_id);
@@ -151,6 +145,8 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('stu.user', 'suser')
 			.leftJoinAndSelect('sse.course_section', 'cs')
 			.leftJoinAndSelect('cs.study_plan_course', 'spc')
+			.leftJoinAndSelect('spc.study_plan_academic_period', 'spap')
+			.leftJoinAndSelect('spap.academic_period', 'ap')
 			.leftJoinAndSelect('p.evaluators', 'pe')
 			.where('p.id = :projectId', { projectId })
 			.getOne();
@@ -160,13 +156,19 @@ export class ProjectConfigService {
 		}
 
 		// ── 2. study_plan_course_id desde el primer estudiante con cadena completa
-		const studyPlanCourseId = project.students
-			?.find(s => s.student_section_enrollment?.course_section?.study_plan_course_id != null)
+		const studentWithChain = project.students
+			?.find(s => s.student_section_enrollment?.course_section?.study_plan_course_id != null);
+
+		const studyPlanCourseId = studentWithChain
 			?.student_section_enrollment?.course_section?.study_plan_course_id;
 
 		if (!studyPlanCourseId) {
 			throw new BadRequestException('El proyecto no tiene estudiantes con curso asignado.');
 		}
+
+		const academicPeriod = studentWithChain
+			?.student_section_enrollment?.course_section?.study_plan_course
+			?.study_plan_academic_period?.academic_period;
 
 		// ── 3. Rúbrica específica: curso + tipo de evaluación + tipo de rúbrica
 		const rubricWhere: any = {
@@ -249,7 +251,7 @@ export class ProjectConfigService {
 					);
 					return sum + evalSum;
 				}, 0);
-				
+
 				// Escalar a vigesimal
 				if (totalMaxScore > 0) {
 					totalGrade = Math.round(((sumScores * 20) / totalMaxScore) * 100) / 100;
@@ -311,6 +313,11 @@ export class ProjectConfigService {
 				name: project.name,
 				description: project.description || { es: '', en: '' },
 			},
+			academic_period: {
+				id: academicPeriod?.id,
+				modality_type_id: academicPeriod?.modality_type_id,
+				code: academicPeriod?.code,
+			},
 			students: studentDtos,
 			rubric: {
 				rubric: rubricContext.rubric,
@@ -324,103 +331,164 @@ export class ProjectConfigService {
 	/**
 	 * Obtiene un proyecto con todos sus estudiantes y evaluadores
 	 */
-	async getProjectById(id: number): Promise<ProjectEntity> {
-		const project = await this.projectRepo.findOne({
-			where: { id },
-			relations: ['students', 'evaluators'],
-		});
 
-		if (!project) {
-			throw new NotFoundException('Proyecto no encontrado.');
-		}
+	async getProjectsByProfessor(
+		professorId: number,
+		academicPeriodId?: number,
+		schoolId?: number,
+		gradeTypeId?: number,
+	): Promise<ProjectEvaluatorResponseDto[]> {
 
-		return project;
-	}
+		console.log('START', { professorId, academicPeriodId, schoolId, gradeTypeId });
 
-	/**
-	 * Obtiene todos los proyectos asignados a un profesor evaluador
-	 */
-	async getProjectsByProfessor(professorId: number, academicPeriodId?: number, schoolId?: number, gradeTypeId?: number): Promise<ProjectEvaluatorResponseDto[]> {
-		const qb = this.projectEvaluatorRepo
-			.createQueryBuilder('pe')
-			.leftJoinAndSelect('pe.evaluator_type', 'etype')
-			.leftJoinAndSelect('pe.professor', 'eprof')
-			.leftJoinAndSelect('eprof.staff', 'estaff')
-			.leftJoinAndSelect('estaff.user', 'euser')
-			.leftJoinAndSelect('pe.project', 'p')
-			.leftJoinAndSelect('p.evaluators', 'all_pe') // todos los evaluadores del proyecto
-			.leftJoinAndSelect('all_pe.professor', 'all_prof')
-			.leftJoinAndSelect('all_prof.staff', 'all_staff')
-			.leftJoinAndSelect('all_staff.user', 'all_user')
-			.leftJoinAndSelect('all_pe.evaluator_type', 'all_etype')
-			.leftJoinAndSelect('p.students', 's')
-			.leftJoinAndSelect('s.student_section_enrollment', 'sse')
-			.leftJoinAndSelect('sse.enrolled_student', 'es')
-			.leftJoinAndSelect('es.student', 'stu')
-			.leftJoinAndSelect('stu.user', 'suser')
-			.leftJoinAndSelect('sse.course_section', 'cs')
-			.leftJoinAndSelect('cs.study_plan_course', 'spc')
-			.leftJoinAndSelect('spc.course', 'c')
-			// Joins adicionales para aplicar filtros
-			.leftJoin('p.rubric', 'rubric')
-			.leftJoin('spc.study_plan', 'sp')
-			.leftJoin('sp.program', 'program')
-			.leftJoin('spc.study_plan_academic_periods', 'sp_ap')
-			.where('pe.professor_id = :professorId', { professorId });
+		// ── QUERY 1 ───────────────────────────────────────────────────────────
+		let filterSql = `
+    SELECT DISTINCT pe.project_id
+    FROM evaluation.project_evaluators pe
+    INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
+    INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+    INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+    INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
+    INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
+    INNER JOIN academic.programs program ON program.id = sp.program_id
+    WHERE pe.professor_id = $1 AND pe.is_active = true
+  `;
+
+		const params: any[] = [professorId];
+		let paramIdx = 2;
 
 		if (gradeTypeId) {
-			qb.andWhere('rubric.grade_type_id = :gradeTypeId', { gradeTypeId });
+			filterSql += `
+      AND EXISTS (
+        SELECT 1 FROM evaluation.rubrics r
+        WHERE r.study_plan_course_id = spc.id
+          AND r.grade_type_id = $${paramIdx}
+          AND r.is_active = true
+      )
+    `;
+			params.push(gradeTypeId);
+			paramIdx++;
 		}
 
 		if (academicPeriodId) {
-			qb.andWhere('sp_ap.academic_period_id = :academicPeriodId', { academicPeriodId });
+			filterSql += ` AND sp_ap.academic_period_id = $${paramIdx}`;
+			params.push(academicPeriodId);
+			paramIdx++;
 		}
 
-		if (schoolId) {
-			const programIds = await this.resolveProgramIdsBySchoolId(schoolId);
-			if (programIds.length > 0) {
-				qb.andWhere('program.id IN (:...programIds)', { programIds });
-			} else {
-				qb.andWhere('1 = 0');
+		const programIdsPromise = schoolId ? this.resolveProgramIdsBySchoolId(schoolId) : Promise.resolve(null);
+		console.time('programIds');
+		const programIds = await programIdsPromise;
+		console.timeEnd('programIds');
+		console.log('programIds:', programIds);
+
+		if (programIds !== null) {
+			if (programIds.length === 0) return [];
+			filterSql += ` AND program.id = ANY($${paramIdx}::int[])`;
+			params.push(programIds);
+			paramIdx++;
+		}
+
+		console.time('q1-full');
+		const rows = await this.dataSource.query(filterSql, params) as { project_id: number }[];
+		console.timeEnd('q1-full');
+
+		const projectIds = rows.map((r) => r.project_id);
+		if (projectIds.length === 0) return [];
+
+		console.log('projectIds:', projectIds);
+
+		// ── QUERY 2: todo en SQL nativo para evitar el producto cartesiano ────
+		console.time('q2');
+		const raw = await this.dataSource.query(`
+    SELECT
+      p.id              AS project_id,
+      p.code            AS project_code,
+      p.name            AS project_name,
+      p.created_at      AS evaluation_date,
+      -- evaluadores
+      all_pe.id         AS eval_id,
+      all_pe.professor_id AS eval_professor_id,
+      all_u.first_name  AS eval_first_name,
+      all_u.last_name   AS eval_last_name,
+      all_u.email       AS eval_email,
+      all_et.name       AS eval_type_name,
+      -- estudiantes
+      ps.id             AS student_ps_id,
+      su.first_name     AS stu_first_name,
+      su.last_name      AS stu_last_name,
+      su.email          AS stu_email,
+      su.document_code  AS stu_code,
+      -- curso
+      c.name            AS course_name
+    FROM evaluation.projects p
+    LEFT JOIN evaluation.project_evaluators all_pe ON all_pe.project_id = p.id
+    LEFT JOIN academic.professors all_prof         ON all_prof.id = all_pe.professor_id
+    LEFT JOIN organization.staff all_st            ON all_st.id = all_prof.staff_id
+    LEFT JOIN organization.users all_u             ON all_u.id = all_st.user_id
+    LEFT JOIN core.types all_et                    ON all_et.id = all_pe.evaluator_type_id
+    LEFT JOIN evaluation.project_students ps       ON ps.project_id = p.id
+    LEFT JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+    LEFT JOIN academic.enrolled_students es        ON es.id = sse.enrolled_student_id
+    LEFT JOIN academic.students stu                ON stu.id = es.student_id
+    LEFT JOIN organization.users su                ON su.id = stu.user_id
+    LEFT JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
+    LEFT JOIN academic.study_plan_courses spc      ON spc.id = cs.study_plan_course_id
+    LEFT JOIN academic.courses c                   ON c.id = spc.course_id
+    WHERE p.id = ANY($1::int[])
+  `, [projectIds]) as any[];
+		console.timeEnd('q2');
+
+		console.log('q2 raw rows:', raw.length);
+
+		// ── Agrupar filas por project_id ──────────────────────────────────────
+		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
+
+		for (const row of raw) {
+			if (!projectMap.has(row.project_id)) {
+				const courseName = row.course_name;
+				const resolvedCourseName = typeof courseName === 'string'
+					? courseName
+					: (courseName?.es || courseName?.en || '');
+
+				projectMap.set(row.project_id, {
+					project_id: row.project_id,
+					project_code: row.project_code || '',
+					project_name: row.project_name,
+					evaluation_date: row.evaluation_date,
+					course_name: resolvedCourseName,
+					evaluators: [],
+					students: [],
+				} as any);
+			}
+
+			const project = projectMap.get(row.project_id)!;
+
+			// Evaluadores (deduplicar por eval_id)
+			if (row.eval_id && !(project.evaluators as any[]).find((e: any) => e.id === row.eval_id)) {
+				(project.evaluators as any[]).push({
+					id: row.eval_id,
+					professor_id: row.eval_professor_id,
+					first_name: row.eval_first_name || '',
+					last_name: row.eval_last_name || '',
+					email: row.eval_email || '',
+					evaluator_type: row.eval_type_name || '',
+				});
+			}
+
+			// Estudiantes (deduplicar por student_ps_id)
+			if (row.student_ps_id && !(project.students as any[]).find((s: any) => s.id === row.student_ps_id)) {
+				(project.students as any[]).push({
+					id: row.student_ps_id,
+					first_name: row.stu_first_name || '',
+					last_name: row.stu_last_name || '',
+					email: row.stu_email || '',
+					student_code: row.stu_code ? String(row.stu_code) : '',
+				});
 			}
 		}
 
-		const projectEvaluators = await qb.getMany();
-
-		return projectEvaluators.map((pe) => {
-			const p = pe.project;
-			const courseName =
-				p?.students?.[0]?.student_section_enrollment?.course_section?.study_plan_course?.course?.name;
-
-			const resolvedCourseName = typeof courseName === 'string'
-				? courseName
-				: (courseName?.es || courseName?.en || '');
-
-			return {
-				project_id: p?.id,
-				project_code: p?.code || '',
-				project_name: p?.name,
-				evaluation_date: p?.created_at,
-				course_name: resolvedCourseName,
-				evaluators: (p?.evaluators || []).map((allPe) => ({
-					id: allPe.id,
-					professor_id: allPe.professor_id,
-					first_name: allPe.professor?.staff?.user?.first_name || '',
-					last_name: allPe.professor?.staff?.user?.last_name || '',
-					email: allPe.professor?.staff?.user?.email || '',
-					evaluator_type: allPe.evaluator_type?.name || '',
-				})),
-				students: (p?.students || []).map((s) => {
-					const user = s.student_section_enrollment?.enrolled_student?.student?.user;
-					return {
-						id: s.id,
-						first_name: user?.first_name || '',
-						last_name: user?.last_name || '',
-						email: user?.email || '',
-						student_code: user?.document_code ? String(user.document_code) : '',
-					};
-				}),
-			};
-		}) as any;
+		return Array.from(projectMap.values());
 	}
 }

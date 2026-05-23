@@ -215,12 +215,19 @@ export class ProjectDetailsResponseDto {
 		description: I18nText;
 	};
 
+	@ApiProperty()
+	academic_period: {
+		id: number;
+		modality_type_id: number;
+		code: string;
+	};
+
 	@ApiProperty({ type: [ProjectDetailsStudentDto] })
 	students: ProjectDetailsStudentDto[];
 
 	@ApiProperty()
 	rubric: {
-		rubric: any; // using base schema info
+		rubric: any;
 		course: any;
 		outcomes: any[];
 		questions: RubricQuestionDetailsDto[];
