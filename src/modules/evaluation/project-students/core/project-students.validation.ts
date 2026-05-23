@@ -10,7 +10,6 @@ export class ProjectStudentValidation {
 			where: {
 				project_id: data.project_id,
 				student_section_enrollment_id: data.student_section_enrollment_id,
-				evaluator_type_id: data.evaluator_type_id,
 			},
 		});
 
@@ -35,13 +34,11 @@ export class ProjectStudentValidation {
 
 		const projectId = data.project_id ?? entity?.project_id;
 		const enrollmentId = data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
-		const evaluatorTypeId = data.evaluator_type_id ?? entity?.evaluator_type_id;
 
 		const exists = await repo.findOneByCondition({
 			where: {
 				project_id: projectId,
 				student_section_enrollment_id: enrollmentId,
-				evaluator_type_id: evaluatorTypeId,
 			},
 		});
 

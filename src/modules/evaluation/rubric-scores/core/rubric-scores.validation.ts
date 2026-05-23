@@ -9,7 +9,6 @@ export class RubricScoreValidation {
 		const exists = await repo.findOneByCondition({
 			where: {
 				evaluation_id: data.evaluation_id,
-				rubric_outcome_criteria_id: data.rubric_outcome_criteria_id,
 				rubric_question_criteria_id: data.rubric_question_criteria_id,
 			},
 		});
@@ -38,13 +37,11 @@ export class RubricScoreValidation {
 		if (!entity) errors.push(rubricScoresValidationStrings.error.notFound);
 
 		const evaluationId = data.evaluation_id ?? entity?.evaluation_id;
-		const rubricOutcomeCriteriaId = data.rubric_outcome_criteria_id ?? entity?.rubric_outcome_criteria_id;
 		const rubricQuestionCriteriaId = data.rubric_question_criteria_id ?? entity?.rubric_question_criteria_id;
 
 		const exists = await repo.findOneByCondition({
 			where: {
 				evaluation_id: evaluationId,
-				rubric_outcome_criteria_id: rubricOutcomeCriteriaId,
 				rubric_question_criteria_id: rubricQuestionCriteriaId,
 			},
 		});

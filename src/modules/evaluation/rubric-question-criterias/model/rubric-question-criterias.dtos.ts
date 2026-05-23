@@ -17,10 +17,6 @@ export class CreateRubricQuestionCriteriaDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	rubric_question_id: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	rubric_scale_id: number;
-
 	@IsObject()
 	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: true })
 	criteria: I18nText;
@@ -50,11 +46,6 @@ export class UpdateRubricQuestionCriteriaDto extends BaseDto {
 	rubric_question_id?: number;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	rubric_scale_id?: number;
-
-	@IsOptional()
 	@IsObject()
 	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })
 	criteria?: I18nText;
@@ -82,10 +73,6 @@ export class FilterRubricQuestionCriteriaDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	rubric_question_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	rubric_scale_id?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })

@@ -2,15 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { ProgramRepository } from '../core/programs.repository';
 import { ProgramValidation } from '../core/programs.validation';
-
-import { CreateProgramDto, UpdateProgramDto } from '../model/programs.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { CreateProgramDto, FilterProgramDto, UpdateProgramDto } from '../model/programs.dtos';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProgramService extends BaseService<ProgramRepository> {
 	constructor(
 		protected readonly repository: ProgramRepository,
-		protected readonly dataSource: DataSource,
 	) {
 		super(repository);
 	}
@@ -28,5 +26,9 @@ export class ProgramService extends BaseService<ProgramRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await ProgramValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getByFilters(filters: FilterProgramDto) {
+		return await this.repository.getByFilters(filters);
 	}
 }

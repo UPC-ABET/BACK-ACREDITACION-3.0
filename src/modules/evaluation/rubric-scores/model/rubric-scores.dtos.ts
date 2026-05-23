@@ -19,10 +19,6 @@ export class CreateRubricScoreDto extends BaseDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_outcome_criteria_id: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
 	rubric_question_criteria_id: number;
 
 	@IsNumber()
@@ -53,11 +49,6 @@ export class UpdateRubricScoreDto extends BaseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_outcome_criteria_id?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
 	rubric_question_criteria_id?: number;
 
 	@IsOptional()
@@ -83,10 +74,6 @@ export class FilterRubricScoreDto extends BaseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	evaluation_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	rubric_outcome_criteria_id?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

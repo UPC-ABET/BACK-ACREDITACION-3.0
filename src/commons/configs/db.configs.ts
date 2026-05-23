@@ -240,6 +240,13 @@ export function IntegerColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
+
+const numericTransformer = {
+	to: (v: number | null | undefined) => v,
+	from: (v: string | number | null | undefined) =>
+		v !== null && v !== undefined ? parseFloat(v as string) : null,
+};
+
 // 🔥 DECIMAL
 export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
@@ -252,6 +259,7 @@ export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 				precision: DB_PRECISION_DECIMAL,
 				scale: DB_SCALE_DECIMAL,
 				nullable,
+				transformer: numericTransformer, // ✅ única línea añadida
 				...(withDefault && { default: DB_DEFAULT_DECIMAL }),
 				unique: false,
 			},

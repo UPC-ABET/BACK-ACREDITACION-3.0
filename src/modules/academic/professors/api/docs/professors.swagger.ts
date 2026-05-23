@@ -17,3 +17,6 @@ export const SwaggerProfessorGetAll = () => HttpMethodWithSwagger(cfg.operation.
 export const SwaggerProfessorGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
 export const SwaggerProfessorGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterProfessorDto });
+
+export const SwaggerProfessorGetByUserId = () => HttpMethodWithSwagger(cfg.operation.getByUserId);
+

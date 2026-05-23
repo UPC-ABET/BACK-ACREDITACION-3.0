@@ -4,7 +4,7 @@ export const rubricScoresRoutes = {
 		tag: 'Puntajes de rúbrica',
 		operation: {
 			create: { method: 'POST', route: '/create', summary: 'Registrar puntaje de rúbrica' },
-			update: { method: 'PUT', route: '/update/:id', summary: 'Actualizar puntaje de rúbrica' },
+			update: { method: 'PATCH', route: '/update/:id', summary: 'Actualizar puntaje de rúbrica' },
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar puntaje de rúbrica' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar puntajes de rúbrica' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener puntaje de rúbrica' },

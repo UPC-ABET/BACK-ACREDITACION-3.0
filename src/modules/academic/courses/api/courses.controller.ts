@@ -1,8 +1,10 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, Post, ParseIntPipe, Get } from '@nestjs/common';
+import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import { SwaggerCourseController, SwaggerCourseCreate, SwaggerCourseUpdate, SwaggerCourseDelete, SwaggerCourseGetAll, SwaggerCourseGetById, SwaggerCourseGetByFilters } from './docs/courses.swagger';
 import { CourseService } from './courses.service';
-import { CreateCourseDto, UpdateCourseDto, FilterCourseDto } from '../model/courses.dtos';
+import { CreateCourseDto, UpdateCourseDto, FilterCourseDto, FilterCourseEnrolledStudentsDto, CourseEnrolledStudentDto } from '../model/courses.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 
 @SwaggerCourseController()
 export class CourseController extends BaseController<CourseService> {
@@ -38,5 +40,16 @@ export class CourseController extends BaseController<CourseService> {
 	@SwaggerCourseGetByFilters()
 	async getByFilters(@Body() dto: FilterCourseDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@Post(':courseId/enrolled-students')
+	@ApiOkResponse({ type: [CourseEnrolledStudentDto] })
+	async getEnrolledStudents(
+		@Param('courseId', ParseIntPipe) courseId: number,
+		@Body() filters?: FilterCourseEnrolledStudentsDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.getEnrolledStudentsByCourseId(courseId, filters),
+		);
 	}
 }

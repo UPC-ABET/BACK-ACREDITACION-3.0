@@ -8,15 +8,12 @@ export class RubricValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				assessment_id: data.assessment_id,
+				study_plan_course_id: data.study_plan_course_id,
+				grade_type_id: data.grade_type_id,
 			},
 		});
 
 		if (exists) errors.push(rubricsValidationStrings.error.rubricExists);
-
-		if (data.max_score < 0) {
-			errors.push(rubricsValidationStrings.error.invalidMaxScore);
-		}
 
 		if (errors.length > 0) {
 			throw new HttpException(
@@ -35,21 +32,17 @@ export class RubricValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricsValidationStrings.error.notFound);
 
-		if (data.assessment_id) {
+		if (data.study_plan_course_id && data.grade_type_id) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					assessment_id: data.assessment_id,
+					study_plan_course_id: data.study_plan_course_id,
+					grade_type_id: data.grade_type_id,
 				},
 			});
 
 			if (exists && exists.id !== id) {
 				errors.push(rubricsValidationStrings.error.rubricExists);
 			}
-		}
-
-		const maxScore = data.max_score ?? entity?.max_score;
-		if (maxScore < 0) {
-			errors.push(rubricsValidationStrings.error.invalidMaxScore);
 		}
 
 		if (errors.length > 0) {

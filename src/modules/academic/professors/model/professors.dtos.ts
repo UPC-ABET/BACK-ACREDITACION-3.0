@@ -58,6 +58,15 @@ export class FilterProfessorDto extends BaseDto {
 	staff_id?: number;
 
 	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'Juan Pérez',
+		required: false,
+		description: 'Search by professor name (first_name or last_name from user)',
+	})
+	search?: string;
+
+	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })
 	code?: string;
 }

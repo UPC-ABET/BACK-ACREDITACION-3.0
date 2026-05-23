@@ -473,6 +473,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_b880e46ee378768a6f4a032cb86"`);
 		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ec1fc4fb915c886b871cd5d492b"`);
 		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ed6e1bb0dd8c28adcb279ef94d5"`);
+		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_c01826a066ccf7c572f29222cb1"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_2701838bd914e1c89012710be40"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_5eb171ec32f4884e90b47deec5b"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_9cf0aecd2f7635e698f7567b641"`);
@@ -482,6 +483,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a6a196107377ba69657bdfd8163"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_82d0e6077d884da30557fc19c88"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_8bb159a3fedc577c1c8feb6d14a"`);
+		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_93d33b33d445a95ef186e47408d"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_7074bb1ffc321ab035336440293"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a28bcdfbddcadeb4087822d1a72"`);
 		await queryRunner.query(`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_97c368289c2688d42c338d21823"`);

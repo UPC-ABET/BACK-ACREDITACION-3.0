@@ -51,7 +51,6 @@ import { ProjectPortfolioModule } from './modules/evaluation/project-portfolios/
 import { RubricOutcomeCriteriaModule } from './modules/evaluation/rubric-outcome-criterias/rubric-outcome-criterias.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
-import { RubricScaleModule } from './modules/evaluation/rubric-scales/rubric-scales.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
 import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
 
@@ -167,10 +166,8 @@ import { S3Module } from './modules/storage/s3/s3.module';
 		ParameterModule,
 		TypeGroupModule,
 		TypeModule,
-		RubricOutcomeCriteriaModule,
 		RubricQuestionCriteriaModule,
 		RubricQuestionModule,
-		RubricScaleModule,
 		RubricScoreModule,
 		RubricModule,
 		EvaluationModule,

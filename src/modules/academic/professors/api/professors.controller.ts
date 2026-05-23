@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProfessorController,
@@ -8,9 +8,11 @@ import {
 	SwaggerProfessorGetAll,
 	SwaggerProfessorGetById,
 	SwaggerProfessorGetByFilters,
+	SwaggerProfessorGetByUserId,
 } from './docs/professors.swagger';
 import { ProfessorService } from './professors.service';
 import { CreateProfessorDto, UpdateProfessorDto, FilterProfessorDto } from '../model/professors.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 
 @SwaggerProfessorController()
 export class ProfessorController extends BaseController<ProfessorService> {
@@ -46,5 +48,10 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	@SwaggerProfessorGetByFilters()
 	async getByFilters(@Body() dto: FilterProfessorDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerProfessorGetByUserId()
+	async getByUserId(@Param('id', ParseIntPipe) user_id: number) {
+		return parseSuccessResponse(await this.service.getByUserId(user_id));
 	}
 }

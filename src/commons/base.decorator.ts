@@ -1,4 +1,4 @@
-import { applyDecorators, Controller, Delete, Get, Patch, Post, Put } from '@nestjs/common';
+import { applyDecorators, Controller, Delete, Get, Post, Put, Patch } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBody, ApiParam, ApiTags, ApiConsumes, ApiProduces, ApiQuery } from '@nestjs/swagger';
 import { strings_swagger } from './swagger.strings';
 
