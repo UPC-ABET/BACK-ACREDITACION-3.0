@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ProjectEntity } from '../model/projects.entity';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
-import { CreateProjectDto, ProjectEvaluatorResponseDto } from '../model/projects.dtos';
+import { CreateProjectDto, ProjectEvaluatorResponseDto, ProjectDetailsResponseDto } from '../model/projects.dtos';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
+import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
+import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 
 /**
  * ProjectConfigService
@@ -26,6 +29,8 @@ export class ProjectConfigService {
 		private readonly projectEvaluatorRepo: Repository<ProjectEvaluatorEntity>,
 		@InjectRepository(TypeEntity)
 		private readonly typeRepo: Repository<TypeEntity>,
+		@Inject(forwardRef(() => RubricConfigService))
+		private readonly rubricConfigService: RubricConfigService,
 		private readonly dataSource: DataSource,
 	) { }
 
@@ -98,6 +103,151 @@ export class ProjectConfigService {
 		} finally {
 			await queryRunner.release();
 		}
+	}
+
+	/**
+	 * Obtiene un proyecto con sus detalles, incluyendo estudiantes, rúbrica, y scores
+	 */
+	async getProjectWithDetails(projectId: number, isEvaluationMode: boolean): Promise<ProjectDetailsResponseDto> {
+		const project = await this.projectRepo
+			.createQueryBuilder('p')
+			.leftJoinAndSelect('p.students', 's')
+			.leftJoinAndSelect('s.student_section_enrollment', 'sse')
+			.leftJoinAndSelect('sse.enrolled_student', 'es')
+			.leftJoinAndSelect('es.student', 'stu')
+			.leftJoinAndSelect('stu.user', 'suser')
+			.leftJoinAndSelect('sse.course_section', 'cs')
+			.leftJoinAndSelect('cs.study_plan_course', 'spc')
+			.where('p.id = :projectId', { projectId })
+			.getOne();
+
+		if (!project) {
+			throw new NotFoundException('Proyecto no encontrado.');
+		}
+
+		const studyPlanCourseId = project.students?.[0]?.student_section_enrollment?.course_section?.study_plan_course_id;
+		if (!studyPlanCourseId) {
+			throw new BadRequestException('El proyecto no tiene estudiantes o curso asignado.');
+		}
+
+		// 1. Obtener la rúbrica base usando el courseId
+		const rubric = await this.dataSource.getRepository(RubricEntity).findOne({
+			where: { study_plan_course_id: studyPlanCourseId, is_active: true }
+		});
+
+		if (!rubric) {
+			throw new NotFoundException('No se encontró rúbrica activa para el curso de este proyecto.');
+		}
+
+		const rubricContext = await this.rubricConfigService.getRubricWithContextData(rubric.id).catch(() => null);
+		
+		if (!rubricContext) {
+			throw new NotFoundException('Error al cargar la rúbrica.');
+		}
+
+		let totalMaxScore = 0;
+		if (isEvaluationMode) {
+			const maxScoreData = await this.rubricConfigService.recalculateMaxScore(rubric.id).catch(() => ({ totalMaxScore: 0 }));
+			totalMaxScore = maxScoreData.totalMaxScore || 0;
+		}
+
+		// 2. Obtener evaluaciones y scores si estamos en modo evaluación
+		// TODO: Validar rol del usuario
+		const hasRole = true; 
+		let evaluations: EvaluationEntity[] = [];
+
+		if (isEvaluationMode && hasRole) {
+			evaluations = await this.dataSource.getRepository(EvaluationEntity)
+				.createQueryBuilder('ev')
+				.leftJoinAndSelect('ev.scores', 'score')
+				.innerJoin('ev.project_student', 'ps')
+				.where('ps.project_id = :projectId', { projectId })
+				.getMany();
+		}
+
+		// 3. Procesar datos de los estudiantes y scores
+		const studentDtos = (project.students || []).map((s) => {
+			const user = s.student_section_enrollment?.enrolled_student?.student?.user;
+			const evals = evaluations.filter(ev => ev.project_student_id === s.id);
+			
+			// Calcular nota total (sumando scores de la última evaluación o la única que tengan)
+			// O calcular el total en base a la lógica... (simplificado como la suma por ahora)
+			let totalGrade: number | null = null;
+			if (isEvaluationMode && evals.length > 0) {
+				const sumScores = evals.reduce((sum, ev) => {
+					const evalSum = (ev.scores || []).reduce((sSum, score) => sSum + Number(score.score), 0);
+					return sum + evalSum;
+				}, 0);
+				
+				// Escalar a vigesimal
+				if (totalMaxScore > 0) {
+					totalGrade = Math.round((sumScores * 20) / totalMaxScore * 100) / 100;
+				} else {
+					totalGrade = sumScores; // Fallback si maxScore = 0
+				}
+			}
+
+			return {
+				id: s.id,
+				first_name: user?.first_name || '',
+				last_name: user?.last_name || '',
+				email: user?.email || '',
+				student_code: user?.document_code ? String(user.document_code) : '',
+				total_grade: isEvaluationMode ? totalGrade : null,
+			};
+		});
+
+		// 4. Inyectar scores en la estructura de la rúbrica si corresponde
+		const questions = (rubricContext.questions || []).map((q: any) => {
+			return {
+				id: q.id,
+				text: q.text,
+				outcomeId: q.outcomeId,
+				criterias: (q.criterias || []).map((c: any) => {
+					// Buscar scores para este criterio
+					let criteriaScores: any[] | null = null;
+
+					if (isEvaluationMode && hasRole) {
+						criteriaScores = [];
+						evaluations.forEach(ev => {
+							const scoreObj = (ev.scores || []).find(sc => sc.rubric_question_criteria_id === c.id);
+							if (scoreObj) {
+								criteriaScores!.push({
+									student_id: ev.project_student_id,
+									evaluator_id: ev.project_evaluator_id,
+									score: Number(scoreObj.score),
+									commentaries: scoreObj.commentaries || '',
+								});
+							}
+						});
+					}
+
+					return {
+						id: c.id,
+						text: c.text,
+						min_value: c.min_value,
+						max_value: c.max_value,
+						scores: criteriaScores,
+					};
+				}),
+			};
+		});
+
+		return {
+			project: {
+				id: project.id,
+				code: project.code || '',
+				name: project.name,
+				description: project.description || { es: '', en: '' },
+			},
+			students: studentDtos,
+			rubric: {
+				rubric: rubricContext.rubric,
+				course: rubricContext.course,
+				outcomes: rubricContext.outcomes,
+				questions: questions,
+			},
+		};
 	}
 
 	/**

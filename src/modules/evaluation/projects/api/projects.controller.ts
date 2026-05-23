@@ -1,5 +1,5 @@
-import { Body, Param, Post, Get, ParseIntPipe } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { Body, Param, Post, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
@@ -13,7 +13,7 @@ import {
 } from './docs/projects.swagger';
 import { ProjectService } from './projects.service';
 import { ProjectConfigService } from './project-config.service';
-import { CreateProjectDto, UpdateProjectDto, FilterProjectDto, ProjectEvaluatorResponseDto } from '../model/projects.dtos';
+import { CreateProjectDto, UpdateProjectDto, FilterProjectDto, ProjectEvaluatorResponseDto, ProjectDetailsResponseDto } from '../model/projects.dtos';
 
 @SwaggerProjectController()
 export class ProjectController extends BaseController<ProjectService> {
@@ -36,8 +36,16 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@Get('project/:projectId')
-	async getProjectWithDetails(@Param('projectId', ParseIntPipe) projectId: number) {
-		return await this.projectConfigService.getProjectById(projectId);
+	@ApiOkResponse({ type: ProjectDetailsResponseDto })
+	@ApiQuery({ name: 'is_evaluation_mode', required: false, type: Boolean })
+	async getProjectWithDetails(
+		@Param('projectId', ParseIntPipe) projectId: number,
+		@Query('is_evaluation_mode') isEvaluationMode?: string,
+	) {
+		const isEvalMode = isEvaluationMode === 'true';
+		return parseSuccessResponse(
+			await this.projectConfigService.getProjectWithDetails(projectId, isEvalMode)
+		);
 	}
 
 	@SwaggerProjectCreate()

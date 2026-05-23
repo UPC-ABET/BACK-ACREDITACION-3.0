@@ -1,4 +1,4 @@
-import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional, IsString, Length, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';

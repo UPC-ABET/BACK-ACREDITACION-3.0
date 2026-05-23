@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ProjectEntity } from './model/projects.entity';
@@ -9,9 +9,13 @@ import { ProjectService } from './api/projects.service';
 import { ProjectController } from './api/projects.controller';
 import { ProjectConfigService } from './api/project-config.service';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { RubricModule } from 'src/modules/evaluation/rubrics/rubrics.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([ProjectEntity, ProjectStudentEntity, ProjectEvaluatorEntity, TypeEntity])],
+	imports: [
+		TypeOrmModule.forFeature([ProjectEntity, ProjectStudentEntity, ProjectEvaluatorEntity, TypeEntity]),
+		forwardRef(() => RubricModule)
+	],
 	controllers: [ProjectController],
 	providers: [ProjectService, ProjectRepository, ProjectConfigService],
 	exports: [ProjectService, ProjectRepository, ProjectConfigService],

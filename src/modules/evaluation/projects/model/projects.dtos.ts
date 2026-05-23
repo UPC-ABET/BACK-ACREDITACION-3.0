@@ -156,6 +156,77 @@ export class ProjectEvaluatorResponseDto {
 	students: StudentInfoDto[];
 }
 
+export class CriteriaScoreDto {
+	@ApiProperty()
+	student_id: number; // o project_student_id
+
+	@ApiProperty()
+	evaluator_id: number; // project_evaluator_id
+
+	@ApiProperty()
+	score: number;
+
+	@ApiProperty()
+	commentaries: string;
+}
+
+export class RubricCriteriaDetailsDto {
+	@ApiProperty()
+	id: number;
+
+	@ApiProperty()
+	text: I18nText;
+
+	@ApiProperty()
+	min_value: string;
+
+	@ApiProperty()
+	max_value: string;
+
+	@ApiProperty({ type: [CriteriaScoreDto], nullable: true })
+	scores: CriteriaScoreDto[] | null;
+}
+
+export class RubricQuestionDetailsDto {
+	@ApiProperty()
+	id: number;
+
+	@ApiProperty()
+	text: I18nText;
+
+	@ApiProperty()
+	outcomeId: number | null;
+
+	@ApiProperty({ type: [RubricCriteriaDetailsDto] })
+	criterias: RubricCriteriaDetailsDto[];
+}
+
+export class ProjectDetailsStudentDto extends StudentInfoDto {
+	@ApiProperty()
+	total_grade: number | null; // scaled to 20 or raw, nullable if not graded or not eval mode
+}
+
+export class ProjectDetailsResponseDto {
+	@ApiProperty()
+	project: {
+		id: number;
+		code: string;
+		name: I18nText;
+		description: I18nText;
+	};
+
+	@ApiProperty({ type: [ProjectDetailsStudentDto] })
+	students: ProjectDetailsStudentDto[];
+
+	@ApiProperty()
+	rubric: {
+		rubric: any; // using base schema info
+		course: any;
+		outcomes: any[];
+		questions: RubricQuestionDetailsDto[];
+	};
+}
+
 export class FilterProjectDto extends BaseDto {
 
 
