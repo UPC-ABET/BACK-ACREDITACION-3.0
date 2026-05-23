@@ -31,8 +31,20 @@ export class ProjectController extends BaseController<ProjectService> {
 
 	@Get('professor/:professorId')
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
-	async getProjectsByProfessor(@Param('professorId', ParseIntPipe) professorId: number) {
-		return parseSuccessResponse(await this.projectConfigService.getProjectsByProfessor(professorId));
+	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
+	@ApiQuery({ name: 'schoolId', required: false, type: Number })
+	@ApiQuery({ name: 'gradeTypeId', required: false, type: Number })
+	async getProjectsByProfessor(
+		@Param('professorId', ParseIntPipe) professorId: number,
+		@Query('academicPeriodId') academicPeriodId?: string,
+		@Query('schoolId') schoolId?: string,
+		@Query('gradeTypeId') gradeTypeId?: string,
+	) {
+		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
+		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
+		const parsedGradeTypeId = gradeTypeId ? parseInt(gradeTypeId, 10) : undefined;
+
+		return parseSuccessResponse(await this.projectConfigService.getProjectsByProfessor(professorId, parsedAcademicPeriodId, parsedSchoolId, parsedGradeTypeId));
 	}
 
 	@Get('project/:projectId')
