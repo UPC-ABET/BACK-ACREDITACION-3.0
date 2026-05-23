@@ -51,7 +51,7 @@ export class AuthService {
 		const email = this.getEmailFromResult(tokenResponse, claims);
 		const user = await this.userService.getUser(null, email);
 
-		const accessToken = await this.userService.createUserLogin(user, null);
+		const accessToken = await this.userService.createUserLogin(user, null, undefined, school_id);
 
 		return {
 			user,

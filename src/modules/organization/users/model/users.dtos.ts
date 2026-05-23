@@ -160,15 +160,7 @@ export class LoginUserByCredentialsDto {
 }
 
 export class ChangeRoleDto {
-	@IsString()
-	@ApiProperty({})
-	newRole: RoleCode;
+	@IsNumber()
+	@ApiProperty({ example: 2 })
+	newRole: number;
 }
-
-// %% OTHERS CONSTANTS
-export const ROLE_CODES = {
-	ADMIN: 'ADMIN',
-	PROFESSOR: 'PROFESSOR',
-} as const;
-
-export type RoleCode = (typeof ROLE_CODES)[keyof typeof ROLE_CODES];
