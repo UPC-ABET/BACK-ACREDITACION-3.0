@@ -9,6 +9,8 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
 import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
+import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
+import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
 
 /**
  * ProjectConfigService
@@ -108,7 +110,14 @@ export class ProjectConfigService {
 	/**
 	 * Obtiene un proyecto con sus detalles, incluyendo estudiantes, rúbrica, y scores
 	 */
-	async getProjectWithDetails(projectId: number, isEvaluationMode: boolean): Promise<ProjectDetailsResponseDto> {
+	async getProjectWithDetails(
+		projectId: number,
+		isEvaluationMode: boolean,
+		gradeTypeId?: number,
+		rubricTypeId?: number,
+	): Promise<ProjectDetailsResponseDto> {
+
+		// ── 1. Proyecto con cadena de enrollment ─────────────────────────────
 		const project = await this.projectRepo
 			.createQueryBuilder('p')
 			.leftJoinAndSelect('p.students', 's')
@@ -118,6 +127,7 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('stu.user', 'suser')
 			.leftJoinAndSelect('sse.course_section', 'cs')
 			.leftJoinAndSelect('cs.study_plan_course', 'spc')
+			.leftJoinAndSelect('p.evaluators', 'pe')
 			.where('p.id = :projectId', { projectId })
 			.getOne();
 
@@ -125,66 +135,101 @@ export class ProjectConfigService {
 			throw new NotFoundException('Proyecto no encontrado.');
 		}
 
-		const studyPlanCourseId = project.students?.[0]?.student_section_enrollment?.course_section?.study_plan_course_id;
+		// ── 2. study_plan_course_id desde el primer estudiante con cadena completa
+		const studyPlanCourseId = project.students
+			?.find(s => s.student_section_enrollment?.course_section?.study_plan_course_id != null)
+			?.student_section_enrollment?.course_section?.study_plan_course_id;
+
 		if (!studyPlanCourseId) {
-			throw new BadRequestException('El proyecto no tiene estudiantes o curso asignado.');
+			throw new BadRequestException('El proyecto no tiene estudiantes con curso asignado.');
 		}
 
-		// 1. Obtener la rúbrica base usando el courseId
-		const rubric = await this.dataSource.getRepository(RubricEntity).findOne({
-			where: { study_plan_course_id: studyPlanCourseId, is_active: true }
-		});
+		// ── 3. Rúbrica específica: curso + tipo de evaluación + tipo de rúbrica
+		const rubricWhere: any = {
+			study_plan_course_id: studyPlanCourseId,
+			is_active: true,
+		};
+
+		if (gradeTypeId) rubricWhere.grade_type_id = gradeTypeId;
+		if (rubricTypeId) rubricWhere.rubric_type_id = rubricTypeId;
+
+		const rubric = await this.dataSource
+			.getRepository(RubricEntity)
+			.createQueryBuilder('r')
+			.where('r.study_plan_course_id = :studyPlanCourseId', { studyPlanCourseId })
+			.andWhere('r.is_active = :isActive', { isActive: true })
+			.andWhere(gradeTypeId ? 'r.grade_type_id = :gradeTypeId' : '1=1', { gradeTypeId })
+			.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
+			.getOne();
 
 		if (!rubric) {
-			throw new NotFoundException('No se encontró rúbrica activa para el curso de este proyecto.');
+			throw new NotFoundException(
+				`No se encontró rúbrica activa para el curso ${studyPlanCourseId} ` +
+				`con grade_type_id=${gradeTypeId} y rubric_type_id=${rubricTypeId}.`,
+			);
 		}
 
-		const rubricContext = await this.rubricConfigService.getRubricWithContextData(rubric.id).catch(() => null);
-		
+		// ── 4. Contexto de la rúbrica (preguntas, criterios, outcomes)
+		const rubricContext = await this.rubricConfigService.getRubricWithContextData(rubric.id);
+
 		if (!rubricContext) {
-			throw new NotFoundException('Error al cargar la rúbrica.');
+			throw new NotFoundException('Error al cargar el contexto de la rúbrica.');
 		}
 
+		// ── 5. Score máximo (solo en modo evaluación)
 		let totalMaxScore = 0;
 		if (isEvaluationMode) {
-			const maxScoreData = await this.rubricConfigService.recalculateMaxScore(rubric.id).catch(() => ({ totalMaxScore: 0 }));
+			const maxScoreData = await this.rubricConfigService
+				.recalculateMaxScore(rubric.id)
+				.catch(() => ({ totalMaxScore: 0 }));
 			totalMaxScore = maxScoreData.totalMaxScore || 0;
 		}
 
-		// 2. Obtener evaluaciones y scores si estamos en modo evaluación
-		// TODO: Validar rol del usuario
-		const hasRole = true; 
+		// ── 6. Evaluaciones filtradas por la rúbrica específica
+		// Sin rubric_id en evidence.evaluations, se filtra por los criterios
+		// de la rúbrica a través de los scores (evaluaciones sin scores aún
+		// se excluyen — son evaluaciones vacías de este contexto)
 		let evaluations: EvaluationEntity[] = [];
 
-		if (isEvaluationMode && hasRole) {
-			evaluations = await this.dataSource.getRepository(EvaluationEntity)
+		if (isEvaluationMode) {
+			evaluations = await this.dataSource
+				.getRepository(EvaluationEntity)
 				.createQueryBuilder('ev')
 				.leftJoinAndSelect('ev.scores', 'score')
 				.innerJoin('ev.project_student', 'ps')
+				.innerJoin(
+					RubricQuestionCriteriaEntity,
+					'rqc',
+					'rqc.id = score.rubric_question_criteria_id',
+				)
+				.innerJoin(
+					RubricQuestionEntity,
+					'rq',
+					'rq.id = rqc.rubric_question_id',
+				)
 				.where('ps.project_id = :projectId', { projectId })
+				.andWhere('rq.rubric_id = :rubricId', { rubricId: rubric.id })
 				.getMany();
 		}
 
-		// 3. Procesar datos de los estudiantes y scores
+		// ── 7. Estudiantes con nota total
 		const studentDtos = (project.students || []).map((s) => {
 			const user = s.student_section_enrollment?.enrolled_student?.student?.user;
 			const evals = evaluations.filter(ev => ev.project_student_id === s.id);
-			
-			// Calcular nota total (sumando scores de la última evaluación o la única que tengan)
-			// O calcular el total en base a la lógica... (simplificado como la suma por ahora)
+
 			let totalGrade: number | null = null;
+
 			if (isEvaluationMode && evals.length > 0) {
 				const sumScores = evals.reduce((sum, ev) => {
-					const evalSum = (ev.scores || []).reduce((sSum, score) => sSum + Number(score.score), 0);
+					const evalSum = (ev.scores || []).reduce(
+						(sSum, score) => sSum + Number(score.score), 0,
+					);
 					return sum + evalSum;
 				}, 0);
-				
-				// Escalar a vigesimal
-				if (totalMaxScore > 0) {
-					totalGrade = Math.round((sumScores * 20) / totalMaxScore * 100) / 100;
-				} else {
-					totalGrade = sumScores; // Fallback si maxScore = 0
-				}
+
+				totalGrade = totalMaxScore > 0
+					? Math.round((sumScores * 20) / totalMaxScore * 100) / 100
+					: sumScores;
 			}
 
 			return {
@@ -197,42 +242,42 @@ export class ProjectConfigService {
 			};
 		});
 
-		// 4. Inyectar scores en la estructura de la rúbrica si corresponde
-		const questions = (rubricContext.questions || []).map((q: any) => {
-			return {
-				id: q.id,
-				text: q.text,
-				outcomeId: q.outcomeId,
-				criterias: (q.criterias || []).map((c: any) => {
-					// Buscar scores para este criterio
-					let criteriaScores: any[] | null = null;
+		// ── 8. Preguntas + criterios con scores inyectados
+		const questions = (rubricContext.questions || []).map((q: any) => ({
+			id: q.id,
+			text: q.text,
+			outcomeId: q.outcomeId,
+			criterias: (q.criterias || []).map((c: any) => {
+				let criteriaScores: any[] | null = null;
 
-					if (isEvaluationMode && hasRole) {
-						criteriaScores = [];
-						evaluations.forEach(ev => {
-							const scoreObj = (ev.scores || []).find(sc => sc.rubric_question_criteria_id === c.id);
-							if (scoreObj) {
-								criteriaScores!.push({
-									student_id: ev.project_student_id,
-									evaluator_id: ev.project_evaluator_id,
-									score: Number(scoreObj.score),
-									commentaries: scoreObj.commentaries || '',
-								});
-							}
-						});
-					}
+				if (isEvaluationMode) {
+					criteriaScores = [];
+					evaluations.forEach(ev => {
+						const scoreObj = (ev.scores || []).find(
+							sc => sc.rubric_question_criteria_id === c.id,
+						);
+						if (scoreObj) {
+							criteriaScores!.push({
+								student_id: ev.project_student_id,
+								evaluator_id: ev.project_evaluator_id,
+								score: Number(scoreObj.score),
+								commentaries: scoreObj.commentaries || '',
+							});
+						}
+					});
+				}
 
-					return {
-						id: c.id,
-						text: c.text,
-						min_value: c.min_value,
-						max_value: c.max_value,
-						scores: criteriaScores,
-					};
-				}),
-			};
-		});
+				return {
+					id: c.id,
+					text: c.text,
+					min_value: c.min_value,
+					max_value: c.max_value,
+					scores: criteriaScores,
+				};
+			}),
+		}));
 
+		// ── 9. Response
 		return {
 			project: {
 				id: project.id,
@@ -245,7 +290,7 @@ export class ProjectConfigService {
 				rubric: rubricContext.rubric,
 				course: rubricContext.course,
 				outcomes: rubricContext.outcomes,
-				questions: questions,
+				questions,
 			},
 		};
 	}

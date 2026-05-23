@@ -41,10 +41,12 @@ export class ProjectController extends BaseController<ProjectService> {
 	async getProjectWithDetails(
 		@Param('projectId', ParseIntPipe) projectId: number,
 		@Query('is_evaluation_mode') isEvaluationMode?: string,
+		@Query('grade_type_id', new ParseIntPipe({ optional: true })) gradeTypeId?: number,
+		@Query('rubric_type_id', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		const isEvalMode = isEvaluationMode === 'true';
 		return parseSuccessResponse(
-			await this.projectConfigService.getProjectWithDetails(projectId, isEvalMode)
+			await this.projectConfigService.getProjectWithDetails(projectId, isEvalMode, gradeTypeId, rubricTypeId)
 		);
 	}
 
