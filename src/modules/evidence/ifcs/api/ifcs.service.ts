@@ -758,7 +758,10 @@ export class IfcService extends BaseService<IfcRepository> {
 					HttpStatus.BAD_REQUEST,
 				);
 			}
-			await em.query(`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`, [item.evidences === null ? null : JSON.stringify(item.evidences), item.finding_action_id]);
+			await em.query(`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`, [
+				item.evidences === null ? null : JSON.stringify(item.evidences),
+				item.finding_action_id,
+			]);
 		}
 	}
 

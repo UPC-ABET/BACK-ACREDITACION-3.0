@@ -99,7 +99,12 @@ export class IfcContentDto {
 	@ArrayUnique()
 	deleted_action_ids?: number[];
 
-	@ApiProperty({ type: [IfcPreviousActionPayloadDto], required: false, description: 'Actualiza el campo `evidences` (I18nText|null) de filas de improvement.finding_actions reutilizadas de periodos previos. Solo se aceptan ids del set devuelto por GET (previous_actions).' })
+	@ApiProperty({
+		type: [IfcPreviousActionPayloadDto],
+		required: false,
+		description:
+			'Actualiza el campo `evidences` (I18nText|null) de filas de improvement.finding_actions reutilizadas de periodos previos. Solo se aceptan ids del set devuelto por GET (previous_actions).',
+	})
 	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
