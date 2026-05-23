@@ -17,6 +17,7 @@ import { CreateUserDto, UpdateUserDto, FilterUserDto, LoginUserByCredentialsDto,
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
+import { SkipPermissions } from 'src/modules/auth/protocols/jwt/decorators/skip-permissions.decorator';
 import { removeAccessCookie, saveAccessCookie } from 'src/libs/secure.functions';
 
 @SwaggerUserController()
@@ -63,12 +64,14 @@ export class UserController extends BaseController<UserService> {
 		return parseSuccessResponse(result);
 	}
 
+	@SkipPermissions()
 	@SwaggerUserLogout()
 	async logout(@Res({ passthrough: true }) res: Response) {
 		removeAccessCookie(res);
 		return parseSuccessResponse({ message: 'Logout exitoso' });
 	}
 
+	@SkipPermissions()
 	@SwaggerUserChangeRole()
 	async changeRole(@Body() dto: ChangeRoleDto, @Req() req, @Res({ passthrough: true }) res: Response) {
 		const result = await this.service.loginById(req.user.userId, dto.newRole, req.user.school_id);

@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
 
-describe('AuthService — school-aware MSAL', () => {
+describe('AuthService — MSAL login', () => {
 	let service: AuthService;
 	let userService: { getUser: jest.Mock; createUserLogin: jest.Mock };
 	let schoolRepository: { findOneByCondition: jest.Mock };
@@ -19,7 +19,6 @@ describe('AuthService — school-aware MSAL', () => {
 		schoolRepository = {
 			findOneByCondition: jest.fn(),
 		};
-
 		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository);
 	});
 

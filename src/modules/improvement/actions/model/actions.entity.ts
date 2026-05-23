@@ -4,7 +4,6 @@ import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/config
 import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
-import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'actions', schema: 'improvement' })
 export class ActionEntity extends BaseEntity {
@@ -17,19 +16,12 @@ export class ActionEntity extends BaseEntity {
 	correlative: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	action_status_type_id: number;
-
-	@IntegerFKIDColumn({ nullable: false })
 	program_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
 	// %% RELACIONES
-
-	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'action_status_type_id' })
-	action_status_type: TypeEntity;
 
 	@ManyToOne(() => ProgramEntity)
 	@JoinColumn({ name: 'program_id' })

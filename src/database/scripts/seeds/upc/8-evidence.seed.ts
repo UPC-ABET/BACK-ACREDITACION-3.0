@@ -23,7 +23,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			i18n('Instrumento de percepcion para resultados del programa', 'Perception instrument for program outcomes'),
 			false,
 		],
-		['TG501-T001', 'IFC', i18n('Informe Final del Curso', 'Course Final Report'), i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'), true],
+		['TG501-T001', 'INST_IFC', i18n('Informe Final del Curso', 'Course Final Report'), i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'), true],
 	]
 		.map(([ctCode, code, name, desc, acc]) => `('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`)
 		.join(',\n\t\t\t');
@@ -105,6 +105,40 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 				methodology: {
 					label: { es: 'Metodologia', en: 'Methodology' },
 					value: { es: 'Casos practicos sobre datasets reales.', en: 'Case studies on real datasets.' },
+					order: 2,
+				},
+			}),
+		],
+		// 202601 (year 2026): CC101 and CC102 get IFCs — useful for view/edit testing.
+		// "Ingenieria de Software" (CC103) intentionally stays without an IFC for prefill testing.
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202601',
+			JSON.stringify({
+				infrastructure: {
+					label: { es: 'Infraestructura', en: 'Infrastructure' },
+					value: { es: 'Laboratorio renovado con 35 PCs y proyector 4K.', en: 'Refurbished lab with 35 PCs and 4K projector.' },
+					order: 1,
+				},
+				methodology: {
+					label: { es: 'Metodologia', en: 'Methodology' },
+					value: { es: 'Aprendizaje basado en proyectos cortos.', en: 'Short-project-based learning.' },
+					order: 2,
+				},
+			}),
+		],
+		[
+			'Bases de Datos',
+			'202601',
+			JSON.stringify({
+				infrastructure: {
+					label: { es: 'Infraestructura', en: 'Infrastructure' },
+					value: { es: 'Cluster managed PostgreSQL para practicas en aula.', en: 'Managed PostgreSQL cluster for classroom labs.' },
+					order: 1,
+				},
+				methodology: {
+					label: { es: 'Metodologia', en: 'Methodology' },
+					value: { es: 'Talleres semanales con datasets institucionales.', en: 'Weekly workshops on institutional datasets.' },
 					order: 2,
 				},
 			}),

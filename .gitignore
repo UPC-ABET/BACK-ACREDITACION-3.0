@@ -27,13 +27,10 @@ lerna-debug.log*
 *.launch
 .settings/
 *.sublime-workspace
+.idea/
 
 # IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 
 # temp directory
 .temp
@@ -49,3 +46,9 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 .env
+
+# Claude
+.claude
+
+# Cursor
+.cursor

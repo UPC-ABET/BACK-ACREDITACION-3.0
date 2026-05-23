@@ -7,9 +7,12 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM "core"."types" t
 		JOIN (
 			VALUES
-				('TG103-T001', 'AP_2026_1', '2026-03-18', '2026-07-20'),
-				('TG103-T001', 'AP_2026_2', '2026-08-17', '2026-12-18'),
-				('TG103-T001', '202502', '2025-08-15', '2025-12-15')
+				('TG102-T001', 'AP_2026_1', '2026-03-18', '2026-07-20'),
+				('TG102-T001', 'AP_2026_2', '2026-08-17', '2026-12-18'),
+				('TG102-T001', '202502', '2025-08-15', '2025-12-15'),
+				-- 202601: a year-2026 period AFTER AP_2026_1 (Mar-Jul) so previous_actions
+				-- can surface from AP_2026_1 in the same year.
+				('TG102-T001', '202601', '2026-09-01', '2026-12-20')
 		) AS v(modality_type_code, code, start_date, end_date)
 			ON t.code = v.modality_type_code
 		WHERE NOT EXISTS (
@@ -18,10 +21,10 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	const programValues = [
-		['TG103-T001', 'PROG_SOFT', i18n('Ingenieria de Software', 'Software Engineering'), i18n('Bachiller', 'Bachelor')],
-		['TG103-T001', 'PROG_SIST', i18n('Ingenieria de Sistemas', 'Systems Engineering'), i18n('Bachiller', 'Bachelor')],
-		['TG103-T002', 'PROG_ADMIN', i18n('Administracion de Empresas', 'Business Administration'), i18n('Bachiller', 'Bachelor')],
-		['TG103-T001', 'CS', i18n('Ciencias de la Computacion', 'Computer Science'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'PROG_SOFT', i18n('Ingenieria de Software', 'Software Engineering'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'PROG_SIST', i18n('Ingenieria de Sistemas', 'Systems Engineering'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'PROG_ADMIN', i18n('Administracion de Empresas', 'Business Administration'), i18n('Bachiller', 'Bachelor')],
+		['TG102-T001', 'CS', i18n('Ciencias de la Computacion', 'Computer Science'), i18n('Bachiller', 'Bachelor')],
 	]
 		.map(([modality, code, name, degree]) => `('${modality}', '${code}', '${name}'::jsonb, '${degree}'::jsonb)`)
 		.join(',\n\t\t\t');
@@ -125,12 +128,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			i18n('Plan 2026 Administracion', '2026 Business Administration Plan'),
 			i18n('Plan de estudios base para Administracion de Empresas', 'Base study plan for Business Administration'),
 		],
-		[
-			'CS',
-			'SP_CS_2502',
-			i18n('Plan CS 2025-2', '2025-2 CS Plan'),
-			i18n('Plan de estudios para Ciencias de la Computacion (periodo 202502)', 'Computer Science study plan (period 202502)'),
-		],
+		['CS', 'SP_CS_2502', i18n('Plan CS 2025-2', '2025-2 CS Plan'), i18n('Plan de estudios para Ciencias de la Computacion (periodo 202502)', 'Computer Science study plan (period 202502)')],
 	]
 		.map(([programCode, code, name, description]) => `('${programCode}', '${code}', '${name}'::jsonb, '${description}'::jsonb)`)
 		.join(',\n\t\t\t');
@@ -158,7 +156,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 				('SP_SOFT26', 'AP_2026_1'),
 				('SP_SOFT26', 'AP_2026_2'),
 				('SP_ADM26', 'AP_2026_1'),
-				('SP_CS_2502', '202502')
+				('SP_CS_2502', '202502'),
+				('SP_CS_2502', '202601')
 		) AS v(study_plan_code, academic_period_code)
 			ON sp.code = v.study_plan_code
 		JOIN "academic"."academic_periods" ap
@@ -190,7 +189,11 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 				('SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', false, 'TG203-T003'),
 				('SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
 				('SP_CS_2502', '202502', 'Bases de Datos', false, 'TG203-T002'),
-				('SP_CS_2502', '202502', 'Ingenieria de Software', false, 'TG203-T003')
+				('SP_CS_2502', '202502', 'Ingenieria de Software', false, 'TG203-T003'),
+				-- Same three CS courses in 202601 so prefill/view IFC works there too.
+				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
+				('SP_CS_2502', '202601', 'Bases de Datos', false, 'TG203-T002'),
+				('SP_CS_2502', '202601', 'Ingenieria de Software', false, 'TG203-T003')
 		) AS v(study_plan_code, academic_period_code, course_name, is_elective, level_type_code)
 			ON sp.code = v.study_plan_code AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" c
@@ -204,14 +207,21 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const professorRows: Array<[string, string]> = [
+		['prof.juan.perez@upc.edu.pe', 'PROF-001'],
+		['prof.maria.garcia@upc.edu.pe', 'PROF-002'],
+		['coord.eiscb@upc.edu.pe', 'PROF-003'],
+	];
+	const professorValues = professorRows.map(([email, code]) => `('${email}', '${code}')`).join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."professors" (staff_id)
-		SELECT s.id
-		FROM "organization"."staff" s
-		WHERE s.staff_email IN ('prof.juan.perez@upc.edu.pe', 'prof.maria.garcia@upc.edu.pe')
-			AND NOT EXISTS (
-				SELECT 1 FROM "academic"."professors" p WHERE p.staff_id = s.id
-			);
+		INSERT INTO "academic"."professors" (staff_id, code)
+		SELECT s.id, v.code
+		FROM (VALUES ${professorValues}) AS v(staff_email, code)
+		JOIN "organization"."staff" s ON s.staff_email = v.staff_email
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "academic"."professors" p WHERE p.staff_id = s.id
+		);
 	`);
 
 	await tenantDataSource.query(`
@@ -439,215 +449,201 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
-	// EISCB 6-level chart tree for academic period 202502.
+	// EISCB 6-level chart tree, parameterized by academic period code.
 	// Chained inserts: each child's root_chart_detail_id resolves to the parent row via subquery.
-
-	// Level 1 — Dean (school EISCB), no parent.
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id, academic_period_id, chart_level_id,
-			root_chart_detail_id, level_title, entity_type_id, entity_code
-		)
-		SELECT
-			staff.id, ap.id, cl.id, NULL,
-			'${i18n('Decanato EISCB', "EISCB Dean's Office")}'::jsonb,
-			entity_type.id,
-			(SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
-		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'admin.eiscb@upc.edu.pe'
-		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
-		JOIN "organization"."chart_levels" cl   ON cl.level = 1
-		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T001'
-		JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T001'
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" c
-			WHERE c.academic_period_id = ap.id
-			  AND c.chart_level_id     = cl.id
-			  AND c.entity_type_id     = entity_type.id
-			  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
-		);
-	`);
-
-	// Level 2 — School Director (school EISCB), parent = level 1 row.
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id, academic_period_id, chart_level_id,
-			root_chart_detail_id, level_title, entity_type_id, entity_code
-		)
-		SELECT
-			staff.id, ap.id, cl.id,
-			(
-				SELECT c.id FROM "organization"."charts" c
-				JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+	const seedEiscbChartTree = async (periodCode: string) => {
+		// Level 1 — Dean (school EISCB), no parent.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id, chart_level_id,
+				root_chart_detail_id, level_title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, cl.id, NULL,
+				'${i18n('Decanato EISCB', "EISCB Dean's Office")}'::jsonb,
+				NULL, NULL
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'dean.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "organization"."chart_levels" cl   ON cl.level = 1
+			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T001'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND pcl.level            = 1
-				  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T001')
+				  AND c.chart_level_id     = cl.id
+			);
+		`);
+
+		// Level 2 — School Director (school EISCB), parent = level 1 row.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id, chart_level_id,
+				root_chart_detail_id, level_title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, cl.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					WHERE c.academic_period_id = ap.id
+					  AND pcl.level            = 1
+				),
+				'${i18n('Direccion EISCB', 'EISCB School Direction')}'::jsonb,
+				entity_type.id,
+				(SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "organization"."chart_levels" cl   ON cl.level = 2
+			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T002'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T001'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				WHERE c.academic_period_id = ap.id
+				  AND c.chart_level_id     = cl.id
+				  AND c.entity_type_id     = entity_type.id
 				  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
-			),
-			'${i18n('Direccion EISCB', 'EISCB School Direction')}'::jsonb,
-			entity_type.id,
-			(SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
-		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'admin.eiscb@upc.edu.pe'
-		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
-		JOIN "organization"."chart_levels" cl   ON cl.level = 2
-		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T002'
-		JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T001'
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" c
-			WHERE c.academic_period_id = ap.id
-			  AND c.chart_level_id     = cl.id
-			  AND c.entity_type_id     = entity_type.id
-			  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
-		);
-	`);
+			);
+		`);
 
-	// Level 3 — Program Coordinator (program CS), parent = level 2 row.
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id, academic_period_id, chart_level_id,
-			root_chart_detail_id, level_title, entity_type_id, entity_code
-		)
-		SELECT
-			staff.id, ap.id, cl.id,
-			(
-				SELECT c.id FROM "organization"."charts" c
-				JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+		// Level 3 — Program Coordinator (program CS), parent = level 2 row.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id, chart_level_id,
+				root_chart_detail_id, level_title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, cl.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					WHERE c.academic_period_id = ap.id
+					  AND pcl.level            = 2
+					  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T001')
+					  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
+				),
+				'${i18n('Coordinacion de Programa CS', 'CS Program Coordination')}'::jsonb,
+				entity_type.id,
+				(SELECT id FROM "academic"."programs" WHERE code = 'CS')
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'prog-coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "organization"."chart_levels" cl   ON cl.level = 3
+			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T003'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T002'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND pcl.level            = 2
-				  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T001')
-				  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
-			),
-			'${i18n('Coordinacion de Programa CS', 'CS Program Coordination')}'::jsonb,
-			entity_type.id,
-			(SELECT id FROM "academic"."programs" WHERE code = 'CS')
-		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
-		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
-		JOIN "organization"."chart_levels" cl   ON cl.level = 3
-		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T003'
-		JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T002'
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" c
-			WHERE c.academic_period_id = ap.id
-			  AND c.chart_level_id     = cl.id
-			  AND c.entity_type_id     = entity_type.id
-			  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
-		);
-	`);
-
-	// Level 4 — Area Coordinator (program CS), parent = level 3 row.
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id, academic_period_id, chart_level_id,
-			root_chart_detail_id, level_title, entity_type_id, entity_code
-		)
-		SELECT
-			staff.id, ap.id, cl.id,
-			(
-				SELECT c.id FROM "organization"."charts" c
-				JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
-				WHERE c.academic_period_id = ap.id
-				  AND pcl.level            = 3
-				  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T002')
+				  AND c.chart_level_id     = cl.id
+				  AND c.entity_type_id     = entity_type.id
 				  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
-			),
-			'${i18n('Coordinacion de Area CS', 'CS Area Coordination')}'::jsonb,
-			entity_type.id,
-			(SELECT id FROM "academic"."programs" WHERE code = 'CS')
-		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
-		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
-		JOIN "organization"."chart_levels" cl   ON cl.level = 4
-		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T004'
-		JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T002'
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" c
-			WHERE c.academic_period_id = ap.id
-			  AND c.chart_level_id     = cl.id
-			  AND c.entity_type_id     = entity_type.id
-			  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
-		);
-	`);
+			);
+		`);
 
-	// Level 5 — Subarea Coordinator (program CS), parent = level 4 row.
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id, academic_period_id, chart_level_id,
-			root_chart_detail_id, level_title, entity_type_id, entity_code
-		)
-		SELECT
-			staff.id, ap.id, cl.id,
-			(
-				SELECT c.id FROM "organization"."charts" c
-				JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+		// Level 4 — Area Coordinator (role-only, no entity anchor), parent = level 3 row.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id, chart_level_id,
+				root_chart_detail_id, level_title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, cl.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					WHERE c.academic_period_id = ap.id
+					  AND pcl.level            = 3
+					  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T002')
+					  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
+				),
+				'${i18n('Coordinacion de Area CS', 'CS Area Coordination')}'::jsonb,
+				NULL, NULL
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'area-coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "organization"."chart_levels" cl   ON cl.level = 4
+			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T004'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND pcl.level            = 4
-				  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T002')
-				  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
-			),
-			'${i18n('Coordinacion de Subarea CS', 'CS Subarea Coordination')}'::jsonb,
-			entity_type.id,
-			(SELECT id FROM "academic"."programs" WHERE code = 'CS')
-		FROM "organization"."staff" staff
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
-		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
-		JOIN "organization"."chart_levels" cl   ON cl.level = 5
-		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T005'
-		JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T002'
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" c
-			WHERE c.academic_period_id = ap.id
-			  AND c.chart_level_id     = cl.id
-			  AND c.entity_type_id     = entity_type.id
-			  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
-		);
-	`);
+				  AND c.chart_level_id     = cl.id
+			);
+		`);
 
-	// Level 6 — Course Coordinators (CC101, CC102, CC103), all share level-5 parent.
-	const courseChartValues = [
-		['CC101', i18n('Coordinacion de Curso CC101', 'CC101 Course Coordination')],
-		['CC102', i18n('Coordinacion de Curso CC102', 'CC102 Course Coordination')],
-		['CC103', i18n('Coordinacion de Curso CC103', 'CC103 Course Coordination')],
-	]
-		.map(([code, title]) => `('${code}', '${title}'::jsonb)`)
-		.join(',\n\t\t\t\t');
-
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id, academic_period_id, chart_level_id,
-			root_chart_detail_id, level_title, entity_type_id, entity_code
-		)
-		SELECT
-			staff.id, ap.id, cl.id,
-			(
-				SELECT c.id FROM "organization"."charts" c
-				JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+		// Level 5 — Subarea Coordinator (role-only, no entity anchor), parent = level 4 row.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id, chart_level_id,
+				root_chart_detail_id, level_title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, cl.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					WHERE c.academic_period_id = ap.id
+					  AND pcl.level            = 4
+				),
+				'${i18n('Coordinacion de Subarea CS', 'CS Subarea Coordination')}'::jsonb,
+				NULL, NULL
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'subarea-coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "organization"."chart_levels" cl   ON cl.level = 5
+			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T005'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND pcl.level            = 5
-				  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T002')
-				  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
-			),
-			v.level_title,
-			entity_type.id,
-			(SELECT id FROM "academic"."courses" WHERE code = v.course_code)
-		FROM (
-			VALUES
-				${courseChartValues}
-		) AS v(course_code, level_title)
-		JOIN "organization"."staff" staff
-			ON staff.id IS NOT NULL
-		JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'coord.eiscb@upc.edu.pe'
-		JOIN "academic"."academic_periods" ap   ON ap.code = '202502'
-		JOIN "organization"."chart_levels" cl   ON cl.level = 6
-		JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T006'
-		JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T003'
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" c
-			WHERE c.academic_period_id = ap.id
-			  AND c.chart_level_id     = cl.id
-			  AND c.entity_type_id     = entity_type.id
-			  AND c.entity_code        = (SELECT id FROM "academic"."courses" WHERE code = v.course_code)
-		);
-	`);
+				  AND c.chart_level_id     = cl.id
+			);
+		`);
+
+		// Level 6 — Course Coordinators (CC101, CC102, CC103), all share level-5 parent.
+		const courseChartValues = [
+			['CC101', i18n('Coordinacion de Curso CC101', 'CC101 Course Coordination')],
+			['CC102', i18n('Coordinacion de Curso CC102', 'CC102 Course Coordination')],
+			['CC103', i18n('Coordinacion de Curso CC103', 'CC103 Course Coordination')],
+		]
+			.map(([code, title]) => `('${code}', '${title}'::jsonb)`)
+			.join(',\n\t\t\t\t');
+
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id, chart_level_id,
+				root_chart_detail_id, level_title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, cl.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					WHERE c.academic_period_id = ap.id
+					  AND pcl.level            = 5
+				),
+				v.level_title,
+				entity_type.id,
+				(SELECT id FROM "academic"."courses" WHERE code = v.course_code)
+			FROM (
+				VALUES
+					${courseChartValues}
+			) AS v(course_code, level_title)
+			JOIN "organization"."staff" staff
+				ON staff.id IS NOT NULL
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "organization"."chart_levels" cl   ON cl.level = 6
+			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T006'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T003'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				WHERE c.academic_period_id = ap.id
+				  AND c.chart_level_id     = cl.id
+				  AND c.entity_type_id     = entity_type.id
+				  AND c.entity_code        = (SELECT id FROM "academic"."courses" WHERE code = v.course_code)
+			);
+		`);
+	};
+
+	await seedEiscbChartTree('202502');
+	await seedEiscbChartTree('202601');
 });

@@ -3,6 +3,7 @@ import { runTenantSeed, i18n } from '../seed-runner';
 runTenantSeed('core type catalogs', async (tenantDataSource) => {
 	const typeGroupRows: Array<[string, string, string]> = [
 		['TG101', i18n('Tipo de documento', 'Document type'), i18n('Documentos y valores base para usuarios', 'Documents and base values for users')],
+		['TG102', i18n('Modalidad de programa', 'Program modality'), i18n('Modalidades del programa academico (Regular, EPE)', 'Academic program modalities (Regular, EPE)')],
 		['TG103', i18n('Modalidad de ensenanza', 'Teaching modality'), i18n('Modalidades academicas generales', 'General academic modalities')],
 		['TG202', i18n('Modalidad de graduacion', 'Graduation modality'), i18n('Modalidades de egreso del estudiante', 'Student graduation modalities')],
 		['TG203', i18n('Nivel academico', 'Academic level'), i18n('Niveles de cursos en el plan de estudios', 'Course levels in the study plan')],
@@ -20,8 +21,6 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		['TG602', i18n('Estado de encuesta', 'Survey status'), i18n('Estados de encuestas', 'Survey states')],
 		['TG701', i18n('Estado IFC', 'IFC status'), i18n('Estados de indicadores IFC', 'IFC indicator states')],
 		['TG801', i18n('Criticidad de hallazgo', 'Finding criticality'), i18n('Niveles de criticidad', 'Criticality levels')],
-		['TG802', i18n('Estado de accion', 'Action status'), i18n('Estados de acciones de mejora', 'Improvement action states')],
-		['TG803', i18n('Estado de hallazgo', 'Finding status'), i18n('Estados de hallazgos de mejora', 'Improvement finding states')],
 		['TG901', i18n('Cargo del personal', 'Staff position'), i18n('Tipos de cargos administrativos y docentes', 'Administrative and teaching position types')],
 		['TG902', i18n('Nivel de organigrama', 'Org chart level'), i18n('Niveles de estructura organizacional', 'Organizational structure levels')],
 		['TG903', i18n('Tipo de entidad organizacional', 'Organizational entity type'), i18n('Tipos de entidades en organigrama', 'Entity types in the org chart')],
@@ -48,6 +47,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		['TG101', 'TG101-T001', i18n('DNI', 'National ID'), i18n('Documento Nacional de Identidad', 'National Identity Document'), '{}'],
 		['TG101', 'TG101-T002', i18n('Pasaporte', 'Passport'), i18n('Pasaporte internacional', 'International passport'), '{}'],
 		['TG101', 'TG101-T003', i18n('Carne de extranjeria', 'Foreigner card'), i18n('Carne de extranjeria', 'Foreigner residence card'), '{}'],
+		['TG102', 'TG102-T001', i18n('Regular', 'Regular'), i18n('Programa en modalidad regular', 'Regular program modality'), '{}'],
+		['TG102', 'TG102-T002', i18n('EPE', 'EPE'), i18n('Programa para Personas con Experiencia Laboral', 'Program for People with Work Experience'), '{}'],
 		['TG103', 'TG103-T001', i18n('Presencial', 'In-person'), i18n('Educacion presencial', 'In-person education'), '{"mode":"in-person"}'],
 		['TG103', 'TG103-T002', i18n('Virtual', 'Virtual'), i18n('Educacion virtual', 'Online education'), '{"mode":"online"}'],
 		['TG103', 'TG103-T003', i18n('Hibrida', 'Hybrid'), i18n('Educacion hibrida', 'Hybrid education'), '{"mode":"hybrid"}'],
@@ -90,22 +91,24 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		['TG501', 'TG501-T003', i18n('Encuesta', 'Survey'), i18n('Instrumento de encuesta', 'Survey instrument'), '{}'],
 		['TG601', 'TG601-T001', i18n('Satisfaccion estudiantil', 'Student satisfaction'), i18n('Encuesta a estudiantes', 'Student survey'), '{}'],
 		['TG601', 'TG601-T002', i18n('Egresados', 'Graduates'), i18n('Encuesta a egresados', 'Graduate survey'), '{}'],
+		[
+			'TG601',
+			'TG601-T003',
+			i18n('Practicas Pre-Profesionales', 'Pre-Professional Internships'),
+			i18n('Encuesta PPP a estudiantes en practicas', 'PPP survey for students in internships'),
+			'{"code":"PPP"}',
+		],
+		['TG601', 'TG601-T004', i18n('Logro de Fin de Ciclo', 'End-of-Cycle Achievement'), i18n('Encuesta LCFC por curso y ciclo', 'LCFC survey per course and cycle'), '{"code":"LCFC"}'],
 		['TG602', 'TG602-T001', i18n('Activa', 'Active'), i18n('Encuesta activa', 'Active survey'), '{}'],
 		['TG602', 'TG602-T002', i18n('Cerrada', 'Closed'), i18n('Encuesta cerrada', 'Closed survey'), '{}'],
-		['TG701', 'TG701-T001', i18n('Guardado', 'Saved'), i18n('IFC guardado', 'IFC saved'), '{}'],
-		['TG701', 'TG701-T002', i18n('Enviado', 'Submitted'), i18n('IFC enviado a revision', 'IFC submitted for review'), '{}'],
-		['TG701', 'TG701-T003', i18n('Aprobado', 'Approved'), i18n('IFC aprobado', 'IFC approved'), '{}'],
-		['TG701', 'TG701-T004', i18n('Observado', 'Observed'), i18n('IFC observado', 'IFC observed'), '{}'],
-		['TG701', 'TG701-T005', i18n('Sin Registrar', 'Unregistered'), i18n('IFC sin registrar (derivado)', 'Unregistered IFC (derived)'), '{}'],
-		['TG801', 'TG801-T001', i18n('Critico', 'Critical'), i18n('Criticidad alta', 'High criticality'), '{"order":1}'],
-		['TG801', 'TG801-T002', i18n('Preocupante', 'Worrying'), i18n('Criticidad media', 'Medium criticality'), '{"order":2}'],
-		['TG801', 'TG801-T003', i18n('Normal', 'Normal'), i18n('Criticidad baja', 'Low criticality'), '{"order":3}'],
-		['TG802', 'TG802-T001', i18n('Pendiente', 'Pending'), i18n('Accion pendiente de ejecucion', 'Action pending execution'), '{}'],
-		['TG802', 'TG802-T002', i18n('En progreso', 'In progress'), i18n('Accion en progreso', 'Action in progress'), '{}'],
-		['TG802', 'TG802-T003', i18n('Completada', 'Completed'), i18n('Accion completada', 'Action completed'), '{}'],
-		['TG803', 'TG803-T001', i18n('Abierto', 'Open'), i18n('Hallazgo abierto', 'Open finding'), '{}'],
-		['TG803', 'TG803-T002', i18n('En plan', 'In plan'), i18n('Hallazgo incluido en plan de mejora', 'Finding included in improvement plan'), '{}'],
-		['TG803', 'TG803-T003', i18n('Cerrado', 'Closed'), i18n('Hallazgo cerrado', 'Closed finding'), '{}'],
+		['TG701', 'TG701-T001', i18n('Guardado', 'Saved'), i18n('IFC guardado', 'IFC saved'), '{"color":"#3b82f6"}'],
+		['TG701', 'TG701-T002', i18n('Enviado', 'Submitted'), i18n('IFC enviado a revision', 'IFC submitted for review'), '{"color":"#d97706"}'],
+		['TG701', 'TG701-T003', i18n('Aprobado', 'Approved'), i18n('IFC aprobado', 'IFC approved'), '{"color":"#16a34a"}'],
+		['TG701', 'TG701-T004', i18n('Observado', 'Observed'), i18n('IFC observado', 'IFC observed'), '{"color":"#ef4444"}'],
+		['TG701', 'TG701-T005', i18n('Sin Registrar', 'Unregistered'), i18n('IFC sin registrar (derivado)', 'Unregistered IFC (derived)'), '{"color":"#6b7280"}'],
+		['TG801', 'TG801-T001', i18n('Critico', 'Critical'), i18n('Criticidad alta', 'High criticality'), '{"order":1,"color":"#dc2626"}'],
+		['TG801', 'TG801-T002', i18n('Preocupante', 'Worrying'), i18n('Criticidad media', 'Medium criticality'), '{"order":2,"color":"#f97316"}'],
+		['TG801', 'TG801-T003', i18n('Normal', 'Normal'), i18n('Criticidad baja', 'Low criticality'), '{"order":3,"color":"#64748b"}'],
 		['TG901', 'TG901-T001', i18n('Administrador', 'Administrator'), i18n('Administrador del sistema', 'System administrator'), '{}'],
 		['TG901', 'TG901-T002', i18n('Coordinador de calidad', 'Quality coordinator'), i18n('Coordinador de calidad academica', 'Academic quality coordinator'), '{}'],
 		['TG901', 'TG901-T003', i18n('Profesor', 'Professor'), i18n('Docente del programa', 'Program professor'), '{}'],
@@ -122,8 +125,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		['TG1001', 'TG1001-T002', i18n('Enviada', 'Sent'), i18n('Notificacion enviada', 'Sent notification'), '{}'],
 		['TG1002', 'TG1002-T001', i18n('Manual', 'Manual'), i18n('Notificacion enviada manualmente', 'Notification sent manually'), '{}'],
 		['TG1002', 'TG1002-T002', i18n('Auto al cambiar estado', 'Auto on status change'), i18n('Notificacion automatica por cambio de estado', 'Automatic notification on status change'), '{}'],
-		['TG1003', 'TG1003-T001', i18n('Pendiente', 'Pending'), i18n('Accion sin evidencias', 'Action without evidence'), '{}'],
-		['TG1003', 'TG1003-T002', i18n('Implementada', 'Implemented'), i18n('Accion con evidencias', 'Action with evidence'), '{}'],
+		['TG1003', 'TG1003-T001', i18n('Pendiente', 'Pending'), i18n('Accion sin evidencias', 'Action without evidence'), '{"color":"#71717A"}'],
+		['TG1003', 'TG1003-T002', i18n('Implementada', 'Implemented'), i18n('Accion con evidencias', 'Action with evidence'), '{"color":"#10B981"}'],
 	];
 
 	const typeValues = typeRows.map(([group, code, name, description, extra]) => `('${group}', '${code}', '${name}'::jsonb, '${description}'::jsonb, '${extra}'::jsonb)`).join(',\n\t\t\t');
@@ -140,5 +143,32 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "core"."types" t WHERE t.code = v.code
 		);
+	`);
+
+	// Patch the `color` field into `extra` for IFC statuses (TG701) and criticality (TG801)
+	// even if the type rows already existed before this seed ran. Idempotent: merging the
+	// same patch is a no-op. Uses jsonb concatenation (`||`) which overwrites matching keys.
+	const colorPatches: Array<[string, string]> = [
+		['TG701-T001', '{"color":"#3b82f6"}'],
+		['TG701-T002', '{"color":"#d97706"}'],
+		['TG701-T003', '{"color":"#16a34a"}'],
+		['TG701-T004', '{"color":"#ef4444"}'],
+		['TG701-T005', '{"color":"#6b7280"}'],
+		['TG801-T001', '{"color":"#dc2626"}'],
+		['TG801-T002', '{"color":"#f97316"}'],
+		['TG801-T003', '{"color":"#64748b"}'],
+		['TG1003-T001', '{"color":"#71717A"}'],
+		['TG1003-T002', '{"color":"#10B981"}'],
+	];
+	const colorPatchValues = colorPatches.map(([code, patch]) => `('${code}', '${patch}'::jsonb)`).join(',\n\t\t\t');
+
+	await tenantDataSource.query(`
+		UPDATE "core"."types" t
+		SET extra = COALESCE(t.extra, '{}'::jsonb) || v.patch
+		FROM (
+			VALUES
+				${colorPatchValues}
+		) AS v(code, patch)
+		WHERE t.code = v.code;
 	`);
 });

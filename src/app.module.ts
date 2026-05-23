@@ -12,6 +12,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
+import { PermissionsGuard } from './modules/auth/protocols/jwt/guards/permissions.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
 import { AuthModule } from './modules/auth/auth.module';
 
@@ -46,6 +47,8 @@ import { TypeModule } from './modules/core/types/types.module';
 import { ProjectEvaluatorModule } from './modules/evaluation/project-evaluators/project-evaluators.module';
 import { ProjectStudentModule } from './modules/evaluation/project-students/project-students.module';
 import { ProjectModule } from './modules/evaluation/projects/projects.module';
+import { ProjectPortfolioModule } from './modules/evaluation/project-portfolios/project-portfolios.module';
+import { RubricOutcomeCriteriaModule } from './modules/evaluation/rubric-outcome-criterias/rubric-outcome-criterias.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
@@ -60,9 +63,9 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
+import { StatusModule } from './modules/ifc/statuses/statuses.module';
 import { NotificationConfigModule } from './modules/ifc/notification-configs/notification-configs.module';
 import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
-import { StatusModule } from './modules/ifc/statuses/statuses.module';
 
 //IMPROVEMENT MODULES
 import { ActionModule } from './modules/improvement/actions/actions.module';
@@ -80,12 +83,20 @@ import { FacultyModule } from './modules/organization/faculties/faculties.module
 import { SchoolModule } from './modules/organization/schools/schools.module';
 import { StaffModule } from './modules/organization/staff/staff.module';
 import { UserModule } from './modules/organization/users/users.module';
+import { OrgScopeModule } from './modules/organization/org-scope/org-scope.module';
 
 //SURVEY MODULES
 import { NotificationMessageModule } from './modules/survey/notification-messages/notification-messages.module';
 import { NotificationModule } from './modules/survey/notifications/notifications.module';
 import { OutcomeConfigModule } from './modules/survey/outcome-configs/outcome-configs.module';
 import { ScoreModule } from './modules/survey/scores/scores.module';
+import { AcceptanceLevelsModule } from './modules/survey/acceptance-levels/acceptance-levels.module';
+import { PppModule } from './modules/survey/ppp/ppp.module';
+import { GraModule } from './modules/survey/gra/gra.module';
+import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
+
+//STORAGE MODULES
+import { S3Module } from './modules/storage/s3/s3.module';
 
 @Module({
 	imports: [
@@ -117,7 +128,7 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 				username: configService.get<string>('DB_USER'),
 				password: configService.get<string>('DB_PASSWORD'),
 				database: configService.get<string>('DB_NAME'),
-				ssl: (configService.get<string>('DB_SSL') ?? 'false').toLowerCase() === 'true' ? { rejectUnauthorized: false } : false,
+				ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
 				synchronize: false,
 				entities: [__dirname + '/**/*.entity{.ts,.js}'],
 				timezone: 'Z',
@@ -133,7 +144,6 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		}),
 
 		/* MODULES */
-		AuthModule,
 		UserModule,
 		AcademicPeriodModule,
 		CourseOutcomeMappingModule,
@@ -165,10 +175,11 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		InstrumentModule,
 		StudentCourseOutcomeGradeModule,
 		SurveyModule,
+		AuthModule,
 		IfcFindingModule,
+		StatusModule,
 		NotificationConfigModule,
 		NotificationLogModule,
-		StatusModule,
 		ActionModule,
 		FindingActionModule,
 		FindingOutcomeModule,
@@ -181,13 +192,20 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		FacultyModule,
 		SchoolModule,
 		StaffModule,
+		OrgScopeModule,
 		NotificationMessageModule,
 		NotificationModule,
 		OutcomeConfigModule,
 		ScoreModule,
+		AcceptanceLevelsModule,
+		PppModule,
+		GraModule,
+		LcfcModule,
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,
+		ProjectPortfolioModule,
+		S3Module,
 	],
 	controllers: [AppController],
 	providers: [
@@ -196,6 +214,10 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 		{
 			provide: APP_GUARD,
 			useClass: JwtAuthGuard,
+		},
+		{
+			provide: APP_GUARD,
+			useClass: PermissionsGuard,
 		},
 	],
 })
