@@ -99,12 +99,17 @@ export class PatchIfcFindingDto {
 
 // --- Response: GET /get-by-id/:id ------------------------------------------
 
+export class IfcFindingActionCompletenessDto {
+	@ApiProperty() code: string;
+	@ApiProperty({ type: Object }) name: I18nText;
+	@ApiProperty({ nullable: true, example: '#10B981' }) color: string | null;
+}
+
 export class IfcFindingActionDetailDto {
 	@ApiProperty() id: number;
 	@ApiProperty() action_code: string;
 	@ApiProperty({ type: Object }) description: I18nText;
-	@ApiProperty() completeness_code: string;
-	@ApiProperty({ type: Object }) completeness_name: I18nText;
+	@ApiProperty({ type: () => IfcFindingActionCompletenessDto }) completeness: IfcFindingActionCompletenessDto;
 }
 
 export class IfcFindingCriticalityDto {

@@ -248,13 +248,18 @@ export class IfcFindingOutcomeDto extends IfcOutcomeItemDto {
 	@ApiProperty({ type: Object }) commission: { code: string; name: I18nText };
 }
 
+export class IfcCompletenessDto {
+	@ApiProperty() code: string;
+	@ApiProperty({ type: Object }) name: I18nText;
+	@ApiProperty({ nullable: true, example: '#10B981' }) color: string | null;
+}
+
 export class IfcFindingActionDto {
 	@ApiProperty() id: number;
 	@ApiProperty() code: string;
 	@ApiProperty({ type: Object }) description: I18nText;
 	@ApiProperty() correlative: number;
-	@ApiProperty() completeness_code: string;
-	@ApiProperty({ type: Object }) completeness_name: I18nText;
+	@ApiProperty({ type: () => IfcCompletenessDto }) completeness: IfcCompletenessDto;
 }
 
 export class IfcFindingDto {

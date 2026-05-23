@@ -100,7 +100,16 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				description: row.description,
 				criticality: { code: row.criticality_code, name: row.criticality_name, color: row.criticality_color ?? null },
 			},
-			actions: actionRows,
+			actions: actionRows.map((a: any) => ({
+				id: Number(a.id),
+				action_code: a.action_code,
+				description: a.description,
+				completeness: {
+					code: a.completeness_code,
+					name: a.completeness_name,
+					color: a.completeness_color ?? null,
+				},
+			})),
 		};
 	}
 
@@ -256,7 +265,8 @@ SELECT
 		|| '-' || a.correlative::text                        AS action_code,
 	a.description                                            AS description,
 	CASE WHEN fa.evidences IS NULL THEN $3 ELSE $4 END       AS completeness_code,
-	comp.name                                                AS completeness_name
+	comp.name                                                AS completeness_name,
+	(comp.extra->>'color')                                   AS completeness_color
 FROM improvement.finding_actions fa
 JOIN improvement.actions  a      ON a.id    = fa.action_id
 JOIN improvement.findings f      ON f.id    = fa.finding_id

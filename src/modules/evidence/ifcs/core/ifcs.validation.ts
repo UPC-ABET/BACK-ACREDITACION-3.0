@@ -196,6 +196,28 @@ export class IfcValidation {
 		}
 	}
 
+	static assertFindingsAndActionsPresent(findings: { tempId: string }[], actions: { finding_temp_id: string }[], op: IfcOp) {
+		const errors: string[] = [];
+
+		if (!findings || findings.length === 0) {
+			errors.push(ifcsValidationStrings.error.findingsRequired);
+		} else {
+			const actionsByFinding = new Set((actions ?? []).map((a) => a.finding_temp_id));
+			const orphanFinding = findings.find((f) => !actionsByFinding.has(f.tempId));
+			if (orphanFinding) errors.push(ifcsValidationStrings.error.actionsRequiredPerFinding);
+		}
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result[`${op}Failed`],
+					errors,
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
 	static assertFindingTempIdResolved(realId: number | undefined, op: IfcOp) {
 		if (realId === undefined) {
 			throw new HttpException(
