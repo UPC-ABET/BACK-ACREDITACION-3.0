@@ -10,6 +10,8 @@ import {
 	GetSurveyByTokenDto,
 	CompleteGraSurveyDto,
 	DashboardGraDto,
+	ReplicateGraConfigDto,
+	ListGraSurveyOutcomesDto,
 } from '../../model/gra.dtos';
 
 const cfg = graRoutes;
@@ -24,6 +26,7 @@ export const SwaggerGraConfigGetById = () => HttpMethodWithSwagger({ ...cfg.conf
 export const SwaggerGraConfigUpdate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.update, body: UpdateGraConfigDto, params: [{ name: 'id', description: 'ID de la configuración GRA', type: Number }] });
 export const SwaggerGraConfigDelete = () => HttpMethodWithSwagger({ ...cfg.config.delete, params: [{ name: 'id', description: 'ID de la configuración GRA', type: Number }] });
+export const SwaggerGraConfigReplicate = () => HttpMethodWithSwagger({ ...cfg.config.replicate, body: ReplicateGraConfigDto });
 
 // ── NOTIFICATION ──
 export const SwaggerGraNotificationSave = () => HttpMethodWithSwagger({ ...cfg.notification.save, body: SaveGraNotificationDto });
@@ -39,6 +42,9 @@ export const SwaggerGraTokenValidate = () => HttpMethodWithSwagger({ ...cfg.toke
 // ── SURVEY ──
 export const SwaggerGraSurveyGetByToken = () => HttpMethodWithSwagger({ ...cfg.survey.getByToken, body: GetSurveyByTokenDto });
 export const SwaggerGraSurveyComplete = () => HttpMethodWithSwagger({ ...cfg.survey.complete, body: CompleteGraSurveyDto });
+
+// ── OUTCOMES ──
+export const SwaggerGraOutcomesList = () => HttpMethodWithSwagger({ ...cfg.outcomes.list, body: ListGraSurveyOutcomesDto });
 
 // ── DASHBOARD ──
 export const SwaggerGraDashboard = () => HttpMethodWithSwagger({ ...cfg.dashboard.get, body: DashboardGraDto });

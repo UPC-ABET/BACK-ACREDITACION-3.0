@@ -58,7 +58,7 @@ export class UserController extends BaseController<UserService> {
 	@Public()
 	@SwaggerUserLoginByCredentials()
 	async loginByCredentials(@Body() dto: LoginUserByCredentialsDto, @Res({ passthrough: true }) res: Response) {
-		const result = await this.service.loginByCredentials(dto.school_code, dto.email, dto.password);
+		const result = await this.service.loginByCredentials(dto.email, dto.password);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}
@@ -71,7 +71,7 @@ export class UserController extends BaseController<UserService> {
 
 	@SwaggerUserChangeRole()
 	async changeRole(@Body() dto: ChangeRoleDto, @Req() req, @Res({ passthrough: true }) res: Response) {
-		const result = await this.service.loginById(req.user.userId, dto.newRole, req.user.school_id);
+		const result = await this.service.loginById(req.user.userId, dto.newRole);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}

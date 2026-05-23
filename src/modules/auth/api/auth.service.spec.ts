@@ -4,12 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
+import { MailService } from 'src/modules/mail/mail.service';
 
-describe('AuthService — school-aware MSAL', () => {
+describe('AuthService — MSAL login', () => {
 	let service: AuthService;
 	let userService: { getUser: jest.Mock; createUserLogin: jest.Mock };
 	let schoolRepository: { findOneByCondition: jest.Mock };
 	const configService = { get: jest.fn() } as unknown as ConfigService;
+	const mailService = { sendPasswordResetEmail: jest.fn() } as unknown as MailService;
 
 	beforeEach(() => {
 		userService = {
@@ -20,7 +22,7 @@ describe('AuthService — school-aware MSAL', () => {
 			findOneByCondition: jest.fn(),
 		};
 
-		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository);
+		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository, mailService);
 	});
 
 	describe('resolveSchoolIdByCode', () => {
@@ -48,7 +50,7 @@ describe('AuthService — school-aware MSAL', () => {
 	});
 
 	describe('loginWithMicrosoftCode', () => {
-		it('forwards the supplied school_id through to createUserLogin', async () => {
+		it('calls createUserLogin with the user and null password', async () => {
 			const fakeUser = { id: 99, email: 'jane.doe@example.com', is_admin: true };
 			const acquireSpy = jest.spyOn(service as unknown as { acquireMicrosoftTokenByCode: jest.Mock }, 'acquireMicrosoftTokenByCode').mockResolvedValueOnce({
 				idTokenClaims: { email: 'jane.doe@example.com', name: 'Jane Doe' },
@@ -61,7 +63,7 @@ describe('AuthService — school-aware MSAL', () => {
 
 			expect(acquireSpy).toHaveBeenCalledWith('auth-code');
 			expect(userService.getUser).toHaveBeenCalledWith(null, 'jane.doe@example.com');
-			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null, undefined, 42);
+			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null);
 			expect(result).toEqual({
 				user: fakeUser,
 				microsoft_profile: { email: 'jane.doe@example.com', name: 'Jane Doe' },

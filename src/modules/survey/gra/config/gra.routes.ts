@@ -8,6 +8,7 @@ export const graRoutes = {
 		getById: { method: 'GET', route: 'config/get-by-id/:id', summary: 'Obtener configuración GRA por ID' },
 		update: { method: 'PUT', route: 'config/update/:id', summary: 'Actualizar configuración GRA' },
 		delete: { method: 'DELETE', route: 'config/delete/:id', summary: 'Eliminar configuración GRA' },
+		replicate: { method: 'POST', route: 'config/replicate', summary: 'Replicar configuraciones GRA del período anterior (incluye niveles de aceptación)' },
 	},
 	notification: {
 		save: { method: 'POST', route: 'notification/save', summary: 'Agregar estudiante a lista de encuesta GRA' },
@@ -23,6 +24,9 @@ export const graRoutes = {
 	survey: {
 		getByToken: { method: 'POST', route: 'survey/get-by-token', summary: 'Obtener formulario de encuesta GRA por token' },
 		complete: { method: 'POST', route: 'survey/complete', summary: 'Completar y enviar encuesta GRA' },
+	},
+	outcomes: {
+		list: { method: 'POST', route: 'outcomes/list', summary: 'Listar outcomes disponibles agrupados por comisión (para selector de competencias GRA)' },
 	},
 	dashboard: {
 		get: { method: 'POST', route: 'dashboard', summary: 'Dashboard de progreso de encuestas GRA' },

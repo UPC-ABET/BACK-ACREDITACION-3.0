@@ -167,7 +167,7 @@ export class PppSurveyService {
 			const scores: { outcome_id: number; score: number }[] = [];
 			configs.forEach((config, idx) => {
 				const colName = `Competencia ${idx + 1}`;
-				const altColName = config.user_outcome_name;
+				const altColName = config.user_outcome_name as unknown as string;
 				const rawScore = row[colName] ?? row[altColName] ?? null;
 				const score = rawScore !== null ? parseFloat(String(rawScore)) : null;
 

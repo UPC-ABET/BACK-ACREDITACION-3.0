@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PppConfigRepository, PPP_SURVEY_TYPE } from '../core/ppp-config.repository';
+import { AcceptanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
 import { PppValidation } from '../core/ppp.validation';
 import { CreatePppConfigDto, UpdatePppConfigDto, FilterPppConfigDto, ReplicatePppConfigDto } from '../model/ppp.dtos';
 
 @Injectable()
 export class PppConfigService {
-	constructor(private readonly configRepo: PppConfigRepository) {}
+	constructor(
+		private readonly configRepo: PppConfigRepository,
+		private readonly acceptanceLevelService: AcceptanceLevelService,
+	) {}
 
 	async create(dto: CreatePppConfigDto) {
 		await PppValidation.validateCreateConfig(this.configRepo, dto);
@@ -66,12 +70,10 @@ export class PppConfigService {
 
 	async delete(id: number) {
 		await PppValidation.validateDeleteConfig(this.configRepo, id);
-		// Soft-delete: mark inactive
 		return await this.configRepo.update(id, { is_active: false });
 	}
 
 	async replicate(dto: ReplicatePppConfigDto) {
-		// Fetch source period configs
 		const sourceConfigs = await this.configRepo.findAllPpp({
 			academic_period_id: dto.source_academic_period_id,
 			...(dto.program_id && { program_id: dto.program_id }),
@@ -79,37 +81,41 @@ export class PppConfigService {
 		});
 
 		if (sourceConfigs.length === 0) {
-			return { replicated: 0, message: 'No se encontraron configuraciones en el período origen' };
+			return { replicated_configs: 0, replicated_levels: 0, message: 'No se encontraron configuraciones en el período origen' };
 		}
 
-		let replicated = 0;
+		let replicatedConfigs = 0;
 		for (const config of sourceConfigs) {
 			const sourceExtra = (config.extra as Record<string, any>) ?? {};
-
 			const alreadyExists = await this.configRepo.existsPpp(config.outcome_id, sourceExtra.program_id, dto.target_academic_period_id);
-
 			if (alreadyExists) continue;
-
-			const newExtra = {
-				...sourceExtra,
-				academic_period_id: dto.target_academic_period_id,
-			};
 
 			await this.configRepo.create({
 				outcome_id: config.outcome_id,
 				user_outcome_name: config.user_outcome_name,
 				user_outcome_description: config.user_outcome_description,
-				extra: newExtra,
+				extra: { ...sourceExtra, academic_period_id: dto.target_academic_period_id },
 				is_active: true,
 			});
+			replicatedConfigs++;
+		}
 
-			replicated++;
+		// Copiar niveles de aceptación del período anterior al nuevo
+		const pppTypeId = await this.configRepo.findSurveyTypeIdByCode(PPP_SURVEY_TYPE);
+		let replicatedLevels = 0;
+		if (pppTypeId) {
+			replicatedLevels = await this.acceptanceLevelService.copyFromPeriod({
+				survey_type_id: pppTypeId,
+				source_academic_period_id: dto.source_academic_period_id,
+				target_academic_period_id: dto.target_academic_period_id,
+			});
 		}
 
 		return {
-			replicated,
-			total_source: sourceConfigs.length,
-			message: `Se replicaron ${replicated} de ${sourceConfigs.length} configuraciones PPP al período destino`,
+			replicated_configs: replicatedConfigs,
+			total_source_configs: sourceConfigs.length,
+			replicated_levels: replicatedLevels,
+			message: `Se replicaron ${replicatedConfigs} configuraciones PPP y ${replicatedLevels} niveles de aceptación al período destino`,
 		};
 	}
 }

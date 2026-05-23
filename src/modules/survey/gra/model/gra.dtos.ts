@@ -46,6 +46,11 @@ export class CreateGraConfigDto {
 	academic_period_id?: number;
 
 	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 7, description: 'ID de la comisión (WASC, no-WASC, etc.)', required: false })
+	commission_id?: number;
+
+	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, description: 'Visible en la encuesta', required: false })
 	is_visible?: boolean;
@@ -93,6 +98,11 @@ export class UpdateGraConfigDto {
 	academic_period_id?: number;
 
 	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 7, description: 'ID de la comisión', required: false })
+	commission_id?: number;
+
+	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	is_visible?: boolean;
@@ -115,6 +125,11 @@ export class FilterGraConfigDto {
 	academic_period_id?: number;
 
 	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 7, description: 'Filtrar por comisión', required: false })
+	commission_id?: number;
+
+	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
@@ -123,6 +138,39 @@ export class FilterGraConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	is_visible?: boolean;
+}
+
+// ─────────────────────────────────────────────
+// GRA REPLICATE DTO
+// ─────────────────────────────────────────────
+
+export class ReplicateGraConfigDto {
+	@IsNumber()
+	@ApiProperty({ example: 2, description: 'ID del período académico origen (a copiar)' })
+	source_academic_period_id: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 3, description: 'ID del período académico destino (nuevo período)' })
+	target_academic_period_id: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 5, description: 'Filtrar por programa/carrera (opcional)', required: false })
+	program_id?: number;
+}
+
+// ─────────────────────────────────────────────
+// GRA OUTCOMES LISTING DTO
+// ─────────────────────────────────────────────
+
+export class ListGraSurveyOutcomesDto {
+	@IsNumber()
+	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
+	program_id: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 3, description: 'ID del período académico' })
+	academic_period_id: number;
 }
 
 // ─────────────────────────────────────────────

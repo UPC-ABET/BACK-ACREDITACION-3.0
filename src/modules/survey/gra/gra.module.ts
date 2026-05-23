@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
+import { AcceptanceLevelsModule } from 'src/modules/survey/acceptance-levels/acceptance-levels.module';
 import { GraConfigRepository } from './core/gra-config.repository';
 import { GraSurveyRepository } from './core/gra-survey.repository';
 import { GraNotificationRepository } from './core/gra-notification.repository';
@@ -11,7 +12,7 @@ import { GraNotificationService } from './api/gra-notification.service';
 import { GraController } from './api/gra.controller';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity])],
+	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity]), AcceptanceLevelsModule],
 	controllers: [GraController],
 	providers: [GraConfigService, GraNotificationService, GraConfigRepository, GraSurveyRepository, GraNotificationRepository],
 	exports: [GraConfigService, GraNotificationService],

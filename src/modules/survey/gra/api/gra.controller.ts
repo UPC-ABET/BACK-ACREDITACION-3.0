@@ -10,6 +10,7 @@ import {
 	SwaggerGraConfigGetById,
 	SwaggerGraConfigUpdate,
 	SwaggerGraConfigDelete,
+	SwaggerGraConfigReplicate,
 	SwaggerGraNotificationSave,
 	SwaggerGraNotificationListStudents,
 	SwaggerGraNotificationDelete,
@@ -17,6 +18,7 @@ import {
 	SwaggerGraTokenValidate,
 	SwaggerGraSurveyGetByToken,
 	SwaggerGraSurveyComplete,
+	SwaggerGraOutcomesList,
 	SwaggerGraDashboard,
 } from './docs/gra.swagger';
 import {
@@ -29,6 +31,8 @@ import {
 	GetSurveyByTokenDto,
 	CompleteGraSurveyDto,
 	DashboardGraDto,
+	ReplicateGraConfigDto,
+	ListGraSurveyOutcomesDto,
 } from '../model/gra.dtos';
 
 @SwaggerGraController()
@@ -68,6 +72,11 @@ export class GraController {
 	@SwaggerGraConfigDelete()
 	async configDelete(@Param('id') id: number) {
 		return parseSuccessResponse(await this.configService.delete(Number(id)));
+	}
+
+	@SwaggerGraConfigReplicate()
+	async configReplicate(@Body() dto: ReplicateGraConfigDto) {
+		return parseSuccessResponse(await this.configService.replicate(dto));
 	}
 
 	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────
@@ -111,6 +120,13 @@ export class GraController {
 	@SwaggerGraSurveyComplete()
 	async surveyComplete(@Body() dto: CompleteGraSurveyDto) {
 		return parseSuccessResponse(await this.notifService.completeSurvey(dto));
+	}
+
+	// ── OUTCOMES ENDPOINTS ────────────────────────────────────────────
+
+	@SwaggerGraOutcomesList()
+	async outcomesList(@Body() dto: ListGraSurveyOutcomesDto) {
+		return parseSuccessResponse(await this.configService.listOutcomesForSurvey(dto));
 	}
 
 	// ── DASHBOARD ENDPOINTS ───────────────────────────────────────────

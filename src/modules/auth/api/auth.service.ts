@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticationResult, ConfidentialClientApplication, Configuration } from '@azure/msal-node';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { MailService } from 'src/modules/mail/mail.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
@@ -54,7 +54,7 @@ export class AuthService {
 		const email = this.getEmailFromResult(tokenResponse, claims);
 		const user = await this.userService.getUser(null, email);
 
-		const accessToken = await this.userService.createUserLogin(user, null, undefined, school_id);
+		const accessToken = await this.userService.createUserLogin(user, null);
 
 		return {
 			user,

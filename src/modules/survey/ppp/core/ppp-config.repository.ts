@@ -56,6 +56,16 @@ export class PppConfigRepository extends BaseRepostitory {
 		}
 	}
 
+	async findSurveyTypeIdByCode(code: string): Promise<number | null> {
+		const { queryRunner } = await this.getRepository();
+		try {
+			const result = await queryRunner.manager.query(`SELECT id FROM core.types WHERE code = $1 AND is_active = true LIMIT 1`, [code]);
+			return result?.[0]?.id ?? null;
+		} finally {
+			await queryRunner.release();
+		}
+	}
+
 	async existsPpp(outcome_id: number, program_id?: number, academic_period_id?: number): Promise<boolean> {
 		const { repository, queryRunner } = await this.getRepository();
 		try {

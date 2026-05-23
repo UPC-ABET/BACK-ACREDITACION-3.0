@@ -179,7 +179,12 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		],
 		// CC101 finding (2025001) → 2 actions. First has evidences=NULL → derived PENDING; second has evidences set → derived IMPLEMENTED.
 		[2025001, i18n('Disenar bateria de ejercicios algoritmicos remediadores.', 'Design a remedial algorithmic exercise battery.'), true, null],
-		[2025001, i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'), true, i18n('Plan piloto ejecutado en dos secciones.', 'Pilot plan executed in two sections.')],
+		[
+			2025001,
+			i18n('Implementar revisiones por pares en laboratorios de CC101.', 'Implement peer reviews in CC101 labs.'),
+			true,
+			i18n('Plan piloto ejecutado en dos secciones.', 'Pilot plan executed in two sections.'),
+		],
 		// Previous-action demo: finding 2026801 (Proyecto Integrador @ AP_2026_1) → both prior actions.
 		// First stays PENDING (no evidences); second is IMPLEMENTED with evidence text.
 		[2026801, i18n('Accion previa: ajustar rubricas del proyecto integrador.', 'Previous action: adjust integrator project rubrics.'), false, null],
@@ -196,12 +201,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			false,
 			i18n('Banco de ejercicios refactorizado y publicado en el aula virtual.', 'Exercise bank refactored and published in the virtual classroom.'),
 		],
-		[
-			2026901,
-			i18n('Accion previa: incorporar checkpoints semanales en CC101.', 'Previous action: add weekly checkpoints to CC101.'),
-			false,
-			null,
-		],
+		[2026901, i18n('Accion previa: incorporar checkpoints semanales en CC101.', 'Previous action: add weekly checkpoints to CC101.'), false, null],
 		// CC102 → 1 action IMPLEMENTED.
 		[
 			2026902,
@@ -210,12 +210,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			i18n('Taller de seguridad SQL ejecutado con 24 estudiantes.', 'SQL security workshop run with 24 students.'),
 		],
 		// CC103 → 1 action PENDING (visible on prefill since CC103 has no IFC in 202601).
-		[
-			2026903,
-			i18n('Accion previa: incorporar catalogo de patrones de diseno en CC103.', 'Previous action: add a design-patterns catalog to CC103.'),
-			false,
-			null,
-		],
+		[2026903, i18n('Accion previa: incorporar catalogo de patrones de diseno en CC103.', 'Previous action: add a design-patterns catalog to CC103.'), false, null],
 	]
 		.map(([fc, desc, ipr, ev]) => `(${fc}, '${desc}'::jsonb, ${ipr}, ${ev === null ? 'NULL' : `'${ev}'::jsonb`})`)
 		.join(',\n\t\t\t');
