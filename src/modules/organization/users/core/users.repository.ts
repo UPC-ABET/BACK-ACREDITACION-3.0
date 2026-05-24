@@ -13,11 +13,6 @@ export class UserRepository extends BaseRepostitory {
 	}
 
 	async findForLogin(email: string): Promise<UserEntity | null> {
-		const { repository, queryRunner } = await this.getRepository();
-		try {
-			return await repository.createQueryBuilder('user').addSelect('user.password').where('user.email = :email', { email }).andWhere('user.is_active = :active', { active: 1 }).getOne();
-		} finally {
-			await queryRunner.release();
-		}
+		return await this.repository.createQueryBuilder('user').addSelect('user.password').where('user.email = :email', { email }).andWhere('user.is_active = :active', { active: 1 }).getOne();
 	}
 }

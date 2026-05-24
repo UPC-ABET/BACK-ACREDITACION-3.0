@@ -48,7 +48,6 @@ import { TypeModule } from './modules/core/types/types.module';
 import { ProjectEvaluatorModule } from './modules/evaluation/project-evaluators/project-evaluators.module';
 import { ProjectStudentModule } from './modules/evaluation/project-students/project-students.module';
 import { ProjectModule } from './modules/evaluation/projects/projects.module';
-import { ProjectPortfolioModule } from './modules/evaluation/project-portfolios/project-portfolios.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
@@ -94,9 +93,6 @@ import { AcceptanceLevelsModule } from './modules/survey/acceptance-levels/accep
 import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
 import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
-
-//STORAGE MODULES
-import { S3Module } from './modules/storage/s3/s3.module';
 
 @Module({
 	imports: [
@@ -203,8 +199,6 @@ import { S3Module } from './modules/storage/s3/s3.module';
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,
-		ProjectPortfolioModule,
-		S3Module,
 	],
 	controllers: [AppController],
 	providers: [

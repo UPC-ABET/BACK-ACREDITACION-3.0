@@ -15,33 +15,18 @@ export class PppScoreRepository extends BaseRepostitory {
 	}
 
 	async findBySurveyId(surveyId: number): Promise<ScoreEntity[]> {
-		const { repository, queryRunner } = await this.getRepository();
-		try {
-			return await repository.find({
-				where: { survey_id: surveyId },
-				relations: ['outcome'],
-			});
-		} finally {
-			await queryRunner.release();
-		}
+		return await this.repository.find({
+			where: { survey_id: surveyId },
+			relations: ['outcome'],
+		});
 	}
 
 	async deleteBySurveyId(surveyId: number): Promise<void> {
-		const { repository, queryRunner } = await this.getRepository();
-		try {
-			await repository.delete({ survey_id: surveyId });
-		} finally {
-			await queryRunner.release();
-		}
+		await this.repository.delete({ survey_id: surveyId });
 	}
 
 	async bulkCreate(scores: { survey_id: number; outcome_id: number; score: number; commentaries?: string }[]): Promise<ScoreEntity[]> {
-		const { repository, queryRunner } = await this.getRepository();
-		try {
-			const entities = scores.map((s) => repository.create(s));
-			return await repository.save(entities);
-		} finally {
-			await queryRunner.release();
-		}
+		const entities = scores.map((s) => this.repository.create(s));
+		return await this.repository.save(entities);
 	}
 }
