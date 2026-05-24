@@ -32,7 +32,10 @@ export class ProjectController extends BaseController<ProjectService> {
 
 	@Post('create-full')
 	async createProjectFull(@Body() dto: CreateProjectDto) {
-		return parseSuccessResponse(await this.projectConfigService.createProject(dto), HttpStatus.CREATED);
+		return parseSuccessResponse(
+			await this.projectConfigService.createProject(dto),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@Get('professor/:professorId')
