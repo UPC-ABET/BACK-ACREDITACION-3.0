@@ -31,6 +31,7 @@ export function HttpMethodWithSwagger(data: {
 	method: string;
 	route: string;
 	summary: string;
+	status?: number;
 	s200?: string;
 	s400?: string;
 	s500?: string;
@@ -41,6 +42,11 @@ export function HttpMethodWithSwagger(data: {
 	responseType?: any;
 	produces?: string;
 }) {
+	const successStatus = data.status ?? (data.method === 'POST' ? 201 : 200);
+	const defaultDescription =
+		successStatus === 201
+			? strings_swagger.status_response.s201
+			: strings_swagger.status_response.s200;
 	const paramDecorators = !data.params
 		? []
 		: data.params.map((param) =>
@@ -60,11 +66,11 @@ export function HttpMethodWithSwagger(data: {
 	const producesDecorator = data.produces ? [ApiProduces(data.produces)] : [];
 	const responseDecorator = data.responseType
 		? ApiResponse({
-				status: 200,
-				description: data.s200 ?? strings_swagger.status_response.s200,
+				status: successStatus,
+				description: data.s200 ?? defaultDescription,
 				type: data.responseType,
 			})
-		: ApiResponse({ status: 200, description: data.s200 ?? strings_swagger.status_response.s200 });
+		: ApiResponse({ status: successStatus, description: data.s200 ?? defaultDescription });
 	return applyDecorators(
 		methodDecorators[data.method](data.route),
 		ApiOperation({ summary: data.summary }),

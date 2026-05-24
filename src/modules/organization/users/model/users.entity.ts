@@ -1,4 +1,5 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { BaseEntity } from 'src/commons/base.entity';
 import {
 	NameColumn,
@@ -32,6 +33,7 @@ export class UserEntity extends BaseEntity {
 	@NameColumn()
 	phone: string;
 
+	@Exclude()
 	@PasswordColumn({ nullable: false })
 	password: string;
 

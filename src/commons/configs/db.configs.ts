@@ -310,8 +310,8 @@ export function DateColumn(options?: BaseOptions): PropertyDecorator {
 }
 // 🔥 JSON (PostgreSQL) ---> DEFAULT TRUE
 export function JsonColumn(options?: BaseOptions): PropertyDecorator {
-	const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
 	return (target, propertyKey) => {
+		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
 		applyColumn(
 			target,
 			propertyKey,

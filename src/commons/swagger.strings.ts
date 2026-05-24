@@ -5,6 +5,7 @@ export const strings_swagger = {
 	},
 	status_response: {
 		s200: 'Operación exitosa',
+		s201: 'Recurso creado exitosamente',
 		s400: 'Solicitud incorrecta',
 		s500: 'Error interno del servidor',
 	},

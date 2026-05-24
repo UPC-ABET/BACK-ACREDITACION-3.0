@@ -139,9 +139,9 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 				timezone: 'Z',
 				logging: ['error'],
 				extra: {
-					max: configService.get<number>('DB_POOL_MAX', 10),
-					idleTimeoutMillis: configService.get<number>('DB_POOL_IDLE_TIMEOUT', 30000),
-					connectionTimeoutMillis: configService.get<number>('DB_POOL_CONN_TIMEOUT', 5000),
+					max: configService.get<number>('DB_POOL_MAX'),
+					idleTimeoutMillis: configService.get<number>('DB_POOL_IDLE_TIMEOUT'),
+					connectionTimeoutMillis: configService.get<number>('DB_POOL_CONN_TIMEOUT'),
 					keepAlive: true,
 				},
 			}),

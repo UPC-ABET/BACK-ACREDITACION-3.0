@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { BaseService } from './base.service';
 import { parseSuccessResponse } from '../libs/global.functions';
 
@@ -5,7 +6,7 @@ export class BaseController<S extends BaseService<any>> {
 	constructor(private readonly baseService: S) {}
 
 	async create(data: any) {
-		return parseSuccessResponse(await this.baseService.create(data));
+		return parseSuccessResponse(await this.baseService.create(data), HttpStatus.CREATED);
 	}
 	async update(id: number, data: any) {
 		return parseSuccessResponse(await this.baseService.update(id, data));
