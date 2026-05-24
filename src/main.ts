@@ -11,7 +11,10 @@ async function bootstrap() {
 		logger: ['error', 'warn'], // 👈 solo errores y warnings
 	});
 	const configService = app.get(ConfigService);
-	const port = configService.get<number>('APP_PORT') ?? 7777;
+	const port = configService.get<number>('APP_PORT');
+	if (!port) {
+		throw new Error('APP_PORT environment variable must be set');
+	}
 
 	app.setGlobalPrefix('api'); // 🔥 ESTA ES LA CLAVE
 

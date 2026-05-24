@@ -1,11 +1,11 @@
 import { Column, Index, ColumnOptions } from 'typeorm';
 
 // %%  🔥 LENGTHS (centralizados)
-export const DB_LENGTH_EMAIL = 500;
-export const DB_LENGTH_NAME = 1000;
+export const DB_LENGTH_EMAIL = 254;
+export const DB_LENGTH_NAME = 255;
 export const DB_LENGTH_CODE = 50;
-export const DB_LENGTH_PHONE = 50;
-export const DB_LENGTH_PASSWORD = 1000;
+export const DB_LENGTH_PHONE = 20;
+export const DB_LENGTH_PASSWORD = 255;
 
 export const DB_LENGTH_TEXT_SHORT = 100;
 export const DB_LENGTH_TEXT_MEDIUM = 1000;
@@ -14,7 +14,7 @@ export const DB_LENGTH_TEXT_LARGE = 5000;
 export const DB_PRECISION_DECIMAL = 12;
 export const DB_SCALE_DECIMAL = 6;
 
-export const DB_DEFAULT_EMAIL = 'mi@correo.com';
+export const DB_DEFAULT_EMAIL = null;
 export const DB_DEFAULT_NAME = '';
 export const DB_DEFAULT_PHONE = '-';
 export const DB_DEFAULT_TEXT = '';
