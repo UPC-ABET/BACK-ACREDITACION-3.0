@@ -67,16 +67,16 @@ school_check AS (
 	  AND c_school.entity_code = $2
 ),
 chain_up AS (
-	SELECT id, root_chart_detail_id, staff_id
+	SELECT id, root_chart_detail_id, staff_id, 1 AS depth
 	FROM organization.charts
 	WHERE id = (SELECT id FROM course_chart) AND is_active = true
 
 	UNION ALL
 
-	SELECT c.id, c.root_chart_detail_id, c.staff_id
+	SELECT c.id, c.root_chart_detail_id, c.staff_id, cu.depth + 1
 	FROM organization.charts c
 	JOIN chain_up cu ON c.id = cu.root_chart_detail_id
-	WHERE c.is_active = true
+	WHERE c.is_active = true AND cu.depth < 20
 ),
 requester_staff AS (
 	SELECT s.id AS staff_id
