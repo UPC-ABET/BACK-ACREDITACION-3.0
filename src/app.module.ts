@@ -5,6 +5,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { EncryptModule } from './libs/encrypt.module';
 
 /* =========================
  * AUTH
@@ -101,6 +102,8 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		ConfigModule.forRoot({
 			isGlobal: true,
 		}),
+
+		EncryptModule,
 
 		CacheModule.register({
 			isGlobal: true,
