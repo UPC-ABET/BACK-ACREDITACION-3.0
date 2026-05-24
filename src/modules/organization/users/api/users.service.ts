@@ -25,14 +25,11 @@ export class UserService extends BaseService<UserRepository> {
 	async signJWTWithAuthorization(
 		user: any,
 		authorization: AuthorizationProfile,
-		school_id: number | null = null,
+		school_id: number,
 	): Promise<string> {
 		const payload = {
 			userId: user.id,
-			user: this.sanitizeUser(user),
-			activeRole: authorization.activeRole,
-			allowedRoles: authorization.allowedRoles,
-			permissions: authorization.permissions,
+			activeRoleId: authorization.activeRole.id,
 			school_id,
 		};
 
@@ -42,8 +39,8 @@ export class UserService extends BaseService<UserRepository> {
 	async createUserLogin(
 		user: any,
 		passToValidate: string | null,
-		activeRoleId?: number,
-		school_id: number | null = null,
+		activeRoleId: number | undefined,
+		school_id: number,
 	): Promise<string> {
 		if (!user) {
 			throw new UnauthorizedException('Credenciales invÃ¡lidas');
@@ -79,7 +76,7 @@ export class UserService extends BaseService<UserRepository> {
 		return null;
 	}
 
-	async loginById(user_id: number, activeRoleId?: number, school_id: number | null = null) {
+	async loginById(user_id: number, activeRoleId: number | undefined, school_id: number) {
 		const user = await this.getUser(user_id);
 		const accessToken = await this.createUserLogin(user, null, activeRoleId, school_id);
 

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 
@@ -99,6 +100,12 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		/* CONFIG */
 		ConfigModule.forRoot({
 			isGlobal: true,
+		}),
+
+		CacheModule.register({
+			isGlobal: true,
+			ttl: 30_000,
+			max: 1000,
 		}),
 
 		PassportModule.register({ defaultStrategy: 'jwt' }),

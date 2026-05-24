@@ -74,7 +74,7 @@ describe('UserService - school-aware login', () => {
 			expect(jwtService.sign).not.toHaveBeenCalled();
 		});
 
-		it('resolves school and signs a JWT carrying local roles, permissions and school.id', async () => {
+		it('resolves school and signs a slim JWT with userId, activeRoleId, and school_id', async () => {
 			schoolRepository.findOneByCondition.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
@@ -96,15 +96,11 @@ describe('UserService - school-aware login', () => {
 			);
 
 			const payload = jwtService.sign.mock.calls[0][0];
-			expect(payload).toMatchObject({
+			expect(payload).toEqual({
 				userId: baseUser.id,
-				user: { id: baseUser.id, email: baseUser.email, is_admin: true },
-				activeRole: authorizationProfile.activeRole,
-				allowedRoles: authorizationProfile.allowedRoles,
-				permissions: authorizationProfile.permissions,
+				activeRoleId: authorizationProfile.activeRole.id,
 				school_id: 7,
 			});
-			expect(payload.user.password).toBeUndefined();
 		});
 
 		it('throws UnauthorizedException when password is wrong', async () => {
@@ -123,24 +119,15 @@ describe('UserService - school-aware login', () => {
 	});
 
 	describe('signJWTWithAuthorization', () => {
-		it('includes the supplied school_id in the signed payload', async () => {
+		it('signs a slim payload with only userId, activeRoleId, and school_id', async () => {
 			const token = await service.signJWTWithAuthorization(baseUser, authorizationProfile, 13);
 
 			expect(token).toBe('signed-jwt-token');
-			expect(jwtService.sign).toHaveBeenCalledWith(
-				expect.objectContaining({
-					userId: baseUser.id,
-					activeRole: authorizationProfile.activeRole,
-					allowedRoles: authorizationProfile.allowedRoles,
-					permissions: authorizationProfile.permissions,
-					school_id: 13,
-				}),
-			);
-		});
-
-		it('defaults school_id to null when none is provided', async () => {
-			await service.signJWTWithAuthorization(baseUser, authorizationProfile);
-			expect(jwtService.sign).toHaveBeenCalledWith(expect.objectContaining({ school_id: null }));
+			expect(jwtService.sign).toHaveBeenCalledWith({
+				userId: baseUser.id,
+				activeRoleId: authorizationProfile.activeRole.id,
+				school_id: 13,
+			});
 		});
 
 		it('throws UnauthorizedException when there are no roles', async () => {
@@ -149,14 +136,14 @@ describe('UserService - school-aware login', () => {
 				allowedRoles: [],
 				permissions: [],
 			});
-			await expect(service.createUserLogin(baseUser, null)).rejects.toBeInstanceOf(
+			await expect(service.createUserLogin(baseUser, null, undefined, 1)).rejects.toBeInstanceOf(
 				UnauthorizedException,
 			);
 		});
 	});
 
 	describe('loginById', () => {
-		it('signs a JWT for an existing user', async () => {
+		it('signs a slim JWT for an existing user', async () => {
 			userRepository.findOneByCondition.mockResolvedValueOnce(baseUser);
 
 			const result = await service.loginById(baseUser.id, 2, 99);
@@ -167,9 +154,11 @@ describe('UserService - school-aware login', () => {
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, 2);
-			expect(jwtService.sign).toHaveBeenCalledWith(
-				expect.objectContaining({ school_id: 99, activeRole: authorizationProfile.activeRole }),
-			);
+			expect(jwtService.sign).toHaveBeenCalledWith({
+				userId: baseUser.id,
+				activeRoleId: authorizationProfile.activeRole.id,
+				school_id: 99,
+			});
 		});
 	});
 });

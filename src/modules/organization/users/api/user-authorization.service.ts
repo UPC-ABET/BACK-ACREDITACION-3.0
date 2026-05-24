@@ -1,4 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { DataSource } from 'typeorm';
 import {
 	AuthorizationPermission,
@@ -8,9 +10,25 @@ import {
 
 @Injectable()
 export class UserAuthorizationService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		@Inject(CACHE_MANAGER) private readonly cache: Cache,
+	) {}
 
 	async buildAuthorizationProfile(
+		userId: number,
+		activeRoleId?: number,
+	): Promise<AuthorizationProfile> {
+		const key = `authz:${userId}:${activeRoleId ?? 'default'}`;
+		const cached = await this.cache.get<AuthorizationProfile>(key);
+		if (cached) return cached;
+
+		const profile = await this.computeAuthorizationProfile(userId, activeRoleId);
+		await this.cache.set(key, profile, 30_000);
+		return profile;
+	}
+
+	private async computeAuthorizationProfile(
 		userId: number,
 		activeRoleId?: number,
 	): Promise<AuthorizationProfile> {

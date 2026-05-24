@@ -34,7 +34,7 @@ describe('UserController', () => {
 				httpOnly: true,
 				maxAge: 60 * 60 * 1000,
 				path: '/',
-				sameSite: 'lax',
+				sameSite: 'strict',
 			}),
 		);
 		expect(response.data.user).toEqual(loginResult.user);

@@ -1,15 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Request } from 'express';
 import { getRequiredJwtSecret } from '../jwt.config';
+import { UserAuthorizationService } from 'src/modules/organization/users/api/user-authorization.service';
 
 const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-	constructor(configService: ConfigService) {
+	constructor(
+		configService: ConfigService,
+		private readonly userAuthorizationService: UserAuthorizationService,
+	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -20,15 +24,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 	}
 
-	async validate(payload: any) {
-		return {
-			userId: payload.userId,
-			user: payload.user,
-			activeRole: payload.activeRole,
-			allowedRoles: payload.allowedRoles,
-			permissions: payload.permissions,
-			school_id: payload.school_id,
-		};
+	async validate(payload: { userId: number; activeRoleId?: number; school_id: number }) {
+		try {
+			const profile = await this.userAuthorizationService.buildAuthorizationProfile(
+				Number(payload.userId),
+				payload.activeRoleId,
+			);
+
+			return {
+				userId: payload.userId,
+				activeRole: profile.activeRole,
+				allowedRoles: profile.allowedRoles,
+				permissions: profile.permissions,
+				school_id: payload.school_id,
+			};
+		} catch {
+			throw new UnauthorizedException('Credenciales inválidas');
+		}
 	}
 }
 
