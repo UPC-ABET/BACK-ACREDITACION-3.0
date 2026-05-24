@@ -58,13 +58,8 @@ export class MailService {
 				this.logger.error(
 					'[MAIL DEV REDIRECT] MAIL_DEV_FROM or GAP_SMTP missing — cannot send. Set them in .env.',
 				);
-				console.log(
-					'[MAIL DEV REDIRECT] would have sent To:',
-					data.to,
-					'Cc:',
-					data.cc ?? [],
-					'Subject:',
-					data.subject,
+				this.logger.warn(
+					`[MAIL DEV REDIRECT] would have sent To: ${data.to} Cc: ${(data.cc ?? []).join(',')} Subject: ${data.subject}`,
 				);
 				return { messageId: `dev-skip-${Date.now()}` };
 			}

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +16,8 @@ import {
 
 @Injectable()
 export class LcfcNotificationService {
+	private readonly logger = new Logger(LcfcNotificationService.name);
+
 	constructor(
 		private readonly notifRepo: LcfcNotificationRepository,
 		private readonly surveyRepo: LcfcSurveyRepository,
@@ -440,7 +442,7 @@ export class LcfcNotificationService {
 		opts: { to: string; subject: string; html: string },
 	): Promise<void> {
 		if (!transporter) {
-			console.log(`[LCFC EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
+			this.logger.warn(`[LCFC EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
 			return;
 		}
 

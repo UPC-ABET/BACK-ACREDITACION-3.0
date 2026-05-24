@@ -2,13 +2,13 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, Logger, ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, {
-		logger: ['error', 'warn'], // 👈 solo errores y warnings
+		logger: ['error', 'warn', 'log'],
 	});
 	const configService = app.get(ConfigService);
 	const port = configService.get<number>('APP_PORT');
@@ -81,6 +81,6 @@ async function bootstrap() {
 
 	const url = await app.getUrl();
 
-	console.log(`🚀🚀🚀🚀🚀 API lista y corriendo en ${url} ✅✅✅✅✅`);
+	new Logger('Bootstrap').log(`API running at ${url}`);
 }
 void bootstrap();

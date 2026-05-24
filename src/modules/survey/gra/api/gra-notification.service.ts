@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,6 +19,8 @@ import {
 
 @Injectable()
 export class GraNotificationService {
+	private readonly logger = new Logger(GraNotificationService.name);
+
 	constructor(
 		private readonly notifRepo: GraNotificationRepository,
 		private readonly surveyRepo: GraSurveyRepository,
@@ -410,7 +412,7 @@ export class GraNotificationService {
 	): Promise<void> {
 		if (!transporter) {
 			// Modo simulación: registra en consola en lugar de enviar
-			console.log(`[GRA EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
+			this.logger.warn(`[GRA EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
 			return;
 		}
 

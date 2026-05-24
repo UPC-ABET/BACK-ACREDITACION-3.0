@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -99,16 +99,20 @@ export const PDF_STYLES = `
 
 @Injectable()
 export class PdfRendererService implements OnModuleDestroy {
+	private readonly logger = new Logger(PdfRendererService.name);
 	private browser: PuppeteerBrowser | null = null;
 
 	private async getBrowser(): Promise<PuppeteerBrowser> {
 		if (this.browser && this.browser.connected) return this.browser;
 		const puppeteerMod: any = await import('puppeteer');
 		const puppeteer = puppeteerMod.default ?? puppeteerMod;
+		const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
 		this.browser = await puppeteer.launch({
 			headless: true,
-			args: ['--no-sandbox', '--disable-setuid-sandbox'],
+			...(executablePath ? { executablePath } : {}),
+			args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
 		});
+		this.logger.log(`Chromium launched${executablePath ? ` (executablePath=${executablePath})` : ''}`);
 		return this.browser!;
 	}
 

@@ -213,8 +213,6 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async generatePdfBulk(ifcIds: number[], userId: number, schoolId: number, lang: 'es' | 'en') {
-		// Open: each new Chromium page costs memory; ArrayMaxSize(50) caps worst case.
-		// If load grows, gate with p-limit(3) — see spec §5.3.
 		const payloads = await Promise.all(ifcIds.map((id) => this.getView(id, userId, schoolId)));
 		const nonApproved = payloads.find((p) => p.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED);
 		if (nonApproved) {
@@ -227,11 +225,15 @@ export class IfcService extends BaseService<IfcRepository> {
 			);
 		}
 
+		const pLimitMod = await import('p-limit');
+		const limit = (pLimitMod.default ?? pLimitMod)(3);
 		const files = await Promise.all(
-			payloads.map(async (data) => ({
-				filename: this.buildPdfFilename(data, lang),
-				pdf: await this.pdfRenderer.htmlToPdf(this.buildIfcHtml(data, lang)),
-			})),
+			payloads.map((data) =>
+				limit(async () => ({
+					filename: this.buildPdfFilename(data, lang),
+					pdf: await this.pdfRenderer.htmlToPdf(this.buildIfcHtml(data, lang)),
+				})),
+			),
 		);
 
 		const zip = await this.pdfRenderer.filesToZip(files);
