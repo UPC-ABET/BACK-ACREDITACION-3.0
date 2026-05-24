@@ -22,8 +22,3 @@ export type AuthorizationProfile = {
 	allowedRoles: AuthorizationRole[];
 	permissions: AuthorizationPermission[];
 };
-
-export type AuthContext = AuthorizationProfile & {
-	userId: number;
-	tokenPayload: any;
-};
