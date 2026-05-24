@@ -85,7 +85,11 @@ describe('UserService - school-aware login', () => {
 
 			const result = await service.loginByCredentials('EISCB', baseUser.email, 'plain-password');
 
-			expect(result).toEqual({ user: baseUser, access_token: 'signed-jwt-token' });
+			expect(result).toEqual({
+				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
+				access_token: 'signed-jwt-token',
+			});
+			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, undefined);
 
 			const payload = jwtService.sign.mock.calls[0][0];
@@ -142,7 +146,11 @@ describe('UserService - school-aware login', () => {
 
 			const result = await service.loginById(baseUser.id, 2, 99);
 
-			expect(result).toEqual({ user: baseUser, access_token: 'signed-jwt-token' });
+			expect(result).toEqual({
+				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
+				access_token: 'signed-jwt-token',
+			});
+			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, 2);
 			expect(jwtService.sign).toHaveBeenCalledWith(expect.objectContaining({ school_id: 99, activeRole: authorizationProfile.activeRole }));
 		});

@@ -76,7 +76,7 @@ export class UserService extends BaseService<UserRepository> {
 		const accessToken = await this.createUserLogin(user, null, activeRoleId, school_id);
 
 		return {
-			user,
+			user: this.sanitizeUser(user),
 			access_token: accessToken,
 		};
 	}
@@ -100,7 +100,7 @@ export class UserService extends BaseService<UserRepository> {
 		const accessToken = await this.createUserLogin(user, password, activeRoleId, school.id);
 
 		return {
-			user,
+			user: this.sanitizeUser(user),
 			access_token: accessToken,
 		};
 	}
