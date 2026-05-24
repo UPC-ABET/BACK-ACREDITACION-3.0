@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
@@ -6,10 +6,7 @@ import { IfcValidation } from '../core/ifcs.validation';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFCS_PARAMETER_KEYS, IFC_INSTRUMENT_CODE, IFC_OPS, IfcOp } from './ifcs.constants';
 import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
-import {
-	NotificationDispatcherService,
-	DispatchResult,
-} from 'src/modules/ifc/notifications/notification-dispatcher.service';
+import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { IfcStateMachineService } from './ifc-state-machine.service';
 import {
 	CHART_RESOLUTION_SQL,
@@ -19,6 +16,8 @@ import {
 
 @Injectable()
 export class IfcContentService {
+	private readonly logger = new Logger(IfcContentService.name);
+
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly stateMachine: IfcStateMachineService,
@@ -97,20 +96,23 @@ export class IfcContentService {
 			return { id: ifcId };
 		});
 
-		if (!dto.submit) return { id: ifcId };
-
-		const notification: DispatchResult =
-			Number.isFinite(dto.chart_id) && Number.isFinite(dto.period_id)
-				? await this.dispatcher.dispatch({
+		if (dto.submit && Number.isFinite(dto.chart_id) && Number.isFinite(dto.period_id)) {
+			setImmediate(() => {
+				this.dispatcher
+					.dispatch({
 						chartId: dto.chart_id,
 						periodId: dto.period_id,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
 						notifierUserId: userId,
 					})
-				: { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_course_chart' };
+					.catch((err) =>
+						this.logger.error(`dispatch.failed ifcId=${ifcId}: ${(err as Error).message}`),
+					);
+			});
+		}
 
-		return { id: ifcId, notification };
+		return { id: ifcId };
 	}
 
 	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
@@ -172,20 +174,23 @@ export class IfcContentService {
 			return { courseChartId: ctx.courseChartId, periodId };
 		});
 
-		if (!dto.submit) return { id };
-
-		const notification: DispatchResult =
-			courseChartId !== null && Number.isFinite(periodId)
-				? await this.dispatcher.dispatch({
+		if (dto.submit && courseChartId !== null && Number.isFinite(periodId)) {
+			setImmediate(() => {
+				this.dispatcher
+					.dispatch({
 						chartId: courseChartId,
 						periodId,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
 						notifierUserId: userId,
 					})
-				: { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_course_chart' };
+					.catch((err) =>
+						this.logger.error(`dispatch.failed ifcId=${id}: ${(err as Error).message}`),
+					);
+			});
+		}
 
-		return { id, notification };
+		return { id };
 	}
 
 	private async resolveFindingsAndActions(

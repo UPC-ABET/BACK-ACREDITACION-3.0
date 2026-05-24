@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
@@ -6,14 +6,13 @@ import { IfcValidation, IfcTransitionContext } from '../core/ifcs.validation';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFC_OPS, IfcOp } from './ifcs.constants';
 import { RejectIfcDto } from '../model/ifcs.dtos';
-import {
-	NotificationDispatcherService,
-	DispatchResult,
-} from 'src/modules/ifc/notifications/notification-dispatcher.service';
+import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { TRANSITION_CONTEXT_SQL, INSERT_STATUS_SQL } from './ifcs.sql';
 
 @Injectable()
 export class IfcStateMachineService {
+	private readonly logger = new Logger(IfcStateMachineService.name);
+
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly dispatcher: NotificationDispatcherService,
@@ -62,18 +61,23 @@ export class IfcStateMachineService {
 			return { ctx, periodId: Number(periodRows[0]?.academic_period_id) };
 		});
 
-		const notification: DispatchResult =
-			ctx.courseChartId !== null && Number.isFinite(periodId)
-				? await this.dispatcher.dispatch({
-						chartId: ctx.courseChartId,
+		if (ctx.courseChartId !== null && Number.isFinite(periodId)) {
+			setImmediate(() => {
+				this.dispatcher
+					.dispatch({
+						chartId: ctx.courseChartId!,
 						periodId,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
 						notifierUserId: userId,
 					})
-				: { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_course_chart' };
+					.catch((err) =>
+						this.logger.error(`dispatch.failed ifcId=${ifcId}: ${(err as Error).message}`),
+					);
+			});
+		}
 
-		return { id: ifcId, notification };
+		return { id: ifcId };
 	}
 
 	async approve(ifcId: number, userId: number, schoolId: number) {

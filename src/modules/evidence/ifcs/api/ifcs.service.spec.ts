@@ -257,17 +257,9 @@ describe('IfcService status transitions', () => {
 			.mockResolvedValueOnce([insertedRow]) // insertStatus
 			.mockResolvedValueOnce([{ academic_period_id: 5 }]); // fetch period for dispatch
 
-		const dispatchResult = {
-			sent: false,
-			recipients_count: 0,
-			cc_count: 0,
-			reason: 'no_config' as const,
-		};
-		dispatcher.dispatch.mockResolvedValueOnce(dispatchResult);
-
 		const result = await service.submit(42, 99, 9);
 
-		expect(result).toEqual({ id: 42, notification: dispatchResult });
+		expect(result).toEqual({ id: 42 });
 		const [, chainParams] = em.query.mock.calls[2];
 		expect(chainParams).toEqual([500, 11]);
 		const [, insertParams] = em.query.mock.calls[3];
@@ -309,7 +301,6 @@ describe('IfcService status transitions', () => {
 
 		await expect(service.submit(42, 99, 9)).resolves.toMatchObject({
 			id: 42,
-			notification: expect.any(Object),
 		});
 	});
 
@@ -885,7 +876,7 @@ describe('IfcService.patch', () => {
 			]); // insertStatus
 
 		const result = await service.patch(42, baseDto({ submit: true }), 99, 9);
-		expect(result).toMatchObject({ id: 42, notification: { sent: false, reason: 'no_config' } });
+		expect(result).toMatchObject({ id: 42 });
 
 		const statusInsert = em.query.mock.calls[13];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
