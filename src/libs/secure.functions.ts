@@ -5,10 +5,19 @@ import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.confi
 /*******************************************************************************************+*/
 
 const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
+const ESCUELA_COOKIE_NAME = 'escuela';
+
 const ACCESS_TOKEN_COOKIE_OPTIONS = {
 	httpOnly: true,
 	secure: true,
 	sameSite: 'lax' as const,
+	path: '/',
+};
+
+const ESCUELA_COOKIE_OPTIONS = {
+	httpOnly: false,
+	secure: true,
+	sameSite: 'strict' as const,
 	path: '/',
 };
 
@@ -18,10 +27,21 @@ export function saveAccessCookie(res: Response, data: any) {
 		...ACCESS_TOKEN_COOKIE_OPTIONS,
 		maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
 	});
+	if (data.school_id !== undefined && data.school_code !== undefined) {
+		res.cookie(
+			ESCUELA_COOKIE_NAME,
+			JSON.stringify({ id: data.school_id, code: data.school_code }),
+			{
+				...ESCUELA_COOKIE_OPTIONS,
+				maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
+			},
+		);
+	}
 	return true;
 }
 
 export function removeAccessCookie(res: Response) {
 	res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, ACCESS_TOKEN_COOKIE_OPTIONS);
+	res.clearCookie(ESCUELA_COOKIE_NAME, ESCUELA_COOKIE_OPTIONS);
 	return true;
 }

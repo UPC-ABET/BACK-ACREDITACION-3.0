@@ -107,6 +107,8 @@ export class UserService extends BaseService<UserRepository> {
 			user: this.sanitizeUser(user),
 			access_token: accessToken,
 			expires_in: JWT_EXPIRES_IN_SECONDS,
+			school_id: school.id,
+			school_code: school_code,
 		};
 	}
 
