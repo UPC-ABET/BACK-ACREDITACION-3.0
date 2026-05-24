@@ -6,7 +6,10 @@ import { IfcValidation, IfcTransitionContext } from '../core/ifcs.validation';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFC_OPS, IfcOp } from './ifcs.constants';
 import { RejectIfcDto } from '../model/ifcs.dtos';
-import { NotificationDispatcherService, DispatchResult } from 'src/modules/ifc/notifications/notification-dispatcher.service';
+import {
+	NotificationDispatcherService,
+	DispatchResult,
+} from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { TRANSITION_CONTEXT_SQL, INSERT_STATUS_SQL } from './ifcs.sql';
 
 @Injectable()
@@ -35,13 +38,30 @@ export class IfcStateMachineService {
 	}
 
 	async submit(ifcId: number, userId: number, schoolId: number) {
-		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT);
-		await IfcValidation.assertIsInCourseChain(this.dataSource, ctx, IFC_OPS.SUBMIT);
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [null, TYPE_CODES.IFC_STATUS.SAVED], IFC_OPS.SUBMIT);
-		await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.SUBMITTED, null);
+		const { ctx, periodId } = await this.dataSource.transaction(async (em) => {
+			await this.lockIfc(em, ifcId);
+			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT, em);
+			await IfcValidation.assertIsInCourseChain(em, ctx, IFC_OPS.SUBMIT);
+			IfcValidation.assertCurrentStatus(
+				ctx.currentStatusCode,
+				[null, TYPE_CODES.IFC_STATUS.SAVED],
+				IFC_OPS.SUBMIT,
+			);
+			await this.insertStatus(
+				em,
+				ctx.ifcId,
+				ctx.requesterStaffId,
+				TYPE_CODES.IFC_STATUS.SUBMITTED,
+				null,
+			);
 
-		const periodRows = await this.dataSource.query(`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`, [ifcId]);
-		const periodId = Number(periodRows[0]?.academic_period_id);
+			const periodRows = await em.query(
+				`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
+				[ifcId],
+			);
+			return { ctx, periodId: Number(periodRows[0]?.academic_period_id) };
+		});
+
 		const notification: DispatchResult =
 			ctx.courseChartId !== null && Number.isFinite(periodId)
 				? await this.dispatcher.dispatch({
@@ -57,25 +77,84 @@ export class IfcStateMachineService {
 	}
 
 	async approve(ifcId: number, userId: number, schoolId: number) {
-		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE);
-		IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.APPROVE);
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], IFC_OPS.APPROVE);
-		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.APPROVED, null);
+		return await this.dataSource.transaction(async (em) => {
+			await this.lockIfc(em, ifcId);
+			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE, em);
+			IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.APPROVE);
+			IfcValidation.assertCurrentStatus(
+				ctx.currentStatusCode,
+				[TYPE_CODES.IFC_STATUS.SUBMITTED],
+				IFC_OPS.APPROVE,
+			);
+			return await this.insertStatus(
+				em,
+				ctx.ifcId,
+				ctx.requesterStaffId,
+				TYPE_CODES.IFC_STATUS.APPROVED,
+				null,
+			);
+		});
 	}
 
 	async reject(ifcId: number, userId: number, schoolId: number, dto: RejectIfcDto) {
-		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT);
-		IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.REJECT);
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], IFC_OPS.REJECT);
-		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.OBSERVED, dto.comment);
+		return await this.dataSource.transaction(async (em) => {
+			await this.lockIfc(em, ifcId);
+			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT, em);
+			IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.REJECT);
+			IfcValidation.assertCurrentStatus(
+				ctx.currentStatusCode,
+				[TYPE_CODES.IFC_STATUS.SUBMITTED],
+				IFC_OPS.REJECT,
+			);
+			return await this.insertStatus(
+				em,
+				ctx.ifcId,
+				ctx.requesterStaffId,
+				TYPE_CODES.IFC_STATUS.OBSERVED,
+				dto.comment,
+			);
+		});
 	}
 
-	async loadTransitionContext(ifcId: number, userId: number, schoolId: number, op: IfcOp, em?: EntityManager): Promise<IfcTransitionContext> {
-		const params = [ifcId, schoolId, userId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL];
-		const rows = em ? await em.query(TRANSITION_CONTEXT_SQL, params) : await this.dataSource.query(TRANSITION_CONTEXT_SQL, params);
+	private async lockIfc(em: EntityManager, ifcId: number) {
+		const rows = await em.query(`SELECT id FROM evidence.ifcs WHERE id = $1 FOR UPDATE`, [ifcId]);
+		if (rows.length === 0) {
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.submitFailed,
+					errors: [ifcsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+	}
+
+	async loadTransitionContext(
+		ifcId: number,
+		userId: number,
+		schoolId: number,
+		op: IfcOp,
+		em?: EntityManager,
+	): Promise<IfcTransitionContext> {
+		const params = [
+			ifcId,
+			schoolId,
+			userId,
+			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		];
+		const rows = em
+			? await em.query(TRANSITION_CONTEXT_SQL, params)
+			: await this.dataSource.query(TRANSITION_CONTEXT_SQL, params);
 
 		if (rows.length === 0) {
-			throw new HttpException({ message: ifcsValidationStrings.result[`${op}Failed`], errors: [ifcsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result[`${op}Failed`],
+					errors: [ifcsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 
 		const row = rows[0];
@@ -91,9 +170,22 @@ export class IfcStateMachineService {
 		return ctx;
 	}
 
-	async insertStatus(em: EntityManager | undefined, ifcId: number, requesterStaffId: number | null, newStatusCode: string, comment: I18nText | null) {
-		const params = [ifcId, newStatusCode, requesterStaffId, comment ? JSON.stringify(comment) : null];
-		const rows = em ? await em.query(INSERT_STATUS_SQL, params) : await this.dataSource.query(INSERT_STATUS_SQL, params);
+	async insertStatus(
+		em: EntityManager | undefined,
+		ifcId: number,
+		requesterStaffId: number | null,
+		newStatusCode: string,
+		comment: I18nText | null,
+	) {
+		const params = [
+			ifcId,
+			newStatusCode,
+			requesterStaffId,
+			comment ? JSON.stringify(comment) : null,
+		];
+		const rows = em
+			? await em.query(INSERT_STATUS_SQL, params)
+			: await this.dataSource.query(INSERT_STATUS_SQL, params);
 		return rows[0];
 	}
 }

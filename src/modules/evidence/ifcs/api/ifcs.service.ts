@@ -7,7 +7,10 @@ import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto, UpdateIfcDto } from '../
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
-import { NotificationDispatcherService, DispatchResult } from 'src/modules/ifc/notifications/notification-dispatcher.service';
+import {
+	NotificationDispatcherService,
+	DispatchResult,
+} from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { IfcStateMachineService } from './ifc-state-machine.service';
 import { IfcContentService } from './ifc-content.service';
 import { IfcViewService } from './ifc-view.service';
@@ -85,22 +88,37 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async list(dto: ListIfcsDto) {
-		return await this.dataSource.query(LIST_SQL, [dto.chart_ids, dto.period_id, TYPE_CODES.ENTITY_TYPE.COURSE]);
+		return await this.dataSource.query(LIST_SQL, [
+			dto.chart_ids,
+			dto.period_id,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
+		]);
 	}
 
 	async prefill(query: IfcPrefillQueryDto, schoolId: number) {
 		const [headerRows, outcomeRows] = await Promise.all([
-			this.dataSource.query(PREFILL_HEADER_SQL, [query.chart_id, query.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]),
+			this.dataSource.query(PREFILL_HEADER_SQL, [
+				query.chart_id,
+				query.period_id,
+				schoolId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			]),
 			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chart_id]),
 		]);
 
 		IfcValidation.assertChartFound(headerRows, 'prefill');
 		const header = headerRows[0];
-		const previous_actions = await this.view.loadPreviousActions(Number(header.course_id), query.period_id, null);
+		const previous_actions = await this.view.loadPreviousActions(
+			Number(header.course_id),
+			query.period_id,
+			null,
+		);
 
 		return {
 			...header,
-			coordinator_user_id: header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
+			coordinator_user_id:
+				header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
 			outcome_course_result: this.view.groupOutcomeRows(outcomeRows),
 			previous_actions,
 		};

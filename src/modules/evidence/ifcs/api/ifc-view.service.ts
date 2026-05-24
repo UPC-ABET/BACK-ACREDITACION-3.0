@@ -4,7 +4,14 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
-import { HEADER_SQL, FINDINGS_SQL, FINDING_OUTCOMES_SQL, FINDING_ACTIONS_SQL, OUTCOME_COURSE_BY_IFC_SQL, PREVIOUS_ACTIONS_SQL } from './ifcs.sql';
+import {
+	HEADER_SQL,
+	FINDINGS_SQL,
+	FINDING_OUTCOMES_SQL,
+	FINDING_ACTIONS_SQL,
+	OUTCOME_COURSE_BY_IFC_SQL,
+	PREVIOUS_ACTIONS_SQL,
+} from './ifcs.sql';
 
 @Injectable()
 export class IfcViewService {
@@ -12,21 +19,40 @@ export class IfcViewService {
 
 	async getView(id: number, userId: number, schoolId: number) {
 		const [headerRows, findingRows, outcomeCourseRows] = await Promise.all([
-			this.dataSource.query(HEADER_SQL, [id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]),
+			this.dataSource.query(HEADER_SQL, [
+				id,
+				schoolId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
+			]),
 			this.dataSource.query(FINDINGS_SQL, [id, IFCS_PARAMETER_KEYS.FINDING_PREFIX]),
 			this.dataSource.query(OUTCOME_COURSE_BY_IFC_SQL, [id]),
 		]);
 
 		if (headerRows.length === 0) {
-			throw new HttpException({ message: ifcsValidationStrings.result.viewFailed, errors: [ifcsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.viewFailed,
+					errors: [ifcsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 
 		const findingIds = findingRows.map((r: any) => Number(r.finding_id));
 		const header = headerRows[0];
 		const [findingOutcomeRows, findingActionRows, previousActions] = await Promise.all([
-			findingIds.length ? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds]) : Promise.resolve([]),
 			findingIds.length
-				? this.dataSource.query(FINDING_ACTIONS_SQL, [findingIds, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED])
+				? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds])
+				: Promise.resolve([]),
+			findingIds.length
+				? this.dataSource.query(FINDING_ACTIONS_SQL, [
+						findingIds,
+						IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+						TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+						TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+					])
 				: Promise.resolve([]),
 			this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
 		]);
@@ -42,16 +68,27 @@ export class IfcViewService {
 	}
 
 	groupOutcomeRows(rows: any[]) {
-		const programIndex = new Map<string, { program_code: string; program_name: I18nText; commissions: Map<string, any> }>();
+		const programIndex = new Map<
+			string,
+			{ program_code: string; program_name: I18nText; commissions: Map<string, any> }
+		>();
 		for (const row of rows) {
 			let pg = programIndex.get(row.program_code);
 			if (!pg) {
-				pg = { program_code: row.program_code, program_name: row.program_name, commissions: new Map() };
+				pg = {
+					program_code: row.program_code,
+					program_name: row.program_name,
+					commissions: new Map(),
+				};
 				programIndex.set(row.program_code, pg);
 			}
 			let cm = pg.commissions.get(row.commission_code);
 			if (!cm) {
-				cm = { commission_code: row.commission_code, commission_name: row.commission_name, outcomes: [] as any[] };
+				cm = {
+					commission_code: row.commission_code,
+					commission_name: row.commission_name,
+					outcomes: [] as any[],
+				};
 				pg.commissions.set(row.commission_code, cm);
 			}
 			cm.outcomes.push({
@@ -97,8 +134,22 @@ export class IfcViewService {
 		}));
 	}
 
-	private assembleViewResponse(input: { header: any; findingRows: any[]; outcomeCourseRows: any[]; findingOutcomeRows: any[]; findingActionRows: any[]; previousActions: any[] }) {
-		const { header, findingRows, outcomeCourseRows, findingOutcomeRows, findingActionRows, previousActions } = input;
+	private assembleViewResponse(input: {
+		header: any;
+		findingRows: any[];
+		outcomeCourseRows: any[];
+		findingOutcomeRows: any[];
+		findingActionRows: any[];
+		previousActions: any[];
+	}) {
+		const {
+			header,
+			findingRows,
+			outcomeCourseRows,
+			findingOutcomeRows,
+			findingActionRows,
+			previousActions,
+		} = input;
 
 		const ifc = {
 			id: Number(header.ifc_id),
@@ -169,12 +220,21 @@ export class IfcViewService {
 				description: row.finding_description,
 				correlative: row.finding_correlative,
 				is_automatic: row.is_automatic,
-				criticality: { code: row.criticality_code, name: row.criticality_name, color: row.criticality_color ?? null },
+				criticality: {
+					code: row.criticality_code,
+					name: row.criticality_name,
+					color: row.criticality_color ?? null,
+				},
 				outcomes: outcomesByFinding.get(fid) ?? [],
 				actions: actionsByFinding.get(fid) ?? [],
 			};
 		});
 
-		return { ifc, outcome_course_result: this.groupOutcomeRows(outcomeCourseRows), findings, previous_actions: previousActions };
+		return {
+			ifc,
+			outcome_course_result: this.groupOutcomeRows(outcomeCourseRows),
+			findings,
+			previous_actions: previousActions,
+		};
 	}
 }

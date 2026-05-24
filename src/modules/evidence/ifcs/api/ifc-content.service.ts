@@ -6,9 +6,16 @@ import { IfcValidation } from '../core/ifcs.validation';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFCS_PARAMETER_KEYS, IFC_INSTRUMENT_CODE, IFC_OPS, IfcOp } from './ifcs.constants';
 import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
-import { NotificationDispatcherService, DispatchResult } from 'src/modules/ifc/notifications/notification-dispatcher.service';
+import {
+	NotificationDispatcherService,
+	DispatchResult,
+} from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { IfcStateMachineService } from './ifc-state-machine.service';
-import { CHART_RESOLUTION_SQL, PROGRAM_BY_COURSE_PERIOD_SQL, PREVIOUS_ACTIONS_SQL } from './ifcs.sql';
+import {
+	CHART_RESOLUTION_SQL,
+	PROGRAM_BY_COURSE_PERIOD_SQL,
+	PREVIOUS_ACTIONS_SQL,
+} from './ifcs.sql';
 
 @Injectable()
 export class IfcContentService {
@@ -22,25 +29,43 @@ export class IfcContentService {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
-			const chartRows = await em.query(CHART_RESOLUTION_SQL, [dto.chart_id, dto.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]);
+			const chartRows = await em.query(CHART_RESOLUTION_SQL, [
+				dto.chart_id,
+				dto.period_id,
+				schoolId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
+			]);
 			IfcValidation.assertChartFound(chartRows, op);
 
 			const row = chartRows[0];
 			const courseId = Number(row.course_id);
-			const ifcCourseStaffId = row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id);
-			const requesterStaffId = row.requester_staff_id === null ? null : Number(row.requester_staff_id);
+			const ifcCourseStaffId =
+				row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id);
+			const requesterStaffId =
+				row.requester_staff_id === null ? null : Number(row.requester_staff_id);
 			const programId = row.program_id === null ? null : Number(row.program_id);
 
 			IfcValidation.assertRequesterIsStaff(requesterStaffId, op);
-			await IfcValidation.assertIsInCourseChain(em, { ifcId: 0, ifcCourseStaffId, courseChartId: dto.chart_id, requesterStaffId, currentStatusCode: null }, op);
+			await IfcValidation.assertIsInCourseChain(
+				em,
+				{
+					ifcId: 0,
+					ifcCourseStaffId,
+					courseChartId: dto.chart_id,
+					requesterStaffId,
+					currentStatusCode: null,
+				},
+				op,
+			);
 
 			await IfcValidation.assertNoIfcExists(em, courseId, dto.period_id, op);
 
-			const ifcInsert = await em.query(`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`, [
-				courseId,
-				dto.period_id,
-				JSON.stringify(dto.information ?? {}),
-			]);
+			const ifcInsert = await em.query(
+				`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`,
+				[courseId, dto.period_id, JSON.stringify(dto.information ?? {})],
+			);
 			const ifcId = Number(ifcInsert[0].id);
 
 			await this.resolveFindingsAndActions(em, {
@@ -64,7 +89,9 @@ export class IfcContentService {
 				op,
 			});
 
-			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
+			const newStatusCode = dto.submit
+				? TYPE_CODES.IFC_STATUS.SUBMITTED
+				: TYPE_CODES.IFC_STATUS.SAVED;
 			await this.stateMachine.insertStatus(em, ifcId, requesterStaffId!, newStatusCode, null);
 
 			return { id: ifcId };
@@ -94,14 +121,27 @@ export class IfcContentService {
 			await IfcValidation.assertIsInCourseChain(em, ctx, op);
 			IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
 
-			const ifcRows = await em.query(`SELECT course_id, academic_period_id FROM evidence.ifcs WHERE id = $1`, [id]);
+			const ifcRows = await em.query(
+				`SELECT course_id, academic_period_id FROM evidence.ifcs WHERE id = $1`,
+				[id],
+			);
 			const courseId = Number(ifcRows[0].course_id);
 			const periodId = Number(ifcRows[0].academic_period_id);
 
-			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [courseId, periodId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR]);
-			const programId = programRows[0]?.program_id === undefined || programRows[0]?.program_id === null ? null : Number(programRows[0].program_id);
+			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
+				courseId,
+				periodId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			]);
+			const programId =
+				programRows[0]?.program_id === undefined || programRows[0]?.program_id === null
+					? null
+					: Number(programRows[0].program_id);
 
-			await em.query(`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`, [JSON.stringify(dto.information ?? {}), id]);
+			await em.query(
+				`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+				[JSON.stringify(dto.information ?? {}), id],
+			);
 
 			await this.resolveFindingsAndActions(em, {
 				ifcId: id,
@@ -124,7 +164,9 @@ export class IfcContentService {
 				op,
 			});
 
-			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
+			const newStatusCode = dto.submit
+				? TYPE_CODES.IFC_STATUS.SUBMITTED
+				: TYPE_CODES.IFC_STATUS.SAVED;
 			await this.stateMachine.insertStatus(em, id, ctx.requesterStaffId!, newStatusCode, null);
 
 			return { courseChartId: ctx.courseChartId, periodId };
@@ -155,8 +197,18 @@ export class IfcContentService {
 			programId: number | null;
 			requesterStaffId: number;
 			op: IfcOp;
-			findings: { tempId: string; id: number | null; description: I18nText; criticality_code: string }[];
-			actions: { tempId: string; id: number | null; description: I18nText; finding_temp_id: string }[];
+			findings: {
+				tempId: string;
+				id: number | null;
+				description: I18nText;
+				criticality_code: string;
+			}[];
+			actions: {
+				tempId: string;
+				id: number | null;
+				description: I18nText;
+				finding_temp_id: string;
+			}[];
 			deletedFindingIds?: number[];
 			deletedActionIds?: number[];
 		},
@@ -172,15 +224,30 @@ export class IfcContentService {
 			await em.query(`DELETE FROM improvement.findings WHERE id = $1`, [findingId]);
 		}
 
-		const instrumentRows = await em.query(`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`, [IFC_INSTRUMENT_CODE]);
+		const instrumentRows = await em.query(
+			`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`,
+			[IFC_INSTRUMENT_CODE],
+		);
 		const ifcInstrumentId: number | undefined = instrumentRows[0]?.id;
 		if (!ifcInstrumentId) {
-			throw new HttpException({ message: ifcsValidationStrings.result[`${input.op}Failed`], errors: [ifcsValidationStrings.error.ifcInstrumentMissing] }, HttpStatus.INTERNAL_SERVER_ERROR);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result[`${input.op}Failed`],
+					errors: [ifcsValidationStrings.error.ifcInstrumentMissing],
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
 		}
 
 		const criticalityCodes = Array.from(new Set(input.findings.map((f) => f.criticality_code)));
-		const criticalityRows = criticalityCodes.length ? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [criticalityCodes]) : [];
-		const criticalityByCode = new Map<string, number>(criticalityRows.map((r: any) => [r.code, Number(r.id)]));
+		const criticalityRows = criticalityCodes.length
+			? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [
+					criticalityCodes,
+				])
+			: [];
+		const criticalityByCode = new Map<string, number>(
+			criticalityRows.map((r: any) => [r.code, Number(r.id)]),
+		);
 
 		const hasNewFinding = input.findings.some((f) => f.id === null);
 		let nextFindingCorrelative = 0;
@@ -199,7 +266,13 @@ export class IfcContentService {
 		for (const f of input.findings) {
 			const critId = criticalityByCode.get(f.criticality_code);
 			if (!critId) {
-				throw new HttpException({ message: ifcsValidationStrings.result[`${input.op}Failed`], errors: [`error.ifc.criticalityNotFound:${f.criticality_code}`] }, HttpStatus.BAD_REQUEST);
+				throw new HttpException(
+					{
+						message: ifcsValidationStrings.result[`${input.op}Failed`],
+						errors: [`error.ifc.criticalityNotFound:${f.criticality_code}`],
+					},
+					HttpStatus.BAD_REQUEST,
+				);
 			}
 
 			let realId: number;
@@ -209,7 +282,15 @@ export class IfcContentService {
 					`INSERT INTO improvement.findings (criticality_type_id, instrument_id, staff_id, correlative, description, course_id, academic_period_id, campus_id, is_automatic, is_active)
 					 VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NULL, false, true)
 					 RETURNING id`,
-					[critId, ifcInstrumentId, input.requesterStaffId, nextFindingCorrelative, JSON.stringify(f.description), input.courseId, input.periodId],
+					[
+						critId,
+						ifcInstrumentId,
+						input.requesterStaffId,
+						nextFindingCorrelative,
+						JSON.stringify(f.description),
+						input.courseId,
+						input.periodId,
+					],
 				);
 				realId = Number(insertRow[0].id);
 
@@ -220,7 +301,10 @@ export class IfcContentService {
 					[input.ifcId, realId],
 				);
 			} else {
-				await em.query(`UPDATE improvement.findings SET description = $1::jsonb, criticality_type_id = $2, updated_at = NOW() WHERE id = $3`, [JSON.stringify(f.description), critId, f.id]);
+				await em.query(
+					`UPDATE improvement.findings SET description = $1::jsonb, criticality_type_id = $2, updated_at = NOW() WHERE id = $3`,
+					[JSON.stringify(f.description), critId, f.id],
+				);
 				realId = f.id;
 			}
 			tempIdToId.set(f.tempId, realId);
@@ -261,8 +345,14 @@ export class IfcContentService {
 					[findingId, actionId],
 				);
 			} else {
-				await em.query(`UPDATE improvement.actions SET description = $1::jsonb, updated_at = NOW() WHERE id = $2`, [JSON.stringify(a.description), a.id]);
-				await em.query(`UPDATE improvement.finding_actions SET finding_id = $1 WHERE action_id = $2 AND finding_id <> $1`, [findingId, a.id]);
+				await em.query(
+					`UPDATE improvement.actions SET description = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+					[JSON.stringify(a.description), a.id],
+				);
+				await em.query(
+					`UPDATE improvement.finding_actions SET finding_id = $1 WHERE action_id = $2 AND finding_id <> $1`,
+					[findingId, a.id],
+				);
 			}
 		}
 	}
@@ -294,14 +384,20 @@ export class IfcContentService {
 		for (const item of items) {
 			if (!allowed.has(item.finding_action_id)) {
 				throw new HttpException(
-					{ message: ifcsValidationStrings.result[input.op === IFC_OPS.PATCH ? 'patchFailed' : 'createFailed'], errors: [ifcsValidationStrings.error.previousActionNotEligible] },
+					{
+						message:
+							ifcsValidationStrings.result[
+								input.op === IFC_OPS.PATCH ? 'patchFailed' : 'createFailed'
+							],
+						errors: [ifcsValidationStrings.error.previousActionNotEligible],
+					},
 					HttpStatus.BAD_REQUEST,
 				);
 			}
-			await em.query(`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`, [
-				item.evidences === null ? null : JSON.stringify(item.evidences),
-				item.finding_action_id,
-			]);
+			await em.query(
+				`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+				[item.evidences === null ? null : JSON.stringify(item.evidences), item.finding_action_id],
+			);
 		}
 	}
 }

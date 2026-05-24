@@ -15,7 +15,15 @@ import { NotificationsModule } from 'src/modules/ifc/notifications/notifications
 @Module({
 	imports: [TypeOrmModule.forFeature([IfcEntity]), NotificationsModule],
 	controllers: [IfcController],
-	providers: [IfcService, IfcStateMachineService, IfcContentService, IfcViewService, IfcReportService, IfcRepository, PdfRendererService],
+	providers: [
+		IfcService,
+		IfcStateMachineService,
+		IfcContentService,
+		IfcViewService,
+		IfcReportService,
+		IfcRepository,
+		PdfRendererService,
+	],
 	exports: [IfcService, IfcRepository],
 })
 export class IfcModule {}

@@ -4,7 +4,12 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IfcStatusReportDto } from '../model/ifcs.dtos';
-import { PDF_LABELS, PdfRendererService, PDF_STYLES, UPC_LOGO_DATA_URI } from './pdf-renderer.service';
+import {
+	PDF_LABELS,
+	PdfRendererService,
+	PDF_STYLES,
+	UPC_LOGO_DATA_URI,
+} from './pdf-renderer.service';
 import { IfcViewService } from './ifc-view.service';
 import { REPORT_CODES_SQL, STATUS_REPORT_SQL } from './ifcs.sql';
 import * as ExcelJS from 'exceljs';
@@ -31,7 +36,13 @@ export class IfcReportService {
 		const data = await this.view.getView(ifcId, userId, schoolId);
 
 		if (data.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED) {
-			throw new HttpException({ message: ifcsValidationStrings.result.pdfFailed, errors: [ifcsValidationStrings.error.pdfRequiresApproved] }, HttpStatus.CONFLICT);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.pdfFailed,
+					errors: [ifcsValidationStrings.error.pdfRequiresApproved],
+				},
+				HttpStatus.CONFLICT,
+			);
 		}
 
 		const html = this.buildIfcHtml(data, lang);
@@ -44,7 +55,13 @@ export class IfcReportService {
 		const payloads = await Promise.all(ifcIds.map((id) => this.view.getView(id, userId, schoolId)));
 		const nonApproved = payloads.find((p) => p.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED);
 		if (nonApproved) {
-			throw new HttpException({ message: ifcsValidationStrings.result.pdfBulkFailed, errors: [ifcsValidationStrings.error.pdfRequiresApproved] }, HttpStatus.CONFLICT);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.pdfBulkFailed,
+					errors: [ifcsValidationStrings.error.pdfRequiresApproved],
+				},
+				HttpStatus.CONFLICT,
+			);
 		}
 
 		const files = await Promise.all(
@@ -60,16 +77,23 @@ export class IfcReportService {
 	}
 
 	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number) {
-		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [dto.chart_ids, schoolId, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [
+			dto.chart_ids,
+			schoolId,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		]);
 		const schoolCode: string = codeRow[0]?.school_code ?? 'IFC';
 		const programCodes: string[] = codeRow[0]?.program_codes ?? [];
 		const suffix = programCodes.length === 1 ? `${schoolCode}_${programCodes[0]}` : schoolCode;
 
-		const statusTypes: Array<{ code: string; name: { es?: string; en?: string } }> = await this.dataSource.query(
-			`SELECT t.code, t.name FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id WHERE g.code = $1`,
-			[TYPE_GROUP_CODES.IFC_STATUS],
+		const statusTypes: Array<{ code: string; name: { es?: string; en?: string } }> =
+			await this.dataSource.query(
+				`SELECT t.code, t.name FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id WHERE g.code = $1`,
+				[TYPE_GROUP_CODES.IFC_STATUS],
+			);
+		const statusLabelByCode: Record<string, string> = Object.fromEntries(
+			statusTypes.map((s) => [s.code, s.name?.[dto.lang] ?? s.name?.es ?? s.code]),
 		);
-		const statusLabelByCode: Record<string, string> = Object.fromEntries(statusTypes.map((s) => [s.code, s.name?.[dto.lang] ?? s.name?.es ?? s.code]));
 
 		const rows: StatusReportRow[] = await this.dataSource.query(STATUS_REPORT_SQL, [
 			dto.chart_ids,
@@ -81,7 +105,8 @@ export class IfcReportService {
 		]);
 
 		const xlsx = await this.buildStatusReportXlsx(rows, statusLabelByCode, dto.lang);
-		const filename = (dto.lang === 'en' ? 'Status_Report_IFC_' : 'Reporte_Estado_IFC_') + suffix + '.xlsx';
+		const filename =
+			(dto.lang === 'en' ? 'Status_Report_IFC_' : 'Reporte_Estado_IFC_') + suffix + '.xlsx';
 		return { xlsx, filename };
 	}
 
@@ -113,13 +138,24 @@ export class IfcReportService {
 				)
 				.join('') || `<li class="empty">—</li>`;
 
-		const findingRows = data.findings.map((f: any) => `<tr><td>${esc(f.code)}</td><td>${esc(f.description?.[lang])}</td></tr>`).join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
+		const findingRows =
+			data.findings
+				.map((f: any) => `<tr><td>${esc(f.code)}</td><td>${esc(f.description?.[lang])}</td></tr>`)
+				.join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
 
 		const actionRows =
-			data.findings.flatMap((f: any) => f.actions.map((a: any) => `<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(f.code)}</td></tr>`)).join('') ||
-			`<tr><td colspan="3" class="empty">—</td></tr>`;
+			data.findings
+				.flatMap((f: any) =>
+					f.actions.map(
+						(a: any) =>
+							`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(f.code)}</td></tr>`,
+					),
+				)
+				.join('') || `<tr><td colspan="3" class="empty">—</td></tr>`;
 
-		const logoTag = UPC_LOGO_DATA_URI ? `<img class="logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />` : '';
+		const logoTag = UPC_LOGO_DATA_URI
+			? `<img class="logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
+			: '';
 
 		return `
 			<!doctype html>
@@ -184,14 +220,21 @@ export class IfcReportService {
 		`;
 	}
 
-	private async buildStatusReportXlsx(rows: StatusReportRow[], statusLabelByCode: Record<string, string>, lang: 'es' | 'en'): Promise<Buffer> {
+	private async buildStatusReportXlsx(
+		rows: StatusReportRow[],
+		statusLabelByCode: Record<string, string>,
+		lang: 'es' | 'en',
+	): Promise<Buffer> {
 		const wb = new ExcelJS.Workbook();
 		wb.creator = 'ABET system';
 		wb.created = new Date();
 
 		const ws = wb.addWorksheet(lang === 'en' ? 'Status Report' : 'Reporte de Estado');
 
-		const HEADERS = lang === 'en' ? ['Course', 'Area', 'Program', 'Status', 'Professor', 'Professor Code', 'Email'] : ['Curso', 'Área', 'Carrera', 'Estado', 'Docente', 'Código Docente', 'Correo'];
+		const HEADERS =
+			lang === 'en'
+				? ['Course', 'Area', 'Program', 'Status', 'Professor', 'Professor Code', 'Email']
+				: ['Curso', 'Área', 'Carrera', 'Estado', 'Docente', 'Código Docente', 'Correo'];
 
 		ws.columns = HEADERS.map((h) => ({ header: h, width: 28 }));
 
@@ -201,12 +244,25 @@ export class IfcReportService {
 			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC8102E' } };
 			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
 			cell.alignment = { vertical: 'middle', horizontal: 'center' };
-			cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+			cell.border = {
+				top: { style: 'thin' },
+				left: { style: 'thin' },
+				right: { style: 'thin' },
+				bottom: { style: 'thin' },
+			};
 		});
 
 		for (const r of rows) {
 			const statusCode = r.status_code ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
-			ws.addRow([r.course_name, r.area_label, r.program_label, statusLabelByCode[statusCode] ?? statusCode, r.coordinator_name ?? '—', r.coordinator_code ?? '—', r.coordinator_email ?? '—']);
+			ws.addRow([
+				r.course_name,
+				r.area_label,
+				r.program_label,
+				statusLabelByCode[statusCode] ?? statusCode,
+				r.coordinator_name ?? '—',
+				r.coordinator_code ?? '—',
+				r.coordinator_email ?? '—',
+			]);
 		}
 
 		ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
