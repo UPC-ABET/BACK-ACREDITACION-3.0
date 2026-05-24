@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 
@@ -11,7 +11,6 @@ import * as bcrypt from 'bcryptjs';
 import { UserService } from './users.service';
 import { UserRepository } from '../core/users.repository';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
-import { usersValidationStrings } from '../config/strings/users.validation';
 import { UserAuthorizationService } from './user-authorization.service';
 
 describe('UserService - school-aware login', () => {
@@ -61,19 +60,12 @@ describe('UserService - school-aware login', () => {
 	});
 
 	describe('loginByCredentials', () => {
-		it('throws HttpException(400) when the school_code does not match any school', async () => {
+		it('throws UnauthorizedException when the school_code does not match any school', async () => {
 			schoolRepository.findOneByCondition.mockResolvedValueOnce(null);
 
 			await expect(
 				service.loginByCredentials('UNKNOWN', baseUser.email, 'pw'),
-			).rejects.toMatchObject({
-				constructor: HttpException,
-				status: HttpStatus.BAD_REQUEST,
-				response: {
-					message: usersValidationStrings.error.schoolNotFound,
-					errors: [usersValidationStrings.error.schoolNotFound],
-				},
-			});
+			).rejects.toBeInstanceOf(UnauthorizedException);
 
 			expect(schoolRepository.findOneByCondition).toHaveBeenCalledWith({
 				where: { code: 'UNKNOWN', is_active: true },

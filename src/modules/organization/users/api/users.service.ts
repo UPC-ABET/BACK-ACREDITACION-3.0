@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
 import * as bcrypt from 'bcryptjs';
@@ -7,7 +7,6 @@ import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager } from 'typeorm';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
-import { usersValidationStrings } from '../config/strings/users.validation';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
 
@@ -101,13 +100,7 @@ export class UserService extends BaseService<UserRepository> {
 		});
 
 		if (!school) {
-			throw new HttpException(
-				{
-					message: usersValidationStrings.error.schoolNotFound,
-					errors: [usersValidationStrings.error.schoolNotFound],
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new UnauthorizedException('Credenciales inválidas');
 		}
 
 		const user = await this.repository.findForLogin(email);
