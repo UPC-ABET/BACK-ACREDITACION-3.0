@@ -40,7 +40,7 @@ export class UserAuthorizationService {
 	private async findUserRoles(userId: number): Promise<AuthorizationRole[]> {
 		const rows = await this.dataSource.query(
 			`
-				SELECT DISTINCT r.id, r.name
+				SELECT DISTINCT r.id, r.code, r.name
 				FROM core.user_roles ur
 				INNER JOIN core.roles r ON r.id = ur.role_id
 				WHERE ur.user_id = $1
@@ -53,6 +53,7 @@ export class UserAuthorizationService {
 
 		return rows.map((row) => ({
 			id: Number(row.id),
+			code: String(row.code ?? ''),
 			name: this.parseJsonObject(row.name),
 		}));
 	}

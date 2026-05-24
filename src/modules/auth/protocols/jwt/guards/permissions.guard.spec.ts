@@ -1,10 +1,12 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
+import { REQUIRED_PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
 
 describe('PermissionsGuard', () => {
 	let reflector: { getAllAndOverride: jest.Mock };
 	let guard: PermissionsGuard;
+	let requiredPermission: RequiredPermission | undefined;
 
 	const permission = {
 		id: 6,
@@ -15,36 +17,45 @@ describe('PermissionsGuard', () => {
 	};
 
 	beforeEach(() => {
+		requiredPermission = { module: 'IFCS', action: 'POST' };
 		reflector = {
-			getAllAndOverride: jest.fn().mockReturnValue(false),
+			getAllAndOverride: jest.fn((key: string) => {
+				if (key === REQUIRED_PERMISSION_KEY) return requiredPermission;
+				return false;
+			}),
 		};
 		guard = new PermissionsGuard(reflector as unknown as Reflector);
 	});
 
-	it('allows requests when method and module route match a token permission', () => {
+	it('allows requests when module and action match a token permission', () => {
 		const context = createContext({
-			method: 'POST',
-			path: '/api/ifcs/create',
 			user: { permissions: [permission] },
 		});
 
 		expect(guard.canActivate(context)).toBe(true);
 	});
 
-	it('blocks requests when the module route is not present in token permissions', () => {
+	it('blocks requests when the required module is not present in token permissions', () => {
+		requiredPermission = { module: 'SCHOOLS', action: 'GET' };
 		const context = createContext({
-			method: 'GET',
-			path: '/api/schools/get-all',
 			user: { permissions: [permission] },
 		});
 
 		expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
 	});
 
-	it('blocks requests when the route matches but the HTTP method is not allowed', () => {
+	it('blocks requests when the module matches but the action is not allowed', () => {
+		requiredPermission = { module: 'IFCS', action: 'DELETE' };
 		const context = createContext({
-			method: 'DELETE',
-			path: '/api/ifcs/delete/10',
+			user: { permissions: [permission] },
+		});
+
+		expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+	});
+
+	it('blocks requests when the endpoint has no permission metadata', () => {
+		requiredPermission = undefined;
+		const context = createContext({
 			user: { permissions: [permission] },
 		});
 
@@ -52,9 +63,8 @@ describe('PermissionsGuard', () => {
 	});
 
 	it('allows admin active role to access any endpoint', () => {
+		requiredPermission = undefined;
 		const context = createContext({
-			method: 'DELETE',
-			path: '/api/schools/delete/10',
 			user: {
 				activeRole: { id: 1, code: 'ADMIN', name: { en: 'Admin', es: 'Administrador' } },
 				permissions: [],
@@ -63,9 +73,20 @@ describe('PermissionsGuard', () => {
 
 		expect(guard.canActivate(context)).toBe(true);
 	});
+
+	it('does not allow admin bypass by magic numeric id alone', () => {
+		const context = createContext({
+			user: {
+				activeRole: { id: 1, name: { en: 'Admin', es: 'Administrador' } },
+				permissions: [],
+			},
+		});
+
+		expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+	});
 });
 
-function createContext(request: { method: string; path: string; user: any }) {
+function createContext(request: { user: any }) {
 	return {
 		getHandler: jest.fn(),
 		getClass: jest.fn(),

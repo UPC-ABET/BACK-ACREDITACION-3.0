@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { SKIP_PERMISSIONS_KEY } from '../decorators/skip-permissions.decorator';
+import { REQUIRED_PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -22,19 +23,22 @@ export class PermissionsGuard implements CanActivate {
 			return true;
 		}
 
-		const method = request.method.toUpperCase();
-		const requestPath = this.normalizeRequestPath(request.path || request.originalUrl || request.url);
+		const requiredPermission = this.reflector.getAllAndOverride<RequiredPermission>(REQUIRED_PERMISSION_KEY, [context.getHandler(), context.getClass()]);
+		if (!requiredPermission) {
+			throw new ForbiddenException('Este endpoint no tiene permisos configurados');
+		}
+
 		const permissions = request.user?.permissions ?? [];
 
 		const canAccess = permissions.some((permission) => {
-			if (!permission?.route || !Array.isArray(permission.permissions)) {
+			if (!permission?.module || !Array.isArray(permission.permissions)) {
 				return false;
 			}
 
-			const allowedMethods = (permission?.permissions ?? []).map((allowedMethod) => allowedMethod.toUpperCase());
-			const allowedRoute = this.normalizePermissionRoute(permission?.route);
+			const allowedActions = (permission?.permissions ?? []).map((allowedAction) => String(allowedAction).toUpperCase());
+			const allowedModule = String(permission.module).toUpperCase();
 
-			return allowedMethods.includes(method) && this.routeMatches(requestPath, allowedRoute);
+			return allowedModule === requiredPermission.module && allowedActions.includes(requiredPermission.action);
 		});
 
 		if (!canAccess) {
@@ -44,29 +48,9 @@ export class PermissionsGuard implements CanActivate {
 		return true;
 	}
 
-	private normalizeRequestPath(path: string) {
-		const cleanPath = this.normalizePath(path.split('?')[0]);
-		return cleanPath.startsWith('/api/') ? cleanPath.slice(4) : cleanPath;
-	}
-
-	private normalizePermissionRoute(route: string) {
-		return this.normalizePath(route);
-	}
-
-	private normalizePath(path: string) {
-		const normalized = `/${(path ?? '').replace(/^\/+|\/+$/g, '')}`;
-		return normalized === '/' ? normalized : normalized.toLowerCase();
-	}
-
-	private routeMatches(requestPath: string, permissionRoute: string) {
-		return requestPath === permissionRoute || requestPath.startsWith(`${permissionRoute}/`);
-	}
-
 	private isAdmin(activeRole?: any) {
 		const code = activeRole?.code?.toUpperCase?.();
-		const englishName = activeRole?.name?.en?.toUpperCase?.();
-		const spanishName = activeRole?.name?.es?.toUpperCase?.();
 
-		return activeRole?.id === 1 || code === 'ADMIN' || englishName === 'ADMIN' || spanishName === 'ADMINISTRADOR';
+		return code === 'ADMIN';
 	}
 }

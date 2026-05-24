@@ -18,7 +18,10 @@ import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 import { SkipPermissions } from 'src/modules/auth/protocols/jwt/decorators/skip-permissions.decorator';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { removeAccessCookie, saveAccessCookie } from 'src/libs/secure.functions';
+
+const USERS_MODULE = 'USERS';
 
 @SwaggerUserController()
 export class UserController extends BaseController<UserService> {
@@ -27,31 +30,37 @@ export class UserController extends BaseController<UserService> {
 	}
 
 	@SwaggerUserCreate()
+	@RequirePermission({ module: USERS_MODULE, action: 'POST' })
 	async create(@Body() dto: CreateUserDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerUserUpdate()
+	@RequirePermission({ module: USERS_MODULE, action: 'PUT' })
 	async update(@Param('id') id: number, @Body() dto: UpdateUserDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerUserDelete()
+	@RequirePermission({ module: USERS_MODULE, action: 'DELETE' })
 	async delete(@Param('id') id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerUserGetAll()
+	@RequirePermission({ module: USERS_MODULE, action: 'GET' })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerUserGetById()
+	@RequirePermission({ module: USERS_MODULE, action: 'GET' })
 	async getById(@Param('id') id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerUserGetByFilters()
+	@RequirePermission({ module: USERS_MODULE, action: 'POST' })
 	async getByFilters(@Body() dto: FilterUserDto) {
 		return await super.getByFilters(dto);
 	}
