@@ -8,8 +8,7 @@ export class PerformanceLevelValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				name: data.name,
-				evaluation_type: data.evaluation_type,
+				code: data.code,
 			},
 		});
 
@@ -36,12 +35,9 @@ export class PerformanceLevelValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(performanceLevelsValidationStrings.error.notFound);
 
-		if (data.name && data.evaluation_type) {
+		if (data.code) {
 			const exists = await repo.findOneByCondition({
-				where: {
-					name: data.name,
-					evaluation_type: data.evaluation_type,
-				},
+				where: { code: data.code },
 			});
 
 			if (exists && exists.id !== id) {
