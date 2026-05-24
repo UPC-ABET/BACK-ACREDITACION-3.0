@@ -1,4 +1,5 @@
 import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerOutcomeController,
@@ -40,7 +41,7 @@ export class OutcomeController extends BaseController<OutcomeService> {
 
 	@SwaggerOutcomeGetById()
 	async getById(@Param('id', ParseIntPipe) id: number) {
-		return await super.getById(id);
+		return parseSuccessResponse(await this.service.getById(id));
 	}
 
 	@SwaggerOutcomeGetByFilters()

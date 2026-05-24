@@ -73,6 +73,11 @@ export class FilterStudyPlanCourseDto {
 	study_plan_academic_period_id?: number;
 
 	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	academic_period_id?: number;
+
+	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	course_id?: number;
 

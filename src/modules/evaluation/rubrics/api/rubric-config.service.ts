@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { RubricEntity } from '../model/rubrics.entity';
 import { CreateRubricDto } from '../model/rubrics.dtos';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
@@ -290,18 +290,19 @@ export class RubricConfigService {
 			throw new NotFoundException('Rúbrica no encontrada.');
 		}
 
-		// 2. Obtener comisiones del programa para el período académico
-		const programId = rubric.study_plan_course?.study_plan_academic_period?.study_plan?.program_id;
-		const academicPeriodId =
-			rubric.study_plan_course?.study_plan_academic_period?.academic_period_id;
+		// 2. Obtener comisiones directamente desde los program_commission_id de los outcomes
+		const commissionIds = [
+			...new Set(
+				(rubric.questions || [])
+					.filter((q) => q.outcome?.program_commission_id != null)
+					.map((q) => q.outcome!.program_commission_id),
+			),
+		];
 
 		let commissions: ProgramCommissionEntity[] = [];
-		if (programId && academicPeriodId) {
+		if (commissionIds.length > 0) {
 			commissions = await this.programCommissionRepo.find({
-				where: {
-					program_id: programId,
-					academic_period_id: academicPeriodId,
-				},
+				where: { id: In(commissionIds) },
 				relations: ['commission'],
 			});
 		}
