@@ -48,7 +48,6 @@ import { ProjectEvaluatorModule } from './modules/evaluation/project-evaluators/
 import { ProjectStudentModule } from './modules/evaluation/project-students/project-students.module';
 import { ProjectModule } from './modules/evaluation/projects/projects.module';
 import { ProjectPortfolioModule } from './modules/evaluation/project-portfolios/project-portfolios.module';
-import { RubricOutcomeCriteriaModule } from './modules/evaluation/rubric-outcome-criterias/rubric-outcome-criterias.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
