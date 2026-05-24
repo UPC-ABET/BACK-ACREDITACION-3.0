@@ -2,10 +2,7 @@ import * as bcrypt from 'bcryptjs';
 import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('organization users and staff', async (tenantDataSource) => {
-	const adminPassword = await hashRequiredSeedPassword('SEED_ADMIN_PASSWORD');
-	const professorPassword = await hashRequiredSeedPassword('SEED_PROFESSOR_PASSWORD');
-	const studentPassword = await hashRequiredSeedPassword('SEED_STUDENT_PASSWORD');
-	const testPassword = await hashRequiredSeedPassword('SEED_TEST_PASSWORD');
+	const mockPassword = await bcrypt.hash('Password123!', 10);
 
 	await tenantDataSource.query(
 		`
@@ -50,7 +47,7 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			SELECT 1 FROM "organization"."users" u WHERE u.email = v.email
 		);
 		`,
-		[adminPassword, adminPassword, professorPassword, professorPassword, studentPassword, studentPassword, testPassword],
+		[mockPassword, mockPassword, mockPassword, mockPassword, mockPassword, mockPassword, mockPassword],
 	);
 
 	const staffValues = [
@@ -108,13 +105,3 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 		);
 	`);
 });
-
-async function hashRequiredSeedPassword(envKey: string): Promise<string> {
-	const password = process.env[envKey];
-
-	if (!password || password.length < 12) {
-		throw new Error(`${envKey} must be configured with at least 12 characters before running auth seeds`);
-	}
-
-	return bcrypt.hash(password, 10);
-}
