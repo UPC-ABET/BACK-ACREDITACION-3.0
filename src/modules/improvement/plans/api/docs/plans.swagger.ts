@@ -6,9 +6,11 @@ const cfg = plansRoutes.plans;
 
 export const SwaggerPlanController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerPlanCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreatePlanDto });
+export const SwaggerPlanCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreatePlanDto });
 
-export const SwaggerPlanUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdatePlanDto });
+export const SwaggerPlanUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdatePlanDto });
 
 export const SwaggerPlanDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +18,5 @@ export const SwaggerPlanGetAll = () => HttpMethodWithSwagger(cfg.operation.getAl
 
 export const SwaggerPlanGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerPlanGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterPlanDto });
+export const SwaggerPlanGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterPlanDto });

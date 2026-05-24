@@ -10,7 +10,11 @@ import {
 	SwaggerFindingActionGetByFilters,
 } from './docs/finding-actions.swagger';
 import { FindingActionService } from './finding-actions.service';
-import { CreateFindingActionDto, UpdateFindingActionDto, FilterFindingActionDto } from '../model/finding-actions.dtos';
+import {
+	CreateFindingActionDto,
+	UpdateFindingActionDto,
+	FilterFindingActionDto,
+} from '../model/finding-actions.dtos';
 
 @SwaggerFindingActionController()
 export class FindingActionController extends BaseController<FindingActionService> {

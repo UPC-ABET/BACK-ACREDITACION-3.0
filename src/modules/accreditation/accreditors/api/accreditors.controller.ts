@@ -10,7 +10,11 @@ import {
 	SwaggerAccreditorGetByFilters,
 } from './docs/accreditors.swagger';
 import { AccreditorService } from './accreditors.service';
-import { CreateAccreditorDto, UpdateAccreditorDto, FilterAccreditorDto } from '../model/accreditors.dtos';
+import {
+	CreateAccreditorDto,
+	UpdateAccreditorDto,
+	FilterAccreditorDto,
+} from '../model/accreditors.dtos';
 
 @SwaggerAccreditorController()
 export class AccreditorController extends BaseController<AccreditorService> {

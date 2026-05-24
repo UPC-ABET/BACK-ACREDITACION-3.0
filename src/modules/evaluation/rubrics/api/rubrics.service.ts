@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { RubricRepository } from '../core/rubrics.repository';
 import { RubricValidation } from '../core/rubrics.validation';
-import { CreateRubricDto, CreateRubricCriteriaDto, CreateRubricQuestionDto, UpdateRubricDto } from '../model/rubrics.dtos';
+import {
+	CreateRubricDto,
+	CreateRubricCriteriaDto,
+	CreateRubricQuestionDto,
+	UpdateRubricDto,
+} from '../model/rubrics.dtos';
 import { DataSource, DeepPartial, EntityManager, In } from 'typeorm';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
@@ -212,7 +217,12 @@ export class RubricService extends BaseService<RubricRepository> {
 		return await this.repository.findOneById(id);
 	}
 
-	async getAllWithFilters(filters?: { schoolId?: number; programId?: number; academicPeriodId?: number; courseId?: number }) {
+	async getAllWithFilters(filters?: {
+		schoolId?: number;
+		programId?: number;
+		academicPeriodId?: number;
+		courseId?: number;
+	}) {
 		const qb = this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('rubric')
@@ -237,7 +247,9 @@ export class RubricService extends BaseService<RubricRepository> {
 			qb.andWhere('program.id = :programId', { programId: filters.programId });
 		}
 		if (filters?.academicPeriodId) {
-			qb.andWhere('academicPeriod.id = :academicPeriodId', { academicPeriodId: filters.academicPeriodId });
+			qb.andWhere('academicPeriod.id = :academicPeriodId', {
+				academicPeriodId: filters.academicPeriodId,
+			});
 		}
 		if (filters?.courseId) {
 			qb.andWhere('course.id = :courseId', { courseId: filters.courseId });
@@ -261,7 +273,10 @@ export class RubricService extends BaseService<RubricRepository> {
 		} as any;
 	}
 
-	async delete(id: number, manager?: EntityManager): Promise<{ code: number; message: string; data: any }> {
+	async delete(
+		id: number,
+		manager?: EntityManager,
+	): Promise<{ code: number; message: string; data: any }> {
 		const rubric = await this.repository.findOneById(id);
 		if (!rubric) {
 			return { code: 2, message: 'La rúbrica no existe.', data: null };
@@ -272,7 +287,9 @@ export class RubricService extends BaseService<RubricRepository> {
 		await queryRunner.startTransaction();
 
 		try {
-			const questions = await queryRunner.manager.find(RubricQuestionEntity, { where: { rubric_id: id } });
+			const questions = await queryRunner.manager.find(RubricQuestionEntity, {
+				where: { rubric_id: id },
+			});
 			const questionIds = questions.map((q) => q.id);
 
 			if (questionIds.length > 0) {
@@ -287,11 +304,17 @@ export class RubricService extends BaseService<RubricRepository> {
 					});
 					if (scoreCount > 0) {
 						await queryRunner.rollbackTransaction();
-						return { code: 1, message: 'No se puede eliminar una rúbrica con calificaciones registradas.', data: null };
+						return {
+							code: 1,
+							message: 'No se puede eliminar una rúbrica con calificaciones registradas.',
+							data: null,
+						};
 					}
 				}
 
-				await queryRunner.manager.delete(RubricQuestionCriteriaEntity, { rubric_question_id: In(questionIds) });
+				await queryRunner.manager.delete(RubricQuestionCriteriaEntity, {
+					rubric_question_id: In(questionIds),
+				});
 			}
 
 			await queryRunner.manager.delete(RubricQuestionEntity, { rubric_id: id });

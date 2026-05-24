@@ -6,7 +6,12 @@ import { validateDtos } from './validator';
 /* ---------------- HELPERS ---------------- */
 
 function isRelationField(f: any) {
-	return f.decorators?.includes('ManyToOne') || f.decorators?.includes('OneToMany') || f.decorators?.includes('OneToOne') || f.decorators?.includes('ManyToMany');
+	return (
+		f.decorators?.includes('ManyToOne') ||
+		f.decorators?.includes('OneToMany') ||
+		f.decorators?.includes('OneToOne') ||
+		f.decorators?.includes('ManyToMany')
+	);
 }
 
 function isDuplicateRelation(fields: any[], f: any) {
@@ -189,7 +194,9 @@ function mergeImports(content: string) {
 /* ---------------- MAIN ---------------- */
 
 export function writeDtos({ domain, moduleName, entityName, fields }: any) {
-	const outputPath = path.resolve(`src/modules/${domain}/${moduleName}/model/${moduleName}.dtos.ts`);
+	const outputPath = path.resolve(
+		`src/modules/${domain}/${moduleName}/model/${moduleName}.dtos.ts`,
+	);
 
 	const entity = entityName.replace('Entity', '');
 

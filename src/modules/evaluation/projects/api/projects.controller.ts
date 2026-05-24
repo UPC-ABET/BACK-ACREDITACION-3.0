@@ -13,7 +13,13 @@ import {
 } from './docs/projects.swagger';
 import { ProjectService } from './projects.service';
 import { ProjectConfigService } from './project-config.service';
-import { CreateProjectDto, UpdateProjectDto, FilterProjectDto, ProjectEvaluatorResponseDto, ProjectDetailsResponseDto } from '../model/projects.dtos';
+import {
+	CreateProjectDto,
+	UpdateProjectDto,
+	FilterProjectDto,
+	ProjectEvaluatorResponseDto,
+	ProjectDetailsResponseDto,
+} from '../model/projects.dtos';
 
 @SwaggerProjectController()
 export class ProjectController extends BaseController<ProjectService> {
@@ -44,7 +50,14 @@ export class ProjectController extends BaseController<ProjectService> {
 		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
 		const parsedGradeTypeId = gradeTypeId ? parseInt(gradeTypeId, 10) : undefined;
 
-		return parseSuccessResponse(await this.projectConfigService.getProjectsByProfessor(professorId, parsedAcademicPeriodId, parsedSchoolId, parsedGradeTypeId));
+		return parseSuccessResponse(
+			await this.projectConfigService.getProjectsByProfessor(
+				professorId,
+				parsedAcademicPeriodId,
+				parsedSchoolId,
+				parsedGradeTypeId,
+			),
+		);
 	}
 
 	@Get('project/:projectId')
@@ -58,7 +71,12 @@ export class ProjectController extends BaseController<ProjectService> {
 	) {
 		const isEvalMode = isEvaluationMode === 'true';
 		return parseSuccessResponse(
-			await this.projectConfigService.getProjectWithDetails(projectId, isEvalMode, gradeTypeId, rubricTypeId)
+			await this.projectConfigService.getProjectWithDetails(
+				projectId,
+				isEvalMode,
+				gradeTypeId,
+				rubricTypeId,
+			),
 		);
 	}
 

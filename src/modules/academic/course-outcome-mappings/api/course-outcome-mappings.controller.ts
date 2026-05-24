@@ -10,7 +10,11 @@ import {
 	SwaggerCourseOutcomeMappingGetByFilters,
 } from './docs/course-outcome-mappings.swagger';
 import { CourseOutcomeMappingService } from './course-outcome-mappings.service';
-import { CreateCourseOutcomeMappingDto, UpdateCourseOutcomeMappingDto, FilterCourseOutcomeMappingDto } from '../model/course-outcome-mappings.dtos';
+import {
+	CreateCourseOutcomeMappingDto,
+	UpdateCourseOutcomeMappingDto,
+	FilterCourseOutcomeMappingDto,
+} from '../model/course-outcome-mappings.dtos';
 
 @SwaggerCourseOutcomeMappingController()
 export class CourseOutcomeMappingController extends BaseController<CourseOutcomeMappingService> {

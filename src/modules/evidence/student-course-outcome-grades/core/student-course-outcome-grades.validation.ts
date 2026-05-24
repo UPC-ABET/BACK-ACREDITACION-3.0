@@ -36,7 +36,8 @@ export class StudentCourseOutcomeGradeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studentCourseOutcomeGradesValidationStrings.error.notFound);
 
-		const enrollmentId = data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
+		const enrollmentId =
+			data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
 		const outcomeId = data.outcome_id ?? entity?.outcome_id;
 
 		const exists = await repo.findOneByCondition({

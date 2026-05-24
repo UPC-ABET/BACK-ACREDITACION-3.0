@@ -11,7 +11,11 @@ import {
 	SwaggerProfessorGetByUserId,
 } from './docs/professors.swagger';
 import { ProfessorService } from './professors.service';
-import { CreateProfessorDto, UpdateProfessorDto, FilterProfessorDto } from '../model/professors.dtos';
+import {
+	CreateProfessorDto,
+	UpdateProfessorDto,
+	FilterProfessorDto,
+} from '../model/professors.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 
 @SwaggerProfessorController()

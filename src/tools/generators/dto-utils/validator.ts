@@ -47,7 +47,12 @@ export function validateDtos(filePath: string, entityName: string): void {
 
 	// 🔥 SOLO ALERTAS (NO BLOQUEA)
 	if (createCount !== 1 || updateCount !== 1 || filterCount !== 1) {
-		logError('⚠️ Estructura DTO no estándar', entityName, filePath, `Create:${createCount}, Update:${updateCount}, Filter:${filterCount}`);
+		logError(
+			'⚠️ Estructura DTO no estándar',
+			entityName,
+			filePath,
+			`Create:${createCount}, Update:${updateCount}, Filter:${filterCount}`,
+		);
 	} else {
 		logSuccess(entityName, filePath);
 	}

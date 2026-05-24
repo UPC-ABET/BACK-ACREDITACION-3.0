@@ -10,7 +10,11 @@ import {
 	SwaggerProjectStudentGetByFilters,
 } from './docs/project-students.swagger';
 import { ProjectStudentService } from './project-students.service';
-import { CreateProjectStudentDto, UpdateProjectStudentDto, FilterProjectStudentDto } from '../model/project-students.dtos';
+import {
+	CreateProjectStudentDto,
+	UpdateProjectStudentDto,
+	FilterProjectStudentDto,
+} from '../model/project-students.dtos';
 
 @SwaggerProjectStudentController()
 export class ProjectStudentController extends BaseController<ProjectStudentService> {

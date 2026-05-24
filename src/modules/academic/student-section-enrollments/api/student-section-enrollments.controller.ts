@@ -10,7 +10,11 @@ import {
 	SwaggerStudentSectionEnrollmentGetByFilters,
 } from './docs/student-section-enrollments.swagger';
 import { StudentSectionEnrollmentService } from './student-section-enrollments.service';
-import { CreateStudentSectionEnrollmentDto, UpdateStudentSectionEnrollmentDto, FilterStudentSectionEnrollmentDto } from '../model/student-section-enrollments.dtos';
+import {
+	CreateStudentSectionEnrollmentDto,
+	UpdateStudentSectionEnrollmentDto,
+	FilterStudentSectionEnrollmentDto,
+} from '../model/student-section-enrollments.dtos';
 
 @SwaggerStudentSectionEnrollmentController()
 export class StudentSectionEnrollmentController extends BaseController<StudentSectionEnrollmentService> {

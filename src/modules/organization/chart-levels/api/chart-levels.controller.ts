@@ -10,7 +10,11 @@ import {
 	SwaggerChartLevelGetByFilters,
 } from './docs/chart-levels.swagger';
 import { ChartLevelService } from './chart-levels.service';
-import { CreateChartLevelDto, UpdateChartLevelDto, FilterChartLevelDto } from '../model/chart-levels.dtos';
+import {
+	CreateChartLevelDto,
+	UpdateChartLevelDto,
+	FilterChartLevelDto,
+} from '../model/chart-levels.dtos';
 
 @SwaggerChartLevelController()
 export class ChartLevelController extends BaseController<ChartLevelService> {

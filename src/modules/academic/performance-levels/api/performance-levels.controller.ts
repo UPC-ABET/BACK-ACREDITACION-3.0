@@ -10,7 +10,11 @@ import {
 	SwaggerPerformanceLevelGetByFilters,
 } from './docs/performance-levels.swagger';
 import { PerformanceLevelService } from './performance-levels.service';
-import { CreatePerformanceLevelDto, UpdatePerformanceLevelDto, FilterPerformanceLevelDto } from '../model/performance-levels.dtos';
+import {
+	CreatePerformanceLevelDto,
+	UpdatePerformanceLevelDto,
+	FilterPerformanceLevelDto,
+} from '../model/performance-levels.dtos';
 
 @SwaggerPerformanceLevelController()
 export class PerformanceLevelController extends BaseController<PerformanceLevelService> {

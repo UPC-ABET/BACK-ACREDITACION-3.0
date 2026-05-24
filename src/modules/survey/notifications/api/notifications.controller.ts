@@ -10,7 +10,11 @@ import {
 	SwaggerNotificationGetByFilters,
 } from './docs/notifications.swagger';
 import { NotificationService } from './notifications.service';
-import { CreateNotificationDto, UpdateNotificationDto, FilterNotificationDto } from '../model/notifications.dtos';
+import {
+	CreateNotificationDto,
+	UpdateNotificationDto,
+	FilterNotificationDto,
+} from '../model/notifications.dtos';
 
 @SwaggerNotificationController()
 export class NotificationController extends BaseController<NotificationService> {

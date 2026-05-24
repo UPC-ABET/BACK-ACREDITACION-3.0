@@ -40,7 +40,8 @@ export class StudentCourseGradeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studentCourseGradesValidationStrings.error.notFound);
 
-		const enrollmentId = data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
+		const enrollmentId =
+			data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
 		const gradeTypeId = data.grade_type_id ?? entity?.grade_type_id;
 
 		const exists = await repo.findOneByCondition({

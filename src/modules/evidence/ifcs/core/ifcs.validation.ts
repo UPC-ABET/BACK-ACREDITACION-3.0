@@ -5,7 +5,10 @@ import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFC_OPS, IfcOp } from '../api/ifcs.constants';
 
-export type IfcTransitionOp = typeof IFC_OPS.SUBMIT | typeof IFC_OPS.APPROVE | typeof IFC_OPS.REJECT;
+export type IfcTransitionOp =
+	| typeof IFC_OPS.SUBMIT
+	| typeof IFC_OPS.APPROVE
+	| typeof IFC_OPS.REJECT;
 export type IfcEditOp = typeof IFC_OPS.CREATE | typeof IFC_OPS.PATCH;
 export type IfcChainOp = typeof IFC_OPS.SUBMIT | typeof IFC_OPS.PATCH | typeof IFC_OPS.CREATE;
 
@@ -108,7 +111,10 @@ export class IfcValidation {
 		}
 	}
 
-	static assertNotOwnCoordinator(ctx: IfcTransitionContext, op: typeof IFC_OPS.APPROVE | typeof IFC_OPS.REJECT) {
+	static assertNotOwnCoordinator(
+		ctx: IfcTransitionContext,
+		op: typeof IFC_OPS.APPROVE | typeof IFC_OPS.REJECT,
+	) {
 		if (ctx.requesterStaffId != null && ctx.requesterStaffId === ctx.ifcCourseStaffId) {
 			throw new HttpException(
 				{
@@ -121,7 +127,10 @@ export class IfcValidation {
 	}
 
 	static assertCurrentStatusEditable(currentCode: string | null, op: IfcOp) {
-		const editable: (string | null)[] = [TYPE_CODES.IFC_STATUS.SAVED, TYPE_CODES.IFC_STATUS.OBSERVED];
+		const editable: (string | null)[] = [
+			TYPE_CODES.IFC_STATUS.SAVED,
+			TYPE_CODES.IFC_STATUS.OBSERVED,
+		];
 		if (!editable.includes(currentCode)) {
 			throw new HttpException(
 				{
@@ -134,7 +143,10 @@ export class IfcValidation {
 	}
 
 	static async assertNoIfcExists(em: EntityManager, courseId: number, periodId: number, op: IfcOp) {
-		const rows = await em.query(`SELECT 1 FROM evidence.ifcs WHERE course_id = $1 AND academic_period_id = $2 LIMIT 1`, [courseId, periodId]);
+		const rows = await em.query(
+			`SELECT 1 FROM evidence.ifcs WHERE course_id = $1 AND academic_period_id = $2 LIMIT 1`,
+			[courseId, periodId],
+		);
 		if (rows.length > 0) {
 			throw new HttpException(
 				{
@@ -196,7 +208,11 @@ export class IfcValidation {
 		}
 	}
 
-	static assertFindingsAndActionsPresent(findings: { tempId: string }[], actions: { finding_temp_id: string }[], op: IfcOp) {
+	static assertFindingsAndActionsPresent(
+		findings: { tempId: string }[],
+		actions: { finding_temp_id: string }[],
+		op: IfcOp,
+	) {
 		const errors: string[] = [];
 
 		if (!findings || findings.length === 0) {

@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerSurveyController, SwaggerSurveyCreate, SwaggerSurveyUpdate, SwaggerSurveyDelete, SwaggerSurveyGetAll, SwaggerSurveyGetById, SwaggerSurveyGetByFilters } from './docs/surveys.swagger';
+import {
+	SwaggerSurveyController,
+	SwaggerSurveyCreate,
+	SwaggerSurveyUpdate,
+	SwaggerSurveyDelete,
+	SwaggerSurveyGetAll,
+	SwaggerSurveyGetById,
+	SwaggerSurveyGetByFilters,
+} from './docs/surveys.swagger';
 import { SurveyService } from './surveys.service';
 import { CreateSurveyDto, UpdateSurveyDto, FilterSurveyDto } from '../model/surveys.dtos';
 

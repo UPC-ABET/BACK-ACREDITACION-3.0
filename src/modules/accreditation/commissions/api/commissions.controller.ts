@@ -10,7 +10,11 @@ import {
 	SwaggerCommissionGetByFilters,
 } from './docs/commissions.swagger';
 import { CommissionService } from './commissions.service';
-import { CreateCommissionDto, UpdateCommissionDto, FilterCommissionDto } from '../model/commissions.dtos';
+import {
+	CreateCommissionDto,
+	UpdateCommissionDto,
+	FilterCommissionDto,
+} from '../model/commissions.dtos';
 
 @SwaggerCommissionController()
 export class CommissionController extends BaseController<CommissionService> {

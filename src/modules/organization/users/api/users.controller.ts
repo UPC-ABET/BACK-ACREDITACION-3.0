@@ -13,7 +13,13 @@ import {
 	SwaggerUserLogout,
 	SwaggerUserChangeRole,
 } from './docs/users.swagger';
-import { CreateUserDto, UpdateUserDto, FilterUserDto, LoginUserByCredentialsDto, ChangeRoleDto } from '../model/users.dtos';
+import {
+	CreateUserDto,
+	UpdateUserDto,
+	FilterUserDto,
+	LoginUserByCredentialsDto,
+	ChangeRoleDto,
+} from '../model/users.dtos';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
@@ -67,7 +73,10 @@ export class UserController extends BaseController<UserService> {
 
 	@Public()
 	@SwaggerUserLoginByCredentials()
-	async loginByCredentials(@Body() dto: LoginUserByCredentialsDto, @Res({ passthrough: true }) res: Response) {
+	async loginByCredentials(
+		@Body() dto: LoginUserByCredentialsDto,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const result = await this.service.loginByCredentials(dto.school_code, dto.email, dto.password);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
@@ -82,7 +91,11 @@ export class UserController extends BaseController<UserService> {
 
 	@SkipPermissions()
 	@SwaggerUserChangeRole()
-	async changeRole(@Body() dto: ChangeRoleDto, @Req() req, @Res({ passthrough: true }) res: Response) {
+	async changeRole(
+		@Body() dto: ChangeRoleDto,
+		@Req() req,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const result = await this.service.loginById(req.user.userId, dto.newRole, req.user.school_id);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);

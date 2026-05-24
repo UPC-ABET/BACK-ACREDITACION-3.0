@@ -1,21 +1,35 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { LcfcConfigRepository, LCFC_SURVEY_TYPE } from '../core/lcfc-config.repository';
-import { GenerateLcfcConfigDto, FilterLcfcConfigDto, UpdateLcfcConfigStatusDto } from '../model/lcfc.dtos';
+import {
+	GenerateLcfcConfigDto,
+	FilterLcfcConfigDto,
+	UpdateLcfcConfigStatusDto,
+} from '../model/lcfc.dtos';
 
 @Injectable()
 export class LcfcConfigService {
 	constructor(private readonly configRepo: LcfcConfigRepository) {}
 
-	async generateConfigs(dto: GenerateLcfcConfigDto): Promise<{ created: number; skipped: number; configs: any[] }> {
-		const sections = await this.configRepo.getCourseSectionsForPeriod(dto.academic_period_id, dto.program_id, dto.campus_id);
+	async generateConfigs(
+		dto: GenerateLcfcConfigDto,
+	): Promise<{ created: number; skipped: number; configs: any[] }> {
+		const sections = await this.configRepo.getCourseSectionsForPeriod(
+			dto.academic_period_id,
+			dto.program_id,
+			dto.campus_id,
+		);
 
 		if (sections.length === 0) {
-			throw new BadRequestException('No se encontraron secciones de curso para el período y programa indicados.');
+			throw new BadRequestException(
+				'No se encontraron secciones de curso para el período y programa indicados.',
+			);
 		}
 
 		const outcomeId = await this.configRepo.findFirstProgramOutcomeId(dto.program_id);
 		if (!outcomeId) {
-			throw new BadRequestException(`No se encontraron outcomes para el programa ${dto.program_id}. Verifique que existan outcomes en accreditation.outcomes.`);
+			throw new BadRequestException(
+				`No se encontraron outcomes para el programa ${dto.program_id}. Verifique que existan outcomes en accreditation.outcomes.`,
+			);
 		}
 
 		let created = 0;
@@ -23,7 +37,10 @@ export class LcfcConfigService {
 		const configs: any[] = [];
 
 		for (const section of sections) {
-			const existing = await this.configRepo.findByCourseSection(section.course_section_id, dto.academic_period_id);
+			const existing = await this.configRepo.findByCourseSection(
+				section.course_section_id,
+				dto.academic_period_id,
+			);
 
 			if (existing) {
 				skipped++;
@@ -65,7 +82,8 @@ export class LcfcConfigService {
 		let updated = 0;
 		for (const item of dto.updates) {
 			const existing = await this.configRepo.findOneById(item.config_id);
-			if (!existing) throw new NotFoundException(`Configuración LCFC con ID ${item.config_id} no encontrada.`);
+			if (!existing)
+				throw new NotFoundException(`Configuración LCFC con ID ${item.config_id} no encontrada.`);
 			await this.configRepo.update(item.config_id, { is_active: item.is_active });
 			updated++;
 		}

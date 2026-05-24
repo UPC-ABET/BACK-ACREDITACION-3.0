@@ -1,6 +1,10 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthenticationResult, ConfidentialClientApplication, Configuration } from '@azure/msal-node';
+import {
+	AuthenticationResult,
+	ConfidentialClientApplication,
+	Configuration,
+} from '@azure/msal-node';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
 
@@ -27,7 +31,10 @@ export class AuthService {
 		});
 
 		if (!school) {
-			throw new HttpException({ message: 'error.school.notFound', errors: ['error.school.notFound'] }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: 'error.school.notFound', errors: ['error.school.notFound'] },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
 		return school.id;
@@ -85,7 +92,8 @@ export class AuthService {
 	}
 
 	private getEmailFromResult(result: AuthenticationResult, claims: MicrosoftIdTokenClaims) {
-		const email = claims.email ?? claims.preferred_username ?? claims.upn ?? result.account?.username;
+		const email =
+			claims.email ?? claims.preferred_username ?? claims.upn ?? result.account?.username;
 
 		if (!email) {
 			throw new UnauthorizedException('Microsoft no devolvió un correo válido');

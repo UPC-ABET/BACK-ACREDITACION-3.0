@@ -20,11 +20,17 @@ async function run() {
 			)
 		`);
 
-		const executed = await queryRunner.query(`SELECT 1 FROM "migrations" WHERE "timestamp" = $1 AND "name" = $2 LIMIT 1`, [timestamp, migration.name]);
+		const executed = await queryRunner.query(
+			`SELECT 1 FROM "migrations" WHERE "timestamp" = $1 AND "name" = $2 LIMIT 1`,
+			[timestamp, migration.name],
+		);
 
 		if (executed.length === 0) {
 			await migration.up(queryRunner);
-			await queryRunner.query(`INSERT INTO "migrations"("timestamp", "name") VALUES ($1, $2)`, [timestamp, migration.name]);
+			await queryRunner.query(`INSERT INTO "migrations"("timestamp", "name") VALUES ($1, $2)`, [
+				timestamp,
+				migration.name,
+			]);
 		}
 
 		await queryRunner.commitTransaction();

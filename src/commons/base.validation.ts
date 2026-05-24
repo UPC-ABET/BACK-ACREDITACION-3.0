@@ -18,23 +18,35 @@ export abstract class BaseValidation {
 	// 🧩 HELPERS REUTILIZABLES
 	protected static async validateEntityExists(repo: any, id: number, entity = 'registro') {
 		if (!id) {
-			throw new HttpException({ message: ValidationConfig.REQUIRED_ID_MESSAGE }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: ValidationConfig.REQUIRED_ID_MESSAGE },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
 		const exists = await repo.findOneById(id);
 		if (!exists) {
-			throw new HttpException({ message: ValidationConfig.NOT_FOUND_ENTITY(entity) }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: ValidationConfig.NOT_FOUND_ENTITY(entity) },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 
 	protected static async validateForeignKey(repo: any, id: number, entity: string) {
 		if (!id) {
-			throw new HttpException({ message: ValidationConfig.FK_REQUIRED(entity) }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: ValidationConfig.FK_REQUIRED(entity) },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
 		const exists = await repo.findOneById(id);
 		if (!exists) {
-			throw new HttpException({ message: ValidationConfig.FK_NOT_FOUND(entity) }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: ValidationConfig.FK_NOT_FOUND(entity) },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 

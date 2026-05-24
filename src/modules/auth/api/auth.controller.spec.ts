@@ -50,7 +50,9 @@ describe('AuthController — MSAL state packing', () => {
 
 		it('packs {csrf, school_id} into state, sets csrf cookie, and redirects', async () => {
 			authService.resolveSchoolIdByCode.mockResolvedValueOnce(7);
-			authService.buildMicrosoftLoginUrl.mockResolvedValueOnce('https://login.microsoftonline.com/url?state=...');
+			authService.buildMicrosoftLoginUrl.mockResolvedValueOnce(
+				'https://login.microsoftonline.com/url?state=...',
+			);
 			const { res, cookieJar } = fakeResponse();
 
 			await controller.loginWithMicrosoft('EISCB', res as never);
@@ -64,7 +66,11 @@ describe('AuthController — MSAL state packing', () => {
 			expect(typeof parsed.csrf).toBe('string');
 			expect(parsed.csrf.length).toBeGreaterThan(0);
 
-			expect(res.cookie).toHaveBeenCalledWith('microsoft_oauth_state', parsed.csrf, expect.objectContaining({ httpOnly: true, sameSite: 'lax' }));
+			expect(res.cookie).toHaveBeenCalledWith(
+				'microsoft_oauth_state',
+				parsed.csrf,
+				expect.objectContaining({ httpOnly: true, sameSite: 'lax' }),
+			);
 			expect(cookieJar['microsoft_oauth_state']).toBe(parsed.csrf);
 			expect(res.redirect).toHaveBeenCalledWith('https://login.microsoftonline.com/url?state=...');
 		});
@@ -79,14 +85,20 @@ describe('AuthController — MSAL state packing', () => {
 			const state = stateOf('expected-csrf', 7);
 			const { res } = fakeResponse({ microsoft_oauth_state: 'different-csrf' });
 
-			await expect(controller.microsoftCallback('code-abc', state, res as never)).rejects.toBeInstanceOf(UnauthorizedException);
+			await expect(
+				controller.microsoftCallback('code-abc', state, res as never),
+			).rejects.toBeInstanceOf(UnauthorizedException);
 			expect(authService.loginWithMicrosoftCode).not.toHaveBeenCalled();
 		});
 
 		it('throws when state is missing or malformed', async () => {
 			const { res } = fakeResponse({ microsoft_oauth_state: 'whatever' });
-			await expect(controller.microsoftCallback('code-abc', '', res as never)).rejects.toBeInstanceOf(UnauthorizedException);
-			await expect(controller.microsoftCallback('code-abc', 'not-json', res as never)).rejects.toBeInstanceOf(UnauthorizedException);
+			await expect(
+				controller.microsoftCallback('code-abc', '', res as never),
+			).rejects.toBeInstanceOf(UnauthorizedException);
+			await expect(
+				controller.microsoftCallback('code-abc', 'not-json', res as never),
+			).rejects.toBeInstanceOf(UnauthorizedException);
 		});
 
 		it('extracts school_id from state and forwards it to loginWithMicrosoftCode', async () => {

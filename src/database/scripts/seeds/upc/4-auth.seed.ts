@@ -47,33 +47,95 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			SELECT 1 FROM "organization"."users" u WHERE u.email = v.email
 		);
 		`,
-		[mockPassword, mockPassword, mockPassword, mockPassword, mockPassword, mockPassword, mockPassword],
+		[
+			mockPassword,
+			mockPassword,
+			mockPassword,
+			mockPassword,
+			mockPassword,
+			mockPassword,
+			mockPassword,
+		],
 	);
 
 	const staffValues = [
-		['admin@upc.edu.pe', 'TG901-T001', i18n('Administrador general', 'General administrator'), i18n('Administracion del sistema academico', 'Administration of the academic system')],
-		['calidad@upc.edu.pe', 'TG901-T002', i18n('Coordinadora de calidad', 'Quality coordinator'), i18n('Seguimiento de indicadores de acreditacion', 'Tracking of accreditation indicators')],
+		[
+			'admin@upc.edu.pe',
+			'TG901-T001',
+			i18n('Administrador general', 'General administrator'),
+			i18n('Administracion del sistema academico', 'Administration of the academic system'),
+		],
+		[
+			'calidad@upc.edu.pe',
+			'TG901-T002',
+			i18n('Coordinadora de calidad', 'Quality coordinator'),
+			i18n('Seguimiento de indicadores de acreditacion', 'Tracking of accreditation indicators'),
+		],
 		[
 			'prof.juan.perez@upc.edu.pe',
 			'TG901-T003',
 			i18n('Profesor tiempo completo', 'Full-time professor'),
-			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
+			i18n(
+				'Docente del programa de Ingenieria de Software',
+				'Professor of the Software Engineering program',
+			),
 		],
 		[
 			'prof.maria.garcia@upc.edu.pe',
 			'TG901-T003',
 			i18n('Profesora tiempo completo', 'Full-time professor'),
-			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
+			i18n(
+				'Docente del programa de Ingenieria de Software',
+				'Professor of the Software Engineering program',
+			),
 		],
-		['admin.eiscb@upc.edu.pe', 'TG901-T001', i18n('Administrador EISCB', 'EISCB Administrator'), i18n('Administracion de la escuela EISCB', 'EISCB school administration')],
-		['director.eiscb@upc.edu.pe', 'TG901-T002', i18n('Director de Escuela EISCB', 'EISCB School Director'), i18n('Direccion academica de la escuela EISCB', 'Academic leadership of EISCB')],
-		['coord.eiscb@upc.edu.pe', 'TG901-T003', i18n('Coordinador de Curso EISCB', 'EISCB Course Coordinator'), i18n('Coordinacion de cursos de la escuela EISCB', 'Course coordination at EISCB')],
-		['dean.eiscb@upc.edu.pe', 'TG901-T001', i18n('Decano EISCB', 'EISCB Dean'), i18n('Decanato de la facultad', 'Faculty dean')],
-		['prog-coord.eiscb@upc.edu.pe', 'TG901-T002', i18n('Coordinadora de Carrera EISCB', 'EISCB Program Coordinator'), i18n('Coordinacion de la carrera CS', 'CS program coordination')],
-		['area-coord.eiscb@upc.edu.pe', 'TG901-T002', i18n('Coordinador de Area EISCB', 'EISCB Area Coordinator'), i18n('Coordinacion del area academica', 'Academic area coordination')],
-		['subarea-coord.eiscb@upc.edu.pe', 'TG901-T002', i18n('Coordinador de Subarea EISCB', 'EISCB Subarea Coordinator'), i18n('Coordinacion de subarea academica', 'Academic subarea coordination')],
+		[
+			'admin.eiscb@upc.edu.pe',
+			'TG901-T001',
+			i18n('Administrador EISCB', 'EISCB Administrator'),
+			i18n('Administracion de la escuela EISCB', 'EISCB school administration'),
+		],
+		[
+			'director.eiscb@upc.edu.pe',
+			'TG901-T002',
+			i18n('Director de Escuela EISCB', 'EISCB School Director'),
+			i18n('Direccion academica de la escuela EISCB', 'Academic leadership of EISCB'),
+		],
+		[
+			'coord.eiscb@upc.edu.pe',
+			'TG901-T003',
+			i18n('Coordinador de Curso EISCB', 'EISCB Course Coordinator'),
+			i18n('Coordinacion de cursos de la escuela EISCB', 'Course coordination at EISCB'),
+		],
+		[
+			'dean.eiscb@upc.edu.pe',
+			'TG901-T001',
+			i18n('Decano EISCB', 'EISCB Dean'),
+			i18n('Decanato de la facultad', 'Faculty dean'),
+		],
+		[
+			'prog-coord.eiscb@upc.edu.pe',
+			'TG901-T002',
+			i18n('Coordinadora de Carrera EISCB', 'EISCB Program Coordinator'),
+			i18n('Coordinacion de la carrera CS', 'CS program coordination'),
+		],
+		[
+			'area-coord.eiscb@upc.edu.pe',
+			'TG901-T002',
+			i18n('Coordinador de Area EISCB', 'EISCB Area Coordinator'),
+			i18n('Coordinacion del area academica', 'Academic area coordination'),
+		],
+		[
+			'subarea-coord.eiscb@upc.edu.pe',
+			'TG901-T002',
+			i18n('Coordinador de Subarea EISCB', 'EISCB Subarea Coordinator'),
+			i18n('Coordinacion de subarea academica', 'Academic subarea coordination'),
+		],
 	]
-		.map(([email, code, title, description]) => `('${email}', '${code}', '${title}'::jsonb, '${description}'::jsonb)`)
+		.map(
+			([email, code, title, description]) =>
+				`('${email}', '${code}', '${title}'::jsonb, '${description}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`

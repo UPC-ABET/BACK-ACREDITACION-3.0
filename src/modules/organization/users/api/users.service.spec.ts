@@ -24,7 +24,9 @@ describe('UserService - school-aware login', () => {
 	const authorizationProfile = {
 		activeRole: { id: 2, name: { en: 'Coordinator', es: 'Coordinador' } },
 		allowedRoles: [{ id: 2, name: { en: 'Coordinator', es: 'Coordinador' } }],
-		permissions: [{ id: 6, code: 'TG2001-T002', module: 'IFCS', route: '/ifcs', permissions: ['GET', 'POST'] }],
+		permissions: [
+			{ id: 6, code: 'TG2001-T002', module: 'IFCS', route: '/ifcs', permissions: ['GET', 'POST'] },
+		],
 	};
 
 	const baseUser = {
@@ -62,7 +64,9 @@ describe('UserService - school-aware login', () => {
 		it('throws HttpException(400) when the school_code does not match any school', async () => {
 			schoolRepository.findOneByCondition.mockResolvedValueOnce(null);
 
-			await expect(service.loginByCredentials('UNKNOWN', baseUser.email, 'pw')).rejects.toMatchObject({
+			await expect(
+				service.loginByCredentials('UNKNOWN', baseUser.email, 'pw'),
+			).rejects.toMatchObject({
 				constructor: HttpException,
 				status: HttpStatus.BAD_REQUEST,
 				response: {
@@ -79,7 +83,11 @@ describe('UserService - school-aware login', () => {
 		});
 
 		it('resolves school and signs a JWT carrying local roles, permissions and school.id', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce({ id: 7, code: 'EISCB', is_active: true });
+			schoolRepository.findOneByCondition.mockResolvedValueOnce({
+				id: 7,
+				code: 'EISCB',
+				is_active: true,
+			});
 			userRepository.findForLogin.mockResolvedValueOnce(baseUser);
 			(bcrypt.compare as unknown as jest.Mock).mockResolvedValueOnce(true);
 
@@ -90,7 +98,10 @@ describe('UserService - school-aware login', () => {
 				access_token: 'signed-jwt-token',
 			});
 			expect(result.user.password).toBeUndefined();
-			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, undefined);
+			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(
+				42,
+				undefined,
+			);
 
 			const payload = jwtService.sign.mock.calls[0][0];
 			expect(payload).toMatchObject({
@@ -105,11 +116,17 @@ describe('UserService - school-aware login', () => {
 		});
 
 		it('throws UnauthorizedException when password is wrong', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce({ id: 7, code: 'EISCB', is_active: true });
+			schoolRepository.findOneByCondition.mockResolvedValueOnce({
+				id: 7,
+				code: 'EISCB',
+				is_active: true,
+			});
 			userRepository.findForLogin.mockResolvedValueOnce(baseUser);
 			(bcrypt.compare as unknown as jest.Mock).mockResolvedValueOnce(false);
 
-			await expect(service.loginByCredentials('EISCB', baseUser.email, 'wrong-password')).rejects.toBeInstanceOf(UnauthorizedException);
+			await expect(
+				service.loginByCredentials('EISCB', baseUser.email, 'wrong-password'),
+			).rejects.toBeInstanceOf(UnauthorizedException);
 		});
 	});
 
@@ -135,8 +152,14 @@ describe('UserService - school-aware login', () => {
 		});
 
 		it('throws UnauthorizedException when there are no roles', async () => {
-			userAuthorizationService.buildAuthorizationProfile.mockResolvedValueOnce({ activeRole: null, allowedRoles: [], permissions: [] });
-			await expect(service.createUserLogin(baseUser, null)).rejects.toBeInstanceOf(UnauthorizedException);
+			userAuthorizationService.buildAuthorizationProfile.mockResolvedValueOnce({
+				activeRole: null,
+				allowedRoles: [],
+				permissions: [],
+			});
+			await expect(service.createUserLogin(baseUser, null)).rejects.toBeInstanceOf(
+				UnauthorizedException,
+			);
 		});
 	});
 
@@ -152,7 +175,9 @@ describe('UserService - school-aware login', () => {
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, 2);
-			expect(jwtService.sign).toHaveBeenCalledWith(expect.objectContaining({ school_id: 99, activeRole: authorizationProfile.activeRole }));
+			expect(jwtService.sign).toHaveBeenCalledWith(
+				expect.objectContaining({ school_id: 99, activeRole: authorizationProfile.activeRole }),
+			);
 		});
 	});
 });

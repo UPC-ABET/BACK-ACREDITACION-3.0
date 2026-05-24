@@ -14,23 +14,32 @@ import {
 	NotificationDispatchResultDto,
 	NotifyAllResultDto,
 } from '../../model/ifcs.dtos';
-import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto, IfcPrefillResponseDto } from '../../model/ifcs-content.dtos';
+import {
+	CreateIfcDto,
+	IfcContentDto,
+	IfcPrefillQueryDto,
+	IfcPrefillResponseDto,
+} from '../../model/ifcs-content.dtos';
 
 const cfg = ifcsRoutes.ifcs;
 
 export const SwaggerIfcController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerIfcCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateIfcDto });
+export const SwaggerIfcCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateIfcDto });
 
-export const SwaggerIfcUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateIfcDto });
+export const SwaggerIfcUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateIfcDto });
 
 export const SwaggerIfcDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
 export const SwaggerIfcGetAll = () => HttpMethodWithSwagger(cfg.operation.getAll);
 
-export const SwaggerIfcGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterIfcDto });
+export const SwaggerIfcGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterIfcDto });
 
-export const SwaggerIfcList = () => HttpMethodWithSwagger({ ...cfg.operation.list, body: ListIfcsDto });
+export const SwaggerIfcList = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.list, body: ListIfcsDto });
 
 export const SwaggerIfcGetView = () =>
 	HttpMethodWithSwagger({

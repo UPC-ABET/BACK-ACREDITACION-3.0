@@ -1,6 +1,17 @@
 // no-override
 
-import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
+import {
+	ArrayMaxSize,
+	ArrayNotEmpty,
+	IsArray,
+	IsBoolean,
+	IsIn,
+	IsInt,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsPositive,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
@@ -222,7 +233,10 @@ export class IfcHeaderDto {
 	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
 	@ApiProperty({ type: () => IfcCoordinatorDto }) coordinator: IfcCoordinatorDto;
 	@ApiProperty({ type: () => IfcStatusInfoDto, nullable: true }) status: IfcStatusInfoDto | null;
-	@ApiProperty({ description: 'True when the requester is the own coordinator OR any ancestor of the course in the chart tree. Drives the Edit button on the view page.' })
+	@ApiProperty({
+		description:
+			'True when the requester is the own coordinator OR any ancestor of the course in the chart tree. Drives the Edit button on the view page.',
+	})
 	requester_in_chain: boolean;
 }
 
@@ -268,7 +282,11 @@ export class IfcFindingDto {
 	@ApiProperty({ type: Object }) description: I18nText;
 	@ApiProperty() correlative: number;
 	@ApiProperty() is_automatic: boolean;
-	@ApiProperty({ type: Object }) criticality: { code: string; name: I18nText; color: string | null };
+	@ApiProperty({ type: Object }) criticality: {
+		code: string;
+		name: I18nText;
+		color: string | null;
+	};
 	@ApiProperty({ type: [IfcFindingOutcomeDto] }) outcomes: IfcFindingOutcomeDto[];
 	@ApiProperty({ type: [IfcFindingActionDto] }) actions: IfcFindingActionDto[];
 }

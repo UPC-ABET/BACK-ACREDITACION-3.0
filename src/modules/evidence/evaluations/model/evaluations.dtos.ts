@@ -1,4 +1,13 @@
-import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
+import {
+	IsBoolean,
+	IsDate,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsArray,
+	ValidateNested,
+	IsNotEmpty,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -39,7 +48,12 @@ export class SubmitEvaluationDto extends BaseDto {
 
 	@IsNumber()
 	@IsNotEmpty()
-	@ApiProperty({ example: 1, required: true, description: 'ID de la rúbrica que se está evaluando (EA o EB). Se obtiene del GET /projects/project/:id.' })
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description:
+			'ID de la rúbrica que se está evaluando (EA o EB). Se obtiene del GET /projects/project/:id.',
+	})
 	rubric_id: number;
 
 	@IsOptional()
@@ -69,7 +83,12 @@ export class SubmitEvaluationDto extends BaseDto {
 
 	@IsNumber()
 	@IsNotEmpty()
-	@ApiProperty({ example: 1, required: true, description: 'Estado de calificación desde core.types (TG404). Ej: ASISTIO (TG404-T001), NR (TG404-T002), NA (TG404-T003).' })
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description:
+			'Estado de calificación desde core.types (TG404). Ej: ASISTIO (TG404-T001), NR (TG404-T002), NA (TG404-T003).',
+	})
 	qualification_status_type_id: number;
 }
 
@@ -186,7 +205,11 @@ export class FinalizeProjectDto extends BaseDto {
 
 	@IsOptional()
 	@IsBoolean()
-	@ApiProperty({ example: false, required: false, description: 'Indica si es evaluación de Participación (PA). Si es true, no exige observación.' })
+	@ApiProperty({
+		example: false,
+		required: false,
+		description: 'Indica si es evaluación de Participación (PA). Si es true, no exige observación.',
+	})
 	is_pa?: boolean;
 
 	@IsOptional()

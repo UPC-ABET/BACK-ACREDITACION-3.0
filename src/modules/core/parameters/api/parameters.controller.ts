@@ -10,7 +10,11 @@ import {
 	SwaggerParameterGetByFilters,
 } from './docs/parameters.swagger';
 import { ParameterService } from './parameters.service';
-import { CreateParameterDto, UpdateParameterDto, FilterParameterDto } from '../model/parameters.dtos';
+import {
+	CreateParameterDto,
+	UpdateParameterDto,
+	FilterParameterDto,
+} from '../model/parameters.dtos';
 
 @SwaggerParameterController()
 export class ParameterController extends BaseController<ParameterService> {

@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerScoreController, SwaggerScoreCreate, SwaggerScoreUpdate, SwaggerScoreDelete, SwaggerScoreGetAll, SwaggerScoreGetById, SwaggerScoreGetByFilters } from './docs/scores.swagger';
+import {
+	SwaggerScoreController,
+	SwaggerScoreCreate,
+	SwaggerScoreUpdate,
+	SwaggerScoreDelete,
+	SwaggerScoreGetAll,
+	SwaggerScoreGetById,
+	SwaggerScoreGetByFilters,
+} from './docs/scores.swagger';
 import { ScoreService } from './scores.service';
 import { CreateScoreDto, UpdateScoreDto, FilterScoreDto } from '../model/scores.dtos';
 

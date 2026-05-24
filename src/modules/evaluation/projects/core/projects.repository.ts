@@ -38,46 +38,14 @@ export class ProjectRepository extends BaseRepostitory {
 				'sse_enrich',
 				'sse_enrich.id = ps.student_section_enrollment_id',
 			)
-			.leftJoin(
-				EnrolledStudentEntity,
-				'es_enrich',
-				'es_enrich.id = sse_enrich.enrolled_student_id',
-			)
-			.leftJoin(
-				StudentEntity,
-				'st_enrich',
-				'st_enrich.id = es_enrich.student_id',
-			)
-			.leftJoin(
-				UserEntity,
-				'u_enrich',
-				'u_enrich.id = st_enrich.user_id',
-			)
-			.leftJoin(
-				CourseSectionEntity,
-				'cs_enrich',
-				'cs_enrich.id = sse_enrich.course_section_id',
-			)
-			.leftJoin(
-				ProfessorEntity,
-				'prof_enrich',
-				'prof_enrich.id = pe.professor_id',
-			)
-			.leftJoin(
-				StaffEntity,
-				'staff_enrich',
-				'staff_enrich.id = prof_enrich.staff_id',
-			)
-			.leftJoin(
-				UserEntity,
-				'u_prof_enrich',
-				'u_prof_enrich.id = staff_enrich.user_id',
-			)
-			.leftJoin(
-				TypeEntity,
-				'eval_type_enrich',
-				'eval_type_enrich.id = pe.evaluator_type_id',
-			)
+			.leftJoin(EnrolledStudentEntity, 'es_enrich', 'es_enrich.id = sse_enrich.enrolled_student_id')
+			.leftJoin(StudentEntity, 'st_enrich', 'st_enrich.id = es_enrich.student_id')
+			.leftJoin(UserEntity, 'u_enrich', 'u_enrich.id = st_enrich.user_id')
+			.leftJoin(CourseSectionEntity, 'cs_enrich', 'cs_enrich.id = sse_enrich.course_section_id')
+			.leftJoin(ProfessorEntity, 'prof_enrich', 'prof_enrich.id = pe.professor_id')
+			.leftJoin(StaffEntity, 'staff_enrich', 'staff_enrich.id = prof_enrich.staff_id')
+			.leftJoin(UserEntity, 'u_prof_enrich', 'u_prof_enrich.id = staff_enrich.user_id')
+			.leftJoin(TypeEntity, 'eval_type_enrich', 'eval_type_enrich.id = pe.evaluator_type_id')
 			.addSelect([
 				'u_enrich.first_name',
 				'u_enrich.last_name',
@@ -121,11 +89,7 @@ export class ProjectRepository extends BaseRepostitory {
 			filters.school_id
 		);
 		const needsSpc = needsCourseSection;
-		const needsSpap = !!(
-			filters.academic_period_id ||
-			filters.program_id ||
-			filters.school_id
-		);
+		const needsSpap = !!(filters.academic_period_id || filters.program_id || filters.school_id);
 		const needsSp = !!(filters.program_id || filters.school_id);
 
 		// ── JOIN: Student Section Enrollment ────────────────────────────
@@ -218,33 +182,37 @@ export class ProjectRepository extends BaseRepostitory {
 		const { entities, raw } = await qb.getRawAndEntities();
 
 		return entities.map((project) => {
-			const projectRaws = raw.filter(r => r.project_id === project.id);
+			const projectRaws = raw.filter((r) => r.project_id === project.id);
 
 			return {
 				...project,
-				students: project.students.map(student => {
-					const studentRaw = projectRaws.find(r => r.ps_id === student.id);
+				students: project.students.map((student) => {
+					const studentRaw = projectRaws.find((r) => r.ps_id === student.id);
 					return {
 						...student,
-						student_info: studentRaw ? {
-							first_name: studentRaw.u_enrich_first_name,
-							last_name: studentRaw.u_enrich_last_name,
-							student_id: studentRaw.st_enrich_id,
-							section_code: studentRaw.cs_enrich_section_code,
-							section_id: studentRaw.cs_enrich_id,
-						} : null,
+						student_info: studentRaw
+							? {
+									first_name: studentRaw.u_enrich_first_name,
+									last_name: studentRaw.u_enrich_last_name,
+									student_id: studentRaw.st_enrich_id,
+									section_code: studentRaw.cs_enrich_section_code,
+									section_id: studentRaw.cs_enrich_id,
+								}
+							: null,
 					};
 				}),
-				evaluators: project.evaluators.map(evaluator => {
-					const evalRaw = projectRaws.find(r => r.pe_id === evaluator.id);
+				evaluators: project.evaluators.map((evaluator) => {
+					const evalRaw = projectRaws.find((r) => r.pe_id === evaluator.id);
 					return {
 						...evaluator,
-						evaluator_info: evalRaw ? {
-							first_name: evalRaw.u_prof_enrich_first_name,
-							last_name: evalRaw.u_prof_enrich_last_name,
-							evaluator_type_name: evalRaw.eval_type_enrich_name,
-							evaluator_type_code: evalRaw.eval_type_enrich_code,
-						} : null,
+						evaluator_info: evalRaw
+							? {
+									first_name: evalRaw.u_prof_enrich_first_name,
+									last_name: evalRaw.u_prof_enrich_last_name,
+									evaluator_type_name: evalRaw.eval_type_enrich_name,
+									evaluator_type_code: evalRaw.eval_type_enrich_code,
+								}
+							: null,
 					};
 				}),
 			};

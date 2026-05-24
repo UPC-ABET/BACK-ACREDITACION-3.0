@@ -11,7 +11,14 @@ import {
 } from './docs/evaluations.swagger';
 import { EvaluationService } from './evaluations.service';
 import { EvaluationSubmissionService } from './evaluation-submission.service';
-import { CreateEvaluationDto, UpdateEvaluationDto, FilterEvaluationDto, SubmitEvaluationDto, SaveObservationDto, FinalizeProjectDto } from '../model/evaluations.dtos';
+import {
+	CreateEvaluationDto,
+	UpdateEvaluationDto,
+	FilterEvaluationDto,
+	SubmitEvaluationDto,
+	SaveObservationDto,
+	FinalizeProjectDto,
+} from '../model/evaluations.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 
 @SwaggerEvaluationController()
@@ -35,12 +42,12 @@ export class EvaluationController extends BaseController<EvaluationService> {
 
 	@Post('finalize')
 	async finalizeProject(@Body() dto: FinalizeProjectDto) {
-		return  parseSuccessResponse(await this.submissionService.finalizeProject(dto));
+		return parseSuccessResponse(await this.submissionService.finalizeProject(dto));
 	}
 
 	@Get('student/:studentId')
 	async getStudentEvaluations(@Param('studentId', ParseIntPipe) studentId: number) {
-		return parseSuccessResponse(await this.submissionService.getStudentEvaluations(studentId)	);
+		return parseSuccessResponse(await this.submissionService.getStudentEvaluations(studentId));
 	}
 
 	@Get('evaluator/:evaluatorId')

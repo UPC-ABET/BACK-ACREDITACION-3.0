@@ -15,7 +15,9 @@ runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
 			updated_at = now();
 	`);
 
-	await tenantDataSource.query(`SELECT setval(pg_get_serial_sequence('"core"."roles"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."roles"), 1), true)`);
+	await tenantDataSource.query(
+		`SELECT setval(pg_get_serial_sequence('"core"."roles"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."roles"), 1), true)`,
+	);
 
 	await tenantDataSource.query(`
 		INSERT INTO "core"."type_groups" (id, extra, is_active, created_at, updated_at, code, name, description)
@@ -31,7 +33,9 @@ runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
 			updated_at = now();
 	`);
 
-	await tenantDataSource.query(`SELECT setval(pg_get_serial_sequence('"core"."type_groups"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."type_groups"), 1), true)`);
+	await tenantDataSource.query(
+		`SELECT setval(pg_get_serial_sequence('"core"."type_groups"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."type_groups"), 1), true)`,
+	);
 
 	await tenantDataSource.query(`
 		INSERT INTO "core"."types" (id, extra, is_active, created_at, updated_at, type_group_id, code, name, description)
@@ -60,7 +64,9 @@ runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
 			updated_at = now();
 	`);
 
-	await tenantDataSource.query(`SELECT setval(pg_get_serial_sequence('"core"."types"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."types"), 1), true)`);
+	await tenantDataSource.query(
+		`SELECT setval(pg_get_serial_sequence('"core"."types"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."types"), 1), true)`,
+	);
 
 	await tenantDataSource.query(`
 		INSERT INTO "core"."user_roles" (user_id, role_id, is_active)

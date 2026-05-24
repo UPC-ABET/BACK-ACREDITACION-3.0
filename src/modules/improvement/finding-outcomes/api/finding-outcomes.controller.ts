@@ -10,7 +10,11 @@ import {
 	SwaggerFindingOutcomeGetByFilters,
 } from './docs/finding-outcomes.swagger';
 import { FindingOutcomeService } from './finding-outcomes.service';
-import { CreateFindingOutcomeDto, UpdateFindingOutcomeDto, FilterFindingOutcomeDto } from '../model/finding-outcomes.dtos';
+import {
+	CreateFindingOutcomeDto,
+	UpdateFindingOutcomeDto,
+	FilterFindingOutcomeDto,
+} from '../model/finding-outcomes.dtos';
 
 @SwaggerFindingOutcomeController()
 export class FindingOutcomeController extends BaseController<FindingOutcomeService> {

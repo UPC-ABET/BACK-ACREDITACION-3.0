@@ -27,7 +27,10 @@ export class CreateCourseDto extends BaseDto {
 	description: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'learning_outcome_es', en: 'learning_outcome_en' }, required: true })
+	@ApiProperty({
+		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
+		required: true,
+	})
 	learning_outcome: I18nText;
 }
 
@@ -59,7 +62,10 @@ export class UpdateCourseDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'learning_outcome_es', en: 'learning_outcome_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
+		required: false,
+	})
 	learning_outcome?: I18nText;
 }
 
@@ -85,25 +91,28 @@ export class FilterCourseDto extends BaseDto {
 	description?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'learning_outcome_es', en: 'learning_outcome_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
+		required: false,
+	})
 	learning_outcome?: I18nText;
 
 	// Filters by related entities
 
-    @IsOptional()
+	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
-    academic_period_id?: number;
+	academic_period_id?: number;
 
-    @IsOptional()
+	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
-    program_id?: number;
+	program_id?: number;
 
-    @IsOptional()
+	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-    school_id?: number;
+	school_id?: number;
 }
 
 // ── DTOs for Enrolled Students Endpoint ────────────────────────────────────

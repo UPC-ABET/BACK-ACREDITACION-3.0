@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerChartController, SwaggerChartCreate, SwaggerChartUpdate, SwaggerChartDelete, SwaggerChartGetAll, SwaggerChartGetById, SwaggerChartGetByFilters } from './docs/charts.swagger';
+import {
+	SwaggerChartController,
+	SwaggerChartCreate,
+	SwaggerChartUpdate,
+	SwaggerChartDelete,
+	SwaggerChartGetAll,
+	SwaggerChartGetById,
+	SwaggerChartGetByFilters,
+} from './docs/charts.swagger';
 import { ChartService } from './charts.service';
 import { CreateChartDto, UpdateChartDto, FilterChartDto } from '../model/charts.dtos';
 

@@ -11,7 +11,12 @@
  * ===END-DEV===
  * ============================================================ */
 
-import { BadGatewayException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+	BadGatewayException,
+	Injectable,
+	InternalServerErrorException,
+	Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ServerClient } from 'postmark';
 
@@ -50,8 +55,17 @@ export class MailService {
 			const gmailUser = this.configService.get<string>('MAIL_DEV_FROM');
 			const gmailPass = this.configService.get<string>('GAP_SMTP');
 			if (!gmailUser || !gmailPass) {
-				this.logger.error('[MAIL DEV REDIRECT] MAIL_DEV_FROM or GAP_SMTP missing — cannot send. Set them in .env.');
-				console.log('[MAIL DEV REDIRECT] would have sent To:', data.to, 'Cc:', data.cc ?? [], 'Subject:', data.subject);
+				this.logger.error(
+					'[MAIL DEV REDIRECT] MAIL_DEV_FROM or GAP_SMTP missing — cannot send. Set them in .env.',
+				);
+				console.log(
+					'[MAIL DEV REDIRECT] would have sent To:',
+					data.to,
+					'Cc:',
+					data.cc ?? [],
+					'Subject:',
+					data.subject,
+				);
 				return { messageId: `dev-skip-${Date.now()}` };
 			}
 			const transporter = nodemailer.createTransport({
@@ -72,11 +86,16 @@ export class MailService {
 					subject: `[DEV] ${data.subject}`,
 					html: banner + data.html,
 				});
-				this.logger.log(`[MAIL DEV REDIRECT] sent via Gmail. MessageID=${info.messageId} | original To=${data.to} Cc=${(data.cc ?? []).join(',')}`);
+				this.logger.log(
+					`[MAIL DEV REDIRECT] sent via Gmail. MessageID=${info.messageId} | original To=${data.to} Cc=${(data.cc ?? []).join(',')}`,
+				);
 				return { messageId: info.messageId };
 			} catch (e) {
 				this.logger.error(`[MAIL DEV REDIRECT] Gmail send failed: ${(e as Error).message}`);
-				throw new BadGatewayException({ message: 'No se pudo enviar la notificación (dev)', details: (e as Error).message });
+				throw new BadGatewayException({
+					message: 'No se pudo enviar la notificación (dev)',
+					details: (e as Error).message,
+				});
 			}
 		}
 		// ===END-DEV===
@@ -107,8 +126,18 @@ export class MailService {
 
 	private getPostmarkErrorDetails(error: unknown) {
 		if (error && typeof error === 'object') {
-			const postmarkError = error as { name?: string; message?: string; code?: number; statusCode?: number };
-			return [postmarkError.name, postmarkError.message, postmarkError.code ? `code=${postmarkError.code}` : null, postmarkError.statusCode ? `status=${postmarkError.statusCode}` : null]
+			const postmarkError = error as {
+				name?: string;
+				message?: string;
+				code?: number;
+				statusCode?: number;
+			};
+			return [
+				postmarkError.name,
+				postmarkError.message,
+				postmarkError.code ? `code=${postmarkError.code}` : null,
+				postmarkError.statusCode ? `status=${postmarkError.statusCode}` : null,
+			]
 				.filter(Boolean)
 				.join(' | ');
 		}

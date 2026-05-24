@@ -71,7 +71,10 @@ export class AddRolesAndPermissions1779580800000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE IF EXISTS "roles"`);
 	}
 
-	private async alterOwnerToRootIfExists(queryRunner: QueryRunner, tableName: string): Promise<void> {
+	private async alterOwnerToRootIfExists(
+		queryRunner: QueryRunner,
+		tableName: string,
+	): Promise<void> {
 		await queryRunner.query(`
 			DO $$
 			BEGIN

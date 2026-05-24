@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { PerformanceLevelRepository } from '../core/performance-levels.repository';
 import { PerformanceLevelValidation } from '../core/performance-levels.validation';
 
-import { CreatePerformanceLevelDto, UpdatePerformanceLevelDto } from '../model/performance-levels.dtos';
+import {
+	CreatePerformanceLevelDto,
+	UpdatePerformanceLevelDto,
+} from '../model/performance-levels.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { StudyPlanAcademicPeriodRepository } from '../core/study-plan-academic-periods.repository';
 import { StudyPlanAcademicPeriodValidation } from '../core/study-plan-academic-periods.validation';
 
-import { CreateStudyPlanAcademicPeriodDto, UpdateStudyPlanAcademicPeriodDto } from '../model/study-plan-academic-periods.dtos';
+import {
+	CreateStudyPlanAcademicPeriodDto,
+	UpdateStudyPlanAcademicPeriodDto,
+} from '../model/study-plan-academic-periods.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

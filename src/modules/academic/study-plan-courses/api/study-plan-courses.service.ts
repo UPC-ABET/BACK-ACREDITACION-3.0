@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { StudyPlanCourseRepository } from '../core/study-plan-courses.repository';
 import { StudyPlanCourseValidation } from '../core/study-plan-courses.validation';
 
-import { CreateStudyPlanCourseDto, UpdateStudyPlanCourseDto } from '../model/study-plan-courses.dtos';
+import {
+	CreateStudyPlanCourseDto,
+	UpdateStudyPlanCourseDto,
+} from '../model/study-plan-courses.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

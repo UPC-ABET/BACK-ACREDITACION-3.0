@@ -50,7 +50,7 @@ export class RubricConfigService {
 		@InjectRepository(OutcomeEntity)
 		private readonly outcomeRepo: Repository<OutcomeEntity>,
 		private readonly dataSource: DataSource,
-	) { }
+	) {}
 
 	private async resolveRubricTypeIdByCode(code: string): Promise<number | null> {
 		const type = await this.typeRepo.findOne({ where: { code } });
@@ -75,7 +75,9 @@ export class RubricConfigService {
 	 *
 	 * Retorna { byQuestion: Map<questionId, maxValue>, totalMaxScore }
 	 */
-	async recalculateMaxScore(rubricId: number): Promise<{ byQuestion: Map<number, number>; totalMaxScore: number }> {
+	async recalculateMaxScore(
+		rubricId: number,
+	): Promise<{ byQuestion: Map<number, number>; totalMaxScore: number }> {
 		const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
 		if (!rubric) throw new NotFoundException('Rúbrica no encontrada.');
 
@@ -93,7 +95,9 @@ export class RubricConfigService {
 			const maxValues = question.criterias.map((c) => c.max_value);
 			if (maxValues.length === 0) continue;
 
-			const questionMax = isWasc ? Math.max(...maxValues) : maxValues.reduce((sum, v) => sum + v, 0);
+			const questionMax = isWasc
+				? Math.max(...maxValues)
+				: maxValues.reduce((sum, v) => sum + v, 0);
 
 			byQuestion.set(question.id, questionMax);
 			totalMaxScore += questionMax;
@@ -126,13 +130,17 @@ export class RubricConfigService {
 				.getCount();
 
 			if (hasScores > 0) {
-				throw new BadRequestException('No se puede crear/sobrescribir esta rúbrica porque ya existen evaluaciones históricas atadas a la rúbrica activa del curso actual.');
+				throw new BadRequestException(
+					'No se puede crear/sobrescribir esta rúbrica porque ya existen evaluaciones históricas atadas a la rúbrica activa del curso actual.',
+				);
 			}
 
 			await this.rubricRepo.update(existingRubric.id, { is_active: false });
 		}
 
-		const outcomeIds = dto.questions.map((q) => q.outcome_id).filter((id): id is number => id != null);
+		const outcomeIds = dto.questions
+			.map((q) => q.outcome_id)
+			.filter((id): id is number => id != null);
 		if (outcomeIds.length > 0) {
 			const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
 				where: { study_plan_course_id: dto.study_plan_course_id },
@@ -140,7 +148,9 @@ export class RubricConfigService {
 			const validOutcomeIds = mappings.map((m) => m.outcome_id);
 			const invalidOutcomes = outcomeIds.filter((id) => !validOutcomeIds.includes(id));
 			if (invalidOutcomes.length > 0) {
-				throw new BadRequestException(`Los siguientes outcome_ids no están mapeados para este curso: ${invalidOutcomes.join(', ')}`);
+				throw new BadRequestException(
+					`Los siguientes outcome_ids no están mapeados para este curso: ${invalidOutcomes.join(', ')}`,
+				);
 			}
 		}
 
@@ -148,7 +158,9 @@ export class RubricConfigService {
 		if (capstoneTypeId && dto.rubric_type_id === capstoneTypeId) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcome_id);
 			if (hasMissingOutcomes) {
-				throw new BadRequestException('Las rúbricas Capstone requieren que todas las preguntas tengan un outcome_id asignado.');
+				throw new BadRequestException(
+					'Las rúbricas Capstone requieren que todas las preguntas tengan un outcome_id asignado.',
+				);
 			}
 		}
 
@@ -291,7 +303,8 @@ export class RubricConfigService {
 
 		// 2. Obtener comisiones del programa para el período académico
 		const programId = rubric.study_plan_course?.study_plan_academic_period?.study_plan?.program_id;
-		const academicPeriodId = rubric.study_plan_course?.study_plan_academic_period?.academic_period_id;
+		const academicPeriodId =
+			rubric.study_plan_course?.study_plan_academic_period?.academic_period_id;
 
 		let commissions: ProgramCommissionEntity[] = [];
 		if (programId && academicPeriodId) {
@@ -365,49 +378,50 @@ export class RubricConfigService {
 				created_at: rubric.created_at,
 				rubric_type: rubric.rubric_type
 					? {
-						id: rubric.rubric_type.id,
-						code: rubric.rubric_type.code,
-						name: rubric.rubric_type.name,
-					}
+							id: rubric.rubric_type.id,
+							code: rubric.rubric_type.code,
+							name: rubric.rubric_type.name,
+						}
 					: undefined,
 				grade_type: rubric.grade_type
 					? {
-						id: rubric.grade_type.id,
-						code: rubric.grade_type.code,
-						name: rubric.grade_type.name,
-					}
+							id: rubric.grade_type.id,
+							code: rubric.grade_type.code,
+							name: rubric.grade_type.name,
+						}
 					: undefined,
 			},
 			course: rubric.study_plan_course?.course
 				? {
-					id: rubric.study_plan_course.course.id,
-					name: rubric.study_plan_course.course.name,
-					description: rubric.study_plan_course.course.description,
-					learning_outcome: rubric.study_plan_course.course.learning_outcome,
-				}
+						id: rubric.study_plan_course.course.id,
+						name: rubric.study_plan_course.course.name,
+						description: rubric.study_plan_course.course.description,
+						learning_outcome: rubric.study_plan_course.course.learning_outcome,
+					}
 				: undefined,
 			academicPeriod: rubric.study_plan_course?.study_plan_academic_period?.academic_period
 				? {
-					id: rubric.study_plan_course.study_plan_academic_period.academic_period.id,
-					code: rubric.study_plan_course.study_plan_academic_period.academic_period.code,
-					start_date: rubric.study_plan_course.study_plan_academic_period.academic_period.start_date,
-					end_date: rubric.study_plan_course.study_plan_academic_period.academic_period.end_date,
-				}
+						id: rubric.study_plan_course.study_plan_academic_period.academic_period.id,
+						code: rubric.study_plan_course.study_plan_academic_period.academic_period.code,
+						start_date:
+							rubric.study_plan_course.study_plan_academic_period.academic_period.start_date,
+						end_date: rubric.study_plan_course.study_plan_academic_period.academic_period.end_date,
+					}
 				: undefined,
 			studyPlan: rubric.study_plan_course?.study_plan_academic_period?.study_plan
 				? {
-					id: rubric.study_plan_course.study_plan_academic_period.study_plan.id,
-					code: rubric.study_plan_course.study_plan_academic_period.study_plan.code,
-					name: rubric.study_plan_course.study_plan_academic_period.study_plan.name,
-				}
+						id: rubric.study_plan_course.study_plan_academic_period.study_plan.id,
+						code: rubric.study_plan_course.study_plan_academic_period.study_plan.code,
+						name: rubric.study_plan_course.study_plan_academic_period.study_plan.name,
+					}
 				: undefined,
 			program: rubric.study_plan_course?.study_plan_academic_period?.study_plan?.program
 				? {
-					id: rubric.study_plan_course.study_plan_academic_period.study_plan.program.id,
-					code: rubric.study_plan_course.study_plan_academic_period.study_plan.program.code,
-					name: rubric.study_plan_course.study_plan_academic_period.study_plan.program.name,
-					degree: rubric.study_plan_course.study_plan_academic_period.study_plan.program.degree,
-				}
+						id: rubric.study_plan_course.study_plan_academic_period.study_plan.program.id,
+						code: rubric.study_plan_course.study_plan_academic_period.study_plan.program.code,
+						name: rubric.study_plan_course.study_plan_academic_period.study_plan.program.name,
+						degree: rubric.study_plan_course.study_plan_academic_period.study_plan.program.degree,
+					}
 				: undefined,
 			commissions: commissions.map((c) => ({
 				id: c.id,
@@ -426,5 +440,4 @@ export class RubricConfigService {
 			isUsed: false,
 		};
 	}
-
 }

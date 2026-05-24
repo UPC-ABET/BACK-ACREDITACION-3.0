@@ -1,12 +1,19 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { AuthorizationPermission, AuthorizationProfile, AuthorizationRole } from 'src/modules/auth/model/authorization.types';
+import {
+	AuthorizationPermission,
+	AuthorizationProfile,
+	AuthorizationRole,
+} from 'src/modules/auth/model/authorization.types';
 
 @Injectable()
 export class UserAuthorizationService {
 	constructor(private readonly dataSource: DataSource) {}
 
-	async buildAuthorizationProfile(userId: number, activeRoleId?: number): Promise<AuthorizationProfile> {
+	async buildAuthorizationProfile(
+		userId: number,
+		activeRoleId?: number,
+	): Promise<AuthorizationProfile> {
 		await this.ensureActiveUser(userId);
 
 		const allowedRoles = await this.findUserRoles(userId);
@@ -83,7 +90,9 @@ export class UserAuthorizationService {
 			code: String(row.code ?? ''),
 			module: String(row.module ?? ''),
 			route: String(row.route ?? ''),
-			permissions: Array.isArray(row.permissions) ? row.permissions.map((permission) => String(permission)) : [],
+			permissions: Array.isArray(row.permissions)
+				? row.permissions.map((permission) => String(permission))
+				: [],
 		}));
 	}
 

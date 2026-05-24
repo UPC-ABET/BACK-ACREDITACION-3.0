@@ -3,7 +3,12 @@ import { BaseService } from 'src/commons/base.service';
 import { IfcFindingRepository } from '../core/ifc-findings.repository';
 import { IfcFindingValidation } from '../core/ifc-findings.validation';
 
-import { CreateIfcFindingDto, ListIfcFindingsDto, PatchIfcFindingDto, UpdateIfcFindingDto } from '../model/ifc-findings.dtos';
+import {
+	CreateIfcFindingDto,
+	ListIfcFindingsDto,
+	PatchIfcFindingDto,
+	UpdateIfcFindingDto,
+} from '../model/ifc-findings.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IfcValidation } from 'src/modules/evidence/ifcs/core/ifcs.validation';
@@ -38,25 +43,52 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 	}
 
 	async list(dto: ListIfcFindingsDto, schoolId: number) {
-		return await this.dataSource.query(LIST_SQL, [dto.chart_ids, dto.period_id, schoolId, IFCS_PARAMETER_KEYS.FINDING_PREFIX, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+		return await this.dataSource.query(LIST_SQL, [
+			dto.chart_ids,
+			dto.period_id,
+			schoolId,
+			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		]);
 	}
 
 	async deleteWithCascade(id: number, userId: number, schoolId: number) {
 		return await this.dataSource.transaction(async (em) => {
 			const finding = await IfcFindingValidation.assertFindingExists(em, id);
-			const courseChart = await IfcFindingValidation.resolveCourseChart(em, finding.course_id, finding.academic_period_id, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR);
+			const courseChart = await IfcFindingValidation.resolveCourseChart(
+				em,
+				finding.course_id,
+				finding.academic_period_id,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			);
 
-			const staffRows = await em.query('SELECT id::int AS id FROM organization.staff WHERE user_id = $1 LIMIT 1', [userId]);
+			const staffRows = await em.query(
+				'SELECT id::int AS id FROM organization.staff WHERE user_id = $1 LIMIT 1',
+				[userId],
+			);
 			const requesterStaffId: number | null = staffRows[0]?.id ?? null;
 
 			IfcValidation.assertRequesterIsStaff(requesterStaffId, DELETE_OP);
-			await IfcValidation.assertIsInCourseChain(em, { ifcId: 0, ifcCourseStaffId: null, courseChartId: courseChart.id, requesterStaffId, currentStatusCode: null }, DELETE_OP);
+			await IfcValidation.assertIsInCourseChain(
+				em,
+				{
+					ifcId: 0,
+					ifcCourseStaffId: null,
+					courseChartId: courseChart.id,
+					requesterStaffId,
+					currentStatusCode: null,
+				},
+				DELETE_OP,
+			);
 
 			// schoolId is consumed by assertIsInCourseChain implicitly via the chart resolution;
 			// keep the param so callers can't bypass the JWT contract.
 			void schoolId;
 
-			const [deletedFindingActions] = (await em.query('DELETE FROM improvement.finding_actions WHERE finding_id = $1 RETURNING action_id', [id])) as [Array<{ action_id: number }>, number];
+			const [deletedFindingActions] = (await em.query(
+				'DELETE FROM improvement.finding_actions WHERE finding_id = $1 RETURNING action_id',
+				[id],
+			)) as [Array<{ action_id: number }>, number];
 			const actionIds: number[] = deletedFindingActions.map((r) => Number(r.action_id));
 
 			if (actionIds.length > 0) {
@@ -88,7 +120,13 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 		]);
 
 		if (findingRows.length === 0) {
-			throw new HttpException({ message: ifcFindingsValidationStrings.result.viewFailed, errors: [ifcFindingsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcFindingsValidationStrings.result.viewFailed,
+					errors: [ifcFindingsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 
 		const row = findingRows[0];
@@ -98,7 +136,11 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				finding_code: row.finding_code,
 				academic_period_code: row.academic_period_code,
 				description: row.description,
-				criticality: { code: row.criticality_code, name: row.criticality_name, color: row.criticality_color ?? null },
+				criticality: {
+					code: row.criticality_code,
+					name: row.criticality_name,
+					color: row.criticality_color ?? null,
+				},
 			},
 			actions: actionRows.map((a: any) => ({
 				id: Number(a.id),
@@ -116,13 +158,31 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 	async patch(id: number, dto: PatchIfcFindingDto, userId: number, schoolId: number) {
 		return await this.dataSource.transaction(async (em) => {
 			const finding = await IfcFindingValidation.assertFindingExists(em, id);
-			const courseChart = await IfcFindingValidation.resolveCourseChart(em, finding.course_id, finding.academic_period_id, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR);
+			const courseChart = await IfcFindingValidation.resolveCourseChart(
+				em,
+				finding.course_id,
+				finding.academic_period_id,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			);
 
-			const staffRows = await em.query('SELECT id::int AS id FROM organization.staff WHERE user_id = $1 LIMIT 1', [userId]);
+			const staffRows = await em.query(
+				'SELECT id::int AS id FROM organization.staff WHERE user_id = $1 LIMIT 1',
+				[userId],
+			);
 			const requesterStaffId: number | null = staffRows[0]?.id ?? null;
 
 			IfcValidation.assertRequesterIsStaff(requesterStaffId, PATCH_OP);
-			await IfcValidation.assertIsInCourseChain(em, { ifcId: 0, ifcCourseStaffId: null, courseChartId: courseChart.id, requesterStaffId, currentStatusCode: null }, PATCH_OP);
+			await IfcValidation.assertIsInCourseChain(
+				em,
+				{
+					ifcId: 0,
+					ifcCourseStaffId: null,
+					courseChartId: courseChart.id,
+					requesterStaffId,
+					currentStatusCode: null,
+				},
+				PATCH_OP,
+			);
 
 			await this.assertFindingInSchool(em, id, schoolId);
 
@@ -157,7 +217,13 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 			[findingId, TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId],
 		);
 		if (rows.length === 0) {
-			throw new HttpException({ message: ifcFindingsValidationStrings.result.patchFailed, errors: [ifcFindingsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcFindingsValidationStrings.result.patchFailed,
+					errors: [ifcFindingsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 	}
 }

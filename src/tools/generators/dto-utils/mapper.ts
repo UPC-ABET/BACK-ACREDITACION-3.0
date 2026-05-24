@@ -1,4 +1,12 @@
-import { DB_LENGTH_CODE, DB_LENGTH_EMAIL, DB_LENGTH_NAME, DB_LENGTH_PHONE, DB_LENGTH_TEXT_LARGE, DB_LENGTH_TEXT_MEDIUM, DB_LENGTH_TEXT_SHORT } from 'src/commons/configs/db.configs';
+import {
+	DB_LENGTH_CODE,
+	DB_LENGTH_EMAIL,
+	DB_LENGTH_NAME,
+	DB_LENGTH_PHONE,
+	DB_LENGTH_TEXT_LARGE,
+	DB_LENGTH_TEXT_MEDIUM,
+	DB_LENGTH_TEXT_SHORT,
+} from 'src/commons/configs/db.configs';
 
 export function mapTypeFromDecorator(decorators: string[], name: string, tsType?: string) {
 	if (decorators.includes('EmailColumn')) return 'string';

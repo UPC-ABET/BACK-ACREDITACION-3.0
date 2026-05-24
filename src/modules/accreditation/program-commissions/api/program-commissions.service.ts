@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { ProgramCommissionRepository } from '../core/program-commissions.repository';
 import { ProgramCommissionValidation } from '../core/program-commissions.validation';
 
-import { CreateProgramCommissionDto, UpdateProgramCommissionDto } from '../model/program-commissions.dtos';
+import {
+	CreateProgramCommissionDto,
+	UpdateProgramCommissionDto,
+} from '../model/program-commissions.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

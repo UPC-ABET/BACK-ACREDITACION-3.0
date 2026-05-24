@@ -32,7 +32,12 @@ type BaseOptions = Partial<ColumnOptions> & {
 };
 
 // %%  🔥 CORE ENGINE (NO TOCAR)
-function applyColumn(target: any, propertyKey: string | symbol, base: ColumnOptions, options?: BaseOptions) {
+function applyColumn(
+	target: any,
+	propertyKey: string | symbol,
+	base: ColumnOptions,
+	options?: BaseOptions,
+) {
 	const { unique = false, indexName, ...rest } = options || {};
 
 	const columnOptions: ColumnOptions = {
@@ -45,7 +50,9 @@ function applyColumn(target: any, propertyKey: string | symbol, base: ColumnOpti
 
 	// Index (solo si unique)
 	if (unique) {
-		const name = indexName || `IDX_${target.constructor.name.toUpperCase()}_${String(propertyKey).toUpperCase()}`;
+		const name =
+			indexName ||
+			`IDX_${target.constructor.name.toUpperCase()}_${String(propertyKey).toUpperCase()}`;
 
 		Index(name, { unique: true })(target, propertyKey);
 	}

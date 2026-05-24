@@ -1,6 +1,11 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, IntegerFKIDColumn, BooleanColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import {
+	CodeColumn,
+	IntegerFKIDColumn,
+	BooleanColumn,
+	JsonColumn,
+} from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 

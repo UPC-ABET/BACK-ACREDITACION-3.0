@@ -8,7 +8,11 @@ export const programCommissionsRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar comisión de programa' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar comisiones de programa' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener comisión de programa' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar comisiones de programa' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar comisiones de programa',
+			},
 		},
 	},
 };

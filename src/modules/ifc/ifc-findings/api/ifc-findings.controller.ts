@@ -13,7 +13,13 @@ import {
 	SwaggerIfcFindingPatch,
 } from './docs/ifc-findings.swagger';
 import { IfcFindingService } from './ifc-findings.service';
-import { CreateIfcFindingDto, UpdateIfcFindingDto, FilterIfcFindingDto, ListIfcFindingsDto, PatchIfcFindingDto } from '../model/ifc-findings.dtos';
+import {
+	CreateIfcFindingDto,
+	UpdateIfcFindingDto,
+	FilterIfcFindingDto,
+	ListIfcFindingsDto,
+	PatchIfcFindingDto,
+} from '../model/ifc-findings.dtos';
 
 @SwaggerIfcFindingController()
 export class IfcFindingController extends BaseController<IfcFindingService> {
@@ -62,7 +68,11 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingPatch()
-	async patch(@Param('id', ParseIntPipe) id: number, @Body() dto: PatchIfcFindingDto, @Req() req: any) {
+	async patch(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: PatchIfcFindingDto,
+		@Req() req: any,
+	) {
 		const result = await this.service.patch(id, dto, req.user.userId, req.user.school_id);
 		return parseSuccessResponse(result);
 	}

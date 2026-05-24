@@ -10,7 +10,11 @@ import {
 	SwaggerStudyPlanCourseGetByFilters,
 } from './docs/study-plan-courses.swagger';
 import { StudyPlanCourseService } from './study-plan-courses.service';
-import { CreateStudyPlanCourseDto, UpdateStudyPlanCourseDto, FilterStudyPlanCourseDto } from '../model/study-plan-courses.dtos';
+import {
+	CreateStudyPlanCourseDto,
+	UpdateStudyPlanCourseDto,
+	FilterStudyPlanCourseDto,
+} from '../model/study-plan-courses.dtos';
 
 @SwaggerStudyPlanCourseController()
 export class StudyPlanCourseController extends BaseController<StudyPlanCourseService> {

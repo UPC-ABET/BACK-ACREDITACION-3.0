@@ -23,7 +23,17 @@ import {
 	SwaggerIfcNotifyAll,
 } from './docs/ifcs.swagger';
 import { IfcService } from './ifcs.service';
-import { UpdateIfcDto, FilterIfcDto, ListIfcsDto, RejectIfcDto, IfcPdfQueryDto, IfcPdfBulkDto, IfcStatusReportDto, IfcNotifyDto, IfcNotifyAllDto } from '../model/ifcs.dtos';
+import {
+	UpdateIfcDto,
+	FilterIfcDto,
+	ListIfcsDto,
+	RejectIfcDto,
+	IfcPdfQueryDto,
+	IfcPdfBulkDto,
+	IfcStatusReportDto,
+	IfcNotifyDto,
+	IfcNotifyAllDto,
+} from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 
 @SwaggerIfcController()
@@ -100,22 +110,50 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcPdf()
-	async pdf(@Param('id', ParseIntPipe) id: number, @Query() query: IfcPdfQueryDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
+	async pdf(
+		@Param('id', ParseIntPipe) id: number,
+		@Query() query: IfcPdfQueryDto,
+		@Req() req: any,
+		@Res({ passthrough: false }) res: Response,
+	) {
 		const lang = (query.lang ?? 'es') as 'es' | 'en';
-		const { pdf, filename } = await this.service.generatePdf(id, req.user.userId, req.user.school_id, lang);
+		const { pdf, filename } = await this.service.generatePdf(
+			id,
+			req.user.userId,
+			req.user.school_id,
+			lang,
+		);
 		writeBinary(res, pdf, filename, 'application/pdf');
 	}
 
 	@SwaggerIfcPdfBulk()
-	async pdfBulk(@Body() dto: IfcPdfBulkDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
-		const { zip, filename } = await this.service.generatePdfBulk(dto.ifc_ids, req.user.userId, req.user.school_id, dto.lang);
+	async pdfBulk(
+		@Body() dto: IfcPdfBulkDto,
+		@Req() req: any,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		const { zip, filename } = await this.service.generatePdfBulk(
+			dto.ifc_ids,
+			req.user.userId,
+			req.user.school_id,
+			dto.lang,
+		);
 		writeBinary(res, zip, filename, 'application/zip');
 	}
 
 	@SwaggerIfcStatusReport()
-	async statusReport(@Body() dto: IfcStatusReportDto, @Req() req: any, @Res({ passthrough: false }) res: Response) {
+	async statusReport(
+		@Body() dto: IfcStatusReportDto,
+		@Req() req: any,
+		@Res({ passthrough: false }) res: Response,
+	) {
 		const { xlsx, filename } = await this.service.generateStatusReport(dto, req.user.school_id);
-		writeBinary(res, xlsx, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		writeBinary(
+			res,
+			xlsx,
+			filename,
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		);
 	}
 
 	@SwaggerIfcNotify()
@@ -134,7 +172,10 @@ export class IfcController extends BaseController<IfcService> {
 function writeBinary(res: Response, body: Buffer, filename: string, contentType: string) {
 	const encoded = encodeURIComponent(filename);
 	res.setHeader('Content-Type', contentType);
-	res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encoded}`);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename="${filename}"; filename*=UTF-8''${encoded}`,
+	);
 	res.setHeader('Content-Length', body.length.toString());
 	res.end(body);
 }

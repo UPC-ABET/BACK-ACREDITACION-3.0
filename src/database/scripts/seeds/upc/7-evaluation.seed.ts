@@ -5,12 +5,18 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 		[
 			'PROJ_SOFT_FP_2026',
 			i18n('Proyecto de Fundamentos de Programacion', 'Fundamentals of Programming project'),
-			i18n('Proyecto individual para evidenciar solucion algoritmica basica', 'Individual project to evidence basic algorithmic solution'),
+			i18n(
+				'Proyecto individual para evidenciar solucion algoritmica basica',
+				'Individual project to evidence basic algorithmic solution',
+			),
 		],
 		[
 			'PROJ_SOFT_CAP_2026',
 			i18n('Proyecto Integrador de Software', 'Software Integrator Project'),
-			i18n('Proyecto colaborativo integrador del programa', 'Collaborative capstone project for the program'),
+			i18n(
+				'Proyecto colaborativo integrador del programa',
+				'Collaborative capstone project for the program',
+			),
 		],
 	]
 		.map(([code, name, description]) => `('${code}', '${name}'::jsonb, '${description}'::jsonb)`)
@@ -122,28 +128,40 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 			'AP_2026_1',
 			'Fundamentos de Programacion',
 			'OUT_SOFT_01',
-			i18n('Analiza el problema y define una solucion algoritmica coherente.', 'Analyzes the problem and defines a coherent algorithmic solution.'),
+			i18n(
+				'Analiza el problema y define una solucion algoritmica coherente.',
+				'Analyzes the problem and defines a coherent algorithmic solution.',
+			),
 		],
 		[
 			'SP_SOFT26',
 			'AP_2026_1',
 			'Fundamentos de Programacion',
 			'OUT_SOFT_04',
-			i18n('Implementa la solucion con estructuras de control adecuadas.', 'Implements the solution with appropriate control structures.'),
+			i18n(
+				'Implementa la solucion con estructuras de control adecuadas.',
+				'Implements the solution with appropriate control structures.',
+			),
 		],
 		[
 			'SP_SOFT26',
 			'AP_2026_2',
 			'Proyecto Integrador de Software',
 			'OUT_SOFT_03',
-			i18n('Colabora de manera efectiva dentro del equipo de proyecto.', 'Collaborates effectively within the project team.'),
+			i18n(
+				'Colabora de manera efectiva dentro del equipo de proyecto.',
+				'Collaborates effectively within the project team.',
+			),
 		],
 		[
 			'SP_SOFT26',
 			'AP_2026_2',
 			'Proyecto Integrador de Software',
 			'OUT_SOFT_04',
-			i18n('Entrega una solucion de software verificable y mantenible.', 'Delivers a verifiable and maintainable software solution.'),
+			i18n(
+				'Entrega una solucion de software verificable y mantenible.',
+				'Delivers a verifiable and maintainable software solution.',
+			),
 		],
 	]
 		.map(([sp, ap, cn, oc, q]) => `('${sp}', '${ap}', '${cn}', '${oc}', '${q}'::jsonb)`)
@@ -180,48 +198,87 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 	const rubricQuestionCriteriaValues = [
 		[
 			'OUT_SOFT_01',
-			i18n('Analiza el problema y define una solucion algoritmica coherente.', 'Analyzes the problem and defines a coherent algorithmic solution.'),
-			i18n('Identifica restricciones, entradas y salidas con precision.', 'Identifies constraints, inputs and outputs accurately.'),
+			i18n(
+				'Analiza el problema y define una solucion algoritmica coherente.',
+				'Analyzes the problem and defines a coherent algorithmic solution.',
+			),
+			i18n(
+				'Identifica restricciones, entradas y salidas con precision.',
+				'Identifies constraints, inputs and outputs accurately.',
+			),
 			17.0,
 			20.0,
 		],
 		[
 			'OUT_SOFT_01',
-			i18n('Analiza el problema y define una solucion algoritmica coherente.', 'Analyzes the problem and defines a coherent algorithmic solution.'),
-			i18n('Cubre los elementos principales del problema.', 'Covers the main elements of the problem.'),
+			i18n(
+				'Analiza el problema y define una solucion algoritmica coherente.',
+				'Analyzes the problem and defines a coherent algorithmic solution.',
+			),
+			i18n(
+				'Cubre los elementos principales del problema.',
+				'Covers the main elements of the problem.',
+			),
 			14.0,
 			16.999999,
 		],
 		[
 			'OUT_SOFT_01',
-			i18n('Analiza el problema y define una solucion algoritmica coherente.', 'Analyzes the problem and defines a coherent algorithmic solution.'),
-			i18n('El analisis es incompleto o poco verificable.', 'The analysis is incomplete or barely verifiable.'),
+			i18n(
+				'Analiza el problema y define una solucion algoritmica coherente.',
+				'Analyzes the problem and defines a coherent algorithmic solution.',
+			),
+			i18n(
+				'El analisis es incompleto o poco verificable.',
+				'The analysis is incomplete or barely verifiable.',
+			),
 			0.0,
 			13.999999,
 		],
 		[
 			'OUT_SOFT_04',
-			i18n('Implementa la solucion con estructuras de control adecuadas.', 'Implements the solution with appropriate control structures.'),
-			i18n('La implementacion es correcta, legible y prueba casos relevantes.', 'The implementation is correct, readable and tests relevant cases.'),
+			i18n(
+				'Implementa la solucion con estructuras de control adecuadas.',
+				'Implements the solution with appropriate control structures.',
+			),
+			i18n(
+				'La implementacion es correcta, legible y prueba casos relevantes.',
+				'The implementation is correct, readable and tests relevant cases.',
+			),
 			17.0,
 			20.0,
 		],
 		[
 			'OUT_SOFT_04',
-			i18n('Implementa la solucion con estructuras de control adecuadas.', 'Implements the solution with appropriate control structures.'),
-			i18n('La implementacion resuelve el caso principal con claridad.', 'The implementation solves the main case clearly.'),
+			i18n(
+				'Implementa la solucion con estructuras de control adecuadas.',
+				'Implements the solution with appropriate control structures.',
+			),
+			i18n(
+				'La implementacion resuelve el caso principal con claridad.',
+				'The implementation solves the main case clearly.',
+			),
 			14.0,
 			16.999999,
 		],
 		[
 			'OUT_SOFT_04',
-			i18n('Implementa la solucion con estructuras de control adecuadas.', 'Implements the solution with appropriate control structures.'),
-			i18n('La implementacion presenta errores importantes.', 'The implementation has significant errors.'),
+			i18n(
+				'Implementa la solucion con estructuras de control adecuadas.',
+				'Implements the solution with appropriate control structures.',
+			),
+			i18n(
+				'La implementacion presenta errores importantes.',
+				'The implementation has significant errors.',
+			),
 			0.0,
 			13.999999,
 		],
 	]
-		.map(([oc, q, c, min, max]) => `('${oc}', '${q}'::jsonb, '${c}'::jsonb, ${(min as number).toFixed(6)}, ${(max as number).toFixed(6)})`)
+		.map(
+			([oc, q, c, min, max]) =>
+				`('${oc}', '${q}'::jsonb, '${c}'::jsonb, ${(min as number).toFixed(6)}, ${(max as number).toFixed(6)})`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`

@@ -7,9 +7,7 @@ import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProjectService extends BaseService<ProjectRepository> {
-	constructor(
-		protected readonly repository: ProjectRepository,
-	) {
+	constructor(protected readonly repository: ProjectRepository) {
 		super(repository);
 	}
 
@@ -31,5 +29,4 @@ export class ProjectService extends BaseService<ProjectRepository> {
 	async getByFilters(filters: FilterProjectDto) {
 		return await this.repository.getByFilters(filters);
 	}
-	
 }

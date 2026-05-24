@@ -30,7 +30,12 @@ describe('TypeService.findByGroupCode', () => {
 	it('returns the rows as-is from the data source (passthrough)', async () => {
 		const rows = [
 			{ id: 1, code: TYPE_CODES.CRITICALITY.CRITICAL, name: { es: 'Crítico' }, description: {} },
-			{ id: 2, code: TYPE_CODES.CRITICALITY.WORRYING, name: { es: 'Preocupante' }, description: {} },
+			{
+				id: 2,
+				code: TYPE_CODES.CRITICALITY.WORRYING,
+				name: { es: 'Preocupante' },
+				description: {},
+			},
 			{ id: 3, code: TYPE_CODES.CRITICALITY.NORMAL, name: { es: 'Normal' }, description: {} },
 		];
 		dataSource.query.mockResolvedValueOnce(rows);

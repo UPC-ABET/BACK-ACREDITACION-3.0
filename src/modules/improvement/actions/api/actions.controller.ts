@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerActionController, SwaggerActionCreate, SwaggerActionUpdate, SwaggerActionDelete, SwaggerActionGetAll, SwaggerActionGetById, SwaggerActionGetByFilters } from './docs/actions.swagger';
+import {
+	SwaggerActionController,
+	SwaggerActionCreate,
+	SwaggerActionUpdate,
+	SwaggerActionDelete,
+	SwaggerActionGetAll,
+	SwaggerActionGetById,
+	SwaggerActionGetByFilters,
+} from './docs/actions.swagger';
 import { ActionService } from './actions.service';
 import { CreateActionDto, UpdateActionDto, FilterActionDto } from '../model/actions.dtos';
 

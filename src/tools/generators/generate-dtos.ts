@@ -8,7 +8,9 @@ const [domain, moduleName] = process.argv.slice(2);
 
 // 🔥 MODO 1: SOLO UNO
 if (domain && moduleName) {
-	const entityPath = path.resolve(`src/modules/${domain}/${moduleName}/model/${moduleName}.entity.ts`);
+	const entityPath = path.resolve(
+		`src/modules/${domain}/${moduleName}/model/${moduleName}.entity.ts`,
+	);
 
 	const parsed = parseEntity(entityPath);
 

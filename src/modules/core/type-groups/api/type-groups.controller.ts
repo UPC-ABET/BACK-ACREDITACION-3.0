@@ -10,7 +10,11 @@ import {
 	SwaggerTypeGroupGetByFilters,
 } from './docs/type-groups.swagger';
 import { TypeGroupService } from './type-groups.service';
-import { CreateTypeGroupDto, UpdateTypeGroupDto, FilterTypeGroupDto } from '../model/type-groups.dtos';
+import {
+	CreateTypeGroupDto,
+	UpdateTypeGroupDto,
+	FilterTypeGroupDto,
+} from '../model/type-groups.dtos';
 
 @SwaggerTypeGroupController()
 export class TypeGroupController extends BaseController<TypeGroupService> {

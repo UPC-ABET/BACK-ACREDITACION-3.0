@@ -1,16 +1,36 @@
 // no-override
 
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsArray, IsBoolean, IsInt, IsObject, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import {
+	ArrayUnique,
+	IsArray,
+	IsBoolean,
+	IsInt,
+	IsObject,
+	IsOptional,
+	IsString,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
 
 export class IfcFindingPayloadDto {
-	@ApiProperty({ example: 'a1f6-uuid', required: true, description: 'Cliente: UUID que identifica al hallazgo en la sesión actual (referenciado por acciones)' })
+	@ApiProperty({
+		example: 'a1f6-uuid',
+		required: true,
+		description:
+			'Cliente: UUID que identifica al hallazgo en la sesión actual (referenciado por acciones)',
+	})
 	@IsString()
 	tempId: string;
 
-	@ApiProperty({ example: 10, nullable: true, required: true, description: 'null = nuevo; número = id existente a actualizar' })
+	@ApiProperty({
+		example: 10,
+		nullable: true,
+		required: true,
+		description: 'null = nuevo; número = id existente a actualizar',
+	})
 	@IsOptional()
 	@IsInt()
 	id: number | null;
@@ -19,7 +39,11 @@ export class IfcFindingPayloadDto {
 	@IsObject()
 	description: I18nText;
 
-	@ApiProperty({ example: 'TG801-T001', required: true, description: 'Código de TYPE_CODES.CRITICALITY.*' })
+	@ApiProperty({
+		example: 'TG801-T001',
+		required: true,
+		description: 'Código de TYPE_CODES.CRITICALITY.*',
+	})
 	@IsString()
 	criticality_code: string;
 }
@@ -38,13 +62,22 @@ export class IfcActionPayloadDto {
 	@IsObject()
 	description: I18nText;
 
-	@ApiProperty({ example: 'a1f6-uuid', required: true, description: 'tempId del hallazgo al que pertenece (se resuelve a finding_id en el backend)' })
+	@ApiProperty({
+		example: 'a1f6-uuid',
+		required: true,
+		description: 'tempId del hallazgo al que pertenece (se resuelve a finding_id en el backend)',
+	})
 	@IsString()
 	finding_temp_id: string;
 }
 
 export class IfcPreviousActionPayloadDto {
-	@ApiProperty({ example: 4, required: true, description: 'id de improvement.finding_actions (rows previas reutilizadas). Solo se permiten ids devueltos por GET (previous_actions)' })
+	@ApiProperty({
+		example: 4,
+		required: true,
+		description:
+			'id de improvement.finding_actions (rows previas reutilizadas). Solo se permiten ids devueltos por GET (previous_actions)',
+	})
 	@IsInt()
 	finding_action_id: number;
 
@@ -52,7 +85,8 @@ export class IfcPreviousActionPayloadDto {
 		example: { es: 'Nueva evidencia', en: 'New Evidence' },
 		nullable: true,
 		required: true,
-		description: 'I18nText con la evidencia, o null para volver el estado a Pendiente (limpia evidencias)',
+		description:
+			'I18nText con la evidencia, o null para volver el estado a Pendiente (limpia evidencias)',
 	})
 	@ValidateIf((_, v) => v !== null)
 	@IsObject()
@@ -60,14 +94,19 @@ export class IfcPreviousActionPayloadDto {
 }
 
 export class IfcContentDto {
-	@ApiProperty({ example: false, required: true, description: 'true = al guardar, transicionar a SUBMITTED; false = quedar en SAVED' })
+	@ApiProperty({
+		example: false,
+		required: true,
+		description: 'true = al guardar, transicionar a SUBMITTED; false = quedar en SAVED',
+	})
 	@IsBoolean()
 	submit: boolean;
 
 	@ApiProperty({
 		example: { infrastructure: { es: 'Lab con 30 PCs', en: 'Lab with 30 PCs' } },
 		required: false,
-		description: 'Map keyed por `PARAMETER_IFC_FIELDS[].key` → valor I18nText. Almacenado tal cual en evidence.ifcs.information.',
+		description:
+			'Map keyed por `PARAMETER_IFC_FIELDS[].key` → valor I18nText. Almacenado tal cual en evidence.ifcs.information.',
 	})
 	@IsOptional()
 	@IsObject()
@@ -113,7 +152,11 @@ export class IfcContentDto {
 }
 
 export class CreateIfcDto extends IfcContentDto {
-	@ApiProperty({ example: 310, required: true, description: 'id del nodo chart del coordinador del curso (level COURSE_COORDINATOR)' })
+	@ApiProperty({
+		example: 310,
+		required: true,
+		description: 'id del nodo chart del coordinador del curso (level COURSE_COORDINATOR)',
+	})
 	@IsInt()
 	chart_id: number;
 

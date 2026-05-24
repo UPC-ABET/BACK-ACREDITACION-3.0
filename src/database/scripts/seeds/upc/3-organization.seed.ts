@@ -43,11 +43,34 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 	`);
 
 	const schoolValues = [
-		['FAC_ING', 'SCH_SOFT', i18n('Escuela de Ingenieria de Software', 'School of Software Engineering')],
-		['FAC_ING', 'SCH_SIST', i18n('Escuela de Ingenieria de Sistemas', 'School of Systems Engineering')],
-		['FAC_NEG', 'SCH_ADMIN', i18n('Escuela de Administracion', 'School of Business Administration')],
-		['FAC_ING', 'EISCB', i18n('Escuela de Ingenieria de Software', 'School of Software Engineering')],
-		['FAC_ING', 'EISCC', i18n('Escuela de Ingenieria de Ciencias de la Computacion', 'School of Computer Science Engineering')],
+		[
+			'FAC_ING',
+			'SCH_SOFT',
+			i18n('Escuela de Ingenieria de Software', 'School of Software Engineering'),
+		],
+		[
+			'FAC_ING',
+			'SCH_SIST',
+			i18n('Escuela de Ingenieria de Sistemas', 'School of Systems Engineering'),
+		],
+		[
+			'FAC_NEG',
+			'SCH_ADMIN',
+			i18n('Escuela de Administracion', 'School of Business Administration'),
+		],
+		[
+			'FAC_ING',
+			'EISCB',
+			i18n('Escuela de Ingenieria de Software', 'School of Software Engineering'),
+		],
+		[
+			'FAC_ING',
+			'EISCC',
+			i18n(
+				'Escuela de Ingenieria de Ciencias de la Computacion',
+				'School of Computer Science Engineering',
+			),
+		],
 		['FAC_ING', 'INGGMI', i18n('Ingenieria GMI', 'GMI Engineering')],
 		['FAC_ING', 'INGGEM', i18n('Ingenieria GEM', 'GEM Engineering')],
 		['FAC_ING', 'ESCEL', i18n('Escuela de Electronica', 'School of Electronics')],

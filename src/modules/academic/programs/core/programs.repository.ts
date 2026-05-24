@@ -19,13 +19,16 @@ export class ProgramRepository extends BaseRepostitory {
 	}
 
 	async getByFilters(filters: FilterProgramDto): Promise<ProgramEntity[]> {
-		const qb = this.dataSource
-			.createQueryBuilder(ProgramEntity, 'prog');
+		const qb = this.dataSource.createQueryBuilder(ProgramEntity, 'prog');
 
 		// ── Direct Filters ─────────────────────────────────────────────────
 		if (filters.code) qb.andWhere('prog.code = :code', { code: filters.code });
-		if (filters.is_active !== undefined) qb.andWhere('prog.is_active = :is_active', { is_active: filters.is_active });
-		if (filters.modality_type_id) qb.andWhere('prog.modality_type_id = :modality_type_id', { modality_type_id: filters.modality_type_id });
+		if (filters.is_active !== undefined)
+			qb.andWhere('prog.is_active = :is_active', { is_active: filters.is_active });
+		if (filters.modality_type_id)
+			qb.andWhere('prog.modality_type_id = :modality_type_id', {
+				modality_type_id: filters.modality_type_id,
+			});
 
 		// ── Flags ────────────────────────────────────────────────────────────
 		const needsSp = !!(filters.academic_period_id || filters.school_id);

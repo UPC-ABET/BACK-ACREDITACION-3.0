@@ -1,14 +1,21 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { notificationMessagesRoutes } from '../../config/notification-messages.routes';
-import { CreateNotificationMessageDto, UpdateNotificationMessageDto, FilterNotificationMessageDto } from '../../model/notification-messages.dtos';
+import {
+	CreateNotificationMessageDto,
+	UpdateNotificationMessageDto,
+	FilterNotificationMessageDto,
+} from '../../model/notification-messages.dtos';
 
 const cfg = notificationMessagesRoutes.notification_messages;
 
-export const SwaggerNotificationMessageController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerNotificationMessageController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerNotificationMessageCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateNotificationMessageDto });
+export const SwaggerNotificationMessageCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateNotificationMessageDto });
 
-export const SwaggerNotificationMessageUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateNotificationMessageDto });
+export const SwaggerNotificationMessageUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateNotificationMessageDto });
 
 export const SwaggerNotificationMessageDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +23,5 @@ export const SwaggerNotificationMessageGetAll = () => HttpMethodWithSwagger(cfg.
 
 export const SwaggerNotificationMessageGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerNotificationMessageGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterNotificationMessageDto });
+export const SwaggerNotificationMessageGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterNotificationMessageDto });

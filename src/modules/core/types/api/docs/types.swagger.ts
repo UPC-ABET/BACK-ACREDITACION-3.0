@@ -6,9 +6,11 @@ const cfg = typesRoutes.types;
 
 export const SwaggerTypeController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerTypeCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateTypeDto });
+export const SwaggerTypeCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateTypeDto });
 
-export const SwaggerTypeUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateTypeDto });
+export const SwaggerTypeUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateTypeDto });
 
 export const SwaggerTypeDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,7 +18,8 @@ export const SwaggerTypeGetAll = () => HttpMethodWithSwagger(cfg.operation.getAl
 
 export const SwaggerTypeGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerTypeGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterTypeDto });
+export const SwaggerTypeGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterTypeDto });
 
 export const SwaggerTypesByGroupCode = () =>
 	HttpMethodWithSwagger({

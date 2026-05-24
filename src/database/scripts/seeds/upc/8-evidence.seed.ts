@@ -6,26 +6,44 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			'TG501-T001',
 			'INST_FP_EXAM',
 			i18n('Examen de Fundamentos de Programacion', 'Fundamentals of Programming exam'),
-			i18n('Instrumento para medir solucion algoritmica basica', 'Instrument to measure basic algorithmic solution'),
+			i18n(
+				'Instrumento para medir solucion algoritmica basica',
+				'Instrument to measure basic algorithmic solution',
+			),
 			true,
 		],
 		[
 			'TG501-T002',
 			'INST_CAPSTONE',
 			i18n('Proyecto integrador de software', 'Software integrator project'),
-			i18n('Instrumento para medir competencias integradas del programa', 'Instrument to measure integrated program competencies'),
+			i18n(
+				'Instrumento para medir competencias integradas del programa',
+				'Instrument to measure integrated program competencies',
+			),
 			true,
 		],
 		[
 			'TG501-T003',
 			'INST_SURVEY_STUDENT',
 			i18n('Encuesta de percepcion estudiantil', 'Student perception survey'),
-			i18n('Instrumento de percepcion para resultados del programa', 'Perception instrument for program outcomes'),
+			i18n(
+				'Instrumento de percepcion para resultados del programa',
+				'Perception instrument for program outcomes',
+			),
 			false,
 		],
-		['TG501-T001', 'INST_IFC', i18n('Informe Final del Curso', 'Course Final Report'), i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'), true],
+		[
+			'TG501-T001',
+			'INST_IFC',
+			i18n('Informe Final del Curso', 'Course Final Report'),
+			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
+			true,
+		],
 	]
-		.map(([ctCode, code, name, desc, acc]) => `('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`)
+		.map(
+			([ctCode, code, name, desc, acc]) =>
+				`('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc as boolean})`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -83,7 +101,10 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			JSON.stringify({
 				infrastructure: {
 					label: { es: 'Infraestructura', en: 'Infrastructure' },
-					value: { es: 'Laboratorio con 30 PCs y proyector.', en: 'Lab with 30 PCs and a projector.' },
+					value: {
+						es: 'Laboratorio con 30 PCs y proyector.',
+						en: 'Lab with 30 PCs and a projector.',
+					},
 					order: 1,
 				},
 				methodology: {
@@ -99,12 +120,18 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			JSON.stringify({
 				infrastructure: {
 					label: { es: 'Infraestructura', en: 'Infrastructure' },
-					value: { es: 'Servidor de base de datos compartido y entorno cloud.', en: 'Shared database server and cloud environment.' },
+					value: {
+						es: 'Servidor de base de datos compartido y entorno cloud.',
+						en: 'Shared database server and cloud environment.',
+					},
 					order: 1,
 				},
 				methodology: {
 					label: { es: 'Metodologia', en: 'Methodology' },
-					value: { es: 'Casos practicos sobre datasets reales.', en: 'Case studies on real datasets.' },
+					value: {
+						es: 'Casos practicos sobre datasets reales.',
+						en: 'Case studies on real datasets.',
+					},
 					order: 2,
 				},
 			}),
@@ -117,12 +144,18 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			JSON.stringify({
 				infrastructure: {
 					label: { es: 'Infraestructura', en: 'Infrastructure' },
-					value: { es: 'Laboratorio renovado con 35 PCs y proyector 4K.', en: 'Refurbished lab with 35 PCs and 4K projector.' },
+					value: {
+						es: 'Laboratorio renovado con 35 PCs y proyector 4K.',
+						en: 'Refurbished lab with 35 PCs and 4K projector.',
+					},
 					order: 1,
 				},
 				methodology: {
 					label: { es: 'Metodologia', en: 'Methodology' },
-					value: { es: 'Aprendizaje basado en proyectos cortos.', en: 'Short-project-based learning.' },
+					value: {
+						es: 'Aprendizaje basado en proyectos cortos.',
+						en: 'Short-project-based learning.',
+					},
 					order: 2,
 				},
 			}),
@@ -133,18 +166,27 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			JSON.stringify({
 				infrastructure: {
 					label: { es: 'Infraestructura', en: 'Infrastructure' },
-					value: { es: 'Cluster managed PostgreSQL para practicas en aula.', en: 'Managed PostgreSQL cluster for classroom labs.' },
+					value: {
+						es: 'Cluster managed PostgreSQL para practicas en aula.',
+						en: 'Managed PostgreSQL cluster for classroom labs.',
+					},
 					order: 1,
 				},
 				methodology: {
 					label: { es: 'Metodologia', en: 'Methodology' },
-					value: { es: 'Talleres semanales con datasets institucionales.', en: 'Weekly workshops on institutional datasets.' },
+					value: {
+						es: 'Talleres semanales con datasets institucionales.',
+						en: 'Weekly workshops on institutional datasets.',
+					},
 					order: 2,
 				},
 			}),
 		],
 	]
-		.map(([courseName, periodCode, info]) => `('${courseName}', '${periodCode}', '${(info as string).replace(/'/g, "''")}'::jsonb)`)
+		.map(
+			([courseName, periodCode, info]) =>
+				`('${courseName}', '${periodCode}', '${(info as string).replace(/'/g, "''")}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -189,7 +231,10 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			20260102,
 		],
 	]
-		.map(([st, ss, email, ap, c, pg, sc, info, num]) => `('${st}', '${ss}', '${email}', '${ap}', '${c}', '${pg}', '${sc}', '${info}'::jsonb, ${num})`)
+		.map(
+			([st, ss, email, ap, c, pg, sc, info, num]) =>
+				`('${st}', '${ss}', '${email}', '${ap}', '${c}', '${pg}', '${sc}', '${info}'::jsonb, ${num})`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -271,7 +316,10 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			'student.luis.ramirez@upc.edu.pe',
 			'prof.juan.perez@upc.edu.pe',
 			'TG404-T001',
-			i18n('Proyecto revisado con desempeno esperado alto.', 'Project reviewed with high expected performance.'),
+			i18n(
+				'Proyecto revisado con desempeno esperado alto.',
+				'Project reviewed with high expected performance.',
+			),
 			'2026-06-10 10:00:00',
 		],
 		[
@@ -279,11 +327,17 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			'student.sofia.torres@upc.edu.pe',
 			'prof.juan.perez@upc.edu.pe',
 			'TG404-T001',
-			i18n('Proyecto revisado con desempeno esperado.', 'Project reviewed with expected performance.'),
+			i18n(
+				'Proyecto revisado con desempeno esperado.',
+				'Project reviewed with expected performance.',
+			),
 			'2026-06-10 11:00:00',
 		],
 	]
-		.map(([pc, se, pe, qs, obs, regAt]) => `('${pc}', '${se}', '${pe}', '${qs}', '${obs}'::jsonb, '${regAt}')`)
+		.map(
+			([pc, se, pe, qs, obs, regAt]) =>
+				`('${pc}', '${se}', '${pe}', '${qs}', '${obs}'::jsonb, '${regAt}')`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`

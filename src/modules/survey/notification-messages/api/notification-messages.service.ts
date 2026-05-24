@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { NotificationMessageRepository } from '../core/notification-messages.repository';
 import { NotificationMessageValidation } from '../core/notification-messages.validation';
 
-import { CreateNotificationMessageDto, UpdateNotificationMessageDto } from '../model/notification-messages.dtos';
+import {
+	CreateNotificationMessageDto,
+	UpdateNotificationMessageDto,
+} from '../model/notification-messages.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

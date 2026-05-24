@@ -15,7 +15,12 @@ export class GraSurveyRepository extends BaseRepostitory {
 	}
 
 	/** Busca una encuesta GRA existente para un estudiante en un período y programa */
-	async findExistingGraSurvey(graSurveyTypeId: number, studentId: number, academicPeriodId: number, programId: number): Promise<SurveyEntity | null> {
+	async findExistingGraSurvey(
+		graSurveyTypeId: number,
+		studentId: number,
+		academicPeriodId: number,
+		programId: number,
+	): Promise<SurveyEntity | null> {
 		return await this.repository
 			.createQueryBuilder('s')
 			.where('s.survey_type_id = :typeId', { typeId: graSurveyTypeId })
@@ -27,37 +32,53 @@ export class GraSurveyRepository extends BaseRepostitory {
 
 	/** Obtiene el type_id de encuesta GRA desde core.types */
 	async getGraSurveyTypeId(code = 'TG601-T002'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/** Obtiene el type_id para estado activo de encuesta */
 	async getActiveSurveyStatusId(code = 'TG602-T001'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/** Obtiene el type_id para estado cerrado de encuesta */
 	async getClosedSurveyStatusId(code = 'TG602-T002'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/** Obtiene el type_id para notificación programada */
 	async getScheduledNotificationStatusId(code = 'TG1001-T001'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/** Obtiene el type_id para notificación enviada */
 	async getSentNotificationStatusId(code = 'TG1001-T002'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/** Actualiza el estado de la encuesta a cerrado (COM) */
-	async closeSurvey(surveyId: number, closedStatusId: number, commentaries?: string): Promise<void> {
-		const infoUpdate = commentaries ? `, information = COALESCE(information::jsonb, '{}'::jsonb) || jsonb_build_object('commentaries', $3)` : '';
+	async closeSurvey(
+		surveyId: number,
+		closedStatusId: number,
+		commentaries?: string,
+	): Promise<void> {
+		const infoUpdate = commentaries
+			? `, information = COALESCE(information::jsonb, '{}'::jsonb) || jsonb_build_object('commentaries', $3)`
+			: '';
 		const params: any[] = [closedStatusId, surveyId];
 		if (commentaries) params.push(commentaries);
 
@@ -128,7 +149,9 @@ export class GraSurveyRepository extends BaseRepostitory {
 
 	/** Busca el default course_section_id (requerido como FK) */
 	async getDefaultCourseSectionId(): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM academic.course_sections ORDER BY id LIMIT 1`);
+		const rows = await this.dataSource.query(
+			`SELECT id FROM academic.course_sections ORDER BY id LIMIT 1`,
+		);
 		return rows?.[0]?.id ?? 1;
 	}
 }

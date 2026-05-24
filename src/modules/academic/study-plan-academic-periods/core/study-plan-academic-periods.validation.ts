@@ -13,7 +13,8 @@ export class StudyPlanAcademicPeriodValidation {
 			},
 		});
 
-		if (exists) errors.push(studyPlanAcademicPeriodsValidationStrings.error.studyPlanAcademicPeriodExists);
+		if (exists)
+			errors.push(studyPlanAcademicPeriodsValidationStrings.error.studyPlanAcademicPeriodExists);
 
 		if (errors.length > 0) {
 			throw new HttpException(

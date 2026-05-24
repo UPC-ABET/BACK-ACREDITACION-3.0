@@ -4,7 +4,13 @@ import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
 import { PppValidation } from '../core/ppp.validation';
-import { CreatePppSurveyDto, FilterPppSurveyDto, UploadPppExcelDto, DashboardPppDto, GenerateFindingsPppDto } from '../model/ppp.dtos';
+import {
+	CreatePppSurveyDto,
+	FilterPppSurveyDto,
+	UploadPppExcelDto,
+	DashboardPppDto,
+	GenerateFindingsPppDto,
+} from '../model/ppp.dtos';
 
 const PPP_TYPE_CODE = 'TG601-T003';
 const PPP_STATUS_ACTIVE_CODE = 'TG602-T001';
@@ -19,13 +25,19 @@ export class PppSurveyService {
 
 	private async getPppTypeId(): Promise<number> {
 		const id = await this.surveyRepo.getPppTypeId(PPP_TYPE_CODE);
-		if (!id) throw new BadRequestException(`Tipo de encuesta PPP (${PPP_TYPE_CODE}) no encontrado. Ejecuta el seed de tipos.`);
+		if (!id)
+			throw new BadRequestException(
+				`Tipo de encuesta PPP (${PPP_TYPE_CODE}) no encontrado. Ejecuta el seed de tipos.`,
+			);
 		return id;
 	}
 
 	private async getPppStatusId(): Promise<number> {
 		const id = await this.surveyRepo.getPppStatusTypeId(PPP_STATUS_ACTIVE_CODE);
-		if (!id) throw new BadRequestException(`Estado de encuesta (${PPP_STATUS_ACTIVE_CODE}) no encontrado. Ejecuta el seed de tipos.`);
+		if (!id)
+			throw new BadRequestException(
+				`Estado de encuesta (${PPP_STATUS_ACTIVE_CODE}) no encontrado. Ejecuta el seed de tipos.`,
+			);
 		return id;
 	}
 
@@ -102,7 +114,9 @@ export class PppSurveyService {
 		});
 
 		if (configs.length === 0) {
-			throw new BadRequestException('No existen configuraciones PPP activas para el programa y período seleccionados. Crea las competencias primero.');
+			throw new BadRequestException(
+				'No existen configuraciones PPP activas para el programa y período seleccionados. Crea las competencias primero.',
+			);
 		}
 
 		// Parse Excel from base64
@@ -120,7 +134,10 @@ export class PppSurveyService {
 		const sheet = workbook.Sheets[sheetName];
 		const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
-		if (rows.length === 0) throw new BadRequestException('El archivo Excel está vacío o no tiene datos en la primera hoja');
+		if (rows.length === 0)
+			throw new BadRequestException(
+				'El archivo Excel está vacío o no tiene datos en la primera hoja',
+			);
 
 		const results = {
 			total: rows.length,
@@ -135,13 +152,27 @@ export class PppSurveyService {
 
 			// Map Excel columns (normalize header names)
 			const normalizedRow = {
-				student_code: String(row['Codigo Alumno'] ?? row['Código Alumno'] ?? row['CODIGO_ALUMNO'] ?? row['student_code'] ?? '').trim(),
-				practice_number: Number(row['# Practica'] ?? row['N Practica'] ?? row['practice_number'] ?? row['Practica'] ?? 0),
-				total_hours: Number(row['Horas'] ?? row['Total Horas'] ?? row['TOTAL_HORAS'] ?? row['total_hours'] ?? 0) || null,
-				company_name: String(row['Razon Social'] ?? row['Razón Social'] ?? row['company_name'] ?? '').trim() || null,
+				student_code: String(
+					row['Codigo Alumno'] ??
+						row['Código Alumno'] ??
+						row['CODIGO_ALUMNO'] ??
+						row['student_code'] ??
+						'',
+				).trim(),
+				practice_number: Number(
+					row['# Practica'] ?? row['N Practica'] ?? row['practice_number'] ?? row['Practica'] ?? 0,
+				),
+				total_hours:
+					Number(
+						row['Horas'] ?? row['Total Horas'] ?? row['TOTAL_HORAS'] ?? row['total_hours'] ?? 0,
+					) || null,
+				company_name:
+					String(row['Razon Social'] ?? row['Razón Social'] ?? row['company_name'] ?? '').trim() ||
+					null,
 				ruc: String(row['RUC'] ?? row['ruc'] ?? '').trim() || null,
 				boss_name: String(row['Nombre Jefe'] ?? row['boss_name'] ?? '').trim() || null,
-				boss_role: String(row['Cargo Jefe'] ?? row['Cargo'] ?? row['boss_role'] ?? '').trim() || null,
+				boss_role:
+					String(row['Cargo Jefe'] ?? row['Cargo'] ?? row['boss_role'] ?? '').trim() || null,
 				phone: String(row['Telefono'] ?? row['Teléfono'] ?? row['phone'] ?? '').trim() || null,
 				email: String(row['Email Jefe'] ?? row['email'] ?? '').trim() || null,
 				start_date: row['Fecha Inicio'] ?? row['start_date'] ?? null,
@@ -159,7 +190,9 @@ export class PppSurveyService {
 			const student = await this.surveyRepo.findStudentByCode(normalizedRow.student_code);
 			if (!student) {
 				results.failed++;
-				results.errors.push(`Fila ${rowNum}: Alumno con código "${normalizedRow.student_code}" no encontrado`);
+				results.errors.push(
+					`Fila ${rowNum}: Alumno con código "${normalizedRow.student_code}" no encontrado`,
+				);
 				continue;
 			}
 
@@ -218,7 +251,10 @@ export class PppSurveyService {
 	async getDashboard(dto: DashboardPppDto) {
 		const typeId = await this.getPppTypeId();
 
-		const [surveyCount, dashboardData] = await Promise.all([this.surveyRepo.findAllPpp(typeId, dto).then((r) => r.length), this.surveyRepo.getDashboardData(typeId, dto)]);
+		const [surveyCount, dashboardData] = await Promise.all([
+			this.surveyRepo.findAllPpp(typeId, dto).then((r) => r.length),
+			this.surveyRepo.getDashboardData(typeId, dto),
+		]);
 
 		const outcomeResults = dashboardData.map((row) => ({
 			outcome_id: row.outcome_id,

@@ -27,7 +27,10 @@ export class CreateOutcomeDto extends BaseDto {
 	outcome_name: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'outcome_description_es', en: 'outcome_description_en' }, required: true })
+	@ApiProperty({
+		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
+		required: true,
+	})
 	outcome_description: I18nText;
 }
 
@@ -59,7 +62,10 @@ export class UpdateOutcomeDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'outcome_description_es', en: 'outcome_description_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
+		required: false,
+	})
 	outcome_description?: I18nText;
 }
 
@@ -85,6 +91,9 @@ export class FilterOutcomeDto extends BaseDto {
 	outcome_name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'outcome_description_es', en: 'outcome_description_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
+		required: false,
+	})
 	outcome_description?: I18nText;
 }

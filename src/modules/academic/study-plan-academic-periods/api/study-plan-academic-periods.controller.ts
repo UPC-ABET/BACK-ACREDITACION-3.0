@@ -10,7 +10,11 @@ import {
 	SwaggerStudyPlanAcademicPeriodGetByFilters,
 } from './docs/study-plan-academic-periods.swagger';
 import { StudyPlanAcademicPeriodService } from './study-plan-academic-periods.service';
-import { CreateStudyPlanAcademicPeriodDto, UpdateStudyPlanAcademicPeriodDto, FilterStudyPlanAcademicPeriodDto } from '../model/study-plan-academic-periods.dtos';
+import {
+	CreateStudyPlanAcademicPeriodDto,
+	UpdateStudyPlanAcademicPeriodDto,
+	FilterStudyPlanAcademicPeriodDto,
+} from '../model/study-plan-academic-periods.dtos';
 
 @SwaggerStudyPlanAcademicPeriodController()
 export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanAcademicPeriodService> {

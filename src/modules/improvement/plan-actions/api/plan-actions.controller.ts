@@ -10,7 +10,11 @@ import {
 	SwaggerPlanActionGetByFilters,
 } from './docs/plan-actions.swagger';
 import { PlanActionService } from './plan-actions.service';
-import { CreatePlanActionDto, UpdatePlanActionDto, FilterPlanActionDto } from '../model/plan-actions.dtos';
+import {
+	CreatePlanActionDto,
+	UpdatePlanActionDto,
+	FilterPlanActionDto,
+} from '../model/plan-actions.dtos';
 
 @SwaggerPlanActionController()
 export class PlanActionController extends BaseController<PlanActionService> {

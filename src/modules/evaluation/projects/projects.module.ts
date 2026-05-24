@@ -13,8 +13,13 @@ import { RubricModule } from 'src/modules/evaluation/rubrics/rubrics.module';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([ProjectEntity, ProjectStudentEntity, ProjectEvaluatorEntity, TypeEntity]),
-		forwardRef(() => RubricModule)
+		TypeOrmModule.forFeature([
+			ProjectEntity,
+			ProjectStudentEntity,
+			ProjectEvaluatorEntity,
+			TypeEntity,
+		]),
+		forwardRef(() => RubricModule),
 	],
 	controllers: [ProjectController],
 	providers: [ProjectService, ProjectRepository, ProjectConfigService],

@@ -1,4 +1,14 @@
-import { IsBoolean, IsObject, IsOptional, IsString, Length, IsArray, IsInt, IsNotEmpty, IsNumber } from 'class-validator';
+import {
+	IsBoolean,
+	IsObject,
+	IsOptional,
+	IsString,
+	Length,
+	IsArray,
+	IsInt,
+	IsNotEmpty,
+	IsNumber,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -216,7 +226,10 @@ export class ProjectDetailsStudentDto extends StudentInfoDto {
 	@ApiProperty({ nullable: true })
 	total_grade: number | null;
 
-	@ApiProperty({ type: [StudentEvaluationStatusDto], description: 'Estado de calificación por evaluador. Solo presente en modo evaluación.' })
+	@ApiProperty({
+		type: [StudentEvaluationStatusDto],
+		description: 'Estado de calificación por evaluador. Solo presente en modo evaluación.',
+	})
 	evaluations: StudentEvaluationStatusDto[];
 }
 
@@ -275,8 +288,6 @@ export class ProjectDetailsResponseDto {
 }
 
 export class FilterProjectDto extends BaseDto {
-
-
 	// ── Filtros propios del proyecto ──────────────────────────────────────
 	@IsOptional()
 	@IsString()

@@ -18,12 +18,18 @@ export class CreateOutcomeConfigDto extends BaseDto {
 	outcome_id: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' }, required: true })
+	@ApiProperty({
+		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
+		required: true,
+	})
 	user_outcome_name: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
+		required: false,
+	})
 	user_outcome_description?: I18nText;
 }
 
@@ -44,12 +50,18 @@ export class UpdateOutcomeConfigDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
+		required: false,
+	})
 	user_outcome_name?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
+		required: false,
+	})
 	user_outcome_description?: I18nText;
 }
 
@@ -67,10 +79,16 @@ export class FilterOutcomeConfigDto extends BaseDto {
 	outcome_id?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
+		required: false,
+	})
 	user_outcome_name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' }, required: false })
+	@ApiProperty({
+		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
+		required: false,
+	})
 	user_outcome_description?: I18nText;
 }

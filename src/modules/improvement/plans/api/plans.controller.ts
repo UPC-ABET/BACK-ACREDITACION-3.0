@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerPlanController, SwaggerPlanCreate, SwaggerPlanUpdate, SwaggerPlanDelete, SwaggerPlanGetAll, SwaggerPlanGetById, SwaggerPlanGetByFilters } from './docs/plans.swagger';
+import {
+	SwaggerPlanController,
+	SwaggerPlanCreate,
+	SwaggerPlanUpdate,
+	SwaggerPlanDelete,
+	SwaggerPlanGetAll,
+	SwaggerPlanGetById,
+	SwaggerPlanGetByFilters,
+} from './docs/plans.swagger';
 import { PlanService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto, FilterPlanDto } from '../model/plans.dtos';
 

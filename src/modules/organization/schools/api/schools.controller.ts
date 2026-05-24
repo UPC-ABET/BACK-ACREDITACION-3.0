@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerSchoolController, SwaggerSchoolCreate, SwaggerSchoolUpdate, SwaggerSchoolDelete, SwaggerSchoolGetAll, SwaggerSchoolGetById, SwaggerSchoolGetByFilters } from './docs/schools.swagger';
+import {
+	SwaggerSchoolController,
+	SwaggerSchoolCreate,
+	SwaggerSchoolUpdate,
+	SwaggerSchoolDelete,
+	SwaggerSchoolGetAll,
+	SwaggerSchoolGetById,
+	SwaggerSchoolGetByFilters,
+} from './docs/schools.swagger';
 import { SchoolService } from './schools.service';
 import { CreateSchoolDto, UpdateSchoolDto, FilterSchoolDto } from '../model/schools.dtos';
 

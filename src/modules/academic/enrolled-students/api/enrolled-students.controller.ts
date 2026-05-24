@@ -10,7 +10,11 @@ import {
 	SwaggerEnrolledStudentGetByFilters,
 } from './docs/enrolled-students.swagger';
 import { EnrolledStudentService } from './enrolled-students.service';
-import { CreateEnrolledStudentDto, UpdateEnrolledStudentDto, FilterEnrolledStudentDto } from '../model/enrolled-students.dtos';
+import {
+	CreateEnrolledStudentDto,
+	UpdateEnrolledStudentDto,
+	FilterEnrolledStudentDto,
+} from '../model/enrolled-students.dtos';
 
 @SwaggerEnrolledStudentController()
 export class EnrolledStudentController extends BaseController<EnrolledStudentService> {

@@ -8,7 +8,11 @@ export const courseSectionsRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar sección de curso' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar secciones de curso' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener sección de curso' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar secciones de curso' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar secciones de curso',
+			},
 		},
 	},
 };

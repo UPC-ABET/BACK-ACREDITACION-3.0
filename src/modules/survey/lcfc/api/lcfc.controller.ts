@@ -14,7 +14,15 @@ import {
 	SwaggerLcfcSurveyComplete,
 	SwaggerLcfcDashboard,
 } from './docs/lcfc.swagger';
-import { GenerateLcfcConfigDto, FilterLcfcConfigDto, UpdateLcfcConfigStatusDto, SendLcfcNotificationDto, GetLcfcSurveyByTokenDto, CompleteLcfcSurveyDto, DashboardLcfcDto } from '../model/lcfc.dtos';
+import {
+	GenerateLcfcConfigDto,
+	FilterLcfcConfigDto,
+	UpdateLcfcConfigStatusDto,
+	SendLcfcNotificationDto,
+	GetLcfcSurveyByTokenDto,
+	CompleteLcfcSurveyDto,
+	DashboardLcfcDto,
+} from '../model/lcfc.dtos';
 
 @SwaggerLcfcController()
 export class LcfcController {

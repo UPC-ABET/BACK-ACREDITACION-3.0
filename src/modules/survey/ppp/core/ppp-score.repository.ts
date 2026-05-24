@@ -25,7 +25,9 @@ export class PppScoreRepository extends BaseRepostitory {
 		await this.repository.delete({ survey_id: surveyId });
 	}
 
-	async bulkCreate(scores: { survey_id: number; outcome_id: number; score: number; commentaries?: string }[]): Promise<ScoreEntity[]> {
+	async bulkCreate(
+		scores: { survey_id: number; outcome_id: number; score: number; commentaries?: string }[],
+	): Promise<ScoreEntity[]> {
 		const entities = scores.map((s) => this.repository.create(s));
 		return await this.repository.save(entities);
 	}

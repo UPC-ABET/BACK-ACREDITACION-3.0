@@ -10,7 +10,11 @@ import {
 	SwaggerInstrumentGetByFilters,
 } from './docs/instruments.swagger';
 import { InstrumentService } from './instruments.service';
-import { CreateInstrumentDto, UpdateInstrumentDto, FilterInstrumentDto } from '../model/instruments.dtos';
+import {
+	CreateInstrumentDto,
+	UpdateInstrumentDto,
+	FilterInstrumentDto,
+} from '../model/instruments.dtos';
 
 @SwaggerInstrumentController()
 export class InstrumentController extends BaseController<InstrumentService> {

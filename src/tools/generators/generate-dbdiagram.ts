@@ -74,7 +74,8 @@ while ((match = tableRegex.exec(content))) {
 
 /* ---------------- PARSE FOREIGN KEYS ---------------- */
 
-const fkRegex = /ALTER TABLE "([^"]+)"\."([^"]+)" ADD CONSTRAINT "[^"]+" FOREIGN KEY \("([^"]+)"\) REFERENCES "([^"]+)"\."([^"]+)"\("([^"]+)"\)/g;
+const fkRegex =
+	/ALTER TABLE "([^"]+)"\."([^"]+)" ADD CONSTRAINT "[^"]+" FOREIGN KEY \("([^"]+)"\) REFERENCES "([^"]+)"\."([^"]+)"\("([^"]+)"\)/g;
 
 const relations: string[] = [];
 
@@ -97,7 +98,9 @@ while ((match = fkRegex.exec(content))) {
 		continue;
 	}
 
-	relations.push(`Ref: "${fromSchema}"."${fromTable}"."${fromColumn}" > "${toSchema}"."${toTable}"."${toColumn}"`);
+	relations.push(
+		`Ref: "${fromSchema}"."${fromTable}"."${fromColumn}" > "${toSchema}"."${toTable}"."${toColumn}"`,
+	);
 }
 
 /* ---------------- BUILD DBML ---------------- */

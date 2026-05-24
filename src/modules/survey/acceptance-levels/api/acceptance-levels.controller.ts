@@ -1,8 +1,17 @@
 import { Body } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { AcceptanceLevelService } from './acceptance-levels.service';
-import { SwaggerAcceptanceLevelsController, SwaggerAcceptanceLevelsList, SwaggerAcceptanceLevelsBulkUpdate, SwaggerAcceptanceLevelsGenerateDefaults } from './docs/acceptance-levels.swagger';
-import { FilterAcceptanceLevelDto, BulkUpdateAcceptanceLevelsDto, GenerateDefaultAcceptanceLevelsDto } from '../model/acceptance-levels.dtos';
+import {
+	SwaggerAcceptanceLevelsController,
+	SwaggerAcceptanceLevelsList,
+	SwaggerAcceptanceLevelsBulkUpdate,
+	SwaggerAcceptanceLevelsGenerateDefaults,
+} from './docs/acceptance-levels.swagger';
+import {
+	FilterAcceptanceLevelDto,
+	BulkUpdateAcceptanceLevelsDto,
+	GenerateDefaultAcceptanceLevelsDto,
+} from '../model/acceptance-levels.dtos';
 
 @SwaggerAcceptanceLevelsController()
 export class AcceptanceLevelController {

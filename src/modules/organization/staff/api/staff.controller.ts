@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerStaffController, SwaggerStaffCreate, SwaggerStaffUpdate, SwaggerStaffDelete, SwaggerStaffGetAll, SwaggerStaffGetById, SwaggerStaffGetByFilters } from './docs/staff.swagger';
+import {
+	SwaggerStaffController,
+	SwaggerStaffCreate,
+	SwaggerStaffUpdate,
+	SwaggerStaffDelete,
+	SwaggerStaffGetAll,
+	SwaggerStaffGetById,
+	SwaggerStaffGetByFilters,
+} from './docs/staff.swagger';
 import { StaffService } from './staff.service';
 import { CreateStaffDto, UpdateStaffDto, FilterStaffDto } from '../model/staff.dtos';
 

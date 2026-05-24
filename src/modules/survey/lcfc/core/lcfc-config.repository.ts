@@ -16,14 +16,22 @@ export class LcfcConfigRepository extends BaseRepostitory {
 		super(repository, dataSource);
 	}
 
-	async findAllLcfc(filters?: { program_id?: number; academic_period_id?: number; is_active?: boolean }): Promise<OutcomeConfigEntity[]> {
-		const qb = this.repository.createQueryBuilder('oc').where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
+	async findAllLcfc(filters?: {
+		program_id?: number;
+		academic_period_id?: number;
+		is_active?: boolean;
+	}): Promise<OutcomeConfigEntity[]> {
+		const qb = this.repository
+			.createQueryBuilder('oc')
+			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
 
 		if (filters?.program_id !== undefined) {
 			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.program_id });
 		}
 		if (filters?.academic_period_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, { periodId: filters.academic_period_id });
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+				periodId: filters.academic_period_id,
+			});
 		}
 		if (filters?.is_active !== undefined) {
 			qb.andWhere('oc.is_active = :isActive', { isActive: filters.is_active });
@@ -33,12 +41,17 @@ export class LcfcConfigRepository extends BaseRepostitory {
 		return await qb.getMany();
 	}
 
-	async findByCourseSection(courseSectionId: number, academicPeriodId: number): Promise<OutcomeConfigEntity | null> {
+	async findByCourseSection(
+		courseSectionId: number,
+		academicPeriodId: number,
+	): Promise<OutcomeConfigEntity | null> {
 		return await this.repository
 			.createQueryBuilder('oc')
 			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE })
 			.andWhere(`(oc.extra->>'course_section_id')::int = :csId`, { csId: courseSectionId })
-			.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, { periodId: academicPeriodId })
+			.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+				periodId: academicPeriodId,
+			})
 			.getOne();
 	}
 
@@ -61,7 +74,15 @@ export class LcfcConfigRepository extends BaseRepostitory {
 		academicPeriodId: number,
 		programId?: number,
 		campusId?: number,
-	): Promise<{ course_section_id: number; course_id: number; course_name: string; section_code: string; campus_id: number }[]> {
+	): Promise<
+		{
+			course_section_id: number;
+			course_id: number;
+			course_name: string;
+			section_code: string;
+			campus_id: number;
+		}[]
+	> {
 		let query = `
 			SELECT
 				cs.id           AS course_section_id,

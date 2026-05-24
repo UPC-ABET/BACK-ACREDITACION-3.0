@@ -2,7 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PppConfigRepository, PPP_SURVEY_TYPE } from '../core/ppp-config.repository';
 import { AcceptanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
 import { PppValidation } from '../core/ppp.validation';
-import { CreatePppConfigDto, UpdatePppConfigDto, FilterPppConfigDto, ReplicatePppConfigDto } from '../model/ppp.dtos';
+import {
+	CreatePppConfigDto,
+	UpdatePppConfigDto,
+	FilterPppConfigDto,
+	ReplicatePppConfigDto,
+} from '../model/ppp.dtos';
 
 @Injectable()
 export class PppConfigService {
@@ -62,7 +67,8 @@ export class PppConfigService {
 		const updatePayload: Record<string, any> = { extra };
 		if (dto.outcome_id !== undefined) updatePayload.outcome_id = dto.outcome_id;
 		if (dto.name_es !== undefined) updatePayload.user_outcome_name = dto.name_es;
-		if (dto.description_es !== undefined) updatePayload.user_outcome_description = dto.description_es;
+		if (dto.description_es !== undefined)
+			updatePayload.user_outcome_description = dto.description_es;
 		if (dto.is_active !== undefined) updatePayload.is_active = dto.is_active;
 
 		return await this.configRepo.update(id, updatePayload);
@@ -81,13 +87,21 @@ export class PppConfigService {
 		});
 
 		if (sourceConfigs.length === 0) {
-			return { replicated_configs: 0, replicated_levels: 0, message: 'No se encontraron configuraciones en el período origen' };
+			return {
+				replicated_configs: 0,
+				replicated_levels: 0,
+				message: 'No se encontraron configuraciones en el período origen',
+			};
 		}
 
 		let replicatedConfigs = 0;
 		for (const config of sourceConfigs) {
 			const sourceExtra = (config.extra as Record<string, any>) ?? {};
-			const alreadyExists = await this.configRepo.existsPpp(config.outcome_id, sourceExtra.program_id, dto.target_academic_period_id);
+			const alreadyExists = await this.configRepo.existsPpp(
+				config.outcome_id,
+				sourceExtra.program_id,
+				dto.target_academic_period_id,
+			);
 			if (alreadyExists) continue;
 
 			await this.configRepo.create({

@@ -37,7 +37,8 @@ export class RubricScoreValidation {
 		if (!entity) errors.push(rubricScoresValidationStrings.error.notFound);
 
 		const evaluationId = data.evaluation_id ?? entity?.evaluation_id;
-		const rubricQuestionCriteriaId = data.rubric_question_criteria_id ?? entity?.rubric_question_criteria_id;
+		const rubricQuestionCriteriaId =
+			data.rubric_question_criteria_id ?? entity?.rubric_question_criteria_id;
 
 		const exists = await repo.findOneByCondition({
 			where: {

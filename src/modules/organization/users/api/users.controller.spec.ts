@@ -21,7 +21,10 @@ describe('UserController', () => {
 		};
 		service.loginByCredentials.mockResolvedValueOnce(loginResult);
 
-		const response = await controller.loginByCredentials({ school_code: 'EISCB', email: 'admin@upc.edu.pe', password: 'secret' }, res as never);
+		const response = await controller.loginByCredentials(
+			{ school_code: 'EISCB', email: 'admin@upc.edu.pe', password: 'secret' },
+			res as never,
+		);
 
 		expect(service.loginByCredentials).toHaveBeenCalledWith('EISCB', 'admin@upc.edu.pe', 'secret');
 		expect(res.cookie).toHaveBeenCalledWith(
@@ -41,10 +44,18 @@ describe('UserController', () => {
 		const res = fakeResponse();
 		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, access_token: 'role-token' });
 
-		await controller.changeRole({ newRole: 2 }, { user: { userId: 8, school_id: 4 } }, res as never);
+		await controller.changeRole(
+			{ newRole: 2 },
+			{ user: { userId: 8, school_id: 4 } },
+			res as never,
+		);
 
 		expect(service.loginById).toHaveBeenCalledWith(8, 2, 4);
-		expect(res.cookie).toHaveBeenCalledWith('access_token', 'role-token', expect.objectContaining({ httpOnly: true, path: '/' }));
+		expect(res.cookie).toHaveBeenCalledWith(
+			'access_token',
+			'role-token',
+			expect.objectContaining({ httpOnly: true, path: '/' }),
+		);
 	});
 });
 

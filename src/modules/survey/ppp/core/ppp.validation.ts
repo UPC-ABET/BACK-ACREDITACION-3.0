@@ -3,30 +3,50 @@ import { PppConfigRepository } from './ppp-config.repository';
 import { CreatePppConfigDto, CreatePppSurveyDto } from '../model/ppp.dtos';
 
 export class PppValidation {
-	static async validateCreateConfig(repo: PppConfigRepository, dto: CreatePppConfigDto): Promise<void> {
+	static async validateCreateConfig(
+		repo: PppConfigRepository,
+		dto: CreatePppConfigDto,
+	): Promise<void> {
 		const errors: string[] = [];
 
 		const exists = await repo.existsPpp(dto.outcome_id, dto.program_id, dto.academic_period_id);
 		if (exists) {
-			errors.push('Ya existe una configuración PPP para este outcome en el programa y período seleccionados');
+			errors.push(
+				'Ya existe una configuración PPP para este outcome en el programa y período seleccionados',
+			);
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException({ message: 'Error al crear configuración PPP', errors }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: 'Error al crear configuración PPP', errors },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 
 	static async validateUpdateConfig(repo: PppConfigRepository, id: number): Promise<void> {
 		const exists = await repo.findOnePpp(id);
 		if (!exists) {
-			throw new HttpException({ message: 'Configuración PPP no encontrada', errors: [`No existe configuración PPP con ID ${id}`] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: 'Configuración PPP no encontrada',
+					errors: [`No existe configuración PPP con ID ${id}`],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 	}
 
 	static async validateDeleteConfig(repo: PppConfigRepository, id: number): Promise<void> {
 		const exists = await repo.findOnePpp(id);
 		if (!exists) {
-			throw new HttpException({ message: 'Configuración PPP no encontrada', errors: [`No existe configuración PPP con ID ${id}`] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: 'Configuración PPP no encontrada',
+					errors: [`No existe configuración PPP con ID ${id}`],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 	}
 
@@ -52,7 +72,10 @@ export class PppValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException({ message: 'Error al registrar encuesta PPP', errors }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: 'Error al registrar encuesta PPP', errors },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 

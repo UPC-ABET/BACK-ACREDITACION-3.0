@@ -16,23 +16,38 @@ export class GraConfigRepository extends BaseRepostitory {
 		super(repository, dataSource);
 	}
 
-	async findAllGra(filters?: { program_id?: number; academic_period_id?: number; commission_id?: number; is_active?: boolean; is_visible?: boolean }): Promise<OutcomeConfigEntity[]> {
-		const qb = this.repository.createQueryBuilder('oc').leftJoinAndSelect('oc.outcome', 'outcome').where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+	async findAllGra(filters?: {
+		program_id?: number;
+		academic_period_id?: number;
+		commission_id?: number;
+		is_active?: boolean;
+		is_visible?: boolean;
+	}): Promise<OutcomeConfigEntity[]> {
+		const qb = this.repository
+			.createQueryBuilder('oc')
+			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
 		if (filters?.program_id !== undefined) {
 			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.program_id });
 		}
 		if (filters?.academic_period_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, { periodId: filters.academic_period_id });
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+				periodId: filters.academic_period_id,
+			});
 		}
 		if (filters?.commission_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'commission_id')::int = :commissionId`, { commissionId: filters.commission_id });
+			qb.andWhere(`(oc.extra->>'commission_id')::int = :commissionId`, {
+				commissionId: filters.commission_id,
+			});
 		}
 		if (filters?.is_active !== undefined) {
 			qb.andWhere('oc.is_active = :isActive', { isActive: filters.is_active });
 		}
 		if (filters?.is_visible !== undefined) {
-			qb.andWhere(`(oc.extra->>'is_visible')::boolean = :isVisible`, { isVisible: filters.is_visible });
+			qb.andWhere(`(oc.extra->>'is_visible')::boolean = :isVisible`, {
+				isVisible: filters.is_visible,
+			});
 		}
 
 		qb.orderBy(`(oc.extra->>'order')::int`, 'ASC', 'NULLS LAST');
@@ -49,26 +64,41 @@ export class GraConfigRepository extends BaseRepostitory {
 			.getOne();
 	}
 
-	async existsGra(outcome_id: number, program_id?: number, academic_period_id?: number): Promise<boolean> {
-		const qb = this.repository.createQueryBuilder('oc').where('oc.outcome_id = :outcome_id', { outcome_id }).andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+	async existsGra(
+		outcome_id: number,
+		program_id?: number,
+		academic_period_id?: number,
+	): Promise<boolean> {
+		const qb = this.repository
+			.createQueryBuilder('oc')
+			.where('oc.outcome_id = :outcome_id', { outcome_id })
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
 		if (program_id !== undefined) {
 			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: program_id });
 		}
 		if (academic_period_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, { periodId: academic_period_id });
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+				periodId: academic_period_id,
+			});
 		}
 
 		return (await qb.getCount()) > 0;
 	}
 
 	async findSurveyTypeIdByCode(code: string): Promise<number | null> {
-		const result = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 AND is_active = true LIMIT 1`, [code]);
+		const result = await this.dataSource.query(
+			`SELECT id FROM core.types WHERE code = $1 AND is_active = true LIMIT 1`,
+			[code],
+		);
 		return result?.[0]?.id ?? null;
 	}
 
 	/** Retorna outcomes agrupados por comisión para un programa y período (usado en selector de UI) */
-	async findOutcomesGroupedByCommission(program_id: number, academic_period_id: number): Promise<Record<string, any>[]> {
+	async findOutcomesGroupedByCommission(
+		program_id: number,
+		academic_period_id: number,
+	): Promise<Record<string, any>[]> {
 		return await this.dataSource.query(
 			`SELECT
 				pc.id         AS program_commission_id,

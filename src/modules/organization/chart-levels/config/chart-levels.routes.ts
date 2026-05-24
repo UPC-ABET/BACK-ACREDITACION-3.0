@@ -8,7 +8,11 @@ export const chartLevelsRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar nivel de organigrama' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar niveles de organigrama' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener nivel de organigrama' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar niveles de organigrama' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar niveles de organigrama',
+			},
 		},
 	},
 };

@@ -10,9 +10,17 @@ import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/t
 import { I18nText } from 'src/shared/types/i18n';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFCS_PARAMETER_KEYS, IFC_INSTRUMENT_CODE, IFC_OPS, IfcOp } from './ifcs.constants';
-import { PDF_LABELS, PdfRendererService, PDF_STYLES, UPC_LOGO_DATA_URI } from './pdf-renderer.service';
+import {
+	PDF_LABELS,
+	PdfRendererService,
+	PDF_STYLES,
+	UPC_LOGO_DATA_URI,
+} from './pdf-renderer.service';
 import * as ExcelJS from 'exceljs';
-import { NotificationDispatcherService, DispatchResult } from 'src/modules/ifc/notifications/notification-dispatcher.service';
+import {
+	NotificationDispatcherService,
+	DispatchResult,
+} from 'src/modules/ifc/notifications/notification-dispatcher.service';
 
 interface StatusReportRow {
 	course_name: string;
@@ -92,7 +100,13 @@ export class IfcService extends BaseService<IfcRepository> {
 		const data = await this.getView(ifcId, userId, schoolId);
 
 		if (data.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED) {
-			throw new HttpException({ message: ifcsValidationStrings.result.pdfFailed, errors: [ifcsValidationStrings.error.pdfRequiresApproved] }, HttpStatus.CONFLICT);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.pdfFailed,
+					errors: [ifcsValidationStrings.error.pdfRequiresApproved],
+				},
+				HttpStatus.CONFLICT,
+			);
 		}
 
 		const html = this.buildIfcHtml(data, lang);
@@ -102,16 +116,23 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number) {
-		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [dto.chart_ids, schoolId, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [
+			dto.chart_ids,
+			schoolId,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		]);
 		const schoolCode: string = codeRow[0]?.school_code ?? 'IFC';
 		const programCodes: string[] = codeRow[0]?.program_codes ?? [];
 		const suffix = programCodes.length === 1 ? `${schoolCode}_${programCodes[0]}` : schoolCode;
 
-		const statusTypes: Array<{ code: string; name: { es?: string; en?: string } }> = await this.dataSource.query(
-			`SELECT t.code, t.name FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id WHERE g.code = $1`,
-			[TYPE_GROUP_CODES.IFC_STATUS],
+		const statusTypes: Array<{ code: string; name: { es?: string; en?: string } }> =
+			await this.dataSource.query(
+				`SELECT t.code, t.name FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id WHERE g.code = $1`,
+				[TYPE_GROUP_CODES.IFC_STATUS],
+			);
+		const statusLabelByCode: Record<string, string> = Object.fromEntries(
+			statusTypes.map((s) => [s.code, s.name?.[dto.lang] ?? s.name?.es ?? s.code]),
 		);
-		const statusLabelByCode: Record<string, string> = Object.fromEntries(statusTypes.map((s) => [s.code, s.name?.[dto.lang] ?? s.name?.es ?? s.code]));
 
 		const rows: StatusReportRow[] = await this.dataSource.query(STATUS_REPORT_SQL, [
 			dto.chart_ids,
@@ -123,18 +144,26 @@ export class IfcService extends BaseService<IfcRepository> {
 		]);
 
 		const xlsx = await this.buildStatusReportXlsx(rows, statusLabelByCode, dto.lang);
-		const filename = (dto.lang === 'en' ? 'Status_Report_IFC_' : 'Reporte_Estado_IFC_') + suffix + '.xlsx';
+		const filename =
+			(dto.lang === 'en' ? 'Status_Report_IFC_' : 'Reporte_Estado_IFC_') + suffix + '.xlsx';
 		return { xlsx, filename };
 	}
 
-	private async buildStatusReportXlsx(rows: StatusReportRow[], statusLabelByCode: Record<string, string>, lang: 'es' | 'en'): Promise<Buffer> {
+	private async buildStatusReportXlsx(
+		rows: StatusReportRow[],
+		statusLabelByCode: Record<string, string>,
+		lang: 'es' | 'en',
+	): Promise<Buffer> {
 		const wb = new ExcelJS.Workbook();
 		wb.creator = 'ABET system';
 		wb.created = new Date();
 
 		const ws = wb.addWorksheet(lang === 'en' ? 'Status Report' : 'Reporte de Estado');
 
-		const HEADERS = lang === 'en' ? ['Course', 'Area', 'Program', 'Status', 'Professor', 'Professor Code', 'Email'] : ['Curso', 'Área', 'Carrera', 'Estado', 'Docente', 'Código Docente', 'Correo'];
+		const HEADERS =
+			lang === 'en'
+				? ['Course', 'Area', 'Program', 'Status', 'Professor', 'Professor Code', 'Email']
+				: ['Curso', 'Área', 'Carrera', 'Estado', 'Docente', 'Código Docente', 'Correo'];
 
 		ws.columns = HEADERS.map((h) => ({ header: h, width: 28 }));
 
@@ -144,12 +173,25 @@ export class IfcService extends BaseService<IfcRepository> {
 			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC8102E' } };
 			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
 			cell.alignment = { vertical: 'middle', horizontal: 'center' };
-			cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+			cell.border = {
+				top: { style: 'thin' },
+				left: { style: 'thin' },
+				right: { style: 'thin' },
+				bottom: { style: 'thin' },
+			};
 		});
 
 		for (const r of rows) {
 			const statusCode = r.status_code ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
-			ws.addRow([r.course_name, r.area_label, r.program_label, statusLabelByCode[statusCode] ?? statusCode, r.coordinator_name ?? '—', r.coordinator_code ?? '—', r.coordinator_email ?? '—']);
+			ws.addRow([
+				r.course_name,
+				r.area_label,
+				r.program_label,
+				statusLabelByCode[statusCode] ?? statusCode,
+				r.coordinator_name ?? '—',
+				r.coordinator_code ?? '—',
+				r.coordinator_email ?? '—',
+			]);
 		}
 
 		ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
@@ -176,7 +218,13 @@ export class IfcService extends BaseService<IfcRepository> {
 		const payloads = await Promise.all(ifcIds.map((id) => this.getView(id, userId, schoolId)));
 		const nonApproved = payloads.find((p) => p.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED);
 		if (nonApproved) {
-			throw new HttpException({ message: ifcsValidationStrings.result.pdfBulkFailed, errors: [ifcsValidationStrings.error.pdfRequiresApproved] }, HttpStatus.CONFLICT);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.pdfBulkFailed,
+					errors: [ifcsValidationStrings.error.pdfRequiresApproved],
+				},
+				HttpStatus.CONFLICT,
+			);
 		}
 
 		const files = await Promise.all(
@@ -219,13 +267,24 @@ export class IfcService extends BaseService<IfcRepository> {
 				)
 				.join('') || `<li class="empty">—</li>`;
 
-		const findingRows = data.findings.map((f: any) => `<tr><td>${esc(f.code)}</td><td>${esc(f.description?.[lang])}</td></tr>`).join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
+		const findingRows =
+			data.findings
+				.map((f: any) => `<tr><td>${esc(f.code)}</td><td>${esc(f.description?.[lang])}</td></tr>`)
+				.join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
 
 		const actionRows =
-			data.findings.flatMap((f: any) => f.actions.map((a: any) => `<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(f.code)}</td></tr>`)).join('') ||
-			`<tr><td colspan="3" class="empty">—</td></tr>`;
+			data.findings
+				.flatMap((f: any) =>
+					f.actions.map(
+						(a: any) =>
+							`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(f.code)}</td></tr>`,
+					),
+				)
+				.join('') || `<tr><td colspan="3" class="empty">—</td></tr>`;
 
-		const logoTag = UPC_LOGO_DATA_URI ? `<img class="logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />` : '';
+		const logoTag = UPC_LOGO_DATA_URI
+			? `<img class="logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
+			: '';
 
 		return `
 			<!doctype html>
@@ -301,26 +360,49 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async list(dto: ListIfcsDto) {
-		return await this.dataSource.query(LIST_SQL, [dto.chart_ids, dto.period_id, TYPE_CODES.ENTITY_TYPE.COURSE]);
+		return await this.dataSource.query(LIST_SQL, [
+			dto.chart_ids,
+			dto.period_id,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
+		]);
 	}
 
 	async getView(id: number, userId: number, schoolId: number) {
 		const [headerRows, findingRows, outcomeCourseRows] = await Promise.all([
-			this.dataSource.query(HEADER_SQL, [id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]),
+			this.dataSource.query(HEADER_SQL, [
+				id,
+				schoolId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
+			]),
 			this.dataSource.query(FINDINGS_SQL, [id, IFCS_PARAMETER_KEYS.FINDING_PREFIX]),
 			this.dataSource.query(OUTCOME_COURSE_BY_IFC_SQL, [id]),
 		]);
 
 		if (headerRows.length === 0) {
-			throw new HttpException({ message: ifcsValidationStrings.result.viewFailed, errors: [ifcsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result.viewFailed,
+					errors: [ifcsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 
 		const findingIds = findingRows.map((r: any) => Number(r.finding_id));
 		const header = headerRows[0];
 		const [findingOutcomeRows, findingActionRows, previousActions] = await Promise.all([
-			findingIds.length ? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds]) : Promise.resolve([]),
 			findingIds.length
-				? this.dataSource.query(FINDING_ACTIONS_SQL, [findingIds, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED])
+				? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds])
+				: Promise.resolve([]),
+			findingIds.length
+				? this.dataSource.query(FINDING_ACTIONS_SQL, [
+						findingIds,
+						IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+						TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+						TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+					])
 				: Promise.resolve([]),
 			this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
 		]);
@@ -338,10 +420,23 @@ export class IfcService extends BaseService<IfcRepository> {
 	async submit(ifcId: number, userId: number, schoolId: number) {
 		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT);
 		await IfcValidation.assertIsInCourseChain(this.dataSource, ctx, IFC_OPS.SUBMIT);
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [null, TYPE_CODES.IFC_STATUS.SAVED], IFC_OPS.SUBMIT);
-		await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.SUBMITTED, null);
+		IfcValidation.assertCurrentStatus(
+			ctx.currentStatusCode,
+			[null, TYPE_CODES.IFC_STATUS.SAVED],
+			IFC_OPS.SUBMIT,
+		);
+		await this.insertStatus(
+			undefined,
+			ctx.ifcId,
+			ctx.requesterStaffId,
+			TYPE_CODES.IFC_STATUS.SUBMITTED,
+			null,
+		);
 
-		const periodRows = await this.dataSource.query(`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`, [ifcId]);
+		const periodRows = await this.dataSource.query(
+			`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
+			[ifcId],
+		);
 		const periodId = Number(periodRows[0]?.academic_period_id);
 		const notification: DispatchResult =
 			ctx.courseChartId !== null && Number.isFinite(periodId)
@@ -360,30 +455,61 @@ export class IfcService extends BaseService<IfcRepository> {
 	async approve(ifcId: number, userId: number, schoolId: number) {
 		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE);
 		IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.APPROVE);
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], IFC_OPS.APPROVE);
-		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.APPROVED, null);
+		IfcValidation.assertCurrentStatus(
+			ctx.currentStatusCode,
+			[TYPE_CODES.IFC_STATUS.SUBMITTED],
+			IFC_OPS.APPROVE,
+		);
+		return await this.insertStatus(
+			undefined,
+			ctx.ifcId,
+			ctx.requesterStaffId,
+			TYPE_CODES.IFC_STATUS.APPROVED,
+			null,
+		);
 	}
 
 	async reject(ifcId: number, userId: number, schoolId: number, dto: RejectIfcDto) {
 		const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT);
 		IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.REJECT);
-		IfcValidation.assertCurrentStatus(ctx.currentStatusCode, [TYPE_CODES.IFC_STATUS.SUBMITTED], IFC_OPS.REJECT);
-		return await this.insertStatus(undefined, ctx.ifcId, ctx.requesterStaffId, TYPE_CODES.IFC_STATUS.OBSERVED, dto.comment);
+		IfcValidation.assertCurrentStatus(
+			ctx.currentStatusCode,
+			[TYPE_CODES.IFC_STATUS.SUBMITTED],
+			IFC_OPS.REJECT,
+		);
+		return await this.insertStatus(
+			undefined,
+			ctx.ifcId,
+			ctx.requesterStaffId,
+			TYPE_CODES.IFC_STATUS.OBSERVED,
+			dto.comment,
+		);
 	}
 
 	async prefill(query: IfcPrefillQueryDto, schoolId: number) {
 		const [headerRows, outcomeRows] = await Promise.all([
-			this.dataSource.query(PREFILL_HEADER_SQL, [query.chart_id, query.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]),
+			this.dataSource.query(PREFILL_HEADER_SQL, [
+				query.chart_id,
+				query.period_id,
+				schoolId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			]),
 			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chart_id]),
 		]);
 
 		IfcValidation.assertChartFound(headerRows, 'prefill');
 		const header = headerRows[0];
-		const previous_actions = await this.loadPreviousActions(Number(header.course_id), query.period_id, null);
+		const previous_actions = await this.loadPreviousActions(
+			Number(header.course_id),
+			query.period_id,
+			null,
+		);
 
 		return {
 			...header,
-			coordinator_user_id: header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
+			coordinator_user_id:
+				header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
 			outcome_course_result: this.groupOutcomeRows(outcomeRows),
 			previous_actions,
 		};
@@ -393,25 +519,43 @@ export class IfcService extends BaseService<IfcRepository> {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
-			const chartRows = await em.query(CHART_RESOLUTION_SQL, [dto.chart_id, dto.period_id, schoolId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, userId]);
+			const chartRows = await em.query(CHART_RESOLUTION_SQL, [
+				dto.chart_id,
+				dto.period_id,
+				schoolId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
+			]);
 			IfcValidation.assertChartFound(chartRows, op);
 
 			const row = chartRows[0];
 			const courseId = Number(row.course_id);
-			const ifcCourseStaffId = row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id);
-			const requesterStaffId = row.requester_staff_id === null ? null : Number(row.requester_staff_id);
+			const ifcCourseStaffId =
+				row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id);
+			const requesterStaffId =
+				row.requester_staff_id === null ? null : Number(row.requester_staff_id);
 			const programId = row.program_id === null ? null : Number(row.program_id);
 
 			IfcValidation.assertRequesterIsStaff(requesterStaffId, op);
-			await IfcValidation.assertIsInCourseChain(em, { ifcId: 0, ifcCourseStaffId, courseChartId: dto.chart_id, requesterStaffId, currentStatusCode: null }, op);
+			await IfcValidation.assertIsInCourseChain(
+				em,
+				{
+					ifcId: 0,
+					ifcCourseStaffId,
+					courseChartId: dto.chart_id,
+					requesterStaffId,
+					currentStatusCode: null,
+				},
+				op,
+			);
 
 			await IfcValidation.assertNoIfcExists(em, courseId, dto.period_id, op);
 
-			const ifcInsert = await em.query(`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`, [
-				courseId,
-				dto.period_id,
-				JSON.stringify(dto.information ?? {}),
-			]);
+			const ifcInsert = await em.query(
+				`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`,
+				[courseId, dto.period_id, JSON.stringify(dto.information ?? {})],
+			);
 			const ifcId = Number(ifcInsert[0].id);
 
 			await this.resolveFindingsAndActions(em, {
@@ -435,7 +579,9 @@ export class IfcService extends BaseService<IfcRepository> {
 				op,
 			});
 
-			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
+			const newStatusCode = dto.submit
+				? TYPE_CODES.IFC_STATUS.SUBMITTED
+				: TYPE_CODES.IFC_STATUS.SAVED;
 			await this.insertStatus(em, ifcId, requesterStaffId!, newStatusCode, null);
 
 			return { id: ifcId };
@@ -465,14 +611,27 @@ export class IfcService extends BaseService<IfcRepository> {
 			await IfcValidation.assertIsInCourseChain(em, ctx, op);
 			IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
 
-			const ifcRows = await em.query(`SELECT course_id, academic_period_id FROM evidence.ifcs WHERE id = $1`, [id]);
+			const ifcRows = await em.query(
+				`SELECT course_id, academic_period_id FROM evidence.ifcs WHERE id = $1`,
+				[id],
+			);
 			const courseId = Number(ifcRows[0].course_id);
 			const periodId = Number(ifcRows[0].academic_period_id);
 
-			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [courseId, periodId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR]);
-			const programId = programRows[0]?.program_id === undefined || programRows[0]?.program_id === null ? null : Number(programRows[0].program_id);
+			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
+				courseId,
+				periodId,
+				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			]);
+			const programId =
+				programRows[0]?.program_id === undefined || programRows[0]?.program_id === null
+					? null
+					: Number(programRows[0].program_id);
 
-			await em.query(`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`, [JSON.stringify(dto.information ?? {}), id]);
+			await em.query(
+				`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+				[JSON.stringify(dto.information ?? {}), id],
+			);
 
 			await this.resolveFindingsAndActions(em, {
 				ifcId: id,
@@ -495,7 +654,9 @@ export class IfcService extends BaseService<IfcRepository> {
 				op,
 			});
 
-			const newStatusCode = dto.submit ? TYPE_CODES.IFC_STATUS.SUBMITTED : TYPE_CODES.IFC_STATUS.SAVED;
+			const newStatusCode = dto.submit
+				? TYPE_CODES.IFC_STATUS.SUBMITTED
+				: TYPE_CODES.IFC_STATUS.SAVED;
 			await this.insertStatus(em, id, ctx.requesterStaffId!, newStatusCode, null);
 
 			return { courseChartId: ctx.courseChartId, periodId };
@@ -526,8 +687,18 @@ export class IfcService extends BaseService<IfcRepository> {
 			programId: number | null;
 			requesterStaffId: number;
 			op: IfcOp;
-			findings: { tempId: string; id: number | null; description: I18nText; criticality_code: string }[];
-			actions: { tempId: string; id: number | null; description: I18nText; finding_temp_id: string }[];
+			findings: {
+				tempId: string;
+				id: number | null;
+				description: I18nText;
+				criticality_code: string;
+			}[];
+			actions: {
+				tempId: string;
+				id: number | null;
+				description: I18nText;
+				finding_temp_id: string;
+			}[];
 			deletedFindingIds?: number[];
 			deletedActionIds?: number[];
 		},
@@ -545,16 +716,31 @@ export class IfcService extends BaseService<IfcRepository> {
 		}
 
 		// 2. Resolve the IFC instrument id ONCE — every finding raised from this form uses it.
-		const instrumentRows = await em.query(`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`, [IFC_INSTRUMENT_CODE]);
+		const instrumentRows = await em.query(
+			`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`,
+			[IFC_INSTRUMENT_CODE],
+		);
 		const ifcInstrumentId: number | undefined = instrumentRows[0]?.id;
 		if (!ifcInstrumentId) {
-			throw new HttpException({ message: ifcsValidationStrings.result[`${input.op}Failed`], errors: [ifcsValidationStrings.error.ifcInstrumentMissing] }, HttpStatus.INTERNAL_SERVER_ERROR);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result[`${input.op}Failed`],
+					errors: [ifcsValidationStrings.error.ifcInstrumentMissing],
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
 		}
 
 		// 3. Resolve criticality codes → type ids in one shot
 		const criticalityCodes = Array.from(new Set(input.findings.map((f) => f.criticality_code)));
-		const criticalityRows = criticalityCodes.length ? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [criticalityCodes]) : [];
-		const criticalityByCode = new Map<string, number>(criticalityRows.map((r: any) => [r.code, Number(r.id)]));
+		const criticalityRows = criticalityCodes.length
+			? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [
+					criticalityCodes,
+				])
+			: [];
+		const criticalityByCode = new Map<string, number>(
+			criticalityRows.map((r: any) => [r.code, Number(r.id)]),
+		);
 
 		// 4. Findings upsert — single correlative base for (ifcInstrumentId, courseId)
 		const hasNewFinding = input.findings.some((f) => f.id === null);
@@ -574,7 +760,13 @@ export class IfcService extends BaseService<IfcRepository> {
 		for (const f of input.findings) {
 			const critId = criticalityByCode.get(f.criticality_code);
 			if (!critId) {
-				throw new HttpException({ message: ifcsValidationStrings.result[`${input.op}Failed`], errors: [`error.ifc.criticalityNotFound:${f.criticality_code}`] }, HttpStatus.BAD_REQUEST);
+				throw new HttpException(
+					{
+						message: ifcsValidationStrings.result[`${input.op}Failed`],
+						errors: [`error.ifc.criticalityNotFound:${f.criticality_code}`],
+					},
+					HttpStatus.BAD_REQUEST,
+				);
 			}
 
 			let realId: number;
@@ -584,7 +776,15 @@ export class IfcService extends BaseService<IfcRepository> {
 					`INSERT INTO improvement.findings (criticality_type_id, instrument_id, staff_id, correlative, description, course_id, academic_period_id, campus_id, is_automatic, is_active)
 					 VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NULL, false, true)
 					 RETURNING id`,
-					[critId, ifcInstrumentId, input.requesterStaffId, nextFindingCorrelative, JSON.stringify(f.description), input.courseId, input.periodId],
+					[
+						critId,
+						ifcInstrumentId,
+						input.requesterStaffId,
+						nextFindingCorrelative,
+						JSON.stringify(f.description),
+						input.courseId,
+						input.periodId,
+					],
 				);
 				realId = Number(insertRow[0].id);
 
@@ -596,7 +796,10 @@ export class IfcService extends BaseService<IfcRepository> {
 				);
 			} else {
 				// Update preserves instrument_id — pre-existing findings keep their original instrument.
-				await em.query(`UPDATE improvement.findings SET description = $1::jsonb, criticality_type_id = $2, updated_at = NOW() WHERE id = $3`, [JSON.stringify(f.description), critId, f.id]);
+				await em.query(
+					`UPDATE improvement.findings SET description = $1::jsonb, criticality_type_id = $2, updated_at = NOW() WHERE id = $3`,
+					[JSON.stringify(f.description), critId, f.id],
+				);
 				realId = f.id;
 			}
 			tempIdToId.set(f.tempId, realId);
@@ -638,18 +841,44 @@ export class IfcService extends BaseService<IfcRepository> {
 					[findingId, actionId],
 				);
 			} else {
-				await em.query(`UPDATE improvement.actions SET description = $1::jsonb, updated_at = NOW() WHERE id = $2`, [JSON.stringify(a.description), a.id]);
-				await em.query(`UPDATE improvement.finding_actions SET finding_id = $1 WHERE action_id = $2 AND finding_id <> $1`, [findingId, a.id]);
+				await em.query(
+					`UPDATE improvement.actions SET description = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+					[JSON.stringify(a.description), a.id],
+				);
+				await em.query(
+					`UPDATE improvement.finding_actions SET finding_id = $1 WHERE action_id = $2 AND finding_id <> $1`,
+					[findingId, a.id],
+				);
 			}
 		}
 	}
 
-	private async loadTransitionContext(ifcId: number, userId: number, schoolId: number, op: IfcOp, em?: EntityManager): Promise<IfcTransitionContext> {
-		const params = [ifcId, schoolId, userId, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL];
-		const rows = em ? await em.query(TRANSITION_CONTEXT_SQL, params) : await this.dataSource.query(TRANSITION_CONTEXT_SQL, params);
+	private async loadTransitionContext(
+		ifcId: number,
+		userId: number,
+		schoolId: number,
+		op: IfcOp,
+		em?: EntityManager,
+	): Promise<IfcTransitionContext> {
+		const params = [
+			ifcId,
+			schoolId,
+			userId,
+			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		];
+		const rows = em
+			? await em.query(TRANSITION_CONTEXT_SQL, params)
+			: await this.dataSource.query(TRANSITION_CONTEXT_SQL, params);
 
 		if (rows.length === 0) {
-			throw new HttpException({ message: ifcsValidationStrings.result[`${op}Failed`], errors: [ifcsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result[`${op}Failed`],
+					errors: [ifcsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 
 		const row = rows[0];
@@ -665,23 +894,47 @@ export class IfcService extends BaseService<IfcRepository> {
 		return ctx;
 	}
 
-	private async insertStatus(em: EntityManager | undefined, ifcId: number, requesterStaffId: number | null, newStatusCode: string, comment: I18nText | null) {
-		const params = [ifcId, newStatusCode, requesterStaffId, comment ? JSON.stringify(comment) : null];
-		const rows = em ? await em.query(INSERT_STATUS_SQL, params) : await this.dataSource.query(INSERT_STATUS_SQL, params);
+	private async insertStatus(
+		em: EntityManager | undefined,
+		ifcId: number,
+		requesterStaffId: number | null,
+		newStatusCode: string,
+		comment: I18nText | null,
+	) {
+		const params = [
+			ifcId,
+			newStatusCode,
+			requesterStaffId,
+			comment ? JSON.stringify(comment) : null,
+		];
+		const rows = em
+			? await em.query(INSERT_STATUS_SQL, params)
+			: await this.dataSource.query(INSERT_STATUS_SQL, params);
 		return rows[0];
 	}
 
 	private groupOutcomeRows(rows: any[]) {
-		const programIndex = new Map<string, { program_code: string; program_name: I18nText; commissions: Map<string, any> }>();
+		const programIndex = new Map<
+			string,
+			{ program_code: string; program_name: I18nText; commissions: Map<string, any> }
+		>();
 		for (const row of rows) {
 			let pg = programIndex.get(row.program_code);
 			if (!pg) {
-				pg = { program_code: row.program_code, program_name: row.program_name, commissions: new Map() };
+				pg = {
+					program_code: row.program_code,
+					program_name: row.program_name,
+					commissions: new Map(),
+				};
 				programIndex.set(row.program_code, pg);
 			}
 			let cm = pg.commissions.get(row.commission_code);
 			if (!cm) {
-				cm = { commission_code: row.commission_code, commission_name: row.commission_name, outcomes: [] as any[] };
+				cm = {
+					commission_code: row.commission_code,
+					commission_name: row.commission_name,
+					outcomes: [] as any[],
+				};
 				pg.commissions.set(row.commission_code, cm);
 			}
 			cm.outcomes.push({
@@ -697,7 +950,11 @@ export class IfcService extends BaseService<IfcRepository> {
 		}));
 	}
 
-	private async loadPreviousActions(courseId: number, activePeriodId: number, excludeIfcId: number | null) {
+	private async loadPreviousActions(
+		courseId: number,
+		activePeriodId: number,
+		excludeIfcId: number | null,
+	) {
 		const rows = await this.dataSource.query(PREVIOUS_ACTIONS_SQL, [
 			courseId,
 			activePeriodId,
@@ -754,19 +1011,39 @@ export class IfcService extends BaseService<IfcRepository> {
 		for (const item of items) {
 			if (!allowed.has(item.finding_action_id)) {
 				throw new HttpException(
-					{ message: ifcsValidationStrings.result[input.op === IFC_OPS.PATCH ? 'patchFailed' : 'createFailed'], errors: [ifcsValidationStrings.error.previousActionNotEligible] },
+					{
+						message:
+							ifcsValidationStrings.result[
+								input.op === IFC_OPS.PATCH ? 'patchFailed' : 'createFailed'
+							],
+						errors: [ifcsValidationStrings.error.previousActionNotEligible],
+					},
 					HttpStatus.BAD_REQUEST,
 				);
 			}
-			await em.query(`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`, [
-				item.evidences === null ? null : JSON.stringify(item.evidences),
-				item.finding_action_id,
-			]);
+			await em.query(
+				`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+				[item.evidences === null ? null : JSON.stringify(item.evidences), item.finding_action_id],
+			);
 		}
 	}
 
-	private assembleViewResponse(input: { header: any; findingRows: any[]; outcomeCourseRows: any[]; findingOutcomeRows: any[]; findingActionRows: any[]; previousActions: any[] }) {
-		const { header, findingRows, outcomeCourseRows, findingOutcomeRows, findingActionRows, previousActions } = input;
+	private assembleViewResponse(input: {
+		header: any;
+		findingRows: any[];
+		outcomeCourseRows: any[];
+		findingOutcomeRows: any[];
+		findingActionRows: any[];
+		previousActions: any[];
+	}) {
+		const {
+			header,
+			findingRows,
+			outcomeCourseRows,
+			findingOutcomeRows,
+			findingActionRows,
+			previousActions,
+		} = input;
 
 		const ifc = {
 			id: Number(header.ifc_id),
@@ -837,13 +1114,22 @@ export class IfcService extends BaseService<IfcRepository> {
 				description: row.finding_description,
 				correlative: row.finding_correlative,
 				is_automatic: row.is_automatic,
-				criticality: { code: row.criticality_code, name: row.criticality_name, color: row.criticality_color ?? null },
+				criticality: {
+					code: row.criticality_code,
+					name: row.criticality_name,
+					color: row.criticality_color ?? null,
+				},
 				outcomes: outcomesByFinding.get(fid) ?? [],
 				actions: actionsByFinding.get(fid) ?? [],
 			};
 		});
 
-		return { ifc, outcome_course_result: this.groupOutcomeRows(outcomeCourseRows), findings, previous_actions: previousActions };
+		return {
+			ifc,
+			outcome_course_result: this.groupOutcomeRows(outcomeCourseRows),
+			findings,
+			previous_actions: previousActions,
+		};
 	}
 }
 

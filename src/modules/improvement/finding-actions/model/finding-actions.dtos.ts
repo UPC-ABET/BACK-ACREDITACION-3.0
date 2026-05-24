@@ -27,7 +27,11 @@ export class CreateFindingActionDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'Evidencia en español', en: 'Evidence in English' }, required: false, nullable: true })
+	@ApiProperty({
+		example: { es: 'Evidencia en español', en: 'Evidence in English' },
+		required: false,
+		nullable: true,
+	})
 	evidences?: I18nText | null;
 }
 
@@ -58,7 +62,11 @@ export class UpdateFindingActionDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'Evidencia en español', en: 'Evidence in English' }, required: false, nullable: true })
+	@ApiProperty({
+		example: { es: 'Evidencia en español', en: 'Evidence in English' },
+		required: false,
+		nullable: true,
+	})
 	evidences?: I18nText | null;
 }
 
@@ -85,6 +93,10 @@ export class FilterFindingActionDto extends BaseDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'Evidencia en español', en: 'Evidence in English' }, required: false, nullable: true })
+	@ApiProperty({
+		example: { es: 'Evidencia en español', en: 'Evidence in English' },
+		required: false,
+		nullable: true,
+	})
 	evidences?: I18nText | null;
 }

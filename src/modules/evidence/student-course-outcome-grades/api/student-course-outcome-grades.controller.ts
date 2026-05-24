@@ -10,7 +10,11 @@ import {
 	SwaggerStudentCourseOutcomeGradeGetByFilters,
 } from './docs/student-course-outcome-grades.swagger';
 import { StudentCourseOutcomeGradeService } from './student-course-outcome-grades.service';
-import { CreateStudentCourseOutcomeGradeDto, UpdateStudentCourseOutcomeGradeDto, FilterStudentCourseOutcomeGradeDto } from '../model/student-course-outcome-grades.dtos';
+import {
+	CreateStudentCourseOutcomeGradeDto,
+	UpdateStudentCourseOutcomeGradeDto,
+	FilterStudentCourseOutcomeGradeDto,
+} from '../model/student-course-outcome-grades.dtos';
 
 @SwaggerStudentCourseOutcomeGradeController()
 export class StudentCourseOutcomeGradeController extends BaseController<StudentCourseOutcomeGradeService> {

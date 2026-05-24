@@ -10,7 +10,10 @@ export class UserValidation extends BaseValidation {
 		});
 
 		if (exists) {
-			throw new HttpException({ message: usersValidationStrings.error.emailExists }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: usersValidationStrings.error.emailExists },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 
@@ -18,7 +21,10 @@ export class UserValidation extends BaseValidation {
 		const entity = await repo.findOneById(id);
 
 		if (!entity) {
-			throw new HttpException({ message: usersValidationStrings.result.updateFailed }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: usersValidationStrings.result.updateFailed },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 
@@ -26,7 +32,10 @@ export class UserValidation extends BaseValidation {
 		const entity = await repo.findOneById(id);
 
 		if (!entity) {
-			throw new HttpException({ message: usersValidationStrings.result.deleteFailed }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: usersValidationStrings.result.deleteFailed },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 	}
 }

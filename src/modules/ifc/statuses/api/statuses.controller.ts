@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerStatusController, SwaggerStatusCreate, SwaggerStatusUpdate, SwaggerStatusDelete, SwaggerStatusGetAll, SwaggerStatusGetById, SwaggerStatusGetByFilters } from './docs/statuses.swagger';
+import {
+	SwaggerStatusController,
+	SwaggerStatusCreate,
+	SwaggerStatusUpdate,
+	SwaggerStatusDelete,
+	SwaggerStatusGetAll,
+	SwaggerStatusGetById,
+	SwaggerStatusGetByFilters,
+} from './docs/statuses.swagger';
 import { StatusService } from './statuses.service';
 import { CreateStatusDto, UpdateStatusDto, FilterStatusDto } from '../model/statuses.dtos';
 

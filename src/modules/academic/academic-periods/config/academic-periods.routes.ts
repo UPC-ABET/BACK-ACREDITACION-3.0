@@ -8,7 +8,11 @@ export const academicPeriodsRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar periodo académico' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar periodos académicos' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener periodo académico' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar periodos académicos' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar periodos académicos',
+			},
 		},
 	},
 };

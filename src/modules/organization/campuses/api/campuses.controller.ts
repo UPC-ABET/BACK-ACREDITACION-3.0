@@ -1,6 +1,14 @@
 import { Body, Param } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerCampusController, SwaggerCampusCreate, SwaggerCampusUpdate, SwaggerCampusDelete, SwaggerCampusGetAll, SwaggerCampusGetById, SwaggerCampusGetByFilters } from './docs/campuses.swagger';
+import {
+	SwaggerCampusController,
+	SwaggerCampusCreate,
+	SwaggerCampusUpdate,
+	SwaggerCampusDelete,
+	SwaggerCampusGetAll,
+	SwaggerCampusGetById,
+	SwaggerCampusGetByFilters,
+} from './docs/campuses.swagger';
 import { CampusService } from './campuses.service';
 import { CreateCampusDto, UpdateCampusDto, FilterCampusDto } from '../model/campuses.dtos';
 

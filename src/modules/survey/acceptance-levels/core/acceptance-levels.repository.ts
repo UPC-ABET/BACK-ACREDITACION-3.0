@@ -14,7 +14,10 @@ export class AcceptanceLevelRepository extends BaseRepostitory {
 		super(repository, dataSource);
 	}
 
-	async findBySurveyTypeAndPeriod(survey_type_id: number, academic_period_id: number): Promise<AcceptanceLevelEntity[]> {
+	async findBySurveyTypeAndPeriod(
+		survey_type_id: number,
+		academic_period_id: number,
+	): Promise<AcceptanceLevelEntity[]> {
 		return await this.repository
 			.createQueryBuilder('al')
 			.where('al.survey_type_id = :survey_type_id', { survey_type_id })
@@ -25,7 +28,10 @@ export class AcceptanceLevelRepository extends BaseRepostitory {
 			.getMany();
 	}
 
-	async countBySurveyTypeAndPeriod(survey_type_id: number, academic_period_id: number): Promise<number> {
+	async countBySurveyTypeAndPeriod(
+		survey_type_id: number,
+		academic_period_id: number,
+	): Promise<number> {
 		return await this.repository
 			.createQueryBuilder('al')
 			.where('al.survey_type_id = :survey_type_id', { survey_type_id })
@@ -35,7 +41,10 @@ export class AcceptanceLevelRepository extends BaseRepostitory {
 	}
 
 	async findSurveyTypeIdByCode(code: string): Promise<number | null> {
-		const result = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 AND is_active = true LIMIT 1`, [code]);
+		const result = await this.dataSource.query(
+			`SELECT id FROM core.types WHERE code = $1 AND is_active = true LIMIT 1`,
+			[code],
+		);
 		return result?.[0]?.id ?? null;
 	}
 }

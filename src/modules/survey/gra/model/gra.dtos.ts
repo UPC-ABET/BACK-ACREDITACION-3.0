@@ -1,4 +1,13 @@
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, ValidateNested, Min, Max } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsNumber,
+	IsOptional,
+	IsString,
+	ValidateNested,
+	Min,
+	Max,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -47,7 +56,11 @@ export class CreateGraConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 7, description: 'ID de la comisión (WASC, no-WASC, etc.)', required: false })
+	@ApiProperty({
+		example: 7,
+		description: 'ID de la comisión (WASC, no-WASC, etc.)',
+		required: false,
+	})
 	commission_id?: number;
 
 	@IsOptional()
@@ -155,7 +168,11 @@ export class ReplicateGraConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'Filtrar por programa/carrera (opcional)', required: false })
+	@ApiProperty({
+		example: 5,
+		description: 'Filtrar por programa/carrera (opcional)',
+		required: false,
+	})
 	program_id?: number;
 }
 
@@ -195,7 +212,10 @@ export class SaveGraNotificationDto {
 	campus_id: number;
 
 	@IsString()
-	@ApiProperty({ example: '2026-07-31T23:59:59Z', description: 'Fecha límite para responder la encuesta' })
+	@ApiProperty({
+		example: '2026-07-31T23:59:59Z',
+		description: 'Fecha límite para responder la encuesta',
+	})
 	max_register_date: string;
 }
 
@@ -217,7 +237,11 @@ export class ListStudentsGraDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: '20210001', description: 'Búsqueda por código de alumno', required: false })
+	@ApiProperty({
+		example: '20210001',
+		description: 'Búsqueda por código de alumno',
+		required: false,
+	})
 	student_code?: string;
 }
 
@@ -232,12 +256,20 @@ export class SendGraEmailDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'Filtrar por programa (opcional, 0=todos)', required: false })
+	@ApiProperty({
+		example: 5,
+		description: 'Filtrar por programa (opcional, 0=todos)',
+		required: false,
+	})
 	program_id?: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'http://localhost:3001', description: 'URL base del frontend para el link de encuesta', required: false })
+	@ApiProperty({
+		example: 'http://localhost:3001',
+		description: 'URL base del frontend para el link de encuesta',
+		required: false,
+	})
 	survey_base_url?: string;
 }
 
@@ -247,7 +279,10 @@ export class SendGraEmailDto {
 
 export class GetSurveyByTokenDto {
 	@IsString()
-	@ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', description: 'Token único de la encuesta' })
+	@ApiProperty({
+		example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+		description: 'Token único de la encuesta',
+	})
 	token: string;
 
 	@IsOptional()
@@ -275,7 +310,10 @@ export class GraScoreItemDto {
 
 export class CompleteGraSurveyDto {
 	@IsString()
-	@ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', description: 'Token único de la encuesta' })
+	@ApiProperty({
+		example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+		description: 'Token único de la encuesta',
+	})
 	token: string;
 
 	@IsOptional()

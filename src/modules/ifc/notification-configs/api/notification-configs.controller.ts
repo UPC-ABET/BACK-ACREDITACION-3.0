@@ -82,7 +82,13 @@ export class NotificationConfigController extends BaseController<NotificationCon
 
 	private assertAdmin(req: any) {
 		if (req.user?.user?.is_admin !== true) {
-			throw new HttpException({ message: notificationConfigsValidationStrings.result.adminOnly, errors: [notificationConfigsValidationStrings.error.notAdmin] }, HttpStatus.FORBIDDEN);
+			throw new HttpException(
+				{
+					message: notificationConfigsValidationStrings.result.adminOnly,
+					errors: [notificationConfigsValidationStrings.error.notAdmin],
+				},
+				HttpStatus.FORBIDDEN,
+			);
 		}
 	}
 }

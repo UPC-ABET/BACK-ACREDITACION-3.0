@@ -4,6 +4,8 @@ import { GetScopeDto } from '../../model/org-scope.dtos';
 
 const cfg = orgScopeRoutes.orgScope;
 
-export const SwaggerOrgScopeController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerOrgScopeController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerOrgScopeGetScope = () => HttpMethodWithSwagger({ ...cfg.operation.getScope, body: GetScopeDto });
+export const SwaggerOrgScopeGetScope = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getScope, body: GetScopeDto });

@@ -21,7 +21,12 @@ export class OrgScopeService {
 			return { highest_level: null, levels: [] };
 		}
 
-		const rows: ScopeRow[] = await this.dataSource.query(SCOPE_SQL, [userId, schoolId, periodId, TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR]);
+		const rows: ScopeRow[] = await this.dataSource.query(SCOPE_SQL, [
+			userId,
+			schoolId,
+			periodId,
+			TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
+		]);
 
 		if (rows.length === 0) return { highest_level: null, levels: [] };
 
@@ -35,7 +40,9 @@ export class OrgScopeService {
 		const anchorLevels = rows.filter((r) => r.is_anchor).map((r) => r.level_num);
 		const highest_level = anchorLevels.length ? Math.min(...anchorLevels) : null;
 
-		const levels = [...byLevel.entries()].sort(([a], [b]) => a - b).map(([level_num, v]) => ({ level_num, type_code: v.type_code, options: v.options }));
+		const levels = [...byLevel.entries()]
+			.sort(([a], [b]) => a - b)
+			.map(([level_num, v]) => ({ level_num, type_code: v.type_code, options: v.options }));
 
 		return { highest_level, levels };
 	}

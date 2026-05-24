@@ -1,4 +1,12 @@
-import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import {
+	IsBoolean,
+	IsEmail,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Length,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 

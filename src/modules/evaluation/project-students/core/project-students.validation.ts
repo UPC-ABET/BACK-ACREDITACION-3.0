@@ -33,7 +33,8 @@ export class ProjectStudentValidation {
 		if (!entity) errors.push(projectStudentsValidationStrings.error.notFound);
 
 		const projectId = data.project_id ?? entity?.project_id;
-		const enrollmentId = data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
+		const enrollmentId =
+			data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
 
 		const exists = await repo.findOneByCondition({
 			where: {

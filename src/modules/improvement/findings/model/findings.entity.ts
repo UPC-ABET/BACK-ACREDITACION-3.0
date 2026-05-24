@@ -1,6 +1,11 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn, BooleanColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import {
+	IntegerFKIDColumn,
+	IntegerColumn,
+	BooleanColumn,
+	JsonColumn,
+} from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';

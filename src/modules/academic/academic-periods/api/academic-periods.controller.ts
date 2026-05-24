@@ -10,7 +10,11 @@ import {
 	SwaggerAcademicPeriodGetByFilters,
 } from './docs/academic-periods.swagger';
 import { AcademicPeriodService } from './academic-periods.service';
-import { CreateAcademicPeriodDto, UpdateAcademicPeriodDto, FilterAcademicPeriodDto } from '../model/academic-periods.dtos';
+import {
+	CreateAcademicPeriodDto,
+	UpdateAcademicPeriodDto,
+	FilterAcademicPeriodDto,
+} from '../model/academic-periods.dtos';
 
 @SwaggerAcademicPeriodController()
 export class AcademicPeriodController extends BaseController<AcademicPeriodService> {

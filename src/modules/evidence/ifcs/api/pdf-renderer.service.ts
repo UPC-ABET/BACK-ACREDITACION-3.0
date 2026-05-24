@@ -4,10 +4,18 @@ import * as path from 'path';
 
 // puppeteer and archiver are pure ESM; loaded via dynamic import so unit tests (CommonJS / ts-jest)
 // can import this file without parse errors.
-type PuppeteerBrowser = { newPage: () => Promise<any>; close: () => Promise<void>; connected: boolean };
+type PuppeteerBrowser = {
+	newPage: () => Promise<any>;
+	close: () => Promise<void>;
+	connected: boolean;
+};
 
 function loadLogoDataUri(): string {
-	const candidates = [path.resolve(process.cwd(), 'src/assets/upc-logo.png'), path.resolve(process.cwd(), 'dist/assets/upc-logo.png'), path.resolve(__dirname, '../../../../assets/upc-logo.png')];
+	const candidates = [
+		path.resolve(process.cwd(), 'src/assets/upc-logo.png'),
+		path.resolve(process.cwd(), 'dist/assets/upc-logo.png'),
+		path.resolve(__dirname, '../../../../assets/upc-logo.png'),
+	];
 	for (const p of candidates) {
 		try {
 			if (fs.existsSync(p)) {

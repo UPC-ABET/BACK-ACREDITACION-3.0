@@ -1,4 +1,13 @@
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, ValidateNested, Min, Max } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsNumber,
+	IsOptional,
+	IsString,
+	ValidateNested,
+	Min,
+	Max,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -12,12 +21,19 @@ export class CreatePppConfigDto {
 	outcome_id: number;
 
 	@IsString()
-	@ApiProperty({ example: 'Comunicación efectiva', description: 'Nombre de la competencia en español' })
+	@ApiProperty({
+		example: 'Comunicación efectiva',
+		description: 'Nombre de la competencia en español',
+	})
 	name_es: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Effective communication', description: 'Nombre en inglés', required: false })
+	@ApiProperty({
+		example: 'Effective communication',
+		description: 'Nombre en inglés',
+		required: false,
+	})
 	name_en?: string;
 
 	@IsOptional()
@@ -136,7 +152,11 @@ export class ReplicatePppConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'Filtrar por programa/carrera (opcional)', required: false })
+	@ApiProperty({
+		example: 5,
+		description: 'Filtrar por programa/carrera (opcional)',
+		required: false,
+	})
 	program_id?: number;
 }
 

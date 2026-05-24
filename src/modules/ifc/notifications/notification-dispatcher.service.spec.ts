@@ -39,7 +39,11 @@ function makeDispatcher() {
 	const dataSource = { query: jest.fn() };
 	const mailService = { sendRawEmail: jest.fn() };
 	const configService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
-	const dispatcher = new NotificationDispatcherService(dataSource as unknown as DataSource, mailService as unknown as MailService, configService as unknown as ConfigService);
+	const dispatcher = new NotificationDispatcherService(
+		dataSource as unknown as DataSource,
+		mailService as unknown as MailService,
+		configService as unknown as ConfigService,
+	);
 	return { dispatcher, dataSource, mailService, configService };
 }
 
@@ -50,7 +54,12 @@ describe('NotificationDispatcherService.dispatch', () => {
 
 		const result = await dispatcher.dispatch(baseInput);
 
-		expect(result).toEqual({ sent: false, reason: 'no_course_chart', recipients_count: 0, cc_count: 0 });
+		expect(result).toEqual({
+			sent: false,
+			reason: 'no_course_chart',
+			recipients_count: 0,
+			cc_count: 0,
+		});
 	});
 
 	it('returns no_config when the UNIQUE lookup misses', async () => {
@@ -71,7 +80,12 @@ describe('NotificationDispatcherService.dispatch', () => {
 
 		const result = await dispatcher.dispatch(baseInput);
 
-		expect(result).toEqual({ sent: false, reason: 'no_recipients', recipients_count: 0, cc_count: 0 });
+		expect(result).toEqual({
+			sent: false,
+			reason: 'no_recipients',
+			recipients_count: 0,
+			cc_count: 0,
+		});
 	});
 
 	it('returns send_failed and does not throw when sendRawEmail rejects', async () => {
@@ -121,7 +135,10 @@ describe('NotificationDispatcherService.dispatch', () => {
 			.mockResolvedValueOnce([ctxRow()])
 			.mockResolvedValueOnce([
 				configRow({
-					title: { es: '[{{observer_name}}] {{course_name}}', en: '[{{observer_name}}] {{course_name}}' },
+					title: {
+						es: '[{{observer_name}}] {{course_name}}',
+						en: '[{{observer_name}}] {{course_name}}',
+					},
 					body: { es: '<p>{{course_name}}</p>', en: '<p>{{course_name}}</p>' },
 				}),
 			])

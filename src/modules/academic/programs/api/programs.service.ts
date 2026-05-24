@@ -7,9 +7,7 @@ import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProgramService extends BaseService<ProgramRepository> {
-	constructor(
-		protected readonly repository: ProgramRepository,
-	) {
+	constructor(protected readonly repository: ProgramRepository) {
 		super(repository);
 	}
 

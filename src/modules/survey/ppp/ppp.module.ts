@@ -12,9 +12,18 @@ import { PppSurveyService } from './api/ppp-survey.service';
 import { PppController } from './api/ppp.controller';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, ScoreEntity]), AcceptanceLevelsModule],
+	imports: [
+		TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, ScoreEntity]),
+		AcceptanceLevelsModule,
+	],
 	controllers: [PppController],
-	providers: [PppConfigService, PppSurveyService, PppConfigRepository, PppSurveyRepository, PppScoreRepository],
+	providers: [
+		PppConfigService,
+		PppSurveyService,
+		PppConfigRepository,
+		PppSurveyRepository,
+		PppScoreRepository,
+	],
 	exports: [PppConfigService, PppSurveyService],
 })
 export class PppModule {}

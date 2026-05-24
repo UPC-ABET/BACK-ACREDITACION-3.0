@@ -2,7 +2,15 @@ import { Body, Param, Post, Get, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerRubricController, SwaggerRubricCreate, SwaggerRubricUpdate, SwaggerRubricDelete, SwaggerRubricGetAll, SwaggerRubricGetById, SwaggerRubricGetByFilters } from './docs/rubrics.swagger';
+import {
+	SwaggerRubricController,
+	SwaggerRubricCreate,
+	SwaggerRubricUpdate,
+	SwaggerRubricDelete,
+	SwaggerRubricGetAll,
+	SwaggerRubricGetById,
+	SwaggerRubricGetByFilters,
+} from './docs/rubrics.swagger';
 import { RubricService } from './rubrics.service';
 import { RubricConfigService } from './rubric-config.service';
 import { CreateRubricDto, UpdateRubricDto, FilterRubricDto } from '../model/rubrics.dtos';
@@ -51,8 +59,18 @@ export class RubricController extends BaseController<RubricService> {
 
 	@SwaggerRubricGetAll()
 	@ApiQuery({ name: 'school_id', required: false, type: Number, description: 'ID de la escuela' })
-	@ApiQuery({ name: 'program_id', required: false, type: Number, description: 'ID del programa académico (carrera)' })
-	@ApiQuery({ name: 'academic_period_id', required: false, type: Number, description: 'ID del período académico' })
+	@ApiQuery({
+		name: 'program_id',
+		required: false,
+		type: Number,
+		description: 'ID del programa académico (carrera)',
+	})
+	@ApiQuery({
+		name: 'academic_period_id',
+		required: false,
+		type: Number,
+		description: 'ID del período académico',
+	})
 	@ApiQuery({ name: 'course_id', required: false, type: Number, description: 'ID del curso' })
 	async getAll(
 		@Query('school_id', new ParseIntPipe({ optional: true })) schoolId?: number,
@@ -60,8 +78,9 @@ export class RubricController extends BaseController<RubricService> {
 		@Query('academic_period_id', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
 		@Query('course_id', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
-		return parseSuccessResponse(await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }));
-
+		return parseSuccessResponse(
+			await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }),
+		);
 	}
 
 	@SwaggerRubricGetById()

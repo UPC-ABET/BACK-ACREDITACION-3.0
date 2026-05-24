@@ -11,7 +11,10 @@ const sqlEscape = (s: string) => s.replace(/'/g, "''");
 
 export const i18n = (es: string, en?: string) => sqlEscape(JSON.stringify({ es, en: en ?? es }));
 
-export function runTenantSeed(seedName: string, seed: (dataSource: DataSource, tenant: string) => Promise<void>) {
+export function runTenantSeed(
+	seedName: string,
+	seed: (dataSource: DataSource, tenant: string) => Promise<void>,
+) {
 	async function run() {
 		const tenant = process.argv[2];
 

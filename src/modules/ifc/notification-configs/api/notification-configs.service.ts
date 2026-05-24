@@ -3,7 +3,11 @@ import { BaseService } from 'src/commons/base.service';
 import { NotificationConfigRepository } from '../core/notification-configs.repository';
 import { NotificationConfigValidation } from '../core/notification-configs.validation';
 
-import { CreateNotificationConfigDto, UpdateNotificationConfigDto, UpsertNotificationConfigDto } from '../model/notification-configs.dtos';
+import {
+	CreateNotificationConfigDto,
+	UpdateNotificationConfigDto,
+	UpsertNotificationConfigDto,
+} from '../model/notification-configs.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

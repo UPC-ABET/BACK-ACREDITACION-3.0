@@ -19,12 +19,20 @@ describe('AuthService — MSAL login', () => {
 		schoolRepository = {
 			findOneByCondition: jest.fn(),
 		};
-		service = new AuthService(configService, userService as unknown as UserService, schoolRepository as unknown as SchoolRepository);
+		service = new AuthService(
+			configService,
+			userService as unknown as UserService,
+			schoolRepository as unknown as SchoolRepository,
+		);
 	});
 
 	describe('resolveSchoolIdByCode', () => {
 		it('returns the school id when the code matches an active school', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce({ id: 7, code: 'EISCB', is_active: true });
+			schoolRepository.findOneByCondition.mockResolvedValueOnce({
+				id: 7,
+				code: 'EISCB',
+				is_active: true,
+			});
 
 			await expect(service.resolveSchoolIdByCode('EISCB')).resolves.toBe(7);
 			expect(schoolRepository.findOneByCondition).toHaveBeenCalledWith({
@@ -49,9 +57,14 @@ describe('AuthService — MSAL login', () => {
 	describe('loginWithMicrosoftCode', () => {
 		it('forwards the supplied school_id through to createUserLogin', async () => {
 			const fakeUser = { id: 99, email: 'jane.doe@example.com', is_admin: true };
-			const acquireSpy = jest.spyOn(service as unknown as { acquireMicrosoftTokenByCode: jest.Mock }, 'acquireMicrosoftTokenByCode').mockResolvedValueOnce({
-				idTokenClaims: { email: 'jane.doe@example.com', name: 'Jane Doe' },
-			} as never);
+			const acquireSpy = jest
+				.spyOn(
+					service as unknown as { acquireMicrosoftTokenByCode: jest.Mock },
+					'acquireMicrosoftTokenByCode',
+				)
+				.mockResolvedValueOnce({
+					idTokenClaims: { email: 'jane.doe@example.com', name: 'Jane Doe' },
+				} as never);
 
 			userService.getUser.mockResolvedValueOnce(fakeUser);
 			userService.createUserLogin.mockResolvedValueOnce('signed-jwt-token');

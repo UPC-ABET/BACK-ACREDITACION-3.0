@@ -12,9 +12,18 @@ import { GraNotificationService } from './api/gra-notification.service';
 import { GraController } from './api/gra.controller';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity]), AcceptanceLevelsModule],
+	imports: [
+		TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity]),
+		AcceptanceLevelsModule,
+	],
 	controllers: [GraController],
-	providers: [GraConfigService, GraNotificationService, GraConfigRepository, GraSurveyRepository, GraNotificationRepository],
+	providers: [
+		GraConfigService,
+		GraNotificationService,
+		GraConfigRepository,
+		GraSurveyRepository,
+		GraNotificationRepository,
+	],
 	exports: [GraConfigService, GraNotificationService],
 })
 export class GraModule {}

@@ -10,7 +10,11 @@ import {
 	SwaggerProjectEvaluatorGetByFilters,
 } from './docs/project-evaluators.swagger';
 import { ProjectEvaluatorService } from './project-evaluators.service';
-import { CreateProjectEvaluatorDto, UpdateProjectEvaluatorDto, FilterProjectEvaluatorDto } from '../model/project-evaluators.dtos';
+import {
+	CreateProjectEvaluatorDto,
+	UpdateProjectEvaluatorDto,
+	FilterProjectEvaluatorDto,
+} from '../model/project-evaluators.dtos';
 
 @SwaggerProjectEvaluatorController()
 export class ProjectEvaluatorController extends BaseController<ProjectEvaluatorService> {

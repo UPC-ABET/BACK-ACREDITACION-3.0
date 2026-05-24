@@ -5,19 +5,28 @@ runTenantSeed('core module', async (tenantDataSource) => {
 		[
 			'PARAMETER_ACADEMIC_START_DATE',
 			i18n('Fecha de inicio academico', 'Academic start date'),
-			i18n('Fecha referencial de inicio del periodo academico', 'Reference start date of the academic period'),
+			i18n(
+				'Fecha referencial de inicio del periodo academico',
+				'Reference start date of the academic period',
+			),
 			'{"month":3,"day":18}',
 		],
 		[
 			'PARAMETER_ACADEMIC_END_DATE',
 			i18n('Fecha de cierre academico', 'Academic end date'),
-			i18n('Fecha referencial de cierre del periodo academico', 'Reference end date of the academic period'),
+			i18n(
+				'Fecha referencial de cierre del periodo academico',
+				'Reference end date of the academic period',
+			),
 			'{"month":7,"day":20}',
 		],
 		[
 			'PARAMETER_MIN_PASSING_GRADE',
 			i18n('Nota minima aprobatoria', 'Minimum passing grade'),
-			i18n('Nota minima requerida para aprobar una evaluacion', 'Minimum grade required to pass an evaluation'),
+			i18n(
+				'Nota minima requerida para aprobar una evaluacion',
+				'Minimum grade required to pass an evaluation',
+			),
 			'{"value":13,"scale":20}',
 		],
 		[
@@ -34,7 +43,12 @@ runTenantSeed('core module', async (tenantDataSource) => {
 		],
 	];
 
-	const baseValues = baseParams.map(([code, name, description, value]) => `('${code}', '${name}'::jsonb, '${description}'::jsonb, '${value}'::jsonb)`).join(',\n\t\t\t');
+	const baseValues = baseParams
+		.map(
+			([code, name, description, value]) =>
+				`('${code}', '${name}'::jsonb, '${description}'::jsonb, '${value}'::jsonb)`,
+		)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "core"."parameters" (code, name, description, value)

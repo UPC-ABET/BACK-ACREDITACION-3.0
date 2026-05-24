@@ -1,4 +1,12 @@
-import { IsArray, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsInt,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsPositive,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
@@ -145,27 +153,48 @@ export class UpsertNotificationConfigDto {
 	@Type(() => Number)
 	academic_period_id: number;
 
-	@ApiProperty({ example: 1, required: true, description: 'core.types.id from TG1002 (MANUAL or AUTO_STATUS_CHANGE)' })
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'core.types.id from TG1002 (MANUAL or AUTO_STATUS_CHANGE)',
+	})
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
 	trigger_type_id: number;
 
-	@ApiProperty({ example: 2, required: true, description: 'core.types.id from TG701 (the IFC status this config applies to)' })
+	@ApiProperty({
+		example: 2,
+		required: true,
+		description: 'core.types.id from TG701 (the IFC status this config applies to)',
+	})
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
 	ifc_status_type_id: number;
 
-	@ApiProperty({ example: { es: 'IFC Enviado — {{course_name}}', en: 'IFC Submitted — {{course_name}}' }, required: true })
+	@ApiProperty({
+		example: { es: 'IFC Enviado — {{course_name}}', en: 'IFC Submitted — {{course_name}}' },
+		required: true,
+	})
 	@IsObject()
 	title: I18nText;
 
-	@ApiProperty({ example: { es: '<p>Hola, {{submitter_name}} envió...</p>', en: '<p>Hi, {{submitter_name}} submitted...</p>' }, required: true })
+	@ApiProperty({
+		example: {
+			es: '<p>Hola, {{submitter_name}} envió...</p>',
+			en: '<p>Hi, {{submitter_name}} submitted...</p>',
+		},
+		required: true,
+	})
 	@IsObject()
 	body: I18nText;
 
-	@ApiProperty({ example: [19], required: false, description: 'array of core.types.id from TG902 (chart level types)' })
+	@ApiProperty({
+		example: [19],
+		required: false,
+		description: 'array of core.types.id from TG902 (chart level types)',
+	})
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })

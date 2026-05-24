@@ -19,7 +19,15 @@ export class GraNotificationRepository extends BaseRepostitory {
 		return await this.repository
 			.createQueryBuilder('n')
 			.innerJoin('evidence.surveys', 's', 's.id = n.survey_id')
-			.addSelect(['s.id', 's.survey_type_id', 's.student_id', 's.program_id', 's.academic_period_id', 's.campus_id', 's.survey_status_type_id'])
+			.addSelect([
+				's.id',
+				's.survey_type_id',
+				's.student_id',
+				's.program_id',
+				's.academic_period_id',
+				's.campus_id',
+				's.survey_status_type_id',
+			])
 			.where('n.token = :token', { token })
 			.getOne();
 	}
@@ -75,7 +83,12 @@ export class GraNotificationRepository extends BaseRepostitory {
 	/** Lista estudiantes con estado de notificación GRA */
 	async listStudentsGra(
 		graSurveyTypeId: number,
-		filters: { academic_period_id?: number; program_id?: number; campus_id?: number; student_code?: string },
+		filters: {
+			academic_period_id?: number;
+			program_id?: number;
+			campus_id?: number;
+			student_code?: string;
+		},
 	): Promise<
 		{
 			notification_id: number;

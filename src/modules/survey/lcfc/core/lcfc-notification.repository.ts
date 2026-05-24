@@ -105,7 +105,12 @@ export class LcfcNotificationRepository extends BaseRepostitory {
 	async findLcfcPending(
 		lcfcSurveyTypeId: number,
 		scheduledStatusId: number,
-		filters: { academic_period_id: number; program_id?: number; campus_id?: number; course_section_id?: number },
+		filters: {
+			academic_period_id: number;
+			program_id?: number;
+			campus_id?: number;
+			course_section_id?: number;
+		},
 	): Promise<
 		{
 			notification_id: number;

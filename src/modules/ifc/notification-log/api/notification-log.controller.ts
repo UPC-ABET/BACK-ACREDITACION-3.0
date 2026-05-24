@@ -10,7 +10,11 @@ import {
 	SwaggerNotificationLogGetByFilters,
 } from './docs/notification-log.swagger';
 import { NotificationLogService } from './notification-log.service';
-import { CreateNotificationLogDto, UpdateNotificationLogDto, FilterNotificationLogDto } from '../model/notification-log.dtos';
+import {
+	CreateNotificationLogDto,
+	UpdateNotificationLogDto,
+	FilterNotificationLogDto,
+} from '../model/notification-log.dtos';
 
 @SwaggerNotificationLogController()
 export class NotificationLogController extends BaseController<NotificationLogService> {

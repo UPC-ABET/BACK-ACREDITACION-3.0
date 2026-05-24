@@ -70,14 +70,28 @@ export class IfcFindingValidation {
 	}
 
 	static async assertFindingExists(em: EntityManager, id: number) {
-		const rows = await em.query('SELECT id, course_id::int AS course_id, academic_period_id::int AS academic_period_id FROM improvement.findings WHERE id = $1 LIMIT 1', [id]);
+		const rows = await em.query(
+			'SELECT id, course_id::int AS course_id, academic_period_id::int AS academic_period_id FROM improvement.findings WHERE id = $1 LIMIT 1',
+			[id],
+		);
 		if (rows.length === 0) {
-			throw new HttpException({ message: ifcFindingsValidationStrings.result.deleteFailed, errors: [ifcFindingsValidationStrings.error.notFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcFindingsValidationStrings.result.deleteFailed,
+					errors: [ifcFindingsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 		return rows[0];
 	}
 
-	static async resolveCourseChart(em: EntityManager, courseId: number, periodId: number, courseLevelCode: string) {
+	static async resolveCourseChart(
+		em: EntityManager,
+		courseId: number,
+		periodId: number,
+		courseLevelCode: string,
+	) {
 		const rows = await em.query(
 			`SELECT c.id::int AS id, c.staff_id::int AS staff_id
 			 FROM organization.charts c
@@ -91,7 +105,13 @@ export class IfcFindingValidation {
 			[courseId, periodId, courseLevelCode],
 		);
 		if (rows.length === 0) {
-			throw new HttpException({ message: ifcFindingsValidationStrings.result.deleteFailed, errors: [ifcFindingsValidationStrings.error.courseChartNotFound] }, HttpStatus.NOT_FOUND);
+			throw new HttpException(
+				{
+					message: ifcFindingsValidationStrings.result.deleteFailed,
+					errors: [ifcFindingsValidationStrings.error.courseChartNotFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
 		}
 		return rows[0];
 	}

@@ -1,7 +1,10 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
-import { REQUIRED_PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
+import {
+	REQUIRED_PERMISSION_KEY,
+	RequiredPermission,
+} from '../decorators/require-permission.decorator';
 
 describe('PermissionsGuard', () => {
 	let reflector: { getAllAndOverride: jest.Mock };

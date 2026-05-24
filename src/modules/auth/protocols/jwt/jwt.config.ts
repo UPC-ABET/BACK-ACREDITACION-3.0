@@ -7,7 +7,9 @@ export function getRequiredJwtSecret(configService: ConfigService): string {
 	const secret = configService.get<string>('JWT_SECRET');
 
 	if (!secret || secret.length < JWT_SECRET_MIN_LENGTH) {
-		throw new Error(`JWT_SECRET must be configured and contain at least ${JWT_SECRET_MIN_LENGTH} characters`);
+		throw new Error(
+			`JWT_SECRET must be configured and contain at least ${JWT_SECRET_MIN_LENGTH} characters`,
+		);
 	}
 
 	return secret;

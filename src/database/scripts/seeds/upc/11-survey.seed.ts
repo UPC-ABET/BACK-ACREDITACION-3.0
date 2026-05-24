@@ -5,22 +5,34 @@ runTenantSeed('survey module', async (tenantDataSource) => {
 		[
 			'OUT_SOFT_01',
 			i18n('Pensamiento critico percibido', 'Perceived critical thinking'),
-			i18n('Configuracion de encuesta para medir percepcion sobre pensamiento critico.', 'Survey configuration to measure perception about critical thinking.'),
+			i18n(
+				'Configuracion de encuesta para medir percepcion sobre pensamiento critico.',
+				'Survey configuration to measure perception about critical thinking.',
+			),
 		],
 		[
 			'OUT_SOFT_02',
 			i18n('Comunicacion efectiva percibida', 'Perceived effective communication'),
-			i18n('Configuracion de encuesta para medir percepcion sobre comunicacion efectiva.', 'Survey configuration to measure perception about effective communication.'),
+			i18n(
+				'Configuracion de encuesta para medir percepcion sobre comunicacion efectiva.',
+				'Survey configuration to measure perception about effective communication.',
+			),
 		],
 		[
 			'OUT_SOFT_03',
 			i18n('Trabajo en equipo percibido', 'Perceived teamwork'),
-			i18n('Configuracion de encuesta para medir percepcion sobre trabajo en equipo.', 'Survey configuration to measure perception about teamwork.'),
+			i18n(
+				'Configuracion de encuesta para medir percepcion sobre trabajo en equipo.',
+				'Survey configuration to measure perception about teamwork.',
+			),
 		],
 		[
 			'OUT_SOFT_04',
 			i18n('Solucion tecnica percibida', 'Perceived technical solution'),
-			i18n('Configuracion de encuesta para medir percepcion sobre solucion tecnica.', 'Survey configuration to measure perception about technical solution.'),
+			i18n(
+				'Configuracion de encuesta para medir percepcion sobre solucion tecnica.',
+				'Survey configuration to measure perception about technical solution.',
+			),
 		],
 	]
 		.map(([oc, name, desc]) => `('${oc}', '${name}'::jsonb, '${desc}'::jsonb)`)
@@ -49,18 +61,27 @@ runTenantSeed('survey module', async (tenantDataSource) => {
 			'TG601-T001',
 			'PROG_SOFT',
 			i18n('Invitacion a encuesta 2026-1', '2026-1 survey invitation'),
-			i18n('Te invitamos a completar la encuesta de satisfaccion del periodo 2026-1.', 'We invite you to complete the 2026-1 satisfaction survey.'),
+			i18n(
+				'Te invitamos a completar la encuesta de satisfaccion del periodo 2026-1.',
+				'We invite you to complete the 2026-1 satisfaction survey.',
+			),
 			'["calidad@upc.edu.pe"]',
 		],
 		[
 			'TG601-T001',
 			'PROG_SOFT',
 			i18n('Recordatorio de encuesta 2026-1', '2026-1 survey reminder'),
-			i18n('Aun puedes completar la encuesta de satisfaccion antes de la fecha maxima.', 'You can still complete the satisfaction survey before the deadline.'),
+			i18n(
+				'Aun puedes completar la encuesta de satisfaccion antes de la fecha maxima.',
+				'You can still complete the satisfaction survey before the deadline.',
+			),
 			'["calidad@upc.edu.pe"]',
 		],
 	]
-		.map(([st, pc, title, body, cc]) => `('${st}', '${pc}', '${title}'::jsonb, '${body}'::jsonb, '${cc}'::jsonb)`)
+		.map(
+			([st, pc, title, body, cc]) =>
+				`('${st}', '${pc}', '${title}'::jsonb, '${body}'::jsonb, '${cc}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -110,12 +131,47 @@ runTenantSeed('survey module', async (tenantDataSource) => {
 	`);
 
 	const scoreValues = [
-		[20260101, 'OUT_SOFT_01', 4.5, i18n('El curso ayudo a analizar problemas de forma estructurada.', 'The course helped to analyze problems in a structured way.')],
-		[20260101, 'OUT_SOFT_04', 4.0, i18n('La practica permitio implementar soluciones verificables.', 'The practice allowed implementing verifiable solutions.')],
-		[20260102, 'OUT_SOFT_01', 4.0, i18n('Las actividades fueron retadoras y utiles.', 'The activities were challenging and useful.')],
-		[20260102, 'OUT_SOFT_04', 4.25, i18n('El proyecto permitio aplicar conceptos tecnicos.', 'The project allowed applying technical concepts.')],
+		[
+			20260101,
+			'OUT_SOFT_01',
+			4.5,
+			i18n(
+				'El curso ayudo a analizar problemas de forma estructurada.',
+				'The course helped to analyze problems in a structured way.',
+			),
+		],
+		[
+			20260101,
+			'OUT_SOFT_04',
+			4.0,
+			i18n(
+				'La practica permitio implementar soluciones verificables.',
+				'The practice allowed implementing verifiable solutions.',
+			),
+		],
+		[
+			20260102,
+			'OUT_SOFT_01',
+			4.0,
+			i18n(
+				'Las actividades fueron retadoras y utiles.',
+				'The activities were challenging and useful.',
+			),
+		],
+		[
+			20260102,
+			'OUT_SOFT_04',
+			4.25,
+			i18n(
+				'El proyecto permitio aplicar conceptos tecnicos.',
+				'The project allowed applying technical concepts.',
+			),
+		],
 	]
-		.map(([sn, oc, score, comm]) => `(${sn}, '${oc}', ${(score as number).toFixed(6)}, '${comm}'::jsonb)`)
+		.map(
+			([sn, oc, score, comm]) =>
+				`(${sn}, '${oc}', ${(score as number).toFixed(6)}, '${comm}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`

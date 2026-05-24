@@ -23,7 +23,11 @@ export class UserService extends BaseService<UserRepository> {
 		super(repository);
 	}
 
-	async signJWTWithAuthorization(user: any, authorization: AuthorizationProfile, school_id: number | null = null): Promise<string> {
+	async signJWTWithAuthorization(
+		user: any,
+		authorization: AuthorizationProfile,
+		school_id: number | null = null,
+	): Promise<string> {
 		const payload = {
 			userId: user.id,
 			user: this.sanitizeUser(user),
@@ -36,7 +40,12 @@ export class UserService extends BaseService<UserRepository> {
 		return this.jwtService.sign(payload);
 	}
 
-	async createUserLogin(user: any, passToValidate: string | null, activeRoleId?: number, school_id: number | null = null): Promise<string> {
+	async createUserLogin(
+		user: any,
+		passToValidate: string | null,
+		activeRoleId?: number,
+		school_id: number | null = null,
+	): Promise<string> {
 		if (!user) {
 			throw new UnauthorizedException('Credenciales invÃ¡lidas');
 		}
@@ -81,7 +90,12 @@ export class UserService extends BaseService<UserRepository> {
 		};
 	}
 
-	async loginByCredentials(school_code: string, email: string, password: string, activeRoleId?: number) {
+	async loginByCredentials(
+		school_code: string,
+		email: string,
+		password: string,
+		activeRoleId?: number,
+	) {
 		const school = await this.schoolRepository.findOneByCondition({
 			where: { code: school_code, is_active: true },
 		});
@@ -105,13 +119,24 @@ export class UserService extends BaseService<UserRepository> {
 		};
 	}
 
-	private async getAuthorizationProfile(userId: number, activeRoleId?: number): Promise<AuthorizationProfile> {
-		const profile = await this.userAuthorizationService.buildAuthorizationProfile(userId, activeRoleId);
+	private async getAuthorizationProfile(
+		userId: number,
+		activeRoleId?: number,
+	): Promise<AuthorizationProfile> {
+		const profile = await this.userAuthorizationService.buildAuthorizationProfile(
+			userId,
+			activeRoleId,
+		);
 		return this.validateAuthorizationProfile(profile);
 	}
 
 	private validateAuthorizationProfile(profile: AuthorizationProfile): AuthorizationProfile {
-		if (!profile?.activeRole || !Array.isArray(profile.allowedRoles) || profile.allowedRoles.length === 0 || !Array.isArray(profile.permissions)) {
+		if (
+			!profile?.activeRole ||
+			!Array.isArray(profile.allowedRoles) ||
+			profile.allowedRoles.length === 0 ||
+			!Array.isArray(profile.permissions)
+		) {
 			throw new UnauthorizedException('El usuario no tiene roles asignados');
 		}
 
@@ -129,15 +154,24 @@ export class UserService extends BaseService<UserRepository> {
 	}
 
 	async savePasswordResetToken(user: any, tokenHash: string, expiresAt: string) {
-		await this.baseRepository.update(user.id, { password_reset_token: tokenHash, password_reset_expires_at: expiresAt });
+		await this.baseRepository.update(user.id, {
+			password_reset_token: tokenHash,
+			password_reset_expires_at: expiresAt,
+		});
 	}
 
 	async resetPasswordWithToken(user: any, tokenHash: string, newPassword: string) {
 		if (!user) throw new UnauthorizedException('Usuario no encontrado');
-		if (!user.password_reset_token || user.password_reset_token !== tokenHash) throw new UnauthorizedException('Token invÃ¡lido');
-		if (!user.password_reset_expires_at || new Date(user.password_reset_expires_at) < new Date()) throw new UnauthorizedException('El token ha expirado');
+		if (!user.password_reset_token || user.password_reset_token !== tokenHash)
+			throw new UnauthorizedException('Token invÃ¡lido');
+		if (!user.password_reset_expires_at || new Date(user.password_reset_expires_at) < new Date())
+			throw new UnauthorizedException('El token ha expirado');
 		const hashedPassword = await bcrypt.hash(newPassword, 10);
-		await this.baseRepository.update(user.id, { password: hashedPassword, password_reset_token: null, password_reset_expires_at: null });
+		await this.baseRepository.update(user.id, {
+			password: hashedPassword,
+			password_reset_token: null,
+			password_reset_expires_at: null,
+		});
 	}
 
 	async create(dto: CreateUserDto, manager?: EntityManager) {

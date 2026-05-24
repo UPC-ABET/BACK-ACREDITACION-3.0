@@ -3,11 +3,13 @@ import { BaseService } from 'src/commons/base.service';
 import { ProfessorRepository } from '../core/professors.repository';
 import { ProfessorValidation } from '../core/professors.validation';
 
-import { CreateProfessorDto, UpdateProfessorDto, FilterProfessorDto } from '../model/professors.dtos';
+import {
+	CreateProfessorDto,
+	UpdateProfessorDto,
+	FilterProfessorDto,
+} from '../model/professors.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { ProfessorEntity } from '../model/professors.entity';
-import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
-import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Injectable()
 export class ProfessorService extends BaseService<ProfessorRepository> {
@@ -58,16 +60,15 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 		// Apply search filter (name search across first_name and last_name)
 		if (search && search.trim()) {
 			const searchTerm = `%${search.trim()}%`;
-			qb.andWhere(
-				'(user.first_name ILIKE :searchTerm OR user.last_name ILIKE :searchTerm)',
-				{ searchTerm }
-			);
+			qb.andWhere('(user.first_name ILIKE :searchTerm OR user.last_name ILIKE :searchTerm)', {
+				searchTerm,
+			});
 		}
 
 		return await qb.getMany();
 	}
 
 	async getByUserId(user_id: number) {
-    return await this.repository.getByUserId(user_id);
-}
+		return await this.repository.getByUserId(user_id);
+	}
 }

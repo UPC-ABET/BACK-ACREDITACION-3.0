@@ -15,32 +15,46 @@ export class LcfcSurveyRepository extends BaseRepostitory {
 	}
 
 	async getLcfcSurveyTypeId(code = 'TG601-T004'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	async getActiveSurveyStatusId(code = 'TG602-T001'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	async getClosedSurveyStatusId(code = 'TG602-T002'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	async getScheduledNotificationStatusId(code = 'TG1001-T001'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	async getSentNotificationStatusId(code = 'TG1001-T002'): Promise<number | null> {
-		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [code]);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/** Finds an existing LCFC survey for a student in a specific course section */
-	async findExistingLcfcSurvey(lcfcSurveyTypeId: number, studentId: number, courseSectionId: number): Promise<SurveyEntity | null> {
+	async findExistingLcfcSurvey(
+		lcfcSurveyTypeId: number,
+		studentId: number,
+		courseSectionId: number,
+	): Promise<SurveyEntity | null> {
 		return await this.repository
 			.createQueryBuilder('s')
 			.where('s.survey_type_id = :typeId', { typeId: lcfcSurveyTypeId })
@@ -50,7 +64,9 @@ export class LcfcSurveyRepository extends BaseRepostitory {
 	}
 
 	/** Gets outcomes mapped to a course section via course_outcome_mappings */
-	async getOutcomesForCourseSection(courseSectionId: number): Promise<{ outcome_id: number; name: string; code: string; description: string | null }[]> {
+	async getOutcomesForCourseSection(
+		courseSectionId: number,
+	): Promise<{ outcome_id: number; name: string; code: string; description: string | null }[]> {
 		const rows = await this.dataSource.query(
 			`SELECT DISTINCT
 				o.id                   AS outcome_id,

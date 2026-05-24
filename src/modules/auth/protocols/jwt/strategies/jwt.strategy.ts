@@ -11,7 +11,10 @@ const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
 export class JwtStrategy extends PassportStrategy(Strategy) {
 	constructor(configService: ConfigService) {
 		super({
-			jwtFromRequest: ExtractJwt.fromExtractors([ExtractJwt.fromAuthHeaderAsBearerToken(), cookieExtractor]),
+			jwtFromRequest: ExtractJwt.fromExtractors([
+				ExtractJwt.fromAuthHeaderAsBearerToken(),
+				cookieExtractor,
+			]),
 			ignoreExpiration: false,
 			secretOrKey: getRequiredJwtSecret(configService),
 		});

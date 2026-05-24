@@ -10,7 +10,11 @@ import {
 	SwaggerCourseSectionGetByFilters,
 } from './docs/course-sections.swagger';
 import { CourseSectionService } from './course-sections.service';
-import { CreateCourseSectionDto, UpdateCourseSectionDto, FilterCourseSectionDto } from '../model/course-sections.dtos';
+import {
+	CreateCourseSectionDto,
+	UpdateCourseSectionDto,
+	FilterCourseSectionDto,
+} from '../model/course-sections.dtos';
 
 @SwaggerCourseSectionController()
 export class CourseSectionController extends BaseController<CourseSectionService> {

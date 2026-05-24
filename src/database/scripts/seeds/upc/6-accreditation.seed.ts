@@ -4,11 +4,17 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 	const accreditorValues = [
 		[
 			'ACC_SINEACE',
-			i18n('Sistema Nacional de Evaluacion, Acreditacion y Certificacion de la Calidad Educativa', 'National System of Evaluation, Accreditation and Certification of Educational Quality'),
+			i18n(
+				'Sistema Nacional de Evaluacion, Acreditacion y Certificacion de la Calidad Educativa',
+				'National System of Evaluation, Accreditation and Certification of Educational Quality',
+			),
 		],
 		[
 			'ACC_ICACIT',
-			i18n('Instituto de Calidad y Acreditacion de Programas de Computacion, Ingenieria y Tecnologia', 'Institute of Quality and Accreditation of Computing, Engineering and Technology Programs'),
+			i18n(
+				'Instituto de Calidad y Acreditacion de Programas de Computacion, Ingenieria y Tecnologia',
+				'Institute of Quality and Accreditation of Computing, Engineering and Technology Programs',
+			),
 		],
 		['ACC_EISCB', i18n('Acreditadora EISCB', 'EISCB Accreditor')],
 	]
@@ -28,8 +34,22 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 	`);
 
 	const commissionValues = [
-		['ACC_ICACIT', 'COM_SOFT_2026', i18n('Comision de acreditacion de Ingenieria de Software', 'Software Engineering accreditation commission')],
-		['ACC_SINEACE', 'COM_ADMIN_2026', i18n('Comision de acreditacion de Administracion', 'Business Administration accreditation commission')],
+		[
+			'ACC_ICACIT',
+			'COM_SOFT_2026',
+			i18n(
+				'Comision de acreditacion de Ingenieria de Software',
+				'Software Engineering accreditation commission',
+			),
+		],
+		[
+			'ACC_SINEACE',
+			'COM_ADMIN_2026',
+			i18n(
+				'Comision de acreditacion de Administracion',
+				'Business Administration accreditation commission',
+			),
+		],
 		['ACC_EISCB', 'COM_CS', i18n('Comision de acreditacion CS', 'CS Accreditation Commission')],
 	]
 		.map(([accreditorCode, code, name]) => `('${accreditorCode}', '${code}', '${name}'::jsonb)`)
@@ -91,7 +111,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'AP_2026_1',
 			'OUT_SOFT_01',
 			i18n('Pensamiento critico', 'Critical thinking'),
-			i18n('Analiza problemas complejos de ingenieria de software con criterios tecnicos y de negocio.', 'Analyzes complex software engineering problems with technical and business criteria.'),
+			i18n(
+				'Analiza problemas complejos de ingenieria de software con criterios tecnicos y de negocio.',
+				'Analyzes complex software engineering problems with technical and business criteria.',
+			),
 		],
 		[
 			'COM_SOFT_2026',
@@ -99,7 +122,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'AP_2026_1',
 			'OUT_SOFT_02',
 			i18n('Comunicacion efectiva', 'Effective communication'),
-			i18n('Comunica decisiones tecnicas a audiencias especializadas y no especializadas.', 'Communicates technical decisions to specialized and non-specialized audiences.'),
+			i18n(
+				'Comunica decisiones tecnicas a audiencias especializadas y no especializadas.',
+				'Communicates technical decisions to specialized and non-specialized audiences.',
+			),
 		],
 		[
 			'COM_SOFT_2026',
@@ -107,7 +133,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'AP_2026_1',
 			'OUT_SOFT_03',
 			i18n('Trabajo en equipo', 'Teamwork'),
-			i18n('Colabora en equipos multidisciplinarios durante el ciclo de vida del software.', 'Collaborates in multidisciplinary teams during the software lifecycle.'),
+			i18n(
+				'Colabora en equipos multidisciplinarios durante el ciclo de vida del software.',
+				'Collaborates in multidisciplinary teams during the software lifecycle.',
+			),
 		],
 		[
 			'COM_SOFT_2026',
@@ -115,7 +144,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'AP_2026_1',
 			'OUT_SOFT_04',
 			i18n('Solucion tecnica', 'Technical solution'),
-			i18n('Disena e implementa soluciones de software sostenibles y verificables.', 'Designs and implements sustainable and verifiable software solutions.'),
+			i18n(
+				'Disena e implementa soluciones de software sostenibles y verificables.',
+				'Designs and implements sustainable and verifiable software solutions.',
+			),
 		],
 		[
 			'COM_ADMIN_2026',
@@ -123,7 +155,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'AP_2026_1',
 			'OUT_ADMIN_01',
 			i18n('Gestion organizacional', 'Organizational management'),
-			i18n('Propone acciones de gestion basadas en informacion confiable.', 'Proposes management actions based on reliable information.'),
+			i18n(
+				'Propone acciones de gestion basadas en informacion confiable.',
+				'Proposes management actions based on reliable information.',
+			),
 		],
 		[
 			'COM_CS',
@@ -131,7 +166,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'202502',
 			'A1',
 			i18n('Pensamiento computacional', 'Computational thinking'),
-			i18n('Aplica pensamiento computacional para resolver problemas.', 'Applies computational thinking to solve problems.'),
+			i18n(
+				'Aplica pensamiento computacional para resolver problemas.',
+				'Applies computational thinking to solve problems.',
+			),
 		],
 		[
 			'COM_CS',
@@ -139,10 +177,16 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 			'202502',
 			'A2',
 			i18n('Comunicacion tecnica', 'Technical communication'),
-			i18n('Comunica resultados tecnicos a audiencias diversas.', 'Communicates technical results to diverse audiences.'),
+			i18n(
+				'Comunica resultados tecnicos a audiencias diversas.',
+				'Communicates technical results to diverse audiences.',
+			),
 		],
 	]
-		.map(([cCode, pCode, apCode, oCode, name, desc]) => `('${cCode}', '${pCode}', '${apCode}', '${oCode}', '${name}'::jsonb, '${desc}'::jsonb)`)
+		.map(
+			([cCode, pCode, apCode, oCode, name, desc]) =>
+				`('${cCode}', '${pCode}', '${apCode}', '${oCode}', '${name}'::jsonb, '${desc}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`

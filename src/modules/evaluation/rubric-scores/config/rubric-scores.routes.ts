@@ -8,7 +8,11 @@ export const rubricScoresRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar puntaje de rúbrica' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar puntajes de rúbrica' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener puntaje de rúbrica' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar puntajes de rúbrica' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar puntajes de rúbrica',
+			},
 		},
 	},
 };

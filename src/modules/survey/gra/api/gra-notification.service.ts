@@ -8,7 +8,14 @@ import { GraNotificationRepository } from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
-import { SaveGraNotificationDto, ListStudentsGraDto, SendGraEmailDto, GetSurveyByTokenDto, CompleteGraSurveyDto, DashboardGraDto } from '../model/gra.dtos';
+import {
+	SaveGraNotificationDto,
+	ListStudentsGraDto,
+	SendGraEmailDto,
+	GetSurveyByTokenDto,
+	CompleteGraSurveyDto,
+	DashboardGraDto,
+} from '../model/gra.dtos';
 
 @Injectable()
 export class GraNotificationService {
@@ -23,19 +30,35 @@ export class GraNotificationService {
 	// ─── Helpers: obtener IDs de tipos ─────────────────────────────────────────
 
 	private async getTypeIds() {
-		const [graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] = await Promise.all([
-			this.surveyRepo.getGraSurveyTypeId(),
-			this.surveyRepo.getActiveSurveyStatusId(),
-			this.surveyRepo.getClosedSurveyStatusId(),
-			this.surveyRepo.getScheduledNotificationStatusId(),
-			this.surveyRepo.getSentNotificationStatusId(),
-		]);
+		const [graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
+			await Promise.all([
+				this.surveyRepo.getGraSurveyTypeId(),
+				this.surveyRepo.getActiveSurveyStatusId(),
+				this.surveyRepo.getClosedSurveyStatusId(),
+				this.surveyRepo.getScheduledNotificationStatusId(),
+				this.surveyRepo.getSentNotificationStatusId(),
+			]);
 
-		if (!graSurveyTypeId) throw new BadRequestException('Tipo de encuesta GRA (TG601-T002) no encontrado. Ejecuta el seed de tipos.');
-		if (!activeStatusId) throw new BadRequestException('Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.');
-		if (!closedStatusId) throw new BadRequestException('Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.');
-		if (!scheduledStatusId) throw new BadRequestException('Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.');
-		if (!sentStatusId) throw new BadRequestException('Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.');
+		if (!graSurveyTypeId)
+			throw new BadRequestException(
+				'Tipo de encuesta GRA (TG601-T002) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!activeStatusId)
+			throw new BadRequestException(
+				'Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!closedStatusId)
+			throw new BadRequestException(
+				'Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!scheduledStatusId)
+			throw new BadRequestException(
+				'Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!sentStatusId)
+			throw new BadRequestException(
+				'Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.',
+			);
 
 		return { graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
 	}
@@ -46,7 +69,12 @@ export class GraNotificationService {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		// Buscar encuesta GRA existente para este estudiante + período + programa
-		let survey = await this.surveyRepo.findExistingGraSurvey(graSurveyTypeId, dto.student_id, dto.academic_period_id, dto.program_id);
+		let survey = await this.surveyRepo.findExistingGraSurvey(
+			graSurveyTypeId,
+			dto.student_id,
+			dto.academic_period_id,
+			dto.program_id,
+		);
 
 		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
 
@@ -68,7 +96,9 @@ export class GraNotificationService {
 		// Verificar si ya existe notificación para esta encuesta
 		const alreadyNotified = await this.notifRepo.existsForStudent(survey.id);
 		if (alreadyNotified) {
-			throw new BadRequestException(`El estudiante ya se encuentra en la lista de encuesta GRA para este período y programa.`);
+			throw new BadRequestException(
+				`El estudiante ya se encuentra en la lista de encuesta GRA para este período y programa.`,
+			);
 		}
 
 		// Generar token único
@@ -129,7 +159,10 @@ export class GraNotificationService {
 		// Obtener template de email (notification_messages) - primer registro activo del tipo GRA
 		const emailTemplate = await this.getEmailTemplate();
 
-		const surveyBaseUrl = dto.survey_base_url || this.configService.get<string>('SURVEY_BASE_URL') || 'http://localhost:3001';
+		const surveyBaseUrl =
+			dto.survey_base_url ||
+			this.configService.get<string>('SURVEY_BASE_URL') ||
+			'http://localhost:3001';
 		const transporter = this.createEmailTransporter();
 
 		const results = { total: pending.length, sent: 0, failed: 0, errors: [] as string[] };
@@ -203,7 +236,10 @@ export class GraNotificationService {
 				outcome_config_id: cfg.id,
 				outcome_id: cfg.outcome_id,
 				name: language === 'en' && extra.name_en ? extra.name_en : cfg.user_outcome_name,
-				description: language === 'en' && extra.description_en ? extra.description_en : (cfg.user_outcome_description ?? null),
+				description:
+					language === 'en' && extra.description_en
+						? extra.description_en
+						: (cfg.user_outcome_description ?? null),
 				order: extra.order ?? null,
 			};
 		});
@@ -233,40 +269,46 @@ export class GraNotificationService {
 			// Insertar scores GRA en survey.scores
 			for (const item of dto.scores) {
 				// Resolver outcome_id desde outcome_config_id
-				const configRows = await queryRunner.manager.query(`SELECT outcome_id FROM survey.outcome_configs WHERE id = $1 LIMIT 1`, [item.outcome_config_id]);
+				const configRows = await queryRunner.manager.query(
+					`SELECT outcome_id FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
+					[item.outcome_config_id],
+				);
 
 				if (!configRows?.[0]) continue;
 
 				const outcomeId = configRows[0].outcome_id;
 
 				// Evitar duplicados si ya existe score para esta encuesta + outcome
-				const existing = await queryRunner.manager.query(`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`, [tokenData!.survey_id, outcomeId]);
+				const existing = await queryRunner.manager.query(
+					`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
+					[tokenData!.survey_id, outcomeId],
+				);
 
 				if (existing?.length > 0) {
-					await queryRunner.manager.query(`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`, [
-						item.score,
-						item.commentaries ?? null,
-						tokenData!.survey_id,
-						outcomeId,
-					]);
+					await queryRunner.manager.query(
+						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
+						[item.score, item.commentaries ?? null, tokenData!.survey_id, outcomeId],
+					);
 				} else {
-					await queryRunner.manager.query(`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`, [
-						tokenData!.survey_id,
-						outcomeId,
-						item.score,
-						item.commentaries ?? null,
-					]);
+					await queryRunner.manager.query(
+						`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
+						[tokenData!.survey_id, outcomeId, item.score, item.commentaries ?? null],
+					);
 				}
 			}
 
 			// Actualizar estado de la encuesta a CERRADA
-			const commentariesJson = dto.commentaries ? JSON.stringify({ commentaries: dto.commentaries }) : null;
+			const commentariesJson = dto.commentaries
+				? JSON.stringify({ commentaries: dto.commentaries })
+				: null;
 			await queryRunner.manager.query(
 				`UPDATE evidence.surveys
 				 SET survey_status_type_id = $1, updated_at = NOW()
 				     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 				 WHERE id = $2`,
-				commentariesJson ? [closedStatusId, tokenData!.survey_id, commentariesJson] : [closedStatusId, tokenData!.survey_id],
+				commentariesJson
+					? [closedStatusId, tokenData!.survey_id, commentariesJson]
+					: [closedStatusId, tokenData!.survey_id],
 			);
 
 			await queryRunner.commitTransaction();
@@ -290,11 +332,16 @@ export class GraNotificationService {
 	async getDashboard(dto: DashboardGraDto) {
 		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
 
-		const data = await this.surveyRepo.getDashboardData(graSurveyTypeId, activeStatusId, closedStatusId, {
-			academic_period_id: dto.academic_period_id,
-			program_id: dto.program_id,
-			campus_id: dto.campus_id,
-		});
+		const data = await this.surveyRepo.getDashboardData(
+			graSurveyTypeId,
+			activeStatusId,
+			closedStatusId,
+			{
+				academic_period_id: dto.academic_period_id,
+				program_id: dto.program_id,
+				campus_id: dto.campus_id,
+			},
+		);
 
 		const completionRate = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
 
@@ -375,14 +422,18 @@ export class GraNotificationService {
 		});
 	}
 
-	private async sendEmail(transporter: nodemailer.Transporter | null, opts: { to: string; subject: string; html: string }): Promise<void> {
+	private async sendEmail(
+		transporter: nodemailer.Transporter | null,
+		opts: { to: string; subject: string; html: string },
+	): Promise<void> {
 		if (!transporter) {
 			// Modo simulación: registra en consola en lugar de enviar
 			console.log(`[GRA EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
 			return;
 		}
 
-		const from = this.configService.get<string>('SMTP_FROM') ?? this.configService.get<string>('SMTP_USER');
+		const from =
+			this.configService.get<string>('SMTP_FROM') ?? this.configService.get<string>('SMTP_USER');
 		await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html });
 	}
 }

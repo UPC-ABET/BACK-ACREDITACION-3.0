@@ -245,7 +245,12 @@ function buildImportPath(configPath: string) {
 	return `src/modules/${configPath}/model/${module}.entity`;
 }
 
-function injectImports(content: string, fields: FieldRelation[], entityName: string, inverseMap: InverseMap) {
+function injectImports(
+	content: string,
+	fields: FieldRelation[],
+	entityName: string,
+	inverseMap: InverseMap,
+) {
 	const lines = content.split('\n');
 
 	const body = lines.filter((l) => !l.startsWith('import'));
@@ -254,7 +259,9 @@ function injectImports(content: string, fields: FieldRelation[], entityName: str
 	const preservedTypeImports = lines.filter((l) => l.startsWith('import type '));
 
 	// 🔥 detectar @Entity con extras como @Unique para mantener el decorador
-	const extraEntityDecorators = lines.filter((l) => l.startsWith('@Unique(') || l.startsWith('@Index('));
+	const extraEntityDecorators = lines.filter(
+		(l) => l.startsWith('@Unique(') || l.startsWith('@Index('),
+	);
 
 	const entitySet = new Set<string>();
 

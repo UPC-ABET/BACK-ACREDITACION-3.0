@@ -43,10 +43,20 @@ describe('IfcFindingService.getDetail', () => {
 		expect(dataSource.query).toHaveBeenCalledTimes(2);
 
 		const [, headerParams] = dataSource.query.mock.calls[0];
-		expect(headerParams).toEqual([201, 9, IFCS_PARAMETER_KEYS.FINDING_PREFIX, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+		expect(headerParams).toEqual([
+			201,
+			9,
+			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		]);
 
 		const [, actionParams] = dataSource.query.mock.calls[1];
-		expect(actionParams).toEqual([201, IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
+		expect(actionParams).toEqual([
+			201,
+			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+		]);
 	});
 
 	it('shapes the response with the finding header + criticality + actions[]', async () => {
@@ -60,7 +70,11 @@ describe('IfcFindingService.getDetail', () => {
 				finding_code: headerRow.finding_code,
 				academic_period_code: headerRow.academic_period_code,
 				description: headerRow.description,
-				criticality: { code: headerRow.criticality_code, name: headerRow.criticality_name, color: null },
+				criticality: {
+					code: headerRow.criticality_code,
+					name: headerRow.criticality_name,
+					color: null,
+				},
 			},
 			actions: [
 				{
@@ -103,9 +117,15 @@ describe('IfcFindingService.patch', () => {
 		};
 		service = new IfcFindingService(repository, dataSource as unknown as DataSource);
 
-		assertFindingExistsSpy = jest.spyOn(IfcFindingValidation, 'assertFindingExists').mockResolvedValue({ id: 201, course_id: 100, academic_period_id: 5 });
-		resolveCourseChartSpy = jest.spyOn(IfcFindingValidation, 'resolveCourseChart').mockResolvedValue({ id: 500, staff_id: 11 });
-		assertIsInCourseChainSpy = jest.spyOn(IfcValidation, 'assertIsInCourseChain').mockResolvedValue(undefined as unknown as void);
+		assertFindingExistsSpy = jest
+			.spyOn(IfcFindingValidation, 'assertFindingExists')
+			.mockResolvedValue({ id: 201, course_id: 100, academic_period_id: 5 });
+		resolveCourseChartSpy = jest
+			.spyOn(IfcFindingValidation, 'resolveCourseChart')
+			.mockResolvedValue({ id: 500, staff_id: 11 });
+		assertIsInCourseChainSpy = jest
+			.spyOn(IfcValidation, 'assertIsInCourseChain')
+			.mockResolvedValue(undefined as unknown as void);
 	});
 
 	afterEach(() => {
@@ -140,7 +160,12 @@ describe('IfcFindingService.patch', () => {
 		await service.patch(201, dto, 7, 9);
 
 		expect(assertFindingExistsSpy).toHaveBeenCalledWith(em, 201);
-		expect(resolveCourseChartSpy).toHaveBeenCalledWith(em, 100, 5, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR);
+		expect(resolveCourseChartSpy).toHaveBeenCalledWith(
+			em,
+			100,
+			5,
+			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+		);
 		expect(assertIsInCourseChainSpy).toHaveBeenCalledTimes(1);
 		const ctx = assertIsInCourseChainSpy.mock.calls[0][1];
 		expect(ctx.courseChartId).toBe(500);
@@ -150,7 +175,9 @@ describe('IfcFindingService.patch', () => {
 	it('rejects 403 when the requester has no staff record', async () => {
 		em.query.mockResolvedValueOnce([]); // staff lookup returns no rows
 
-		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({
+			status: HttpStatus.FORBIDDEN,
+		});
 	});
 
 	it('rejects 404 when the finding is in a different school (school check fails)', async () => {
@@ -158,9 +185,13 @@ describe('IfcFindingService.patch', () => {
 			.mockResolvedValueOnce([{ id: 11 }]) // staff lookup
 			.mockResolvedValueOnce([]); // school check empty
 
-		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({
+			status: HttpStatus.NOT_FOUND,
+		});
 		// UPDATE must not run
-		expect(em.query.mock.calls.find((c) => /UPDATE improvement\.findings/.test(c[0]))).toBeUndefined();
+		expect(
+			em.query.mock.calls.find((c) => /UPDATE improvement\.findings/.test(c[0])),
+		).toBeUndefined();
 	});
 
 	it('rolls back the transaction when any inner em.query throws', async () => {

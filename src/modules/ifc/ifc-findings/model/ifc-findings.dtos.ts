@@ -1,5 +1,14 @@
 // no-override
-import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsPositive } from 'class-validator';
+import {
+	ArrayNotEmpty,
+	IsArray,
+	IsBoolean,
+	IsInt,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsPositive,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -65,7 +74,11 @@ export class FilterIfcFindingDto extends BaseDto {
 // %% OTHERS DTO
 
 export class ListIfcFindingsDto {
-	@ApiProperty({ example: [310, 311, 312], required: true, description: 'IDs de nodos chart (todos a nivel COURSE_COORDINATOR)' })
+	@ApiProperty({
+		example: [310, 311, 312],
+		required: true,
+		description: 'IDs de nodos chart (todos a nivel COURSE_COORDINATOR)',
+	})
 	@IsArray()
 	@ArrayNotEmpty()
 	@IsInt({ each: true })
@@ -92,7 +105,10 @@ export class IfcFindingRowDto {
 // --- Request: PATCH /:id ----------------------------------------------------
 
 export class PatchIfcFindingDto {
-	@ApiProperty({ example: { es: 'Descripción actualizada', en: 'Updated description' }, required: true })
+	@ApiProperty({
+		example: { es: 'Descripción actualizada', en: 'Updated description' },
+		required: true,
+	})
 	@IsObject()
 	description: I18nText;
 }
@@ -109,7 +125,8 @@ export class IfcFindingActionDetailDto {
 	@ApiProperty() id: number;
 	@ApiProperty() action_code: string;
 	@ApiProperty({ type: Object }) description: I18nText;
-	@ApiProperty({ type: () => IfcFindingActionCompletenessDto }) completeness: IfcFindingActionCompletenessDto;
+	@ApiProperty({ type: () => IfcFindingActionCompletenessDto })
+	completeness: IfcFindingActionCompletenessDto;
 }
 
 export class IfcFindingCriticalityDto {

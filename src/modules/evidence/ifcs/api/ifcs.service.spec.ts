@@ -7,7 +7,9 @@ const pdfRenderer = {
 	filesToZip: jest.fn().mockResolvedValue(Buffer.from('zip')),
 };
 const dispatcher = {
-	dispatch: jest.fn().mockResolvedValue({ sent: false, recipients_count: 0, cc_count: 0, reason: 'no_config' }),
+	dispatch: jest
+		.fn()
+		.mockResolvedValue({ sent: false, recipients_count: 0, cc_count: 0, reason: 'no_config' }),
 };
 import { IfcRepository } from '../core/ifcs.repository';
 import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
@@ -22,7 +24,12 @@ describe('IfcService.list', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
 	it('forwards chart_ids, period_id, and the COURSE type code to the SQL query', async () => {
@@ -57,7 +64,12 @@ describe('IfcService.getView', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
 	const headerRow = {
@@ -97,7 +109,13 @@ describe('IfcService.getView', () => {
 		expect(dataSource.query).toHaveBeenCalledTimes(6);
 
 		const [, headerParams] = dataSource.query.mock.calls[0];
-		expect(headerParams).toEqual([42, 9, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, 99]);
+		expect(headerParams).toEqual([
+			42,
+			9,
+			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			99,
+		]);
 
 		const [, findingParams] = dataSource.query.mock.calls[1];
 		expect(findingParams).toEqual([42, IFCS_PARAMETER_KEYS.FINDING_PREFIX]);
@@ -109,7 +127,12 @@ describe('IfcService.getView', () => {
 		expect(finOutcomeParams).toEqual([[1]]);
 
 		const [, finActionParams] = dataSource.query.mock.calls[4];
-		expect(finActionParams).toEqual([[1], IFCS_PARAMETER_KEYS.ACTION_PREFIX, TYPE_CODES.ACTION_COMPLETENESS.PENDING, TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED]);
+		expect(finActionParams).toEqual([
+			[1],
+			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+		]);
 
 		const [, prevActionParams] = dataSource.query.mock.calls[5];
 		expect(prevActionParams).toEqual([
@@ -151,7 +174,11 @@ describe('IfcService.getView', () => {
 
 	it('emits status: null when the header has no status_code', async () => {
 		const noStatus = { ...headerRow, status_code: null, status_name: null, status_at: null };
-		dataSource.query.mockResolvedValueOnce([noStatus]).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+		dataSource.query
+			.mockResolvedValueOnce([noStatus])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
 
 		const result = await service.getView(42, 99, 9);
 
@@ -178,10 +205,22 @@ describe('IfcService status transitions', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
-	const ctxRow = (overrides: Partial<{ ifc_course_staff_id: number | null; course_chart_id: number | null; requester_staff_id: number | null; current_status_code: string | null }> = {}) => [
+	const ctxRow = (
+		overrides: Partial<{
+			ifc_course_staff_id: number | null;
+			course_chart_id: number | null;
+			requester_staff_id: number | null;
+			current_status_code: string | null;
+		}> = {},
+	) => [
 		{
 			ifc_course_staff_id: 11,
 			course_chart_id: 500,
@@ -191,7 +230,13 @@ describe('IfcService status transitions', () => {
 		},
 	];
 
-	const insertedRow = { code: 'TG701-T002', name: { es: 'Enviado' }, at: '2026-01-01', comment: null, by: 'Ada' };
+	const insertedRow = {
+		code: 'TG701-T002',
+		name: { es: 'Enviado' },
+		at: '2026-01-01',
+		comment: null,
+		by: 'Ada',
+	};
 
 	it('submit: succeeds when requester is in the course chain and IFC is unregistered', async () => {
 		dataSource.query
@@ -200,7 +245,12 @@ describe('IfcService status transitions', () => {
 			.mockResolvedValueOnce([insertedRow]) // insertStatus
 			.mockResolvedValueOnce([{ academic_period_id: 5 }]); // fetch period for dispatch
 
-		const dispatchResult = { sent: false, recipients_count: 0, cc_count: 0, reason: 'no_config' as const };
+		const dispatchResult = {
+			sent: false,
+			recipients_count: 0,
+			cc_count: 0,
+			reason: 'no_config' as const,
+		};
 		dispatcher.dispatch.mockResolvedValueOnce(dispatchResult);
 
 		const result = await service.submit(42, 99, 9);
@@ -216,36 +266,61 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('submit: rejects with 409 when current status is already SUBMITTED', async () => {
-		dataSource.query.mockResolvedValueOnce(ctxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED })).mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes; status fails
+		dataSource.query
+			.mockResolvedValueOnce(ctxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
+			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes; status fails
 
 		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
 	});
 
 	it('submit: rejects with 403 when requester is not in the course chain', async () => {
-		dataSource.query.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null })).mockResolvedValueOnce([]); // chain check returns no rows
+		dataSource.query
+			.mockResolvedValueOnce(
+				ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }),
+			)
+			.mockResolvedValueOnce([]); // chain check returns no rows
 
 		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
 	});
 
 	it('submit: an ancestor (not own coord) is allowed by the chain check', async () => {
 		dataSource.query
-			.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }))
+			.mockResolvedValueOnce(
+				ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }),
+			)
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check finds requester on an ancestor
 			.mockResolvedValueOnce([insertedRow])
 			.mockResolvedValueOnce([{ academic_period_id: 5 }]); // fetch period for dispatch
 
-		await expect(service.submit(42, 99, 9)).resolves.toMatchObject({ id: 42, notification: expect.any(Object) });
+		await expect(service.submit(42, 99, 9)).resolves.toMatchObject({
+			id: 42,
+			notification: expect.any(Object),
+		});
 	});
 
 	it('approve: rejects with 403 when requester is the own coordinator', async () => {
-		dataSource.query.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 11, requester_staff_id: 11, current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }));
+		dataSource.query.mockResolvedValueOnce(
+			ctxRow({
+				ifc_course_staff_id: 11,
+				requester_staff_id: 11,
+				current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED,
+			}),
+		);
 
-		await expect(service.approve(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+		await expect(service.approve(42, 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.FORBIDDEN,
+		});
 	});
 
 	it('approve: succeeds when requester is a different staff and IFC is SUBMITTED', async () => {
 		dataSource.query
-			.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 11, requester_staff_id: 22, current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
+			.mockResolvedValueOnce(
+				ctxRow({
+					ifc_course_staff_id: 11,
+					requester_staff_id: 22,
+					current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED,
+				}),
+			)
 			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T003' }]);
 
 		const result = await service.approve(42, 99, 9);
@@ -259,7 +334,13 @@ describe('IfcService status transitions', () => {
 	it('reject: inserts a status with comment populated and status_type_id=OBSERVED', async () => {
 		const dto: RejectIfcDto = { comment: { es: 'falta', en: 'missing' } };
 		dataSource.query
-			.mockResolvedValueOnce(ctxRow({ ifc_course_staff_id: 11, requester_staff_id: 22, current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
+			.mockResolvedValueOnce(
+				ctxRow({
+					ifc_course_staff_id: 11,
+					requester_staff_id: 22,
+					current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED,
+				}),
+			)
 			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T004', comment: dto.comment }]);
 
 		const result = await service.reject(42, 99, 9, dto);
@@ -273,7 +354,10 @@ describe('IfcService status transitions', () => {
 	it('throws 404 when the IFC is not in the requester school', async () => {
 		dataSource.query.mockResolvedValueOnce([]);
 
-		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND, message: expect.anything() });
+		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.NOT_FOUND,
+			message: expect.anything(),
+		});
 	});
 
 	it('throws an HttpException when the IFC is not in the requester school', async () => {
@@ -296,7 +380,12 @@ describe('IfcService.prefill', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
 	const headerRow = {
@@ -312,13 +401,22 @@ describe('IfcService.prefill', () => {
 	};
 
 	it('calls the three SQL queries with the correct positional params', async () => {
-		dataSource.query.mockResolvedValueOnce([headerRow]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+		dataSource.query
+			.mockResolvedValueOnce([headerRow])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
 
 		await service.prefill({ chart_id: 310, period_id: 5 }, 9);
 
 		expect(dataSource.query).toHaveBeenCalledTimes(3);
 		const [, headerParams] = dataSource.query.mock.calls[0];
-		expect(headerParams).toEqual([310, 5, 9, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+		expect(headerParams).toEqual([
+			310,
+			5,
+			9,
+			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		]);
 		const [, outcomeParams] = dataSource.query.mock.calls[1];
 		expect(outcomeParams).toEqual([310]);
 		const [, prevActionParams] = dataSource.query.mock.calls[2];
@@ -336,15 +434,33 @@ describe('IfcService.prefill', () => {
 	it('returns 404 when the header is empty (chart not in school)', async () => {
 		dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
-		await expect(service.prefill({ chart_id: 310, period_id: 5 }, 9)).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+		await expect(service.prefill({ chart_id: 310, period_id: 5 }, 9)).rejects.toMatchObject({
+			status: HttpStatus.NOT_FOUND,
+		});
 	});
 
 	it('merges header + grouped outcome rows', async () => {
 		dataSource.query
 			.mockResolvedValueOnce([headerRow])
 			.mockResolvedValueOnce([
-				{ program_code: 'PR1', program_name: { es: 'Prog 1' }, commission_code: 'C1', commission_name: { es: 'Com 1' }, outcome_code: 'O1', outcome_name: { es: 'OC1' }, outcome_description: {} },
-				{ program_code: 'PR1', program_name: { es: 'Prog 1' }, commission_code: 'C1', commission_name: { es: 'Com 1' }, outcome_code: 'O2', outcome_name: { es: 'OC2' }, outcome_description: {} },
+				{
+					program_code: 'PR1',
+					program_name: { es: 'Prog 1' },
+					commission_code: 'C1',
+					commission_name: { es: 'Com 1' },
+					outcome_code: 'O1',
+					outcome_name: { es: 'OC1' },
+					outcome_description: {},
+				},
+				{
+					program_code: 'PR1',
+					program_name: { es: 'Prog 1' },
+					commission_code: 'C1',
+					commission_name: { es: 'Com 1' },
+					outcome_code: 'O2',
+					outcome_name: { es: 'OC2' },
+					outcome_description: {},
+				},
 			])
 			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
@@ -370,7 +486,12 @@ describe('IfcService.createIfc', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
 	const baseDto = (overrides: Partial<CreateIfcDto> = {}): CreateIfcDto => ({
@@ -378,7 +499,14 @@ describe('IfcService.createIfc', () => {
 		period_id: 5,
 		submit: false,
 		information: {},
-		findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+		findings: [
+			{
+				tempId: 'tF',
+				id: null,
+				description: { es: 'f' },
+				criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+			},
+		],
 		actions: [{ tempId: 'tA', id: null, description: { es: 'a' }, finding_temp_id: 'tF' }],
 		...overrides,
 	});
@@ -386,24 +514,34 @@ describe('IfcService.createIfc', () => {
 	it('rejects 404 when chart is not found in school', async () => {
 		em.query.mockResolvedValueOnce([]); // CHART_RESOLUTION_SQL → empty
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.NOT_FOUND,
+		});
 	});
 
 	it('rejects 409 when an IFC already exists for the (course, period)', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }]) // chart resolution
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
+			]) // chart resolution
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check passes
 			.mockResolvedValueOnce([{ '?column?': 1 }]); // assertNoIfcExists finds a row → throws
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.CONFLICT,
+		});
 	});
 
 	it('rejects 403 when requester is not in the course chain', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 22 }]) // chart resolution
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 22 },
+			]) // chart resolution
 			.mockResolvedValueOnce([]); // chain check returns no rows → 403
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.FORBIDDEN,
+		});
 	});
 
 	it('happy path: inserts IFC + status (SAVED when submit=false) and assigns consecutive correlatives to new findings (single IFC instrument)', async () => {
@@ -418,7 +556,9 @@ describe('IfcService.createIfc', () => {
 		// 8. For each new finding: INSERT finding + INSERT ifc_findings
 		// 9. insertStatus
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }]) // chart resolution
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
+			]) // chart resolution
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check passes
 			.mockResolvedValueOnce([]) // assertNoIfcExists
 			.mockResolvedValueOnce([{ id: 999 }]) // INSERT ifc
@@ -434,12 +574,30 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([]) // INSERT finding_actions 1
 			.mockResolvedValueOnce([{ id: 302 }]) // INSERT action 2
 			.mockResolvedValueOnce([]) // INSERT finding_actions 2
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 'Guardado' }, at: '2026', comment: null, by: 'me' }]); // insertStatus
+			.mockResolvedValueOnce([
+				{
+					code: TYPE_CODES.IFC_STATUS.SAVED,
+					name: { es: 'Guardado' },
+					at: '2026',
+					comment: null,
+					by: 'me',
+				},
+			]); // insertStatus
 
 		const dto = baseDto({
 			findings: [
-				{ tempId: 't1', id: null, description: { es: 'a' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL },
-				{ tempId: 't2', id: null, description: { es: 'b' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL },
+				{
+					tempId: 't1',
+					id: null,
+					description: { es: 'a' },
+					criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+				},
+				{
+					tempId: 't2',
+					id: null,
+					description: { es: 'b' },
+					criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+				},
 			],
 			actions: [
 				{ tempId: 'a1', id: null, description: { es: 'A1' }, finding_temp_id: 't1' },
@@ -463,7 +621,9 @@ describe('IfcService.createIfc', () => {
 
 	it('inserts SUBMITTED status when submit=true', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }])
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
+			])
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 999 }])
@@ -475,7 +635,15 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
 			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
 			.mockResolvedValueOnce([]) // INSERT finding_actions
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED, name: { es: 'Enviado' }, at: '2026', comment: null, by: 'me' }]);
+			.mockResolvedValueOnce([
+				{
+					code: TYPE_CODES.IFC_STATUS.SUBMITTED,
+					name: { es: 'Enviado' },
+					at: '2026',
+					comment: null,
+					by: 'me',
+				},
+			]);
 
 		await service.createIfc(baseDto({ submit: true }), 99, 9);
 
@@ -485,18 +653,24 @@ describe('IfcService.createIfc', () => {
 
 	it('throws 500 + ifcInstrumentMissing when the IFC instrument is not seeded', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }])
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
+			])
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 999 }])
 			.mockResolvedValueOnce([]); // resolve IFC instrument id → empty
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.INTERNAL_SERVER_ERROR });
+		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.INTERNAL_SERVER_ERROR,
+		});
 	});
 
 	it('rolls back transaction when an inner em.query throws', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }])
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
+			])
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([])
 			.mockRejectedValueOnce(new Error('DB explosion'));
@@ -507,7 +681,9 @@ describe('IfcService.createIfc', () => {
 
 	it('ancestor (not own coord) can create on behalf of the coordinator', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 22, program_id: 50, requester_staff_id: 11 }])
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 22, program_id: 50, requester_staff_id: 11 },
+			])
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check — requester found on ancestor
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 999 }])
@@ -519,14 +695,24 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
 			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
 			.mockResolvedValueOnce([]) // INSERT finding_actions
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 's' }, at: '2026', comment: null, by: 'me' }]);
+			.mockResolvedValueOnce([
+				{
+					code: TYPE_CODES.IFC_STATUS.SAVED,
+					name: { es: 's' },
+					at: '2026',
+					comment: null,
+					by: 'me',
+				},
+			]);
 
 		await expect(service.createIfc(baseDto(), 99, 9)).resolves.toEqual({ id: 999 });
 	});
 
 	it('resolveFindingsAndActions: actions can reference a brand-new finding via tempId', async () => {
 		em.query
-			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }])
+			.mockResolvedValueOnce([
+				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
+			])
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([{ id: 999 }])
@@ -538,10 +724,25 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ c: 0 }]) // base correlative for actions
 			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action → 301
 			.mockResolvedValueOnce([]) // INSERT finding_actions
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 's' }, at: '2026', comment: null, by: 'me' }]);
+			.mockResolvedValueOnce([
+				{
+					code: TYPE_CODES.IFC_STATUS.SAVED,
+					name: { es: 's' },
+					at: '2026',
+					comment: null,
+					by: 'me',
+				},
+			]);
 
 		const dto = baseDto({
-			findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+			findings: [
+				{
+					tempId: 'tF',
+					id: null,
+					description: { es: 'f' },
+					criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+				},
+			],
 			actions: [{ tempId: 'tA', id: null, description: { es: 'a' }, finding_temp_id: 'tF' }],
 		});
 
@@ -553,16 +754,27 @@ describe('IfcService.createIfc', () => {
 	});
 
 	it('rejects 400 when findings array is empty', async () => {
-		await expect(service.createIfc(baseDto({ findings: [], actions: [] }), 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		await expect(
+			service.createIfc(baseDto({ findings: [], actions: [] }), 99, 9),
+		).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
 		expect(em.query).not.toHaveBeenCalled();
 	});
 
 	it('rejects 400 when a finding has no matching action', async () => {
 		const dto = baseDto({
-			findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+			findings: [
+				{
+					tempId: 'tF',
+					id: null,
+					description: { es: 'f' },
+					criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+				},
+			],
 			actions: [],
 		});
-		await expect(service.createIfc(dto, 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		await expect(service.createIfc(dto, 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.BAD_REQUEST,
+		});
 		expect(em.query).not.toHaveBeenCalled();
 	});
 });
@@ -580,18 +792,37 @@ describe('IfcService.patch', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
 	const baseDto = (overrides: Partial<IfcContentDto> = {}): IfcContentDto => ({
 		submit: false,
 		information: {},
-		findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+		findings: [
+			{
+				tempId: 'tF',
+				id: null,
+				description: { es: 'f' },
+				criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+			},
+		],
 		actions: [{ tempId: 'tA', id: null, description: { es: 'a' }, finding_temp_id: 'tF' }],
 		...overrides,
 	});
 
-	const patchCtxRow = (overrides: Partial<{ ifc_course_staff_id: number; course_chart_id: number; requester_staff_id: number; current_status_code: string | null }> = {}) => [
+	const patchCtxRow = (
+		overrides: Partial<{
+			ifc_course_staff_id: number;
+			course_chart_id: number;
+			requester_staff_id: number;
+			current_status_code: string | null;
+		}> = {},
+	) => [
 		{
 			ifc_course_staff_id: 11,
 			course_chart_id: 500,
@@ -602,21 +833,33 @@ describe('IfcService.patch', () => {
 	];
 
 	it('rejects 409 when current status is SUBMITTED', async () => {
-		em.query.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED })).mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes, status fails
+		em.query
+			.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
+			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes, status fails
 
-		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.CONFLICT,
+		});
 	});
 
 	it('rejects 409 when current status is APPROVED', async () => {
-		em.query.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.APPROVED })).mockResolvedValueOnce([{ '?column?': 1 }]);
+		em.query
+			.mockResolvedValueOnce(patchCtxRow({ current_status_code: TYPE_CODES.IFC_STATUS.APPROVED }))
+			.mockResolvedValueOnce([{ '?column?': 1 }]);
 
-		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.CONFLICT,
+		});
 	});
 
 	it('rejects 403 when requester is not in the course chain', async () => {
-		em.query.mockResolvedValueOnce(patchCtxRow({ ifc_course_staff_id: 11, requester_staff_id: 22 })).mockResolvedValueOnce([]); // chain check returns no rows
+		em.query
+			.mockResolvedValueOnce(patchCtxRow({ ifc_course_staff_id: 11, requester_staff_id: 22 }))
+			.mockResolvedValueOnce([]); // chain check returns no rows
 
-		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.FORBIDDEN,
+		});
 	});
 
 	it('happy path: SAVED → SUBMITTED when submit=true (requester is own coordinator → in chain)', async () => {
@@ -634,7 +877,15 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
 			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
 			.mockResolvedValueOnce([]) // INSERT finding_actions
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED, name: { es: 'Enviado' }, at: '2026', comment: null, by: 'me' }]); // insertStatus
+			.mockResolvedValueOnce([
+				{
+					code: TYPE_CODES.IFC_STATUS.SUBMITTED,
+					name: { es: 'Enviado' },
+					at: '2026',
+					comment: null,
+					by: 'me',
+				},
+			]); // insertStatus
 
 		const result = await service.patch(42, baseDto({ submit: true }), 99, 9);
 		expect(result).toMatchObject({ id: 42, notification: { sent: false, reason: 'no_config' } });
@@ -645,7 +896,13 @@ describe('IfcService.patch', () => {
 
 	it('happy path: OBSERVED → SAVED when submit=false (ancestor — not own coord — passes chain check)', async () => {
 		em.query
-			.mockResolvedValueOnce(patchCtxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: TYPE_CODES.IFC_STATUS.OBSERVED }))
+			.mockResolvedValueOnce(
+				patchCtxRow({
+					ifc_course_staff_id: 22,
+					requester_staff_id: 11,
+					current_status_code: TYPE_CODES.IFC_STATUS.OBSERVED,
+				}),
+			)
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check — requester found on an ancestor
 			.mockResolvedValueOnce([{ course_id: 100, academic_period_id: 5 }])
 			.mockResolvedValueOnce([{ program_id: 50 }])
@@ -658,7 +915,15 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ c: 0 }]) // actions correlative
 			.mockResolvedValueOnce([{ id: 301 }]) // INSERT action
 			.mockResolvedValueOnce([]) // INSERT finding_actions
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SAVED, name: { es: 's' }, at: '2026', comment: null, by: 'me' }]);
+			.mockResolvedValueOnce([
+				{
+					code: TYPE_CODES.IFC_STATUS.SAVED,
+					name: { es: 's' },
+					at: '2026',
+					comment: null,
+					by: 'me',
+				},
+			]);
 
 		await service.patch(42, baseDto({ submit: false }), 99, 9);
 
@@ -667,16 +932,27 @@ describe('IfcService.patch', () => {
 	});
 
 	it('rejects 400 when findings array is empty', async () => {
-		await expect(service.patch(42, baseDto({ findings: [], actions: [] }), 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		await expect(
+			service.patch(42, baseDto({ findings: [], actions: [] }), 99, 9),
+		).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
 		expect(em.query).not.toHaveBeenCalled();
 	});
 
 	it('rejects 400 when a finding has no matching action', async () => {
 		const dto = baseDto({
-			findings: [{ tempId: 'tF', id: null, description: { es: 'f' }, criticality_code: TYPE_CODES.CRITICALITY.NORMAL }],
+			findings: [
+				{
+					tempId: 'tF',
+					id: null,
+					description: { es: 'f' },
+					criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
+				},
+			],
 			actions: [],
 		});
-		await expect(service.patch(42, dto, 99, 9)).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		await expect(service.patch(42, dto, 99, 9)).rejects.toMatchObject({
+			status: HttpStatus.BAD_REQUEST,
+		});
 		expect(em.query).not.toHaveBeenCalled();
 	});
 });
@@ -688,7 +964,12 @@ describe('IfcService.generateStatusReport', () => {
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(repository, dataSource as unknown as DataSource, pdfRenderer as any, dispatcher as any);
+		service = new IfcService(
+			repository,
+			dataSource as unknown as DataSource,
+			pdfRenderer as any,
+			dispatcher as any,
+		);
 	});
 
 	const statusTypes = [
@@ -714,7 +995,14 @@ describe('IfcService.generateStatusReport', () => {
 		expect(filename).toBe('Reporte_Estado_IFC_EISCB_CS.xlsx');
 
 		const [, statusReportParams] = dataSource.query.mock.calls[2];
-		expect(statusReportParams).toEqual([[310, 311], 5, 9, TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR, TYPE_CODES.ENTITY_TYPE.SCHOOL, 'es']);
+		expect(statusReportParams).toEqual([
+			[310, 311],
+			5,
+			9,
+			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			'es',
+		]);
 	});
 
 	it('drops the program suffix when chart_ids span multiple programs', async () => {
@@ -728,7 +1016,10 @@ describe('IfcService.generateStatusReport', () => {
 	});
 
 	it('falls back to IFC when REPORT_CODES_SQL returns no school code', async () => {
-		dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce(statusTypes).mockResolvedValueOnce([]);
+		dataSource.query
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce(statusTypes)
+			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport(dto, 9);
 		expect(filename).toBe('Reporte_Estado_IFC_IFC.xlsx');
@@ -756,7 +1047,15 @@ describe('IfcService.generateStatusReport', () => {
 				coordinator_code: 'P1',
 				status_code: null,
 			},
-			{ course_name: 'Curso B', area_label: 'Área 1', program_label: 'Carrera X', coordinator_name: null, coordinator_email: null, coordinator_code: null, status_code: 'TG701-T003' },
+			{
+				course_name: 'Curso B',
+				area_label: 'Área 1',
+				program_label: 'Carrera X',
+				coordinator_name: null,
+				coordinator_email: null,
+				coordinator_code: null,
+				status_code: 'TG701-T003',
+			},
 		];
 		dataSource.query
 			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }])
@@ -780,7 +1079,17 @@ describe('IfcService.generateStatusReport', () => {
 
 	it('uses the en label for UNREGISTERED when lang=en', async () => {
 		const ExcelJS = require('exceljs');
-		const rows = [{ course_name: 'Course A', area_label: 'Area 1', program_label: 'Program X', coordinator_name: 'Ada', coordinator_email: 'a@x', coordinator_code: 'P1', status_code: null }];
+		const rows = [
+			{
+				course_name: 'Course A',
+				area_label: 'Area 1',
+				program_label: 'Program X',
+				coordinator_name: 'Ada',
+				coordinator_email: 'a@x',
+				coordinator_code: 'P1',
+				status_code: null,
+			},
+		];
 		dataSource.query
 			.mockResolvedValueOnce([{ school_code: 'EISCB', program_codes: ['CS'] }])
 			.mockResolvedValueOnce(statusTypes)

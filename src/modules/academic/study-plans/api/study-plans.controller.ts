@@ -10,7 +10,11 @@ import {
 	SwaggerStudyPlanGetByFilters,
 } from './docs/study-plans.swagger';
 import { StudyPlanService } from './study-plans.service';
-import { CreateStudyPlanDto, UpdateStudyPlanDto, FilterStudyPlanDto } from '../model/study-plans.dtos';
+import {
+	CreateStudyPlanDto,
+	UpdateStudyPlanDto,
+	FilterStudyPlanDto,
+} from '../model/study-plans.dtos';
 
 @SwaggerStudyPlanController()
 export class StudyPlanController extends BaseController<StudyPlanService> {

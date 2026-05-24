@@ -1,4 +1,12 @@
-import { HttpException, HttpStatus, Controller, Get, Query, Res, UnauthorizedException } from '@nestjs/common';
+import {
+	HttpException,
+	HttpStatus,
+	Controller,
+	Get,
+	Query,
+	Res,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { ApiQuery, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
@@ -22,10 +30,17 @@ export class AuthController {
 	@Public()
 	@Get('microsoft')
 	@ApiOperation({ summary: 'Iniciar login con Microsoft Entra ID (requiere school_code)' })
-	@ApiQuery({ name: 'school_code', required: true, description: 'Código de la escuela seleccionada' })
+	@ApiQuery({
+		name: 'school_code',
+		required: true,
+		description: 'Código de la escuela seleccionada',
+	})
 	async loginWithMicrosoft(@Query('school_code') school_code: string, @Res() res: Response) {
 		if (!school_code) {
-			throw new HttpException({ message: 'error.school.required', errors: ['error.school.required'] }, HttpStatus.BAD_REQUEST);
+			throw new HttpException(
+				{ message: 'error.school.required', errors: ['error.school.required'] },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
 		const school_id = await this.authService.resolveSchoolIdByCode(school_code);
@@ -47,7 +62,11 @@ export class AuthController {
 	@Public()
 	@Get('callback/azure-ad')
 	@ApiOperation({ summary: 'Callback de Microsoft Entra ID' })
-	async microsoftCallback(@Query('code') code: string, @Query('state') state: string, @Res({ passthrough: true }) res: Response) {
+	async microsoftCallback(
+		@Query('code') code: string,
+		@Query('state') state: string,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const parsed = this.parseState(state);
 		const storedCsrf = res.req?.cookies?.[MICROSOFT_STATE_COOKIE];
 		this.validateCsrf(parsed.csrf, storedCsrf);

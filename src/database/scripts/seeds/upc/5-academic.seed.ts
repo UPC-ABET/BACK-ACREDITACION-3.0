@@ -21,12 +21,35 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	const programValues = [
-		['TG102-T001', 'PROG_SOFT', i18n('Ingenieria de Software', 'Software Engineering'), i18n('Bachiller', 'Bachelor')],
-		['TG102-T001', 'PROG_SIST', i18n('Ingenieria de Sistemas', 'Systems Engineering'), i18n('Bachiller', 'Bachelor')],
-		['TG102-T001', 'PROG_ADMIN', i18n('Administracion de Empresas', 'Business Administration'), i18n('Bachiller', 'Bachelor')],
-		['TG102-T001', 'CS', i18n('Ciencias de la Computacion', 'Computer Science'), i18n('Bachiller', 'Bachelor')],
+		[
+			'TG102-T001',
+			'PROG_SOFT',
+			i18n('Ingenieria de Software', 'Software Engineering'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+		[
+			'TG102-T001',
+			'PROG_SIST',
+			i18n('Ingenieria de Sistemas', 'Systems Engineering'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+		[
+			'TG102-T001',
+			'PROG_ADMIN',
+			i18n('Administracion de Empresas', 'Business Administration'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+		[
+			'TG102-T001',
+			'CS',
+			i18n('Ciencias de la Computacion', 'Computer Science'),
+			i18n('Bachiller', 'Bachelor'),
+		],
 	]
-		.map(([modality, code, name, degree]) => `('${modality}', '${code}', '${name}'::jsonb, '${degree}'::jsonb)`)
+		.map(
+			([modality, code, name, degree]) =>
+				`('${modality}', '${code}', '${name}'::jsonb, '${degree}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -66,41 +89,68 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		[
 			'CRS_FUND_PROG',
 			i18n('Fundamentos de Programacion', 'Fundamentals of Programming'),
-			i18n('Curso introductorio de programacion estructurada', 'Introductory structured programming course'),
-			i18n('Construye soluciones basicas usando algoritmos y estructuras de control.', 'Builds basic solutions using algorithms and control structures.'),
+			i18n(
+				'Curso introductorio de programacion estructurada',
+				'Introductory structured programming course',
+			),
+			i18n(
+				'Construye soluciones basicas usando algoritmos y estructuras de control.',
+				'Builds basic solutions using algorithms and control structures.',
+			),
 		],
 		[
 			'CRS_REQ_ENG',
 			i18n('Ingenieria de Requisitos', 'Requirements Engineering'),
-			i18n('Curso de analisis y especificacion de requisitos', 'Course on requirements analysis and specification'),
-			i18n('Elicita, documenta y valida requisitos de software con stakeholders.', 'Elicits, documents and validates software requirements with stakeholders.'),
+			i18n(
+				'Curso de analisis y especificacion de requisitos',
+				'Course on requirements analysis and specification',
+			),
+			i18n(
+				'Elicita, documenta y valida requisitos de software con stakeholders.',
+				'Elicits, documents and validates software requirements with stakeholders.',
+			),
 		],
 		[
 			'CRS_INT_PROJ',
 			i18n('Proyecto Integrador de Software', 'Software Integrator Project'),
 			i18n('Curso integrador basado en proyecto', 'Project-based capstone course'),
-			i18n('Integra competencias tecnicas, comunicacionales y de trabajo en equipo.', 'Integrates technical, communication and teamwork competencies.'),
+			i18n(
+				'Integra competencias tecnicas, comunicacionales y de trabajo en equipo.',
+				'Integrates technical, communication and teamwork competencies.',
+			),
 		],
 		[
 			'CC101',
 			i18n('Algoritmos y Estructuras de Datos', 'Algorithms and Data Structures'),
 			i18n('Curso base de algoritmica', 'Core algorithmics course'),
-			i18n('Disena algoritmos eficientes y estructuras de datos basicas.', 'Designs efficient algorithms and basic data structures.'),
+			i18n(
+				'Disena algoritmos eficientes y estructuras de datos basicas.',
+				'Designs efficient algorithms and basic data structures.',
+			),
 		],
 		[
 			'CC102',
 			i18n('Bases de Datos', 'Databases'),
 			i18n('Curso de modelado y consulta de datos', 'Data modeling and querying course'),
-			i18n('Modela y consulta bases de datos relacionales.', 'Models and queries relational databases.'),
+			i18n(
+				'Modela y consulta bases de datos relacionales.',
+				'Models and queries relational databases.',
+			),
 		],
 		[
 			'CC103',
 			i18n('Ingenieria de Software', 'Software Engineering'),
 			i18n('Curso de ciclo de vida de software', 'Software lifecycle course'),
-			i18n('Aplica procesos y practicas del ciclo de vida del software.', 'Applies software lifecycle processes and practices.'),
+			i18n(
+				'Aplica procesos y practicas del ciclo de vida del software.',
+				'Applies software lifecycle processes and practices.',
+			),
 		],
 	]
-		.map(([code, name, description, lo]) => `('${code}', '${name}'::jsonb, '${description}'::jsonb, '${lo}'::jsonb)`)
+		.map(
+			([code, name, description, lo]) =>
+				`('${code}', '${name}'::jsonb, '${description}'::jsonb, '${lo}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -120,17 +170,34 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			'PROG_SOFT',
 			'SP_SOFT26',
 			i18n('Plan 2026 Ingenieria de Software', '2026 Software Engineering Plan'),
-			i18n('Plan de estudios base para el programa de Ingenieria de Software', 'Base study plan for the Software Engineering program'),
+			i18n(
+				'Plan de estudios base para el programa de Ingenieria de Software',
+				'Base study plan for the Software Engineering program',
+			),
 		],
 		[
 			'PROG_ADMIN',
 			'SP_ADM26',
 			i18n('Plan 2026 Administracion', '2026 Business Administration Plan'),
-			i18n('Plan de estudios base para Administracion de Empresas', 'Base study plan for Business Administration'),
+			i18n(
+				'Plan de estudios base para Administracion de Empresas',
+				'Base study plan for Business Administration',
+			),
 		],
-		['CS', 'SP_CS_2502', i18n('Plan CS 2025-2', '2025-2 CS Plan'), i18n('Plan de estudios para Ciencias de la Computacion (periodo 202502)', 'Computer Science study plan (period 202502)')],
+		[
+			'CS',
+			'SP_CS_2502',
+			i18n('Plan CS 2025-2', '2025-2 CS Plan'),
+			i18n(
+				'Plan de estudios para Ciencias de la Computacion (periodo 202502)',
+				'Computer Science study plan (period 202502)',
+			),
+		],
 	]
-		.map(([programCode, code, name, description]) => `('${programCode}', '${code}', '${name}'::jsonb, '${description}'::jsonb)`)
+		.map(
+			([programCode, code, name, description]) =>
+				`('${programCode}', '${code}', '${name}'::jsonb, '${description}'::jsonb)`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
@@ -212,7 +279,9 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		['prof.maria.garcia@upc.edu.pe', 'PROF-002'],
 		['coord.eiscb@upc.edu.pe', 'PROF-003'],
 	];
-	const professorValues = professorRows.map(([email, code]) => `('${email}', '${code}')`).join(',\n\t\t\t');
+	const professorValues = professorRows
+		.map(([email, code]) => `('${email}', '${code}')`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."professors" (staff_id, code)
@@ -401,10 +470,29 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	const chartValues = [
-		['calidad@upc.edu.pe', 'AP_2026_1', 1, 0, i18n('Direccion de Calidad Academica', 'Academic Quality Office'), 'TG903-T002', 'PROG_SOFT'],
-		['prof.juan.perez@upc.edu.pe', 'AP_2026_1', 3, 1, i18n('Coordinacion de Ingenieria de Software', 'Software Engineering Coordination'), 'TG903-T001', 'SCH_SOFT'],
+		[
+			'calidad@upc.edu.pe',
+			'AP_2026_1',
+			1,
+			0,
+			i18n('Direccion de Calidad Academica', 'Academic Quality Office'),
+			'TG903-T002',
+			'PROG_SOFT',
+		],
+		[
+			'prof.juan.perez@upc.edu.pe',
+			'AP_2026_1',
+			3,
+			1,
+			i18n('Coordinacion de Ingenieria de Software', 'Software Engineering Coordination'),
+			'TG903-T001',
+			'SCH_SOFT',
+		],
 	]
-		.map(([email, period, lvl, root, title, etCode, ref]) => `('${email}', '${period}', ${lvl}, ${root}, '${title}'::jsonb, '${etCode}', '${ref}')`)
+		.map(
+			([email, period, lvl, root, title, etCode, ref]) =>
+				`('${email}', '${period}', ${lvl}, ${root}, '${title}'::jsonb, '${etCode}', '${ref}')`,
+		)
 		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`

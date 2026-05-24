@@ -1,11 +1,21 @@
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+	Injectable,
+	NotFoundException,
+	BadRequestException,
+	Inject,
+	forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ProjectEntity } from '../model/projects.entity';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
-import { CreateProjectDto, ProjectEvaluatorResponseDto, ProjectDetailsResponseDto } from '../model/projects.dtos';
+import {
+	CreateProjectDto,
+	ProjectEvaluatorResponseDto,
+	ProjectDetailsResponseDto,
+} from '../model/projects.dtos';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
@@ -35,7 +45,7 @@ export class ProjectConfigService {
 		@Inject(forwardRef(() => RubricConfigService))
 		private readonly rubricConfigService: RubricConfigService,
 		private readonly dataSource: DataSource,
-	) { }
+	) {}
 
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
 		const raw = await this.dataSource.query(
@@ -57,7 +67,9 @@ export class ProjectConfigService {
 	private async resolveEvaluatorTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
 		if (!type) {
-			throw new BadRequestException(`Tipo de evaluador con código '${code}' no encontrado en core.types.`);
+			throw new BadRequestException(
+				`Tipo de evaluador con código '${code}' no encontrado en core.types.`,
+			);
 		}
 		return type.id;
 	}
@@ -72,7 +84,9 @@ export class ProjectConfigService {
 	 * 4. Todo se guarda de forma transaccional o se revierte
 	 */
 	async createProject(dto: CreateProjectDto): Promise<ProjectEntity> {
-		const evaluatorTypeId = await this.resolveEvaluatorTypeIdByCode(this.DEFAULT_EVALUATOR_TYPE_CODE);
+		const evaluatorTypeId = await this.resolveEvaluatorTypeIdByCode(
+			this.DEFAULT_EVALUATOR_TYPE_CODE,
+		);
 
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
@@ -134,7 +148,6 @@ export class ProjectConfigService {
 		gradeTypeId?: number,
 		rubricTypeId?: number,
 	): Promise<ProjectDetailsResponseDto> {
-
 		// ── 1. Proyecto con cadena de enrollment ─────────────────────────────
 		const project = await this.projectRepo
 			.createQueryBuilder('p')
@@ -159,19 +172,20 @@ export class ProjectConfigService {
 		}
 
 		// ── 2. study_plan_course_id desde el primer estudiante con cadena completa
-		const studentWithChain = project.students
-			?.find(s => s.student_section_enrollment?.course_section?.study_plan_course_id != null);
+		const studentWithChain = project.students?.find(
+			(s) => s.student_section_enrollment?.course_section?.study_plan_course_id != null,
+		);
 
-		const studyPlanCourseId = studentWithChain
-			?.student_section_enrollment?.course_section?.study_plan_course_id;
+		const studyPlanCourseId =
+			studentWithChain?.student_section_enrollment?.course_section?.study_plan_course_id;
 
 		if (!studyPlanCourseId) {
 			throw new BadRequestException('El proyecto no tiene estudiantes con curso asignado.');
 		}
 
-		const academicPeriod = studentWithChain
-			?.student_section_enrollment?.course_section?.study_plan_course
-			?.study_plan_academic_period?.academic_period;
+		const academicPeriod =
+			studentWithChain?.student_section_enrollment?.course_section?.study_plan_course
+				?.study_plan_academic_period?.academic_period;
 
 		// ── 3. Rúbrica específica: curso + tipo de evaluación + tipo de rúbrica
 		const rubricWhere: any = {
@@ -194,11 +208,13 @@ export class ProjectConfigService {
 		if (!rubric) {
 			throw new NotFoundException(
 				`No se encontró rúbrica activa para el curso ${studyPlanCourseId} ` +
-				`con grade_type_id=${gradeTypeId} y rubric_type_id=${rubricTypeId}.`,
+					`con grade_type_id=${gradeTypeId} y rubric_type_id=${rubricTypeId}.`,
 			);
 		}
 
-		const rubricContext = await this.rubricConfigService.getRubricWithContextData(rubric.id).catch(() => null);
+		const rubricContext = await this.rubricConfigService
+			.getRubricWithContextData(rubric.id)
+			.catch(() => null);
 
 		if (!rubricContext) {
 			throw new NotFoundException('Error al cargar el contexto de la rúbrica.');
@@ -230,11 +246,7 @@ export class ProjectConfigService {
 					'rqc',
 					'rqc.id = score.rubric_question_criteria_id',
 				)
-				.innerJoin(
-					RubricQuestionEntity,
-					'rq',
-					'rq.id = rqc.rubric_question_id',
-				)
+				.innerJoin(RubricQuestionEntity, 'rq', 'rq.id = rqc.rubric_question_id')
 				.where('ps.project_id = :projectId', { projectId })
 				.andWhere('rq.rubric_id = :rubricId', { rubricId: rubric.id })
 				.getMany();
@@ -243,15 +255,13 @@ export class ProjectConfigService {
 		// ── 7. Estudiantes con nota total
 		const studentDtos = (project.students || []).map((s) => {
 			const user = s.student_section_enrollment?.enrolled_student?.student?.user;
-			const evals = evaluations.filter(ev => ev.project_student_id === s.id);
+			const evals = evaluations.filter((ev) => ev.project_student_id === s.id);
 
 			let totalGrade: number | null = null;
 
 			if (isEvaluationMode && evals.length > 0) {
 				const sumScores = evals.reduce((sum, ev) => {
-					const evalSum = (ev.scores || []).reduce(
-						(sSum, score) => sSum + Number(score.score), 0,
-					);
+					const evalSum = (ev.scores || []).reduce((sSum, score) => sSum + Number(score.score), 0);
 					return sum + evalSum;
 				}, 0);
 
@@ -265,9 +275,9 @@ export class ProjectConfigService {
 
 			const evaluationStatuses = isEvaluationMode
 				? evals.map((ev) => ({
-					evaluator_id: ev.project_evaluator_id,
-					qualification_status_type_id: ev.qualification_status_type_id,
-				}))
+						evaluator_id: ev.project_evaluator_id,
+						qualification_status_type_id: ev.qualification_status_type_id,
+					}))
 				: [];
 
 			return {
@@ -292,9 +302,9 @@ export class ProjectConfigService {
 
 				if (isEvaluationMode) {
 					criteriaScores = [];
-					evaluations.forEach(ev => {
+					evaluations.forEach((ev) => {
 						const scoreObj = (ev.scores || []).find(
-							sc => sc.rubric_question_criteria_id === c.id,
+							(sc) => sc.rubric_question_criteria_id === c.id,
 						);
 						if (scoreObj) {
 							criteriaScores!.push({
@@ -318,12 +328,14 @@ export class ProjectConfigService {
 		}));
 
 		// ── 9. Mapear evaluadores con info del docente y tipo
-		const evaluatorTypeIds = [...new Set((project.evaluators || []).map(e => e.evaluator_type_id))];
+		const evaluatorTypeIds = [
+			...new Set((project.evaluators || []).map((e) => e.evaluator_type_id)),
+		];
 		const evaluatorTypesMap = new Map<number, any>();
 
 		if (evaluatorTypeIds.length > 0) {
 			const types = await this.typeRepo.findByIds(evaluatorTypeIds);
-			types.forEach(t => evaluatorTypesMap.set(t.id, t));
+			types.forEach((t) => evaluatorTypesMap.set(t.id, t));
 		}
 
 		const evaluatorDtos = (project.evaluators || []).map((e) => {
@@ -375,7 +387,6 @@ export class ProjectConfigService {
 		schoolId?: number,
 		gradeTypeId?: number,
 	): Promise<ProjectEvaluatorResponseDto[]> {
-
 		// ── QUERY 1 ───────────────────────────────────────────────────────────
 		let filterSql = `
     SELECT DISTINCT pe.project_id
@@ -412,25 +423,25 @@ export class ProjectConfigService {
 			paramIdx++;
 		}
 
-		const programIdsPromise = schoolId ? this.resolveProgramIdsBySchoolId(schoolId) : Promise.resolve(null);
+		const programIdsPromise = schoolId
+			? this.resolveProgramIdsBySchoolId(schoolId)
+			: Promise.resolve(null);
 		const programIds = await programIdsPromise;
-	
 
 		if (programIds !== null) {
 			if (programIds.length === 0) return [];
 			filterSql += ` AND program.id = ANY($${paramIdx}::int[])`;
 			params.push(programIds);
-			paramIdx++;
 		}
 
-		const rows = await this.dataSource.query(filterSql, params) as { project_id: number }[];
+		const rows = (await this.dataSource.query(filterSql, params)) as { project_id: number }[];
 
 		const projectIds = rows.map((r) => r.project_id);
 		if (projectIds.length === 0) return [];
 
-
 		// ── QUERY 2: todo en SQL nativo para evitar el producto cartesiano ────
-		const raw = await this.dataSource.query(`
+		const raw = (await this.dataSource.query(
+			`
     SELECT
       p.id              AS project_id,
       p.code            AS project_code,
@@ -467,8 +478,9 @@ export class ProjectConfigService {
     LEFT JOIN academic.study_plan_courses spc      ON spc.id = cs.study_plan_course_id
     LEFT JOIN academic.courses c                   ON c.id = spc.course_id
     WHERE p.id = ANY($1::int[])
-  `, [projectIds]) as any[];
-
+  `,
+			[projectIds],
+		)) as any[];
 
 		// ── Agrupar filas por project_id ──────────────────────────────────────
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
@@ -476,9 +488,8 @@ export class ProjectConfigService {
 		for (const row of raw) {
 			if (!projectMap.has(row.project_id)) {
 				const courseName = row.course_name;
-				const resolvedCourseName = typeof courseName === 'string'
-					? courseName
-					: (courseName?.es || courseName?.en || '');
+				const resolvedCourseName =
+					typeof courseName === 'string' ? courseName : courseName?.es || courseName?.en || '';
 
 				projectMap.set(row.project_id, {
 					project_id: row.project_id,
@@ -506,7 +517,10 @@ export class ProjectConfigService {
 			}
 
 			// Estudiantes (deduplicar por student_ps_id)
-			if (row.student_ps_id && !(project.students as any[]).find((s: any) => s.id === row.student_ps_id)) {
+			if (
+				row.student_ps_id &&
+				!(project.students as any[]).find((s: any) => s.id === row.student_ps_id)
+			) {
 				(project.students as any[]).push({
 					id: row.student_ps_id,
 					student_id: row.student_id || 0,

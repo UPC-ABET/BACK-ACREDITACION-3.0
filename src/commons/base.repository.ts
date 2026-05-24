@@ -1,4 +1,12 @@
-import { DataSource, EntityManager, FindManyOptions, FindOneOptions, FindOperator, IsNull, Repository } from 'typeorm';
+import {
+	DataSource,
+	EntityManager,
+	FindManyOptions,
+	FindOneOptions,
+	FindOperator,
+	IsNull,
+	Repository,
+} from 'typeorm';
 import { IBaseRepository } from './ibase.repository';
 
 export abstract class BaseRepostitory implements IBaseRepository {
@@ -54,7 +62,9 @@ export abstract class BaseRepostitory implements IBaseRepository {
 	}
 
 	public async findOneById(id: any, relations?: string[]) {
-		return await this.repository.findOne(this.normalizeFindOneOptions({ where: { id } }, relations));
+		return await this.repository.findOne(
+			this.normalizeFindOneOptions({ where: { id } }, relations),
+		);
 	}
 
 	public async findOneByCondition(options: FindOneOptions, relations?: string[]) {
@@ -65,7 +75,10 @@ export abstract class BaseRepostitory implements IBaseRepository {
 		return manager ? manager.getRepository(this.repository.target) : this.repository;
 	}
 
-	private normalizeFindManyOptions(options: FindManyOptions = {}, relations?: string[]): FindManyOptions {
+	private normalizeFindManyOptions(
+		options: FindManyOptions = {},
+		relations?: string[],
+	): FindManyOptions {
 		const normalized = { ...options };
 
 		if (relations?.length) {

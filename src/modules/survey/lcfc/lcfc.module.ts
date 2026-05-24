@@ -13,7 +13,13 @@ import { LcfcController } from './api/lcfc.controller';
 @Module({
 	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity])],
 	controllers: [LcfcController],
-	providers: [LcfcConfigService, LcfcNotificationService, LcfcConfigRepository, LcfcSurveyRepository, LcfcNotificationRepository],
+	providers: [
+		LcfcConfigService,
+		LcfcNotificationService,
+		LcfcConfigRepository,
+		LcfcSurveyRepository,
+		LcfcNotificationRepository,
+	],
 	exports: [LcfcConfigService, LcfcNotificationService],
 })
 export class LcfcModule {}

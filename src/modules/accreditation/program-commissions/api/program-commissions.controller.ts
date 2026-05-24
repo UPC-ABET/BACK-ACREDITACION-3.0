@@ -10,7 +10,11 @@ import {
 	SwaggerProgramCommissionGetByFilters,
 } from './docs/program-commissions.swagger';
 import { ProgramCommissionService } from './program-commissions.service';
-import { CreateProgramCommissionDto, UpdateProgramCommissionDto, FilterProgramCommissionDto } from '../model/program-commissions.dtos';
+import {
+	CreateProgramCommissionDto,
+	UpdateProgramCommissionDto,
+	FilterProgramCommissionDto,
+} from '../model/program-commissions.dtos';
 
 @SwaggerProgramCommissionController()
 export class ProgramCommissionController extends BaseController<ProgramCommissionService> {

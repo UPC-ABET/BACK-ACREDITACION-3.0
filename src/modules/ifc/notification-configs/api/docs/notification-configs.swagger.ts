@@ -11,11 +11,14 @@ import {
 
 const cfg = notificationConfigsRoutes.notification_configs;
 
-export const SwaggerNotificationConfigController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerNotificationConfigController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerNotificationConfigCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateNotificationConfigDto });
+export const SwaggerNotificationConfigCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateNotificationConfigDto });
 
-export const SwaggerNotificationConfigUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateNotificationConfigDto });
+export const SwaggerNotificationConfigUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateNotificationConfigDto });
 
 export const SwaggerNotificationConfigDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -23,7 +26,8 @@ export const SwaggerNotificationConfigGetAll = () => HttpMethodWithSwagger(cfg.o
 
 export const SwaggerNotificationConfigGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerNotificationConfigGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterNotificationConfigDto });
+export const SwaggerNotificationConfigGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterNotificationConfigDto });
 
 export const SwaggerNotificationConfigsByPeriod = () =>
 	HttpMethodWithSwagger({

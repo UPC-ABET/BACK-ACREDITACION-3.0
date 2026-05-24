@@ -7,7 +7,12 @@ import { LcfcNotificationRepository } from '../core/lcfc-notification.repository
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
 import { LcfcConfigRepository } from '../core/lcfc-config.repository';
 import { LcfcValidation } from '../core/lcfc.validation';
-import { SendLcfcNotificationDto, GetLcfcSurveyByTokenDto, CompleteLcfcSurveyDto, DashboardLcfcDto } from '../model/lcfc.dtos';
+import {
+	SendLcfcNotificationDto,
+	GetLcfcSurveyByTokenDto,
+	CompleteLcfcSurveyDto,
+	DashboardLcfcDto,
+} from '../model/lcfc.dtos';
 
 @Injectable()
 export class LcfcNotificationService {
@@ -22,19 +27,35 @@ export class LcfcNotificationService {
 	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
 
 	private async getTypeIds() {
-		const [lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] = await Promise.all([
-			this.surveyRepo.getLcfcSurveyTypeId(),
-			this.surveyRepo.getActiveSurveyStatusId(),
-			this.surveyRepo.getClosedSurveyStatusId(),
-			this.surveyRepo.getScheduledNotificationStatusId(),
-			this.surveyRepo.getSentNotificationStatusId(),
-		]);
+		const [lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
+			await Promise.all([
+				this.surveyRepo.getLcfcSurveyTypeId(),
+				this.surveyRepo.getActiveSurveyStatusId(),
+				this.surveyRepo.getClosedSurveyStatusId(),
+				this.surveyRepo.getScheduledNotificationStatusId(),
+				this.surveyRepo.getSentNotificationStatusId(),
+			]);
 
-		if (!lcfcSurveyTypeId) throw new BadRequestException('Tipo de encuesta LCFC (TG601-T004) no encontrado. Ejecuta el seed de tipos.');
-		if (!activeStatusId) throw new BadRequestException('Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.');
-		if (!closedStatusId) throw new BadRequestException('Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.');
-		if (!scheduledStatusId) throw new BadRequestException('Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.');
-		if (!sentStatusId) throw new BadRequestException('Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.');
+		if (!lcfcSurveyTypeId)
+			throw new BadRequestException(
+				'Tipo de encuesta LCFC (TG601-T004) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!activeStatusId)
+			throw new BadRequestException(
+				'Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!closedStatusId)
+			throw new BadRequestException(
+				'Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!scheduledStatusId)
+			throw new BadRequestException(
+				'Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.',
+			);
+		if (!sentStatusId)
+			throw new BadRequestException(
+				'Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.',
+			);
 
 		return { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
 	}
@@ -42,7 +63,8 @@ export class LcfcNotificationService {
 	// ─── Send notifications: creates surveys + notifications + sends emails ─────
 
 	async sendNotifications(dto: SendLcfcNotificationDto) {
-		const { lcfcSurveyTypeId, activeStatusId, scheduledStatusId, sentStatusId } = await this.getTypeIds();
+		const { lcfcSurveyTypeId, activeStatusId, scheduledStatusId, sentStatusId } =
+			await this.getTypeIds();
 
 		// 1. Load active LCFC configs for the period
 		const activeConfigs = await this.configRepo.findAllLcfc({
@@ -52,11 +74,15 @@ export class LcfcNotificationService {
 		});
 
 		if (activeConfigs.length === 0) {
-			throw new BadRequestException('No hay cursos LCFC activos para el período indicado. Genere y active configuraciones primero.');
+			throw new BadRequestException(
+				'No hay cursos LCFC activos para el período indicado. Genere y active configuraciones primero.',
+			);
 		}
 
 		// 2. Collect active course_section_ids, applying optional filters
-		let courseSectionIds = activeConfigs.map((c) => (c.extra as any)?.course_section_id as number).filter((id): id is number => typeof id === 'number');
+		let courseSectionIds = activeConfigs
+			.map((c) => (c.extra as any)?.course_section_id as number)
+			.filter((id): id is number => typeof id === 'number');
 
 		if (dto.campus_id) {
 			const campusId = dto.campus_id;
@@ -72,14 +98,18 @@ export class LcfcNotificationService {
 		}
 
 		if (courseSectionIds.length === 0) {
-			throw new BadRequestException('No hay secciones de curso activas que coincidan con los filtros indicados.');
+			throw new BadRequestException(
+				'No hay secciones de curso activas que coincidan con los filtros indicados.',
+			);
 		}
 
 		// 3. Get enrolled students for all relevant course sections
 		const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(courseSectionIds);
 
 		if (enrolledStudents.length === 0) {
-			throw new BadRequestException('No se encontraron estudiantes matriculados en los cursos LCFC activos.');
+			throw new BadRequestException(
+				'No se encontraron estudiantes matriculados en los cursos LCFC activos.',
+			);
 		}
 
 		// 4. Create surveys + notifications in a transaction for new student-course pairs
@@ -94,11 +124,19 @@ export class LcfcNotificationService {
 
 		try {
 			for (const student of enrolledStudents) {
-				const config = activeConfigs.find((c) => (c.extra as any)?.course_section_id === student.course_section_id);
-				const programId = dto.program_id ?? student.program_id ?? (config?.extra as any)?.program_id ?? null;
-				const campusId = dto.campus_id ?? student.campus_id ?? (config?.extra as any)?.campus_id ?? null;
+				const config = activeConfigs.find(
+					(c) => (c.extra as any)?.course_section_id === student.course_section_id,
+				);
+				const programId =
+					dto.program_id ?? student.program_id ?? (config?.extra as any)?.program_id ?? null;
+				const campusId =
+					dto.campus_id ?? student.campus_id ?? (config?.extra as any)?.campus_id ?? null;
 
-				const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(lcfcSurveyTypeId, student.student_id, student.course_section_id);
+				const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
+					lcfcSurveyTypeId,
+					student.student_id,
+					student.course_section_id,
+				);
 
 				if (!existingSurvey) {
 					// Create survey
@@ -107,7 +145,15 @@ export class LcfcNotificationService {
 						 (survey_type_id, survey_status_type_id, student_id, academic_period_id, campus_id, program_id, course_section_id)
 						 VALUES ($1, $2, $3, $4, $5, $6, $7)
 						 RETURNING id`,
-						[lcfcSurveyTypeId, activeStatusId, student.student_id, dto.academic_period_id, campusId, programId, student.course_section_id],
+						[
+							lcfcSurveyTypeId,
+							activeStatusId,
+							student.student_id,
+							dto.academic_period_id,
+							campusId,
+							programId,
+							student.course_section_id,
+						],
 					);
 
 					const surveyId = inserted[0].id;
@@ -133,10 +179,10 @@ export class LcfcNotificationService {
 				} else {
 					alreadyExisted++;
 					// Include existing pending notifications so we can re-send if needed
-					const existingNotif = await queryRunner.manager.query(`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`, [
-						existingSurvey.id,
-						scheduledStatusId,
-					]);
+					const existingNotif = await queryRunner.manager.query(
+						`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
+						[existingSurvey.id, scheduledStatusId],
+					);
 
 					if (existingNotif?.[0]) {
 						pendingNotifications.push({
@@ -162,7 +208,10 @@ export class LcfcNotificationService {
 		}
 
 		// 5. Send emails to all pending notifications
-		const surveyBaseUrl = dto.survey_base_url || this.configService.get<string>('SURVEY_BASE_URL') || 'http://localhost:3001';
+		const surveyBaseUrl =
+			dto.survey_base_url ||
+			this.configService.get<string>('SURVEY_BASE_URL') ||
+			'http://localhost:3001';
 		const transporter = this.createEmailTransporter();
 		const emailTemplate = await this.getEmailTemplate();
 
@@ -232,7 +281,9 @@ export class LcfcNotificationService {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData, dto.token);
 
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData!.course_section_id);
+		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
+			tokenData!.course_section_id,
+		);
 		const language = dto.language ?? 'es';
 
 		// Outcome names come from the DB in Spanish; English falls back to Spanish
@@ -268,32 +319,35 @@ export class LcfcNotificationService {
 
 		try {
 			for (const item of dto.scores) {
-				const existing = await queryRunner.manager.query(`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`, [tokenData!.survey_id, item.outcome_id]);
+				const existing = await queryRunner.manager.query(
+					`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
+					[tokenData!.survey_id, item.outcome_id],
+				);
 
 				if (existing?.length > 0) {
-					await queryRunner.manager.query(`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`, [
-						item.score,
-						item.commentaries ?? null,
-						tokenData!.survey_id,
-						item.outcome_id,
-					]);
+					await queryRunner.manager.query(
+						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
+						[item.score, item.commentaries ?? null, tokenData!.survey_id, item.outcome_id],
+					);
 				} else {
-					await queryRunner.manager.query(`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`, [
-						tokenData!.survey_id,
-						item.outcome_id,
-						item.score,
-						item.commentaries ?? null,
-					]);
+					await queryRunner.manager.query(
+						`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
+						[tokenData!.survey_id, item.outcome_id, item.score, item.commentaries ?? null],
+					);
 				}
 			}
 
-			const commentariesJson = dto.commentaries ? JSON.stringify({ commentaries: dto.commentaries }) : null;
+			const commentariesJson = dto.commentaries
+				? JSON.stringify({ commentaries: dto.commentaries })
+				: null;
 			await queryRunner.manager.query(
 				`UPDATE evidence.surveys
 				 SET survey_status_type_id = $1, updated_at = NOW()
 				     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 				 WHERE id = $2`,
-				commentariesJson ? [closedStatusId, tokenData!.survey_id, commentariesJson] : [closedStatusId, tokenData!.survey_id],
+				commentariesJson
+					? [closedStatusId, tokenData!.survey_id, commentariesJson]
+					: [closedStatusId, tokenData!.survey_id],
 			);
 
 			await queryRunner.commitTransaction();
@@ -317,11 +371,16 @@ export class LcfcNotificationService {
 	async getDashboard(dto: DashboardLcfcDto) {
 		const { lcfcSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
 
-		const data = await this.surveyRepo.getDashboardData(lcfcSurveyTypeId, activeStatusId, closedStatusId, {
-			academic_period_id: dto.academic_period_id,
-			program_id: dto.program_id,
-			campus_id: dto.campus_id,
-		});
+		const data = await this.surveyRepo.getDashboardData(
+			lcfcSurveyTypeId,
+			activeStatusId,
+			closedStatusId,
+			{
+				academic_period_id: dto.academic_period_id,
+				program_id: dto.program_id,
+				campus_id: dto.campus_id,
+			},
+		);
 
 		const completionRate = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
 
@@ -397,13 +456,17 @@ export class LcfcNotificationService {
 		});
 	}
 
-	private async sendEmail(transporter: nodemailer.Transporter | null, opts: { to: string; subject: string; html: string }): Promise<void> {
+	private async sendEmail(
+		transporter: nodemailer.Transporter | null,
+		opts: { to: string; subject: string; html: string },
+	): Promise<void> {
 		if (!transporter) {
 			console.log(`[LCFC EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
 			return;
 		}
 
-		const from = this.configService.get<string>('SMTP_FROM') ?? this.configService.get<string>('SMTP_USER');
+		const from =
+			this.configService.get<string>('SMTP_FROM') ?? this.configService.get<string>('SMTP_USER');
 		await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html });
 	}
 }

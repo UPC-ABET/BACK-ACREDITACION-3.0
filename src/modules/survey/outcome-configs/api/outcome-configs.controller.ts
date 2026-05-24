@@ -10,7 +10,11 @@ import {
 	SwaggerOutcomeConfigGetByFilters,
 } from './docs/outcome-configs.swagger';
 import { OutcomeConfigService } from './outcome-configs.service';
-import { CreateOutcomeConfigDto, UpdateOutcomeConfigDto, FilterOutcomeConfigDto } from '../model/outcome-configs.dtos';
+import {
+	CreateOutcomeConfigDto,
+	UpdateOutcomeConfigDto,
+	FilterOutcomeConfigDto,
+} from '../model/outcome-configs.dtos';
 
 @SwaggerOutcomeConfigController()
 export class OutcomeConfigController extends BaseController<OutcomeConfigService> {

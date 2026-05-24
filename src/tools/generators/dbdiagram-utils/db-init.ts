@@ -16,7 +16,9 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(1000) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,
 		);
-		await queryRunner.query(`CREATE INDEX "idx_academic_periods_year" ON "academic"."academic_periods" ("year")`);
+		await queryRunner.query(
+			`CREATE INDEX "idx_academic_periods_year" ON "academic"."academic_periods" ("year")`,
+		);
 		await queryRunner.query(
 			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(1000) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_db5d514f1f3dbbd718f2f8feaf0" PRIMARY KEY ("id"))`,
 		);
@@ -437,92 +439,264 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_11ba9460ef5a797504d1ab63b9a"`);
-		await queryRunner.query(`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_a968164f8aa1859576af56971c2"`);
-		await queryRunner.query(`ALTER TABLE "academic"."performance_levels" DROP CONSTRAINT "FK_d525cfd1a21b9e0488ef04cd09a"`);
-		await queryRunner.query(`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_8a14c3786b1412d4b11ebf144e7"`);
-		await queryRunner.query(`ALTER TABLE "core"."types" DROP CONSTRAINT "FK_d1bfd236db1805a762aa30de369"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_828d98255d254f812a0d6732fb9"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_60b889a63baa36375f264f812d9"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_0f54742a01d56561986c77b0aa2"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_6b7a0e963995aac32b706b65b1e"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_f23cab684bfd6263435e05121c4"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_9f3a2b5c6d7e8f9a0b1c2d3e4f5"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_8e2f1c4d5a6b7e8f9a0b1c2d3e4"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_e83ae3bbb89a4a8140408cc5ee4"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_d8115d6a5ea8c9170bfd417f525"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_c3ecb1a05e9f7f41142457de284"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_03fe9c891618b667a122233f067"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_bc50693334616aaea73fa04acb9"`);
-		await queryRunner.query(`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_6e239cee87fbc8145c259a57afe"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_74f59f74bf46c6224fcc44e8315"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_1956ae5a1d423350e1a0b7ca2d6"`);
-		await queryRunner.query(`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_f1979a38b2fc4be66a62f06de19"`);
-		await queryRunner.query(`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_3f9b6366ae909fd085358b64803"`);
-		await queryRunner.query(`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_c805f90e056db372ebdfb6423b6"`);
-		await queryRunner.query(`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_12ff6a3275ca209d440644c1eed"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_273a2def92ca98ca5b08cc44def"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_710e611b0159d1e6c85ea1fd260"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_9f050e51dcc8c94037242889065"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_a629bdf7af991a09332156cf090"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91"`);
-		await queryRunner.query(`ALTER TABLE "organization"."users" DROP CONSTRAINT "FK_9e86f4e5144e5f0c754ec343bea"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_47f96cc66aa222368281dbb4f8c"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_25e766780a4dab387ec7797b144"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_235074c210b929308c3ee4b8ec6"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_f713067637a7fae926e12670297"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_11936d3138eaa3ebb84540830f4"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_fa2257fa21d62f5823789902cd1"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_f8b5dfa2dcb03df1b77c30bdaed"`);
-		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_b880e46ee378768a6f4a032cb86"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ec1fc4fb915c886b871cd5d492b"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ed6e1bb0dd8c28adcb279ef94d5"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_2701838bd914e1c89012710be40"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_5eb171ec32f4884e90b47deec5b"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_9cf0aecd2f7635e698f7567b641"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_8cc0b96651ab5867e0e83ec442e"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_a2a1769dd904b2a3f0dd1544370"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_e4eb336fa30dc3f416f55468402"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a6a196107377ba69657bdfd8163"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_82d0e6077d884da30557fc19c88"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_8bb159a3fedc577c1c8feb6d14a"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_7074bb1ffc321ab035336440293"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a28bcdfbddcadeb4087822d1a72"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_97c368289c2688d42c338d21823"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_2325b483c937fa28616029ba0f1"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_72f85c54d1c16ba598f9bc5bdc0"`);
-		await queryRunner.query(`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_7c9285fc09f3e86c715e210808e"`);
-		await queryRunner.query(`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_19cd031fd090d85727123449f03"`);
-		await queryRunner.query(`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_ed6f544d34bc05b62407c971753"`);
-		await queryRunner.query(`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_263811162a1ce42c386bf651451"`);
-		await queryRunner.query(`ALTER TABLE "organization"."schools" DROP CONSTRAINT "FK_fd58337f0f869a8b883f6fab518"`);
-		await queryRunner.query(`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_04df17b688b6db08ccb0e0a1cf5"`);
-		await queryRunner.query(`ALTER TABLE "survey"."notifications" DROP CONSTRAINT "FK_b8613819b0c854f82e9578bb13b"`);
-		await queryRunner.query(`ALTER TABLE "survey"."outcome_configs" DROP CONSTRAINT "FK_5bb175dcc2d9ef833fc7790604b"`);
-		await queryRunner.query(`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_e360c3ba135fd978fdbe8391033"`);
-		await queryRunner.query(`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_f9c51419385591b860fe3153b3b"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_ff6454c0b5a61cbc19540cf87d2"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_1911b4f441dc5a55522d91fc5a9"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_7c0654dddcd08cb7dcbbb460558"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_8b4a1983abc06fdd685fec02cf1"`);
-		await queryRunner.query(`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_1e2e74b43d94a79367b61e4eab1"`);
-		await queryRunner.query(`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_2a7ac955ea573f8be71d736cef8"`);
-		await queryRunner.query(`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_fb3eff90b11bddf7285f9b4e281"`);
-		await queryRunner.query(`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_e23836d20c9e7c447ffa727292a"`);
-		await queryRunner.query(`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_08af529c306b942a0eb284bbb17"`);
-		await queryRunner.query(`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_9e808a12c6fcda1f271e0b8e194"`);
-		await queryRunner.query(`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_ca51537ec992562128c681f31ca"`);
-		await queryRunner.query(`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_5684f9badf760b33d503896ff7f"`);
-		await queryRunner.query(`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_86bdb6267d08ac016e1217dfd28"`);
-		await queryRunner.query(`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_8be7ba65daa2348105b750d911f"`);
-		await queryRunner.query(`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_b6f8c14929dad8515c26f0e99ca"`);
-		await queryRunner.query(`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_85d939ce84e33b8c05e5ab5c6b7"`);
-		await queryRunner.query(`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_cec9365d9fc3a3409158b645f2e"`);
-		await queryRunner.query(`ALTER TABLE "accreditation"."outcomes" DROP CONSTRAINT "FK_097598f7aa4d58807224829c9e3"`);
-		await queryRunner.query(`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_a177876dc3e2ceca34941a843af"`);
-		await queryRunner.query(`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_c9db3e661bf32fdb6e6ef308855"`);
-		await queryRunner.query(`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_511d4b62c287b78c4af8f40316f"`);
-		await queryRunner.query(`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_abde2f6c7c2c15d86d1ad18ff51"`);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_11ba9460ef5a797504d1ab63b9a"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_a968164f8aa1859576af56971c2"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."performance_levels" DROP CONSTRAINT "FK_d525cfd1a21b9e0488ef04cd09a"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_8a14c3786b1412d4b11ebf144e7"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."types" DROP CONSTRAINT "FK_d1bfd236db1805a762aa30de369"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_828d98255d254f812a0d6732fb9"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_60b889a63baa36375f264f812d9"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_0f54742a01d56561986c77b0aa2"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_6b7a0e963995aac32b706b65b1e"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_f23cab684bfd6263435e05121c4"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_9f3a2b5c6d7e8f9a0b1c2d3e4f5"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_8e2f1c4d5a6b7e8f9a0b1c2d3e4"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_e83ae3bbb89a4a8140408cc5ee4"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_d8115d6a5ea8c9170bfd417f525"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_c3ecb1a05e9f7f41142457de284"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_03fe9c891618b667a122233f067"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_bc50693334616aaea73fa04acb9"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_6e239cee87fbc8145c259a57afe"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_74f59f74bf46c6224fcc44e8315"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_1956ae5a1d423350e1a0b7ca2d6"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_f1979a38b2fc4be66a62f06de19"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_3f9b6366ae909fd085358b64803"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_c805f90e056db372ebdfb6423b6"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_12ff6a3275ca209d440644c1eed"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_273a2def92ca98ca5b08cc44def"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_710e611b0159d1e6c85ea1fd260"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_9f050e51dcc8c94037242889065"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_a629bdf7af991a09332156cf090"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."users" DROP CONSTRAINT "FK_9e86f4e5144e5f0c754ec343bea"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_47f96cc66aa222368281dbb4f8c"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_25e766780a4dab387ec7797b144"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_235074c210b929308c3ee4b8ec6"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_f713067637a7fae926e12670297"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_11936d3138eaa3ebb84540830f4"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_fa2257fa21d62f5823789902cd1"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_f8b5dfa2dcb03df1b77c30bdaed"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_b880e46ee378768a6f4a032cb86"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ec1fc4fb915c886b871cd5d492b"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ed6e1bb0dd8c28adcb279ef94d5"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_2701838bd914e1c89012710be40"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_5eb171ec32f4884e90b47deec5b"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_9cf0aecd2f7635e698f7567b641"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_8cc0b96651ab5867e0e83ec442e"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_a2a1769dd904b2a3f0dd1544370"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_e4eb336fa30dc3f416f55468402"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a6a196107377ba69657bdfd8163"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_82d0e6077d884da30557fc19c88"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_8bb159a3fedc577c1c8feb6d14a"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_7074bb1ffc321ab035336440293"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a28bcdfbddcadeb4087822d1a72"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_97c368289c2688d42c338d21823"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_2325b483c937fa28616029ba0f1"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_72f85c54d1c16ba598f9bc5bdc0"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_7c9285fc09f3e86c715e210808e"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_19cd031fd090d85727123449f03"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_ed6f544d34bc05b62407c971753"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_263811162a1ce42c386bf651451"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."schools" DROP CONSTRAINT "FK_fd58337f0f869a8b883f6fab518"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_04df17b688b6db08ccb0e0a1cf5"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notifications" DROP CONSTRAINT "FK_b8613819b0c854f82e9578bb13b"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."outcome_configs" DROP CONSTRAINT "FK_5bb175dcc2d9ef833fc7790604b"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_e360c3ba135fd978fdbe8391033"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_f9c51419385591b860fe3153b3b"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_ff6454c0b5a61cbc19540cf87d2"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_1911b4f441dc5a55522d91fc5a9"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_7c0654dddcd08cb7dcbbb460558"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_8b4a1983abc06fdd685fec02cf1"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_1e2e74b43d94a79367b61e4eab1"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_2a7ac955ea573f8be71d736cef8"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_fb3eff90b11bddf7285f9b4e281"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_e23836d20c9e7c447ffa727292a"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_08af529c306b942a0eb284bbb17"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_9e808a12c6fcda1f271e0b8e194"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_ca51537ec992562128c681f31ca"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_5684f9badf760b33d503896ff7f"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_86bdb6267d08ac016e1217dfd28"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_8be7ba65daa2348105b750d911f"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_b6f8c14929dad8515c26f0e99ca"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_85d939ce84e33b8c05e5ab5c6b7"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_cec9365d9fc3a3409158b645f2e"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."outcomes" DROP CONSTRAINT "FK_097598f7aa4d58807224829c9e3"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_a177876dc3e2ceca34941a843af"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_c9db3e661bf32fdb6e6ef308855"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_511d4b62c287b78c4af8f40316f"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_abde2f6c7c2c15d86d1ad18ff51"`,
+		);
 		await queryRunner.query(`DROP TABLE "academic"."course_outcome_mappings"`);
 		await queryRunner.query(`DROP TABLE "academic"."performance_levels"`);
 		await queryRunner.query(`DROP TABLE "academic"."student_course_grades"`);

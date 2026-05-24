@@ -1,4 +1,12 @@
-import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsString,
+	ValidateNested,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -17,7 +25,11 @@ export class FilterAcceptanceLevelDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'PPP', description: 'Código del tipo de encuesta (alternativa a survey_type_id)', required: false })
+	@ApiProperty({
+		example: 'PPP',
+		description: 'Código del tipo de encuesta (alternativa a survey_type_id)',
+		required: false,
+	})
 	survey_type_code?: string;
 }
 
