@@ -6,7 +6,7 @@ import {
 	Configuration,
 } from '@azure/msal-node';
 import { UserService } from 'src/modules/organization/users/api/users.service';
-import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
+import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 
 type MicrosoftIdTokenClaims = {
 	email?: string;
@@ -22,13 +22,11 @@ export class AuthService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly userService: UserService,
-		private readonly schoolRepository: SchoolRepository,
+		private readonly schoolService: SchoolService,
 	) {}
 
 	async resolveSchoolIdByCode(school_code: string): Promise<number> {
-		const school = await this.schoolRepository.findOneByCondition({
-			where: { code: school_code, is_active: true },
-		});
+		const school = await this.schoolService.findActiveByCode(school_code);
 
 		if (!school) {
 			throw new HttpException(

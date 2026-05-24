@@ -1,8 +1,7 @@
 import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateChartLevelDto extends BaseDto {
+export class CreateChartLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -21,7 +20,7 @@ export class CreateChartLevelDto extends BaseDto {
 	level_type_id: number;
 }
 
-export class UpdateChartLevelDto extends BaseDto {
+export class UpdateChartLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -42,7 +41,7 @@ export class UpdateChartLevelDto extends BaseDto {
 	level_type_id?: number;
 }
 
-export class FilterChartLevelDto extends BaseDto {
+export class FilterChartLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

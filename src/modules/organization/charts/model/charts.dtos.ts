@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateChartDto extends BaseDto {
+export class CreateChartDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -45,7 +44,7 @@ export class CreateChartDto extends BaseDto {
 	entity_code?: number;
 }
 
-export class UpdateChartDto extends BaseDto {
+export class UpdateChartDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -91,7 +90,7 @@ export class UpdateChartDto extends BaseDto {
 	entity_code?: number;
 }
 
-export class FilterChartDto extends BaseDto {
+export class FilterChartDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

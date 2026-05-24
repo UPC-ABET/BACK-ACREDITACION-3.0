@@ -1,8 +1,7 @@
 import { IsBoolean, IsDate, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateNotificationDto extends BaseDto {
+export class CreateNotificationDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -33,7 +32,7 @@ export class CreateNotificationDto extends BaseDto {
 	max_register_date: Date;
 }
 
-export class UpdateNotificationDto extends BaseDto {
+export class UpdateNotificationDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -69,7 +68,7 @@ export class UpdateNotificationDto extends BaseDto {
 	max_register_date?: Date;
 }
 
-export class FilterNotificationDto extends BaseDto {
+export class FilterNotificationDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

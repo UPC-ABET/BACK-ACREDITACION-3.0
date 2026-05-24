@@ -9,7 +9,6 @@ import {
 	IsNotEmpty,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 import { Type } from 'class-transformer';
 
@@ -35,7 +34,7 @@ export class ScoreDetailDto {
 	commentaries?: I18nText | string;
 }
 
-export class SubmitEvaluationDto extends BaseDto {
+export class SubmitEvaluationDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
@@ -92,7 +91,7 @@ export class SubmitEvaluationDto extends BaseDto {
 	qualification_status_type_id: number;
 }
 
-export class CreateEvaluationDto extends BaseDto {
+export class CreateEvaluationDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	project_student_id: number;
@@ -125,7 +124,7 @@ export class CreateEvaluationDto extends BaseDto {
 	is_active?: boolean;
 }
 
-export class UpdateEvaluationDto extends BaseDto {
+export class UpdateEvaluationDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -161,7 +160,7 @@ export class UpdateEvaluationDto extends BaseDto {
 	register_at?: Date;
 }
 
-export class SaveObservationDto extends BaseDto {
+export class SaveObservationDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
@@ -192,7 +191,7 @@ export class SaveObservationDto extends BaseDto {
 	is_active?: boolean;
 }
 
-export class FinalizeProjectDto extends BaseDto {
+export class FinalizeProjectDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
@@ -222,7 +221,7 @@ export class FinalizeProjectDto extends BaseDto {
 	is_active?: boolean;
 }
 
-export class FilterEvaluationDto extends BaseDto {
+export class FilterEvaluationDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

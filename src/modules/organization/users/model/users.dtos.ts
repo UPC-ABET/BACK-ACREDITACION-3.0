@@ -8,9 +8,8 @@ import {
 	Length,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateUserDto extends BaseDto {
+export class CreateUserDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -52,7 +51,7 @@ export class CreateUserDto extends BaseDto {
 	is_admin: boolean;
 }
 
-export class UpdateUserDto extends BaseDto {
+export class UpdateUserDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -101,7 +100,7 @@ export class UpdateUserDto extends BaseDto {
 	is_admin?: boolean;
 }
 
-export class FilterUserDto extends BaseDto {
+export class FilterUserDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

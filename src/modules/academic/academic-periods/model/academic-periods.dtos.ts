@@ -1,8 +1,7 @@
 import { IsBoolean, IsDate, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateAcademicPeriodDto extends BaseDto {
+export class CreateAcademicPeriodDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -30,7 +29,7 @@ export class CreateAcademicPeriodDto extends BaseDto {
 	end_date: Date;
 }
 
-export class UpdateAcademicPeriodDto extends BaseDto {
+export class UpdateAcademicPeriodDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -62,7 +61,7 @@ export class UpdateAcademicPeriodDto extends BaseDto {
 	end_date?: Date;
 }
 
-export class FilterAcademicPeriodDto extends BaseDto {
+export class FilterAcademicPeriodDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

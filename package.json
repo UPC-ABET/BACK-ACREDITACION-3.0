@@ -87,7 +87,8 @@
 		"ts-morph": "^27.0.2",
 		"typeorm": "^0.3.20",
 		"uuid": "^11.1.0",
-		"xlsx": "^0.18.5"
+		"xlsx": "^0.18.5",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

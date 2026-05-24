@@ -1,8 +1,7 @@
 import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateProgramCommissionDto extends BaseDto {
+export class CreateProgramCommissionDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -29,7 +28,7 @@ export class CreateProgramCommissionDto extends BaseDto {
 	commission_type_id: number;
 }
 
-export class UpdateProgramCommissionDto extends BaseDto {
+export class UpdateProgramCommissionDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -60,7 +59,7 @@ export class UpdateProgramCommissionDto extends BaseDto {
 	commission_type_id?: number;
 }
 
-export class FilterProgramCommissionDto extends BaseDto {
+export class FilterProgramCommissionDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

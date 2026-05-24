@@ -10,10 +10,9 @@ import {
 	IsPositive,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateIfcFindingDto extends BaseDto {
+export class CreateIfcFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -32,7 +31,7 @@ export class CreateIfcFindingDto extends BaseDto {
 	finding_id: number;
 }
 
-export class UpdateIfcFindingDto extends BaseDto {
+export class UpdateIfcFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -53,7 +52,7 @@ export class UpdateIfcFindingDto extends BaseDto {
 	finding_id?: number;
 }
 
-export class FilterIfcFindingDto extends BaseDto {
+export class FilterIfcFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

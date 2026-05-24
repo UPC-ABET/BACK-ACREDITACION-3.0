@@ -1,7 +1,6 @@
 // rubrics.dtos.ts
 import { IsBoolean, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import { Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
 
@@ -56,7 +55,7 @@ export class CreateRubricQuestionDto {
 	criterias: CreateRubricCriteriaDto[];
 }
 
-export class CreateRubricDto extends BaseDto {
+export class CreateRubricDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	rubric_type_id: number;
@@ -85,7 +84,7 @@ export class CreateRubricDto extends BaseDto {
 	is_active?: boolean;
 }
 
-export class UpdateRubricDto extends BaseDto {
+export class UpdateRubricDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
@@ -118,7 +117,7 @@ export class UpdateRubricDto extends BaseDto {
 	is_active?: boolean;
 }
 
-export class FilterRubricDto extends BaseDto {
+export class FilterRubricDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

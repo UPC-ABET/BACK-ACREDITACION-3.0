@@ -1,9 +1,9 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { PerformanceLevelEntity } from '../model/performance-levels.entity';
 
-export class PerformanceLevelRepository extends BaseRepostitory {
+export class PerformanceLevelRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(PerformanceLevelEntity)
 		repository: Repository<PerformanceLevelEntity>,

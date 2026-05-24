@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { ScoreEntity } from 'src/modules/survey/scores/model/scores.entity';
 
 @Injectable()
-export class PppScoreRepository extends BaseRepostitory {
+export class PppScoreRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(ScoreEntity)
 		repository: Repository<ScoreEntity>,

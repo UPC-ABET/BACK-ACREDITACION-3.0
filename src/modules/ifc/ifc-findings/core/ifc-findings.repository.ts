@@ -1,9 +1,9 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { IfcFindingEntity } from '../model/ifc-findings.entity';
 
-export class IfcFindingRepository extends BaseRepostitory {
+export class IfcFindingRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(IfcFindingEntity)
 		repository: Repository<IfcFindingEntity>,

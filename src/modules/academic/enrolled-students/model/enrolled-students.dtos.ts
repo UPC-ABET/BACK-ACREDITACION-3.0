@@ -3,7 +3,6 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
 @Entity({ name: 'enrolled_students', schema: 'academic' })
 export class EnrolledStudentEntity extends BaseEntity {
@@ -24,7 +23,7 @@ export class EnrolledStudentEntity extends BaseEntity {
 	// %% RELACIONES
 }
 
-export class CreateEnrolledStudentDto extends BaseDto {
+export class CreateEnrolledStudentDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -51,7 +50,7 @@ export class CreateEnrolledStudentDto extends BaseDto {
 	enrollement_modality_type_id: number;
 }
 
-export class UpdateEnrolledStudentDto extends BaseDto {
+export class UpdateEnrolledStudentDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -82,7 +81,7 @@ export class UpdateEnrolledStudentDto extends BaseDto {
 	enrollement_modality_type_id?: number;
 }
 
-export class FilterEnrolledStudentDto extends BaseDto {
+export class FilterEnrolledStudentDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

@@ -10,13 +10,13 @@ import * as bcrypt from 'bcryptjs';
 
 import { UserService } from './users.service';
 import { UserRepository } from '../core/users.repository';
-import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
+import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { UserAuthorizationService } from './user-authorization.service';
 
 describe('UserService - school-aware login', () => {
 	let service: UserService;
 	let userRepository: { findOneByCondition: jest.Mock; findForLogin: jest.Mock };
-	let schoolRepository: { findOneByCondition: jest.Mock };
+	let schoolService: { findActiveByCode: jest.Mock };
 	let jwtService: { sign: jest.Mock };
 	let userAuthorizationService: { buildAuthorizationProfile: jest.Mock };
 	const dataSource = {} as DataSource;
@@ -40,8 +40,8 @@ describe('UserService - school-aware login', () => {
 			findOneByCondition: jest.fn(),
 			findForLogin: jest.fn(),
 		};
-		schoolRepository = {
-			findOneByCondition: jest.fn(),
+		schoolService = {
+			findActiveByCode: jest.fn(),
 		};
 		jwtService = {
 			sign: jest.fn().mockReturnValue('signed-jwt-token'),
@@ -54,28 +54,26 @@ describe('UserService - school-aware login', () => {
 			userRepository as unknown as UserRepository,
 			dataSource,
 			jwtService as unknown as JwtService,
-			schoolRepository as unknown as SchoolRepository,
+			schoolService as unknown as SchoolService,
 			userAuthorizationService as unknown as UserAuthorizationService,
 		);
 	});
 
 	describe('loginByCredentials', () => {
 		it('throws UnauthorizedException when the school_code does not match any school', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce(null);
+			schoolService.findActiveByCode.mockResolvedValueOnce(null);
 
 			await expect(
 				service.loginByCredentials('UNKNOWN', baseUser.email, 'pw'),
 			).rejects.toBeInstanceOf(UnauthorizedException);
 
-			expect(schoolRepository.findOneByCondition).toHaveBeenCalledWith({
-				where: { code: 'UNKNOWN', is_active: true },
-			});
+			expect(schoolService.findActiveByCode).toHaveBeenCalledWith('UNKNOWN');
 			expect(userRepository.findForLogin).not.toHaveBeenCalled();
 			expect(jwtService.sign).not.toHaveBeenCalled();
 		});
 
 		it('resolves school and signs a slim JWT with userId, activeRoleId, and school_id', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce({
+			schoolService.findActiveByCode.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
 				is_active: true,
@@ -104,7 +102,7 @@ describe('UserService - school-aware login', () => {
 		});
 
 		it('throws UnauthorizedException when password is wrong', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce({
+			schoolService.findActiveByCode.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
 				is_active: true,

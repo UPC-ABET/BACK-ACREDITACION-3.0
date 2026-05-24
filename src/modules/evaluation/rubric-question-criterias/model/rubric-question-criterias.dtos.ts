@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateRubricQuestionCriteriaDto extends BaseDto {
+export class CreateRubricQuestionCriteriaDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -30,7 +29,7 @@ export class CreateRubricQuestionCriteriaDto extends BaseDto {
 	max_value: number;
 }
 
-export class UpdateRubricQuestionCriteriaDto extends BaseDto {
+export class UpdateRubricQuestionCriteriaDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -61,7 +60,7 @@ export class UpdateRubricQuestionCriteriaDto extends BaseDto {
 	max_value?: number;
 }
 
-export class FilterRubricQuestionCriteriaDto extends BaseDto {
+export class FilterRubricQuestionCriteriaDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateSurveyDto extends BaseDto {
+export class CreateSurveyDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -52,7 +51,7 @@ export class CreateSurveyDto extends BaseDto {
 	course_section_id: number;
 }
 
-export class UpdateSurveyDto extends BaseDto {
+export class UpdateSurveyDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -108,7 +107,7 @@ export class UpdateSurveyDto extends BaseDto {
 	course_section_id?: number;
 }
 
-export class FilterSurveyDto extends BaseDto {
+export class FilterSurveyDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

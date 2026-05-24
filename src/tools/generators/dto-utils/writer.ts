@@ -31,7 +31,7 @@ function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {
 
 function buildCreateDto(entity: string, fields: any[]) {
 	return `
-export class Create${entity}Dto extends BaseDto {
+export class Create${entity}Dto {
 ${fields
 	.map((f: any) => {
 		const validator = mapValidator(f.type);
@@ -53,7 +53,7 @@ ${fields
 
 function buildUpdateDto(entity: string, fields: any[]) {
 	return `
-export class Update${entity}Dto extends BaseDto {
+export class Update${entity}Dto {
 ${fields
 	.map((f: any) => {
 		const validator = mapValidator(f.type);
@@ -75,7 +75,7 @@ ${fields
 
 function buildFilterDto(entity: string, fields: any[]) {
 	return `
-export class Filter${entity}Dto extends BaseDto {
+export class Filter${entity}Dto {
 ${fields
 	.map((f: any) => {
 		const example = mapExample(f.type, f.name, f.decorators || []);
@@ -150,8 +150,6 @@ function buildRequiredImports(content: string) {
 	if (content.includes('@Length')) add('class-validator', 'Length');
 
 	if (content.includes('@ApiProperty')) add('@nestjs/swagger', 'ApiProperty');
-
-	if (content.includes('extends BaseDto')) add('src/commons/base.dtos', 'BaseDto');
 
 	if (/[:\s]I18nText\b/.test(content)) add('src/shared/types/i18n', 'I18nText');
 

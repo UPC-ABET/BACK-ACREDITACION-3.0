@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateProgramDto extends BaseDto {
+export class CreateProgramDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -31,7 +30,7 @@ export class CreateProgramDto extends BaseDto {
 	degree: I18nText;
 }
 
-export class UpdateProgramDto extends BaseDto {
+export class UpdateProgramDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -63,7 +62,7 @@ export class UpdateProgramDto extends BaseDto {
 	degree?: I18nText;
 }
 
-export class FilterProgramDto extends BaseDto {
+export class FilterProgramDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

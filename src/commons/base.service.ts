@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { BaseRepostitory } from './base.repository';
-import { BaseDto } from './base.dtos';
+import { BaseRepository } from './base.repository';
 import { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
 
 @Injectable()
-export class BaseService<T extends BaseRepostitory> {
+export class BaseService<T extends BaseRepository> {
 	constructor(protected readonly baseRepository: T) {}
 
-	async create(createDto: BaseDto, manager?: EntityManager): Promise<T> {
+	async create(createDto: Record<string, any>, manager?: EntityManager): Promise<T> {
 		return this.baseRepository.create(createDto, manager);
 	}
-	async update(id: any, updateDto: BaseDto, manager?: EntityManager) {
+	async update(id: any, updateDto: Record<string, any>, manager?: EntityManager) {
 		return await this.baseRepository.update(id, updateDto, manager);
 	}
 	async delete(id: any, manager?: EntityManager) {

@@ -9,10 +9,9 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateNotificationConfigDto extends BaseDto {
+export class CreateNotificationConfigDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -53,7 +52,7 @@ export class CreateNotificationConfigDto extends BaseDto {
 	cc_chart_level_type_ids: any;
 }
 
-export class UpdateNotificationConfigDto extends BaseDto {
+export class UpdateNotificationConfigDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -102,7 +101,7 @@ export class UpdateNotificationConfigDto extends BaseDto {
 	cc_chart_level_type_ids?: any;
 }
 
-export class FilterNotificationConfigDto extends BaseDto {
+export class FilterNotificationConfigDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

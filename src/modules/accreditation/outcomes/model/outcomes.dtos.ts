@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateOutcomeDto extends BaseDto {
+export class CreateOutcomeDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -34,7 +33,7 @@ export class CreateOutcomeDto extends BaseDto {
 	outcome_description: I18nText;
 }
 
-export class UpdateOutcomeDto extends BaseDto {
+export class UpdateOutcomeDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -69,7 +68,7 @@ export class UpdateOutcomeDto extends BaseDto {
 	outcome_description?: I18nText;
 }
 
-export class FilterOutcomeDto extends BaseDto {
+export class FilterOutcomeDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

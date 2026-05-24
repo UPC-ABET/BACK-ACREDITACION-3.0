@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { MailService } from 'src/modules/mail/mail.service';
+import { NotificationLogService } from 'src/modules/ifc/notification-log/api/notification-log.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFCS_PARAMETER_KEYS } from 'src/modules/evidence/ifcs/api/ifcs.constants';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -61,6 +62,7 @@ export class NotificationDispatcherService {
 		private readonly dataSource: DataSource,
 		private readonly mailService: MailService,
 		private readonly configService: ConfigService,
+		private readonly notificationLogService: NotificationLogService,
 	) {}
 
 	async dispatch(input: DispatchInput): Promise<DispatchResult> {
@@ -379,23 +381,15 @@ export class NotificationDispatcherService {
 		notifierUserId: number | null,
 		messageId: string,
 	) {
-		await this.dataSource.query(
-			`
-			INSERT INTO ifc.notification_log
-				(ifc_id, chart_id, notification_config_id, notifier_user_id,
-				 to_staff_ids, cc_staff_ids, provider_message_id, extra, is_active)
-			VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, '{}'::jsonb, true)
-			`,
-			[
-				ctx.ifc_id,
-				ctx.course_chart_id,
-				config.id,
-				notifierUserId,
-				JSON.stringify(toStaffIds),
-				JSON.stringify(ccStaffIds),
-				messageId,
-			],
-		);
+		await this.notificationLogService.create({
+			ifc_id: ctx.ifc_id,
+			chart_id: ctx.course_chart_id,
+			notification_config_id: config.id,
+			notifier_user_id: notifierUserId,
+			to_staff_ids: toStaffIds,
+			cc_staff_ids: ccStaffIds,
+			provider_message_id: messageId,
+		});
 	}
 }
 

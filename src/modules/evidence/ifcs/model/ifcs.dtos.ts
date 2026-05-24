@@ -14,10 +14,9 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateIfcDto extends BaseDto {
+export class CreateIfcDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -40,7 +39,7 @@ export class CreateIfcDto extends BaseDto {
 	information?: any;
 }
 
-export class UpdateIfcDto extends BaseDto {
+export class UpdateIfcDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -65,7 +64,7 @@ export class UpdateIfcDto extends BaseDto {
 	information?: any;
 }
 
-export class FilterIfcDto extends BaseDto {
+export class FilterIfcDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

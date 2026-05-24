@@ -11,10 +11,7 @@ async function bootstrap() {
 		logger: ['error', 'warn', 'log'],
 	});
 	const configService = app.get(ConfigService);
-	const port = configService.get<number>('APP_PORT');
-	if (!port) {
-		throw new Error('APP_PORT environment variable must be set');
-	}
+	const port = configService.get<number>('APP_PORT')!;
 
 	app.setGlobalPrefix('api'); // 🔥 ESTA ES LA CLAVE
 
@@ -30,10 +27,6 @@ async function bootstrap() {
 		.split(',')
 		.map((s) => s.trim())
 		.filter(Boolean);
-
-	if (allowedOrigins.length === 0) {
-		throw new Error('CORS_ALLOWED_ORIGINS (or APP_FRONTEND_URL) must be set');
-	}
 
 	app.enableCors({
 		origin: (origin, callback) => {

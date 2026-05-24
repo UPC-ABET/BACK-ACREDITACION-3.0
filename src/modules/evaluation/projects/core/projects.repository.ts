@@ -1,6 +1,6 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { ProjectEntity } from '../model/projects.entity';
 import { FilterProjectDto } from '../model/projects.dtos';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
@@ -19,7 +19,7 @@ import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-pl
 const SCHOOL_TYPE_CODE = 'TG903-T001';
 const PROGRAM_TYPE_CODE = 'TG903-T002';
 
-export class ProjectRepository extends BaseRepostitory {
+export class ProjectRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(ProjectEntity)
 		repository: Repository<ProjectEntity>,

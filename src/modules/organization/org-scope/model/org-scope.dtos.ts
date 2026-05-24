@@ -1,9 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsPositive } from 'class-validator';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class GetScopeDto extends BaseDto {
+export class GetScopeDto {
 	@IsInt()
 	@IsPositive()
 	@ApiProperty({ example: 5, required: true, description: 'ID del período académico' })

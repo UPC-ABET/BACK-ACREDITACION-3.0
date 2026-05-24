@@ -6,6 +6,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EncryptModule } from './libs/encrypt.module';
+import { validateEnv } from './commons/configs/env.config';
 
 /* =========================
  * AUTH
@@ -101,6 +102,7 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		/* CONFIG */
 		ConfigModule.forRoot({
 			isGlobal: true,
+			validate: validateEnv,
 		}),
 
 		EncryptModule,

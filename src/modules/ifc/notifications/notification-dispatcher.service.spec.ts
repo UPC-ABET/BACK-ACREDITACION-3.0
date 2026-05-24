@@ -3,6 +3,7 @@ import { BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { MailService } from 'src/modules/mail/mail.service';
+import { NotificationLogService } from 'src/modules/ifc/notification-log/api/notification-log.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 const ctxRow = (overrides: Partial<Record<string, any>> = {}) => ({
@@ -39,12 +40,14 @@ function makeDispatcher() {
 	const dataSource = { query: jest.fn() };
 	const mailService = { sendRawEmail: jest.fn() };
 	const configService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
+	const notificationLogService = { create: jest.fn().mockResolvedValue({}) };
 	const dispatcher = new NotificationDispatcherService(
 		dataSource as unknown as DataSource,
 		mailService as unknown as MailService,
 		configService as unknown as ConfigService,
+		notificationLogService as unknown as NotificationLogService,
 	);
-	return { dispatcher, dataSource, mailService, configService };
+	return { dispatcher, dataSource, mailService, configService, notificationLogService };
 }
 
 describe('NotificationDispatcherService.dispatch', () => {
@@ -115,8 +118,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 				{ level_type_id: 18, staff_id: 2, staff_email: 'cc-only@x.com' },
 			])
 			.mockResolvedValueOnce([{ value: [] }])
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }])
-			.mockResolvedValueOnce([]); // writeLog
+			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]);
 		(mailService.sendRawEmail as jest.Mock).mockResolvedValueOnce({ messageId: 'msg-1' });
 
 		const result = await dispatcher.dispatch(baseInput);
@@ -151,8 +153,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 					],
 				},
 			])
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]) // status code lookup
-			.mockResolvedValueOnce([]); // writeLog
+			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]); // status code lookup
 		(mailService.sendRawEmail as jest.Mock).mockResolvedValueOnce({ messageId: 'msg-1' });
 
 		await dispatcher.dispatch(baseInput);

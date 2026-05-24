@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
 
 @Injectable()
-export class GraNotificationRepository extends BaseRepostitory {
+export class GraNotificationRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(NotificationEntity)
 		repository: Repository<NotificationEntity>,

@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreatePerformanceLevelDto extends BaseDto {
+export class CreatePerformanceLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -47,7 +46,7 @@ export class CreatePerformanceLevelDto extends BaseDto {
 	max_value: number;
 }
 
-export class UpdatePerformanceLevelDto extends BaseDto {
+export class UpdatePerformanceLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -99,7 +98,7 @@ export class UpdatePerformanceLevelDto extends BaseDto {
 	max_value?: number;
 }
 
-export class FilterPerformanceLevelDto extends BaseDto {
+export class FilterPerformanceLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

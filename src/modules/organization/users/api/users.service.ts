@@ -6,7 +6,7 @@ import { UserValidation } from '../core/users.validation';
 import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager } from 'typeorm';
-import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
+import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
 
@@ -16,7 +16,7 @@ export class UserService extends BaseService<UserRepository> {
 		protected readonly repository: UserRepository,
 		protected readonly dataSource: DataSource,
 		private readonly jwtService: JwtService,
-		private readonly schoolRepository: SchoolRepository,
+		private readonly schoolService: SchoolService,
 		private readonly userAuthorizationService: UserAuthorizationService,
 	) {
 		super(repository);
@@ -92,9 +92,7 @@ export class UserService extends BaseService<UserRepository> {
 		password: string,
 		activeRoleId?: number,
 	) {
-		const school = await this.schoolRepository.findOneByCondition({
-			where: { code: school_code, is_active: true },
-		});
+		const school = await this.schoolService.findActiveByCode(school_code);
 
 		if (!school) {
 			throw new UnauthorizedException('Credenciales inválidas');

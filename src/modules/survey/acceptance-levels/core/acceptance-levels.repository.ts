@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { AcceptanceLevelEntity } from '../model/acceptance-levels.entity';
 
 @Injectable()
-export class AcceptanceLevelRepository extends BaseRepostitory {
+export class AcceptanceLevelRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(AcceptanceLevelEntity)
 		repository: Repository<AcceptanceLevelEntity>,

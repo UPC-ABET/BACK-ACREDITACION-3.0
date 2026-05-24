@@ -11,7 +11,7 @@ import { NotFoundException } from '@nestjs/common';
 import { IBaseRepository } from './ibase.repository';
 import { sharedStrings } from '../shared/strings/shared.strings';
 
-export abstract class BaseRepostitory implements IBaseRepository {
+export abstract class BaseRepository implements IBaseRepository {
 	protected readonly repository: Repository<any>;
 
 	constructor(

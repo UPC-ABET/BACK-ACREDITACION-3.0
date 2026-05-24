@@ -1,9 +1,8 @@
 import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateStatusDto extends BaseDto {
+export class CreateStatusDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -35,7 +34,7 @@ export class CreateStatusDto extends BaseDto {
 	register_at: Date;
 }
 
-export class UpdateStatusDto extends BaseDto {
+export class UpdateStatusDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -71,7 +70,7 @@ export class UpdateStatusDto extends BaseDto {
 	register_at?: Date;
 }
 
-export class FilterStatusDto extends BaseDto {
+export class FilterStatusDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

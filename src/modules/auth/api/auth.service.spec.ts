@@ -3,12 +3,12 @@ import { ConfigService } from '@nestjs/config';
 
 import { AuthService } from './auth.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
-import { SchoolRepository } from 'src/modules/organization/schools/core/schools.repository';
+import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 
 describe('AuthService — MSAL login', () => {
 	let service: AuthService;
 	let userService: { getUser: jest.Mock; createUserLogin: jest.Mock };
-	let schoolRepository: { findOneByCondition: jest.Mock };
+	let schoolService: { findActiveByCode: jest.Mock };
 	const configService = { get: jest.fn() } as unknown as ConfigService;
 
 	beforeEach(() => {
@@ -16,32 +16,30 @@ describe('AuthService — MSAL login', () => {
 			getUser: jest.fn(),
 			createUserLogin: jest.fn(),
 		};
-		schoolRepository = {
-			findOneByCondition: jest.fn(),
+		schoolService = {
+			findActiveByCode: jest.fn(),
 		};
 		service = new AuthService(
 			configService,
 			userService as unknown as UserService,
-			schoolRepository as unknown as SchoolRepository,
+			schoolService as unknown as SchoolService,
 		);
 	});
 
 	describe('resolveSchoolIdByCode', () => {
 		it('returns the school id when the code matches an active school', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce({
+			schoolService.findActiveByCode.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
 				is_active: true,
 			});
 
 			await expect(service.resolveSchoolIdByCode('EISCB')).resolves.toBe(7);
-			expect(schoolRepository.findOneByCondition).toHaveBeenCalledWith({
-				where: { code: 'EISCB', is_active: true },
-			});
+			expect(schoolService.findActiveByCode).toHaveBeenCalledWith('EISCB');
 		});
 
 		it('throws HttpException(400) when no school matches', async () => {
-			schoolRepository.findOneByCondition.mockResolvedValueOnce(null);
+			schoolService.findActiveByCode.mockResolvedValueOnce(null);
 
 			await expect(service.resolveSchoolIdByCode('UNKNOWN')).rejects.toMatchObject({
 				constructor: HttpException,

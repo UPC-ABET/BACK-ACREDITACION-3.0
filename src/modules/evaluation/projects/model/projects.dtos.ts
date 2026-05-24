@@ -10,10 +10,9 @@ import {
 	IsNumber,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateProjectDto extends BaseDto {
+export class CreateProjectDto {
 	@IsString()
 	@IsNotEmpty()
 	@Length(1, 50)
@@ -60,7 +59,7 @@ export class CreateProjectDto extends BaseDto {
 	is_active?: boolean;
 }
 
-export class UpdateProjectDto extends BaseDto {
+export class UpdateProjectDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -287,7 +286,7 @@ export class ProjectDetailsResponseDto {
 	};
 }
 
-export class FilterProjectDto extends BaseDto {
+export class FilterProjectDto {
 	// ── Filtros propios del proyecto ──────────────────────────────────────
 	@IsOptional()
 	@IsString()

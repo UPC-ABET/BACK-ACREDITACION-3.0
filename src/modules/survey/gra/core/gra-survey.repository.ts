@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 
 @Injectable()
-export class GraSurveyRepository extends BaseRepostitory {
+export class GraSurveyRepository extends BaseRepository {
 	constructor(
 		@InjectRepository(SurveyEntity)
 		repository: Repository<SurveyEntity>,

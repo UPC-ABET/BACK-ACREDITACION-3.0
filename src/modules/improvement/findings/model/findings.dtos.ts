@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateFindingDto extends BaseDto {
+export class CreateFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -52,7 +51,7 @@ export class CreateFindingDto extends BaseDto {
 	is_automatic: boolean;
 }
 
-export class UpdateFindingDto extends BaseDto {
+export class UpdateFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -108,7 +107,7 @@ export class UpdateFindingDto extends BaseDto {
 	is_automatic?: boolean;
 }
 
-export class FilterFindingDto extends BaseDto {
+export class FilterFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;

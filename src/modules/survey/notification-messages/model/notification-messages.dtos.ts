@@ -1,9 +1,8 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateNotificationMessageDto extends BaseDto {
+export class CreateNotificationMessageDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -33,7 +32,7 @@ export class CreateNotificationMessageDto extends BaseDto {
 	cc_receivers: any;
 }
 
-export class UpdateNotificationMessageDto extends BaseDto {
+export class UpdateNotificationMessageDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
@@ -68,7 +67,7 @@ export class UpdateNotificationMessageDto extends BaseDto {
 	cc_receivers?: any;
 }
 
-export class FilterNotificationMessageDto extends BaseDto {
+export class FilterNotificationMessageDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
 	extra?: any;
