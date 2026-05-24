@@ -12,6 +12,7 @@ import { UserService } from './users.service';
 import { UserRepository } from '../core/users.repository';
 import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { UserAuthorizationService } from './user-authorization.service';
+import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 
 describe('UserService - school-aware login', () => {
 	let service: UserService;
@@ -86,6 +87,7 @@ describe('UserService - school-aware login', () => {
 			expect(result).toEqual({
 				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
 				access_token: 'signed-jwt-token',
+				expires_in: JWT_EXPIRES_IN_SECONDS,
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(
@@ -149,6 +151,7 @@ describe('UserService - school-aware login', () => {
 			expect(result).toEqual({
 				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
 				access_token: 'signed-jwt-token',
+				expires_in: JWT_EXPIRES_IN_SECONDS,
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, 2);

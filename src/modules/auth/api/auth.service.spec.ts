@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
+import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 
 describe('AuthService — MSAL login', () => {
 	let service: AuthService;
@@ -76,6 +77,7 @@ describe('AuthService — MSAL login', () => {
 				user: fakeUser,
 				microsoft_profile: { email: 'jane.doe@example.com', name: 'Jane Doe' },
 				access_token: 'signed-jwt-token',
+				expires_in: JWT_EXPIRES_IN_SECONDS,
 			});
 		});
 	});

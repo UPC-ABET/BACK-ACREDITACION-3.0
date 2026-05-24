@@ -7,6 +7,7 @@ import {
 } from '@azure/msal-node';
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
+import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 
 type MicrosoftIdTokenClaims = {
 	email?: string;
@@ -65,6 +66,7 @@ export class AuthService {
 				name: claims.name,
 			},
 			access_token: accessToken,
+			expires_in: JWT_EXPIRES_IN_SECONDS,
 		};
 	}
 

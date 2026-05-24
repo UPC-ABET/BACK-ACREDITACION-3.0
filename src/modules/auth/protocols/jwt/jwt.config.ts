@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 
-export const JWT_EXPIRES_IN = '1h';
+export const JWT_EXPIRES_IN_SECONDS = 60 * 60;
+export const JWT_EXPIRES_IN = `${JWT_EXPIRES_IN_SECONDS}s`;
 export const JWT_SECRET_MIN_LENGTH = 32;
 
 export function getRequiredJwtSecret(configService: ConfigService): string {

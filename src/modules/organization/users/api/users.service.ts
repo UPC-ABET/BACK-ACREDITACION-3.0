@@ -9,6 +9,7 @@ import { DataSource, EntityManager } from 'typeorm';
 import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
+import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 
 @Injectable()
 export class UserService extends BaseService<UserRepository> {
@@ -83,6 +84,7 @@ export class UserService extends BaseService<UserRepository> {
 		return {
 			user: this.sanitizeUser(user),
 			access_token: accessToken,
+			expires_in: JWT_EXPIRES_IN_SECONDS,
 		};
 	}
 
@@ -104,6 +106,7 @@ export class UserService extends BaseService<UserRepository> {
 		return {
 			user: this.sanitizeUser(user),
 			access_token: accessToken,
+			expires_in: JWT_EXPIRES_IN_SECONDS,
 		};
 	}
 
