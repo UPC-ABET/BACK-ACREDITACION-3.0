@@ -5,6 +5,7 @@ export type LocalizedName = {
 
 export type AuthorizationRole = {
 	id: number;
+	code?: string;
 	name: LocalizedName;
 };
 

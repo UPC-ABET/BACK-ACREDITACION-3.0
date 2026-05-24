@@ -17,11 +17,20 @@ export class PermissionsGuard implements CanActivate {
 		}
 
 		const request = context.switchToHttp().getRequest<Request & { user?: any }>();
+
+		if (this.isAdmin(request.user?.activeRole)) {
+			return true;
+		}
+
 		const method = request.method.toUpperCase();
 		const requestPath = this.normalizeRequestPath(request.path || request.originalUrl || request.url);
 		const permissions = request.user?.permissions ?? [];
 
 		const canAccess = permissions.some((permission) => {
+			if (!permission?.route || !Array.isArray(permission.permissions)) {
+				return false;
+			}
+
 			const allowedMethods = (permission?.permissions ?? []).map((allowedMethod) => allowedMethod.toUpperCase());
 			const allowedRoute = this.normalizePermissionRoute(permission?.route);
 
@@ -51,5 +60,13 @@ export class PermissionsGuard implements CanActivate {
 
 	private routeMatches(requestPath: string, permissionRoute: string) {
 		return requestPath === permissionRoute || requestPath.startsWith(`${permissionRoute}/`);
+	}
+
+	private isAdmin(activeRole?: any) {
+		const code = activeRole?.code?.toUpperCase?.();
+		const englishName = activeRole?.name?.en?.toUpperCase?.();
+		const spanishName = activeRole?.name?.es?.toUpperCase?.();
+
+		return activeRole?.id === 1 || code === 'ADMIN' || englishName === 'ADMIN' || spanishName === 'ADMINISTRADOR';
 	}
 }
