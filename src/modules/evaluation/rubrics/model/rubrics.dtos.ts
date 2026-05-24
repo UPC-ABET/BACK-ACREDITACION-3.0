@@ -1,5 +1,5 @@
 // rubrics.dtos.ts
-import { IsBoolean, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsArray, ValidateNested, Allow } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -10,6 +10,7 @@ export class CreateRubricCriteriaDto {
 	@ApiProperty({ example: 1, required: false })
 	id?: number;
 
+	@Allow()
 	@ApiProperty({
 		oneOf: [
 			{ type: 'string', example: 'Criteria description' },
@@ -39,6 +40,7 @@ export class CreateRubricQuestionDto {
 	@ApiProperty({ example: 1, required: false })
 	outcome_id?: number;
 
+	@Allow()
 	@ApiProperty({
 		oneOf: [
 			{ type: 'string', example: 'Question text' },
