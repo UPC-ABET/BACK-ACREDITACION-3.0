@@ -1,6 +1,10 @@
 import { DataSource } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { IfcService } from './ifcs.service';
+import { IfcStateMachineService } from './ifc-state-machine.service';
+import { IfcContentService } from './ifc-content.service';
+import { IfcViewService } from './ifc-view.service';
+import { IfcReportService } from './ifc-report.service';
 
 const pdfRenderer = {
 	htmlToPdf: jest.fn().mockResolvedValue(Buffer.from('%PDF-')),
@@ -17,19 +21,24 @@ import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
 
+function buildServices(dataSource: any) {
+	const repository = {} as IfcRepository;
+	const ds = dataSource as unknown as DataSource;
+	const stateMachine = new IfcStateMachineService(ds, dispatcher as any);
+	const view = new IfcViewService(ds);
+	const content = new IfcContentService(ds, stateMachine, dispatcher as any);
+	const report = new IfcReportService(ds, pdfRenderer as any, view);
+	const service = new IfcService(repository, ds, stateMachine, content, view, report, dispatcher as any);
+	return { service, stateMachine, content, view, report };
+}
+
 describe('IfcService.list', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	it('forwards chart_ids, period_id, and the COURSE type code to the SQL query', async () => {
@@ -60,16 +69,10 @@ describe('IfcService.list', () => {
 describe('IfcService.getView', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const headerRow = {
@@ -201,16 +204,10 @@ describe('IfcService.getView', () => {
 describe('IfcService status transitions', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const ctxRow = (
@@ -376,16 +373,10 @@ describe('IfcService status transitions', () => {
 describe('IfcService.prefill', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const headerRow = {
@@ -477,7 +468,6 @@ describe('IfcService.createIfc', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock; transaction: jest.Mock; manager: { query: jest.Mock } };
 	let em: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		em = { query: jest.fn() };
@@ -486,12 +476,7 @@ describe('IfcService.createIfc', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const baseDto = (overrides: Partial<CreateIfcDto> = {}): CreateIfcDto => ({
@@ -545,21 +530,9 @@ describe('IfcService.createIfc', () => {
 	});
 
 	it('happy path: inserts IFC + status (SAVED when submit=false) and assigns consecutive correlatives to new findings (single IFC instrument)', async () => {
-		// Order of em.query calls in createIfc with findings:
-		// 1. CHART_RESOLUTION_SQL
-		// 2. assertIsInCourseChain (chain CTE)
-		// 3. assertNoIfcExists (empty rows OK)
-		// 4. INSERT INTO evidence.ifcs RETURNING id
-		// 5. SELECT IFC instrument id (resolved once for the whole call)
-		// 6. SELECT criticality codes (batch)
-		// 7. SELECT MAX(correlative) for new findings (single base lookup)
-		// 8. For each new finding: INSERT finding + INSERT ifc_findings
-		// 9. insertStatus
 		em.query
-			.mockResolvedValueOnce([
-				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
-			]) // chart resolution
-			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check passes
+			.mockResolvedValueOnce([{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 }]) // chart resolution
+			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([]) // assertNoIfcExists
 			.mockResolvedValueOnce([{ id: 999 }]) // INSERT ifc
 			.mockResolvedValueOnce([{ id: 77 }]) // resolve IFC instrument id
@@ -783,7 +756,6 @@ describe('IfcService.patch', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock; transaction: jest.Mock; manager: { query: jest.Mock } };
 	let em: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		em = { query: jest.fn() };
@@ -792,12 +764,7 @@ describe('IfcService.patch', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const baseDto = (overrides: Partial<IfcContentDto> = {}): IfcContentDto => ({
@@ -960,16 +927,10 @@ describe('IfcService.patch', () => {
 describe('IfcService.generateStatusReport', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const statusTypes = [
