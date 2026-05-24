@@ -192,27 +192,17 @@ export class RubricService extends BaseService<RubricRepository> {
 
 		// Actualizar solo campos escalares de la rúbrica sin cargar relations
 		// para que TypeORM no intente sincronizar questions en el save
-		const rubricRepo = this.dataSource.getRepository(RubricEntity);
-		const entity = await rubricRepo.findOne({ where: { id }, relations: [] });
-		if (!entity) throw new Error(`No se encontró la rúbrica con ID: ${id}`);
-		Object.assign(entity, rubricData);
-		await rubricRepo.save(entity);
+		await this.dataSource.transaction(async (txManager) => {
+			const rubricRepo = txManager.getRepository(RubricEntity);
+			const entity = await rubricRepo.findOne({ where: { id }, relations: [] });
+			if (!entity) throw new Error(`No se encontró la rúbrica con ID: ${id}`);
+			Object.assign(entity, rubricData);
+			await rubricRepo.save(entity);
 
-		// Sincronizar questions en transacción separada
-		if (questions !== undefined) {
-			const queryRunner = this.dataSource.createQueryRunner();
-			await queryRunner.connect();
-			await queryRunner.startTransaction();
-			try {
-				await this.syncQuestions(id, questions, queryRunner.manager);
-				await queryRunner.commitTransaction();
-			} catch (error) {
-				await queryRunner.rollbackTransaction();
-				throw error;
-			} finally {
-				await queryRunner.release();
+			if (questions !== undefined) {
+				await this.syncQuestions(id, questions, txManager);
 			}
-		}
+		});
 
 		return await this.repository.findOneById(id);
 	}
@@ -282,51 +272,30 @@ export class RubricService extends BaseService<RubricRepository> {
 			return { code: 2, message: 'La rúbrica no existe.', data: null };
 		}
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
+		if (await this.isRubricUsed(id)) {
+			return {
+				code: 1,
+				message: 'No se puede eliminar una rúbrica con calificaciones registradas.',
+				data: null,
+			};
+		}
 
-		try {
-			const questions = await queryRunner.manager.find(RubricQuestionEntity, {
+		await this.dataSource.transaction(async (txManager) => {
+			const questions = await txManager.find(RubricQuestionEntity, {
 				where: { rubric_id: id },
 			});
 			const questionIds = questions.map((q) => q.id);
 
 			if (questionIds.length > 0) {
-				const criteriaList = await queryRunner.manager.find(RubricQuestionCriteriaEntity, {
-					where: { rubric_question_id: In(questionIds) },
-				});
-				const criteriaIds = criteriaList.map((c) => c.id);
-
-				if (criteriaIds.length > 0) {
-					const scoreCount = await queryRunner.manager.count(RubricScoreEntity, {
-						where: { rubric_question_criteria_id: In(criteriaIds) },
-					});
-					if (scoreCount > 0) {
-						await queryRunner.rollbackTransaction();
-						return {
-							code: 1,
-							message: 'No se puede eliminar una rúbrica con calificaciones registradas.',
-							data: null,
-						};
-					}
-				}
-
-				await queryRunner.manager.delete(RubricQuestionCriteriaEntity, {
+				await txManager.delete(RubricQuestionCriteriaEntity, {
 					rubric_question_id: In(questionIds),
 				});
 			}
 
-			await queryRunner.manager.delete(RubricQuestionEntity, { rubric_id: id });
-			await queryRunner.manager.delete(rubric.constructor, id);
+			await txManager.delete(RubricQuestionEntity, { rubric_id: id });
+			await txManager.delete(rubric.constructor, id);
+		});
 
-			await queryRunner.commitTransaction();
-			return { code: 0, message: 'Rúbrica eliminada exitosamente.', data: null };
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
-		}
+		return { code: 0, message: 'Rúbrica eliminada exitosamente.', data: null };
 	}
 }

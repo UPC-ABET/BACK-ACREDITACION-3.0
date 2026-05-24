@@ -153,27 +153,6 @@ export class UserService extends BaseService<UserRepository> {
 		return safeUser;
 	}
 
-	async savePasswordResetToken(user: any, tokenHash: string, expiresAt: string) {
-		await this.baseRepository.update(user.id, {
-			password_reset_token: tokenHash,
-			password_reset_expires_at: expiresAt,
-		});
-	}
-
-	async resetPasswordWithToken(user: any, tokenHash: string, newPassword: string) {
-		if (!user) throw new UnauthorizedException('Usuario no encontrado');
-		if (!user.password_reset_token || user.password_reset_token !== tokenHash)
-			throw new UnauthorizedException('Token invÃ¡lido');
-		if (!user.password_reset_expires_at || new Date(user.password_reset_expires_at) < new Date())
-			throw new UnauthorizedException('El token ha expirado');
-		const hashedPassword = await bcrypt.hash(newPassword, 10);
-		await this.baseRepository.update(user.id, {
-			password: hashedPassword,
-			password_reset_token: null,
-			password_reset_expires_at: null,
-		});
-	}
-
 	async create(dto: CreateUserDto, manager?: EntityManager) {
 		await UserValidation.validateCreate(this.repository, dto);
 		return await super.create(dto, manager);

@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
@@ -16,26 +17,25 @@ async function bootstrap() {
 
 	app.use(cookieParser());
 
+	app.useGlobalFilters(new AllExceptionsFilter());
 	app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-	// Habilitar CORS con opciones básicas
+	const corsRaw = configService.get<string>('CORS_ALLOWED_ORIGINS', '');
+	const frontendUrl = configService.get<string>('APP_FRONTEND_URL', '');
+	const allowedOrigins = [corsRaw, frontendUrl]
+		.join(',')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+
+	if (allowedOrigins.length === 0) {
+		throw new Error('CORS_ALLOWED_ORIGINS (or APP_FRONTEND_URL) must be set');
+	}
+
 	app.enableCors({
 		origin: (origin, callback) => {
 			if (!origin) return callback(null, true);
-
-			const allowedOrigins = [
-				'http://localhost:3000',
-				'http://127.0.0.1:3000',
-				'http://localhost:5173',
-				'http://127.0.0.1:5173',
-				'http://localhost:6666',
-				'http://127.0.0.1:6666',
-				'http://localhost:7777',
-				'http://127.0.0.1:7777',
-				'http://[::1]:7777',
-			];
-
-			if (allowedOrigins.includes(origin) || origin.endsWith('.base.com')) {
+			if (allowedOrigins.includes(origin)) {
 				callback(null, true);
 			} else {
 				callback(new Error('Not allowed by CORS'));
@@ -45,8 +45,14 @@ async function bootstrap() {
 		credentials: true,
 	});
 
-	//Habilitamos Validation Pipe
-	app.useGlobalPipes(new ValidationPipe());
+	app.useGlobalPipes(
+		new ValidationPipe({
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			transform: true,
+			transformOptions: { enableImplicitConversion: true },
+		}),
+	);
 
 	// Configuración de Swagger
 

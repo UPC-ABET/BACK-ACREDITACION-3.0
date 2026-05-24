@@ -452,11 +452,6 @@ export class EvaluationSubmissionService {
 			}
 		}
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
-
-		// Capstone final + NR/NA → todos los criterios en 0; cualquier otro caso → lo que manda el front
 		const scoresToSave =
 			isCapstoneFinal && isNrOrNa
 				? [...criteriaToQuestion.keys()].map((criteriaId) => ({
@@ -465,144 +460,136 @@ export class EvaluationSubmissionService {
 					}))
 				: dto.scores;
 
-		try {
-			const evaluation = await this.saveEvaluationScores(
-				queryRunner.manager,
-				dto.project_student_id,
-				dto.project_evaluator_id,
-				dto.observation,
-				scoresToSave,
-				dto.qualification_status_type_id,
-			);
-
-			if (!isCapstoneFinal) {
-				// Capstone parcial / no capstone (NR/NA o normal):
-				// borrar scores de criterios alternativos de las mismas preguntas enviadas
-				const submittedCriteriaIds = new Set(dto.scores.map((s) => s.rubric_question_criteria_id));
-				const questionsInSubmission = new Set(
-					dto.scores
-						.map((s) => criteriaToQuestion.get(s.rubric_question_criteria_id))
-						.filter((qId): qId is number => qId !== undefined),
+		const { evaluationId, finalOutcomeGrades } = await this.dataSource.transaction(
+			async (manager) => {
+				const evaluation = await this.saveEvaluationScores(
+					manager,
+					dto.project_student_id,
+					dto.project_evaluator_id,
+					dto.observation,
+					scoresToSave,
+					dto.qualification_status_type_id,
 				);
-				const criteriaToDelete: number[] = [];
-				for (const question of rubric.questions ?? []) {
-					if (!questionsInSubmission.has(question.id)) continue;
-					for (const criteria of question.criterias ?? []) {
-						if (!submittedCriteriaIds.has(criteria.id)) {
-							criteriaToDelete.push(criteria.id);
-						}
-					}
-				}
-				if (criteriaToDelete.length > 0) {
-					await queryRunner.manager.delete(RubricScoreEntity, {
-						evaluation_id: evaluation.id,
-						rubric_question_criteria_id: In(criteriaToDelete),
-					});
-				}
-			}
 
-			// Resolver tipo de evaluador
-			const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluator_type_id);
-
-			// Usar rúbrica ya resuelta
-			const isPa = await this.isPaRubric(rubric.id);
-
-			let finalOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
-
-			if (evaluatorCode === this.COM_EVALUATOR_CODE) {
-				// R-NOT-008: COM — promediar todos los COM del proyecto
-				const comEvaluators = await queryRunner.manager.find(ProjectEvaluatorEntity, {
-					where: {
-						project_id: evaluator.project_id,
-						evaluator_type_id: evaluator.evaluator_type_id,
-					},
-				});
-				const comEvaluatorIds = comEvaluators.map((e) => e.id);
-
-				// Acumular scores por outcome a través de todos los evaluadores COM
-				const aggregatedGrades = new Map<
-					number,
-					{ sum: number; count: number; maxValue: number }
-				>();
-
-				for (const comEvalId of comEvaluatorIds) {
-					const comStudentEval = await queryRunner.manager.findOne(EvaluationEntity, {
-						where: { project_student_id: dto.project_student_id, project_evaluator_id: comEvalId },
-					});
-					if (!comStudentEval) continue;
-
-					const { outcomeGrades: comGrades } = await this.aggregateScoresByOutcome(
-						queryRunner.manager,
-						comStudentEval.id,
+				if (!isCapstoneFinal) {
+					const submittedCriteriaIds = new Set(
+						dto.scores.map((s) => s.rubric_question_criteria_id),
 					);
-					for (const og of comGrades) {
-						const existing = aggregatedGrades.get(og.outcomeId);
-						if (existing) {
-							existing.sum += og.grade;
-							existing.count += 1;
-						} else {
-							aggregatedGrades.set(og.outcomeId, {
-								sum: og.grade,
-								count: 1,
-								maxValue: og.maxValue,
-							});
+					const questionsInSubmission = new Set(
+						dto.scores
+							.map((s) => criteriaToQuestion.get(s.rubric_question_criteria_id))
+							.filter((qId): qId is number => qId !== undefined),
+					);
+					const criteriaToDelete: number[] = [];
+					for (const question of rubric.questions ?? []) {
+						if (!questionsInSubmission.has(question.id)) continue;
+						for (const criteria of question.criterias ?? []) {
+							if (!submittedCriteriaIds.has(criteria.id)) {
+								criteriaToDelete.push(criteria.id);
+							}
 						}
+					}
+					if (criteriaToDelete.length > 0) {
+						await manager.delete(RubricScoreEntity, {
+							evaluation_id: evaluation.id,
+							rubric_question_criteria_id: In(criteriaToDelete),
+						});
 					}
 				}
 
-				finalOutcomeGrades = [];
-				for (const [outcomeId, data] of aggregatedGrades) {
-					const average = data.count > 0 ? Math.round((data.sum / data.count) * 100) / 100 : 0;
-					finalOutcomeGrades.push({ outcomeId, grade: average, maxValue: data.maxValue });
+				const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluator_type_id);
+				const isPa = await this.isPaRubric(rubric.id);
+
+				let txOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
+
+				if (evaluatorCode === this.COM_EVALUATOR_CODE) {
+					const comEvaluators = await manager.find(ProjectEvaluatorEntity, {
+						where: {
+							project_id: evaluator.project_id,
+							evaluator_type_id: evaluator.evaluator_type_id,
+						},
+					});
+					const comEvaluatorIds = comEvaluators.map((e) => e.id);
+
+					const aggregatedGrades = new Map<
+						number,
+						{ sum: number; count: number; maxValue: number }
+					>();
+
+					for (const comEvalId of comEvaluatorIds) {
+						const comStudentEval = await manager.findOne(EvaluationEntity, {
+							where: {
+								project_student_id: dto.project_student_id,
+								project_evaluator_id: comEvalId,
+							},
+						});
+						if (!comStudentEval) continue;
+
+						const { outcomeGrades: comGrades } = await this.aggregateScoresByOutcome(
+							manager,
+							comStudentEval.id,
+						);
+						for (const og of comGrades) {
+							const existing = aggregatedGrades.get(og.outcomeId);
+							if (existing) {
+								existing.sum += og.grade;
+								existing.count += 1;
+							} else {
+								aggregatedGrades.set(og.outcomeId, {
+									sum: og.grade,
+									count: 1,
+									maxValue: og.maxValue,
+								});
+							}
+						}
+					}
+
+					txOutcomeGrades = [];
+					for (const [outcomeId, data] of aggregatedGrades) {
+						const average =
+							data.count > 0 ? Math.round((data.sum / data.count) * 100) / 100 : 0;
+						txOutcomeGrades.push({ outcomeId, grade: average, maxValue: data.maxValue });
+					}
+
+					await this.upsertOutcomeGrades(
+						manager,
+						student.student_section_enrollment_id,
+						txOutcomeGrades,
+					);
+				} else if (evaluatorCode === this.GER_EVALUATOR_CODE && isPa) {
+					const { outcomeGrades } = await this.aggregateScoresByOutcome(
+						manager,
+						evaluation.id,
+					);
+					txOutcomeGrades = outcomeGrades;
+					await this.upsertOutcomeGrades(
+						manager,
+						student.student_section_enrollment_id,
+						txOutcomeGrades,
+					);
+				} else {
+					const { outcomeGrades } = await this.aggregateScoresByOutcome(
+						manager,
+						evaluation.id,
+					);
+					txOutcomeGrades = outcomeGrades;
+					await this.upsertOutcomeGrades(
+						manager,
+						student.student_section_enrollment_id,
+						txOutcomeGrades,
+					);
 				}
 
-				// UPSERT con promedios del COM
-				await this.upsertOutcomeGrades(
-					queryRunner.manager,
-					student.student_section_enrollment_id,
-					finalOutcomeGrades,
-				);
-			} else if (evaluatorCode === this.GER_EVALUATOR_CODE && isPa) {
-				// R-NOT-009: GER en WASC — escribe directo
-				const { outcomeGrades } = await this.aggregateScoresByOutcome(
-					queryRunner.manager,
-					evaluation.id,
-				);
-				finalOutcomeGrades = outcomeGrades;
-				await this.upsertOutcomeGrades(
-					queryRunner.manager,
-					student.student_section_enrollment_id,
-					finalOutcomeGrades,
-				);
-			} else {
-				// DOC, CLI, COA, o GER en ABET — escribe directo
-				const { outcomeGrades } = await this.aggregateScoresByOutcome(
-					queryRunner.manager,
-					evaluation.id,
-				);
-				finalOutcomeGrades = outcomeGrades;
-				await this.upsertOutcomeGrades(
-					queryRunner.manager,
-					student.student_section_enrollment_id,
-					finalOutcomeGrades,
-				);
-			}
+				return { evaluationId: evaluation.id, finalOutcomeGrades: txOutcomeGrades };
+			},
+		);
 
-			await queryRunner.commitTransaction();
+		const allOutcomeGrades = finalOutcomeGrades || [];
+		const notaRubrica = allOutcomeGrades.reduce((s, og) => s + og.grade, 0);
+		const notaMaxRubrica = allOutcomeGrades.reduce((s, og) => s + og.maxValue, 0);
+		const scaledScore = this.scaleTo20(notaRubrica, notaMaxRubrica);
 
-			// Calcular nota vigesimal para respuesta
-			const allOutcomeGrades = finalOutcomeGrades || [];
-			const notaRubrica = allOutcomeGrades.reduce((s, og) => s + og.grade, 0);
-			const notaMaxRubrica = allOutcomeGrades.reduce((s, og) => s + og.maxValue, 0);
-			const scaledScore = this.scaleTo20(notaRubrica, notaMaxRubrica);
-
-			return { success: true, evaluationId: evaluation.id, scaledScore };
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
-		}
+		return { success: true, evaluationId, scaledScore };
 	}
 
 	/**
@@ -612,12 +599,8 @@ export class EvaluationSubmissionService {
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
 		const nrStatusTypeId = await this.resolveStatusTypeIdByCode(this.NR_STATUS_CODE);
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
-
-		try {
-			let evaluation = await queryRunner.manager.findOne(EvaluationEntity, {
+		await this.dataSource.transaction(async (manager) => {
+			let evaluation = await manager.findOne(EvaluationEntity, {
 				where: {
 					project_student_id: dto.project_student_id,
 					project_evaluator_id: dto.project_evaluator_id,
@@ -625,7 +608,7 @@ export class EvaluationSubmissionService {
 			});
 
 			if (!evaluation) {
-				evaluation = queryRunner.manager.create(EvaluationEntity, {
+				evaluation = manager.create(EvaluationEntity, {
 					project_student_id: dto.project_student_id,
 					project_evaluator_id: dto.project_evaluator_id,
 					qualification_status_type_id: nrStatusTypeId,
@@ -642,16 +625,10 @@ export class EvaluationSubmissionService {
 				evaluation.qualification_status_type_id = asistioStatusTypeId;
 			}
 
-			await queryRunner.manager.save(evaluation);
-			await queryRunner.commitTransaction();
+			await manager.save(evaluation);
+		});
 
-			return { success: true };
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
-		}
+		return { success: true };
 	}
 
 	/**
@@ -677,13 +654,9 @@ export class EvaluationSubmissionService {
 
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
-
-		try {
+		await this.dataSource.transaction(async (manager) => {
 			for (const ps of project.students) {
-				const evaluation = await queryRunner.manager.findOne(EvaluationEntity, {
+				const evaluation = await manager.findOne(EvaluationEntity, {
 					where: {
 						project_student_id: ps.id,
 						project_evaluator_id: dto.evaluator_id,
@@ -704,7 +677,7 @@ export class EvaluationSubmissionService {
 					);
 				}
 
-				const criteriaCount = await queryRunner.manager.count(RubricScoreEntity, {
+				const criteriaCount = await manager.count(RubricScoreEntity, {
 					where: { evaluation_id: evaluation.id },
 				});
 
@@ -715,17 +688,11 @@ export class EvaluationSubmissionService {
 				}
 
 				evaluation.qualification_status_type_id = asistioStatusTypeId;
-				await queryRunner.manager.save(evaluation);
+				await manager.save(evaluation);
 			}
+		});
 
-			await queryRunner.commitTransaction();
-			return { success: true, message: 'Calificación guardada exitosamente.' };
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
-		}
+		return { success: true, message: 'Calificación guardada exitosamente.' };
 	}
 
 	async getEvaluationById(id: number): Promise<EvaluationEntity> {

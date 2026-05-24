@@ -88,13 +88,8 @@ export class ProjectConfigService {
 			this.DEFAULT_EVALUATOR_TYPE_CODE,
 		);
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
-
-		try {
-			// 1. Guardar Proyecto Base
-			const project = queryRunner.manager.create(ProjectEntity, {
+		return await this.dataSource.transaction(async (manager) => {
+			const project = manager.create(ProjectEntity, {
 				code: dto.code,
 				name: dto.name,
 				description: dto.description,
@@ -102,41 +97,33 @@ export class ProjectConfigService {
 				extra: dto.extra,
 			});
 
-			const savedProject = await queryRunner.manager.save(project);
+			const savedProject = await manager.save(project);
 
-			// 2. Guardar Estudiantes Asignados al Proyecto
 			if (dto.student_section_enrollment_ids && dto.student_section_enrollment_ids.length > 0) {
 				const projectStudents = dto.student_section_enrollment_ids.map((studentId) =>
-					queryRunner.manager.create(ProjectStudentEntity, {
+					manager.create(ProjectStudentEntity, {
 						project_id: savedProject.id,
 						student_section_enrollment_id: studentId,
 						is_active: true,
 					}),
 				);
-				await queryRunner.manager.save(projectStudents);
+				await manager.save(projectStudents);
 			}
 
-			// 3. Guardar Evaluadores Asignados al Proyecto (tipo DOC desde core.types)
 			if (dto.evaluator_professor_ids && dto.evaluator_professor_ids.length > 0) {
 				const projectEvaluators = dto.evaluator_professor_ids.map((professorId) =>
-					queryRunner.manager.create(ProjectEvaluatorEntity, {
+					manager.create(ProjectEvaluatorEntity, {
 						project_id: savedProject.id,
 						professor_id: professorId,
 						evaluator_type_id: evaluatorTypeId,
 						is_active: true,
 					}),
 				);
-				await queryRunner.manager.save(projectEvaluators);
+				await manager.save(projectEvaluators);
 			}
 
-			await queryRunner.commitTransaction();
 			return savedProject;
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
-		}
+		});
 	}
 
 	/**

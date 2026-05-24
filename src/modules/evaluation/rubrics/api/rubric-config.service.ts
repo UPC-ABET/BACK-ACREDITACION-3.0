@@ -171,12 +171,8 @@ export class RubricConfigService {
 			throw new NotFoundException('El study_plan_course_id proporcionado no existe.');
 		}
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
-
-		try {
-			const rubric = queryRunner.manager.create(RubricEntity, {
+		const savedRubric = await this.dataSource.transaction(async (manager) => {
+			const rubric = manager.create(RubricEntity, {
 				rubric_type_id: dto.rubric_type_id,
 				grade_type_id: dto.grade_type_id,
 				study_plan_course_id: dto.study_plan_course_id,
@@ -184,20 +180,20 @@ export class RubricConfigService {
 				extra: dto.extra,
 			});
 
-			const savedRubric = await queryRunner.manager.save(rubric);
+			const txSavedRubric = await manager.save(rubric);
 
 			const questionEntities: RubricQuestionEntity[] = [];
 			for (const questionDto of dto.questions) {
-				const question = queryRunner.manager.create(RubricQuestionEntity, {
-					rubric_id: savedRubric.id,
+				const question = manager.create(RubricQuestionEntity, {
+					rubric_id: txSavedRubric.id,
 					outcome_id: questionDto.outcome_id,
 					question: toI18n(questionDto.question),
 					is_active: true,
 				});
-				const savedQuestion = await queryRunner.manager.save(question);
+				const savedQuestion = await manager.save(question);
 
 				const criteriaEntities = questionDto.criterias.map((criteriaDto) =>
-					queryRunner.manager.create(RubricQuestionCriteriaEntity, {
+					manager.create(RubricQuestionCriteriaEntity, {
 						rubric_question_id: savedQuestion.id,
 						criteria: toI18n(criteriaDto.criteria),
 						min_value: criteriaDto.min_value,
@@ -206,29 +202,22 @@ export class RubricConfigService {
 					}),
 				);
 
-				await queryRunner.manager.save(criteriaEntities);
+				await manager.save(criteriaEntities);
 				savedQuestion.criterias = criteriaEntities;
 				questionEntities.push(savedQuestion);
 			}
 
-			await queryRunner.commitTransaction();
+			txSavedRubric.questions = questionEntities;
+			return txSavedRubric;
+		});
 
-			savedRubric.questions = questionEntities;
-
-			// R-RUB-014: Recalcular nota máxima tras creación
-			try {
-				await this.recalculateMaxScore(savedRubric.id);
-			} catch {
-				// Recalculo no crítico para la creación
-			}
-
-			return savedRubric;
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
+		try {
+			await this.recalculateMaxScore(savedRubric.id);
+		} catch {
+			// Recalculo no crítico para la creación
 		}
+
+		return savedRubric;
 	}
 
 	/**

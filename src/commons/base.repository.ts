@@ -7,7 +7,9 @@ import {
 	IsNull,
 	Repository,
 } from 'typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { IBaseRepository } from './ibase.repository';
+import { sharedStrings } from '../shared/strings/shared.strings';
 
 export abstract class BaseRepostitory implements IBaseRepository {
 	protected readonly repository: Repository<any>;
@@ -34,7 +36,7 @@ export abstract class BaseRepostitory implements IBaseRepository {
 		const entity = await repository.findOne({ where: { id } });
 
 		if (!entity) {
-			throw new Error(`No se encontró la entidad con ID: ${id}`);
+			throw new NotFoundException(sharedStrings.error.notFound);
 		}
 
 		Object.assign(entity, newEntity);
@@ -47,7 +49,7 @@ export abstract class BaseRepostitory implements IBaseRepository {
 		const entity = await repository.findOne({ where: { id } });
 
 		if (!entity) {
-			throw new Error(`No se encontró la entidad con ID: ${id}`);
+			throw new NotFoundException(sharedStrings.error.notFound);
 		}
 
 		return await repository.remove(entity);

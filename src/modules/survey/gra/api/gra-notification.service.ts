@@ -261,57 +261,50 @@ export class GraNotificationService {
 		GraValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
 
 		try {
-			// Insertar scores GRA en survey.scores
-			for (const item of dto.scores) {
-				// Resolver outcome_id desde outcome_config_id
-				const configRows = await queryRunner.manager.query(
-					`SELECT outcome_id FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
-					[item.outcome_config_id],
-				);
-
-				if (!configRows?.[0]) continue;
-
-				const outcomeId = configRows[0].outcome_id;
-
-				// Evitar duplicados si ya existe score para esta encuesta + outcome
-				const existing = await queryRunner.manager.query(
-					`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-					[tokenData!.survey_id, outcomeId],
-				);
-
-				if (existing?.length > 0) {
-					await queryRunner.manager.query(
-						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-						[item.score, item.commentaries ?? null, tokenData!.survey_id, outcomeId],
+			await this.dataSource.transaction(async (manager) => {
+				for (const item of dto.scores) {
+					const configRows = await manager.query(
+						`SELECT outcome_id FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
+						[item.outcome_config_id],
 					);
-				} else {
-					await queryRunner.manager.query(
-						`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-						[tokenData!.survey_id, outcomeId, item.score, item.commentaries ?? null],
+
+					if (!configRows?.[0]) continue;
+
+					const outcomeId = configRows[0].outcome_id;
+
+					const existing = await manager.query(
+						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
+						[tokenData!.survey_id, outcomeId],
 					);
+
+					if (existing?.length > 0) {
+						await manager.query(
+							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
+							[item.score, item.commentaries ?? null, tokenData!.survey_id, outcomeId],
+						);
+					} else {
+						await manager.query(
+							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
+							[tokenData!.survey_id, outcomeId, item.score, item.commentaries ?? null],
+						);
+					}
 				}
-			}
 
-			// Actualizar estado de la encuesta a CERRADA
-			const commentariesJson = dto.commentaries
-				? JSON.stringify({ commentaries: dto.commentaries })
-				: null;
-			await queryRunner.manager.query(
-				`UPDATE evidence.surveys
-				 SET survey_status_type_id = $1, updated_at = NOW()
-				     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
-				 WHERE id = $2`,
-				commentariesJson
-					? [closedStatusId, tokenData!.survey_id, commentariesJson]
-					: [closedStatusId, tokenData!.survey_id],
-			);
-
-			await queryRunner.commitTransaction();
+				const commentariesJson = dto.commentaries
+					? JSON.stringify({ commentaries: dto.commentaries })
+					: null;
+				await manager.query(
+					`UPDATE evidence.surveys
+					 SET survey_status_type_id = $1, updated_at = NOW()
+					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
+					 WHERE id = $2`,
+					commentariesJson
+						? [closedStatusId, tokenData!.survey_id, commentariesJson]
+						: [closedStatusId, tokenData!.survey_id],
+				);
+			});
 
 			return {
 				success: true,
@@ -320,10 +313,7 @@ export class GraNotificationService {
 				message: 'Encuesta GRA completada exitosamente. ¡Gracias por tu participación!',
 			};
 		} catch (err) {
-			await queryRunner.rollbackTransaction();
 			throw new BadRequestException(`Error al guardar la encuesta GRA: ${(err as Error).message}`);
-		} finally {
-			await queryRunner.release();
 		}
 	}
 
@@ -360,39 +350,31 @@ export class GraNotificationService {
 	// ─── Helpers internos ────────────────────────────────────────────────────────
 
 	private async getEmailTemplate(): Promise<{ subject: string; body: string }> {
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		try {
-			// Buscar el primer template activo de tipo GRA
-			const rows = await queryRunner.manager.query(
-				`SELECT nm.title, nm.body
-				 FROM survey.notification_messages nm
-				 INNER JOIN core.types t ON t.id = nm.survey_type_id
-				 WHERE t.code = 'TG601-T002'
-				   AND nm.is_active = true
-				 ORDER BY nm.id ASC
-				 LIMIT 1`,
-			);
+		const rows = await this.dataSource.query(
+			`SELECT nm.title, nm.body
+			 FROM survey.notification_messages nm
+			 INNER JOIN core.types t ON t.id = nm.survey_type_id
+			 WHERE t.code = 'TG601-T002'
+			   AND nm.is_active = true
+			 ORDER BY nm.id ASC
+			 LIMIT 1`,
+		);
 
-			if (rows?.[0]) {
-				return {
-					subject: rows[0].title,
-					body: rows[0].body,
-				};
-			}
-
-			// Template por defecto si no existe configuración
+		if (rows?.[0]) {
 			return {
-				subject: 'Encuesta de Competencias de Graduandos',
-				body: `<p>Estimado(a) [NombreAlumno],</p>
+				subject: rows[0].title,
+				body: rows[0].body,
+			};
+		}
+
+		return {
+			subject: 'Encuesta de Competencias de Graduandos',
+			body: `<p>Estimado(a) [NombreAlumno],</p>
 <p>Te invitamos a completar la encuesta de competencias de graduandos. Por favor accede al siguiente enlace:</p>
 <p><a href="[LinkEncuesta]">Completar Encuesta</a></p>
 <p>Token: [Token]</p>
 <p>Saludos,<br/>Equipo ABET</p>`,
-			};
-		} finally {
-			await queryRunner.release();
-		}
+		};
 	}
 
 	private replacePlaceholders(template: string, data: Record<string, string>): string {
