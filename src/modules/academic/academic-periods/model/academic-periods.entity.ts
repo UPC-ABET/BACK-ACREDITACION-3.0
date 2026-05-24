@@ -19,8 +19,6 @@ export class AcademicPeriodEntity extends BaseEntity {
 	@DateColumn({ nullable: false })
 	end_date: Date;
 
-	@Column({ type: 'int', insert: false, update: false })
-	year: number;
 
 	// %% RELACIONES
 
