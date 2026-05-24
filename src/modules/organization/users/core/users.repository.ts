@@ -17,7 +17,7 @@ export class UserRepository extends BaseRepostitory {
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.where('user.email = :email', { email })
-			.andWhere('user.is_active = :active', { active: 1 })
+			.andWhere('user.is_active = :active', { active: true })
 			.getOne();
 	}
 }

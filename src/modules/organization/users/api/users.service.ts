@@ -59,7 +59,7 @@ export class UserService extends BaseService<UserRepository> {
 			return await this.baseRepository.findOneByCondition({
 				where: {
 					id: user_id,
-					is_active: 1,
+					is_active: true,
 				},
 			});
 		}
@@ -68,7 +68,7 @@ export class UserService extends BaseService<UserRepository> {
 			return await this.baseRepository.findOneByCondition({
 				where: {
 					email,
-					is_active: 1,
+					is_active: true,
 				},
 			});
 		}
