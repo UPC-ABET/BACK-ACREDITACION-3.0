@@ -52,7 +52,14 @@ export class IfcReportService {
 	}
 
 	async generatePdfBulk(ifcIds: number[], userId: number, schoolId: number, lang: 'es' | 'en') {
-		const payloads = await Promise.all(ifcIds.map((id) => this.view.getView(id, userId, schoolId)));
+		const pLimitMod = await import('p-limit');
+		const pLimit = (pLimitMod.default ?? pLimitMod) as (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>;
+		const viewLimit = pLimit(8);
+		const renderLimit = pLimit(3);
+
+		const payloads = await Promise.all(
+			ifcIds.map((id) => viewLimit(() => this.view.getView(id, userId, schoolId))),
+		);
 		const nonApproved = payloads.find((p) => p.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED);
 		if (nonApproved) {
 			throw new HttpException(
@@ -65,10 +72,12 @@ export class IfcReportService {
 		}
 
 		const files = await Promise.all(
-			payloads.map(async (data) => ({
-				filename: this.buildPdfFilename(data, lang),
-				pdf: await this.pdfRenderer.htmlToPdf(this.buildIfcHtml(data, lang)),
-			})),
+			payloads.map((data) =>
+				renderLimit(async () => ({
+					filename: this.buildPdfFilename(data, lang),
+					pdf: await this.pdfRenderer.htmlToPdf(this.buildIfcHtml(data, lang)),
+				})),
+			),
 		);
 
 		const zip = await this.pdfRenderer.filesToZip(files);
@@ -143,6 +152,14 @@ export class IfcReportService {
 				.map((f: any) => `<tr><td>${esc(f.code)}</td><td>${esc(f.description?.[lang])}</td></tr>`)
 				.join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
 
+		const previousActionRows =
+			data.previous_actions
+				.map(
+					(a: any) =>
+						`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(a.completeness?.name?.[lang])}</td></tr>`,
+				)
+				.join('') || `<tr><td colspan="3" class="empty">${esc(L.s2_empty)}</td></tr>`;
+
 		const actionRows =
 			data.findings
 				.flatMap((f: any) =>
@@ -192,7 +209,7 @@ export class IfcReportService {
 					<h3>${esc(L.s2_title)}</h3>
 					<table>
 						<thead><tr><th>${esc(L.s2_col_code)}</th><th>${esc(L.s2_col_desc)}</th><th>${esc(L.s2_col_state)}</th></tr></thead>
-						<tbody><tr><td colspan="3" class="empty">${esc(L.s2_empty)}</td></tr></tbody>
+						<tbody>${previousActionRows}</tbody>
 					</table>
 				</section>
 

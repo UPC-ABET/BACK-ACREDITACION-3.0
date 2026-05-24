@@ -31,7 +31,7 @@ LEFT JOIN LATERAL (
 	SELECT status_type_id
 	FROM ifc.statuses
 	WHERE ifc_id = i.id
-	ORDER BY register_at DESC
+	ORDER BY created_at DESC
 	LIMIT 1
 ) latest_status ON true
 LEFT JOIN core.types ifc_st          ON ifc_st.id = latest_status.status_type_id
@@ -126,7 +126,7 @@ LEFT JOIN LATERAL (
 	SELECT status_type_id, staff_id, register_at, comment
 	FROM ifc.statuses
 	WHERE ifc_id = i.id
-	ORDER BY register_at DESC
+	ORDER BY created_at DESC
 	LIMIT 1
 ) latest_status ON true
 LEFT JOIN core.types ifc_st         ON ifc_st.id  = latest_status.status_type_id
@@ -290,7 +290,7 @@ LEFT JOIN LATERAL (
 	SELECT status_type_id
 	FROM ifc.statuses
 	WHERE ifc_id = i.id
-	ORDER BY register_at DESC
+	ORDER BY created_at DESC
 	LIMIT 1
 ) latest_status ON true
 LEFT JOIN core.types ifc_st ON ifc_st.id = latest_status.status_type_id
@@ -484,7 +484,7 @@ LEFT JOIN LATERAL (
 	SELECT status_type_id
 	FROM ifc.statuses
 	WHERE ifc_id = i.id
-	ORDER BY register_at DESC
+	ORDER BY created_at DESC
 	LIMIT 1
 ) latest_status ON true
 LEFT JOIN core.types ifc_st ON ifc_st.id = latest_status.status_type_id

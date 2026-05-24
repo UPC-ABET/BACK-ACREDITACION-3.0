@@ -27,7 +27,7 @@ export class IfcStateMachineService {
 				   JOIN evidence.ifcs i ON i.id = s.ifc_id
 				   JOIN organization.charts c ON c.entity_code = i.course_id AND c.academic_period_id = i.academic_period_id
 				   WHERE c.id = $1 AND i.academic_period_id = $2
-				   ORDER BY s.register_at DESC LIMIT 1),
+				   ORDER BY s.created_at DESC LIMIT 1),
 				$3
 			) AS code
 			`,
