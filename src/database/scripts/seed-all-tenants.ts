@@ -33,6 +33,7 @@ async function run() {
 		'10-improvement.seed.ts',
 		'11-survey.seed.ts',
 		'12-notifications.seed.ts',
+		'13-auth-roles-permissions.seed.ts',
 	];
 
 	const seedsDir = path.join(__dirname, 'seeds', 'upc');
