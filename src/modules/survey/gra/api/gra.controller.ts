@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { GraConfigService } from './gra-config.service';
 import { GraNotificationService } from './gra-notification.service';
@@ -46,7 +46,7 @@ export class GraController {
 
 	@SwaggerGraConfigCreate()
 	async configCreate(@Body() dto: CreateGraConfigDto) {
-		return parseSuccessResponse(await this.configService.create(dto));
+		return parseSuccessResponse(await this.configService.create(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerGraConfigGetAll()

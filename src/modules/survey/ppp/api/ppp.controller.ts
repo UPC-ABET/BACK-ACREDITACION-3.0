@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { PppConfigService } from './ppp-config.service';
 import { PppSurveyService } from './ppp-survey.service';
@@ -42,7 +42,7 @@ export class PppController {
 
 	@SwaggerPppConfigCreate()
 	async configCreate(@Body() dto: CreatePppConfigDto) {
-		return parseSuccessResponse(await this.configService.create(dto));
+		return parseSuccessResponse(await this.configService.create(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerPppConfigGetAll()
@@ -79,7 +79,7 @@ export class PppController {
 
 	@SwaggerPppSurveyCreate()
 	async surveyCreate(@Body() dto: CreatePppSurveyDto) {
-		return parseSuccessResponse(await this.surveyService.create(dto));
+		return parseSuccessResponse(await this.surveyService.create(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerPppSurveyGetAll()

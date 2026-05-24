@@ -2,9 +2,9 @@ import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { BaseEntity } from 'src/commons/base.entity';
 import {
+	EmailColumn,
 	NameColumn,
 	PasswordColumn,
-	TextMediumColumn,
 	IntegerFKIDColumn,
 	IntegerColumn,
 	BooleanColumn,
@@ -27,7 +27,7 @@ export class UserEntity extends BaseEntity {
 	@NameColumn({ nullable: false })
 	last_name: string;
 
-	@TextMediumColumn({ nullable: false })
+	@EmailColumn({ nullable: false })
 	email: string;
 
 	@NameColumn()

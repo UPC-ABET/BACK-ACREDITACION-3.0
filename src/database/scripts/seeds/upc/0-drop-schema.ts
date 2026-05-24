@@ -7,7 +7,12 @@ async function run() {
 	const tenant = process.argv[2];
 
 	if (!tenant) {
-		console.error('Schema required: npm run seed:tenant <schema>');
+		console.error('Schema required: npm run seed:drop <schema>');
+		process.exit(1);
+	}
+
+	if (!process.env.DB_HOST || !process.env.DB_NAME) {
+		console.error('Missing required env vars: DB_HOST, DB_NAME');
 		process.exit(1);
 	}
 

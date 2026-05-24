@@ -1,4 +1,4 @@
-import { Body, Param, Post, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, Post, Get, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
@@ -32,7 +32,7 @@ export class ProjectController extends BaseController<ProjectService> {
 
 	@Post('create-full')
 	async createProjectFull(@Body() dto: CreateProjectDto) {
-		return parseSuccessResponse(await this.projectConfigService.createProject(dto));
+		return parseSuccessResponse(await this.projectConfigService.createProject(dto), HttpStatus.CREATED);
 	}
 
 	@Get('professor/:professorId')
