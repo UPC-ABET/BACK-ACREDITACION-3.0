@@ -318,8 +318,15 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		[
 			'TG302',
 			'TG302-T001',
-			i18n('Outcome ABET', 'ABET outcome'),
-			i18n('Resultado de aprendizaje acreditable', 'Accreditable learning outcome'),
+			i18n('Verificacion', 'Verification'),
+			i18n('Outcome de verificacion de logro', 'Achievement verification outcome'),
+			'{}',
+		],
+		[
+			'TG302',
+			'TG302-T002',
+			i18n('Control', 'Control'),
+			i18n('Outcome de control de progreso', 'Progress control outcome'),
 			'{}',
 		],
 		[
