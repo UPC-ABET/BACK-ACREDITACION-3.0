@@ -546,8 +546,7 @@ export class EvaluationSubmissionService {
 
 					txOutcomeGrades = [];
 					for (const [outcomeId, data] of aggregatedGrades) {
-						const average =
-							data.count > 0 ? Math.round((data.sum / data.count) * 100) / 100 : 0;
+						const average = data.count > 0 ? Math.round((data.sum / data.count) * 100) / 100 : 0;
 						txOutcomeGrades.push({ outcomeId, grade: average, maxValue: data.maxValue });
 					}
 
@@ -557,10 +556,7 @@ export class EvaluationSubmissionService {
 						txOutcomeGrades,
 					);
 				} else if (evaluatorCode === this.GER_EVALUATOR_CODE && isPa) {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(
-						manager,
-						evaluation.id,
-					);
+					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
 					txOutcomeGrades = outcomeGrades;
 					await this.upsertOutcomeGrades(
 						manager,
@@ -568,10 +564,7 @@ export class EvaluationSubmissionService {
 						txOutcomeGrades,
 					);
 				} else {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(
-						manager,
-						evaluation.id,
-					);
+					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
 					txOutcomeGrades = outcomeGrades;
 					await this.upsertOutcomeGrades(
 						manager,

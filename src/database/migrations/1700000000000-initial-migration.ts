@@ -158,7 +158,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "evaluation"."rubric_scores" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "evaluation_id" integer NOT NULL, "rubric_question_criteria_id" integer NOT NULL, "score" numeric(12,6) NOT NULL, "commentaries" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_35eb0094940cd089113bae42d34" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."rubric_questions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_id" integer NOT NULL, "outcome_id" integer NOT NULL, "question" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_7b046d188d390f1ff98f0031707" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."rubric_questions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_id" integer NOT NULL, "outcome_id" integer, "question" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_7b046d188d390f1ff98f0031707" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "core"."type_groups" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_2e70b216ddac5c1ce8eb9410122" UNIQUE ("code"), CONSTRAINT "PK_73650a04200c679d5b25227ea5f" PRIMARY KEY ("id"))`,
@@ -177,6 +177,45 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."course_outcome_mappings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, "outcome_type_id" integer NOT NULL, CONSTRAINT "PK_da935d2cca6b077a7be88e52cd1" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(
+			`CREATE TABLE "core"."roles" ("id" SERIAL NOT NULL, "name" jsonb NOT NULL, "code" character varying(50) NOT NULL, "description" text, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_roles_code" UNIQUE ("code"), CONSTRAINT "PK_roles" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(`
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'root') THEN
+					EXECUTE 'ALTER TABLE "core"."roles" OWNER TO root';
+				END IF;
+			END $$;
+		`);
+		await queryRunner.query(
+			`CREATE TABLE "core"."user_roles" ("id" SERIAL NOT NULL, "user_id" integer NOT NULL, "role_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_user_roles_user_role" UNIQUE ("user_id", "role_id"), CONSTRAINT "PK_user_roles" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(`
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'root') THEN
+					EXECUTE 'ALTER TABLE "core"."user_roles" OWNER TO root';
+				END IF;
+			END $$;
+		`);
+		await queryRunner.query(
+			`CREATE INDEX "idx_user_roles_user_active" ON "core"."user_roles" ("user_id", "is_active")`,
+		);
+		await queryRunner.query(
+			`CREATE TABLE "core"."role_module_permissions" ("id" SERIAL NOT NULL, "role_id" integer NOT NULL, "module_type_id" integer NOT NULL, "permission_type_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_role_module_permission" UNIQUE ("role_id", "module_type_id", "permission_type_id"), CONSTRAINT "PK_role_module_permissions" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(`
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'root') THEN
+					EXECUTE 'ALTER TABLE "core"."role_module_permissions" OWNER TO root';
+				END IF;
+			END $$;
+		`);
+		await queryRunner.query(
+			`CREATE INDEX "idx_role_module_permissions_lookup" ON "core"."role_module_permissions" ("role_id", "module_type_id", "permission_type_id", "is_active")`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "accreditation"."commissions" ADD CONSTRAINT "FK_abde2f6c7c2c15d86d1ad18ff51" FOREIGN KEY ("accreditor_id") REFERENCES "accreditation"."accreditors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -433,9 +472,35 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_11ba9460ef5a797504d1ab63b9a" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."user_roles" ADD CONSTRAINT "FK_user_roles_user" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."user_roles" ADD CONSTRAINT "FK_user_roles_role" FOREIGN KEY ("role_id") REFERENCES "core"."roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_role" FOREIGN KEY ("role_id") REFERENCES "core"."roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_module_type" FOREIGN KEY ("module_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_permission_type" FOREIGN KEY ("permission_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_permission_type"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_module_type"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_role"`,
+		);
+		await queryRunner.query(`ALTER TABLE "core"."user_roles" DROP CONSTRAINT "FK_user_roles_role"`);
+		await queryRunner.query(`ALTER TABLE "core"."user_roles" DROP CONSTRAINT "FK_user_roles_user"`);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_11ba9460ef5a797504d1ab63b9a"`,
 		);
@@ -697,6 +762,11 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_abde2f6c7c2c15d86d1ad18ff51"`,
 		);
+		await queryRunner.query(`DROP INDEX "idx_role_module_permissions_lookup"`);
+		await queryRunner.query(`DROP TABLE "core"."role_module_permissions"`);
+		await queryRunner.query(`DROP INDEX "idx_user_roles_user_active"`);
+		await queryRunner.query(`DROP TABLE "core"."user_roles"`);
+		await queryRunner.query(`DROP TABLE "core"."roles"`);
 		await queryRunner.query(`DROP TABLE "academic"."course_outcome_mappings"`);
 		await queryRunner.query(`DROP TABLE "academic"."performance_levels"`);
 		await queryRunner.query(`DROP TABLE "academic"."student_course_grades"`);

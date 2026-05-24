@@ -25,7 +25,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			response = {
 				code: exception.getStatus(),
 				message: exception.message,
-				data: typeof body === 'object' ? (body as any).errors ?? null : null,
+				data: typeof body === 'object' ? ((body as any).errors ?? null) : null,
 			};
 		} else {
 			this.logger.error(exception);
