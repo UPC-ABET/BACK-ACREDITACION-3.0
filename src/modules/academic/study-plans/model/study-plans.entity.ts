@@ -6,7 +6,7 @@ import { ProgramEntity } from 'src/modules/academic/programs/model/programs.enti
 
 @Entity({ name: 'study_plans', schema: 'academic' })
 export class StudyPlanEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	program_id: number;
@@ -20,7 +20,7 @@ export class StudyPlanEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProgramEntity)
 	@JoinColumn({ name: 'program_id' })

@@ -6,7 +6,7 @@ import { FacultyEntity } from 'src/modules/organization/faculties/model/facultie
 
 @Entity({ name: 'schools', schema: 'organization' })
 export class SchoolEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	faculty_id: number;
@@ -17,7 +17,7 @@ export class SchoolEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	name: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => FacultyEntity)
 	@JoinColumn({ name: 'faculty_id' })

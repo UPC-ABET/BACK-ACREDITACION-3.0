@@ -14,7 +14,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 	'ifc_status_type_id',
 ])
 export class NotificationConfigEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	school_id: number;
@@ -40,7 +40,7 @@ export class NotificationConfigEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	cc_chart_level_type_ids: string[];
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => SchoolEntity)
 	@JoinColumn({ name: 'school_id' })

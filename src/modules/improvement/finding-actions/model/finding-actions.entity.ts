@@ -7,7 +7,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'finding_actions', schema: 'improvement' })
 export class FindingActionEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	finding_id: number;
@@ -21,7 +21,7 @@ export class FindingActionEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	evidences: I18nText | null;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => FindingEntity)
 	@JoinColumn({ name: 'finding_id' })

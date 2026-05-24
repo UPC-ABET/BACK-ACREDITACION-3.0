@@ -7,7 +7,7 @@ import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Entity({ name: 'staff', schema: 'organization' })
 export class StaffEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	user_id: number;
@@ -27,7 +27,7 @@ export class StaffEntity extends BaseEntity {
 	@NameColumn({ nullable: false })
 	staff_phone: string;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => UserEntity)
 	@JoinColumn({ name: 'user_id' })

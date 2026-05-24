@@ -1,24 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 
-function formatPath(filePath: string) {
-	return path.relative(process.cwd(), filePath);
-}
-
 function logError(type: string, entityName: string, filePath: string, extra?: string) {
 	const p = path.relative(process.cwd(), filePath);
 
 	const shortEntity = entityName.replace('Entity', '');
 	const detail = extra ? ` | ${extra}` : '';
 
-	console.warn(`⚠️ ${shortEntity} | ${type}${detail} → ${p}:1:1`);
+	console.warn(`${shortEntity} | ${type}${detail} -> ${p}:1:1`);
 }
 
 function logSuccess(entityName: string, filePath: string) {
 	const p = path.relative(process.cwd(), filePath);
 	const shortEntity = entityName.replace('Entity', '');
 
-	console.log(`✅ ${shortEntity} → ${p}`);
+	console.log(`${shortEntity} -> ${p}`);
 }
 
 export function validateDtos(filePath: string, entityName: string): void {
@@ -26,9 +22,8 @@ export function validateDtos(filePath: string, entityName: string): void {
 
 	const content = fs.readFileSync(filePath, 'utf-8');
 
-	// 🔥 BLOQUEO MANUAL (único que sí importa)
 	if (content.includes('no-override')) {
-		logError('🚫 Archivo protegido (no-override)', entityName, filePath);
+		logError('Protected (no-override)', entityName, filePath);
 		return;
 	}
 
@@ -45,10 +40,9 @@ export function validateDtos(filePath: string, entityName: string): void {
 		if (name.startsWith('Filter') && name.endsWith('Dto')) filterCount++;
 	}
 
-	// 🔥 SOLO ALERTAS (NO BLOQUEA)
 	if (createCount !== 1 || updateCount !== 1 || filterCount !== 1) {
 		logError(
-			'⚠️ Estructura DTO no estándar',
+			'Non-standard DTO structure',
 			entityName,
 			filePath,
 			`Create:${createCount}, Update:${updateCount}, Filter:${filterCount}`,

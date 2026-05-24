@@ -143,7 +143,7 @@ export class FilterNotificationConfigDto {
 	cc_chart_level_type_ids?: any;
 }
 
-// %% OTHERS DTO
+// %% OTHER DTOS
 
 export class UpsertNotificationConfigDto {
 	@ApiProperty({ example: 5, required: true })

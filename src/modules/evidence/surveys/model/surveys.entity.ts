@@ -11,7 +11,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'surveys', schema: 'evidence' })
 export class SurveyEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	survey_type_id: number;
@@ -40,7 +40,7 @@ export class SurveyEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	course_section_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'survey_type_id' })

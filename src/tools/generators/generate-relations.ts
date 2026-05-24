@@ -6,7 +6,7 @@ const ROOT = path.resolve('src/modules');
 
 const EXCLUDED_TARGETS: string[] = [];
 
-/* ---------------- UTILIDADES ---------------- */
+/* ---------------- UTILITIES ---------------- */
 
 function toSnakeCaseFromEntity(entityName: string): string {
 	return entityName
@@ -53,14 +53,13 @@ function extractDbDecorators(content: string): string[] {
 	return [...found];
 }
 
-/* ---------------- RESOLVER CONFIG ---------------- */
+/* ---------------- RESOLVE CONFIG ---------------- */
 
 function resolveConfigFromColumn(column: string) {
 	const clean = column.trim().toLowerCase();
 
 	const base = clean.replace(/_id$/, '');
 
-	// 🔥 match directo primero
 	if (ENTITY_CONFIG[base]) {
 		return {
 			config: ENTITY_CONFIG[base],
@@ -68,7 +67,6 @@ function resolveConfigFromColumn(column: string) {
 		};
 	}
 
-	// 🔥 fallback inteligente
 	const parts = base.split('_');
 
 	for (let i = 0; i < parts.length; i++) {
@@ -82,12 +80,12 @@ function resolveConfigFromColumn(column: string) {
 		}
 	}
 
-	console.warn(`❌ ENTITY_CONFIG not found for column: ${column}`);
+	console.warn(`ENTITY_CONFIG not found for column: ${column}`);
 
 	return null;
 }
 
-/* ---------------- PARSEO ---------------- */
+/* ---------------- PARSING ---------------- */
 
 interface FieldRelation {
 	column: string;
@@ -149,7 +147,7 @@ function parseFields(content: string): FieldRelation[] {
 	return fields;
 }
 
-/* ---------------- INVERSAS ---------------- */
+/* ---------------- INVERSE RELATIONS ---------------- */
 
 interface InverseMap {
 	[target: string]: {
@@ -162,7 +160,6 @@ interface InverseMap {
 
 function buildInverseMap(entityName: string, fields: FieldRelation[], map: InverseMap) {
 	fields.forEach((f) => {
-		// 🔥 SOLO si hay comentario
 		if (!f.hasRelationComment) return;
 
 		if (EXCLUDED_TARGETS.includes(f.config.entity)) return;
@@ -192,7 +189,6 @@ function generateInverseRelations(entityName: string, inverseMap: InverseMap) {
 		const sourceConfig = Object.values(ENTITY_CONFIG).find((c) => c.entity === sourceClass);
 		if (!sourceConfig) return;
 
-		// 🔥 ONE TO MANY
 		if (e.relationType === 'one-to-many') {
 			relations += `
 	@OneToMany(() => ${sourceClass}, (x) => x.${e.property})
@@ -200,7 +196,6 @@ function generateInverseRelations(entityName: string, inverseMap: InverseMap) {
 `;
 		}
 
-		// 🔥 ONE TO ONE
 		if (e.relationType === 'one-to-one') {
 			relations += `
 	@OneToOne(() => ${sourceClass}, (x) => x.${e.property})
@@ -227,7 +222,6 @@ function generateOwnRelations(entityName: string, fields: FieldRelation[]) {
 			return;
 		}
 
-		// 🔥 DEFAULT SIEMPRE ManyToOne
 		relations += `
 	@ManyToOne(() => ${f.config.entity})
 	@JoinColumn({ name: '${f.column}' })
@@ -255,10 +249,8 @@ function injectImports(
 
 	const body = lines.filter((l) => !l.startsWith('import'));
 
-	// 🔥 preservar imports `import type` (los tipos no se infieren del cuerpo)
 	const preservedTypeImports = lines.filter((l) => l.startsWith('import type '));
 
-	// 🔥 detectar @Entity con extras como @Unique para mantener el decorador
 	const extraEntityDecorators = lines.filter(
 		(l) => l.startsWith('@Unique(') || l.startsWith('@Index('),
 	);
@@ -290,7 +282,6 @@ function injectImports(
 		imports.push(`import { ${dbDecorators.join(', ')} } from 'src/commons/configs/db.configs';`);
 	}
 
-	// 🔥 re-inyectar imports `import type` originales
 	preservedTypeImports.forEach((l) => imports.push(l));
 
 	[...entitySet].sort().forEach((entity) => {
@@ -303,24 +294,21 @@ function injectImports(
 	return `${imports.join('\n')}\n\n${body.join('\n')}`;
 }
 
-/* ---------------- REEMPLAZO ---------------- */
+/* ---------------- REPLACE BLOCK ---------------- */
 
 function replaceRelationsBlock(content: string, relations: string) {
-	const marker = '// %% RELACIONES';
+	const marker = '// %% RELATIONS';
 
 	const startIndex = content.indexOf(marker);
 	if (startIndex === -1) return content;
 
-	// 🔥 encontrar el inicio del bloque
 	const before = content.substring(0, startIndex + marker.length);
 
-	// 🔥 desde ahí buscamos la última llave de la clase
 	const afterMarker = content.substring(startIndex);
 
 	const closingIndex = afterMarker.lastIndexOf('}');
 	if (closingIndex === -1) return content;
 
-	// 🔥 reconstrucción limpia
 	return `${before}\n${relations}\n}`;
 }
 
@@ -370,7 +358,7 @@ function run() {
 
 		fs.writeFileSync(filePath, content);
 
-		console.log(`✅ ${filePath}`);
+		console.log(`Done: ${filePath}`);
 	});
 }
 

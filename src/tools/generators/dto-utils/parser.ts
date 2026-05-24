@@ -1,20 +1,18 @@
-// src/tools/dto-utils/parser.ts
 import { mapTypeFromDecorator } from './mapper';
-import { project } from './project'; // 🔥 IMPORT GLOBAL
+import { project } from './project';
 
 export function parseEntity(filePath: string) {
 	const file = project.getSourceFile(filePath) ?? project.addSourceFileAtPath(filePath);
 	const cls = file.getClasses()[0];
 
 	if (!cls) {
-		throw new Error('No se encontró clase en la entidad');
+		throw new Error('No class found in entity');
 	}
 
 	const entityName = cls.getName();
 
 	let properties = [...cls.getProperties()];
 
-	// 🔥 HERENCIA (BaseEntity)
 	let base = cls.getBaseClass();
 	while (base) {
 		properties = [...base.getProperties(), ...properties];
@@ -26,7 +24,6 @@ export function parseEntity(filePath: string) {
 
 		const decorators = prop.getDecorators().map((d) => d.getName());
 
-		// 🔥 leer tipo TS literal (e.g. `I18nText`, `string[]`, `Record<string, X>`)
 		const tsType = prop.getTypeNode()?.getText();
 
 		const type = mapTypeFromDecorator(decorators, name, tsType);
@@ -36,7 +33,7 @@ export function parseEntity(filePath: string) {
 		return {
 			name,
 			type,
-			decorators, // 🔥 IMPORTANTE (ya lo usas luego)
+			decorators,
 			isOptional,
 		};
 	});

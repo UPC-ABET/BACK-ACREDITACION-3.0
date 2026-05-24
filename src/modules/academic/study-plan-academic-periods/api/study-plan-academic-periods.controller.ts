@@ -28,7 +28,10 @@ export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanA
 	}
 
 	@SwaggerStudyPlanAcademicPeriodUpdate()
-	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStudyPlanAcademicPeriodDto) {
+	async update(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateStudyPlanAcademicPeriodDto,
+	) {
 		return await super.update(id, dto);
 	}
 

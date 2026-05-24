@@ -51,7 +51,16 @@ runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
 				(76, 'TG2001', '{"route":"/ifcs","module":"IFCS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T002', '{"en":"IFCs","es":"IFCs"}'::jsonb),
 				(77, 'TG2001', '{"route":"/ifc-findings","module":"IFC_FINDINGS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T003', '{"en":"IFC Findings","es":"Hallazgos IFC"}'::jsonb),
 				(78, 'TG2001', '{"route":"/admin","module":"ADMIN"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T004', '{"en":"Admin","es":"Administracion"}'::jsonb),
-				(79, 'TG2001', '{"route":"/tests","module":"TESTS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T005', '{"en":"Tests","es":"Pruebas"}'::jsonb)
+				(79, 'TG2001', '{"route":"/tests","module":"TESTS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T005', '{"en":"Tests","es":"Pruebas"}'::jsonb),
+				(80, 'TG2001', '{"route":"/users","module":"USERS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T006', '{"en":"Users","es":"Usuarios"}'::jsonb),
+				(81, 'TG2001', '{"route":"/academic","module":"ACADEMIC"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T007', '{"en":"Academic","es":"Academico"}'::jsonb),
+				(82, 'TG2001', '{"route":"/accreditation","module":"ACCREDITATION"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T008', '{"en":"Accreditation","es":"Acreditacion"}'::jsonb),
+				(83, 'TG2001', '{"route":"/evaluation","module":"EVALUATION"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T009', '{"en":"Evaluation","es":"Evaluacion"}'::jsonb),
+				(84, 'TG2001', '{"route":"/evidence","module":"EVIDENCE"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T010', '{"en":"Evidence","es":"Evidencia"}'::jsonb),
+				(85, 'TG2001', '{"route":"/improvement","module":"IMPROVEMENT"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T011', '{"en":"Improvement","es":"Mejora Continua"}'::jsonb),
+				(86, 'TG2001', '{"route":"/organization","module":"ORGANIZATION"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T012', '{"en":"Organization","es":"Organizacion"}'::jsonb),
+				(87, 'TG2001', '{"route":"/survey","module":"SURVEY"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T013', '{"en":"Survey","es":"Encuestas"}'::jsonb),
+				(88, 'TG2001', '{"route":"/core","module":"CORE"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T014', '{"en":"Core","es":"Nucleo"}'::jsonb)
 		) AS v(id, type_group_code, extra, is_active, created_at, code, name)
 		JOIN "core"."type_groups" tg ON tg.code = v.type_group_code
 		ON CONFLICT (code) DO UPDATE
@@ -72,19 +81,31 @@ runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
 		INSERT INTO "core"."user_roles" (user_id, role_id, is_active)
 		SELECT u.id, r.id, true
 		FROM "organization"."users" u
-		JOIN "core"."roles" r ON r.code = 'ADMIN'
-		WHERE u.email = 'admin@upc.edu.pe'
+		CROSS JOIN "core"."roles" r
+		WHERE r.code = 'ADMIN'
+		AND u.email IN (
+			'admin@upc.edu.pe',
+			'admin.eiscb@upc.edu.pe',
+			'director.eiscb@upc.edu.pe',
+			'coord.eiscb@upc.edu.pe',
+			'dean.eiscb@upc.edu.pe',
+			'prog-coord.eiscb@upc.edu.pe',
+			'area-coord.eiscb@upc.edu.pe',
+			'subarea-coord.eiscb@upc.edu.pe'
+		)
 		ON CONFLICT (user_id, role_id) DO UPDATE
 		SET is_active = true, updated_at = now();
 	`);
 
 	await tenantDataSource.query(`
 		INSERT INTO "core"."role_module_permissions" (role_id, module_type_id, permission_type_id, is_active)
-		SELECT admin_role.id, module_type.id, permission_type.id, true
-		FROM "core"."roles" admin_role
-		JOIN "core"."types" module_type ON module_type.code = 'TG2001-T004'
-		JOIN "core"."types" permission_type ON permission_type.code = 'TG2000-T001'
-		WHERE admin_role.code = 'ADMIN'
+		SELECT r.id, mt.id, pt.id, true
+		FROM "core"."roles" r
+		CROSS JOIN "core"."types" mt
+		CROSS JOIN "core"."types" pt
+		WHERE r.code = 'ADMIN'
+		AND mt.code LIKE 'TG2001-%'
+		AND pt.code LIKE 'TG2000-%'
 		ON CONFLICT (role_id, module_type_id, permission_type_id) DO UPDATE
 		SET is_active = true, updated_at = now();
 	`);

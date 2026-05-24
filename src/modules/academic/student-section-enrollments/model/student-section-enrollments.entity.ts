@@ -6,7 +6,7 @@ import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/mo
 
 @Entity({ name: 'student_section_enrollments', schema: 'academic' })
 export class StudentSectionEnrollmentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	enrolled_student_id: number;
@@ -14,7 +14,7 @@ export class StudentSectionEnrollmentEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	course_section_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => EnrolledStudentEntity)
 	@JoinColumn({ name: 'enrolled_student_id' })

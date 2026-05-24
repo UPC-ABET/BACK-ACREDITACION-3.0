@@ -8,7 +8,7 @@ import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Entity({ name: 'notification_log', schema: 'ifc' })
 export class NotificationLogEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: true })
 	ifc_id: number | null;
@@ -31,7 +31,7 @@ export class NotificationLogEntity extends BaseEntity {
 	@EmailColumn({ nullable: true })
 	provider_message_id: string | null;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
 	@JoinColumn({ name: 'ifc_id' })

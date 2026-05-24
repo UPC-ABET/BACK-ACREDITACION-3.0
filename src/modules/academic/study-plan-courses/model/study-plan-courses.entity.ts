@@ -7,7 +7,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'study_plan_courses', schema: 'academic' })
 export class StudyPlanCourseEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	study_plan_academic_period_id: number;
@@ -21,7 +21,7 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	level_type_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanAcademicPeriodEntity)
 	@JoinColumn({ name: 'study_plan_academic_period_id' })

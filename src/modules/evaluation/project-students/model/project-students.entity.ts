@@ -6,7 +6,7 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 
 @Entity({ name: 'project_students', schema: 'evaluation' })
 export class ProjectStudentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	project_id: number;
@@ -14,7 +14,7 @@ export class ProjectStudentEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	student_section_enrollment_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProjectEntity)
 	@JoinColumn({ name: 'project_id' })

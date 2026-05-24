@@ -6,7 +6,7 @@ import { TypeGroupEntity } from 'src/modules/core/type-groups/model/type-groups.
 
 @Entity({ name: 'types', schema: 'core' })
 export class TypeEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	type_group_id: number;
@@ -20,7 +20,7 @@ export class TypeEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeGroupEntity)
 	@JoinColumn({ name: 'type_group_id' })

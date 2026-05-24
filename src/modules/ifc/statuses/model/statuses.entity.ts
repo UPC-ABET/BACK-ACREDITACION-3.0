@@ -8,7 +8,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'statuses', schema: 'ifc' })
 export class StatusEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	ifc_id: number;
@@ -25,7 +25,7 @@ export class StatusEntity extends BaseEntity {
 	@DateColumn({ nullable: false })
 	register_at: Date;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
 	@JoinColumn({ name: 'ifc_id' })

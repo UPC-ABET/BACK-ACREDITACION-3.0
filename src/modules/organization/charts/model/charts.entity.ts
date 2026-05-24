@@ -8,7 +8,7 @@ import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
 @Entity({ name: 'charts', schema: 'organization' })
 export class ChartEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	staff_id: number;
@@ -31,7 +31,7 @@ export class ChartEntity extends BaseEntity {
 	@IntegerColumn({ nullable: true })
 	entity_code: number | null;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)
 	@JoinColumn({ name: 'staff_id' })

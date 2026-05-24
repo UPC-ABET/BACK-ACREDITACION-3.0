@@ -5,7 +5,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'academic_periods', schema: 'academic' })
 export class AcademicPeriodEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	modality_type_id: number;
@@ -19,7 +19,7 @@ export class AcademicPeriodEntity extends BaseEntity {
 	@DateColumn({ nullable: false })
 	end_date: Date;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'modality_type_id' })

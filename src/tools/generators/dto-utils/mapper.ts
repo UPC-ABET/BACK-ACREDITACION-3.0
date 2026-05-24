@@ -28,19 +28,20 @@ export function mapTypeFromDecorator(decorators: string[], name: string, tsType?
 	if (decorators.includes('DateColumn')) return 'Date';
 
 	if (decorators.includes('JsonColumn')) {
-		// 🔥 si la entidad declara el tipo como `I18nText`, propagar al DTO
 		if (tsType === 'I18nText') return 'I18nText';
 		return 'any';
 	}
 
-	// 🔥 RELACIÓN FK fallback
+	// FK fallback
 	if (name.endsWith('_id')) return 'number';
 
-	// ❌ TODO lo demás no debería existir en DTO
 	return 'never';
 }
 
-export function mapValidator(type: string) {
+export function mapValidator(type: string, decorators: string[], name: string) {
+	if (decorators.includes('EmailColumn')) return '@IsEmail()';
+	if (decorators.includes('PhoneColumn')) return '@IsString()';
+
 	if (type === 'string') return '@IsString()';
 	if (type === 'number') return '@IsNumber()';
 	if (type === 'boolean') return '@IsBoolean()';
@@ -72,6 +73,8 @@ export function mapExample(type: string, name: string, decorators: string[] = []
 	if (decorators.includes('JsonColumn')) {
 		return `{ key: "${name}_value" }`;
 	}
+
+	if (decorators.includes('EmailColumn')) return `'user@example.com'`;
 
 	if (type === 'string') return `'${name}_example'`;
 	if (type === 'number') return 1;

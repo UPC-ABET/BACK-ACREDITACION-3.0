@@ -6,7 +6,7 @@ import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes
 
 @Entity({ name: 'outcome_configs', schema: 'survey' })
 export class OutcomeConfigEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	outcome_id: number;
@@ -17,7 +17,7 @@ export class OutcomeConfigEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	user_outcome_description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => OutcomeEntity)
 	@JoinColumn({ name: 'outcome_id' })

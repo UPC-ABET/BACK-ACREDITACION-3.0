@@ -9,7 +9,7 @@ export class GetScopeDto {
 	period_id: number;
 }
 
-// %% OTHERS DTO — Response documentation classes (Swagger only)
+// %% OTHER DTOS — Response documentation classes (Swagger only)
 export class ScopeOptionDto {
 	@ApiProperty({ example: 12 })
 	id: number;

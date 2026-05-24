@@ -7,7 +7,7 @@ import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity'
 
 @Entity({ name: 'scores', schema: 'survey' })
 export class ScoreEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	survey_id: number;
@@ -21,7 +21,7 @@ export class ScoreEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	commentaries: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => SurveyEntity)
 	@JoinColumn({ name: 'survey_id' })

@@ -13,7 +13,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'users', schema: 'organization' })
 export class UserEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	document_type_id: number;
@@ -40,7 +40,7 @@ export class UserEntity extends BaseEntity {
 	@BooleanColumn()
 	is_admin: boolean;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'document_type_id' })

@@ -70,7 +70,7 @@ export class FilterIfcFindingDto {
 	finding_id?: number;
 }
 
-// %% OTHERS DTO
+// %% OTHER DTOS
 
 export class ListIfcFindingsDto {
 	@ApiProperty({

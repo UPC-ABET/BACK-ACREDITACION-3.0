@@ -7,7 +7,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'project_evaluators', schema: 'evaluation' })
 export class ProjectEvaluatorEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	project_id: number;
@@ -18,7 +18,7 @@ export class ProjectEvaluatorEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	evaluator_type_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProjectEntity)
 	@JoinColumn({ name: 'project_id' })

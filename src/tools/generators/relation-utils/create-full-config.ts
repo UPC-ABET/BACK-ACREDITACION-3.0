@@ -91,7 +91,7 @@ function run() {
 
 	fs.writeFileSync(OUTPUT, fileContent);
 
-	console.log('✅ config.ts generado automáticamente');
+	console.log('Done: config.ts generated');
 }
 
 run();

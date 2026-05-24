@@ -12,7 +12,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'performance_levels', schema: 'academic' })
 export class PerformanceLevelEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	instrument_type_id: number;
@@ -38,7 +38,7 @@ export class PerformanceLevelEntity extends BaseEntity {
 	@DecimalColumn({ nullable: false })
 	max_value: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'instrument_type_id' })

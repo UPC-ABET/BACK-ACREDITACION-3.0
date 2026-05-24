@@ -27,21 +27,22 @@ function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {
 	return true;
 }
 
-/* ---------------- GENERADOR BLOQUES ---------------- */
+/* ---------------- DTO BLOCK BUILDERS ---------------- */
 
 function buildCreateDto(entity: string, fields: any[]) {
 	return `
 export class Create${entity}Dto {
 ${fields
 	.map((f: any) => {
-		const validator = mapValidator(f.type);
+		const validator = mapValidator(f.type, f.decorators || [], f.name);
 		const length = mapLength(f.decorators || []);
 		const example = mapExample(f.type, f.name, f.decorators || []);
+		const needsLength = length && !f.decorators?.includes('EmailColumn');
 
 		return `
 	${f.isOptional ? '@IsOptional()' : ''}
 	${validator}
-	${length ? `@Length(1, ${length})` : ''}
+	${needsLength ? `@Length(1, ${length})` : ''}
 	@ApiProperty({ example: ${example}, required: ${!f.isOptional} })
 	${f.name}${f.isOptional ? '?' : ''}: ${f.type};
 	`;
@@ -56,14 +57,15 @@ function buildUpdateDto(entity: string, fields: any[]) {
 export class Update${entity}Dto {
 ${fields
 	.map((f: any) => {
-		const validator = mapValidator(f.type);
+		const validator = mapValidator(f.type, f.decorators || [], f.name);
 		const length = mapLength(f.decorators || []);
 		const example = mapExample(f.type, f.name, f.decorators || []);
+		const needsLength = length && !f.decorators?.includes('EmailColumn');
 
 		return `
 	@IsOptional()
 	${validator}
-	${length ? `@Length(1, ${length})` : ''}
+	${needsLength ? `@Length(1, ${length})` : ''}
 	@ApiProperty({ example: ${example}, required: false })
 	${f.name}?: ${f.type};
 	`;
@@ -91,7 +93,7 @@ ${fields
 `;
 }
 
-/* ---------------- REEMPLAZO ---------------- */
+/* ---------------- REPLACE ---------------- */
 
 function replaceOrAppend(content: string, className: string, newBlock: string) {
 	const regex = new RegExp(`export class ${className}[\\s\\S]*?\\n}`, 'm');
@@ -103,10 +105,8 @@ function replaceOrAppend(content: string, className: string, newBlock: string) {
 	return content + '\n\n' + newBlock;
 }
 
-/* ---------------- IMPORTS (MERGE INTELIGENTE) ---------------- */
+/* ---------------- IMPORTS (SMART MERGE) ---------------- */
 
-// 🔥 fuentes que SIEMPRE deben importarse con `import type` (tipos puros,
-// requeridos por `isolatedModules` cuando se usan en signaturas decoradas)
 const TYPE_ONLY_SOURCES = new Set(['src/shared/types/i18n']);
 
 function extractExistingImports(content: string) {
@@ -147,6 +147,7 @@ function buildRequiredImports(content: string) {
 	if (content.includes('@IsOptional')) add('class-validator', 'IsOptional');
 	if (content.includes('@IsDate')) add('class-validator', 'IsDate');
 	if (content.includes('@IsObject')) add('class-validator', 'IsObject');
+	if (content.includes('@IsEmail')) add('class-validator', 'IsEmail');
 	if (content.includes('@Length')) add('class-validator', 'Length');
 
 	if (content.includes('@ApiProperty')) add('@nestjs/swagger', 'ApiProperty');
@@ -216,7 +217,7 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 		content = fs.readFileSync(outputPath, 'utf-8');
 
 		if (content.includes('no-override')) {
-			console.warn(`🚫 ${entity} DTO protegido`);
+			console.warn(`Protected: ${entity} DTO (no-override)`);
 			return;
 		}
 
@@ -235,5 +236,5 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 
 	fs.writeFileSync(outputPath, content);
 
-	console.log(`✅ DTO actualizado: ${entity}`);
+	console.log(`Done: ${entity} DTO`);
 }

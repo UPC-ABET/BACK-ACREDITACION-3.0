@@ -7,7 +7,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'rubrics', schema: 'evaluation' })
 export class RubricEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerColumn({ nullable: false })
 	rubric_type_id: number;
@@ -18,7 +18,7 @@ export class RubricEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	study_plan_course_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanCourseEntity)
 	@JoinColumn({ name: 'study_plan_course_id' })

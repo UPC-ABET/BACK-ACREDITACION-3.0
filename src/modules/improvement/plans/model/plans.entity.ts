@@ -7,7 +7,7 @@ import { ProgramEntity } from 'src/modules/academic/programs/model/programs.enti
 
 @Entity({ name: 'plans', schema: 'improvement' })
 export class PlanEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	program_id: number;
@@ -24,7 +24,7 @@ export class PlanEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, default: false })
 	is_open: boolean;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProgramEntity)
 	@JoinColumn({ name: 'program_id' })

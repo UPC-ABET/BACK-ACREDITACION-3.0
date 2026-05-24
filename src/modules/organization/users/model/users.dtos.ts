@@ -1,3 +1,4 @@
+// no-override — hand-curated validators (@IsEmail, etc.); generator skips this file.
 import {
 	IsBoolean,
 	IsEmail,
@@ -139,7 +140,7 @@ export class FilterUserDto {
 	is_admin?: boolean;
 }
 
-// %% OTHERS DTO
+// %% OTHER DTOS
 export class LoginUserByCredentialsDto {
 	@IsString()
 	@IsNotEmpty()

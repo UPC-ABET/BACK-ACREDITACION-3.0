@@ -112,7 +112,9 @@ export class PdfRendererService implements OnModuleDestroy {
 			...(executablePath ? { executablePath } : {}),
 			args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
 		});
-		this.logger.log(`Chromium launched${executablePath ? ` (executablePath=${executablePath})` : ''}`);
+		this.logger.log(
+			`Chromium launched${executablePath ? ` (executablePath=${executablePath})` : ''}`,
+		);
 		return this.browser!;
 	}
 

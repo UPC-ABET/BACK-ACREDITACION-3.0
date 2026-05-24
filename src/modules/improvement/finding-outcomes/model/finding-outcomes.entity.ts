@@ -6,7 +6,7 @@ import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes
 
 @Entity({ name: 'finding_outcomes', schema: 'improvement' })
 export class FindingOutcomeEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	finding_id: number;
@@ -14,7 +14,7 @@ export class FindingOutcomeEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	outcome_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => FindingEntity)
 	@JoinColumn({ name: 'finding_id' })

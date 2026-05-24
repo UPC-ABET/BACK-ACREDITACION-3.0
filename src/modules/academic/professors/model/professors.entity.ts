@@ -5,7 +5,7 @@ import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
 @Entity({ name: 'professors', schema: 'academic' })
 export class ProfessorEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	staff_id: number;
@@ -13,7 +13,7 @@ export class ProfessorEntity extends BaseEntity {
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)
 	@JoinColumn({ name: 'staff_id' })

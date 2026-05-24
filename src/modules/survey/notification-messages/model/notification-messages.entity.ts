@@ -7,7 +7,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notification_messages', schema: 'survey' })
 export class NotificationMessageEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	survey_type_id: number;
@@ -24,7 +24,7 @@ export class NotificationMessageEntity extends BaseEntity {
 	@JsonColumn()
 	cc_receivers: unknown;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'survey_type_id' })

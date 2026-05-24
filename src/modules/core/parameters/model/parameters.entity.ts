@@ -5,7 +5,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'parameters', schema: 'core' })
 export class ParameterEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@CodeColumn({ nullable: false })
 	code: string;
@@ -19,5 +19,5 @@ export class ParameterEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	value: unknown;
 
-	// %% RELACIONES
+	// %% RELATIONS
 }

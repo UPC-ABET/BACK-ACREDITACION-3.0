@@ -16,7 +16,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'findings', schema: 'improvement' })
 export class FindingEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	criticality_type_id: number;
@@ -45,7 +45,7 @@ export class FindingEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, default: true })
 	is_automatic: boolean;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'criticality_type_id' })

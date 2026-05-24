@@ -7,7 +7,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'course_outcome_mappings', schema: 'academic' })
 export class CourseOutcomeMappingEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	outcome_id: number;
@@ -18,7 +18,7 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	outcome_type_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => OutcomeEntity)
 	@JoinColumn({ name: 'outcome_id' })

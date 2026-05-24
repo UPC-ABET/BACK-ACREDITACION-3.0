@@ -6,7 +6,7 @@ import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/mo
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 @Entity({ name: 'projects', schema: 'evaluation' })
 export class ProjectEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@CodeColumn({ nullable: false, unique: true })
 	code: string;
@@ -17,7 +17,7 @@ export class ProjectEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@OneToMany(() => ProjectStudentEntity, (ps) => ps.project, { cascade: true, eager: false })
 	students: ProjectStudentEntity[];

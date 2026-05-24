@@ -5,7 +5,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'type_groups', schema: 'core' })
 export class TypeGroupEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@CodeColumn({ nullable: false })
 	code: string;
@@ -16,5 +16,5 @@ export class TypeGroupEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 }

@@ -28,7 +28,10 @@ export class StudentSectionEnrollmentController extends BaseController<StudentSe
 	}
 
 	@SwaggerStudentSectionEnrollmentUpdate()
-	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStudentSectionEnrollmentDto) {
+	async update(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateStudentSectionEnrollmentDto,
+	) {
 		return await super.update(id, dto);
 	}
 

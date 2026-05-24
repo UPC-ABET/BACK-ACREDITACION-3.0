@@ -6,7 +6,7 @@ import { IfcEntity } from 'src/modules/evidence/ifcs/model/ifcs.entity';
 
 @Entity({ name: 'ifc_findings', schema: 'ifc' })
 export class IfcFindingEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	ifc_id: number;
@@ -14,7 +14,7 @@ export class IfcFindingEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	finding_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
 	@JoinColumn({ name: 'ifc_id' })

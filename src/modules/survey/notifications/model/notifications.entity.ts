@@ -6,7 +6,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notifications', schema: 'survey' })
 export class NotificationEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	survey_id: number;
@@ -23,7 +23,7 @@ export class NotificationEntity extends BaseEntity {
 	@DateColumn({ nullable: false })
 	max_register_date: string;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => SurveyEntity)
 	@JoinColumn({ name: 'survey_id' })

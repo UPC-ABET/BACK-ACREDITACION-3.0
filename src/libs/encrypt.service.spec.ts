@@ -1,8 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { EncryptService } from './encrypt.service';
 
-const VALID_HEX_SECRET =
-	'e1fae13704956f47dcc7446d993d605709ad74f9846ad758f102569c89924447';
+const VALID_HEX_SECRET = 'e1fae13704956f47dcc7446d993d605709ad74f9846ad758f102569c89924447';
 
 function buildService(secret: string | undefined): EncryptService {
 	const configService = {
@@ -119,8 +118,6 @@ describe('EncryptService', () => {
 });
 
 function flipHexByte(hex: string): string {
-	const flipped = (parseInt(hex.slice(0, 2), 16) ^ 0xff)
-		.toString(16)
-		.padStart(2, '0');
+	const flipped = (parseInt(hex.slice(0, 2), 16) ^ 0xff).toString(16).padStart(2, '0');
 	return flipped + hex.slice(2);
 }

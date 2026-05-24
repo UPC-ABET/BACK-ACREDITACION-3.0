@@ -6,7 +6,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'programs', schema: 'academic' })
 export class ProgramEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	modality_type_id: number;
@@ -20,7 +20,7 @@ export class ProgramEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	degree: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'modality_type_id' })

@@ -28,7 +28,10 @@ export class StudentCourseOutcomeGradeController extends BaseController<StudentC
 	}
 
 	@SwaggerStudentCourseOutcomeGradeUpdate()
-	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStudentCourseOutcomeGradeDto) {
+	async update(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateStudentCourseOutcomeGradeDto,
+	) {
 		return await super.update(id, dto);
 	}
 

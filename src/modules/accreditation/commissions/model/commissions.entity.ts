@@ -6,7 +6,7 @@ import { AccreditorEntity } from 'src/modules/accreditation/accreditors/model/ac
 
 @Entity({ name: 'commissions', schema: 'accreditation' })
 export class CommissionEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	accreditor_id: number;
@@ -17,7 +17,7 @@ export class CommissionEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	name: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => AccreditorEntity)
 	@JoinColumn({ name: 'accreditor_id' })

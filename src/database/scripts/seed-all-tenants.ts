@@ -8,11 +8,16 @@ async function run() {
 	const tenant = process.argv[2];
 
 	if (!tenant) {
-		console.error('❌ Debe indicar el schema: npm run seed:tenant upc');
+		console.error('Schema required: npm run seed:tenant <schema>');
 		process.exit(1);
 	}
 
-	console.log(`\n🌱 Iniciando seeding para tenant: ${tenant}\n`);
+	if (!process.env.DB_HOST || !process.env.DB_NAME) {
+		console.error('Missing required env vars: DB_HOST, DB_NAME');
+		process.exit(1);
+	}
+
+	console.log(`\nSeeding tenant: ${tenant}\n`);
 	console.log('='.repeat(70));
 
 	const seedFiles = [
@@ -37,7 +42,7 @@ async function run() {
 
 	for (const seedFile of seedFiles) {
 		const seedPath = path.join(seedsDir, seedFile);
-		console.log(`\n📝 Ejecutando: ${seedFile}`);
+		console.log(`\nRunning: ${seedFile}`);
 		console.log('-'.repeat(70));
 
 		try {
@@ -45,10 +50,10 @@ async function run() {
 				stdio: 'inherit',
 				cwd: path.join(__dirname, '../../..'),
 			});
-			console.log(`✅ ${seedFile} completado exitosamente`);
+			console.log(`Done: ${seedFile}`);
 			successCount++;
 		} catch (error) {
-			console.error(`❌ Error en ${seedFile}:`, error);
+			console.error(`Failed: ${seedFile}:`, error);
 			failureCount++;
 			failures.push({
 				file: seedFile,
@@ -58,23 +63,23 @@ async function run() {
 	}
 
 	console.log('\n' + '='.repeat(70));
-	console.log(`\n📊 RESUMEN DE SEEDING:`);
-	console.log(`✅ Exitosos: ${successCount}/${seedFiles.length}`);
-	console.log(`❌ Fallidos: ${failureCount}/${seedFiles.length}`);
+	console.log(`\nSEEDING SUMMARY:`);
+	console.log(`Succeeded: ${successCount}/${seedFiles.length}`);
+	console.log(`Failed: ${failureCount}/${seedFiles.length}`);
 
 	if (failures.length > 0) {
-		console.log(`\n⚠️  Seeds con error:`);
-		failures.forEach(({ file, error }) => {
+		console.log(`\nFailed seeds:`);
+		failures.forEach(({ file }) => {
 			console.log(`  - ${file}`);
 		});
 		process.exit(1);
 	} else {
-		console.log(`\n🎉 ¡Todos los seeds completados exitosamente para ${tenant}!`);
+		console.log(`\nAll seeds completed for ${tenant}.`);
 		process.exit(0);
 	}
 }
 
 run().catch((error) => {
-	console.error('Error fatal:', error);
+	console.error('Fatal error:', error);
 	process.exit(1);
 });

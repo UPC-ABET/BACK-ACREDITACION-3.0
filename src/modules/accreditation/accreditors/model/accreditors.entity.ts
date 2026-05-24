@@ -5,7 +5,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'accreditors', schema: 'accreditation' })
 export class AccreditorEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@NameColumn({ nullable: false })
 	code: string;
@@ -13,5 +13,5 @@ export class AccreditorEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	name: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 }

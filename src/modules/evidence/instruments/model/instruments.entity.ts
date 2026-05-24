@@ -11,7 +11,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'instruments', schema: 'evidence' })
 export class InstrumentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	constituent_type_id: number;
@@ -28,7 +28,7 @@ export class InstrumentEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, default: true })
 	is_for_accreditation: boolean;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'constituent_type_id' })

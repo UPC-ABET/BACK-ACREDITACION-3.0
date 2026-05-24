@@ -9,7 +9,7 @@ type IfcInformation = Record<string, { label: I18nText; value: I18nText; order: 
 
 @Entity({ name: 'ifcs', schema: 'evidence' })
 export class IfcEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	course_id: number;
@@ -20,7 +20,7 @@ export class IfcEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	information: IfcInformation;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => CourseEntity)
 	@JoinColumn({ name: 'course_id' })

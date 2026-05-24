@@ -9,7 +9,7 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 
 @Entity({ name: 'evaluations', schema: 'evidence' })
 export class EvaluationEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	project_student_id: number;
@@ -26,7 +26,7 @@ export class EvaluationEntity extends BaseEntity {
 	@DateColumn({ nullable: true })
 	register_at: Date | null;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProjectStudentEntity)
 	@JoinColumn({ name: 'project_student_id' })

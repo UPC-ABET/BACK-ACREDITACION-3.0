@@ -6,7 +6,7 @@ import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/mo
 
 @Entity({ name: 'rubric_question_criterias', schema: 'evaluation' })
 export class RubricQuestionCriteriaEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	rubric_question_id: number;
@@ -20,7 +20,7 @@ export class RubricQuestionCriteriaEntity extends BaseEntity {
 	@DecimalColumn({ nullable: false })
 	max_value: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => RubricQuestionEntity, (q) => q.criterias)
 	@JoinColumn({ name: 'rubric_question_id' })

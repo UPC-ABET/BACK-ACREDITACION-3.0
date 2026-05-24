@@ -6,7 +6,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity({ name: 'enrolled_students', schema: 'academic' })
 export class EnrolledStudentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	student_id: number;
@@ -20,7 +20,7 @@ export class EnrolledStudentEntity extends BaseEntity {
 	@IntegerColumn({ nullable: false })
 	enrollment_modality_type_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 }
 
 export class CreateEnrolledStudentDto {

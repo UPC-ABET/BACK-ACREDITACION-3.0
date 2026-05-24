@@ -8,7 +8,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'program_commissions', schema: 'accreditation' })
 export class ProgramCommissionEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	commission_id: number;
@@ -22,7 +22,7 @@ export class ProgramCommissionEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	commission_type_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => CommissionEntity)
 	@JoinColumn({ name: 'commission_id' })

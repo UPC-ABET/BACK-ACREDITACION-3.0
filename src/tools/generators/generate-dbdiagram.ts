@@ -4,7 +4,7 @@ const inputFile = process.argv[2];
 const outputFile = process.argv[3] || 'output.dbml';
 
 if (!inputFile) {
-	console.error('❌ Debes enviar el archivo migration.ts');
+	console.error('Migration file path required as first argument');
 	process.exit(1);
 }
 
@@ -12,7 +12,6 @@ const content = fs.readFileSync(inputFile, 'utf-8');
 
 /* ---------------- CONFIG ---------------- */
 
-// 🔥 SOLO excluir cuando apunten a .id
 const EXCLUDED_TARGET_TABLES = ['types'];
 
 /* ---------------- PARSE CREATE TABLE ---------------- */
@@ -93,7 +92,6 @@ while ((match = fkRegex.exec(content))) {
 	const toTable = match[5];
 	const toColumn = match[6];
 
-	// 🔥 SOLO excluir si apunta a .id de tabla bloqueada
 	if (toColumn === 'id' && EXCLUDED_TARGET_TABLES.includes(toTable)) {
 		continue;
 	}
@@ -123,7 +121,7 @@ output += relations.join('\n');
 
 fs.writeFileSync(outputFile, output);
 
-console.log(`✅ DBML generado en ${outputFile}`);
+console.log(`DBML generated: ${outputFile}`);
 
 /* ---------------- HELPERS ---------------- */
 

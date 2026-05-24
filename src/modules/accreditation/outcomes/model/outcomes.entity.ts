@@ -6,7 +6,7 @@ import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commi
 
 @Entity({ name: 'outcomes', schema: 'accreditation' })
 export class OutcomeEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	program_commission_id: number;
@@ -20,7 +20,7 @@ export class OutcomeEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	outcome_description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProgramCommissionEntity)
 	@JoinColumn({ name: 'program_commission_id' })

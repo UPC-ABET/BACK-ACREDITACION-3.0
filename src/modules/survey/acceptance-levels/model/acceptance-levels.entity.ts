@@ -14,7 +14,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'acceptance_levels', schema: 'survey' })
 export class AcceptanceLevelEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	survey_type_id: number;
@@ -40,7 +40,7 @@ export class AcceptanceLevelEntity extends BaseEntity {
 	@BooleanColumn()
 	is_final: boolean;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'survey_type_id' })

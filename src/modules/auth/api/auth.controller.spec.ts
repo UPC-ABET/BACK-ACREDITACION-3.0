@@ -48,10 +48,7 @@ describe('AuthController — MSAL state packing', () => {
 			buildMicrosoftLoginUrl: jest.fn(),
 			loginWithMicrosoftCode: jest.fn(),
 		};
-		controller = new AuthController(
-			authService as unknown as AuthService,
-			fakeConfigService(),
-		);
+		controller = new AuthController(authService as unknown as AuthService, fakeConfigService());
 	});
 
 	describe('GET /microsoft', () => {
@@ -83,9 +80,7 @@ describe('AuthController — MSAL state packing', () => {
 
 			const encoded = passedState.substring(0, dotIndex);
 			const signature = passedState.substring(dotIndex + 1);
-			const expectedSig = createHmac('sha256', TEST_JWT_SECRET)
-				.update(encoded)
-				.digest('base64url');
+			const expectedSig = createHmac('sha256', TEST_JWT_SECRET).update(encoded).digest('base64url');
 			expect(signature).toBe(expectedSig);
 
 			const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString());

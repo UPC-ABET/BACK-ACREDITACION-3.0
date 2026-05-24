@@ -6,7 +6,7 @@ import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-pl
 
 @Entity({ name: 'study_plan_academic_periods', schema: 'academic' })
 export class StudyPlanAcademicPeriodEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	study_plan_id: number;
@@ -14,7 +14,7 @@ export class StudyPlanAcademicPeriodEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	academic_period_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanEntity)
 	@JoinColumn({ name: 'study_plan_id' })

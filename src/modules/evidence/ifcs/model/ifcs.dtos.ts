@@ -86,7 +86,7 @@ export class FilterIfcDto {
 	information?: any;
 }
 
-// %% OTHERS DTO
+// %% OTHER DTOS
 
 export class ListIfcsDto {
 	@IsArray()

@@ -6,7 +6,7 @@ import { PlanEntity } from 'src/modules/improvement/plans/model/plans.entity';
 
 @Entity({ name: 'plan_actions', schema: 'improvement' })
 export class PlanActionEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
 	plan_id: number;
@@ -14,7 +14,7 @@ export class PlanActionEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	finding_action_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => PlanEntity)
 	@JoinColumn({ name: 'plan_id' })

@@ -5,7 +5,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'chart_levels', schema: 'organization' })
 export class ChartLevelEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerColumn({ nullable: false })
 	level: number;
@@ -13,7 +13,7 @@ export class ChartLevelEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	level_type_id: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'level_type_id' })
