@@ -13,6 +13,8 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 import { ProjectEntity } from 'src/modules/evaluation/projects/model/projects.entity';
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import type { I18nText } from 'src/shared/types/i18n';
 
 const toI18n = (text: string): I18nText => ({ es: text, en: text });
@@ -50,9 +52,13 @@ const i18nTrim = (val: I18nText | null | undefined): string | null => {
 export class EvaluationSubmissionService {
 	private readonly ASISTIO_STATUS_CODE = 'TG404-T001';
 	private readonly NR_STATUS_CODE = 'TG404-T002';
+	private readonly NA_STATUS_CODE = 'TG404-T003';
 	private readonly PA_GRADE_TYPE_CODE = 'TG205-T003';
 	private readonly COM_EVALUATOR_CODE = 'TG403-T001';
 	private readonly GER_EVALUATOR_CODE = 'TG403-T002';
+	private readonly CAPSTONE_RUBRIC_TYPE_CODE = 'TG401-T001';
+	private readonly FINAL_GRADE_TYPE_CODE = 'TG205-T002';
+	private readonly PERF_LEVEL_INSTRUMENT_TYPE_CODE = 'TG206-T001';
 
 	constructor(
 		@InjectRepository(EvaluationEntity)
@@ -77,6 +83,10 @@ export class EvaluationSubmissionService {
 		private readonly projectRepo: Repository<ProjectEntity>,
 		@InjectRepository(TypeEntity)
 		private readonly typeRepo: Repository<TypeEntity>,
+		@InjectRepository(PerformanceLevelEntity)
+		private readonly performanceLevelRepo: Repository<PerformanceLevelEntity>,
+		@InjectRepository(StudyPlanCourseEntity)
+		private readonly studyPlanCourseRepo: Repository<StudyPlanCourseEntity>,
 		private readonly dataSource: DataSource,
 	) { }
 
@@ -116,6 +126,33 @@ export class EvaluationSubmissionService {
 		if (!gTypeId) return false;
 		const type = await this.typeRepo.findOne({ where: { id: gTypeId } });
 		return type?.code === this.PA_GRADE_TYPE_CODE;
+	}
+
+	private async isCapstoneRubric(rubricTypeId: number): Promise<boolean> {
+		const type = await this.typeRepo.findOne({ where: { id: rubricTypeId } });
+		return type?.code === this.CAPSTONE_RUBRIC_TYPE_CODE;
+	}
+
+	private async isFinalEvaluation(gradeTypeId: number): Promise<boolean> {
+		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
+		return type?.code === this.FINAL_GRADE_TYPE_CODE;
+	}
+
+	private async getValidPerformanceLevelValues(rubric: RubricEntity): Promise<Set<number>> {
+		const course = await this.studyPlanCourseRepo.findOne({
+			where: { id: rubric.study_plan_course_id },
+			relations: ['study_plan_academic_period'],
+		});
+		const academicPeriodId = course?.study_plan_academic_period?.academic_period_id;
+		if (!academicPeriodId) return new Set();
+
+		const instrType = await this.typeRepo.findOne({ where: { code: this.PERF_LEVEL_INSTRUMENT_TYPE_CODE } });
+		if (!instrType) return new Set();
+
+		const levels = await this.performanceLevelRepo.find({
+			where: { instrument_type_id: instrType.id, academic_period_id: academicPeriodId },
+		});
+		return new Set(levels.map((l) => Number(l.unique_value)));
 	}
 
 	private async getRubricForProject(projectId: number): Promise<{ rubric: RubricEntity | null; studyPlanCourseId: number | null }> {
@@ -212,7 +249,6 @@ export class EvaluationSubmissionService {
 		observation: I18nText | string | null | undefined,
 		scores: Array<{ rubric_question_criteria_id: number; score: number; commentaries?: I18nText | string }>,
 		statusTypeId: number,
-		overrideStatusTypeId?: number,
 	): Promise<EvaluationEntity> {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
@@ -222,18 +258,16 @@ export class EvaluationSubmissionService {
 		});
 
 		if (evaluation) {
+			evaluation.qualification_status_type_id = statusTypeId;
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
-			}
-			if (overrideStatusTypeId !== undefined) {
-				evaluation.qualification_status_type_id = overrideStatusTypeId;
 			}
 			await manager.save(evaluation);
 		} else {
 			evaluation = manager.create(EvaluationEntity, {
 				project_student_id: projectStudentId,
 				project_evaluator_id: projectEvaluatorId,
-				qualification_status_type_id: overrideStatusTypeId ?? statusTypeId,
+				qualification_status_type_id: statusTypeId,
 				observation: i18nText(observation),
 				register_at: new Date(),
 				is_active: true,
@@ -301,31 +335,129 @@ export class EvaluationSubmissionService {
 		const criteriaIds = dto.scores.map((s) => s.rubric_question_criteria_id);
 		const criterias = await this.criteriaRepo.find({ where: { id: In(criteriaIds) } });
 
-		for (const scoreDto of dto.scores) {
-			const criteria = criterias.find((c) => c.id === scoreDto.rubric_question_criteria_id);
-			if (!criteria) {
-				throw new NotFoundException(`Criterio con ID ${scoreDto.rubric_question_criteria_id} no encontrado.`);
-			}
-			if (scoreDto.score < criteria.min_value || scoreDto.score > criteria.max_value) {
-				throw new BadRequestException(`Puntaje ${scoreDto.score} inválido. Rango: [${criteria.min_value} - ${criteria.max_value}].`);
+		const rubric = await this.rubricRepo.findOne({
+			where: { id: dto.rubric_id },
+			relations: ['questions', 'questions.criterias'],
+		});
+		if (!rubric) {
+			throw new NotFoundException(`Rúbrica con ID ${dto.rubric_id} no encontrada.`);
+		}
+
+		const statusCode = await this.resolveEvaluatorTypeCode(dto.qualification_status_type_id);
+		const isNr = statusCode === this.NR_STATUS_CODE;
+		const isNa = statusCode === this.NA_STATUS_CODE;
+		const isNrOrNa = isNr || isNa;
+
+		const isCapstone = await this.isCapstoneRubric(rubric.rubric_type_id);
+		const isFinal = await this.isFinalEvaluation(rubric.grade_type_id);
+		const isCapstoneFinal = isCapstone && isFinal;
+
+		// Mapa criteriaId → questionId construido desde la rúbrica
+		const criteriaToQuestion = new Map<number, number>();
+		for (const question of rubric.questions ?? []) {
+			for (const criteria of question.criterias ?? []) {
+				criteriaToQuestion.set(criteria.id, question.id);
 			}
 		}
 
-		const defaultStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
+		if (!isNrOrNa) {
+			if (isCapstoneFinal) {
+				// Todos los criterios de la rúbrica deben estar en el DTO
+				const allCriteriaIds = new Set(criteriaToQuestion.keys());
+				const scoredIds = new Set(dto.scores.map((s) => s.rubric_question_criteria_id));
+				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
+				if (missing.length > 0) {
+					throw new BadRequestException(`Deben calificarse todos los criterios de la rúbrica. Faltan: ${missing.join(', ')}.`);
+				}
+			} else {
+				// Capstone parcial o no capstone: máximo 1 criterio por pregunta
+				const countByQuestion = new Map<number, number>();
+				for (const scoreDto of dto.scores) {
+					const questionId = criteriaToQuestion.get(scoreDto.rubric_question_criteria_id);
+					if (!questionId) continue;
+					countByQuestion.set(questionId, (countByQuestion.get(questionId) ?? 0) + 1);
+				}
+				for (const [questionId, count] of countByQuestion) {
+					if (count > 1) {
+						throw new BadRequestException(`La pregunta ${questionId} tiene ${count} criterios calificados. Solo se permite uno por pregunta.`);
+					}
+				}
+			}
+
+			// Validación de rango / performance levels
+			const validPerfLevelValues = isCapstoneFinal
+				? await this.getValidPerformanceLevelValues(rubric)
+				: null;
+
+			for (const scoreDto of dto.scores) {
+				const criteria = criterias.find((c) => c.id === scoreDto.rubric_question_criteria_id);
+				if (!criteria) {
+					throw new NotFoundException(`Criterio con ID ${scoreDto.rubric_question_criteria_id} no encontrado.`);
+				}
+				if (validPerfLevelValues) {
+					if (!validPerfLevelValues.has(Number(scoreDto.score))) {
+						throw new BadRequestException(
+							`Puntaje ${scoreDto.score} inválido para rúbrica capstone final. Valores permitidos: ${[...validPerfLevelValues].sort((a, b) => a - b).join(', ')}.`,
+						);
+					}
+				} else {
+					if (Number(scoreDto.score) < Number(criteria.min_value) || Number(scoreDto.score) > Number(criteria.max_value)) {
+						throw new BadRequestException(`Puntaje ${scoreDto.score} inválido. Rango: [${criteria.min_value} - ${criteria.max_value}].`);
+					}
+				}
+			}
+		}
 
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
 		await queryRunner.startTransaction();
 
+		// Capstone final + NR/NA → todos los criterios en 0; cualquier otro caso → lo que manda el front
+		const scoresToSave = isCapstoneFinal && isNrOrNa
+			? [...criteriaToQuestion.keys()].map((criteriaId) => ({ rubric_question_criteria_id: criteriaId, score: 0 }))
+			: dto.scores;
+
 		try {
-			const evaluation = await this.saveEvaluationScores(queryRunner.manager, dto.project_student_id, dto.project_evaluator_id, dto.observation, dto.scores, defaultStatusTypeId, dto.qualification_status_type_id);
+			const evaluation = await this.saveEvaluationScores(
+				queryRunner.manager,
+				dto.project_student_id,
+				dto.project_evaluator_id,
+				dto.observation,
+				scoresToSave,
+				dto.qualification_status_type_id,
+			);
+
+			if (!isCapstoneFinal) {
+				// Capstone parcial / no capstone (NR/NA o normal):
+				// borrar scores de criterios alternativos de las mismas preguntas enviadas
+				const submittedCriteriaIds = new Set(dto.scores.map((s) => s.rubric_question_criteria_id));
+				const questionsInSubmission = new Set(
+					dto.scores
+						.map((s) => criteriaToQuestion.get(s.rubric_question_criteria_id))
+						.filter((qId): qId is number => qId !== undefined),
+				);
+				const criteriaToDelete: number[] = [];
+				for (const question of rubric.questions ?? []) {
+					if (!questionsInSubmission.has(question.id)) continue;
+					for (const criteria of question.criterias ?? []) {
+						if (!submittedCriteriaIds.has(criteria.id)) {
+							criteriaToDelete.push(criteria.id);
+						}
+					}
+				}
+				if (criteriaToDelete.length > 0) {
+					await queryRunner.manager.delete(RubricScoreEntity, {
+						evaluation_id: evaluation.id,
+						rubric_question_criteria_id: In(criteriaToDelete),
+					});
+				}
+			}
 
 			// Resolver tipo de evaluador
 			const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluator_type_id);
 
-			// Resolver rúbrica asociada
-			const { rubric } = await this.getRubricForProject(evaluator.project_id);
-			const isPa = rubric ? await this.isPaRubric(rubric.id) : false;
+			// Usar rúbrica ya resuelta
+			const isPa = await this.isPaRubric(rubric.id);
 
 			let finalOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
 

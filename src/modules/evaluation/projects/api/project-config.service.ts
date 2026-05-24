@@ -263,6 +263,13 @@ export class ProjectConfigService {
 				}
 			}
 
+			const evaluationStatuses = isEvaluationMode
+				? evals.map((ev) => ({
+					evaluator_id: ev.project_evaluator_id,
+					qualification_status_type_id: ev.qualification_status_type_id,
+				}))
+				: [];
+
 			return {
 				id: s.id,
 				student_id: s.student_section_enrollment?.enrolled_student?.student_id || 0,
@@ -271,6 +278,7 @@ export class ProjectConfigService {
 				email: user?.email || '',
 				student_code: user?.document_code ? String(user.document_code) : '',
 				total_grade: isEvaluationMode ? totalGrade : null,
+				evaluations: evaluationStatuses,
 			};
 		});
 

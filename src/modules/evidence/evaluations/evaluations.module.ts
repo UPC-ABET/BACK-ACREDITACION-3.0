@@ -12,6 +12,8 @@ import { StudentCourseOutcomeGradeEntity } from 'src/modules/evidence/student-co
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { ProjectEntity } from 'src/modules/evaluation/projects/model/projects.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 
 import { EvaluationRepository } from './core/evaluations.repository';
 import { EvaluationService } from './api/evaluations.service';
@@ -32,6 +34,8 @@ import { EvaluationSubmissionService } from './api/evaluation-submission.service
 			StudentSectionEnrollmentEntity,
 			ProjectEntity,
 			TypeEntity,
+			PerformanceLevelEntity,
+			StudyPlanCourseEntity,
 		]),
 	],
 	controllers: [EvaluationController],

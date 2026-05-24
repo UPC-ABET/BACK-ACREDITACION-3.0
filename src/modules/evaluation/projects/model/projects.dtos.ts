@@ -204,9 +204,20 @@ export class RubricQuestionDetailsDto {
 	criterias: RubricCriteriaDetailsDto[];
 }
 
+export class StudentEvaluationStatusDto {
+	@ApiProperty({ description: 'project_evaluator_id del evaluador que registró la evaluación' })
+	evaluator_id: number;
+
+	@ApiProperty({ description: 'ID del tipo de estado de calificación desde core.types (TG404)' })
+	qualification_status_type_id: number;
+}
+
 export class ProjectDetailsStudentDto extends StudentInfoDto {
-	@ApiProperty()
-	total_grade: number | null; // scaled to 20 or raw, nullable if not graded or not eval mode
+	@ApiProperty({ nullable: true })
+	total_grade: number | null;
+
+	@ApiProperty({ type: [StudentEvaluationStatusDto], description: 'Estado de calificación por evaluador. Solo presente en modo evaluación.' })
+	evaluations: StudentEvaluationStatusDto[];
 }
 
 export class ProjectEvaluatorDetailDto {

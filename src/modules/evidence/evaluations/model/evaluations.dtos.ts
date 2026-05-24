@@ -37,6 +37,11 @@ export class SubmitEvaluationDto extends BaseDto {
 	@ApiProperty({ example: 1, required: true })
 	project_evaluator_id: number;
 
+	@IsNumber()
+	@IsNotEmpty()
+	@ApiProperty({ example: 1, required: true, description: 'ID de la rúbrica que se está evaluando (EA o EB). Se obtiene del GET /projects/project/:id.' })
+	rubric_id: number;
+
 	@IsOptional()
 	@ApiProperty({
 		oneOf: [
@@ -62,10 +67,10 @@ export class SubmitEvaluationDto extends BaseDto {
 	@ApiProperty({ example: true, required: false })
 	is_active?: boolean;
 
-	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'Estado de calificación desde core.types (TG404). Si no se envía, se usa ASISTIO por defecto.' })
-	qualification_status_type_id?: number;
+	@IsNotEmpty()
+	@ApiProperty({ example: 1, required: true, description: 'Estado de calificación desde core.types (TG404). Ej: ASISTIO (TG404-T001), NR (TG404-T002), NA (TG404-T003).' })
+	qualification_status_type_id: number;
 }
 
 export class CreateEvaluationDto extends BaseDto {
