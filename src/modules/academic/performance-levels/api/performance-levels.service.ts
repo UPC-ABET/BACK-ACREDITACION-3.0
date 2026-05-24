@@ -6,8 +6,11 @@ import { PerformanceLevelValidation } from '../core/performance-levels.validatio
 import {
 	CreatePerformanceLevelDto,
 	UpdatePerformanceLevelDto,
+	FilterPerformanceLevelDto,
 } from '../model/performance-levels.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, FindManyOptions } from 'typeorm';
+
+const PERFORMANCE_LEVEL_RELATIONS = ['instrument_type', 'academic_period'];
 
 @Injectable()
 export class PerformanceLevelService extends BaseService<PerformanceLevelRepository> {
@@ -31,5 +34,25 @@ export class PerformanceLevelService extends BaseService<PerformanceLevelReposit
 	async delete(id: number, manager?: EntityManager) {
 		await PerformanceLevelValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getAll(options?: FindManyOptions<any>) {
+		const mergedOptions: FindManyOptions = {
+			...options,
+			relations: PERFORMANCE_LEVEL_RELATIONS,
+		};
+		return await super.getAll(mergedOptions);
+	}
+
+	async getByFilters(filters: FilterPerformanceLevelDto, options?: FindManyOptions<any>) {
+		const cleanWhere = Object.fromEntries(
+			Object.entries(filters).filter(([_, v]) => v !== undefined && v !== null),
+		);
+		const mergedOptions: FindManyOptions = {
+			...options,
+			where: cleanWhere,
+			relations: PERFORMANCE_LEVEL_RELATIONS,
+		};
+		return await this.baseRepository.findByCondition(mergedOptions);
 	}
 }
