@@ -14,6 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/protocols/jwt/guards/permissions.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
+import { JWT_EXPIRES_IN, getRequiredJwtSecret } from './modules/auth/protocols/jwt/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
 
 // ACADEMIC MODULES
@@ -110,10 +111,9 @@ import { S3Module } from './modules/storage/s3/s3.module';
 			global: true,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
-				const secret = configService.get<string>('JWT_SECRET');
 				return {
-					secret,
-					signOptions: { expiresIn: '2400h' },
+					secret: getRequiredJwtSecret(configService),
+					signOptions: { expiresIn: JWT_EXPIRES_IN },
 				};
 			},
 		}),

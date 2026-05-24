@@ -2,10 +2,10 @@ import * as bcrypt from 'bcryptjs';
 import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('organization users and staff', async (tenantDataSource) => {
-	const adminPassword = await bcrypt.hash('admin123', 10);
-	const professorPassword = await bcrypt.hash('profesor123', 10);
-	const studentPassword = await bcrypt.hash('estudiante123', 10);
-	const testPassword = await bcrypt.hash('Admin123!', 10);
+	const adminPassword = await hashRequiredSeedPassword('SEED_ADMIN_PASSWORD');
+	const professorPassword = await hashRequiredSeedPassword('SEED_PROFESSOR_PASSWORD');
+	const studentPassword = await hashRequiredSeedPassword('SEED_STUDENT_PASSWORD');
+	const testPassword = await hashRequiredSeedPassword('SEED_TEST_PASSWORD');
 
 	await tenantDataSource.query(
 		`
@@ -108,3 +108,13 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 		);
 	`);
 });
+
+async function hashRequiredSeedPassword(envKey: string): Promise<string> {
+	const password = process.env[envKey];
+
+	if (!password || password.length < 12) {
+		throw new Error(`${envKey} must be configured with at least 12 characters before running auth seeds`);
+	}
+
+	return bcrypt.hash(password, 10);
+}
