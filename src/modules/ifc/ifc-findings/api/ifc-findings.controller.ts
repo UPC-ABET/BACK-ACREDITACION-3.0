@@ -33,7 +33,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateIfcFindingDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcFindingDto) {
 		return await super.update(id, dto);
 	}
 

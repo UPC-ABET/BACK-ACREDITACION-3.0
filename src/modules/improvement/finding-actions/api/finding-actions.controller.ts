@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerFindingActionController,
@@ -28,12 +28,12 @@ export class FindingActionController extends BaseController<FindingActionService
 	}
 
 	@SwaggerFindingActionUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateFindingActionDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFindingActionDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerFindingActionDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class FindingActionController extends BaseController<FindingActionService
 	}
 
 	@SwaggerFindingActionGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

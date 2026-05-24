@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudyPlanAcademicPeriodController,
@@ -28,12 +28,12 @@ export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanA
 	}
 
 	@SwaggerStudyPlanAcademicPeriodUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateStudyPlanAcademicPeriodDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStudyPlanAcademicPeriodDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerStudyPlanAcademicPeriodDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanA
 	}
 
 	@SwaggerStudyPlanAcademicPeriodGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProgramCommissionController,
@@ -28,12 +28,12 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 	}
 
 	@SwaggerProgramCommissionUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateProgramCommissionDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProgramCommissionDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerProgramCommissionDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 	}
 
 	@SwaggerProgramCommissionGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

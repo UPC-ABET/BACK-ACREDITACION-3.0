@@ -48,12 +48,12 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateRubricDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRubricDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerRubricDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await this.service.delete(id);
 	}
 
@@ -84,7 +84,7 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

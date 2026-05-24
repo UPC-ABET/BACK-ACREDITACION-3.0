@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerTypeGroupController,
@@ -28,12 +28,12 @@ export class TypeGroupController extends BaseController<TypeGroupService> {
 	}
 
 	@SwaggerTypeGroupUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateTypeGroupDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTypeGroupDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerTypeGroupDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class TypeGroupController extends BaseController<TypeGroupService> {
 	}
 
 	@SwaggerTypeGroupGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

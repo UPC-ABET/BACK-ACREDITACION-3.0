@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProjectEvaluatorController,
@@ -28,12 +28,12 @@ export class ProjectEvaluatorController extends BaseController<ProjectEvaluatorS
 	}
 
 	@SwaggerProjectEvaluatorUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateProjectEvaluatorDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProjectEvaluatorDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerProjectEvaluatorDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class ProjectEvaluatorController extends BaseController<ProjectEvaluatorS
 	}
 
 	@SwaggerProjectEvaluatorGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

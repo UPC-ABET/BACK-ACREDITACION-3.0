@@ -35,12 +35,12 @@ export class NotificationConfigController extends BaseController<NotificationCon
 	}
 
 	@SwaggerNotificationConfigUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateNotificationConfigDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateNotificationConfigDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerNotificationConfigDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -50,7 +50,7 @@ export class NotificationConfigController extends BaseController<NotificationCon
 	}
 
 	@SwaggerNotificationConfigGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudentCourseOutcomeGradeController,
@@ -28,12 +28,12 @@ export class StudentCourseOutcomeGradeController extends BaseController<StudentC
 	}
 
 	@SwaggerStudentCourseOutcomeGradeUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateStudentCourseOutcomeGradeDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStudentCourseOutcomeGradeDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerStudentCourseOutcomeGradeDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class StudentCourseOutcomeGradeController extends BaseController<StudentC
 	}
 
 	@SwaggerStudentCourseOutcomeGradeGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

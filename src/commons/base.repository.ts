@@ -31,17 +31,15 @@ export abstract class BaseRepostitory implements IBaseRepository {
 		return await repository.save(entity);
 	}
 
-	public async update(id: number, newEntity: any, manager?: EntityManager) {
+	public async update(id: number, partial: any, manager?: EntityManager) {
 		const repository = this.resolveRepository(manager);
-		const entity = await repository.findOne({ where: { id } });
 
-		if (!entity) {
+		const result = await repository.update(id, partial);
+		if (result.affected === 0) {
 			throw new NotFoundException(sharedStrings.error.notFound);
 		}
 
-		Object.assign(entity, newEntity);
-
-		return await repository.save(entity);
+		return await repository.findOne({ where: { id } });
 	}
 
 	public async remove(id: any, manager?: EntityManager) {

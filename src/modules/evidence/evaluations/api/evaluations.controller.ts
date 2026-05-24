@@ -69,12 +69,12 @@ export class EvaluationController extends BaseController<EvaluationService> {
 	}
 
 	@SwaggerEvaluationUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateEvaluationDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateEvaluationDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerEvaluationDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -84,7 +84,7 @@ export class EvaluationController extends BaseController<EvaluationService> {
 	}
 
 	@SwaggerEvaluationGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

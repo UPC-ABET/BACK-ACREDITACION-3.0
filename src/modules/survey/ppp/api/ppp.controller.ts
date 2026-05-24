@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { PppConfigService } from './ppp-config.service';
 import { PppSurveyService } from './ppp-survey.service';
@@ -56,18 +56,18 @@ export class PppController {
 	}
 
 	@SwaggerPppConfigGetById()
-	async configGetById(@Param('id') id: number) {
-		return parseSuccessResponse(await this.configService.getById(Number(id)));
+	async configGetById(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.configService.getById(id));
 	}
 
 	@SwaggerPppConfigUpdate()
-	async configUpdate(@Param('id') id: number, @Body() dto: UpdatePppConfigDto) {
-		return parseSuccessResponse(await this.configService.update(Number(id), dto));
+	async configUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePppConfigDto) {
+		return parseSuccessResponse(await this.configService.update(id, dto));
 	}
 
 	@SwaggerPppConfigDelete()
-	async configDelete(@Param('id') id: number) {
-		return parseSuccessResponse(await this.configService.delete(Number(id)));
+	async configDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.configService.delete(id));
 	}
 
 	@SwaggerPppConfigReplicate()
@@ -93,8 +93,8 @@ export class PppController {
 	}
 
 	@SwaggerPppSurveyGetById()
-	async surveyGetById(@Param('id') id: number) {
-		return parseSuccessResponse(await this.surveyService.getById(Number(id)));
+	async surveyGetById(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.surveyService.getById(id));
 	}
 
 	@SwaggerPppSurveyUploadExcel()

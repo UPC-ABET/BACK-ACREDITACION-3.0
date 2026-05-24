@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { GraConfigService } from './gra-config.service';
 import { GraNotificationService } from './gra-notification.service';
@@ -60,18 +60,18 @@ export class GraController {
 	}
 
 	@SwaggerGraConfigGetById()
-	async configGetById(@Param('id') id: number) {
-		return parseSuccessResponse(await this.configService.getById(Number(id)));
+	async configGetById(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.configService.getById(id));
 	}
 
 	@SwaggerGraConfigUpdate()
-	async configUpdate(@Param('id') id: number, @Body() dto: UpdateGraConfigDto) {
-		return parseSuccessResponse(await this.configService.update(Number(id), dto));
+	async configUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateGraConfigDto) {
+		return parseSuccessResponse(await this.configService.update(id, dto));
 	}
 
 	@SwaggerGraConfigDelete()
-	async configDelete(@Param('id') id: number) {
-		return parseSuccessResponse(await this.configService.delete(Number(id)));
+	async configDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.configService.delete(id));
 	}
 
 	@SwaggerGraConfigReplicate()
@@ -92,8 +92,8 @@ export class GraController {
 	}
 
 	@SwaggerGraNotificationDelete()
-	async notificationDelete(@Param('id') id: number) {
-		return parseSuccessResponse(await this.notifService.deleteNotification(Number(id)));
+	async notificationDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.notifService.deleteNotification(id));
 	}
 
 	// ── EMAIL ENDPOINTS ───────────────────────────────────────────────

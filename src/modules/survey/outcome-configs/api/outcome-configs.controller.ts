@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerOutcomeConfigController,
@@ -28,12 +28,12 @@ export class OutcomeConfigController extends BaseController<OutcomeConfigService
 	}
 
 	@SwaggerOutcomeConfigUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateOutcomeConfigDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOutcomeConfigDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerOutcomeConfigDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -43,7 +43,7 @@ export class OutcomeConfigController extends BaseController<OutcomeConfigService
 	}
 
 	@SwaggerOutcomeConfigGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

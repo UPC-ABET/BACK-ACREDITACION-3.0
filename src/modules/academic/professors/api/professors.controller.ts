@@ -30,12 +30,12 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	}
 
 	@SwaggerProfessorUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateProfessorDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProfessorDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerProfessorDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -45,7 +45,7 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	}
 
 	@SwaggerProfessorGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

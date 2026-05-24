@@ -1,4 +1,4 @@
-import { Body, Param, Req, Res } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Req, Res } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { UserService } from './users.service';
 import {
@@ -43,13 +43,13 @@ export class UserController extends BaseController<UserService> {
 
 	@SwaggerUserUpdate()
 	@RequirePermission({ module: USERS_MODULE, action: 'PUT' })
-	async update(@Param('id') id: number, @Body() dto: UpdateUserDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerUserDelete()
 	@RequirePermission({ module: USERS_MODULE, action: 'DELETE' })
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -61,7 +61,7 @@ export class UserController extends BaseController<UserService> {
 
 	@SwaggerUserGetById()
 	@RequirePermission({ module: USERS_MODULE, action: 'GET' })
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

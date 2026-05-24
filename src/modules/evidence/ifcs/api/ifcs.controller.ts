@@ -55,12 +55,12 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateIfcDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerIfcDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 

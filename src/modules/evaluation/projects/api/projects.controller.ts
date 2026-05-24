@@ -86,12 +86,12 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@SwaggerProjectUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateProjectDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProjectDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerProjectDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -101,7 +101,7 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@SwaggerProjectGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 

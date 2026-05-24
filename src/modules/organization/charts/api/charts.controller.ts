@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerChartController,
@@ -24,12 +24,12 @@ export class ChartController extends BaseController<ChartService> {
 	}
 
 	@SwaggerChartUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateChartDto) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateChartDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerChartDelete()
-	async delete(@Param('id') id: number) {
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
@@ -39,7 +39,7 @@ export class ChartController extends BaseController<ChartService> {
 	}
 
 	@SwaggerChartGetById()
-	async getById(@Param('id') id: number) {
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
