@@ -38,9 +38,8 @@ export class CreateUserDto extends BaseDto {
 	@ApiProperty({ example: 'last_name_example', required: true })
 	last_name: string;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'email_example', required: true })
+	@IsEmail()
+	@ApiProperty({ example: 'user@example.com', required: true })
 	email: string;
 
 	@IsString()
@@ -86,9 +85,8 @@ export class UpdateUserDto extends BaseDto {
 	last_name?: string;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'email_example', required: false })
+	@IsEmail()
+	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
 	@IsOptional()
@@ -129,7 +127,8 @@ export class FilterUserDto extends BaseDto {
 	last_name?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'email_example', required: false })
+	@IsEmail()
+	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
 	@IsOptional()
