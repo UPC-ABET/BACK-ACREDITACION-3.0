@@ -1,4 +1,4 @@
-import { FindOneOptions } from 'typeorm';
+import { FindManyOptions, FindOneOptions } from 'typeorm';
 
 export interface IBaseRepository {
 	save(data: any): Promise<any>;
@@ -6,7 +6,7 @@ export interface IBaseRepository {
 	update(id: any, newEntity: any): Promise<any>;
 	remove(data: any): Promise<any>;
 
-	findAll(relations?: string[]): Promise<any[]>;
+	findAll(options?: FindManyOptions): Promise<any[]>;
 	findByCondition(options: FindOneOptions, relations?: string[]): Promise<any[]>;
 	findOneById(id: any, relations?: string[]): Promise<any>;
 	findOneByCondition(options: FindOneOptions, relations?: string[]): Promise<any>;

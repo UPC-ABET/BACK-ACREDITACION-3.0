@@ -1,134 +1,96 @@
-import { EntityManager, FindOneOptions, IsNull, DataSource, Repository, QueryRunner, FindOperator } from 'typeorm';
+import { DataSource, EntityManager, FindManyOptions, FindOneOptions, FindOperator, IsNull, Repository } from 'typeorm';
 import { IBaseRepository } from './ibase.repository';
 
 export abstract class BaseRepostitory implements IBaseRepository {
-	protected entity: any;
+	protected readonly repository: Repository<any>;
 
 	constructor(
-		entity: any,
+		repository: Repository<any>,
 		protected readonly dataSource: DataSource,
 	) {
-		this.entity = entity;
-	}
-
-	protected async getRepository(manager?: EntityManager): Promise<{ repository: Repository<any>; queryRunner: QueryRunner }> {
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		const repository = manager ? manager.getRepository(this.entity.target) : queryRunner.manager.getRepository(this.entity.target);
-		return { repository, queryRunner };
+		this.repository = repository;
 	}
 
 	public async save(data: any, manager?: EntityManager): Promise<any> {
-		const { repository, queryRunner } = await this.getRepository(manager);
-		try {
-			return await repository.save(data);
-		} finally {
-			await queryRunner.release();
-		}
+		return await this.resolveRepository(manager).save(data);
 	}
 
 	public async create(data: any, manager?: EntityManager): Promise<any> {
-		const { repository, queryRunner } = await this.getRepository(manager);
-		try {
-			const entity = repository.create(data);
-			return await repository.save(entity);
-		} finally {
-			await queryRunner.release();
-		}
+		const repository = this.resolveRepository(manager);
+		const entity = repository.create(data);
+		return await repository.save(entity);
 	}
 
 	public async update(id: number, newEntity: any, manager?: EntityManager) {
-		const { repository, queryRunner } = await this.getRepository(manager);
+		const repository = this.resolveRepository(manager);
+		const entity = await repository.findOne({ where: { id } });
 
-		try {
-			const entity = await repository.findOne({ where: { id } });
-
-			if (!entity) {
-				throw new Error(`No se encontró la entidad con ID: ${id}`);
-			}
-
-			Object.assign(entity, newEntity);
-
-			return await repository.save(entity);
-		} finally {
-			await queryRunner.release();
+		if (!entity) {
+			throw new Error(`No se encontró la entidad con ID: ${id}`);
 		}
+
+		Object.assign(entity, newEntity);
+
+		return await repository.save(entity);
 	}
 
 	public async remove(id: any, manager?: EntityManager) {
-		const { repository, queryRunner } = await this.getRepository(manager);
+		const repository = this.resolveRepository(manager);
+		const entity = await repository.findOne({ where: { id } });
 
-		try {
-			const entity = await repository.findOne({ where: { id } });
-			return await repository.remove(entity);
-		} finally {
-			await queryRunner.release();
+		if (!entity) {
+			throw new Error(`No se encontró la entidad con ID: ${id}`);
 		}
+
+		return await repository.remove(entity);
 	}
 
-	public async findAll(relations?: string[]) {
-		const { repository, queryRunner } = await this.getRepository();
-
-		try {
-			const allRelations = repository.metadata.relations.map((r) => r.propertyName);
-
-			return await repository.find({
-				relations: relations?.length ? relations : allRelations,
-			});
-		} finally {
-			await queryRunner.release();
-		}
+	public async findAll(options: FindManyOptions = {}) {
+		return await this.repository.find(this.normalizeFindManyOptions(options));
 	}
 
 	public async findByCondition(options: FindOneOptions, relations?: string[]) {
-		const { repository, queryRunner } = await this.getRepository();
-
-		try {
-			if (relations?.length) {
-				options.relations = relations;
-			} else {
-				options.relations = repository.metadata.relations.map((r) => r.propertyName);
-			}
-
-			if (options?.where) {
-				options.where = this.transformNullToIsNull(options.where);
-			}
-
-			return await repository.find(options);
-		} finally {
-			await queryRunner.release();
-		}
+		return await this.repository.find(this.normalizeFindManyOptions(options, relations));
 	}
 
 	public async findOneById(id: any, relations?: string[]) {
-		const { repository, queryRunner } = await this.getRepository();
-
-		try {
-			return await repository.findOne({
-				where: { id },
-				relations: relations?.length ? relations : repository.metadata.relations.map((r) => r.propertyName),
-			});
-		} finally {
-			await queryRunner.release();
-		}
+		return await this.repository.findOne(this.normalizeFindOneOptions({ where: { id } }, relations));
 	}
 
-	public async findOneByCondition(options: FindOneOptions) {
-		const { repository, queryRunner } = await this.getRepository();
+	public async findOneByCondition(options: FindOneOptions, relations?: string[]) {
+		return await this.repository.findOne(this.normalizeFindOneOptions(options, relations));
+	}
 
-		try {
-			if (!options.relations) {
-				options.relations = repository.metadata.relations.map((r) => r.propertyName);
-			}
+	private resolveRepository(manager?: EntityManager): Repository<any> {
+		return manager ? manager.getRepository(this.repository.target) : this.repository;
+	}
 
-			if (options?.where) {
-				options.where = this.transformNullToIsNull(options.where);
-			}
+	private normalizeFindManyOptions(options: FindManyOptions = {}, relations?: string[]): FindManyOptions {
+		const normalized = { ...options };
 
-			return await repository.findOne(options);
-		} finally {
-			await queryRunner.release();
+		if (relations?.length) {
+			normalized.relations = relations;
 		}
+
+		if (normalized.where) {
+			normalized.where = this.transformNullToIsNull(normalized.where);
+		}
+
+		return normalized;
+	}
+
+	private normalizeFindOneOptions(options: FindOneOptions, relations?: string[]): FindOneOptions {
+		const normalized = { ...options };
+
+		if (relations?.length) {
+			normalized.relations = relations;
+		}
+
+		if (normalized.where) {
+			normalized.where = this.transformNullToIsNull(normalized.where);
+		}
+
+		return normalized;
 	}
 
 	public transformNullToIsNull(obj: any): any {
