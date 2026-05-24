@@ -136,26 +136,38 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async notifyAll(chartIds: number[], periodId: number, userId: number) {
+		const pLimitMod = await import('p-limit');
+		const pLimit = (pLimitMod.default ?? pLimitMod) as (
+			concurrency: number,
+		) => <T>(fn: () => Promise<T>) => Promise<T>;
+		const limit = pLimit(5);
+
+		const results = await Promise.allSettled(
+			chartIds.map((chartId) =>
+				limit(async () => {
+					const statusCode = await this.stateMachine.resolveCurrentStatusCode(chartId, periodId);
+					const result = await this.dispatcher.dispatch({
+						chartId,
+						periodId,
+						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.MANUAL,
+						ifcStatusCode: statusCode,
+						notifierUserId: userId,
+					});
+					return { chartId, result };
+				}),
+			),
+		);
+
 		const sent: number[] = [];
 		const skipped: number[] = [];
 		const errors: Array<{ chart_id: number; message: string }> = [];
-
-		for (const chartId of chartIds) {
-			try {
-				const statusCode = await this.stateMachine.resolveCurrentStatusCode(chartId, periodId);
-				const result = await this.dispatcher.dispatch({
-					chartId,
-					periodId,
-					triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.MANUAL,
-					ifcStatusCode: statusCode,
-					notifierUserId: userId,
-				});
-				if (result.sent) sent.push(chartId);
-				else skipped.push(chartId);
-			} catch (e) {
-				errors.push({ chart_id: chartId, message: (e as Error).message });
+		results.forEach((r, idx) => {
+			if (r.status === 'fulfilled') {
+				r.value.result.sent ? sent.push(r.value.chartId) : skipped.push(r.value.chartId);
+			} else {
+				errors.push({ chart_id: chartIds[idx], message: (r.reason as Error).message });
 			}
-		}
+		});
 		return { sent, skipped, errors };
 	}
 }

@@ -53,7 +53,9 @@ export class IfcReportService {
 
 	async generatePdfBulk(ifcIds: number[], userId: number, schoolId: number, lang: 'es' | 'en') {
 		const pLimitMod = await import('p-limit');
-		const pLimit = (pLimitMod.default ?? pLimitMod) as (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>;
+		const pLimit = (pLimitMod.default ?? pLimitMod) as (
+			concurrency: number,
+		) => <T>(fn: () => Promise<T>) => Promise<T>;
 		const viewLimit = pLimit(8);
 		const renderLimit = pLimit(3);
 
