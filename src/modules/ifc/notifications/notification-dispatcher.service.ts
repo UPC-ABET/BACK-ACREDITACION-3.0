@@ -393,6 +393,19 @@ export class NotificationDispatcherService {
 	}
 }
 
+function escapeHtml(value: string): string {
+	return value.replace(/[<>&"']/g, (ch) => {
+		switch (ch) {
+			case '<': return '&lt;';
+			case '>': return '&gt;';
+			case '&': return '&amp;';
+			case '"': return '&quot;';
+			case "'": return '&#39;';
+			default: return ch;
+		}
+	});
+}
+
 function applySubstitutions(text: string, subs: Record<string, string>): string {
-	return text.replace(/\{\{[^}]+\}\}/g, (m) => subs[m] ?? '');
+	return text.replace(/\{\{[^}]+\}\}/g, (m) => escapeHtml(subs[m] ?? ''));
 }
