@@ -12,12 +12,15 @@ import { ApiQuery, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
-import { saveAccessCookie } from 'src/libs/secure.functions';
+import {
+	MICROSOFT_STATE_COOKIE,
+	MICROSOFT_STATE_COOKIE_MAX_AGE_MS,
+	saveAccessCookie,
+} from 'src/libs/secure.functions';
 import { Public } from '../protocols/jwt/decorators/public.decorator';
 import { getRequiredJwtSecret } from '../protocols/jwt/jwt.config';
 import { AuthService } from './auth.service';
 
-const MICROSOFT_STATE_COOKIE = 'microsoft_oauth_state';
 const INVALID_SESSION_MSG = 'La sesión de Microsoft expiró o no es válida';
 
 interface MicrosoftState {
@@ -63,7 +66,7 @@ export class AuthController {
 			httpOnly: true,
 			secure: this.configService.get<string>('NODE_ENV') === 'production',
 			sameSite: 'lax',
-			maxAge: 10 * 60 * 1000,
+			maxAge: MICROSOFT_STATE_COOKIE_MAX_AGE_MS,
 		});
 
 		return res.redirect(loginUrl);
