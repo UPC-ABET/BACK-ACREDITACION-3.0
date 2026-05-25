@@ -8,9 +8,21 @@ import {
 	IsInt,
 	IsNotEmpty,
 	IsNumber,
+	ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
+
+export class ProjectEvaluatorInputDto {
+	@IsInt()
+	@ApiProperty({ example: 1, required: true, description: 'ID del profesor evaluador' })
+	professor_id: number;
+
+	@IsInt()
+	@ApiProperty({ example: 5, required: true, description: 'ID del tipo de evaluador (TG403)' })
+	evaluator_type_id: number;
+}
 
 export class CreateProjectDto {
 	@IsString()
@@ -29,6 +41,10 @@ export class CreateProjectDto {
 	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
 	description?: I18nText;
 
+	@IsInt()
+	@ApiProperty({ example: 1, required: true, description: 'ID del study_plan_course' })
+	study_plan_course_id: number;
+
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({
@@ -40,14 +56,14 @@ export class CreateProjectDto {
 	student_section_enrollment_ids: number[];
 
 	@IsArray()
-	@IsInt({ each: true })
+	@ValidateNested({ each: true })
+	@Type(() => ProjectEvaluatorInputDto)
 	@ApiProperty({
-		type: [Number],
-		example: [1, 2],
+		type: [ProjectEvaluatorInputDto],
 		required: true,
-		description: 'IDs de profesores evaluadores',
+		description: 'Evaluadores con su tipo',
 	})
-	evaluator_professor_ids: number[];
+	evaluators: ProjectEvaluatorInputDto[];
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
