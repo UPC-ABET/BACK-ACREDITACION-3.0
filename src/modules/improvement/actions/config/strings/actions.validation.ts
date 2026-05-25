@@ -1,11 +1,11 @@
 export const actionsValidationStrings = {
 	error: {
-		actionExists: 'error.action.exists',
-		notFound: 'error.notFound',
+		actionExists: 'error.action.actionExists',
+		notFound: 'error.action.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.action.createFailed',
+		updateFailed: 'error.action.updateFailed',
+		deleteFailed: 'error.action.deleteFailed',
 	},
 };

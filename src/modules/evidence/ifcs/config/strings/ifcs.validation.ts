@@ -1,7 +1,7 @@
 export const ifcsValidationStrings = {
 	error: {
-		ifcExists: 'error.ifc.exists',
-		notFound: 'error.notFound',
+		ifcExists: 'error.ifc.ifcExists',
+		notFound: 'error.ifc.notFound',
 		invalidTransition: 'error.ifc.invalidTransition',
 		staffRequired: 'error.ifc.staffRequired',
 		ownCoordinatorForbidden: 'error.ifc.ownCoordinatorForbidden',
@@ -18,8 +18,8 @@ export const ifcsValidationStrings = {
 	},
 	result: {
 		createFailed: 'error.ifc.createFailed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		updateFailed: 'error.ifc.updateFailed',
+		deleteFailed: 'error.ifc.deleteFailed',
 		viewFailed: 'error.ifc.viewFailed',
 		submitFailed: 'error.ifc.submitFailed',
 		approveFailed: 'error.ifc.approveFailed',

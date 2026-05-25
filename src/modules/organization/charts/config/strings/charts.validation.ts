@@ -1,11 +1,11 @@
 export const chartsValidationStrings = {
 	error: {
-		chartExists: 'error.chart.exists',
-		notFound: 'error.notFound',
+		chartExists: 'error.chart.chartExists',
+		notFound: 'error.chart.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.chart.createFailed',
+		updateFailed: 'error.chart.updateFailed',
+		deleteFailed: 'error.chart.deleteFailed',
 	},
 };

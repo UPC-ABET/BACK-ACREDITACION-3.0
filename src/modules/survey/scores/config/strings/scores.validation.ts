@@ -1,12 +1,12 @@
 export const scoresValidationStrings = {
 	error: {
-		scoreExists: 'error.score.exists',
-		invalidScore: 'error.invalid.score',
-		notFound: 'error.notFound',
+		scoreExists: 'error.score.scoreExists',
+		invalidScore: 'error.score.invalidScore',
+		notFound: 'error.score.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.score.createFailed',
+		updateFailed: 'error.score.updateFailed',
+		deleteFailed: 'error.score.deleteFailed',
 	},
 };

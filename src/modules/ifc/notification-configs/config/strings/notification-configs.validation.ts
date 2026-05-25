@@ -1,13 +1,13 @@
 export const notificationConfigsValidationStrings = {
 	error: {
-		targetExists: 'error.target.exists',
-		notFound: 'error.notFound',
-		notAdmin: 'error.notification_config.notAdmin',
+		targetExists: 'error.notificationConfig.targetExists',
+		notFound: 'error.notificationConfig.notFound',
+		notAdmin: 'error.notificationConfig.notAdmin',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
-		adminOnly: 'error.notification_config.adminOnly',
+		createFailed: 'error.notificationConfig.createFailed',
+		updateFailed: 'error.notificationConfig.updateFailed',
+		deleteFailed: 'error.notificationConfig.deleteFailed',
+		adminOnly: 'error.notificationConfig.adminOnly',
 	},
 };

@@ -1,11 +1,11 @@
 export const rubricQuestionsValidationStrings = {
 	error: {
-		questionExists: 'error.question.exists',
-		notFound: 'error.notFound',
+		questionExists: 'error.rubricQuestion.questionExists',
+		notFound: 'error.rubricQuestion.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.rubricQuestion.createFailed',
+		updateFailed: 'error.rubricQuestion.updateFailed',
+		deleteFailed: 'error.rubricQuestion.deleteFailed',
 	},
 };

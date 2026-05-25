@@ -1,11 +1,11 @@
 export const findingOutcomesValidationStrings = {
 	error: {
-		relationExists: 'error.relation.exists',
-		notFound: 'error.notFound',
+		relationExists: 'error.findingOutcome.relationExists',
+		notFound: 'error.findingOutcome.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.findingOutcome.createFailed',
+		updateFailed: 'error.findingOutcome.updateFailed',
+		deleteFailed: 'error.findingOutcome.deleteFailed',
 	},
 };

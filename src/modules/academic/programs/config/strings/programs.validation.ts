@@ -1,11 +1,11 @@
 export const programsValidationStrings = {
 	error: {
-		codeExists: 'error.code.exists',
-		notFound: 'error.notFound',
+		codeExists: 'error.program.codeExists',
+		notFound: 'error.program.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.program.createFailed',
+		updateFailed: 'error.program.updateFailed',
+		deleteFailed: 'error.program.deleteFailed',
 	},
 };

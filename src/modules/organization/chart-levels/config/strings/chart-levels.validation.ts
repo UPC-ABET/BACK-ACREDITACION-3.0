@@ -1,11 +1,11 @@
 export const chartLevelsValidationStrings = {
 	error: {
-		levelExists: 'error.level.exists',
-		notFound: 'error.notFound',
+		levelExists: 'error.chartLevel.levelExists',
+		notFound: 'error.chartLevel.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.chartLevel.createFailed',
+		updateFailed: 'error.chartLevel.updateFailed',
+		deleteFailed: 'error.chartLevel.deleteFailed',
 	},
 };

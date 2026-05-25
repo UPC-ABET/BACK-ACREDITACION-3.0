@@ -1,12 +1,12 @@
 export const rubricsValidationStrings = {
 	error: {
-		rubricExists: 'error.rubric.exists',
-		invalidMaxScore: 'error.invalid.max.score',
-		notFound: 'error.notFound',
+		rubricExists: 'error.rubric.rubricExists',
+		invalidMaxScore: 'error.rubric.invalidMaxScore',
+		notFound: 'error.rubric.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.rubric.createFailed',
+		updateFailed: 'error.rubric.updateFailed',
+		deleteFailed: 'error.rubric.deleteFailed',
 	},
 };

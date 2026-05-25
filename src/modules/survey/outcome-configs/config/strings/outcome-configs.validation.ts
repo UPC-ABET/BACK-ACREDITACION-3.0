@@ -1,11 +1,11 @@
 export const outcomeConfigsValidationStrings = {
 	error: {
-		configExists: 'error.config.exists',
-		notFound: 'error.notFound',
+		configExists: 'error.outcomeConfig.configExists',
+		notFound: 'error.outcomeConfig.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.outcomeConfig.createFailed',
+		updateFailed: 'error.outcomeConfig.updateFailed',
+		deleteFailed: 'error.outcomeConfig.deleteFailed',
 	},
 };

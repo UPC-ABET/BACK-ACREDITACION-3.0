@@ -1,11 +1,11 @@
 export const parametersValidationStrings = {
 	error: {
-		codeExists: 'error.code.exists',
-		notFound: 'error.notFound',
+		codeExists: 'error.parameter.codeExists',
+		notFound: 'error.parameter.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.parameter.createFailed',
+		updateFailed: 'error.parameter.updateFailed',
+		deleteFailed: 'error.parameter.deleteFailed',
 	},
 };

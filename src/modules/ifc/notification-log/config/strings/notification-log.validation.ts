@@ -1,10 +1,10 @@
 export const notificationLogValidationStrings = {
 	error: {
-		notFound: 'error.notFound',
+		notFound: 'error.notificationLog.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.notificationLog.createFailed',
+		updateFailed: 'error.notificationLog.updateFailed',
+		deleteFailed: 'error.notificationLog.deleteFailed',
 	},
 };

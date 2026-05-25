@@ -1,11 +1,11 @@
 export const professorsValidationStrings = {
 	error: {
-		staffExists: 'error.staff.exists',
-		notFound: 'error.notFound',
+		staffExists: 'error.professor.staffExists',
+		notFound: 'error.professor.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.professor.createFailed',
+		updateFailed: 'error.professor.updateFailed',
+		deleteFailed: 'error.professor.deleteFailed',
 	},
 };

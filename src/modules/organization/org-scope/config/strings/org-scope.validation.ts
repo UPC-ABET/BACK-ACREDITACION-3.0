@@ -1,9 +1,9 @@
 export const orgScopeValidationStrings = {
 	error: {
-		userNotFound: 'error.user.notFound',
-		schoolNotFound: 'error.school.notFound',
+		userNotFound: 'error.orgScope.userNotFound',
+		schoolNotFound: 'error.orgScope.schoolNotFound',
 	},
 	result: {
-		getScopeFailed: 'error.getScope.failed',
+		getScopeFailed: 'error.orgScope.getScopeFailed',
 	},
 };
