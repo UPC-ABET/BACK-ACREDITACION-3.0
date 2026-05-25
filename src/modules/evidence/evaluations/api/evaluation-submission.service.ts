@@ -5,7 +5,7 @@ import {
 	ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, EntityManager, In } from 'typeorm';
 import { EvaluationEntity } from '../model/evaluations.entity';
 import {
 	SubmitEvaluationDto,
@@ -189,7 +189,7 @@ export class EvaluationSubmissionService {
 	}
 
 	private async aggregateScoresByOutcome(
-		manager: any,
+		manager: EntityManager,
 		evaluationId: number,
 	): Promise<{
 		scoresByQuestion: Map<number, { notaOutcome: number; notaMaxOutcome: number }>;
@@ -244,7 +244,7 @@ export class EvaluationSubmissionService {
 	}
 
 	private async upsertOutcomeGrades(
-		manager: any,
+		manager: EntityManager,
 		studentSectionEnrollmentId: number,
 		outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>,
 	): Promise<void> {
@@ -270,7 +270,7 @@ export class EvaluationSubmissionService {
 	}
 
 	private async saveEvaluationScores(
-		manager: any,
+		manager: EntityManager,
 		projectStudentId: number,
 		projectEvaluatorId: number,
 		observation: I18nText | string | null | undefined,
@@ -323,7 +323,7 @@ export class EvaluationSubmissionService {
 					evaluation_id: evaluation.id,
 					rubric_question_criteria_id: scoreDto.rubric_question_criteria_id,
 					score: scoreDto.score,
-					commentaries: i18nText(scoreDto.commentaries),
+					commentaries: i18nText(scoreDto.commentaries) as any,
 					is_active: true,
 				});
 				await manager.save(newScore);

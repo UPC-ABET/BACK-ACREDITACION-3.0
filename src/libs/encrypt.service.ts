@@ -56,7 +56,7 @@ export class EncryptService {
 	}
 
 	getParsedParameter(param: { value: string; is_encrypted: boolean; is_json: boolean }): unknown {
-		if (!param) throw new Error('Parametro no configurado');
+		if (!param) throw new Error('Parameter not configured');
 
 		let value: unknown = param.is_encrypted ? this.decrypt(param.value) : param.value;
 		value = param.is_json ? JSON.parse(value as string) : value;
