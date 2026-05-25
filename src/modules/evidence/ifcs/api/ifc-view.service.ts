@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
@@ -15,10 +15,14 @@ import {
 
 @Injectable()
 export class IfcViewService {
+	private readonly logger = new Logger(IfcViewService.name);
+
 	constructor(private readonly dataSource: DataSource) {}
 
 	async getView(id: number, userId: number, schoolId: number) {
-		const [headerRows, findingRows, outcomeCourseRows] = await Promise.all([
+		const errors: string[] = [];
+
+		const [headerResult, findingsResult, outcomeCourseResult] = await Promise.allSettled([
 			this.dataSource.query(HEADER_SQL, [
 				id,
 				schoolId,
@@ -30,6 +34,9 @@ export class IfcViewService {
 			this.dataSource.query(OUTCOME_COURSE_BY_IFC_SQL, [id]),
 		]);
 
+		if (headerResult.status === 'rejected') throw headerResult.reason;
+		const headerRows = headerResult.value;
+
 		if (headerRows.length === 0) {
 			throw new HttpException(
 				{
@@ -40,9 +47,22 @@ export class IfcViewService {
 			);
 		}
 
+		const findingRows = findingsResult.status === 'fulfilled' ? findingsResult.value : [];
+		if (findingsResult.status === 'rejected') {
+			this.logger.error(`getView(${id}) FINDINGS_SQL failed: ${(findingsResult.reason as Error).message}`);
+			errors.push('findings');
+		}
+
+		const outcomeCourseRows = outcomeCourseResult.status === 'fulfilled' ? outcomeCourseResult.value : [];
+		if (outcomeCourseResult.status === 'rejected') {
+			this.logger.error(`getView(${id}) OUTCOME_COURSE_SQL failed: ${(outcomeCourseResult.reason as Error).message}`);
+			errors.push('outcome_course');
+		}
+
 		const findingIds = findingRows.map((r: any) => Number(r.finding_id));
 		const header = headerRows[0];
-		const [findingOutcomeRows, findingActionRows, previousActions] = await Promise.all([
+
+		const [findingOutcomeResult, findingActionResult, previousActionsResult] = await Promise.allSettled([
 			findingIds.length
 				? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds])
 				: Promise.resolve([]),
@@ -57,14 +77,35 @@ export class IfcViewService {
 			this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
 		]);
 
-		return this.assembleViewResponse({
-			header,
-			findingRows,
-			outcomeCourseRows,
-			findingOutcomeRows,
-			findingActionRows,
-			previousActions,
-		});
+		const findingOutcomeRows = findingOutcomeResult.status === 'fulfilled' ? findingOutcomeResult.value : [];
+		if (findingOutcomeResult.status === 'rejected') {
+			this.logger.error(`getView(${id}) FINDING_OUTCOMES_SQL failed: ${(findingOutcomeResult.reason as Error).message}`);
+			errors.push('finding_outcomes');
+		}
+
+		const findingActionRows = findingActionResult.status === 'fulfilled' ? findingActionResult.value : [];
+		if (findingActionResult.status === 'rejected') {
+			this.logger.error(`getView(${id}) FINDING_ACTIONS_SQL failed: ${(findingActionResult.reason as Error).message}`);
+			errors.push('finding_actions');
+		}
+
+		const previousActions = previousActionsResult.status === 'fulfilled' ? previousActionsResult.value : [];
+		if (previousActionsResult.status === 'rejected') {
+			this.logger.error(`getView(${id}) PREVIOUS_ACTIONS_SQL failed: ${(previousActionsResult.reason as Error).message}`);
+			errors.push('previous_actions');
+		}
+
+		return {
+			...this.assembleViewResponse({
+				header,
+				findingRows,
+				outcomeCourseRows,
+				findingOutcomeRows,
+				findingActionRows,
+				previousActions,
+			}),
+			...(errors.length > 0 && { errors }),
+		};
 	}
 
 	groupOutcomeRows(rows: any[]) {
