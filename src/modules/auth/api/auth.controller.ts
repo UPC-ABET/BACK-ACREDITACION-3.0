@@ -61,7 +61,7 @@ export class AuthController {
 
 		res.cookie(MICROSOFT_STATE_COOKIE, csrf, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: this.configService.get<string>('NODE_ENV') === 'production',
 			sameSite: 'lax',
 			maxAge: 10 * 60 * 1000,
 		});
