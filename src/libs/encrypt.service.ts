@@ -34,7 +34,14 @@ export class EncryptService {
 	}
 
 	decrypt(text: string): string {
-		const [ivHex, encryptedHex, authTagHex] = text.split(':');
+		const HEX_PATTERN = /^[0-9a-fA-F]+$/;
+		const parts = text?.split(':');
+
+		if (parts?.length !== 3 || !parts.every((p) => p.length > 0 && HEX_PATTERN.test(p))) {
+			throw new Error('Malformed ciphertext: expected format "iv:encrypted:authTag" with hex values');
+		}
+
+		const [ivHex, encryptedHex, authTagHex] = parts;
 
 		const iv = Buffer.from(ivHex, 'hex');
 		const encrypted = Buffer.from(encryptedHex, 'hex');
