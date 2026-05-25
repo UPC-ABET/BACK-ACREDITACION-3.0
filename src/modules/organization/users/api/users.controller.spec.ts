@@ -32,9 +32,10 @@ describe('UserController', () => {
 			'signed-jwt-token',
 			expect.objectContaining({
 				httpOnly: true,
+				secure: true,
 				maxAge: 60 * 60 * 1000,
 				path: '/',
-				sameSite: 'strict',
+				sameSite: 'lax',
 			}),
 		);
 		expect(response.data.user).toEqual(loginResult.user);

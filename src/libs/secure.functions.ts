@@ -26,7 +26,7 @@ const ACCESS_TOKEN_COOKIE_OPTIONS = {
 const SCHOOL_COOKIE_OPTIONS = {
 	httpOnly: false,
 	secure: true,
-	sameSite: 'strict' as const,
+	sameSite: 'lax' as const,
 	path: '/',
 };
 

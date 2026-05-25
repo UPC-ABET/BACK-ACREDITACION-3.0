@@ -88,6 +88,8 @@ describe('UserService - school-aware login', () => {
 				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
 				access_token: 'signed-jwt-token',
 				expires_in: JWT_EXPIRES_IN_SECONDS,
+				school_id: 7,
+				school_code: 'EISCB',
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(
