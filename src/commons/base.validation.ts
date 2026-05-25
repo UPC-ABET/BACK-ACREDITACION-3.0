@@ -2,7 +2,6 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { ValidationConfig } from './configs/validation.config';
 
 export abstract class BaseValidation {
-	// 🔒 OBLIGATORIO implementar
 	static async validateCreate(repo: any, data: any): Promise<void> {
 		throw new Error('Create validation not implemented');
 	}
@@ -15,8 +14,7 @@ export abstract class BaseValidation {
 		throw new Error('Delete validation not implemented');
 	}
 
-	// 🧩 HELPERS REUTILIZABLES
-	protected static async validateEntityExists(repo: any, id: number, entity = 'registro') {
+	protected static async validateEntityExists(repo: any, id: number, entity = 'record') {
 		if (!id) {
 			throw new HttpException(
 				{ message: ValidationConfig.REQUIRED_ID_MESSAGE },
