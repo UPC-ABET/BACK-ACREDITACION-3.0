@@ -2,13 +2,22 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ClassSerializerInterceptor, Logger, ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, LogLevel, Logger, ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
 
+const LOG_LEVELS: Record<string, LogLevel[]> = {
+	error: ['error'],
+	warn: ['error', 'warn'],
+	log: ['error', 'warn', 'log'],
+	debug: ['error', 'warn', 'log', 'debug'],
+	verbose: ['error', 'warn', 'log', 'debug', 'verbose'],
+};
+
 async function bootstrap() {
+	const logLevel = process.env.LOG_LEVEL ?? 'log';
 	const app = await NestFactory.create(AppModule, {
-		logger: ['error', 'warn', 'log'],
+		logger: LOG_LEVELS[logLevel] ?? LOG_LEVELS.log,
 	});
 	const configService = app.get(ConfigService);
 	const port = configService.getOrThrow<number>('APP_PORT');

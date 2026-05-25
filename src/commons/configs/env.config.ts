@@ -3,6 +3,7 @@ import { z } from 'zod';
 const envSchema = z
 	.object({
 		NODE_ENV: z.enum(['development', 'staging', 'production']).optional(),
+		LOG_LEVEL: z.enum(['error', 'warn', 'log', 'debug', 'verbose']).optional(),
 
 		APP_PORT: z.string().regex(/^\d+$/, 'APP_PORT must be a valid number'),
 		APP_FRONTEND_URL: z.string().optional(),
