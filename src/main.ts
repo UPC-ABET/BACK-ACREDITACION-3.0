@@ -50,25 +50,27 @@ async function bootstrap() {
 		}),
 	);
 
-	// Configuración de Swagger
+	const nodeEnv = configService.get<string>('NODE_ENV');
 
-	const config = new DocumentBuilder()
-		.setTitle('API Base')
-		.setDescription('API Base para UPC')
-		.setVersion('1.0')
-		.addBearerAuth(
-			{
-				type: 'http',
-				scheme: 'bearer',
-				bearerFormat: 'JWT',
-			},
-			'bearer',
-		)
-		.addSecurityRequirements('bearer')
-		.build();
+	if (nodeEnv !== 'production') {
+		const config = new DocumentBuilder()
+			.setTitle('API Base')
+			.setDescription('API Base para UPC')
+			.setVersion('1.0')
+			.addBearerAuth(
+				{
+					type: 'http',
+					scheme: 'bearer',
+					bearerFormat: 'JWT',
+				},
+				'bearer',
+			)
+			.addSecurityRequirements('bearer')
+			.build();
 
-	const document = SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup('docs', app, document);
+		const document = SwaggerModule.createDocument(app, config);
+		SwaggerModule.setup('docs', app, document);
+	}
 
 	await app.listen(port);
 
