@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { authValidationStrings } from '../../../config/strings/auth.validation';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -37,7 +38,7 @@ export class PermissionsGuard implements CanActivate {
 			[context.getHandler(), context.getClass()],
 		);
 		if (!requiredPermission) {
-			throw new ForbiddenException('Este endpoint no tiene permisos configurados');
+			throw new ForbiddenException(authValidationStrings.error.noPermissionsConfigured);
 		}
 
 		const permissions = request.user?.permissions ?? [];
@@ -59,7 +60,7 @@ export class PermissionsGuard implements CanActivate {
 		});
 
 		if (!canAccess) {
-			throw new ForbiddenException('No tienes permisos para acceder a este recurso');
+			throw new ForbiddenException(authValidationStrings.error.accessDenied);
 		}
 
 		return true;

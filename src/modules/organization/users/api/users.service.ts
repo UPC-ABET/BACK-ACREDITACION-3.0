@@ -4,6 +4,7 @@ import { UserRepository } from '../core/users.repository';
 import * as bcrypt from 'bcryptjs';
 import { UserValidation } from '../core/users.validation';
 import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
+import { usersValidationStrings } from '../config/strings/users.validation';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager } from 'typeorm';
 import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
@@ -44,11 +45,11 @@ export class UserService extends BaseService<UserRepository> {
 		school_id: number,
 	): Promise<string> {
 		if (!user) {
-			throw new UnauthorizedException('Credenciales invÃ¡lidas');
+			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
 		}
 
 		if (passToValidate !== null && !(await bcrypt.compare(passToValidate, user.password))) {
-			throw new UnauthorizedException('Credenciales invÃ¡lidas');
+			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
 		}
 
 		const authorization = await this.getAuthorizationProfile(user.id, activeRoleId);
@@ -97,7 +98,7 @@ export class UserService extends BaseService<UserRepository> {
 		const school = await this.schoolService.findActiveByCode(school_code);
 
 		if (!school) {
-			throw new UnauthorizedException('Credenciales inválidas');
+			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
 		}
 
 		const user = await this.repository.findForLogin(email);
@@ -130,7 +131,7 @@ export class UserService extends BaseService<UserRepository> {
 			profile.allowedRoles.length === 0 ||
 			!Array.isArray(profile.permissions)
 		) {
-			throw new UnauthorizedException('El usuario no tiene roles asignados');
+			throw new UnauthorizedException(usersValidationStrings.error.noRolesAssigned);
 		}
 
 		return profile;
