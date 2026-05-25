@@ -9,7 +9,7 @@ import { FilterStudyPlanCourseDto } from '../model/study-plan-courses.dtos';
 const SCHOOL_TYPE_CODE = 'TG903-T001';
 const PROGRAM_TYPE_CODE = 'TG903-T002';
 
-export class StudyPlanCourseRepository extends BaseRepository {
+export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEntity> {
 	constructor(
 		@InjectRepository(StudyPlanCourseEntity)
 		repository: Repository<StudyPlanCourseEntity>,

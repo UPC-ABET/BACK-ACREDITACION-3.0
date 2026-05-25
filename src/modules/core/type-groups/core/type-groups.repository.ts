@@ -3,7 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { TypeGroupEntity } from '../model/type-groups.entity';
 
-export class TypeGroupRepository extends BaseRepository {
+export class TypeGroupRepository extends BaseRepository<TypeGroupEntity> {
 	constructor(
 		@InjectRepository(TypeGroupEntity)
 		repository: Repository<TypeGroupEntity>,

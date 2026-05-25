@@ -7,7 +7,7 @@ import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/ou
 export const GRA_SURVEY_TYPE = 'GRA';
 
 @Injectable()
-export class GraConfigRepository extends BaseRepository {
+export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	constructor(
 		@InjectRepository(OutcomeConfigEntity)
 		repository: Repository<OutcomeConfigEntity>,

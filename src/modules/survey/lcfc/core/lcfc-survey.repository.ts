@@ -5,7 +5,7 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 
 @Injectable()
-export class LcfcSurveyRepository extends BaseRepository {
+export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 	constructor(
 		@InjectRepository(SurveyEntity)
 		repository: Repository<SurveyEntity>,

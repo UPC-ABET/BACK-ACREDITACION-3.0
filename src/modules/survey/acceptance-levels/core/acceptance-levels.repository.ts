@@ -5,7 +5,7 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { AcceptanceLevelEntity } from '../model/acceptance-levels.entity';
 
 @Injectable()
-export class AcceptanceLevelRepository extends BaseRepository {
+export class AcceptanceLevelRepository extends BaseRepository<AcceptanceLevelEntity> {
 	constructor(
 		@InjectRepository(AcceptanceLevelEntity)
 		repository: Repository<AcceptanceLevelEntity>,

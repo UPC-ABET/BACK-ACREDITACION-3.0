@@ -11,7 +11,7 @@ async function bootstrap() {
 		logger: ['error', 'warn', 'log'],
 	});
 	const configService = app.get(ConfigService);
-	const port = configService.get<number>('APP_PORT')!;
+	const port = configService.getOrThrow<number>('APP_PORT');
 
 	app.setGlobalPrefix('api');
 

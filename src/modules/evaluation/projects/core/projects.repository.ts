@@ -19,7 +19,7 @@ import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-pl
 const SCHOOL_TYPE_CODE = 'TG903-T001';
 const PROGRAM_TYPE_CODE = 'TG903-T002';
 
-export class ProjectRepository extends BaseRepository {
+export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
 		@InjectRepository(ProjectEntity)
 		repository: Repository<ProjectEntity>,

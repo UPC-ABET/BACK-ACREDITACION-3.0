@@ -3,7 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { InstrumentEntity } from '../model/instruments.entity';
 
-export class InstrumentRepository extends BaseRepository {
+export class InstrumentRepository extends BaseRepository<InstrumentEntity> {
 	constructor(
 		@InjectRepository(InstrumentEntity)
 		repository: Repository<InstrumentEntity>,

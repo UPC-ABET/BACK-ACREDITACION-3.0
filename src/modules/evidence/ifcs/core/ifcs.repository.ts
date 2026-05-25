@@ -3,7 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { IfcEntity } from '../model/ifcs.entity';
 
-export class IfcRepository extends BaseRepository {
+export class IfcRepository extends BaseRepository<IfcEntity> {
 	constructor(
 		@InjectRepository(IfcEntity)
 		repository: Repository<IfcEntity>,

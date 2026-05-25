@@ -31,8 +31,8 @@ export class PppConfigService {
 
 		return await this.configRepo.create({
 			outcome_id: dto.outcome_id,
-			user_outcome_name: dto.name_es,
-			user_outcome_description: dto.description_es ?? null,
+			user_outcome_name: dto.name_es as any,
+			user_outcome_description: (dto.description_es ?? null) as any,
 			extra,
 			is_active: true,
 		});

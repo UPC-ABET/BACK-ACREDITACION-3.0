@@ -10,7 +10,7 @@ export class FindingValidation {
 			where: {
 				instrument_id: data.instrument_id,
 				correlative: data.correlative,
-				study_plan_course_id: data.study_plan_course_id,
+				course_id: data.course_id,
 				campus_id: data.campus_id,
 			},
 		});
@@ -36,14 +36,14 @@ export class FindingValidation {
 
 		const instrumentId = data.instrument_id ?? entity?.instrument_id;
 		const correlative = data.correlative ?? entity?.correlative;
-		const studyPlanCourseId = data.study_plan_course_id ?? entity?.study_plan_course_id;
+		const studyPlanCourseId = data.course_id ?? entity?.course_id;
 		const campusId = data.campus_id ?? entity?.campus_id;
 
 		const exists = await repo.findOneByCondition({
 			where: {
 				instrument_id: instrumentId,
 				correlative,
-				study_plan_course_id: studyPlanCourseId,
+				course_id: studyPlanCourseId,
 				campus_id: campusId,
 			},
 		});

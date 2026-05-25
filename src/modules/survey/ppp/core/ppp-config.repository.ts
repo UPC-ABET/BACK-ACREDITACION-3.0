@@ -7,7 +7,7 @@ import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/ou
 export const PPP_SURVEY_TYPE = 'PPP';
 
 @Injectable()
-export class PppConfigRepository extends BaseRepository {
+export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	constructor(
 		@InjectRepository(OutcomeConfigEntity)
 		repository: Repository<OutcomeConfigEntity>,

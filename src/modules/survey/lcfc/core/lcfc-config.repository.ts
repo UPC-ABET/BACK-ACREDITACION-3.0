@@ -7,7 +7,7 @@ import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/ou
 export const LCFC_SURVEY_TYPE = 'LCFC';
 
 @Injectable()
-export class LcfcConfigRepository extends BaseRepository {
+export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	constructor(
 		@InjectRepository(OutcomeConfigEntity)
 		repository: Repository<OutcomeConfigEntity>,

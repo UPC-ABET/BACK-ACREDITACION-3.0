@@ -9,7 +9,7 @@ import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods
 const SCHOOL_TYPE_CODE = 'TG903-T001';
 const PROGRAM_TYPE_CODE = 'TG903-T002';
 
-export class ProgramRepository extends BaseRepository {
+export class ProgramRepository extends BaseRepository<ProgramEntity> {
 	constructor(
 		@InjectRepository(ProgramEntity)
 		repository: Repository<ProgramEntity>,

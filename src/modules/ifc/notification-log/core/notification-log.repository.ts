@@ -3,7 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationLogEntity } from '../model/notification-log.entity';
 
-export class NotificationLogRepository extends BaseRepository {
+export class NotificationLogRepository extends BaseRepository<NotificationLogEntity> {
 	constructor(
 		@InjectRepository(NotificationLogEntity)
 		repository: Repository<NotificationLogEntity>,

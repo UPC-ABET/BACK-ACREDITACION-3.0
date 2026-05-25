@@ -90,8 +90,6 @@ export class GraNotificationService {
 				campus_id: dto.campus_id,
 				program_id: dto.program_id,
 				course_section_id: courseSectionId ?? 1,
-				survey_number: null,
-				information: null,
 			})) as SurveyEntity;
 		}
 
@@ -111,7 +109,6 @@ export class GraNotificationService {
 			survey_id: survey.id,
 			notification_status_type_id: scheduledStatusId,
 			token,
-			sent_date: null,
 			max_register_date: dto.max_register_date,
 		});
 

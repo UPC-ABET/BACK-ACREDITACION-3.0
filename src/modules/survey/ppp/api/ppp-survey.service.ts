@@ -66,8 +66,8 @@ export class PppSurveyService {
 			campus_id: dto.campus_id,
 			program_id: dto.program_id,
 			survey_number: dto.practice_number,
-			information,
-			course_section_id: 1, // default; no direct course mapping for PPP
+			information: information as any,
+			course_section_id: 1,
 		});
 
 		if (dto.scores?.length) {
@@ -230,7 +230,7 @@ export class PppSurveyService {
 					campus_id: dto.campus_id,
 					program_id: dto.program_id,
 					survey_number: Number(normalizedRow.practice_number),
-					information,
+					information: information as any,
 					course_section_id: 1,
 				});
 

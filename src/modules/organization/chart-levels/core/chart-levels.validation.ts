@@ -9,7 +9,7 @@ export class ChartLevelValidation {
 		const exists = await repo.findOneByCondition({
 			where: {
 				level: data.level,
-				levelTypeId: data.levelTypeId,
+				level_type_id: data.level_type_id,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class ChartLevelValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(chartLevelsValidationStrings.error.notFound);
 
-		if (data.level && data.levelTypeId) {
+		if (data.level && data.level_type_id) {
 			const exists = await repo.findOneByCondition({
 				where: {
 					level: data.level,
-					levelTypeId: data.levelTypeId,
+					level_type_id: data.level_type_id,
 				},
 			});
 

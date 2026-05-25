@@ -30,7 +30,7 @@ export class IfcValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				study_plan_course_id: data.study_plan_course_id,
+				course_id: data.course_id,
 			},
 		});
 
@@ -53,11 +53,11 @@ export class IfcValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(ifcsValidationStrings.error.notFound);
 
-		const studyPlanCourseId = data.study_plan_course_id ?? entity?.study_plan_course_id;
+		const studyPlanCourseId = data.course_id ?? entity?.course_id;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				study_plan_course_id: studyPlanCourseId,
+				course_id: studyPlanCourseId,
 			},
 		});
 

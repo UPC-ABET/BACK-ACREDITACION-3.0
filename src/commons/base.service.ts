@@ -3,29 +3,35 @@ import { BaseRepository } from './base.repository';
 import { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
 
 @Injectable()
-export class BaseService<T extends BaseRepository> {
-	constructor(protected readonly baseRepository: T) {}
+export class BaseService<R extends BaseRepository<any> = BaseRepository> {
+	constructor(protected readonly baseRepository: R) {}
 
-	async create(createDto: Record<string, any>, manager?: EntityManager): Promise<T> {
+	async create(createDto: Record<string, any>, manager?: EntityManager) {
 		return this.baseRepository.create(createDto, manager);
 	}
-	async update(id: any, updateDto: Record<string, any>, manager?: EntityManager) {
+	async update(id: number, updateDto: Record<string, any>, manager?: EntityManager) {
 		return await this.baseRepository.update(id, updateDto, manager);
 	}
-	async delete(id: any, manager?: EntityManager) {
+	async delete(id: number, manager?: EntityManager) {
 		return await this.baseRepository.remove(id, manager);
 	}
 
-	async getAll(options?: FindManyOptions<any>): Promise<T[]> {
+	async getAll(options?: FindManyOptions) {
 		return await this.baseRepository.findAll(options);
 	}
-	async getById(id: any, options?: FindOneOptions<any>) {
+	async getById(id: number, options?: FindOneOptions) {
 		return await this.baseRepository.findOneById(id, options?.relations as string[]);
 	}
-	async getByCode(code: any, options?: FindOneOptions<any>) {
-		return await this.baseRepository.findOneByCondition({ where: { code }, ...options });
+	async getByCode(code: string, options?: FindOneOptions) {
+		return await this.baseRepository.findOneByCondition({
+			...options,
+			where: { code },
+		} as any);
 	}
-	async getByFilters(filters: any, options?: FindOneOptions<any>) {
-		return await this.baseRepository.findByCondition({ where: filters, ...options });
+	async getByFilters(filters: Record<string, any>, options?: FindOneOptions) {
+		return await this.baseRepository.findByCondition({
+			...options,
+			where: filters,
+		} as any);
 	}
 }

@@ -61,8 +61,8 @@ export class LcfcConfigService {
 
 			const config = await this.configRepo.create({
 				outcome_id: outcomeId,
-				user_outcome_name: section.course_name,
-				user_outcome_description: `Sección: ${section.section_code}`,
+				user_outcome_name: section.course_name as any,
+				user_outcome_description: `Sección: ${section.section_code}` as any,
 				extra,
 				is_active: true,
 			});

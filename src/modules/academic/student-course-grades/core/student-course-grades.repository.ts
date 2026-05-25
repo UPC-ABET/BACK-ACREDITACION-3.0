@@ -3,7 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { StudentCourseGradeEntity } from '../model/student-course-grades.entity';
 
-export class StudentCourseGradeRepository extends BaseRepository {
+export class StudentCourseGradeRepository extends BaseRepository<StudentCourseGradeEntity> {
 	constructor(
 		@InjectRepository(StudentCourseGradeEntity)
 		repository: Repository<StudentCourseGradeEntity>,

@@ -5,7 +5,7 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { ScoreEntity } from 'src/modules/survey/scores/model/scores.entity';
 
 @Injectable()
-export class PppScoreRepository extends BaseRepository {
+export class PppScoreRepository extends BaseRepository<ScoreEntity> {
 	constructor(
 		@InjectRepository(ScoreEntity)
 		repository: Repository<ScoreEntity>,
@@ -28,7 +28,7 @@ export class PppScoreRepository extends BaseRepository {
 	async bulkCreate(
 		scores: { survey_id: number; outcome_id: number; score: number; commentaries?: string }[],
 	): Promise<ScoreEntity[]> {
-		const entities = scores.map((s) => this.repository.create(s));
+		const entities = scores.map((s) => this.repository.create(s as any) as unknown as ScoreEntity);
 		return await this.repository.save(entities);
 	}
 }

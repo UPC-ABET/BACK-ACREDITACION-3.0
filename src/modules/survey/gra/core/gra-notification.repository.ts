@@ -5,7 +5,7 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
 
 @Injectable()
-export class GraNotificationRepository extends BaseRepository {
+export class GraNotificationRepository extends BaseRepository<NotificationEntity> {
 	constructor(
 		@InjectRepository(NotificationEntity)
 		repository: Repository<NotificationEntity>,

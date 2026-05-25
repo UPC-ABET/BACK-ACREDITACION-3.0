@@ -4,7 +4,7 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { ProfessorEntity } from '../model/professors.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
-export class ProfessorRepository extends BaseRepository {
+export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 	constructor(
 		@InjectRepository(ProfessorEntity)
 		repository: Repository<ProfessorEntity>,

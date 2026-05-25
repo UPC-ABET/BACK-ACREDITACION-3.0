@@ -3,7 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { RubricQuestionCriteriaEntity } from '../model/rubric-question-criterias.entity';
 
-export class RubricQuestionCriteriaRepository extends BaseRepository {
+export class RubricQuestionCriteriaRepository extends BaseRepository<RubricQuestionCriteriaEntity> {
 	constructor(
 		@InjectRepository(RubricQuestionCriteriaEntity)
 		repository: Repository<RubricQuestionCriteriaEntity>,
