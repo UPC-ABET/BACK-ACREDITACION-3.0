@@ -137,7 +137,7 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 				database: configService.get<string>('DB_NAME'),
 				ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
 				synchronize: false,
-				entities: [__dirname + '/**/*.entity{.ts,.js}'],
+				autoLoadEntities: true,
 				timezone: 'Z',
 				logging: ['error'],
 				extra: {
