@@ -27,10 +27,10 @@ export class NotificationMessageEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'survey_type_id' })
+	@JoinColumn({ name: 'survey_type_id', foreignKeyConstraintName: 'FK_notification_messages_survey_type_id' })
 	survey_type: TypeEntity;
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_notification_messages_program_id' })
 	program: ProgramEntity;
 }

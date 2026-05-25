@@ -22,11 +22,11 @@ export class RubricQuestionEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => RubricEntity, (r) => r.questions)
-	@JoinColumn({ name: 'rubric_id' })
+	@JoinColumn({ name: 'rubric_id', foreignKeyConstraintName: 'FK_rubric_questions_rubric_id' })
 	rubric: RubricEntity;
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_rubric_questions_outcome_id' })
 	outcome?: OutcomeEntity;
 
 	@OneToMany(() => RubricQuestionCriteriaEntity, (c) => c.question, { cascade: true, eager: false })

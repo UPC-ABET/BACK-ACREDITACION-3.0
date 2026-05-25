@@ -17,10 +17,10 @@ export class IfcFindingEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
-	@JoinColumn({ name: 'ifc_id' })
+	@JoinColumn({ name: 'ifc_id', foreignKeyConstraintName: 'FK_ifc_findings_ifc_id' })
 	ifc: IfcEntity;
 
 	@ManyToOne(() => FindingEntity)
-	@JoinColumn({ name: 'finding_id' })
+	@JoinColumn({ name: 'finding_id', foreignKeyConstraintName: 'FK_ifc_findings_finding_id' })
 	finding: FindingEntity;
 }

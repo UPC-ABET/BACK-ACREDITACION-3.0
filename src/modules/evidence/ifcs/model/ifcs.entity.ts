@@ -23,10 +23,10 @@ export class IfcEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => CourseEntity)
-	@JoinColumn({ name: 'course_id' })
+	@JoinColumn({ name: 'course_id', foreignKeyConstraintName: 'FK_ifcs_course_id' })
 	course: CourseEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
+	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_ifcs_academic_period_id' })
 	academic_period: AcademicPeriodEntity;
 }

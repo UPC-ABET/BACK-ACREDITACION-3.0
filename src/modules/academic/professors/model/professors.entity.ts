@@ -16,6 +16,6 @@ export class ProfessorEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_professors_staff_id' })
 	staff: StaffEntity;
 }

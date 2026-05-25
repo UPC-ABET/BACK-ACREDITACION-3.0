@@ -23,6 +23,6 @@ export class ProgramEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'modality_type_id' })
+	@JoinColumn({ name: 'modality_type_id', foreignKeyConstraintName: 'FK_programs_modality_type_id' })
 	modality_type: TypeEntity;
 }

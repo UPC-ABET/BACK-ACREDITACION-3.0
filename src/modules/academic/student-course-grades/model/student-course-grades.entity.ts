@@ -23,10 +23,10 @@ export class StudentCourseGradeEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StudentSectionEnrollmentEntity)
-	@JoinColumn({ name: 'student_section_enrollment_id' })
+	@JoinColumn({ name: 'student_section_enrollment_id', foreignKeyConstraintName: 'FK_student_course_grades_student_section_enrollment_id' })
 	student_section_enrollment: StudentSectionEnrollmentEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'grade_type_id' })
+	@JoinColumn({ name: 'grade_type_id', foreignKeyConstraintName: 'FK_student_course_grades_grade_type_id' })
 	grade_type: TypeEntity;
 }

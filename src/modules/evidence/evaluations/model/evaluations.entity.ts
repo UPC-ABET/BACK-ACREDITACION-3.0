@@ -29,15 +29,15 @@ export class EvaluationEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => ProjectStudentEntity)
-	@JoinColumn({ name: 'project_student_id' })
+	@JoinColumn({ name: 'project_student_id', foreignKeyConstraintName: 'FK_evaluations_project_student_id' })
 	project_student: ProjectStudentEntity;
 
 	@ManyToOne(() => ProjectEvaluatorEntity)
-	@JoinColumn({ name: 'project_evaluator_id' })
+	@JoinColumn({ name: 'project_evaluator_id', foreignKeyConstraintName: 'FK_evaluations_project_evaluator_id' })
 	project_evaluator: ProjectEvaluatorEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'qualification_status_type_id' })
+	@JoinColumn({ name: 'qualification_status_type_id', foreignKeyConstraintName: 'FK_evaluations_qualification_status_type_id' })
 	qualification_status_type: TypeEntity;
 
 	@OneToMany(() => RubricScoreEntity, (score) => score.evaluation, { cascade: true, eager: false })

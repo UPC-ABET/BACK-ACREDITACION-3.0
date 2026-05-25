@@ -34,14 +34,14 @@ export class ChartEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_charts_staff_id' })
 	staff: StaffEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
+	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_charts_academic_period_id' })
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => ChartLevelEntity)
-	@JoinColumn({ name: 'chart_level_id' })
+	@JoinColumn({ name: 'chart_level_id', foreignKeyConstraintName: 'FK_charts_chart_level_id' })
 	chart_level: ChartLevelEntity;
 }

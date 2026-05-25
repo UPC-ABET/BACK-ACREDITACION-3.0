@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import {
 	IntegerFKIDColumn,
@@ -15,6 +15,7 @@ import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'findings', schema: 'improvement' })
+@Index('IDX_findings_course_period', ['course_id', 'academic_period_id'])
 export class FindingEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
@@ -48,26 +49,26 @@ export class FindingEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'criticality_type_id' })
+	@JoinColumn({ name: 'criticality_type_id', foreignKeyConstraintName: 'FK_findings_criticality_type_id' })
 	criticality_type: TypeEntity;
 
 	@ManyToOne(() => InstrumentEntity)
-	@JoinColumn({ name: 'instrument_id' })
+	@JoinColumn({ name: 'instrument_id', foreignKeyConstraintName: 'FK_findings_instrument_id' })
 	instrument: InstrumentEntity;
 
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_findings_staff_id' })
 	staff: StaffEntity;
 
 	@ManyToOne(() => CourseEntity)
-	@JoinColumn({ name: 'course_id' })
+	@JoinColumn({ name: 'course_id', foreignKeyConstraintName: 'FK_findings_course_id' })
 	course: CourseEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
+	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_findings_academic_period_id' })
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)
-	@JoinColumn({ name: 'campus_id' })
+	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_findings_campus_id' })
 	campus: CampusEntity;
 }

@@ -20,6 +20,6 @@ export class SchoolEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => FacultyEntity)
-	@JoinColumn({ name: 'faculty_id' })
+	@JoinColumn({ name: 'faculty_id', foreignKeyConstraintName: 'FK_schools_faculty_id' })
 	faculty: FacultyEntity;
 }

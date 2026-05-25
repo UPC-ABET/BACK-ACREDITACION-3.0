@@ -43,30 +43,30 @@ export class SurveyEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'survey_type_id' })
+	@JoinColumn({ name: 'survey_type_id', foreignKeyConstraintName: 'FK_surveys_survey_type_id' })
 	survey_type: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'survey_status_type_id' })
+	@JoinColumn({ name: 'survey_status_type_id', foreignKeyConstraintName: 'FK_surveys_survey_status_type_id' })
 	survey_status_type: TypeEntity;
 
 	@ManyToOne(() => StudentEntity)
-	@JoinColumn({ name: 'student_id' })
+	@JoinColumn({ name: 'student_id', foreignKeyConstraintName: 'FK_surveys_student_id' })
 	student: StudentEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
+	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_surveys_academic_period_id' })
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)
-	@JoinColumn({ name: 'campus_id' })
+	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_surveys_campus_id' })
 	campus: CampusEntity;
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_surveys_program_id' })
 	program: ProgramEntity;
 
 	@ManyToOne(() => CourseSectionEntity)
-	@JoinColumn({ name: 'course_section_id' })
+	@JoinColumn({ name: 'course_section_id', foreignKeyConstraintName: 'FK_surveys_course_section_id' })
 	course_section: CourseSectionEntity;
 }

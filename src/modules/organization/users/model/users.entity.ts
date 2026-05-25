@@ -43,6 +43,6 @@ export class UserEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'document_type_id' })
+	@JoinColumn({ name: 'document_type_id', foreignKeyConstraintName: 'FK_users_document_type_id' })
 	document_type: TypeEntity;
 }

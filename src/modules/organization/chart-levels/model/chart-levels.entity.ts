@@ -16,6 +16,6 @@ export class ChartLevelEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'level_type_id' })
+	@JoinColumn({ name: 'level_type_id', foreignKeyConstraintName: 'FK_chart_levels_level_type_id' })
 	level_type: TypeEntity;
 }

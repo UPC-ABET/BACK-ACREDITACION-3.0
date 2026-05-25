@@ -41,10 +41,10 @@ export class PerformanceLevelEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'instrument_type_id' })
+	@JoinColumn({ name: 'instrument_type_id', foreignKeyConstraintName: 'FK_performance_levels_instrument_type_id' })
 	instrument_type: TypeEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
+	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_performance_levels_academic_period_id' })
 	academic_period: AcademicPeriodEntity;
 }

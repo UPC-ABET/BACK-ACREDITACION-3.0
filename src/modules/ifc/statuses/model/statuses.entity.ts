@@ -28,14 +28,14 @@ export class StatusEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
-	@JoinColumn({ name: 'ifc_id' })
+	@JoinColumn({ name: 'ifc_id', foreignKeyConstraintName: 'FK_statuses_ifc_id' })
 	ifc: IfcEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'status_type_id' })
+	@JoinColumn({ name: 'status_type_id', foreignKeyConstraintName: 'FK_statuses_status_type_id' })
 	status_type: TypeEntity;
 
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_statuses_staff_id' })
 	staff: StaffEntity;
 }

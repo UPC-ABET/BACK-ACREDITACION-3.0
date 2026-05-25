@@ -21,14 +21,14 @@ export class ProjectEvaluatorEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => ProjectEntity)
-	@JoinColumn({ name: 'project_id' })
+	@JoinColumn({ name: 'project_id', foreignKeyConstraintName: 'FK_project_evaluators_project_id' })
 	project: ProjectEntity;
 
 	@ManyToOne(() => ProfessorEntity)
-	@JoinColumn({ name: 'professor_id' })
+	@JoinColumn({ name: 'professor_id', foreignKeyConstraintName: 'FK_project_evaluators_professor_id' })
 	professor: ProfessorEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'evaluator_type_id' })
+	@JoinColumn({ name: 'evaluator_type_id', foreignKeyConstraintName: 'FK_project_evaluators_evaluator_type_id' })
 	evaluator_type: TypeEntity;
 }

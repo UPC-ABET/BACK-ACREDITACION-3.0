@@ -24,10 +24,10 @@ export class ScoreEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => SurveyEntity)
-	@JoinColumn({ name: 'survey_id' })
+	@JoinColumn({ name: 'survey_id', foreignKeyConstraintName: 'FK_scores_survey_id' })
 	survey: SurveyEntity;
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_scores_outcome_id' })
 	outcome: OutcomeEntity;
 }

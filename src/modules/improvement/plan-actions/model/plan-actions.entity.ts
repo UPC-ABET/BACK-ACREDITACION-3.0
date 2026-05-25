@@ -17,10 +17,10 @@ export class PlanActionEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => PlanEntity)
-	@JoinColumn({ name: 'plan_id' })
+	@JoinColumn({ name: 'plan_id', foreignKeyConstraintName: 'FK_plan_actions_plan_id' })
 	plan: PlanEntity;
 
 	@ManyToOne(() => FindingActionEntity)
-	@JoinColumn({ name: 'finding_action_id' })
+	@JoinColumn({ name: 'finding_action_id', foreignKeyConstraintName: 'FK_plan_actions_finding_action_id' })
 	finding_action: FindingActionEntity;
 }

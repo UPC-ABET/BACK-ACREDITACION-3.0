@@ -20,6 +20,6 @@ export class CommissionEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => AccreditorEntity)
-	@JoinColumn({ name: 'accreditor_id' })
+	@JoinColumn({ name: 'accreditor_id', foreignKeyConstraintName: 'FK_commissions_accreditor_id' })
 	accreditor: AccreditorEntity;
 }

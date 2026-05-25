@@ -21,14 +21,14 @@ export class StudentEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => UserEntity)
-	@JoinColumn({ name: 'user_id' })
+	@JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_students_user_id' })
 	user: UserEntity;
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_students_program_id' })
 	program: ProgramEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'graduation_modality_type_id' })
+	@JoinColumn({ name: 'graduation_modality_type_id', foreignKeyConstraintName: 'FK_students_graduation_modality_type_id' })
 	graduation_modality_type: TypeEntity;
 }

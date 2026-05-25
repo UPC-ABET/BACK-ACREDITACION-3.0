@@ -27,10 +27,10 @@ export class PlanEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_plans_program_id' })
 	program: ProgramEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
+	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_plans_academic_period_id' })
 	academic_period: AcademicPeriodEntity;
 }

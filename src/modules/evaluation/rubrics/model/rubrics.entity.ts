@@ -21,15 +21,15 @@ export class RubricEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanCourseEntity)
-	@JoinColumn({ name: 'study_plan_course_id' })
+	@JoinColumn({ name: 'study_plan_course_id', foreignKeyConstraintName: 'FK_rubrics_study_plan_course_id' })
 	study_plan_course: StudyPlanCourseEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'grade_type_id' })
+	@JoinColumn({ name: 'grade_type_id', foreignKeyConstraintName: 'FK_rubrics_grade_type_id' })
 	grade_type: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'rubric_type_id' })
+	@JoinColumn({ name: 'rubric_type_id', foreignKeyConstraintName: 'FK_rubrics_rubric_type_id' })
 	rubric_type: TypeEntity;
 
 	@OneToMany(() => RubricQuestionEntity, (rq) => rq.rubric, { cascade: true, eager: false })

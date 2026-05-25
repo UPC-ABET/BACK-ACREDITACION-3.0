@@ -24,10 +24,10 @@ export class FindingActionEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => FindingEntity)
-	@JoinColumn({ name: 'finding_id' })
+	@JoinColumn({ name: 'finding_id', foreignKeyConstraintName: 'FK_finding_actions_finding_id' })
 	finding: FindingEntity;
 
 	@ManyToOne(() => ActionEntity)
-	@JoinColumn({ name: 'action_id' })
+	@JoinColumn({ name: 'action_id', foreignKeyConstraintName: 'FK_finding_actions_action_id' })
 	action: ActionEntity;
 }

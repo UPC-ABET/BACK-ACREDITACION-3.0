@@ -20,6 +20,6 @@ export class OutcomeConfigEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_outcome_configs_outcome_id' })
 	outcome: OutcomeEntity;
 }

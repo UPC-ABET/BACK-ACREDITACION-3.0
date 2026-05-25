@@ -17,10 +17,10 @@ export class ProjectStudentEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => ProjectEntity)
-	@JoinColumn({ name: 'project_id' })
+	@JoinColumn({ name: 'project_id', foreignKeyConstraintName: 'FK_project_students_project_id' })
 	project: ProjectEntity;
 
 	@ManyToOne(() => StudentSectionEnrollmentEntity)
-	@JoinColumn({ name: 'student_section_enrollment_id' })
+	@JoinColumn({ name: 'student_section_enrollment_id', foreignKeyConstraintName: 'FK_project_students_student_section_enrollment_id' })
 	student_section_enrollment: StudentSectionEnrollmentEntity;
 }

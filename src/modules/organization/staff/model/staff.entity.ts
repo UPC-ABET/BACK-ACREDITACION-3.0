@@ -30,10 +30,10 @@ export class StaffEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => UserEntity)
-	@JoinColumn({ name: 'user_id' })
+	@JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_staff_user_id' })
 	user: UserEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'position_type_id' })
+	@JoinColumn({ name: 'position_type_id', foreignKeyConstraintName: 'FK_staff_position_type_id' })
 	position_type: TypeEntity;
 }

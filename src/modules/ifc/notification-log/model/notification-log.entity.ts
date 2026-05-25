@@ -34,18 +34,18 @@ export class NotificationLogEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
-	@JoinColumn({ name: 'ifc_id' })
+	@JoinColumn({ name: 'ifc_id', foreignKeyConstraintName: 'FK_notification_log_ifc_id' })
 	ifc: IfcEntity | null;
 
 	@ManyToOne(() => ChartEntity)
-	@JoinColumn({ name: 'chart_id' })
+	@JoinColumn({ name: 'chart_id', foreignKeyConstraintName: 'FK_notification_log_chart_id' })
 	chart: ChartEntity;
 
 	@ManyToOne(() => NotificationConfigEntity)
-	@JoinColumn({ name: 'notification_config_id' })
+	@JoinColumn({ name: 'notification_config_id', foreignKeyConstraintName: 'FK_notification_log_notification_config_id' })
 	notification_config: NotificationConfigEntity;
 
 	@ManyToOne(() => UserEntity)
-	@JoinColumn({ name: 'notifier_user_id' })
+	@JoinColumn({ name: 'notifier_user_id', foreignKeyConstraintName: 'FK_notification_log_notifier_user_id' })
 	notifier_user: UserEntity | null;
 }
