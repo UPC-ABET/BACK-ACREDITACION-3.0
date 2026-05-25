@@ -108,7 +108,7 @@ export class AuthService {
 			const tenantId = this.getRequiredConfig('ID_DIRECTORY_TENANT');
 			const clientId = this.getRequiredConfig('ID_APPLICATION_CLIENT');
 			const clientSecret = this.getRequiredConfig('MICROSOFT_SECRET');
-			const microsoftBaseUrl = this.getRequiredConfig('MICROSOSFT_BASE_URL');
+			const microsoftBaseUrl = this.getRequiredConfig('MICROSOFT_BASE_URL');
 
 			const config: Configuration = {
 				auth: {
