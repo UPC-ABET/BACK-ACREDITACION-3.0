@@ -66,20 +66,27 @@ export class NotificationDispatcherService {
 	) {}
 
 	async dispatch(input: DispatchInput): Promise<DispatchResult> {
+		const { chartId, periodId } = input;
 		const ctx = await this.resolveContext(input);
-		if (ctx === null)
+		if (ctx === null) {
+			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_course_chart`);
 			return { sent: false, reason: 'no_course_chart', recipients_count: 0, cc_count: 0 };
+		}
 
 		const config = await this.loadConfig(ctx);
-		if (config === null)
+		if (config === null) {
+			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_config`);
 			return { sent: false, reason: 'no_config', recipients_count: 0, cc_count: 0 };
+		}
 
 		const { toEmails, ccEmails, toStaffIds, ccStaffIds } = await this.resolveRecipients(
 			ctx.course_chart_id,
 			config,
 		);
-		if (toEmails.length === 0)
+		if (toEmails.length === 0) {
+			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_recipients`);
 			return { sent: false, reason: 'no_recipients', recipients_count: 0, cc_count: 0 };
+		}
 
 		const subs = await this.buildSubstitutions(ctx, input.notifierUserId);
 		const lang: 'es' | 'en' = 'es';
@@ -97,6 +104,7 @@ export class NotificationDispatcherService {
 
 			await this.writeLog(ctx, config, toStaffIds, ccStaffIds, input.notifierUserId, messageId);
 
+			this.logger.log(`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id} recipients=${toEmails.length} cc=${ccEmails.length}`);
 			return {
 				sent: true,
 				recipients_count: toEmails.length,
@@ -104,7 +112,7 @@ export class NotificationDispatcherService {
 				reason: null,
 			};
 		} catch (e) {
-			this.logger.error(`Dispatcher send failed: ${(e as Error).message}`);
+			this.logger.error(`dispatch.failed chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id}: ${(e as Error).message}`);
 			return { sent: false, reason: 'send_failed', recipients_count: 0, cc_count: 0 };
 		}
 	}
