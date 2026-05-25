@@ -65,7 +65,15 @@ export class NotificationDispatcherService {
 		private readonly notificationLogService: NotificationLogService,
 	) {}
 
-	async dispatch(input: DispatchInput): Promise<DispatchResult> {
+	async loadNotificationVars(): Promise<NotificationVar[]> {
+		const paramRow = await this.dataSource.query(
+			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
+			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
+		);
+		return paramRow[0]?.value ?? [];
+	}
+
+	async dispatch(input: DispatchInput, notificationVars?: NotificationVar[]): Promise<DispatchResult> {
 		const { chartId, periodId } = input;
 		const ctx = await this.resolveContext(input);
 		if (ctx === null) {
@@ -88,7 +96,7 @@ export class NotificationDispatcherService {
 			return { sent: false, reason: 'no_recipients', recipients_count: 0, cc_count: 0 };
 		}
 
-		const subs = await this.buildSubstitutions(ctx, input.notifierUserId);
+		const subs = await this.buildSubstitutions(ctx, input.notifierUserId, notificationVars);
 		const lang: 'es' | 'en' = 'es';
 
 		const subject = applySubstitutions(config.title[lang] ?? config.title.es ?? '', subs);
@@ -267,12 +275,9 @@ export class NotificationDispatcherService {
 	private async buildSubstitutions(
 		ctx: ResolvedContext,
 		notifierUserId: number | null,
+		preloadedVars?: NotificationVar[],
 	): Promise<Record<string, string>> {
-		const paramRow = await this.dataSource.query(
-			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
-			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
-		);
-		const vars: NotificationVar[] = paramRow[0]?.value ?? [];
+		const vars: NotificationVar[] = preloadedVars ?? await this.loadNotificationVars();
 
 		const statusCode = await this.lookupStatusCode(ctx.ifc_status_type_id);
 

@@ -142,17 +142,22 @@ export class IfcService extends BaseService<IfcRepository> {
 		) => <T>(fn: () => Promise<T>) => Promise<T>;
 		const limit = pLimit(5);
 
+		const notificationVars = await this.dispatcher.loadNotificationVars();
+
 		const results = await Promise.allSettled(
 			chartIds.map((chartId) =>
 				limit(async () => {
 					const statusCode = await this.stateMachine.resolveCurrentStatusCode(chartId, periodId);
-					const result = await this.dispatcher.dispatch({
-						chartId,
-						periodId,
-						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.MANUAL,
-						ifcStatusCode: statusCode,
-						notifierUserId: userId,
-					});
+					const result = await this.dispatcher.dispatch(
+						{
+							chartId,
+							periodId,
+							triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.MANUAL,
+							ifcStatusCode: statusCode,
+							notifierUserId: userId,
+						},
+						notificationVars,
+					);
 					return { chartId, result };
 				}),
 			),
