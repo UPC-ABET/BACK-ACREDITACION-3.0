@@ -33,6 +33,7 @@ const toI18n = (text: I18nText | string): I18nText => {
 @Injectable()
 export class RubricConfigService {
 	private readonly CAPSTONE_RUBRIC_TYPE_CODE = 'TG401-T001';
+	private readonly EB_GRADE_TYPE_CODE = 'TG205-T002';
 
 	constructor(
 		@InjectRepository(RubricEntity)
@@ -116,26 +117,42 @@ export class RubricConfigService {
 	 * 4. Tras crear, recalcula la nota máxima total (R-RUB-014)
 	 */
 	async createRubric(dto: CreateRubricDto): Promise<RubricEntity> {
+		// Verificar que no exista ya una rúbrica activa para el mismo curso + grade_type + periodo académico
+		const conflictingRubric = (
+			await this.dataSource.query(
+				`
+			SELECT r.id
+			FROM evaluation.rubrics r
+			INNER JOIN academic.study_plan_courses spc ON spc.id = r.study_plan_course_id
+			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			INNER JOIN academic.study_plan_courses spc_target ON spc_target.id = $1
+			INNER JOIN academic.study_plan_academic_periods spap_target ON spap_target.id = spc_target.study_plan_academic_period_id
+			WHERE r.is_active = true
+			  AND r.grade_type_id = $2
+			  AND spc.course_id = spc_target.course_id
+			  AND spap.academic_period_id = spap_target.academic_period_id
+			  AND r.study_plan_course_id != $1
+			LIMIT 1
+		`,
+				[dto.study_plan_course_id, dto.grade_type_id],
+			)
+		)[0] as { id: number } | undefined;
+
+		if (conflictingRubric) {
+			throw new BadRequestException(
+				'Ya existe una rúbrica activa para este curso con el mismo tipo de calificación en el periodo académico actual.',
+			);
+		}
+
+		// Verificar si ya existe una rúbrica activa para el mismo study_plan_course + grade_type
 		const existingRubric = await this.rubricRepo.findOne({
-			where: { study_plan_course_id: dto.study_plan_course_id, is_active: true },
+			where: { study_plan_course_id: dto.study_plan_course_id, grade_type_id: dto.grade_type_id, is_active: true },
 		});
 
 		if (existingRubric) {
-			const hasScores = await this.dataSource
-				.getRepository(RubricScoreEntity)
-				.createQueryBuilder('score')
-				.innerJoin('score.rubric_question_criteria', 'criteria')
-				.innerJoin('criteria.question', 'question')
-				.where('question.rubric_id = :rubricId', { rubricId: existingRubric.id })
-				.getCount();
-
-			if (hasScores > 0) {
-				throw new BadRequestException(
-					'No se puede crear/sobrescribir esta rúbrica porque ya existen evaluaciones históricas atadas a la rúbrica activa del curso actual.',
-				);
-			}
-
-			await this.rubricRepo.update(existingRubric.id, { is_active: false });
+			throw new BadRequestException(
+				'Ya existe una rúbrica activa para este curso con el mismo tipo de calificación.',
+			);
 		}
 
 		const outcomeIds = dto.questions
@@ -155,11 +172,16 @@ export class RubricConfigService {
 		}
 
 		const capstoneTypeId = await this.resolveRubricTypeIdByCode(this.CAPSTONE_RUBRIC_TYPE_CODE);
-		if (capstoneTypeId && dto.rubric_type_id === capstoneTypeId) {
+		const ebGradeTypeId = await this.resolveRubricTypeIdByCode(this.EB_GRADE_TYPE_CODE);
+		const isCapstone = capstoneTypeId != null && dto.rubric_type_id === capstoneTypeId;
+		const isEbGrade = ebGradeTypeId != null && dto.grade_type_id === ebGradeTypeId;
+
+		// Solo se exige outcome_id en todas las preguntas si es Capstone Y el grade type es EB (Evaluación Final)
+		if (isCapstone && isEbGrade) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcome_id);
 			if (hasMissingOutcomes) {
 				throw new BadRequestException(
-					'Las rúbricas Capstone requieren que todas las preguntas tengan un outcome_id asignado.',
+					'Las rúbricas Capstone con nota final (EB) requieren que todas las preguntas tengan un outcome_id asignado.',
 				);
 			}
 		}

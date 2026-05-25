@@ -22,6 +22,12 @@ import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluat
 import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
 import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
+
+// Tipos de evaluador con límite de 1 por proyecto
+const SINGLE_EVALUATOR_TYPE_CODES = ['TG403-T002', 'TG403-T004', 'TG403-T005', 'TG403-T003']; // GER, CLI, COA, DOC
+const UNLIMITED_EVALUATOR_TYPE_CODE = 'TG403-T001'; // COM
 
 /**
  * ProjectConfigService
@@ -31,7 +37,6 @@ import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questi
  */
 @Injectable()
 export class ProjectConfigService {
-	private readonly DEFAULT_EVALUATOR_TYPE_CODE = 'TG403-T003';
 
 	constructor(
 		@InjectRepository(ProjectEntity)
@@ -42,6 +47,10 @@ export class ProjectConfigService {
 		private readonly projectEvaluatorRepo: Repository<ProjectEvaluatorEntity>,
 		@InjectRepository(TypeEntity)
 		private readonly typeRepo: Repository<TypeEntity>,
+		@InjectRepository(StudyPlanCourseEntity)
+		private readonly studyPlanCourseRepo: Repository<StudyPlanCourseEntity>,
+		@InjectRepository(StudentSectionEnrollmentEntity)
+		private readonly enrollmentRepo: Repository<StudentSectionEnrollmentEntity>,
 		@Inject(forwardRef(() => RubricConfigService))
 		private readonly rubricConfigService: RubricConfigService,
 		private readonly dataSource: DataSource,
@@ -64,30 +73,169 @@ export class ProjectConfigService {
 		return raw.map((row: { program_id: number }) => row.program_id);
 	}
 
-	private async resolveEvaluatorTypeIdByCode(code: string): Promise<number> {
-		const type = await this.typeRepo.findOne({ where: { code } });
-		if (!type) {
-			throw new BadRequestException(
-				`Tipo de evaluador con código '${code}' no encontrado en core.types.`,
-			);
-		}
-		return type.id;
-	}
-
 	/**
-	 * Crea un proyecto completo con sus estudiantes y evaluadores de forma transaccional
+	 * Crea un proyecto completo con sus estudiantes y evaluadores de forma transaccional.
 	 *
-	 * Operaciones:
-	 * 1. Crea el proyecto base
-	 * 2. Asigna estudiantes al proyecto
-	 * 3. Asigna evaluadores al proyecto con tipo DOC (resuelto desde core.types)
-	 * 4. Todo se guarda de forma transaccional o se revierte
+	 * Validaciones previas:
+	 * - study_plan_course debe existir y tener extra.is_evaluate_rubric = true
+	 * - código y nombre únicos en el mismo periodo académico
+	 * - alumnos activos, matriculados en el curso, sin proyecto en el mismo periodo
+	 * - evaluadores sin duplicados de profesor+tipo, con límites por tipo
 	 */
 	async createProject(dto: CreateProjectDto): Promise<ProjectEntity> {
-		const evaluatorTypeId = await this.resolveEvaluatorTypeIdByCode(
-			this.DEFAULT_EVALUATOR_TYPE_CODE,
-		);
+		// ── 1. Validar study_plan_course ──────────────────────────────────────
+		const studyPlanCourse = await this.studyPlanCourseRepo.findOne({
+			where: { id: dto.study_plan_course_id },
+			relations: ['study_plan_academic_period'],
+		});
 
+		if (!studyPlanCourse) {
+			throw new NotFoundException(`study_plan_course_id ${dto.study_plan_course_id} no encontrado.`);
+		}
+
+		if (studyPlanCourse.extra?.is_evaluate_rubric !== true) {
+			throw new BadRequestException(
+				'El curso no está habilitado para evaluación de rúbricas (is_evaluate_rubric != true).',
+			);
+		}
+
+		const academicPeriodId = studyPlanCourse.study_plan_academic_period?.academic_period_id;
+		if (!academicPeriodId) {
+			throw new BadRequestException('No se pudo determinar el periodo académico del curso.');
+		}
+
+		// ── 2. Unicidad de código en el mismo periodo ─────────────────────────
+		const duplicateCode = await this.dataSource.query(
+			`
+			SELECT p.id FROM evaluation.projects p
+			INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
+			INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			WHERE p.code = $1 AND spap.academic_period_id = $2
+			LIMIT 1
+			`,
+			[dto.code, academicPeriodId],
+		);
+		if (duplicateCode.length > 0) {
+			throw new BadRequestException(
+				`Ya existe un proyecto con el código '${dto.code}' en este periodo académico.`,
+			);
+		}
+
+		// ── 3. Unicidad de nombre en el mismo periodo ─────────────────────────
+		const duplicateName = await this.dataSource.query(
+			`
+			SELECT p.id FROM evaluation.projects p
+			INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
+			INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			WHERE (p.name->>'es' = $1 OR p.name->>'en' = $2) AND spap.academic_period_id = $3
+			LIMIT 1
+			`,
+			[dto.name?.es, dto.name?.en, academicPeriodId],
+		);
+		if (duplicateName.length > 0) {
+			throw new BadRequestException(
+				`Ya existe un proyecto con ese nombre en este periodo académico.`,
+			);
+		}
+
+		// ── 4. Validar alumnos ────────────────────────────────────────────────
+		if (!dto.student_section_enrollment_ids?.length) {
+			throw new BadRequestException('Debe incluir al menos un alumno.');
+		}
+
+		const enrollments = await this.enrollmentRepo.find({
+			where: dto.student_section_enrollment_ids.map((id) => ({ id })),
+			relations: ['course_section'],
+		});
+
+		for (const enrollmentId of dto.student_section_enrollment_ids) {
+			const enrollment = enrollments.find((e) => e.id === enrollmentId);
+
+			if (!enrollment) {
+				throw new NotFoundException(`Matrícula ${enrollmentId} no encontrada.`);
+			}
+
+			// Alumno retirado
+			if (!enrollment.is_active) {
+				throw new BadRequestException(`El alumno de la matrícula ${enrollmentId} está retirado.`);
+			}
+
+			// Alumno matriculado en el curso correcto
+			if (enrollment.course_section?.study_plan_course_id !== dto.study_plan_course_id) {
+				throw new BadRequestException(
+					`El alumno de la matrícula ${enrollmentId} no está matriculado en el curso indicado.`,
+				);
+			}
+
+			// Alumno ya en otro proyecto en el mismo periodo
+			const alreadyInProject = await this.dataSource.query(
+				`
+				SELECT ps.id FROM evaluation.project_students ps
+				INNER JOIN evaluation.projects p ON p.id = ps.project_id
+				INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+				INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+				INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+				INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+				WHERE sse.enrolled_student_id = (
+					SELECT enrolled_student_id FROM academic.student_section_enrollments WHERE id = $1
+				)
+				AND spap.academic_period_id = $2
+				AND p.is_active = true
+				LIMIT 1
+				`,
+				[enrollmentId, academicPeriodId],
+			);
+			if (alreadyInProject.length > 0) {
+				throw new BadRequestException(
+					`El alumno de la matrícula ${enrollmentId} ya pertenece a otro proyecto en este periodo.`,
+				);
+			}
+		}
+
+		// ── 5. Validar evaluadores ────────────────────────────────────────────
+		if (!dto.evaluators?.length) {
+			throw new BadRequestException('Debe incluir al menos un evaluador.');
+		}
+
+		// Cargar tipos para validar códigos
+		const evaluatorTypeIds = [...new Set(dto.evaluators.map((e) => e.evaluator_type_id))];
+		const evaluatorTypes = await this.typeRepo.findByIds(evaluatorTypeIds);
+		const typeCodeMap = new Map(evaluatorTypes.map((t) => [t.id, t.code]));
+
+		// No duplicar professor_id + evaluator_type_id en el mismo request
+		const evalKeys = new Set<string>();
+		for (const ev of dto.evaluators) {
+			const key = `${ev.professor_id}-${ev.evaluator_type_id}`;
+			if (evalKeys.has(key)) {
+				throw new BadRequestException(
+					`El evaluador ${ev.professor_id} está duplicado con el mismo tipo en la solicitud.`,
+				);
+			}
+			evalKeys.add(key);
+		}
+
+		// Límites por tipo: GER, CLI, COA, DOC → máx 1; COM → sin límite
+		const typeCountInRequest = new Map<number, number>();
+		for (const ev of dto.evaluators) {
+			typeCountInRequest.set(ev.evaluator_type_id, (typeCountInRequest.get(ev.evaluator_type_id) ?? 0) + 1);
+		}
+
+		for (const [typeId, count] of typeCountInRequest.entries()) {
+			const code = typeCodeMap.get(typeId);
+			if (code !== UNLIMITED_EVALUATOR_TYPE_CODE && count > 1) {
+				throw new BadRequestException(
+					`Solo se permite un evaluador del tipo '${code}' por proyecto.`,
+				);
+			}
+		}
+
+		// ── 6. Crear en transacción ───────────────────────────────────────────
 		return await this.dataSource.transaction(async (manager) => {
 			const project = manager.create(ProjectEntity, {
 				code: dto.code,
@@ -99,28 +247,24 @@ export class ProjectConfigService {
 
 			const savedProject = await manager.save(project);
 
-			if (dto.student_section_enrollment_ids && dto.student_section_enrollment_ids.length > 0) {
-				const projectStudents = dto.student_section_enrollment_ids.map((studentId) =>
-					manager.create(ProjectStudentEntity, {
-						project_id: savedProject.id,
-						student_section_enrollment_id: studentId,
-						is_active: true,
-					}),
-				);
-				await manager.save(projectStudents);
-			}
+			const projectStudents = dto.student_section_enrollment_ids.map((enrollmentId) =>
+				manager.create(ProjectStudentEntity, {
+					project_id: savedProject.id,
+					student_section_enrollment_id: enrollmentId,
+					is_active: true,
+				}),
+			);
+			await manager.save(projectStudents);
 
-			if (dto.evaluator_professor_ids && dto.evaluator_professor_ids.length > 0) {
-				const projectEvaluators = dto.evaluator_professor_ids.map((professorId) =>
-					manager.create(ProjectEvaluatorEntity, {
-						project_id: savedProject.id,
-						professor_id: professorId,
-						evaluator_type_id: evaluatorTypeId,
-						is_active: true,
-					}),
-				);
-				await manager.save(projectEvaluators);
-			}
+			const projectEvaluators = dto.evaluators.map((ev) =>
+				manager.create(ProjectEvaluatorEntity, {
+					project_id: savedProject.id,
+					professor_id: ev.professor_id,
+					evaluator_type_id: ev.evaluator_type_id,
+					is_active: true,
+				}),
+			);
+			await manager.save(projectEvaluators);
 
 			return savedProject;
 		});
@@ -394,10 +538,20 @@ export class ProjectConfigService {
 		if (gradeTypeId) {
 			filterSql += `
       AND EXISTS (
-        SELECT 1 FROM evaluation.rubrics r
-        WHERE r.study_plan_course_id = spc.id
-          AND r.grade_type_id = $${paramIdx}
-          AND r.is_active = true
+        SELECT 1
+        FROM evaluation.rubrics r
+        WHERE r.study_plan_course_id IN (
+          SELECT spc2.id
+          FROM evaluation.project_students ps2
+          INNER JOIN academic.student_section_enrollments sse2
+                  ON sse2.id = ps2.student_section_enrollment_id
+          INNER JOIN academic.course_sections cs2
+                  ON cs2.id = sse2.course_section_id
+          INNER JOIN academic.study_plan_courses spc2
+                  ON spc2.id = cs2.study_plan_course_id
+          WHERE ps2.project_id = pe.project_id
+        )
+        AND r.grade_type_id = $${paramIdx}
       )
     `;
 			params.push(gradeTypeId);
@@ -433,7 +587,12 @@ export class ProjectConfigService {
       p.id              AS project_id,
       p.code            AS project_code,
       p.name            AS project_name,
-      p.created_at      AS evaluation_date,
+      (
+        SELECT MAX(ev.register_at)
+        FROM evidence.evaluations ev
+        INNER JOIN evaluation.project_students ev_ps ON ev_ps.id = ev.project_student_id
+        WHERE ev_ps.project_id = p.id
+      )                 AS evaluation_date,
       -- evaluadores
       all_pe.id         AS eval_id,
       all_pe.professor_id AS eval_professor_id,

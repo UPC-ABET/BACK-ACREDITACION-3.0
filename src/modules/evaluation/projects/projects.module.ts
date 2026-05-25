@@ -10,6 +10,8 @@ import { ProjectController } from './api/projects.controller';
 import { ProjectConfigService } from './api/project-config.service';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricModule } from 'src/modules/evaluation/rubrics/rubrics.module';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 
 @Module({
 	imports: [
@@ -18,6 +20,8 @@ import { RubricModule } from 'src/modules/evaluation/rubrics/rubrics.module';
 			ProjectStudentEntity,
 			ProjectEvaluatorEntity,
 			TypeEntity,
+			StudyPlanCourseEntity,
+			StudentSectionEnrollmentEntity,
 		]),
 		forwardRef(() => RubricModule),
 	],
