@@ -127,7 +127,7 @@ export class MailService {
 				code?: number;
 				statusCode?: number;
 			};
-			return [
+			const raw = [
 				postmarkError.name,
 				postmarkError.message,
 				postmarkError.code ? `code=${postmarkError.code}` : null,
@@ -135,6 +135,12 @@ export class MailService {
 			]
 				.filter(Boolean)
 				.join(' | ');
+
+			const apiKey = this.configService.get<string>('POSTMARK_API_KEY') ?? '';
+			if (apiKey && raw.includes(apiKey)) {
+				return raw.replaceAll(apiKey, '[REDACTED]');
+			}
+			return raw;
 		}
 
 		return 'Error desconocido de Postmark';

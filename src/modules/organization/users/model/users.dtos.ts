@@ -7,6 +7,7 @@ import {
 	IsOptional,
 	IsString,
 	Length,
+	MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -39,6 +40,7 @@ export class CreateUserDto {
 	last_name: string;
 
 	@IsEmail()
+	@MaxLength(254)
 	@ApiProperty({ example: 'user@example.com', required: true })
 	email: string;
 
@@ -86,6 +88,7 @@ export class UpdateUserDto {
 
 	@IsOptional()
 	@IsEmail()
+	@MaxLength(254)
 	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
@@ -128,6 +131,7 @@ export class FilterUserDto {
 
 	@IsOptional()
 	@IsEmail()
+	@MaxLength(254)
 	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
@@ -152,6 +156,7 @@ export class LoginUserByCredentialsDto {
 	school_code: string;
 
 	@IsEmail()
+	@MaxLength(254)
 	@ApiProperty({
 		example: 'juan.perez@example.com',
 		required: true,
