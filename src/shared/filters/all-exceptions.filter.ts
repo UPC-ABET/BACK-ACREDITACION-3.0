@@ -10,6 +10,16 @@ import type { Response } from 'express';
 import { ResponseDto } from '../../commons/base.dtos';
 import { sharedStrings } from '../strings/shared.strings';
 
+const I18N_KEY_PATTERN = /^(error|success|warning)\./;
+
+const STATUS_I18N_KEYS: Record<number, string> = {
+	[HttpStatus.BAD_REQUEST]: 'error.badRequest',
+	[HttpStatus.UNAUTHORIZED]: 'error.unauthorized',
+	[HttpStatus.FORBIDDEN]: 'error.forbidden',
+	[HttpStatus.NOT_FOUND]: 'error.notFound',
+	[HttpStatus.CONFLICT]: 'error.conflict',
+};
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
 	private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -21,12 +31,40 @@ export class AllExceptionsFilter implements ExceptionFilter {
 		let response: ResponseDto;
 
 		if (exception instanceof HttpException) {
+			const status = exception.getStatus();
 			const body = exception.getResponse();
-			response = {
-				code: exception.getStatus(),
-				message: exception.message,
-				data: typeof body === 'object' ? ((body as any).errors ?? null) : null,
-			};
+
+			let message: string;
+			let data: string[] | null = null;
+
+			if (typeof body === 'object' && body !== null) {
+				const record = body as Record<string, unknown>;
+
+				if (Array.isArray(record.message)) {
+					message = 'error.validation';
+					data = record.message as string[];
+				} else {
+					const bodyMessage = typeof record.message === 'string' ? record.message : null;
+
+					if (bodyMessage && I18N_KEY_PATTERN.test(bodyMessage)) {
+						message = bodyMessage;
+					} else {
+						message = STATUS_I18N_KEYS[status] ?? sharedStrings.error.internalServer;
+						this.logger.warn(`Suppressed non-i18n exception message: ${exception.message}`);
+					}
+
+					if (Array.isArray(record.errors)) {
+						data = record.errors as string[];
+					}
+				}
+			} else if (typeof body === 'string' && I18N_KEY_PATTERN.test(body)) {
+				message = body;
+			} else {
+				message = STATUS_I18N_KEYS[status] ?? sharedStrings.error.internalServer;
+				this.logger.warn(`Suppressed non-i18n exception message: ${exception.message}`);
+			}
+
+			response = { code: status, message, data };
 		} else {
 			this.logger.error(exception);
 			response = {
