@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -12,6 +12,7 @@ import {
 } from './pdf-renderer.service';
 import { IfcViewService } from './ifc-view.service';
 import { REPORT_CODES_SQL, STATUS_REPORT_SQL } from './ifcs.sql';
+import { IFC_INSTRUMENT_CODE } from './ifcs.constants';
 import * as ExcelJS from 'exceljs';
 
 interface StatusReportRow {
@@ -26,6 +27,8 @@ interface StatusReportRow {
 
 @Injectable()
 export class IfcReportService {
+	private readonly logger = new Logger(IfcReportService.name);
+
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly pdfRenderer: PdfRendererService,
@@ -83,7 +86,7 @@ export class IfcReportService {
 		);
 
 		const zip = await this.pdfRenderer.filesToZip(files);
-		const filename = `ZIP_IFC_${lang.toUpperCase()}.zip`;
+		const filename = `ZIP_${IFC_INSTRUMENT_CODE}_${lang.toUpperCase()}.zip`;
 		return { zip, filename };
 	}
 
@@ -93,9 +96,13 @@ export class IfcReportService {
 			schoolId,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
-		const schoolCode: string = codeRow[0]?.school_code ?? 'IFC';
+		const schoolCode: string | undefined = codeRow[0]?.school_code;
+		if (!schoolCode) {
+			this.logger.warn(`generateStatusReport: REPORT_CODES_SQL returned no school_code for schoolId=${schoolId}`);
+		}
 		const programCodes: string[] = codeRow[0]?.program_codes ?? [];
-		const suffix = programCodes.length === 1 ? `${schoolCode}_${programCodes[0]}` : schoolCode;
+		const codePrefix = schoolCode ?? IFC_INSTRUMENT_CODE;
+		const suffix = programCodes.length === 1 ? `${codePrefix}_${programCodes[0]}` : codePrefix;
 
 		const statusTypes: Array<{ code: string; name: { es?: string; en?: string } }> =
 			await this.dataSource.query(
@@ -117,7 +124,7 @@ export class IfcReportService {
 
 		const xlsx = await this.buildStatusReportXlsx(rows, statusLabelByCode, dto.lang);
 		const filename =
-			(dto.lang === 'en' ? 'Status_Report_IFC_' : 'Reporte_Estado_IFC_') + suffix + '.xlsx';
+			(dto.lang === 'en' ? `Status_Report_${IFC_INSTRUMENT_CODE}_` : `Reporte_Estado_${IFC_INSTRUMENT_CODE}_`) + suffix + '.xlsx';
 		return { xlsx, filename };
 	}
 
@@ -127,7 +134,7 @@ export class IfcReportService {
 		const courseName = (ifc.course_name?.[lang] ?? ifc.course_name?.es ?? '').replace(/\s+/g, '_');
 		const period = ifc.academic_period_code ?? '';
 		const profCode = ifc.coordinator?.code ?? '';
-		return `IFC_${courseCode}_${courseName}_${period}_${profCode}.pdf`;
+		return `${IFC_INSTRUMENT_CODE}_${courseCode}_${courseName}_${period}_${profCode}.pdf`;
 	}
 
 	private buildIfcHtml(data: any, lang: 'es' | 'en'): string {

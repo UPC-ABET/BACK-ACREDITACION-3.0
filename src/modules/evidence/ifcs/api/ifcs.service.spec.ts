@@ -974,7 +974,7 @@ describe('IfcService.generateStatusReport', () => {
 
 		expect(Buffer.isBuffer(xlsx)).toBe(true);
 		expect(xlsx.length).toBeGreaterThan(0);
-		expect(filename).toBe('Reporte_Estado_IFC_EISCB_CS.xlsx');
+		expect(filename).toBe('Reporte_Estado_INST_IFC_EISCB_CS.xlsx');
 
 		const [, statusReportParams] = dataSource.query.mock.calls[2];
 		expect(statusReportParams).toEqual([
@@ -994,17 +994,17 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport(dto, 9);
-		expect(filename).toBe('Reporte_Estado_IFC_EISCB.xlsx');
+		expect(filename).toBe('Reporte_Estado_INST_IFC_EISCB.xlsx');
 	});
 
-	it('falls back to IFC when REPORT_CODES_SQL returns no school code', async () => {
+	it('falls back to instrument code when REPORT_CODES_SQL returns no school code', async () => {
 		dataSource.query
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport(dto, 9);
-		expect(filename).toBe('Reporte_Estado_IFC_IFC.xlsx');
+		expect(filename).toBe('Reporte_Estado_INST_IFC_INST_IFC.xlsx');
 	});
 
 	it('uses the English filename prefix when lang=en', async () => {
@@ -1014,7 +1014,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
-		expect(filename).toBe('Status_Report_IFC_EISCB_CS.xlsx');
+		expect(filename).toBe('Status_Report_INST_IFC_EISCB_CS.xlsx');
 	});
 
 	it('renders an XLSX where rows with status_code=null map to TG701-T005 / "Sin Registro"', async () => {
