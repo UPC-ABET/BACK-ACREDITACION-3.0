@@ -65,23 +65,43 @@ export class NotificationDispatcherService {
 		private readonly notificationLogService: NotificationLogService,
 	) {}
 
-	async dispatch(input: DispatchInput): Promise<DispatchResult> {
+	async loadNotificationVars(): Promise<NotificationVar[]> {
+		const paramRow = await this.dataSource.query(
+			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
+			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
+		);
+		return paramRow[0]?.value ?? [];
+	}
+
+	async dispatch(
+		input: DispatchInput,
+		notificationVars?: NotificationVar[],
+	): Promise<DispatchResult> {
+		const { chartId, periodId } = input;
 		const ctx = await this.resolveContext(input);
-		if (ctx === null)
+		if (ctx === null) {
+			this.logger.log(
+				`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_course_chart`,
+			);
 			return { sent: false, reason: 'no_course_chart', recipients_count: 0, cc_count: 0 };
+		}
 
 		const config = await this.loadConfig(ctx);
-		if (config === null)
+		if (config === null) {
+			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_config`);
 			return { sent: false, reason: 'no_config', recipients_count: 0, cc_count: 0 };
+		}
 
 		const { toEmails, ccEmails, toStaffIds, ccStaffIds } = await this.resolveRecipients(
 			ctx.course_chart_id,
 			config,
 		);
-		if (toEmails.length === 0)
+		if (toEmails.length === 0) {
+			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_recipients`);
 			return { sent: false, reason: 'no_recipients', recipients_count: 0, cc_count: 0 };
+		}
 
-		const subs = await this.buildSubstitutions(ctx, input.notifierUserId);
+		const subs = await this.buildSubstitutions(ctx, input.notifierUserId, notificationVars);
 		const lang: 'es' | 'en' = 'es';
 
 		const subject = applySubstitutions(config.title[lang] ?? config.title.es ?? '', subs);
@@ -97,6 +117,9 @@ export class NotificationDispatcherService {
 
 			await this.writeLog(ctx, config, toStaffIds, ccStaffIds, input.notifierUserId, messageId);
 
+			this.logger.log(
+				`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id} recipients=${toEmails.length} cc=${ccEmails.length}`,
+			);
 			return {
 				sent: true,
 				recipients_count: toEmails.length,
@@ -104,7 +127,9 @@ export class NotificationDispatcherService {
 				reason: null,
 			};
 		} catch (e) {
-			this.logger.error(`Dispatcher send failed: ${(e as Error).message}`);
+			this.logger.error(
+				`dispatch.failed chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id}: ${(e as Error).message}`,
+			);
 			return { sent: false, reason: 'send_failed', recipients_count: 0, cc_count: 0 };
 		}
 	}
@@ -123,13 +148,24 @@ export class NotificationDispatcherService {
 				  AND c.is_active = true
 				LIMIT 1
 			),
-			school_chart AS (
-				SELECT c_school.entity_code AS school_id
+			school_walk AS (
+				SELECT cc.root_chart_detail_id AS id, 1 AS depth
 				FROM course_chart cc
-				JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_detail_id
-				JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-				JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-				JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+
+				UNION ALL
+
+				SELECT c.root_chart_detail_id, sw.depth + 1
+				FROM organization.charts c
+				JOIN school_walk sw ON c.id = sw.id
+				WHERE c.is_active = true AND sw.depth < 20
+			),
+			school_chart AS (
+				SELECT c.entity_code AS school_id
+				FROM school_walk sw
+				JOIN organization.charts c  ON c.id = sw.id
+				JOIN core.types ct          ON ct.id = c.entity_type_id
+				WHERE ct.code = $6
+				LIMIT 1
 			)
 			SELECT
 				cc.id::int                                                                            AS course_chart_id,
@@ -151,6 +187,7 @@ export class NotificationDispatcherService {
 				input.triggerCode,
 				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 				input.ifcStatusCode,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			],
 		);
 
@@ -189,16 +226,16 @@ export class NotificationDispatcherService {
 		const rows = await this.dataSource.query(
 			`
 			WITH RECURSIVE chain_up AS (
-				SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.staff_id
+				SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.staff_id, 1 AS depth
 				FROM organization.charts c
 				WHERE c.id = $1 AND c.is_active = true
 
 				UNION ALL
 
-				SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.staff_id
+				SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.staff_id, cu.depth + 1
 				FROM organization.charts c
 				JOIN chain_up cu ON c.id = cu.root_chart_detail_id
-				WHERE c.is_active = true
+				WHERE c.is_active = true AND cu.depth < 20
 			)
 			SELECT cl.level_type_id::int AS level_type_id, s.id::int AS staff_id, s.staff_email AS staff_email
 			FROM chain_up cu
@@ -247,12 +284,9 @@ export class NotificationDispatcherService {
 	private async buildSubstitutions(
 		ctx: ResolvedContext,
 		notifierUserId: number | null,
+		preloadedVars?: NotificationVar[],
 	): Promise<Record<string, string>> {
-		const paramRow = await this.dataSource.query(
-			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
-			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
-		);
-		const vars: NotificationVar[] = paramRow[0]?.value ?? [];
+		const vars: NotificationVar[] = preloadedVars ?? (await this.loadNotificationVars());
 
 		const statusCode = await this.lookupStatusCode(ctx.ifc_status_type_id);
 
@@ -368,7 +402,7 @@ export class NotificationDispatcherService {
 	}
 
 	private buildIfcLink(ifcId: number | null): string {
-		const base = this.configService.get<string>('APP_FRONTEND_URL') ?? 'http://localhost:3000';
+		const base = this.configService.get<string>('APP_FRONTEND_URL');
 		if (ifcId === null) return `${base}/ifcs`;
 		return `${base}/ifcs/${ifcId}`;
 	}
@@ -393,6 +427,25 @@ export class NotificationDispatcherService {
 	}
 }
 
+function escapeHtml(value: string): string {
+	return value.replace(/[<>&"']/g, (ch) => {
+		switch (ch) {
+			case '<':
+				return '&lt;';
+			case '>':
+				return '&gt;';
+			case '&':
+				return '&amp;';
+			case '"':
+				return '&quot;';
+			case "'":
+				return '&#39;';
+			default:
+				return ch;
+		}
+	});
+}
+
 function applySubstitutions(text: string, subs: Record<string, string>): string {
-	return text.replace(/\{\{[^}]+\}\}/g, (m) => subs[m] ?? '');
+	return text.replace(/\{\{[^}]+\}\}/g, (m) => escapeHtml(subs[m] ?? ''));
 }

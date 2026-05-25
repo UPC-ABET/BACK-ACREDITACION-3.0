@@ -1,6 +1,10 @@
 import { DataSource } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { IfcService } from './ifcs.service';
+import { IfcStateMachineService } from './ifc-state-machine.service';
+import { IfcContentService } from './ifc-content.service';
+import { IfcViewService } from './ifc-view.service';
+import { IfcReportService } from './ifc-report.service';
 
 const pdfRenderer = {
 	htmlToPdf: jest.fn().mockResolvedValue(Buffer.from('%PDF-')),
@@ -17,19 +21,32 @@ import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
 
+function buildServices(dataSource: any) {
+	const repository = {} as IfcRepository;
+	const ds = dataSource as unknown as DataSource;
+	const stateMachine = new IfcStateMachineService(ds, dispatcher as any);
+	const view = new IfcViewService(ds);
+	const content = new IfcContentService(ds, stateMachine, dispatcher as any);
+	const report = new IfcReportService(ds, pdfRenderer as any, view);
+	const service = new IfcService(
+		repository,
+		ds,
+		stateMachine,
+		content,
+		view,
+		report,
+		dispatcher as any,
+	);
+	return { service, stateMachine, content, view, report };
+}
+
 describe('IfcService.list', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	it('forwards chart_ids, period_id, and the COURSE type code to the SQL query', async () => {
@@ -60,16 +77,10 @@ describe('IfcService.list', () => {
 describe('IfcService.getView', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const headerRow = {
@@ -200,17 +211,17 @@ describe('IfcService.getView', () => {
 
 describe('IfcService status transitions', () => {
 	let service: IfcService;
-	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
+	let dataSource: { query: jest.Mock; transaction: jest.Mock; manager: { query: jest.Mock } };
+	let em: { query: jest.Mock };
 
 	beforeEach(() => {
-		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		em = { query: jest.fn() };
+		dataSource = {
+			query: jest.fn(),
+			manager: { query: jest.fn() },
+			transaction: jest.fn(async (fn: any) => fn(em)),
+		};
+		({ service } = buildServices(dataSource));
 	});
 
 	const ctxRow = (
@@ -239,26 +250,19 @@ describe('IfcService status transitions', () => {
 	};
 
 	it('submit: succeeds when requester is in the course chain and IFC is unregistered', async () => {
-		dataSource.query
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(ctxRow({ current_status_code: null })) // transition context
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([insertedRow]) // insertStatus
 			.mockResolvedValueOnce([{ academic_period_id: 5 }]); // fetch period for dispatch
 
-		const dispatchResult = {
-			sent: false,
-			recipients_count: 0,
-			cc_count: 0,
-			reason: 'no_config' as const,
-		};
-		dispatcher.dispatch.mockResolvedValueOnce(dispatchResult);
-
 		const result = await service.submit(42, 99, 9);
 
-		expect(result).toEqual({ id: 42, notification: dispatchResult });
-		const [, chainParams] = dataSource.query.mock.calls[1];
+		expect(result).toEqual({ id: 42 });
+		const [, chainParams] = em.query.mock.calls[2];
 		expect(chainParams).toEqual([500, 11]);
-		const [, insertParams] = dataSource.query.mock.calls[2];
+		const [, insertParams] = em.query.mock.calls[3];
 		expect(insertParams[0]).toBe(42);
 		expect(insertParams[1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
 		expect(insertParams[2]).toBe(11);
@@ -266,7 +270,8 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('submit: rejects with 409 when current status is already SUBMITTED', async () => {
-		dataSource.query
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(ctxRow({ current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED }))
 			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes; status fails
 
@@ -274,7 +279,8 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('submit: rejects with 403 when requester is not in the course chain', async () => {
-		dataSource.query
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(
 				ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }),
 			)
@@ -284,7 +290,8 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('submit: an ancestor (not own coord) is allowed by the chain check', async () => {
-		dataSource.query
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(
 				ctxRow({ ifc_course_staff_id: 22, requester_staff_id: 11, current_status_code: null }),
 			)
@@ -294,18 +301,19 @@ describe('IfcService status transitions', () => {
 
 		await expect(service.submit(42, 99, 9)).resolves.toMatchObject({
 			id: 42,
-			notification: expect.any(Object),
 		});
 	});
 
 	it('approve: rejects with 403 when requester is the own coordinator', async () => {
-		dataSource.query.mockResolvedValueOnce(
-			ctxRow({
-				ifc_course_staff_id: 11,
-				requester_staff_id: 11,
-				current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED,
-			}),
-		);
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
+			.mockResolvedValueOnce(
+				ctxRow({
+					ifc_course_staff_id: 11,
+					requester_staff_id: 11,
+					current_status_code: TYPE_CODES.IFC_STATUS.SUBMITTED,
+				}),
+			);
 
 		await expect(service.approve(42, 99, 9)).rejects.toMatchObject({
 			status: HttpStatus.FORBIDDEN,
@@ -313,7 +321,8 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('approve: succeeds when requester is a different staff and IFC is SUBMITTED', async () => {
-		dataSource.query
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(
 				ctxRow({
 					ifc_course_staff_id: 11,
@@ -326,14 +335,15 @@ describe('IfcService status transitions', () => {
 		const result = await service.approve(42, 99, 9);
 
 		expect(result.code).toBe('TG701-T003');
-		const [, insertParams] = dataSource.query.mock.calls[1];
+		const [, insertParams] = em.query.mock.calls[2];
 		expect(insertParams[1]).toBe(TYPE_CODES.IFC_STATUS.APPROVED);
 		expect(insertParams[3]).toBeNull();
 	});
 
 	it('reject: inserts a status with comment populated and status_type_id=OBSERVED', async () => {
 		const dto: RejectIfcDto = { comment: { es: 'falta', en: 'missing' } };
-		dataSource.query
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(
 				ctxRow({
 					ifc_course_staff_id: 11,
@@ -346,13 +356,15 @@ describe('IfcService status transitions', () => {
 		const result = await service.reject(42, 99, 9, dto);
 
 		expect(result.code).toBe('TG701-T004');
-		const [, insertParams] = dataSource.query.mock.calls[1];
+		const [, insertParams] = em.query.mock.calls[2];
 		expect(insertParams[1]).toBe(TYPE_CODES.IFC_STATUS.OBSERVED);
 		expect(JSON.parse(insertParams[3])).toEqual(dto.comment);
 	});
 
 	it('throws 404 when the IFC is not in the requester school', async () => {
-		dataSource.query.mockResolvedValueOnce([]);
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
+			.mockResolvedValueOnce([]); // transition context empty
 
 		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({
 			status: HttpStatus.NOT_FOUND,
@@ -361,13 +373,17 @@ describe('IfcService status transitions', () => {
 	});
 
 	it('throws an HttpException when the IFC is not in the requester school', async () => {
-		dataSource.query.mockResolvedValueOnce([]);
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
+			.mockResolvedValueOnce([]); // transition context empty
 
 		await expect(service.submit(42, 99, 9)).rejects.toBeInstanceOf(HttpException);
 	});
 
 	it('throws 403 when the requester has no staff record', async () => {
-		dataSource.query.mockResolvedValueOnce(ctxRow({ requester_staff_id: null }));
+		em.query
+			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
+			.mockResolvedValueOnce(ctxRow({ requester_staff_id: null }));
 
 		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
 	});
@@ -376,16 +392,10 @@ describe('IfcService status transitions', () => {
 describe('IfcService.prefill', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const headerRow = {
@@ -477,7 +487,6 @@ describe('IfcService.createIfc', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock; transaction: jest.Mock; manager: { query: jest.Mock } };
 	let em: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		em = { query: jest.fn() };
@@ -486,12 +495,7 @@ describe('IfcService.createIfc', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const baseDto = (overrides: Partial<CreateIfcDto> = {}): CreateIfcDto => ({
@@ -545,21 +549,11 @@ describe('IfcService.createIfc', () => {
 	});
 
 	it('happy path: inserts IFC + status (SAVED when submit=false) and assigns consecutive correlatives to new findings (single IFC instrument)', async () => {
-		// Order of em.query calls in createIfc with findings:
-		// 1. CHART_RESOLUTION_SQL
-		// 2. assertIsInCourseChain (chain CTE)
-		// 3. assertNoIfcExists (empty rows OK)
-		// 4. INSERT INTO evidence.ifcs RETURNING id
-		// 5. SELECT IFC instrument id (resolved once for the whole call)
-		// 6. SELECT criticality codes (batch)
-		// 7. SELECT MAX(correlative) for new findings (single base lookup)
-		// 8. For each new finding: INSERT finding + INSERT ifc_findings
-		// 9. insertStatus
 		em.query
 			.mockResolvedValueOnce([
 				{ course_id: 100, ifc_course_staff_id: 11, program_id: 50, requester_staff_id: 11 },
 			]) // chart resolution
-			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check passes
+			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check
 			.mockResolvedValueOnce([]) // assertNoIfcExists
 			.mockResolvedValueOnce([{ id: 999 }]) // INSERT ifc
 			.mockResolvedValueOnce([{ id: 77 }]) // resolve IFC instrument id
@@ -783,7 +777,6 @@ describe('IfcService.patch', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock; transaction: jest.Mock; manager: { query: jest.Mock } };
 	let em: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		em = { query: jest.fn() };
@@ -792,12 +785,7 @@ describe('IfcService.patch', () => {
 			manager: { query: jest.fn() },
 			transaction: jest.fn(async (fn: any) => fn(em)),
 		};
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const baseDto = (overrides: Partial<IfcContentDto> = {}): IfcContentDto => ({
@@ -888,7 +876,7 @@ describe('IfcService.patch', () => {
 			]); // insertStatus
 
 		const result = await service.patch(42, baseDto({ submit: true }), 99, 9);
-		expect(result).toMatchObject({ id: 42, notification: { sent: false, reason: 'no_config' } });
+		expect(result).toMatchObject({ id: 42 });
 
 		const statusInsert = em.query.mock.calls[13];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
@@ -960,16 +948,10 @@ describe('IfcService.patch', () => {
 describe('IfcService.generateStatusReport', () => {
 	let service: IfcService;
 	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcRepository;
 
 	beforeEach(() => {
 		dataSource = { query: jest.fn() };
-		service = new IfcService(
-			repository,
-			dataSource as unknown as DataSource,
-			pdfRenderer as any,
-			dispatcher as any,
-		);
+		({ service } = buildServices(dataSource));
 	});
 
 	const statusTypes = [
@@ -992,7 +974,7 @@ describe('IfcService.generateStatusReport', () => {
 
 		expect(Buffer.isBuffer(xlsx)).toBe(true);
 		expect(xlsx.length).toBeGreaterThan(0);
-		expect(filename).toBe('Reporte_Estado_IFC_EISCB_CS.xlsx');
+		expect(filename).toBe('Reporte_Estado_INST_IFC_EISCB_CS.xlsx');
 
 		const [, statusReportParams] = dataSource.query.mock.calls[2];
 		expect(statusReportParams).toEqual([
@@ -1012,17 +994,17 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport(dto, 9);
-		expect(filename).toBe('Reporte_Estado_IFC_EISCB.xlsx');
+		expect(filename).toBe('Reporte_Estado_INST_IFC_EISCB.xlsx');
 	});
 
-	it('falls back to IFC when REPORT_CODES_SQL returns no school code', async () => {
+	it('falls back to instrument code when REPORT_CODES_SQL returns no school code', async () => {
 		dataSource.query
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport(dto, 9);
-		expect(filename).toBe('Reporte_Estado_IFC_IFC.xlsx');
+		expect(filename).toBe('Reporte_Estado_INST_IFC_INST_IFC.xlsx');
 	});
 
 	it('uses the English filename prefix when lang=en', async () => {
@@ -1032,7 +1014,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce([]);
 
 		const { filename } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
-		expect(filename).toBe('Status_Report_IFC_EISCB_CS.xlsx');
+		expect(filename).toBe('Status_Report_INST_IFC_EISCB_CS.xlsx');
 	});
 
 	it('renders an XLSX where rows with status_code=null map to TG701-T005 / "Sin Registro"', async () => {
