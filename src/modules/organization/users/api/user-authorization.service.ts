@@ -7,6 +7,7 @@ import {
 	AuthorizationProfile,
 	AuthorizationRole,
 } from 'src/modules/auth/model/authorization.types';
+import { usersValidationStrings } from '../config/strings/users.validation';
 
 @Injectable()
 export class UserAuthorizationService {
@@ -36,7 +37,7 @@ export class UserAuthorizationService {
 
 		const allowedRoles = await this.findUserRoles(userId);
 		if (allowedRoles.length === 0) {
-			throw new UnauthorizedException('El usuario no tiene roles asignados');
+			throw new UnauthorizedException(usersValidationStrings.error.noRolesAssigned);
 		}
 
 		const activeRole = allowedRoles.find((role) => role.id === activeRoleId) ?? allowedRoles[0];
@@ -58,7 +59,7 @@ export class UserAuthorizationService {
 
 		const user = users?.[0];
 		if (!user || !this.toBoolean(user.isActive)) {
-			throw new UnauthorizedException('Usuario no existe o esta inactivo');
+			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
 	}
 
