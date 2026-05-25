@@ -1,6 +1,6 @@
 import { Column, Index, ColumnOptions } from 'typeorm';
 
-// %%  🔥 LENGTHS (centralizados)
+// %%LENGTHS (centralizados)
 export const DB_LENGTH_EMAIL = 254;
 export const DB_LENGTH_NAME = 255;
 export const DB_LENGTH_CODE = 50;
@@ -24,41 +24,40 @@ export const DB_DEFAULT_BOOLEAN = false;
 export const DB_DEFAULT_DATE = () => 'CURRENT_TIMESTAMP';
 export const DB_DEFAULT_JSON = () => "'{}'::jsonb";
 
-// %%  🔥 BASE TYPES
+// %%BASE TYPES
 type BaseOptions = Partial<ColumnOptions> & {
 	unique?: boolean;
+	indexed?: boolean;
 	indexName?: string;
 	withDefault?: boolean;
 };
 
-// %%  🔥 CORE ENGINE (NO TOCAR)
+// %%CORE ENGINE (NO TOCAR)
 function applyColumn(
 	target: any,
 	propertyKey: string | symbol,
 	base: ColumnOptions,
 	options?: BaseOptions,
 ) {
-	const { unique = false, indexName, ...rest } = options || {};
+	const { unique = false, indexed = false, indexName, ...rest } = options || {};
 
 	const columnOptions: ColumnOptions = {
 		...base,
 		...rest,
 	};
 
-	// Column
 	Column(columnOptions)(target, propertyKey);
 
-	// Index (solo si unique)
-	if (unique) {
+	if (unique || indexed) {
 		const name =
 			indexName ||
 			`IDX_${target.constructor.name.toUpperCase()}_${String(propertyKey).toUpperCase()}`;
 
-		Index(name, { unique: true })(target, propertyKey);
+		Index(name, { unique })(target, propertyKey);
 	}
 }
-// %%  🔥 COLUMN DECORATORS
-// 🔥 EMAIL
+// %%COLUMN DECORATORS
+//EMAIL
 export function EmailColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -76,7 +75,7 @@ export function EmailColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 NAME
+//NAME
 export function NameColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -94,7 +93,7 @@ export function NameColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 CODE
+//CODE
 export function CodeColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -111,7 +110,7 @@ export function CodeColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 PASSWORD
+//PASSWORD
 export function PasswordColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -129,7 +128,7 @@ export function PasswordColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 PHONE
+//PHONE
 export function PhoneColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
@@ -147,7 +146,7 @@ export function PhoneColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 TEXT (varchar controlado - recomendado)
+//TEXT (varchar controlado - recomendado)
 export function TextShortColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
@@ -215,7 +214,7 @@ export function TextFullColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 INTEGER
+//INTEGER
 export function IntegerFKIDColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -254,7 +253,7 @@ const numericTransformer = {
 		v !== null && v !== undefined ? parseFloat(v as string) : null,
 };
 
-// 🔥 DECIMAL
+//DECIMAL
 export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
@@ -266,7 +265,7 @@ export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 				precision: DB_PRECISION_DECIMAL,
 				scale: DB_SCALE_DECIMAL,
 				nullable,
-				transformer: numericTransformer, // ✅ única línea añadida
+				transformer: numericTransformer,
 				...(withDefault && { default: DB_DEFAULT_DECIMAL }),
 				unique: false,
 			},
@@ -274,7 +273,7 @@ export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 BOOLEAN ---> DEFAULT TRUE
+//BOOLEAN ---> DEFAULT TRUE
 export function BooleanColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
@@ -291,7 +290,7 @@ export function BooleanColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 DATE (timestamp) ---> DEFAULT TRUE
+//DATE (timestamp) ---> DEFAULT TRUE
 export function DateColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
@@ -308,7 +307,7 @@ export function DateColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-// 🔥 JSON (PostgreSQL) ---> DEFAULT TRUE
+//JSON (PostgreSQL) ---> DEFAULT TRUE
 export function JsonColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};

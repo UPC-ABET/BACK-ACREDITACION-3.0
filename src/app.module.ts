@@ -139,7 +139,7 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 				synchronize: false,
 				autoLoadEntities: true,
 				timezone: 'Z',
-				logging: ['error'],
+				logging: ['error', 'warn'],
 				extra: {
 					max: configService.get<number>('DB_POOL_MAX'),
 					idleTimeoutMillis: configService.get<number>('DB_POOL_IDLE_TIMEOUT'),
