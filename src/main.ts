@@ -13,7 +13,7 @@ async function bootstrap() {
 	const configService = app.get(ConfigService);
 	const port = configService.get<number>('APP_PORT')!;
 
-	app.setGlobalPrefix('api'); // 🔥 ESTA ES LA CLAVE
+	app.setGlobalPrefix('api');
 
 	app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
 
