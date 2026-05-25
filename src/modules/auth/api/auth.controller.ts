@@ -20,8 +20,7 @@ import {
 import { Public } from '../protocols/jwt/decorators/public.decorator';
 import { getRequiredJwtSecret } from '../protocols/jwt/jwt.config';
 import { AuthService } from './auth.service';
-
-const INVALID_SESSION_MSG = 'La sesión de Microsoft expiró o no es válida';
+import { authValidationStrings } from '../config/strings/auth.validation';
 
 interface MicrosoftState {
 	csrf: string;
@@ -99,10 +98,10 @@ export class AuthController {
 	}
 
 	private verifyAndParseState(state?: string): MicrosoftState {
-		if (!state) throw new UnauthorizedException(INVALID_SESSION_MSG);
+		if (!state) throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 
 		const dotIndex = state.lastIndexOf('.');
-		if (dotIndex === -1) throw new UnauthorizedException(INVALID_SESSION_MSG);
+		if (dotIndex === -1) throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 
 		const encoded = state.substring(0, dotIndex);
 		const signature = state.substring(dotIndex + 1);
@@ -112,7 +111,7 @@ export class AuthController {
 		const sigBuf = Buffer.from(signature, 'base64url');
 		const expBuf = Buffer.from(expected, 'base64url');
 		if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-			throw new UnauthorizedException(INVALID_SESSION_MSG);
+			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 		}
 
 		try {
@@ -120,18 +119,18 @@ export class AuthController {
 			if (!obj.csrf || !obj.school_id) throw new Error();
 			return obj;
 		} catch {
-			throw new UnauthorizedException(INVALID_SESSION_MSG);
+			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 		}
 	}
 
 	private validateCsrf(provided: string, stored?: string) {
 		if (!provided || !stored) {
-			throw new UnauthorizedException(INVALID_SESSION_MSG);
+			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 		}
 		const a = Buffer.from(provided);
 		const b = Buffer.from(stored);
 		if (a.length !== b.length || !timingSafeEqual(a, b)) {
-			throw new UnauthorizedException(INVALID_SESSION_MSG);
+			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 		}
 	}
 }

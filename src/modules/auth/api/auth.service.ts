@@ -8,6 +8,7 @@ import {
 import { UserService } from 'src/modules/organization/users/api/users.service';
 import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
+import { authValidationStrings } from '../config/strings/auth.validation';
 
 type MicrosoftIdTokenClaims = {
 	email?: string;
@@ -83,12 +84,12 @@ export class AuthService {
 			});
 
 			if (!result) {
-				throw new UnauthorizedException('Microsoft no devolvió una sesión válida');
+				throw new UnauthorizedException(authValidationStrings.error.microsoftNoSession);
 			}
 
 			return result;
 		} catch {
-			throw new UnauthorizedException('No se pudo validar el inicio de sesión con Microsoft');
+			throw new UnauthorizedException(authValidationStrings.error.microsoftLoginFailed);
 		}
 	}
 
@@ -97,7 +98,7 @@ export class AuthService {
 			claims.email ?? claims.preferred_username ?? claims.upn ?? result.account?.username;
 
 		if (!email) {
-			throw new UnauthorizedException('Microsoft no devolvió un correo válido');
+			throw new UnauthorizedException(authValidationStrings.error.microsoftNoEmail);
 		}
 
 		return email.toLowerCase();
@@ -128,7 +129,7 @@ export class AuthService {
 		const value = this.configService.get<string>(key);
 
 		if (!value) {
-			throw new UnauthorizedException(`Falta configurar ${key}`);
+			throw new UnauthorizedException(authValidationStrings.error.missingConfig);
 		}
 
 		return value;
