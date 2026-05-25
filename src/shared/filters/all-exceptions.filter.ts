@@ -7,7 +7,7 @@ import {
 	Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { ResponseDto } from '../../commons/base.dtos';
+import { ResponseDto } from '../../commons/response.dtos';
 import { sharedStrings } from '../strings/shared.strings';
 
 const I18N_KEY_PATTERN = /^(error|success|warning)\./;

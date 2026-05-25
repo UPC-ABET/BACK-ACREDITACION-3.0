@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { ResponseDto } from '../commons/base.dtos';
+import { ResponseDto } from '../commons/response.dtos';
 import { strings_swagger } from '../commons/swagger.strings';
 
 export function parseSuccessResponse(data: any, code: HttpStatus = HttpStatus.OK): ResponseDto {
