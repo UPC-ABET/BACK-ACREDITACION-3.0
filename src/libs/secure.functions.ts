@@ -1,5 +1,12 @@
+import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
+
+export const BCRYPT_ROUNDS = 12;
+
+export function hashPassword(password: string): Promise<string> {
+	return bcrypt.hash(password, BCRYPT_ROUNDS);
+}
 
 /*******************************************************************************************+*/
 /*******************************************************************************************+*/

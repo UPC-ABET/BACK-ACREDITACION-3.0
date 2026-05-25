@@ -15,7 +15,7 @@ async function bootstrap() {
 
 	app.setGlobalPrefix('api'); // 🔥 ESTA ES LA CLAVE
 
-	app.use(cookieParser());
+	app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
 
 	app.useGlobalFilters(new AllExceptionsFilter());
 	app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));

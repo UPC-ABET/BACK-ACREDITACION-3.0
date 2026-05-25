@@ -21,6 +21,8 @@ const envSchema = z
 			.min(64, 'APP_SECRET must be at least 64 hex characters')
 			.regex(/^[0-9a-fA-F]+$/, 'APP_SECRET must be a hex string'),
 
+		COOKIE_SECRET: z.string().min(32, 'COOKIE_SECRET must be at least 32 characters').optional(),
+
 		POSTMARK_API_KEY: z.string().min(1, 'POSTMARK_API_KEY is required'),
 		POSTMARK_FROM_EMAIL: z.string().min(1, 'POSTMARK_FROM_EMAIL is required'),
 	})

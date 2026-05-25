@@ -1,8 +1,8 @@
-import * as bcrypt from 'bcryptjs';
 import { runTenantSeed, i18n } from '../seed-runner';
+import { hashPassword } from 'src/libs/secure.functions';
 
 runTenantSeed('organization users and staff', async (tenantDataSource) => {
-	const mockPassword = await bcrypt.hash('Password123!', 10);
+	const mockPassword = await hashPassword('Password123!');
 
 	await tenantDataSource.query(
 		`

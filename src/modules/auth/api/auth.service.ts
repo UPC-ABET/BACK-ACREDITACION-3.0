@@ -19,6 +19,7 @@ type MicrosoftIdTokenClaims = {
 @Injectable()
 export class AuthService {
 	private readonly scopes = ['openid', 'profile', 'email', 'User.Read'];
+	private msalClient: ConfidentialClientApplication | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -40,7 +41,7 @@ export class AuthService {
 	}
 
 	async buildMicrosoftLoginUrl(state: string) {
-		const msalClient = this.createMsalClient();
+		const msalClient = this.getMsalClient();
 		const redirectUri = this.getRequiredConfig('URL_REDIRECT');
 
 		return await msalClient.getAuthCodeUrl({
@@ -71,7 +72,7 @@ export class AuthService {
 	}
 
 	private async acquireMicrosoftTokenByCode(code: string): Promise<AuthenticationResult> {
-		const msalClient = this.createMsalClient();
+		const msalClient = this.getMsalClient();
 		const redirectUri = this.getRequiredConfig('URL_REDIRECT');
 
 		try {
@@ -102,21 +103,25 @@ export class AuthService {
 		return email.toLowerCase();
 	}
 
-	private createMsalClient() {
-		const tenantId = this.getRequiredConfig('ID_DIRECTORY_TENANT');
-		const clientId = this.getRequiredConfig('ID_APPLICATION_CLIENT');
-		const clientSecret = this.getRequiredConfig('MICROSOFT_SECRET');
-		const microsoftBaseUrl = this.getRequiredConfig('MICROSOSFT_BASE_URL');
+	private getMsalClient() {
+		if (!this.msalClient) {
+			const tenantId = this.getRequiredConfig('ID_DIRECTORY_TENANT');
+			const clientId = this.getRequiredConfig('ID_APPLICATION_CLIENT');
+			const clientSecret = this.getRequiredConfig('MICROSOFT_SECRET');
+			const microsoftBaseUrl = this.getRequiredConfig('MICROSOSFT_BASE_URL');
 
-		const config: Configuration = {
-			auth: {
-				clientId,
-				authority: `${microsoftBaseUrl}${tenantId}`,
-				clientSecret,
-			},
-		};
+			const config: Configuration = {
+				auth: {
+					clientId,
+					authority: `${microsoftBaseUrl}${tenantId}`,
+					clientSecret,
+				},
+			};
 
-		return new ConfidentialClientApplication(config);
+			this.msalClient = new ConfidentialClientApplication(config);
+		}
+
+		return this.msalClient;
 	}
 
 	private getRequiredConfig(key: string) {
