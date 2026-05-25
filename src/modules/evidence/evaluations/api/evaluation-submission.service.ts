@@ -24,19 +24,8 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
-import type { I18nText } from 'src/shared/types/i18n';
+import { type I18nText, toI18n, i18nText, i18nTrim } from 'src/shared/types/i18n';
 
-const toI18n = (text: string): I18nText => ({ es: text, en: text });
-const i18nText = (val: I18nText | string | null | undefined): I18nText | null => {
-	if (!val) return null;
-	if (typeof val === 'string') return toI18n(val);
-	return val;
-};
-const i18nTrim = (val: I18nText | null | undefined): string | null => {
-	if (!val) return null;
-	const text = typeof val === 'string' ? val : (val.es ?? Object.values(val)[0] ?? '');
-	return text.trim();
-};
 
 /**
  * EvaluationSubmissionService

@@ -9,14 +9,10 @@ import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-ques
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
-import type { I18nText } from 'src/shared/types/i18n';
+import { type I18nText, toI18n } from 'src/shared/types/i18n';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 
-const toI18n = (text: I18nText | string): I18nText => {
-	if (typeof text === 'string') return { es: text, en: text };
-	return text;
-};
 
 /**
  * RubricConfigService
