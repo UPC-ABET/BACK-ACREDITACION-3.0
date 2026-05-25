@@ -14,6 +14,7 @@ import { IfcViewService } from './ifc-view.service';
 import { REPORT_CODES_SQL, STATUS_REPORT_SQL } from './ifcs.sql';
 import { IFC_INSTRUMENT_CODE } from './ifcs.constants';
 import * as ExcelJS from 'exceljs';
+import { XLSX_THEME } from './pdf-theme';
 
 interface StatusReportRow {
 	course_name: string;
@@ -252,7 +253,7 @@ export class IfcReportService {
 		lang: 'es' | 'en',
 	): Promise<Buffer> {
 		const wb = new ExcelJS.Workbook();
-		wb.creator = 'ABET system';
+		wb.creator = XLSX_THEME.creator;
 		wb.created = new Date();
 
 		const ws = wb.addWorksheet(lang === 'en' ? 'Status Report' : 'Reporte de Estado');
@@ -267,8 +268,8 @@ export class IfcReportService {
 		const headerRow = ws.getRow(1);
 		headerRow.height = 22;
 		headerRow.eachCell((cell) => {
-			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC8102E' } };
-			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XLSX_THEME.headerBg } };
+			cell.font = { bold: true, color: { argb: XLSX_THEME.headerText } };
 			cell.alignment = { vertical: 'middle', horizontal: 'center' };
 			cell.border = {
 				top: { style: 'thin' },
@@ -295,10 +296,10 @@ export class IfcReportService {
 			if (rowNumber === 1) return;
 			row.eachCell((cell) => {
 				cell.border = {
-					top: { style: 'thin', color: { argb: 'FFD4D4D8' } },
-					left: { style: 'thin', color: { argb: 'FFD4D4D8' } },
-					right: { style: 'thin', color: { argb: 'FFD4D4D8' } },
-					bottom: { style: 'thin', color: { argb: 'FFD4D4D8' } },
+					top: { style: 'thin', color: { argb: XLSX_THEME.rowBorder } },
+					left: { style: 'thin', color: { argb: XLSX_THEME.rowBorder } },
+					right: { style: 'thin', color: { argb: XLSX_THEME.rowBorder } },
+					bottom: { style: 'thin', color: { argb: XLSX_THEME.rowBorder } },
 				};
 				cell.alignment = { vertical: 'top', wrapText: true };
 			});

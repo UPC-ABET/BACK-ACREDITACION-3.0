@@ -73,11 +73,16 @@ export class NotificationDispatcherService {
 		return paramRow[0]?.value ?? [];
 	}
 
-	async dispatch(input: DispatchInput, notificationVars?: NotificationVar[]): Promise<DispatchResult> {
+	async dispatch(
+		input: DispatchInput,
+		notificationVars?: NotificationVar[],
+	): Promise<DispatchResult> {
 		const { chartId, periodId } = input;
 		const ctx = await this.resolveContext(input);
 		if (ctx === null) {
-			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_course_chart`);
+			this.logger.log(
+				`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_course_chart`,
+			);
 			return { sent: false, reason: 'no_course_chart', recipients_count: 0, cc_count: 0 };
 		}
 
@@ -112,7 +117,9 @@ export class NotificationDispatcherService {
 
 			await this.writeLog(ctx, config, toStaffIds, ccStaffIds, input.notifierUserId, messageId);
 
-			this.logger.log(`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id} recipients=${toEmails.length} cc=${ccEmails.length}`);
+			this.logger.log(
+				`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id} recipients=${toEmails.length} cc=${ccEmails.length}`,
+			);
 			return {
 				sent: true,
 				recipients_count: toEmails.length,
@@ -120,7 +127,9 @@ export class NotificationDispatcherService {
 				reason: null,
 			};
 		} catch (e) {
-			this.logger.error(`dispatch.failed chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id}: ${(e as Error).message}`);
+			this.logger.error(
+				`dispatch.failed chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id}: ${(e as Error).message}`,
+			);
 			return { sent: false, reason: 'send_failed', recipients_count: 0, cc_count: 0 };
 		}
 	}
@@ -277,7 +286,7 @@ export class NotificationDispatcherService {
 		notifierUserId: number | null,
 		preloadedVars?: NotificationVar[],
 	): Promise<Record<string, string>> {
-		const vars: NotificationVar[] = preloadedVars ?? await this.loadNotificationVars();
+		const vars: NotificationVar[] = preloadedVars ?? (await this.loadNotificationVars());
 
 		const statusCode = await this.lookupStatusCode(ctx.ifc_status_type_id);
 
@@ -393,7 +402,7 @@ export class NotificationDispatcherService {
 	}
 
 	private buildIfcLink(ifcId: number | null): string {
-		const base = this.configService.get<string>('APP_FRONTEND_URL') ?? 'http://localhost:3000';
+		const base = this.configService.get<string>('APP_FRONTEND_URL');
 		if (ifcId === null) return `${base}/ifcs`;
 		return `${base}/ifcs/${ifcId}`;
 	}
@@ -421,12 +430,18 @@ export class NotificationDispatcherService {
 function escapeHtml(value: string): string {
 	return value.replace(/[<>&"']/g, (ch) => {
 		switch (ch) {
-			case '<': return '&lt;';
-			case '>': return '&gt;';
-			case '&': return '&amp;';
-			case '"': return '&quot;';
-			case "'": return '&#39;';
-			default: return ch;
+			case '<':
+				return '&lt;';
+			case '>':
+				return '&gt;';
+			case '&':
+				return '&amp;';
+			case '"':
+				return '&quot;';
+			case "'":
+				return '&#39;';
+			default:
+				return ch;
 		}
 	});
 }

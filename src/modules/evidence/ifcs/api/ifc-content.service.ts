@@ -218,16 +218,7 @@ export class IfcContentService {
 			deletedActionIds?: number[];
 		},
 	) {
-		for (const actionId of input.deletedActionIds ?? []) {
-			await em.query(`DELETE FROM improvement.finding_actions WHERE action_id = $1`, [actionId]);
-			await em.query(`DELETE FROM improvement.actions WHERE id = $1`, [actionId]);
-		}
-		for (const findingId of input.deletedFindingIds ?? []) {
-			await em.query(`DELETE FROM improvement.finding_outcomes WHERE finding_id = $1`, [findingId]);
-			await em.query(`DELETE FROM improvement.finding_actions WHERE finding_id = $1`, [findingId]);
-			await em.query(`DELETE FROM ifc.ifc_findings WHERE finding_id = $1`, [findingId]);
-			await em.query(`DELETE FROM improvement.findings WHERE id = $1`, [findingId]);
-		}
+		await this.deleteFindingsAndActions(em, input.deletedFindingIds ?? [], input.deletedActionIds ?? []);
 
 		const instrumentRows = await em.query(
 			`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`,
@@ -403,6 +394,23 @@ export class IfcContentService {
 				`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`,
 				[item.evidences === null ? null : JSON.stringify(item.evidences), item.finding_action_id],
 			);
+		}
+	}
+
+	private async deleteFindingsAndActions(
+		em: EntityManager,
+		findingIds: number[],
+		actionIds: number[],
+	) {
+		for (const actionId of actionIds) {
+			await em.query(`DELETE FROM improvement.finding_actions WHERE action_id = $1`, [actionId]);
+			await em.query(`DELETE FROM improvement.actions WHERE id = $1`, [actionId]);
+		}
+		for (const findingId of findingIds) {
+			await em.query(`DELETE FROM improvement.finding_outcomes WHERE finding_id = $1`, [findingId]);
+			await em.query(`DELETE FROM improvement.finding_actions WHERE finding_id = $1`, [findingId]);
+			await em.query(`DELETE FROM ifc.ifc_findings WHERE finding_id = $1`, [findingId]);
+			await em.query(`DELETE FROM improvement.findings WHERE id = $1`, [findingId]);
 		}
 	}
 }
