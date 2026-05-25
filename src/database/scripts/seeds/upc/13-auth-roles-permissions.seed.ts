@@ -4,9 +4,9 @@ runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "core"."roles" (id, name, code, description, is_active, created_at, updated_at)
 		VALUES
-			(1, '{"en":"Admin","es":"Administrador"}'::jsonb, 'ADMIN', ${i18n('Acceso completo', 'Full access')}, true, '2026-05-23 00:11:25.260914+00', NULL),
-			(2, '{"en":"Coordinator","es":"Coordinador"}'::jsonb, 'COORDINATOR', ${i18n('Acceso de coordinador', 'Coordinator access')}, true, '2026-05-23 00:11:25.260914+00', NULL),
-			(3, '{"en":"User","es":"Usuario"}'::jsonb, 'USER', ${i18n('Usuario regular', 'Regular user')}, true, '2026-05-23 00:11:25.260914+00', NULL)
+			(1, '${i18n('Administrador', 'Admin')}'::jsonb, 'ADMIN', '${i18n('Acceso completo', 'Full access')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL),
+			(2, '${i18n('Coordinador', 'Coordinator')}'::jsonb, 'COORDINATOR', '${i18n('Acceso de coordinador', 'Coordinator access')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL),
+			(3, '${i18n('Usuario', 'User')}'::jsonb, 'USER', '${i18n('Usuario regular', 'Regular user')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL)
 		ON CONFLICT (code) DO UPDATE
 		SET
 			name = EXCLUDED.name,
