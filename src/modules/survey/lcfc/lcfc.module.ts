@@ -6,12 +6,13 @@ import { NotificationEntity } from 'src/modules/survey/notifications/model/notif
 import { LcfcConfigRepository } from './core/lcfc-config.repository';
 import { LcfcSurveyRepository } from './core/lcfc-survey.repository';
 import { LcfcNotificationRepository } from './core/lcfc-notification.repository';
+import { MailModule } from 'src/modules/mail/mail.module';
 import { LcfcConfigService } from './api/lcfc-config.service';
 import { LcfcNotificationService } from './api/lcfc-notification.service';
 import { LcfcController } from './api/lcfc.controller';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity])],
+	imports: [TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity]), MailModule],
 	controllers: [LcfcController],
 	providers: [
 		LcfcConfigService,

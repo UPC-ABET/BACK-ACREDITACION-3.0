@@ -4,6 +4,7 @@ import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/ou
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
 import { AcceptanceLevelsModule } from 'src/modules/survey/acceptance-levels/acceptance-levels.module';
+import { MailModule } from 'src/modules/mail/mail.module';
 import { GraConfigRepository } from './core/gra-config.repository';
 import { GraSurveyRepository } from './core/gra-survey.repository';
 import { GraNotificationRepository } from './core/gra-notification.repository';
@@ -15,6 +16,7 @@ import { GraController } from './api/gra.controller';
 	imports: [
 		TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity]),
 		AcceptanceLevelsModule,
+		MailModule,
 	],
 	controllers: [GraController],
 	providers: [

@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
+import { MailService } from 'src/modules/mail/mail.service';
 import { DataSource } from 'typeorm';
 import { LcfcNotificationRepository } from '../core/lcfc-notification.repository';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
@@ -24,6 +24,7 @@ export class LcfcNotificationService {
 		private readonly configRepo: LcfcConfigRepository,
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
+		private readonly mailService: MailService,
 	) {}
 
 	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
@@ -205,7 +206,6 @@ export class LcfcNotificationService {
 			dto.survey_base_url ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
-		const transporter = this.createEmailTransporter();
 		const emailTemplate = await this.getEmailTemplate();
 
 		let emailsSent = 0;
@@ -224,7 +224,7 @@ export class LcfcNotificationService {
 					Token: notif.token,
 				});
 
-				await this.sendEmail(transporter, {
+				await this.mailService.sendRawEmail({
 					to: notif.student_email,
 					subject: emailTemplate.subject,
 					html: emailBody,
@@ -419,35 +419,4 @@ export class LcfcNotificationService {
 		return result;
 	}
 
-	private createEmailTransporter() {
-		const smtpHost = this.configService.get<string>('SMTP_HOST');
-		const smtpPort = this.configService.get<number>('SMTP_PORT');
-		const smtpUser = this.configService.get<string>('SMTP_USER');
-		const smtpPass = this.configService.get<string>('SMTP_PASS');
-
-		if (!smtpHost || !smtpUser || !smtpPass) {
-			return null;
-		}
-
-		return nodemailer.createTransport({
-			host: smtpHost,
-			port: smtpPort ?? 587,
-			secure: (smtpPort ?? 587) === 465,
-			auth: { user: smtpUser, pass: smtpPass },
-		});
-	}
-
-	private async sendEmail(
-		transporter: nodemailer.Transporter | null,
-		opts: { to: string; subject: string; html: string },
-	): Promise<void> {
-		if (!transporter) {
-			this.logger.warn(`[LCFC EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
-			return;
-		}
-
-		const from =
-			this.configService.get<string>('SMTP_FROM') ?? this.configService.get<string>('SMTP_USER');
-		await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html });
-	}
 }

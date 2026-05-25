@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
+import { MailService } from 'src/modules/mail/mail.service';
 import { DataSource } from 'typeorm';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { GraNotificationRepository } from '../core/gra-notification.repository';
@@ -27,6 +27,7 @@ export class GraNotificationService {
 		private readonly configRepo: GraConfigRepository,
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
+		private readonly mailService: MailService,
 	) {}
 
 	// ─── Helpers: obtener IDs de tipos ─────────────────────────────────────────
@@ -162,8 +163,6 @@ export class GraNotificationService {
 			dto.survey_base_url ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
-		const transporter = this.createEmailTransporter();
-
 		const results = { total: pending.length, sent: 0, failed: 0, errors: [] as string[] };
 
 		for (const student of pending) {
@@ -178,7 +177,7 @@ export class GraNotificationService {
 					Token: student.token,
 				});
 
-				await this.sendEmail(transporter, {
+				await this.mailService.sendRawEmail({
 					to: student.student_email,
 					subject: emailTemplate.subject,
 					html: emailBody,
@@ -384,37 +383,4 @@ export class GraNotificationService {
 		return result;
 	}
 
-	private createEmailTransporter() {
-		const smtpHost = this.configService.get<string>('SMTP_HOST');
-		const smtpPort = this.configService.get<number>('SMTP_PORT');
-		const smtpUser = this.configService.get<string>('SMTP_USER');
-		const smtpPass = this.configService.get<string>('SMTP_PASS');
-
-		if (!smtpHost || !smtpUser || !smtpPass) {
-			// Modo simulación: log en consola
-			return null;
-		}
-
-		return nodemailer.createTransport({
-			host: smtpHost,
-			port: smtpPort ?? 587,
-			secure: (smtpPort ?? 587) === 465,
-			auth: { user: smtpUser, pass: smtpPass },
-		});
-	}
-
-	private async sendEmail(
-		transporter: nodemailer.Transporter | null,
-		opts: { to: string; subject: string; html: string },
-	): Promise<void> {
-		if (!transporter) {
-			// Modo simulación: registra en consola en lugar de enviar
-			this.logger.warn(`[GRA EMAIL SIMULADO] Para: ${opts.to} | Asunto: ${opts.subject}`);
-			return;
-		}
-
-		const from =
-			this.configService.get<string>('SMTP_FROM') ?? this.configService.get<string>('SMTP_USER');
-		await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html });
-	}
 }
