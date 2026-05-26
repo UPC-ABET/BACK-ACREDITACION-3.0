@@ -22,10 +22,10 @@ export class NotificationLogEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: true })
 	notifier_user_id: number | null;
 
-	@JsonColumn({ nullable: false })
+	@JsonColumn({ nullable: false, default: () => "'[]'" })
 	to_staff_ids: number[];
 
-	@JsonColumn({ nullable: false })
+	@JsonColumn({ nullable: false, default: () => "'[]'" })
 	cc_staff_ids: number[];
 
 	@EmailColumn({ nullable: true })

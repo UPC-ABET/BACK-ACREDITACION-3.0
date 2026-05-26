@@ -22,7 +22,8 @@ export const DB_DEFAULT_INT = 0;
 export const DB_DEFAULT_DECIMAL = 0.0;
 export const DB_DEFAULT_BOOLEAN = false;
 export const DB_DEFAULT_DATE = () => 'CURRENT_TIMESTAMP';
-export const DB_DEFAULT_JSON = () => "'{}'::jsonb";
+export const DB_DEFAULT_JSON = () => "'{}'";
+
 
 // %%BASE TYPES
 type BaseOptions = Partial<ColumnOptions> & {
