@@ -20,7 +20,13 @@ export class AcademicPeriodEntity extends BaseEntity {
 	@DateColumn({ nullable: false })
 	end_date: Date;
 
-	@Column({ type: 'int', insert: false, update: false })
+	@Column({
+		type: 'int',
+		generatedType: 'STORED',
+		asExpression: `EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int`,
+		insert: false,
+		update: false,
+	})
 	year: number;
 
 	// %% RELATIONS

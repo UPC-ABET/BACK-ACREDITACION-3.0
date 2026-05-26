@@ -759,9 +759,9 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_commissions_accreditor_id"`,
 		);
-		await queryRunner.query(`DROP INDEX "IDX_role_module_permissions_lookup"`);
+		await queryRunner.query(`DROP INDEX "core"."IDX_role_module_permissions_lookup"`);
 		await queryRunner.query(`DROP TABLE "core"."role_module_permissions"`);
-		await queryRunner.query(`DROP INDEX "IDX_user_roles_user_active"`);
+		await queryRunner.query(`DROP INDEX "core"."IDX_user_roles_user_active"`);
 		await queryRunner.query(`DROP TABLE "core"."user_roles"`);
 		await queryRunner.query(`DROP TABLE "core"."roles"`);
 		await queryRunner.query(`DROP TABLE "academic"."course_outcome_mappings"`);
@@ -791,7 +791,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "improvement"."finding_outcomes"`);
 		await queryRunner.query(`DROP TABLE "improvement"."plan_actions"`);
 		await queryRunner.query(`DROP TABLE "improvement"."finding_actions"`);
-		await queryRunner.query(`DROP INDEX "IDX_findings_course_period"`);
+		await queryRunner.query(`DROP INDEX "improvement"."IDX_findings_course_period"`);
 		await queryRunner.query(`DROP TABLE "improvement"."findings"`);
 		await queryRunner.query(`DROP TABLE "evidence"."instruments"`);
 		await queryRunner.query(`DROP TABLE "improvement"."actions"`);
@@ -820,6 +820,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "academic"."programs"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."commissions"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."accreditors"`);
+		await queryRunner.query(`DROP INDEX "academic"."IDX_academic_periods_year"`);
 		await queryRunner.query(`DROP TABLE "academic"."academic_periods"`);
 	}
 }
