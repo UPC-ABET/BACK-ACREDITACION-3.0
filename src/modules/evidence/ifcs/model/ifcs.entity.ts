@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -8,6 +8,7 @@ import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity'
 type IfcInformation = Record<string, { label: I18nText; value: I18nText; order: number }>;
 
 @Entity({ name: 'ifcs', schema: 'evidence' })
+@Index('IDX_ifcs_course_period', ['course_id', 'academic_period_id'])
 export class IfcEntity extends BaseEntity {
 	// %% ATTRIBUTES
 

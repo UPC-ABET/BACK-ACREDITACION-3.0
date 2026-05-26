@@ -14,13 +14,20 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "evaluation"`);
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "core"`);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(1000) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,
+			`CREATE TABLE IF NOT EXISTS "typeorm_metadata" ("type" varchar NOT NULL, "database" varchar, "schema" varchar, "table" varchar, "name" varchar, "value" text)`,
+		);
+		await queryRunner.query(
+			`INSERT INTO "typeorm_metadata"("database", "schema", "table", "type", "name", "value") VALUES ($1, $2, $3, $4, $5, $6)`,
+			[queryRunner.connection.options.database, 'academic', 'academic_periods', 'GENERATED_COLUMN', 'year', `EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int`],
+		);
+		await queryRunner.query(
+			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(255) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED NOT NULL, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE INDEX "IDX_academic_periods_year" ON "academic"."academic_periods" ("year")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(1000) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_db5d514f1f3dbbd718f2f8feaf0" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_db5d514f1f3dbbd718f2f8feaf0" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "accreditation"."commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "accreditor_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_feab7a246fd5bd9eee8a00e655c" UNIQUE ("code"), CONSTRAINT "PK_2701379966e2e670bb5ff0ae78e" PRIMARY KEY ("id"))`,
@@ -35,13 +42,13 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_db7ef6d23e512a822d661a2d793" UNIQUE ("outcome_code"), CONSTRAINT "PK_f5b8391e8300f8962eb1842dfca" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(1000) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_d6a06870edd505bfc2d002cb728" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_d6a06870edd505bfc2d002cb728" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(1000) NOT NULL, "last_name" character varying(1000) NOT NULL, "email" character varying(1000) NOT NULL, "phone" character varying(1000) NOT NULL, "password" character varying(1000) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(1000) NOT NULL, "staff_phone" character varying(1000) NOT NULL, CONSTRAINT "PK_e4ee98bb552756c180aec1e854a" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, CONSTRAINT "PK_e4ee98bb552756c180aec1e854a" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, CONSTRAINT "UQ_ACADEMIC_PROFESSORS_CODE" UNIQUE ("code"), CONSTRAINT "PK_6b249c6363a154820c909c45e27" PRIMARY KEY ("id"))`,
@@ -119,16 +126,25 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "evidence"."ifcs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_2bfd47d6b5d4eb31f3120596a41" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
+			`CREATE INDEX "IDX_ifcs_course_period" ON "evidence"."ifcs" ("course_id", "academic_period_id")`,
+		);
+		await queryRunner.query(
 			`CREATE TABLE "ifc"."statuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "status_type_id" integer NOT NULL, "staff_id" integer NOT NULL, "comment" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_2fd3770acdb67736f1a3e3d5399" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "ifc"."ifc_findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "finding_id" integer NOT NULL, CONSTRAINT "PK_f0b14dc8a4cfd64381c399dc8f1" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, CONSTRAINT "PK_25e7784b69fbdb82b911ca6aa88" PRIMARY KEY ("id"), CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
+			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', CONSTRAINT "PK_25e7784b69fbdb82b911ca6aa88" PRIMARY KEY ("id"), CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_log" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "cc_staff_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "provider_message_id" varchar(500) NULL, CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "ifc"."notification_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]', "cc_staff_ids" jsonb NOT NULL DEFAULT '[]', "provider_message_id" character varying(254) NULL, CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_notification_logs_ifc_id" ON "ifc"."notification_logs" ("ifc_id")`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_notification_logs_chart_id" ON "ifc"."notification_logs" ("chart_id")`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, CONSTRAINT "PK_88157a8406d1bbca75ccac829d1" PRIMARY KEY ("id"))`,
@@ -395,16 +411,16 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "organization"."users" ADD CONSTRAINT "FK_users_document_type_id" FOREIGN KEY ("document_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_notification_log_ifc_id" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_ifc_id" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_notification_log_chart_id" FOREIGN KEY ("chart_id") REFERENCES "organization"."charts"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_chart_id" FOREIGN KEY ("chart_id") REFERENCES "organization"."charts"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_notification_log_notification_config_id" FOREIGN KEY ("notification_config_id") REFERENCES "ifc"."notification_configs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_notification_config_id" FOREIGN KEY ("notification_config_id") REFERENCES "ifc"."notification_configs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_notification_log_notifier_user_id" FOREIGN KEY ("notifier_user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_notifier_user_id" FOREIGN KEY ("notifier_user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_enrolled_students_student_id" FOREIGN KEY ("student_id") REFERENCES "academic"."students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -493,6 +509,69 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_permission_type" FOREIGN KEY ("permission_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."academic_periods" ADD CONSTRAINT "FK_academic_periods_modality_type_id" FOREIGN KEY ("modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."programs" ADD CONSTRAINT "FK_programs_modality_type_id" FOREIGN KEY ("modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_program_commissions_commission_type_id" FOREIGN KEY ("commission_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" ADD CONSTRAINT "FK_staff_position_type_id" FOREIGN KEY ("position_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."students" ADD CONSTRAINT "FK_students_graduation_modality_type_id" FOREIGN KEY ("graduation_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_survey_type_id" FOREIGN KEY ("survey_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_survey_status_type_id" FOREIGN KEY ("survey_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notifications" ADD CONSTRAINT "FK_notifications_notification_status_type_id" FOREIGN KEY ("notification_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notification_messages" ADD CONSTRAINT "FK_notification_messages_survey_type_id" FOREIGN KEY ("survey_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."chart_levels" ADD CONSTRAINT "FK_chart_levels_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."instruments" ADD CONSTRAINT "FK_instruments_constituent_type_id" FOREIGN KEY ("constituent_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."statuses" ADD CONSTRAINT "FK_statuses_status_type_id" FOREIGN KEY ("status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_enrolled_students_enrollement_modality_type_id" FOREIGN KEY ("enrollement_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_question_criterias" ADD CONSTRAINT "FK_rubric_question_criterias_rubric_question_id" FOREIGN KEY ("rubric_question_id") REFERENCES "evaluation"."rubric_questions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_evaluators" ADD CONSTRAINT "FK_project_evaluators_evaluator_type_id" FOREIGN KEY ("evaluator_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_evaluations_qualification_status_type_id" FOREIGN KEY ("qualification_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_course_grades" ADD CONSTRAINT "FK_student_course_grades_grade_type_id" FOREIGN KEY ("grade_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."performance_levels" ADD CONSTRAINT "FK_performance_levels_instrument_type_id" FOREIGN KEY ("instrument_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_outcome_type_id" FOREIGN KEY ("outcome_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
@@ -578,16 +657,16 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_enrolled_students_student_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_notification_log_notifier_user_id"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_notifier_user_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_notification_log_notification_config_id"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_notification_config_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_notification_log_chart_id"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_chart_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_notification_log_ifc_id"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_ifc_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."users" DROP CONSTRAINT "FK_users_document_type_id"`,
@@ -753,9 +832,72 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_commissions_accreditor_id"`,
 		);
-		await queryRunner.query(`DROP INDEX "IDX_role_module_permissions_lookup"`);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_course_outcome_mappings_outcome_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."performance_levels" DROP CONSTRAINT "FK_performance_levels_instrument_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_student_course_grades_grade_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_evaluations_qualification_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_project_evaluators_evaluator_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_question_criterias" DROP CONSTRAINT "FK_rubric_question_criterias_rubric_question_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_enrolled_students_enrollement_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."instruments" DROP CONSTRAINT "FK_instruments_constituent_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."chart_levels" DROP CONSTRAINT "FK_chart_levels_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_notification_messages_survey_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notifications" DROP CONSTRAINT "FK_notifications_notification_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_survey_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_survey_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_students_graduation_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_course_sections_section_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_position_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_program_commissions_commission_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."programs" DROP CONSTRAINT "FK_programs_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."academic_periods" DROP CONSTRAINT "FK_academic_periods_modality_type_id"`,
+		);
+		await queryRunner.query(`DROP INDEX "core"."IDX_role_module_permissions_lookup"`);
 		await queryRunner.query(`DROP TABLE "core"."role_module_permissions"`);
-		await queryRunner.query(`DROP INDEX "IDX_user_roles_user_active"`);
+		await queryRunner.query(`DROP INDEX "core"."IDX_user_roles_user_active"`);
 		await queryRunner.query(`DROP TABLE "core"."user_roles"`);
 		await queryRunner.query(`DROP TABLE "core"."roles"`);
 		await queryRunner.query(`DROP TABLE "academic"."course_outcome_mappings"`);
@@ -775,15 +917,18 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "evidence"."student_course_outcome_grades"`);
 		await queryRunner.query(`DROP TABLE "academic"."student_section_enrollments"`);
 		await queryRunner.query(`DROP TABLE "academic"."enrolled_students"`);
-		await queryRunner.query(`DROP TABLE "ifc"."notification_log"`);
+		await queryRunner.query(`DROP INDEX "ifc"."IDX_notification_logs_ifc_id"`);
+		await queryRunner.query(`DROP INDEX "ifc"."IDX_notification_logs_chart_id"`);
+		await queryRunner.query(`DROP TABLE "ifc"."notification_logs"`);
 		await queryRunner.query(`DROP TABLE "ifc"."notification_configs"`);
 		await queryRunner.query(`DROP TABLE "ifc"."ifc_findings"`);
 		await queryRunner.query(`DROP TABLE "ifc"."statuses"`);
+		await queryRunner.query(`DROP INDEX "evidence"."IDX_ifcs_course_period"`);
 		await queryRunner.query(`DROP TABLE "evidence"."ifcs"`);
 		await queryRunner.query(`DROP TABLE "improvement"."finding_outcomes"`);
 		await queryRunner.query(`DROP TABLE "improvement"."plan_actions"`);
 		await queryRunner.query(`DROP TABLE "improvement"."finding_actions"`);
-		await queryRunner.query(`DROP INDEX "IDX_findings_course_period"`);
+		await queryRunner.query(`DROP INDEX "improvement"."IDX_findings_course_period"`);
 		await queryRunner.query(`DROP TABLE "improvement"."findings"`);
 		await queryRunner.query(`DROP TABLE "evidence"."instruments"`);
 		await queryRunner.query(`DROP TABLE "improvement"."actions"`);
@@ -812,6 +957,8 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "academic"."programs"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."commissions"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."accreditors"`);
+		await queryRunner.query(`DROP INDEX "academic"."IDX_academic_periods_year"`);
 		await queryRunner.query(`DROP TABLE "academic"."academic_periods"`);
+		await queryRunner.query(`DROP TABLE IF EXISTS "typeorm_metadata"`);
 	}
 }

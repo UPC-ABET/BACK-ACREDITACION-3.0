@@ -22,7 +22,8 @@ export const DB_DEFAULT_INT = 0;
 export const DB_DEFAULT_DECIMAL = 0.0;
 export const DB_DEFAULT_BOOLEAN = false;
 export const DB_DEFAULT_DATE = () => 'CURRENT_TIMESTAMP';
-export const DB_DEFAULT_JSON = () => "'{}'::jsonb";
+export const DB_DEFAULT_JSON = () => "'{}'";
+
 
 // %%BASE TYPES
 type BaseOptions = Partial<ColumnOptions> & {
@@ -49,9 +50,11 @@ function applyColumn(
 	Column(columnOptions)(target, propertyKey);
 
 	if (unique || indexed) {
-		const name =
-			indexName ||
-			`IDX_${target.constructor.name.toUpperCase()}_${String(propertyKey).toUpperCase()}`;
+		const tableName = target.constructor.name
+			.replace(/Entity$/, '')
+			.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+			.toLowerCase();
+		const name = indexName || `IDX_${tableName}_${String(propertyKey).toLowerCase()}`;
 
 		Index(name, { unique })(target, propertyKey);
 	}

@@ -9,6 +9,8 @@ import { RejectIfcDto } from '../model/ifcs.dtos';
 import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { TRANSITION_CONTEXT_SQL, INSERT_STATUS_SQL } from './ifcs.sql';
 
+type PeriodRow = { academic_period_id: number };
+
 @Injectable()
 export class IfcStateMachineService {
 	private readonly logger = new Logger(IfcStateMachineService.name);
@@ -54,18 +56,19 @@ export class IfcStateMachineService {
 				null,
 			);
 
-			const periodRows = await em.query(
+			const periodRows: PeriodRow[] = await em.query(
 				`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
 				[ifcId],
 			);
 			return { ctx, periodId: Number(periodRows[0]?.academic_period_id) };
 		});
 
-		if (ctx.courseChartId !== null && Number.isFinite(periodId)) {
+		const courseChartId = ctx.courseChartId;
+		if (courseChartId !== null && Number.isFinite(periodId)) {
 			setImmediate(() => {
 				this.dispatcher
 					.dispatch({
-						chartId: ctx.courseChartId!,
+						chartId: courseChartId,
 						periodId,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
