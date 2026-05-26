@@ -9,6 +9,8 @@ import { RejectIfcDto } from '../model/ifcs.dtos';
 import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { TRANSITION_CONTEXT_SQL, INSERT_STATUS_SQL } from './ifcs.sql';
 
+type PeriodRow = { academic_period_id: number };
+
 @Injectable()
 export class IfcStateMachineService {
 	private readonly logger = new Logger(IfcStateMachineService.name);
@@ -54,7 +56,7 @@ export class IfcStateMachineService {
 				null,
 			);
 
-			const periodRows = await em.query(
+			const periodRows: PeriodRow[] = await em.query(
 				`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
 				[ifcId],
 			);
