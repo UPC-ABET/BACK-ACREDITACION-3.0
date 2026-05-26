@@ -137,6 +137,27 @@ export class UserService extends BaseService<UserRepository> {
 		return profile;
 	}
 
+	async getMe(jwtPayload: {
+		userId: number;
+		activeRole: any;
+		allowedRoles: any[];
+		permissions: any[];
+		school_id: number;
+	}) {
+		const user = await this.getUser(jwtPayload.userId);
+		if (!user) {
+			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
+		}
+
+		return {
+			user: this.sanitizeUser(user),
+			activeRole: jwtPayload.activeRole,
+			allowedRoles: jwtPayload.allowedRoles,
+			permissions: jwtPayload.permissions,
+			school_id: jwtPayload.school_id,
+		};
+	}
+
 	private sanitizeUser(user: any) {
 		if (!user) {
 			return user;

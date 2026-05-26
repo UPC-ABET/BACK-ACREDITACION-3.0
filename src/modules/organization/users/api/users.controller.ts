@@ -10,6 +10,7 @@ import {
 	SwaggerUserGetById,
 	SwaggerUserGetByFilters,
 	SwaggerUserLoginByCredentials,
+	SwaggerUserMe,
 	SwaggerUserLogout,
 	SwaggerUserChangeRole,
 } from './docs/users.swagger';
@@ -83,10 +84,16 @@ export class UserController extends BaseController<UserService> {
 	}
 
 	@SkipPermissions()
+	@SwaggerUserMe()
+	async getMe(@Req() req) {
+		return parseSuccessResponse(await this.service.getMe(req.user));
+	}
+
+	@SkipPermissions()
 	@SwaggerUserLogout()
 	async logout(@Res({ passthrough: true }) res: Response) {
 		removeAccessCookie(res);
-		return parseSuccessResponse({ message: 'Logout exitoso' });
+		return parseSuccessResponse({ message: 'success.ok' });
 	}
 
 	@SkipPermissions()

@@ -30,6 +30,8 @@ export const SwaggerUserGetByFilters = () =>
 export const SwaggerUserLoginByCredentials = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.loginByCredentials, body: LoginUserByCredentialsDto });
 
+export const SwaggerUserMe = () => HttpMethodWithSwagger(cfg.operation.me);
+
 export const SwaggerUserLogout = () => HttpMethodWithSwagger({ ...cfg.operation.logout });
 
 export const SwaggerUserChangeRole = () =>

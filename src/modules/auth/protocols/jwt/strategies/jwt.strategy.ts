@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Request } from 'express';
 import { getRequiredJwtSecret } from '../jwt.config';
 import { UserAuthorizationService } from 'src/modules/organization/users/api/user-authorization.service';
+import { usersValidationStrings } from 'src/modules/organization/users/config/strings/users.validation';
 
 const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
 
@@ -39,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 				school_id: payload.school_id,
 			};
 		} catch {
-			throw new UnauthorizedException('Credenciales inválidas');
+			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
 		}
 	}
 }
