@@ -18,6 +18,7 @@ import {
 } from '../model/projects.dtos';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
+import { projectsValidationStrings } from '../config/strings/projects.validation';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
 import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
@@ -25,9 +26,7 @@ import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questi
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 
-// Tipos de evaluador con límite de 1 por proyecto
-const SINGLE_EVALUATOR_TYPE_CODES = ['TG403-T002', 'TG403-T004', 'TG403-T005', 'TG403-T003']; // GER, CLI, COA, DOC
-const UNLIMITED_EVALUATOR_TYPE_CODE = 'TG403-T001'; // COM
+const UNLIMITED_EVALUATOR_TYPE_CODE = TYPE_CODES.EVALUATOR_TYPE.COM;
 
 /**
  * ProjectConfigService
@@ -89,20 +88,19 @@ export class ProjectConfigService {
 		});
 
 		if (!studyPlanCourse) {
-			throw new NotFoundException(
-				`study_plan_course_id ${dto.study_plan_course_id} no encontrado.`,
-			);
+			throw new NotFoundException({
+				message: projectsValidationStrings.error.notFound,
+				errors: [`study_plan_course_id ${dto.study_plan_course_id}`],
+			});
 		}
 
 		if (studyPlanCourse.extra?.is_evaluate_rubric !== true) {
-			throw new BadRequestException(
-				'El curso no está habilitado para evaluación de rúbricas (is_evaluate_rubric != true).',
-			);
+			throw new BadRequestException(projectsValidationStrings.error.notEvaluateRubric);
 		}
 
 		const academicPeriodId = studyPlanCourse.study_plan_academic_period?.academic_period_id;
 		if (!academicPeriodId) {
-			throw new BadRequestException('No se pudo determinar el periodo académico del curso.');
+			throw new BadRequestException(projectsValidationStrings.error.noAcademicPeriod);
 		}
 
 		// ── 2. Unicidad de código en el mismo periodo ─────────────────────────
@@ -120,9 +118,7 @@ export class ProjectConfigService {
 			[dto.code, academicPeriodId],
 		);
 		if (duplicateCode.length > 0) {
-			throw new BadRequestException(
-				`Ya existe un proyecto con el código '${dto.code}' en este periodo académico.`,
-			);
+			throw new BadRequestException(projectsValidationStrings.error.duplicateCode);
 		}
 
 		// ── 3. Unicidad de nombre en el mismo periodo ─────────────────────────
@@ -140,14 +136,12 @@ export class ProjectConfigService {
 			[dto.name?.es, dto.name?.en, academicPeriodId],
 		);
 		if (duplicateName.length > 0) {
-			throw new BadRequestException(
-				`Ya existe un proyecto con ese nombre en este periodo académico.`,
-			);
+			throw new BadRequestException(projectsValidationStrings.error.duplicateName);
 		}
 
 		// ── 4. Validar alumnos ────────────────────────────────────────────────
 		if (!dto.student_section_enrollment_ids?.length) {
-			throw new BadRequestException('Debe incluir al menos un alumno.');
+			throw new BadRequestException(projectsValidationStrings.error.noStudents);
 		}
 
 		const enrollments = await this.enrollmentRepo.find({
@@ -159,22 +153,26 @@ export class ProjectConfigService {
 			const enrollment = enrollments.find((e) => e.id === enrollmentId);
 
 			if (!enrollment) {
-				throw new NotFoundException(`Matrícula ${enrollmentId} no encontrada.`);
+				throw new NotFoundException({
+					message: projectsValidationStrings.error.enrollmentNotFound,
+					errors: [String(enrollmentId)],
+				});
 			}
 
-			// Alumno retirado
 			if (!enrollment.is_active) {
-				throw new BadRequestException(`El alumno de la matrícula ${enrollmentId} está retirado.`);
+				throw new BadRequestException({
+					message: projectsValidationStrings.error.studentWithdrawn,
+					errors: [String(enrollmentId)],
+				});
 			}
 
-			// Alumno matriculado en el curso correcto
 			if (enrollment.course_section?.study_plan_course_id !== dto.study_plan_course_id) {
-				throw new BadRequestException(
-					`El alumno de la matrícula ${enrollmentId} no está matriculado en el curso indicado.`,
-				);
+				throw new BadRequestException({
+					message: projectsValidationStrings.error.studentNotInCourse,
+					errors: [String(enrollmentId)],
+				});
 			}
 
-			// Alumno ya en otro proyecto en el mismo periodo
 			const alreadyInProject = await this.dataSource.query(
 				`
 				SELECT ps.id FROM evaluation.project_students ps
@@ -193,35 +191,31 @@ export class ProjectConfigService {
 				[enrollmentId, academicPeriodId],
 			);
 			if (alreadyInProject.length > 0) {
-				throw new BadRequestException(
-					`El alumno de la matrícula ${enrollmentId} ya pertenece a otro proyecto en este periodo.`,
-				);
+				throw new BadRequestException({
+					message: projectsValidationStrings.error.studentAlreadyInProject,
+					errors: [String(enrollmentId)],
+				});
 			}
 		}
 
 		// ── 5. Validar evaluadores ────────────────────────────────────────────
 		if (!dto.evaluators?.length) {
-			throw new BadRequestException('Debe incluir al menos un evaluador.');
+			throw new BadRequestException(projectsValidationStrings.error.noEvaluators);
 		}
 
-		// Cargar tipos para validar códigos
 		const evaluatorTypeIds = [...new Set(dto.evaluators.map((e) => e.evaluator_type_id))];
 		const evaluatorTypes = await this.typeRepo.findByIds(evaluatorTypeIds);
 		const typeCodeMap = new Map(evaluatorTypes.map((t) => [t.id, t.code]));
 
-		// No duplicar professor_id + evaluator_type_id en el mismo request
 		const evalKeys = new Set<string>();
 		for (const ev of dto.evaluators) {
 			const key = `${ev.professor_id}-${ev.evaluator_type_id}`;
 			if (evalKeys.has(key)) {
-				throw new BadRequestException(
-					`El evaluador ${ev.professor_id} está duplicado con el mismo tipo en la solicitud.`,
-				);
+				throw new BadRequestException(projectsValidationStrings.error.evaluatorDuplicate);
 			}
 			evalKeys.add(key);
 		}
 
-		// Límites por tipo: GER, CLI, COA, DOC → máx 1; COM → sin límite
 		const typeCountInRequest = new Map<number, number>();
 		for (const ev of dto.evaluators) {
 			typeCountInRequest.set(
@@ -233,9 +227,7 @@ export class ProjectConfigService {
 		for (const [typeId, count] of typeCountInRequest.entries()) {
 			const code = typeCodeMap.get(typeId);
 			if (code !== UNLIMITED_EVALUATOR_TYPE_CODE && count > 1) {
-				throw new BadRequestException(
-					`Solo se permite un evaluador del tipo '${code}' por proyecto.`,
-				);
+				throw new BadRequestException(projectsValidationStrings.error.evaluatorLimit);
 			}
 		}
 
@@ -303,10 +295,9 @@ export class ProjectConfigService {
 			.getOne();
 
 		if (!project) {
-			throw new NotFoundException('Proyecto no encontrado.');
+			throw new NotFoundException(projectsValidationStrings.error.notFound);
 		}
 
-		// ── 2. study_plan_course_id desde el primer estudiante con cadena completa
 		const studentWithChain = project.students?.find(
 			(s) => s.student_section_enrollment?.course_section?.study_plan_course_id != null,
 		);
@@ -315,7 +306,7 @@ export class ProjectConfigService {
 			studentWithChain?.student_section_enrollment?.course_section?.study_plan_course_id;
 
 		if (!studyPlanCourseId) {
-			throw new BadRequestException('El proyecto no tiene estudiantes con curso asignado.');
+			throw new BadRequestException(projectsValidationStrings.error.noStudentsWithCourse);
 		}
 
 		const academicPeriod =
@@ -341,10 +332,7 @@ export class ProjectConfigService {
 			.getOne();
 
 		if (!rubric) {
-			throw new NotFoundException(
-				`No se encontró rúbrica activa para el curso ${studyPlanCourseId} ` +
-					`con grade_type_id=${gradeTypeId} y rubric_type_id=${rubricTypeId}.`,
-			);
+			throw new NotFoundException(projectsValidationStrings.error.activeRubricNotFound);
 		}
 
 		const rubricContext = await this.rubricConfigService
@@ -352,7 +340,7 @@ export class ProjectConfigService {
 			.catch(() => null);
 
 		if (!rubricContext) {
-			throw new NotFoundException('Error al cargar el contexto de la rúbrica.');
+			throw new NotFoundException(projectsValidationStrings.error.rubricContextError);
 		}
 
 		// ── 5. Score máximo (solo en modo evaluación)

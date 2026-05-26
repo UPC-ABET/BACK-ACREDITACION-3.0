@@ -9,8 +9,10 @@ import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-ques
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { toI18n } from 'src/shared/types/i18n';
+import { rubricsValidationStrings } from '../config/strings/rubrics.validation';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 /**
  * RubricConfigService
@@ -26,8 +28,6 @@ import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes
  */
 @Injectable()
 export class RubricConfigService {
-	private readonly CAPSTONE_RUBRIC_TYPE_CODE = 'TG401-T001';
-	private readonly EB_GRADE_TYPE_CODE = 'TG205-T002';
 
 	constructor(
 		@InjectRepository(RubricEntity)
@@ -55,11 +55,9 @@ export class RubricConfigService {
 	/**
 	 * Determina si una rúbrica es de tipo WASC (PA) según su grade_type_id
 	 */
-	private readonly PA_GRADE_TYPE_CODE = 'TG205-T003';
-
 	private async isWascRubric(gradeTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === this.PA_GRADE_TYPE_CODE;
+		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
 	}
 
 	/**
@@ -74,7 +72,7 @@ export class RubricConfigService {
 		rubricId: number,
 	): Promise<{ byQuestion: Map<number, number>; totalMaxScore: number }> {
 		const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
-		if (!rubric) throw new NotFoundException('Rúbrica no encontrada.');
+		if (!rubric) throw new NotFoundException(rubricsValidationStrings.error.notFound);
 
 		const isWasc = await this.isWascRubric(rubric.grade_type_id);
 
@@ -133,9 +131,7 @@ export class RubricConfigService {
 		)[0] as { id: number } | undefined;
 
 		if (conflictingRubric) {
-			throw new BadRequestException(
-				'Ya existe una rúbrica activa para este curso con el mismo tipo de calificación en el periodo académico actual.',
-			);
+			throw new BadRequestException(rubricsValidationStrings.error.activeRubricExistsForPeriod);
 		}
 
 		// Verificar si ya existe una rúbrica activa para el mismo study_plan_course + grade_type
@@ -148,9 +144,7 @@ export class RubricConfigService {
 		});
 
 		if (existingRubric) {
-			throw new BadRequestException(
-				'Ya existe una rúbrica activa para este curso con el mismo tipo de calificación.',
-			);
+			throw new BadRequestException(rubricsValidationStrings.error.activeRubricExists);
 		}
 
 		const outcomeIds = dto.questions
@@ -163,14 +157,15 @@ export class RubricConfigService {
 			const validOutcomeIds = mappings.map((m) => m.outcome_id);
 			const invalidOutcomes = outcomeIds.filter((id) => !validOutcomeIds.includes(id));
 			if (invalidOutcomes.length > 0) {
-				throw new BadRequestException(
-					`Los siguientes outcome_ids no están mapeados para este curso: ${invalidOutcomes.join(', ')}`,
-				);
+				throw new BadRequestException({
+					message: rubricsValidationStrings.error.invalidOutcomeMapping,
+					errors: invalidOutcomes.map(String),
+				});
 			}
 		}
 
-		const capstoneTypeId = await this.resolveRubricTypeIdByCode(this.CAPSTONE_RUBRIC_TYPE_CODE);
-		const ebGradeTypeId = await this.resolveRubricTypeIdByCode(this.EB_GRADE_TYPE_CODE);
+		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
+		const ebGradeTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.GRADE_TYPE.EB);
 		const isCapstone = capstoneTypeId != null && dto.rubric_type_id === capstoneTypeId;
 		const isEbGrade = ebGradeTypeId != null && dto.grade_type_id === ebGradeTypeId;
 
@@ -178,9 +173,7 @@ export class RubricConfigService {
 		if (isCapstone && isEbGrade) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcome_id);
 			if (hasMissingOutcomes) {
-				throw new BadRequestException(
-					'Las rúbricas Capstone con nota final (EB) requieren que todas las preguntas tengan un outcome_id asignado.',
-				);
+				throw new BadRequestException(rubricsValidationStrings.error.capstoneRequiresOutcome);
 			}
 		}
 
@@ -188,7 +181,7 @@ export class RubricConfigService {
 			where: { id: dto.study_plan_course_id },
 		});
 		if (!courseExists) {
-			throw new NotFoundException('El study_plan_course_id proporcionado no existe.');
+			throw new NotFoundException(rubricsValidationStrings.error.studyPlanCourseNotFound);
 		}
 
 		const savedRubric = await this.dataSource.transaction(async (manager) => {
@@ -250,7 +243,7 @@ export class RubricConfigService {
 		});
 
 		if (!rubric) {
-			throw new NotFoundException('No se encontró rúbrica para este curso.');
+			throw new NotFoundException(rubricsValidationStrings.error.noRubricForCourse);
 		}
 
 		return rubric;
@@ -266,7 +259,7 @@ export class RubricConfigService {
 		});
 
 		if (!rubric) {
-			throw new NotFoundException('Rúbrica no encontrada.');
+			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
 		return rubric;
@@ -307,7 +300,7 @@ export class RubricConfigService {
 		});
 
 		if (!rubric) {
-			throw new NotFoundException('Rúbrica no encontrada.');
+			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
 		// 2. Obtener comisiones directamente desde los program_commission_id de los outcomes
