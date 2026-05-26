@@ -16,6 +16,7 @@ import { RubricConfigService } from './rubric-config.service';
 import { RubricEntity } from '../model/rubrics.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { I18nText } from 'src/shared/types/i18n';
+import pLimit from 'p-limit';
 
 @Injectable()
 export class RubricService extends BaseService<RubricRepository> {
@@ -159,14 +160,15 @@ export class RubricService extends BaseService<RubricRepository> {
 		const raw = await this.dataSource.query(
 			`
 			WITH RECURSIVE school_tree AS (
-				SELECT id, root_chart_detail_id, entity_type_id, entity_code
+				SELECT id, root_chart_detail_id, entity_type_id, entity_code, 0 AS depth
 				FROM "organization"."charts"
 				WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $1)
 				  AND entity_code = $2
 				UNION ALL
-				SELECT c.id, c.root_chart_detail_id, c.entity_type_id, c.entity_code
+				SELECT c.id, c.root_chart_detail_id, c.entity_type_id, c.entity_code, st.depth + 1
 				FROM "organization"."charts" c
 				INNER JOIN school_tree st ON c.root_chart_detail_id = st.id
+				WHERE st.depth < 20
 			)
 			SELECT DISTINCT entity_code AS program_id
 			FROM school_tree
@@ -247,11 +249,14 @@ export class RubricService extends BaseService<RubricRepository> {
 
 		const rubrics = await qb.getMany();
 
+		const limit = pLimit(5);
 		return await Promise.all(
-			rubrics.map(async (rubric) => ({
-				...rubric,
-				isUsed: await this.isRubricUsed(rubric.id),
-			})),
+			rubrics.map((rubric) =>
+				limit(async () => ({
+					...rubric,
+					isUsed: await this.isRubricUsed(rubric.id),
+				})),
+			),
 		);
 	}
 

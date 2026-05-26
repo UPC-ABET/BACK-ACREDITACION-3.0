@@ -25,6 +25,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 /**
  * EvaluationSubmissionService
@@ -47,15 +48,6 @@ import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
  */
 @Injectable()
 export class EvaluationSubmissionService {
-	private readonly ASISTIO_STATUS_CODE = 'TG404-T001';
-	private readonly NR_STATUS_CODE = 'TG404-T002';
-	private readonly NA_STATUS_CODE = 'TG404-T003';
-	private readonly PA_GRADE_TYPE_CODE = 'TG205-T003';
-	private readonly COM_EVALUATOR_CODE = 'TG403-T001';
-	private readonly GER_EVALUATOR_CODE = 'TG403-T002';
-	private readonly CAPSTONE_RUBRIC_TYPE_CODE = 'TG401-T001';
-	private readonly FINAL_GRADE_TYPE_CODE = 'TG205-T002';
-	private readonly PERF_LEVEL_INSTRUMENT_TYPE_CODE = 'TG206-T001';
 
 	constructor(
 		@InjectRepository(EvaluationEntity)
@@ -124,17 +116,17 @@ export class EvaluationSubmissionService {
 		}
 		if (!gTypeId) return false;
 		const type = await this.typeRepo.findOne({ where: { id: gTypeId } });
-		return type?.code === this.PA_GRADE_TYPE_CODE;
+		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
 	}
 
 	private async isCapstoneRubric(rubricTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: rubricTypeId } });
-		return type?.code === this.CAPSTONE_RUBRIC_TYPE_CODE;
+		return type?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE;
 	}
 
 	private async isFinalEvaluation(gradeTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === this.FINAL_GRADE_TYPE_CODE;
+		return type?.code === TYPE_CODES.GRADE_TYPE.EB;
 	}
 
 	private async getValidPerformanceLevelValues(rubric: RubricEntity): Promise<Set<number>> {
@@ -146,7 +138,7 @@ export class EvaluationSubmissionService {
 		if (!academicPeriodId) return new Set();
 
 		const instrType = await this.typeRepo.findOne({
-			where: { code: this.PERF_LEVEL_INSTRUMENT_TYPE_CODE },
+			where: { code: TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE },
 		});
 		if (!instrType) return new Set();
 
@@ -365,8 +357,8 @@ export class EvaluationSubmissionService {
 		}
 
 		const statusCode = await this.resolveEvaluatorTypeCode(dto.qualification_status_type_id);
-		const isNr = statusCode === this.NR_STATUS_CODE;
-		const isNa = statusCode === this.NA_STATUS_CODE;
+		const isNr = statusCode === TYPE_CODES.QUALIFICATION_STATUS.NR;
+		const isNa = statusCode === TYPE_CODES.QUALIFICATION_STATUS.NA;
 		const isNrOrNa = isNr || isNa;
 
 		const isCapstone = await this.isCapstoneRubric(rubric.rubric_type_id);
@@ -490,7 +482,7 @@ export class EvaluationSubmissionService {
 
 				let txOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
 
-				if (evaluatorCode === this.COM_EVALUATOR_CODE) {
+				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.COM) {
 					const comEvaluators = await manager.find(ProjectEvaluatorEntity, {
 						where: {
 							project_id: evaluator.project_id,
@@ -504,13 +496,16 @@ export class EvaluationSubmissionService {
 						{ sum: number; count: number; maxValue: number }
 					>();
 
+					const comEvaluations = await manager.find(EvaluationEntity, {
+						where: {
+							project_student_id: dto.project_student_id,
+							project_evaluator_id: In(comEvaluatorIds),
+						},
+					});
+					const evalMap = new Map(comEvaluations.map((e) => [e.project_evaluator_id, e]));
+
 					for (const comEvalId of comEvaluatorIds) {
-						const comStudentEval = await manager.findOne(EvaluationEntity, {
-							where: {
-								project_student_id: dto.project_student_id,
-								project_evaluator_id: comEvalId,
-							},
-						});
+						const comStudentEval = evalMap.get(comEvalId);
 						if (!comStudentEval) continue;
 
 						const { outcomeGrades: comGrades } = await this.aggregateScoresByOutcome(
@@ -543,7 +538,7 @@ export class EvaluationSubmissionService {
 						student.student_section_enrollment_id,
 						txOutcomeGrades,
 					);
-				} else if (evaluatorCode === this.GER_EVALUATOR_CODE && isPa) {
+				} else if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
 					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
 					txOutcomeGrades = outcomeGrades;
 					await this.upsertOutcomeGrades(
@@ -577,8 +572,8 @@ export class EvaluationSubmissionService {
 	 * Guarda/actualiza la observación de una evaluación (R-NOT-014)
 	 */
 	async saveObservation(dto: SaveObservationDto): Promise<{ success: boolean }> {
-		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
-		const nrStatusTypeId = await this.resolveStatusTypeIdByCode(this.NR_STATUS_CODE);
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.ASISTIO);
+		const nrStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.NR);
 
 		await this.dataSource.transaction(async (manager) => {
 			let evaluation = await manager.findOne(EvaluationEntity, {
@@ -633,7 +628,7 @@ export class EvaluationSubmissionService {
 		const totalCriteria =
 			rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
 
-		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(this.ASISTIO_STATUS_CODE);
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.ASISTIO);
 
 		await this.dataSource.transaction(async (manager) => {
 			for (const ps of project.students) {
