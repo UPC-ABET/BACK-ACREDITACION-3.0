@@ -218,7 +218,11 @@ export class IfcContentService {
 			deletedActionIds?: number[];
 		},
 	) {
-		await this.deleteFindingsAndActions(em, input.deletedFindingIds ?? [], input.deletedActionIds ?? []);
+		await this.deleteFindingsAndActions(
+			em,
+			input.deletedFindingIds ?? [],
+			input.deletedActionIds ?? [],
+		);
 
 		const instrumentRows = await em.query(
 			`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`,

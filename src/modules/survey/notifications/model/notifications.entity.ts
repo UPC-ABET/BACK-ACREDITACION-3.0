@@ -30,6 +30,9 @@ export class NotificationEntity extends BaseEntity {
 	survey: SurveyEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'notification_status_type_id', foreignKeyConstraintName: 'FK_notifications_notification_status_type_id' })
+	@JoinColumn({
+		name: 'notification_status_type_id',
+		foreignKeyConstraintName: 'FK_notifications_notification_status_type_id',
+	})
 	notification_status_type: TypeEntity;
 }

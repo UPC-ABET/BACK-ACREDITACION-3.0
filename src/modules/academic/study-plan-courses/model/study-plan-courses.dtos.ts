@@ -93,5 +93,4 @@ export class FilterStudyPlanCourseDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	level_type_id?: number;
-
 }

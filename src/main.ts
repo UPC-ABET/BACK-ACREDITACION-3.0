@@ -38,7 +38,9 @@ async function bootstrap() {
 		.filter(Boolean);
 
 	if (allowedOrigins.length === 0) {
-		throw new Error('No valid CORS origins configured. Set APP_FRONTEND_URL or CORS_ALLOWED_ORIGINS.');
+		throw new Error(
+			'No valid CORS origins configured. Set APP_FRONTEND_URL or CORS_ALLOWED_ORIGINS.',
+		);
 	}
 
 	app.enableCors({

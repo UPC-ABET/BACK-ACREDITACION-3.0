@@ -49,7 +49,10 @@ export class FindingEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'criticality_type_id', foreignKeyConstraintName: 'FK_findings_criticality_type_id' })
+	@JoinColumn({
+		name: 'criticality_type_id',
+		foreignKeyConstraintName: 'FK_findings_criticality_type_id',
+	})
 	criticality_type: TypeEntity;
 
 	@ManyToOne(() => InstrumentEntity)
@@ -65,7 +68,10 @@ export class FindingEntity extends BaseEntity {
 	course: CourseEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_findings_academic_period_id' })
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_findings_academic_period_id',
+	})
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)

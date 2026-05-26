@@ -38,7 +38,9 @@ export class EncryptService {
 		const parts = text?.split(':');
 
 		if (parts?.length !== 3 || !parts.every((p) => p.length > 0 && HEX_PATTERN.test(p))) {
-			throw new Error('Malformed ciphertext: expected format "iv:encrypted:authTag" with hex values');
+			throw new Error(
+				'Malformed ciphertext: expected format "iv:encrypted:authTag" with hex values',
+			);
 		}
 
 		const [ivHex, encryptedHex, authTagHex] = parts;

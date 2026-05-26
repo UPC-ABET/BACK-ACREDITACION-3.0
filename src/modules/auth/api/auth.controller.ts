@@ -101,7 +101,8 @@ export class AuthController {
 		if (!state) throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 
 		const dotIndex = state.lastIndexOf('.');
-		if (dotIndex === -1) throw new UnauthorizedException(authValidationStrings.error.invalidSession);
+		if (dotIndex === -1)
+			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 
 		const encoded = state.substring(0, dotIndex);
 		const signature = state.substring(dotIndex + 1);

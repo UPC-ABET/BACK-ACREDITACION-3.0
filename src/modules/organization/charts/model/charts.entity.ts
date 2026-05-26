@@ -38,7 +38,10 @@ export class ChartEntity extends BaseEntity {
 	staff: StaffEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_charts_academic_period_id' })
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_charts_academic_period_id',
+	})
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => ChartLevelEntity)

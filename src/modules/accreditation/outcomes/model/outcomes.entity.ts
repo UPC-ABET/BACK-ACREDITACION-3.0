@@ -23,6 +23,9 @@ export class OutcomeEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => ProgramCommissionEntity)
-	@JoinColumn({ name: 'program_commission_id', foreignKeyConstraintName: 'FK_outcomes_program_commission_id' })
+	@JoinColumn({
+		name: 'program_commission_id',
+		foreignKeyConstraintName: 'FK_outcomes_program_commission_id',
+	})
 	program_commission: ProgramCommissionEntity;
 }

@@ -17,8 +17,14 @@ const envSchema = z
 		DB_NAME: z.string().min(1, 'DB_NAME is required'),
 		DB_SSL: z.string().optional(),
 		DB_POOL_MAX: z.string().regex(/^\d+$/, 'DB_POOL_MAX must be a number').optional(),
-		DB_POOL_IDLE_TIMEOUT: z.string().regex(/^\d+$/, 'DB_POOL_IDLE_TIMEOUT must be a number').optional(),
-		DB_POOL_CONN_TIMEOUT: z.string().regex(/^\d+$/, 'DB_POOL_CONN_TIMEOUT must be a number').optional(),
+		DB_POOL_IDLE_TIMEOUT: z
+			.string()
+			.regex(/^\d+$/, 'DB_POOL_IDLE_TIMEOUT must be a number')
+			.optional(),
+		DB_POOL_CONN_TIMEOUT: z
+			.string()
+			.regex(/^\d+$/, 'DB_POOL_CONN_TIMEOUT must be a number')
+			.optional(),
 
 		JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
 		APP_SECRET: z

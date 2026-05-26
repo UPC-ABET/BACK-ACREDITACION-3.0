@@ -7,12 +7,10 @@ import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/m
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
-import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
-import { type I18nText, toI18n } from 'src/shared/types/i18n';
+import { toI18n } from 'src/shared/types/i18n';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
-
 
 /**
  * RubricConfigService
@@ -142,7 +140,11 @@ export class RubricConfigService {
 
 		// Verificar si ya existe una rúbrica activa para el mismo study_plan_course + grade_type
 		const existingRubric = await this.rubricRepo.findOne({
-			where: { study_plan_course_id: dto.study_plan_course_id, grade_type_id: dto.grade_type_id, is_active: true },
+			where: {
+				study_plan_course_id: dto.study_plan_course_id,
+				grade_type_id: dto.grade_type_id,
+				is_active: true,
+			},
 		});
 
 		if (existingRubric) {

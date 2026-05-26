@@ -32,6 +32,9 @@ export class EnrolledStudentEntity extends BaseEntity {
 	campus: CampusEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'enrollement_modality_type_id', foreignKeyConstraintName: 'FK_enrolled_students_enrollement_modality_type_id' })
+	@JoinColumn({
+		name: 'enrollement_modality_type_id',
+		foreignKeyConstraintName: 'FK_enrolled_students_enrollement_modality_type_id',
+	})
 	enrollement_modality_type: TypeEntity;
 }

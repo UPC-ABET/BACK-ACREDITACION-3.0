@@ -37,7 +37,6 @@ const UNLIMITED_EVALUATOR_TYPE_CODE = 'TG403-T001'; // COM
  */
 @Injectable()
 export class ProjectConfigService {
-
 	constructor(
 		@InjectRepository(ProjectEntity)
 		private readonly projectRepo: Repository<ProjectEntity>,
@@ -90,7 +89,9 @@ export class ProjectConfigService {
 		});
 
 		if (!studyPlanCourse) {
-			throw new NotFoundException(`study_plan_course_id ${dto.study_plan_course_id} no encontrado.`);
+			throw new NotFoundException(
+				`study_plan_course_id ${dto.study_plan_course_id} no encontrado.`,
+			);
 		}
 
 		if (studyPlanCourse.extra?.is_evaluate_rubric !== true) {
@@ -223,7 +224,10 @@ export class ProjectConfigService {
 		// Límites por tipo: GER, CLI, COA, DOC → máx 1; COM → sin límite
 		const typeCountInRequest = new Map<number, number>();
 		for (const ev of dto.evaluators) {
-			typeCountInRequest.set(ev.evaluator_type_id, (typeCountInRequest.get(ev.evaluator_type_id) ?? 0) + 1);
+			typeCountInRequest.set(
+				ev.evaluator_type_id,
+				(typeCountInRequest.get(ev.evaluator_type_id) ?? 0) + 1,
+			);
 		}
 
 		for (const [typeId, count] of typeCountInRequest.entries()) {

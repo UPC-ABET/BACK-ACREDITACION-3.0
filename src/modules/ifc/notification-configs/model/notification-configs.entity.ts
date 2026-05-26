@@ -47,14 +47,23 @@ export class NotificationConfigEntity extends BaseEntity {
 	school: SchoolEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_notification_configs_academic_period_id' })
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_notification_configs_academic_period_id',
+	})
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'trigger_type_id', foreignKeyConstraintName: 'FK_notification_configs_trigger_type_id' })
+	@JoinColumn({
+		name: 'trigger_type_id',
+		foreignKeyConstraintName: 'FK_notification_configs_trigger_type_id',
+	})
 	trigger_type: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'ifc_status_type_id', foreignKeyConstraintName: 'FK_notification_configs_ifc_status_type_id' })
+	@JoinColumn({
+		name: 'ifc_status_type_id',
+		foreignKeyConstraintName: 'FK_notification_configs_ifc_status_type_id',
+	})
 	ifc_status_type: TypeEntity;
 }

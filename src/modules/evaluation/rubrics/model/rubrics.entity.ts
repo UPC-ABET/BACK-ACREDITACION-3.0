@@ -21,7 +21,10 @@ export class RubricEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanCourseEntity)
-	@JoinColumn({ name: 'study_plan_course_id', foreignKeyConstraintName: 'FK_rubrics_study_plan_course_id' })
+	@JoinColumn({
+		name: 'study_plan_course_id',
+		foreignKeyConstraintName: 'FK_rubrics_study_plan_course_id',
+	})
 	study_plan_course: StudyPlanCourseEntity;
 
 	@ManyToOne(() => TypeEntity)

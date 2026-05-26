@@ -418,5 +418,4 @@ export class LcfcNotificationService {
 		}
 		return result;
 	}
-
 }

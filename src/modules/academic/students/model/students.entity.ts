@@ -29,6 +29,9 @@ export class StudentEntity extends BaseEntity {
 	program: ProgramEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'graduation_modality_type_id', foreignKeyConstraintName: 'FK_students_graduation_modality_type_id' })
+	@JoinColumn({
+		name: 'graduation_modality_type_id',
+		foreignKeyConstraintName: 'FK_students_graduation_modality_type_id',
+	})
 	graduation_modality_type: TypeEntity;
 }

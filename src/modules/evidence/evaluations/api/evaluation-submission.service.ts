@@ -24,8 +24,7 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
-import { type I18nText, toI18n, i18nText, i18nTrim } from 'src/shared/types/i18n';
-
+import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 
 /**
  * EvaluationSubmissionService

@@ -382,5 +382,4 @@ export class GraNotificationService {
 		}
 		return result;
 	}
-
 }

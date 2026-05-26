@@ -1,16 +1,16 @@
 export const usersValidationStrings = {
 	error: {
-		documentCodeExists: 'error.document.code.exists',
-		emailExists: 'error.email.exists',
-		notFound: 'error.notFound',
-		invalidCredentials: 'error.invalid.credentials',
-		schoolNotFound: 'error.school.notFound',
+		documentCodeExists: 'error.user.documentCodeExists',
+		emailExists: 'error.user.emailExists',
+		notFound: 'error.user.notFound',
+		invalidCredentials: 'error.user.invalidCredentials',
+		schoolNotFound: 'error.user.schoolNotFound',
 		noRolesAssigned: 'error.user.noRolesAssigned',
 		inactiveOrNotFound: 'error.user.inactiveOrNotFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.user.createFailed',
+		updateFailed: 'error.user.updateFailed',
+		deleteFailed: 'error.user.deleteFailed',
 	},
 };

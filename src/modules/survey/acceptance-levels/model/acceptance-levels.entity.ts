@@ -43,10 +43,16 @@ export class AcceptanceLevelEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'survey_type_id', foreignKeyConstraintName: 'FK_acceptance_levels_survey_type_id' })
+	@JoinColumn({
+		name: 'survey_type_id',
+		foreignKeyConstraintName: 'FK_acceptance_levels_survey_type_id',
+	})
 	survey_type: TypeEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_acceptance_levels_academic_period_id' })
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_acceptance_levels_academic_period_id',
+	})
 	academic_period: AcademicPeriodEntity;
 }

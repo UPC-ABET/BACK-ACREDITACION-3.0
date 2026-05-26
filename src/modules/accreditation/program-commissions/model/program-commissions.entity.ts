@@ -25,7 +25,10 @@ export class ProgramCommissionEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => CommissionEntity)
-	@JoinColumn({ name: 'commission_id', foreignKeyConstraintName: 'FK_program_commissions_commission_id' })
+	@JoinColumn({
+		name: 'commission_id',
+		foreignKeyConstraintName: 'FK_program_commissions_commission_id',
+	})
 	commission: CommissionEntity;
 
 	@ManyToOne(() => ProgramEntity)
@@ -33,10 +36,16 @@ export class ProgramCommissionEntity extends BaseEntity {
 	program: ProgramEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_program_commissions_academic_period_id' })
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_program_commissions_academic_period_id',
+	})
 	academic_period: AcademicPeriodEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'commission_type_id', foreignKeyConstraintName: 'FK_program_commissions_commission_type_id' })
+	@JoinColumn({
+		name: 'commission_type_id',
+		foreignKeyConstraintName: 'FK_program_commissions_commission_type_id',
+	})
 	commission_type: TypeEntity;
 }

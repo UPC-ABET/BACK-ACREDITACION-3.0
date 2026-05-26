@@ -24,7 +24,10 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanAcademicPeriodEntity)
-	@JoinColumn({ name: 'study_plan_academic_period_id', foreignKeyConstraintName: 'FK_study_plan_courses_study_plan_academic_period_id' })
+	@JoinColumn({
+		name: 'study_plan_academic_period_id',
+		foreignKeyConstraintName: 'FK_study_plan_courses_study_plan_academic_period_id',
+	})
 	study_plan_academic_period: StudyPlanAcademicPeriodEntity;
 
 	@ManyToOne(() => CourseEntity)
@@ -32,6 +35,9 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	course: CourseEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'level_type_id', foreignKeyConstraintName: 'FK_study_plan_courses_level_type_id' })
+	@JoinColumn({
+		name: 'level_type_id',
+		foreignKeyConstraintName: 'FK_study_plan_courses_level_type_id',
+	})
 	level_type: TypeEntity;
 }

@@ -519,9 +519,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_student_course_grades_student_section_enrollment_id"`,
 		);
-		await queryRunner.query(
-			`ALTER TABLE "core"."types" DROP CONSTRAINT "FK_types_type_group_id"`,
-		);
+		await queryRunner.query(`ALTER TABLE "core"."types" DROP CONSTRAINT "FK_types_type_group_id"`);
 		await queryRunner.query(
 			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_rubric_questions_outcome_id"`,
 		);
@@ -612,18 +610,12 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_ifc_findings_ifc_id"`,
 		);
-		await queryRunner.query(
-			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_staff_id"`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_ifc_id"`,
-		);
+		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_staff_id"`);
+		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_ifc_id"`);
 		await queryRunner.query(
 			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ifcs_academic_period_id"`,
 		);
-		await queryRunner.query(
-			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ifcs_course_id"`,
-		);
+		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ifcs_course_id"`);
 		await queryRunner.query(
 			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_finding_outcomes_outcome_id"`,
 		);
@@ -693,12 +685,8 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "survey"."outcome_configs" DROP CONSTRAINT "FK_outcome_configs_outcome_id"`,
 		);
-		await queryRunner.query(
-			`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_scores_outcome_id"`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_scores_survey_id"`,
-		);
+		await queryRunner.query(`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_scores_outcome_id"`);
+		await queryRunner.query(`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_scores_survey_id"`);
 		await queryRunner.query(
 			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_course_section_id"`,
 		);

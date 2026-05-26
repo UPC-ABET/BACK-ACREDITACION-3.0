@@ -49,49 +49,64 @@ export class IfcViewService {
 
 		const findingRows = findingsResult.status === 'fulfilled' ? findingsResult.value : [];
 		if (findingsResult.status === 'rejected') {
-			this.logger.error(`getView(${id}) FINDINGS_SQL failed: ${(findingsResult.reason as Error).message}`);
+			this.logger.error(
+				`getView(${id}) FINDINGS_SQL failed: ${(findingsResult.reason as Error).message}`,
+			);
 			errors.push('findings');
 		}
 
-		const outcomeCourseRows = outcomeCourseResult.status === 'fulfilled' ? outcomeCourseResult.value : [];
+		const outcomeCourseRows =
+			outcomeCourseResult.status === 'fulfilled' ? outcomeCourseResult.value : [];
 		if (outcomeCourseResult.status === 'rejected') {
-			this.logger.error(`getView(${id}) OUTCOME_COURSE_SQL failed: ${(outcomeCourseResult.reason as Error).message}`);
+			this.logger.error(
+				`getView(${id}) OUTCOME_COURSE_SQL failed: ${(outcomeCourseResult.reason as Error).message}`,
+			);
 			errors.push('outcome_course');
 		}
 
 		const findingIds = findingRows.map((r: any) => Number(r.finding_id));
 		const header = headerRows[0];
 
-		const [findingOutcomeResult, findingActionResult, previousActionsResult] = await Promise.allSettled([
-			findingIds.length
-				? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds])
-				: Promise.resolve([]),
-			findingIds.length
-				? this.dataSource.query(FINDING_ACTIONS_SQL, [
-						findingIds,
-						IFCS_PARAMETER_KEYS.ACTION_PREFIX,
-						TYPE_CODES.ACTION_COMPLETENESS.PENDING,
-						TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
-					])
-				: Promise.resolve([]),
-			this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
-		]);
+		const [findingOutcomeResult, findingActionResult, previousActionsResult] =
+			await Promise.allSettled([
+				findingIds.length
+					? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds])
+					: Promise.resolve([]),
+				findingIds.length
+					? this.dataSource.query(FINDING_ACTIONS_SQL, [
+							findingIds,
+							IFCS_PARAMETER_KEYS.ACTION_PREFIX,
+							TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+							TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
+						])
+					: Promise.resolve([]),
+				this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
+			]);
 
-		const findingOutcomeRows = findingOutcomeResult.status === 'fulfilled' ? findingOutcomeResult.value : [];
+		const findingOutcomeRows =
+			findingOutcomeResult.status === 'fulfilled' ? findingOutcomeResult.value : [];
 		if (findingOutcomeResult.status === 'rejected') {
-			this.logger.error(`getView(${id}) FINDING_OUTCOMES_SQL failed: ${(findingOutcomeResult.reason as Error).message}`);
+			this.logger.error(
+				`getView(${id}) FINDING_OUTCOMES_SQL failed: ${(findingOutcomeResult.reason as Error).message}`,
+			);
 			errors.push('finding_outcomes');
 		}
 
-		const findingActionRows = findingActionResult.status === 'fulfilled' ? findingActionResult.value : [];
+		const findingActionRows =
+			findingActionResult.status === 'fulfilled' ? findingActionResult.value : [];
 		if (findingActionResult.status === 'rejected') {
-			this.logger.error(`getView(${id}) FINDING_ACTIONS_SQL failed: ${(findingActionResult.reason as Error).message}`);
+			this.logger.error(
+				`getView(${id}) FINDING_ACTIONS_SQL failed: ${(findingActionResult.reason as Error).message}`,
+			);
 			errors.push('finding_actions');
 		}
 
-		const previousActions = previousActionsResult.status === 'fulfilled' ? previousActionsResult.value : [];
+		const previousActions =
+			previousActionsResult.status === 'fulfilled' ? previousActionsResult.value : [];
 		if (previousActionsResult.status === 'rejected') {
-			this.logger.error(`getView(${id}) PREVIOUS_ACTIONS_SQL failed: ${(previousActionsResult.reason as Error).message}`);
+			this.logger.error(
+				`getView(${id}) PREVIOUS_ACTIONS_SQL failed: ${(previousActionsResult.reason as Error).message}`,
+			);
 			errors.push('previous_actions');
 		}
 

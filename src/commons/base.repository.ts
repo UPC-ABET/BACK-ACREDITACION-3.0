@@ -14,9 +14,9 @@ import { IBaseRepository } from './ibase.repository';
 import { BaseEntity } from './base.entity';
 import { sharedStrings } from '../shared/strings/shared.strings';
 
-export abstract class BaseRepository<E extends BaseEntity = BaseEntity>
-	implements IBaseRepository<E>
-{
+export abstract class BaseRepository<
+	E extends BaseEntity = BaseEntity,
+> implements IBaseRepository<E> {
 	protected readonly repository: Repository<E>;
 
 	constructor(

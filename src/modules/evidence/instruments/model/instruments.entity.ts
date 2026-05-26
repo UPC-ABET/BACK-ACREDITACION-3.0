@@ -31,6 +31,9 @@ export class InstrumentEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'constituent_type_id', foreignKeyConstraintName: 'FK_instruments_constituent_type_id' })
+	@JoinColumn({
+		name: 'constituent_type_id',
+		foreignKeyConstraintName: 'FK_instruments_constituent_type_id',
+	})
 	constituent_type: TypeEntity;
 }

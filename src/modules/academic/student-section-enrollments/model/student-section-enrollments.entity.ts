@@ -17,10 +17,16 @@ export class StudentSectionEnrollmentEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => EnrolledStudentEntity)
-	@JoinColumn({ name: 'enrolled_student_id', foreignKeyConstraintName: 'FK_student_section_enrollments_enrolled_student_id' })
+	@JoinColumn({
+		name: 'enrolled_student_id',
+		foreignKeyConstraintName: 'FK_student_section_enrollments_enrolled_student_id',
+	})
 	enrolled_student: EnrolledStudentEntity;
 
 	@ManyToOne(() => CourseSectionEntity)
-	@JoinColumn({ name: 'course_section_id', foreignKeyConstraintName: 'FK_student_section_enrollments_course_section_id' })
+	@JoinColumn({
+		name: 'course_section_id',
+		foreignKeyConstraintName: 'FK_student_section_enrollments_course_section_id',
+	})
 	course_section: CourseSectionEntity;
 }

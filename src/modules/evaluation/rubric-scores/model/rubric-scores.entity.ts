@@ -28,6 +28,9 @@ export class RubricScoreEntity extends BaseEntity {
 	evaluation: EvaluationEntity;
 
 	@ManyToOne(() => RubricQuestionCriteriaEntity)
-	@JoinColumn({ name: 'rubric_question_criteria_id', foreignKeyConstraintName: 'FK_rubric_scores_rubric_question_criteria_id' })
+	@JoinColumn({
+		name: 'rubric_question_criteria_id',
+		foreignKeyConstraintName: 'FK_rubric_scores_rubric_question_criteria_id',
+	})
 	rubric_question_criteria: RubricQuestionCriteriaEntity;
 }

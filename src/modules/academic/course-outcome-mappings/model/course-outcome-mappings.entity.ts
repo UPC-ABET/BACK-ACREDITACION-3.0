@@ -21,14 +21,23 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_course_outcome_mappings_outcome_id' })
+	@JoinColumn({
+		name: 'outcome_id',
+		foreignKeyConstraintName: 'FK_course_outcome_mappings_outcome_id',
+	})
 	outcome: OutcomeEntity;
 
 	@ManyToOne(() => StudyPlanCourseEntity)
-	@JoinColumn({ name: 'study_plan_course_id', foreignKeyConstraintName: 'FK_course_outcome_mappings_study_plan_course_id' })
+	@JoinColumn({
+		name: 'study_plan_course_id',
+		foreignKeyConstraintName: 'FK_course_outcome_mappings_study_plan_course_id',
+	})
 	study_plan_course: StudyPlanCourseEntity;
 
 	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'outcome_type_id', foreignKeyConstraintName: 'FK_course_outcome_mappings_outcome_type_id' })
+	@JoinColumn({
+		name: 'outcome_type_id',
+		foreignKeyConstraintName: 'FK_course_outcome_mappings_outcome_type_id',
+	})
 	outcome_type: TypeEntity;
 }

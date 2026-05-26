@@ -28,6 +28,9 @@ export class ActionEntity extends BaseEntity {
 	program: ProgramEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id', foreignKeyConstraintName: 'FK_actions_academic_period_id' })
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_actions_academic_period_id',
+	})
 	academic_period: AcademicPeriodEntity;
 }

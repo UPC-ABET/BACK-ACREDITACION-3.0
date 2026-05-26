@@ -14,12 +14,16 @@ describe('StatusValidation', () => {
 	describe('validateCreate', () => {
 		it('passes when no duplicate exists', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(StatusValidation.validateCreate(mockRepo as any, { name: 'test' })).resolves.toBeUndefined();
+			await expect(
+				StatusValidation.validateCreate(mockRepo as any, { name: 'test' }),
+			).resolves.toBeUndefined();
 		});
 
 		it('throws when duplicate exists', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
-			await expect(StatusValidation.validateCreate(mockRepo as any, { name: 'test' })).rejects.toThrow(HttpException);
+			await expect(
+				StatusValidation.validateCreate(mockRepo as any, { name: 'test' }),
+			).rejects.toThrow(HttpException);
 		});
 	});
 
@@ -27,13 +31,17 @@ describe('StatusValidation', () => {
 		it('passes when entity exists and no conflict', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(StatusValidation.validateUpdate(mockRepo as any, 1, {})).resolves.toBeUndefined();
+			await expect(
+				StatusValidation.validateUpdate(mockRepo as any, 1, {}),
+			).resolves.toBeUndefined();
 		});
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(StatusValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(HttpException);
+			await expect(StatusValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 
@@ -45,7 +53,9 @@ describe('StatusValidation', () => {
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(StatusValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(HttpException);
+			await expect(StatusValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 });

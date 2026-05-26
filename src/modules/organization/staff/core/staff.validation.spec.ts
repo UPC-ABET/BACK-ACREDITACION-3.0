@@ -14,12 +14,16 @@ describe('StaffValidation', () => {
 	describe('validateCreate', () => {
 		it('passes when no duplicate exists', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(StaffValidation.validateCreate(mockRepo as any, { name: 'test' })).resolves.toBeUndefined();
+			await expect(
+				StaffValidation.validateCreate(mockRepo as any, { name: 'test' }),
+			).resolves.toBeUndefined();
 		});
 
 		it('throws when duplicate exists', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
-			await expect(StaffValidation.validateCreate(mockRepo as any, { name: 'test' })).rejects.toThrow(HttpException);
+			await expect(
+				StaffValidation.validateCreate(mockRepo as any, { name: 'test' }),
+			).rejects.toThrow(HttpException);
 		});
 	});
 
@@ -33,7 +37,9 @@ describe('StaffValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(StaffValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(HttpException);
+			await expect(StaffValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 
@@ -45,7 +51,9 @@ describe('StaffValidation', () => {
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(StaffValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(HttpException);
+			await expect(StaffValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 });

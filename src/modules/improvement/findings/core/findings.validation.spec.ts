@@ -14,12 +14,16 @@ describe('FindingValidation', () => {
 	describe('validateCreate', () => {
 		it('passes when no duplicate exists', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(FindingValidation.validateCreate(mockRepo as any, { name: 'test' })).resolves.toBeUndefined();
+			await expect(
+				FindingValidation.validateCreate(mockRepo as any, { name: 'test' }),
+			).resolves.toBeUndefined();
 		});
 
 		it('throws when duplicate exists', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
-			await expect(FindingValidation.validateCreate(mockRepo as any, { name: 'test' })).rejects.toThrow(HttpException);
+			await expect(
+				FindingValidation.validateCreate(mockRepo as any, { name: 'test' }),
+			).rejects.toThrow(HttpException);
 		});
 	});
 
@@ -27,13 +31,17 @@ describe('FindingValidation', () => {
 		it('passes when entity exists and no conflict', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(FindingValidation.validateUpdate(mockRepo as any, 1, {})).resolves.toBeUndefined();
+			await expect(
+				FindingValidation.validateUpdate(mockRepo as any, 1, {}),
+			).resolves.toBeUndefined();
 		});
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
-			await expect(FindingValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(HttpException);
+			await expect(FindingValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 
@@ -45,7 +53,9 @@ describe('FindingValidation', () => {
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(FindingValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(HttpException);
+			await expect(FindingValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 });

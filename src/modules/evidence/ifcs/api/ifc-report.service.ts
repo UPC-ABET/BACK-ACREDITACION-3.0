@@ -99,7 +99,9 @@ export class IfcReportService {
 		]);
 		const schoolCode: string | undefined = codeRow[0]?.school_code;
 		if (!schoolCode) {
-			this.logger.warn(`generateStatusReport: REPORT_CODES_SQL returned no school_code for schoolId=${schoolId}`);
+			this.logger.warn(
+				`generateStatusReport: REPORT_CODES_SQL returned no school_code for schoolId=${schoolId}`,
+			);
 		}
 		const programCodes: string[] = codeRow[0]?.program_codes ?? [];
 		const codePrefix = schoolCode ?? IFC_INSTRUMENT_CODE;
@@ -125,7 +127,11 @@ export class IfcReportService {
 
 		const xlsx = await this.buildStatusReportXlsx(rows, statusLabelByCode, dto.lang);
 		const filename =
-			(dto.lang === 'en' ? `Status_Report_${IFC_INSTRUMENT_CODE}_` : `Reporte_Estado_${IFC_INSTRUMENT_CODE}_`) + suffix + '.xlsx';
+			(dto.lang === 'en'
+				? `Status_Report_${IFC_INSTRUMENT_CODE}_`
+				: `Reporte_Estado_${IFC_INSTRUMENT_CODE}_`) +
+			suffix +
+			'.xlsx';
 		return { xlsx, filename };
 	}
 
