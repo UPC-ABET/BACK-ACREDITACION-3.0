@@ -49,9 +49,11 @@ function applyColumn(
 	Column(columnOptions)(target, propertyKey);
 
 	if (unique || indexed) {
-		const name =
-			indexName ||
-			`IDX_${target.constructor.name.toUpperCase()}_${String(propertyKey).toUpperCase()}`;
+		const tableName = target.constructor.name
+			.replace(/Entity$/, '')
+			.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+			.toLowerCase();
+		const name = indexName || `IDX_${tableName}_${String(propertyKey).toLowerCase()}`;
 
 		Index(name, { unique })(target, propertyKey);
 	}
