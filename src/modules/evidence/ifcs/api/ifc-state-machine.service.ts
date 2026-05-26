@@ -61,11 +61,12 @@ export class IfcStateMachineService {
 			return { ctx, periodId: Number(periodRows[0]?.academic_period_id) };
 		});
 
-		if (ctx.courseChartId !== null && Number.isFinite(periodId)) {
+		const courseChartId = ctx.courseChartId;
+		if (courseChartId !== null && Number.isFinite(periodId)) {
 			setImmediate(() => {
 				this.dispatcher
 					.dispatch({
-						chartId: ctx.courseChartId!,
+						chartId: courseChartId,
 						periodId,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
