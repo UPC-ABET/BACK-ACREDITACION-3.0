@@ -126,6 +126,9 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "evidence"."ifcs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_2bfd47d6b5d4eb31f3120596a41" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
+			`CREATE INDEX "IDX_ifcs_course_period" ON "evidence"."ifcs" ("course_id", "academic_period_id")`,
+		);
+		await queryRunner.query(
 			`CREATE TABLE "ifc"."statuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "status_type_id" integer NOT NULL, "staff_id" integer NOT NULL, "comment" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_2fd3770acdb67736f1a3e3d5399" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
@@ -920,6 +923,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "ifc"."notification_configs"`);
 		await queryRunner.query(`DROP TABLE "ifc"."ifc_findings"`);
 		await queryRunner.query(`DROP TABLE "ifc"."statuses"`);
+		await queryRunner.query(`DROP INDEX "evidence"."IDX_ifcs_course_period"`);
 		await queryRunner.query(`DROP TABLE "evidence"."ifcs"`);
 		await queryRunner.query(`DROP TABLE "improvement"."finding_outcomes"`);
 		await queryRunner.query(`DROP TABLE "improvement"."plan_actions"`);
