@@ -88,9 +88,10 @@ export class ProjectConfigService {
 		});
 
 		if (!studyPlanCourse) {
-			throw new NotFoundException(
-				`${projectsValidationStrings.error.notFound}: study_plan_course_id ${dto.study_plan_course_id}`,
-			);
+			throw new NotFoundException({
+				message: projectsValidationStrings.error.notFound,
+				errors: [`study_plan_course_id ${dto.study_plan_course_id}`],
+			});
 		}
 
 		if (studyPlanCourse.extra?.is_evaluate_rubric !== true) {
@@ -152,21 +153,24 @@ export class ProjectConfigService {
 			const enrollment = enrollments.find((e) => e.id === enrollmentId);
 
 			if (!enrollment) {
-				throw new NotFoundException(
-					`${projectsValidationStrings.error.enrollmentNotFound}: ${enrollmentId}`,
-				);
+				throw new NotFoundException({
+					message: projectsValidationStrings.error.enrollmentNotFound,
+					errors: [String(enrollmentId)],
+				});
 			}
 
 			if (!enrollment.is_active) {
-				throw new BadRequestException(
-					`${projectsValidationStrings.error.studentWithdrawn}: ${enrollmentId}`,
-				);
+				throw new BadRequestException({
+					message: projectsValidationStrings.error.studentWithdrawn,
+					errors: [String(enrollmentId)],
+				});
 			}
 
 			if (enrollment.course_section?.study_plan_course_id !== dto.study_plan_course_id) {
-				throw new BadRequestException(
-					`${projectsValidationStrings.error.studentNotInCourse}: ${enrollmentId}`,
-				);
+				throw new BadRequestException({
+					message: projectsValidationStrings.error.studentNotInCourse,
+					errors: [String(enrollmentId)],
+				});
 			}
 
 			const alreadyInProject = await this.dataSource.query(
@@ -187,9 +191,10 @@ export class ProjectConfigService {
 				[enrollmentId, academicPeriodId],
 			);
 			if (alreadyInProject.length > 0) {
-				throw new BadRequestException(
-					`${projectsValidationStrings.error.studentAlreadyInProject}: ${enrollmentId}`,
-				);
+				throw new BadRequestException({
+					message: projectsValidationStrings.error.studentAlreadyInProject,
+					errors: [String(enrollmentId)],
+				});
 			}
 		}
 

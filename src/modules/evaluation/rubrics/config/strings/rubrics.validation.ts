@@ -9,12 +9,10 @@ export const rubricsValidationStrings = {
 		capstoneRequiresOutcome: 'error.rubric.capstoneRequiresOutcome',
 		studyPlanCourseNotFound: 'error.rubric.studyPlanCourseNotFound',
 		noRubricForCourse: 'error.rubric.noRubricForCourse',
-		usedCannotDelete: 'error.rubric.usedCannotDelete',
 	},
 	result: {
 		createFailed: 'error.rubric.createFailed',
 		updateFailed: 'error.rubric.updateFailed',
 		deleteFailed: 'error.rubric.deleteFailed',
-		deleteSuccess: 'success.rubric.deleteSuccess',
 	},
 };

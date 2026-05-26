@@ -26,6 +26,7 @@ import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { evaluationsValidationStrings } from '../config/strings/evaluations.validation';
 
 /**
  * EvaluationSubmissionService
@@ -339,10 +340,10 @@ export class EvaluationSubmissionService {
 		});
 
 		if (!evaluator || !student) {
-			throw new NotFoundException('Evaluador o estudiante no encontrado.');
+			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
 		}
 		if (evaluator.project_id !== student.project_id) {
-			throw new ConflictException('El estudiante y el evaluador no pertenecen al mismo proyecto.');
+			throw new ConflictException(evaluationsValidationStrings.error.notSameProject);
 		}
 
 		const criteriaIds = dto.scores.map((s) => s.rubric_question_criteria_id);
@@ -617,12 +618,12 @@ export class EvaluationSubmissionService {
 		});
 
 		if (!project) {
-			throw new NotFoundException('Proyecto no encontrado.');
+			throw new NotFoundException(evaluationsValidationStrings.error.projectNotFound);
 		}
 
 		const { rubric } = await this.getRubricForProject(dto.project_id);
 		if (!rubric) {
-			throw new BadRequestException('El proyecto no tiene una rúbrica asociada.');
+			throw new BadRequestException(evaluationsValidationStrings.error.noRubricForProject);
 		}
 
 		const totalCriteria =
@@ -678,7 +679,7 @@ export class EvaluationSubmissionService {
 		});
 
 		if (!evaluation) {
-			throw new NotFoundException('Evaluación no encontrada.');
+			throw new NotFoundException(evaluationsValidationStrings.error.notFound);
 		}
 
 		return evaluation;

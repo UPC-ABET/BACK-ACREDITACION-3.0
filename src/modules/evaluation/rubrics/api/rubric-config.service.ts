@@ -157,9 +157,10 @@ export class RubricConfigService {
 			const validOutcomeIds = mappings.map((m) => m.outcome_id);
 			const invalidOutcomes = outcomeIds.filter((id) => !validOutcomeIds.includes(id));
 			if (invalidOutcomes.length > 0) {
-				throw new BadRequestException(
-					`${rubricsValidationStrings.error.invalidOutcomeMapping}: ${invalidOutcomes.join(', ')}`,
-				);
+				throw new BadRequestException({
+					message: rubricsValidationStrings.error.invalidOutcomeMapping,
+					errors: invalidOutcomes.map(String),
+				});
 			}
 		}
 
@@ -258,7 +259,7 @@ export class RubricConfigService {
 		});
 
 		if (!rubric) {
-			throw new NotFoundException('Rúbrica no encontrada.');
+			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
 		return rubric;
@@ -299,7 +300,7 @@ export class RubricConfigService {
 		});
 
 		if (!rubric) {
-			throw new NotFoundException('Rúbrica no encontrada.');
+			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
 		// 2. Obtener comisiones directamente desde los program_commission_id de los outcomes
