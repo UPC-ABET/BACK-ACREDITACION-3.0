@@ -18,7 +18,14 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`INSERT INTO "typeorm_metadata"("database", "schema", "table", "type", "name", "value") VALUES ($1, $2, $3, $4, $5, $6)`,
-			[queryRunner.connection.options.database, 'academic', 'academic_periods', 'GENERATED_COLUMN', 'year', `EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int`],
+			[
+				queryRunner.connection.options.database,
+				'academic',
+				'academic_periods',
+				'GENERATED_COLUMN',
+				'year',
+				`EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int`,
+			],
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(255) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED NOT NULL, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,

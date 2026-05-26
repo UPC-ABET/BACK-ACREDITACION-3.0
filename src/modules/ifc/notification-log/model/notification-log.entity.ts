@@ -13,7 +13,11 @@ export class NotificationLogEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: true, indexed: true, indexName: 'IDX_notification_logs_ifc_id' })
 	ifc_id: number | null;
 
-	@IntegerFKIDColumn({ nullable: false, indexed: true, indexName: 'IDX_notification_logs_chart_id' })
+	@IntegerFKIDColumn({
+		nullable: false,
+		indexed: true,
+		indexName: 'IDX_notification_logs_chart_id',
+	})
 	chart_id: number;
 
 	@IntegerFKIDColumn({ nullable: false })

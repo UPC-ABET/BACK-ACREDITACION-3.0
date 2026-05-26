@@ -28,7 +28,6 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
  */
 @Injectable()
 export class RubricConfigService {
-
 	constructor(
 		@InjectRepository(RubricEntity)
 		private readonly rubricRepo: Repository<RubricEntity>,

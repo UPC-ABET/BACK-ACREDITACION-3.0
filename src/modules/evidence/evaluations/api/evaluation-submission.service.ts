@@ -49,7 +49,6 @@ import { evaluationsValidationStrings } from '../config/strings/evaluations.vali
  */
 @Injectable()
 export class EvaluationSubmissionService {
-
 	constructor(
 		@InjectRepository(EvaluationEntity)
 		private readonly evaluationRepo: Repository<EvaluationEntity>,
@@ -573,7 +572,9 @@ export class EvaluationSubmissionService {
 	 * Guarda/actualiza la observación de una evaluación (R-NOT-014)
 	 */
 	async saveObservation(dto: SaveObservationDto): Promise<{ success: boolean }> {
-		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.ASISTIO);
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
+			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
+		);
 		const nrStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.NR);
 
 		await this.dataSource.transaction(async (manager) => {
@@ -629,7 +630,9 @@ export class EvaluationSubmissionService {
 		const totalCriteria =
 			rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
 
-		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.ASISTIO);
+		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
+			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
+		);
 
 		await this.dataSource.transaction(async (manager) => {
 			for (const ps of project.students) {

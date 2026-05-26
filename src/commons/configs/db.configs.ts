@@ -24,7 +24,6 @@ export const DB_DEFAULT_BOOLEAN = false;
 export const DB_DEFAULT_DATE = () => 'CURRENT_TIMESTAMP';
 export const DB_DEFAULT_JSON = () => "'{}'";
 
-
 // %%BASE TYPES
 type BaseOptions = Partial<ColumnOptions> & {
 	unique?: boolean;
