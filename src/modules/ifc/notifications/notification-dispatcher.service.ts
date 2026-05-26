@@ -137,7 +137,7 @@ export class NotificationDispatcherService {
 	private async resolveContext(input: DispatchInput): Promise<ResolvedContext | null> {
 		const rows = await this.dataSource.query(
 			`
-			WITH course_chart AS (
+			WITH RECURSIVE course_chart AS (
 				SELECT c.id, c.staff_id, c.entity_code AS course_id, c.root_chart_detail_id
 				FROM organization.charts c
 				JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
