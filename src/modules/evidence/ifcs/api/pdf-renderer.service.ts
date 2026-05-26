@@ -10,6 +10,18 @@ type PuppeteerBrowser = {
 	connected: boolean;
 };
 
+interface ArchiverInstance {
+	on(event: 'data', listener: (chunk: Buffer) => void): this;
+	on(event: 'end', listener: () => void): this;
+	on(event: 'error', listener: (err: Error) => void): this;
+	append(source: Buffer, data: { name: string }): this;
+	finalize(): Promise<void>;
+}
+
+type ArchiverModule = {
+	ZipArchive: new (options: { zlib: { level: number } }) => ArchiverInstance;
+};
+
 function loadLogoDataUri(): string {
 	const candidates = [
 		path.resolve(process.cwd(), 'src/assets/upc-logo.png'),
@@ -138,8 +150,7 @@ export class PdfRendererService implements OnModuleDestroy {
 	}
 
 	async filesToZip(files: Array<{ filename: string; pdf: Buffer }>): Promise<Buffer> {
-		// archiver 8.x ESM dropped the factory function; only the class constructors are exported.
-		const { ZipArchive } = (await import('archiver')) as any;
+		const { ZipArchive } = (await import('archiver')) as unknown as ArchiverModule;
 		return await new Promise((resolve, reject) => {
 			const archive = new ZipArchive({ zlib: { level: 6 } });
 			const chunks: Buffer[] = [];
