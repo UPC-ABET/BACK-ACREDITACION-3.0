@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class InitialMigration1778723980112 implements MigrationInterface {
-	name = 'InitialMigration1778723980112';
+export class InitialMigration1700000000000 implements MigrationInterface {
+	name = 'InitialMigration1700000000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "academic"`);
@@ -14,13 +14,27 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "evaluation"`);
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "core"`);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(1000) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,
+			`CREATE TABLE IF NOT EXISTS "typeorm_metadata" ("type" varchar NOT NULL, "database" varchar, "schema" varchar, "table" varchar, "name" varchar, "value" text)`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "idx_academic_periods_year" ON "academic"."academic_periods" ("year")`,
+			`INSERT INTO "typeorm_metadata"("database", "schema", "table", "type", "name", "value") VALUES ($1, $2, $3, $4, $5, $6)`,
+			[
+				queryRunner.connection.options.database,
+				'academic',
+				'academic_periods',
+				'GENERATED_COLUMN',
+				'year',
+				`EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int`,
+			],
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(1000) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_db5d514f1f3dbbd718f2f8feaf0" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(255) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED NOT NULL, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_academic_periods_year" ON "academic"."academic_periods" ("year")`,
+		);
+		await queryRunner.query(
+			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_db5d514f1f3dbbd718f2f8feaf0" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "accreditation"."commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "accreditor_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_feab7a246fd5bd9eee8a00e655c" UNIQUE ("code"), CONSTRAINT "PK_2701379966e2e670bb5ff0ae78e" PRIMARY KEY ("id"))`,
@@ -35,13 +49,13 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_db7ef6d23e512a822d661a2d793" UNIQUE ("outcome_code"), CONSTRAINT "PK_f5b8391e8300f8962eb1842dfca" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(1000) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_d6a06870edd505bfc2d002cb728" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_d6a06870edd505bfc2d002cb728" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(1000) NOT NULL, "last_name" character varying(1000) NOT NULL, "email" character varying(1000) NOT NULL, "phone" character varying(1000) NOT NULL, "password" character varying(1000) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(1000) NOT NULL, "staff_phone" character varying(1000) NOT NULL, CONSTRAINT "PK_e4ee98bb552756c180aec1e854a" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, CONSTRAINT "PK_e4ee98bb552756c180aec1e854a" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, CONSTRAINT "UQ_ACADEMIC_PROFESSORS_CODE" UNIQUE ("code"), CONSTRAINT "PK_6b249c6363a154820c909c45e27" PRIMARY KEY ("id"))`,
@@ -104,6 +118,9 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`CREATE TABLE "improvement"."findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "criticality_type_id" integer NOT NULL, "instrument_id" integer NOT NULL, "staff_id" integer, "correlative" integer NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer, "is_automatic" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_ae9807d6293c23c13ff8804d09c" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
+			`CREATE INDEX "IDX_findings_course_period" ON "improvement"."findings" ("course_id", "academic_period_id")`,
+		);
+		await queryRunner.query(
 			`CREATE TABLE "improvement"."finding_actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "finding_id" integer NOT NULL, "action_id" integer NOT NULL, "in_plan_required" boolean NOT NULL DEFAULT false, "evidences" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_aa2c153cbc5da86a2819c2c4dae" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
@@ -116,16 +133,25 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`CREATE TABLE "evidence"."ifcs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_2bfd47d6b5d4eb31f3120596a41" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
+			`CREATE INDEX "IDX_ifcs_course_period" ON "evidence"."ifcs" ("course_id", "academic_period_id")`,
+		);
+		await queryRunner.query(
 			`CREATE TABLE "ifc"."statuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "status_type_id" integer NOT NULL, "staff_id" integer NOT NULL, "comment" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_2fd3770acdb67736f1a3e3d5399" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "ifc"."ifc_findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "finding_id" integer NOT NULL, CONSTRAINT "PK_f0b14dc8a4cfd64381c399dc8f1" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]'::jsonb, CONSTRAINT "PK_25e7784b69fbdb82b911ca6aa88" PRIMARY KEY ("id"), CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
+			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', CONSTRAINT "PK_25e7784b69fbdb82b911ca6aa88" PRIMARY KEY ("id"), CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_log" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "notified_staff_id" integer NOT NULL, "notifier_staff_id" integer NOT NULL, "user_id" integer NOT NULL, "sent_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "ifc"."notification_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]', "cc_staff_ids" jsonb NOT NULL DEFAULT '[]', "provider_message_id" character varying(254) NULL, CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_notification_logs_ifc_id" ON "ifc"."notification_logs" ("ifc_id")`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_notification_logs_chart_id" ON "ifc"."notification_logs" ("chart_id")`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, CONSTRAINT "PK_88157a8406d1bbca75ccac829d1" PRIMARY KEY ("id"))`,
@@ -158,7 +184,7 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`CREATE TABLE "evaluation"."rubric_scores" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "evaluation_id" integer NOT NULL, "rubric_question_criteria_id" integer NOT NULL, "score" numeric(12,6) NOT NULL, "commentaries" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_35eb0094940cd089113bae42d34" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."rubric_questions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_id" integer NOT NULL, "outcome_id" integer NOT NULL, "question" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_7b046d188d390f1ff98f0031707" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."rubric_questions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_id" integer NOT NULL, "outcome_id" integer, "question" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_7b046d188d390f1ff98f0031707" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "core"."type_groups" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_2e70b216ddac5c1ce8eb9410122" UNIQUE ("code"), CONSTRAINT "PK_73650a04200c679d5b25227ea5f" PRIMARY KEY ("id"))`,
@@ -179,524 +205,708 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 			`CREATE TABLE "academic"."course_outcome_mappings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, "outcome_type_id" integer NOT NULL, CONSTRAINT "PK_da935d2cca6b077a7be88e52cd1" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."commissions" ADD CONSTRAINT "FK_abde2f6c7c2c15d86d1ad18ff51" FOREIGN KEY ("accreditor_id") REFERENCES "accreditation"."accreditors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`CREATE TABLE "core"."roles" ("id" SERIAL NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "code" character varying(50) NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_roles_code" UNIQUE ("code"), CONSTRAINT "PK_roles" PRIMARY KEY ("id"))`,
 		);
+		await queryRunner.query(`
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'root') THEN
+					EXECUTE 'ALTER TABLE "core"."roles" OWNER TO root';
+				END IF;
+			END $$;
+		`);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_511d4b62c287b78c4af8f40316f" FOREIGN KEY ("commission_id") REFERENCES "accreditation"."commissions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`CREATE TABLE "core"."user_roles" ("id" SERIAL NOT NULL, "user_id" integer NOT NULL, "role_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_user_roles_user_role" UNIQUE ("user_id", "role_id"), CONSTRAINT "PK_user_roles" PRIMARY KEY ("id"))`,
 		);
+		await queryRunner.query(`
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'root') THEN
+					EXECUTE 'ALTER TABLE "core"."user_roles" OWNER TO root';
+				END IF;
+			END $$;
+		`);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_c9db3e661bf32fdb6e6ef308855" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`CREATE INDEX "IDX_user_roles_user_active" ON "core"."user_roles" ("user_id", "is_active")`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_a177876dc3e2ceca34941a843af" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`CREATE TABLE "core"."role_module_permissions" ("id" SERIAL NOT NULL, "role_id" integer NOT NULL, "module_type_id" integer NOT NULL, "permission_type_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_role_module_permission" UNIQUE ("role_id", "module_type_id", "permission_type_id"), CONSTRAINT "PK_role_module_permissions" PRIMARY KEY ("id"))`,
 		);
+		await queryRunner.query(`
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'root') THEN
+					EXECUTE 'ALTER TABLE "core"."role_module_permissions" OWNER TO root';
+				END IF;
+			END $$;
+		`);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."outcomes" ADD CONSTRAINT "FK_097598f7aa4d58807224829c9e3" FOREIGN KEY ("program_commission_id") REFERENCES "accreditation"."program_commissions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`CREATE INDEX "IDX_role_module_permissions_lookup" ON "core"."role_module_permissions" ("role_id", "module_type_id", "permission_type_id", "is_active")`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."staff" ADD CONSTRAINT "FK_cec9365d9fc3a3409158b645f2e" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "accreditation"."commissions" ADD CONSTRAINT "FK_commissions_accreditor_id" FOREIGN KEY ("accreditor_id") REFERENCES "accreditation"."accreditors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_85d939ce84e33b8c05e5ab5c6b7" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_program_commissions_commission_id" FOREIGN KEY ("commission_id") REFERENCES "accreditation"."commissions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plans" ADD CONSTRAINT "FK_b6f8c14929dad8515c26f0e99ca" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_program_commissions_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_academic_periods" ADD CONSTRAINT "FK_8be7ba65daa2348105b750d911f" FOREIGN KEY ("study_plan_id") REFERENCES "academic"."study_plans"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_program_commissions_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_academic_periods" ADD CONSTRAINT "FK_86bdb6267d08ac016e1217dfd28" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "accreditation"."outcomes" ADD CONSTRAINT "FK_outcomes_program_commission_id" FOREIGN KEY ("program_commission_id") REFERENCES "accreditation"."program_commissions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_5684f9badf760b33d503896ff7f" FOREIGN KEY ("study_plan_academic_period_id") REFERENCES "academic"."study_plan_academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."staff" ADD CONSTRAINT "FK_staff_user_id" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_ca51537ec992562128c681f31ca" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_professors_staff_id" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_9e808a12c6fcda1f271e0b8e194" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."study_plans" ADD CONSTRAINT "FK_study_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_08af529c306b942a0eb284bbb17" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."study_plan_academic_periods" ADD CONSTRAINT "FK_study_plan_academic_periods_study_plan_id" FOREIGN KEY ("study_plan_id") REFERENCES "academic"."study_plans"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_e23836d20c9e7c447ffa727292a" FOREIGN KEY ("professor_id") REFERENCES "academic"."professors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."study_plan_academic_periods" ADD CONSTRAINT "FK_study_plan_academic_periods_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."students" ADD CONSTRAINT "FK_fb3eff90b11bddf7285f9b4e281" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_study_plan_academic_period_id" FOREIGN KEY ("study_plan_academic_period_id") REFERENCES "academic"."study_plan_academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."students" ADD CONSTRAINT "FK_2a7ac955ea573f8be71d736cef8" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_course_id" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_1e2e74b43d94a79367b61e4eab1" FOREIGN KEY ("student_id") REFERENCES "academic"."students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_study_plan_course_id" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_8b4a1983abc06fdd685fec02cf1" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_campus_id" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_7c0654dddcd08cb7dcbbb460558" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_professor_id" FOREIGN KEY ("professor_id") REFERENCES "academic"."professors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_1911b4f441dc5a55522d91fc5a9" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."students" ADD CONSTRAINT "FK_students_user_id" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_ff6454c0b5a61cbc19540cf87d2" FOREIGN KEY ("course_section_id") REFERENCES "academic"."course_sections"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."students" ADD CONSTRAINT "FK_students_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."scores" ADD CONSTRAINT "FK_f9c51419385591b860fe3153b3b" FOREIGN KEY ("survey_id") REFERENCES "evidence"."surveys"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_student_id" FOREIGN KEY ("student_id") REFERENCES "academic"."students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."scores" ADD CONSTRAINT "FK_e360c3ba135fd978fdbe8391033" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."outcome_configs" ADD CONSTRAINT "FK_5bb175dcc2d9ef833fc7790604b" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_campus_id" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."notifications" ADD CONSTRAINT "FK_b8613819b0c854f82e9578bb13b" FOREIGN KEY ("survey_id") REFERENCES "evidence"."surveys"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."notification_messages" ADD CONSTRAINT "FK_04df17b688b6db08ccb0e0a1cf5" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_course_section_id" FOREIGN KEY ("course_section_id") REFERENCES "academic"."course_sections"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."schools" ADD CONSTRAINT "FK_fd58337f0f869a8b883f6fab518" FOREIGN KEY ("faculty_id") REFERENCES "organization"."faculties"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "survey"."scores" ADD CONSTRAINT "FK_scores_survey_id" FOREIGN KEY ("survey_id") REFERENCES "evidence"."surveys"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_263811162a1ce42c386bf651451" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "survey"."scores" ADD CONSTRAINT "FK_scores_outcome_id" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_ed6f544d34bc05b62407c971753" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "survey"."outcome_configs" ADD CONSTRAINT "FK_outcome_configs_outcome_id" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_19cd031fd090d85727123449f03" FOREIGN KEY ("chart_level_id") REFERENCES "organization"."chart_levels"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "survey"."notifications" ADD CONSTRAINT "FK_notifications_survey_id" FOREIGN KEY ("survey_id") REFERENCES "evidence"."surveys"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_7c9285fc09f3e86c715e210808e" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "survey"."notification_messages" ADD CONSTRAINT "FK_notification_messages_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_72f85c54d1c16ba598f9bc5bdc0" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."schools" ADD CONSTRAINT "FK_schools_faculty_id" FOREIGN KEY ("faculty_id") REFERENCES "organization"."faculties"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."actions" ADD CONSTRAINT "FK_2325b483c937fa28616029ba0f1" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_staff_id" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."actions" ADD CONSTRAINT "FK_97c368289c2688d42c338d21823" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_a28bcdfbddcadeb4087822d1a72" FOREIGN KEY ("instrument_id") REFERENCES "evidence"."instruments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_chart_level_id" FOREIGN KEY ("chart_level_id") REFERENCES "organization"."chart_levels"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_7074bb1ffc321ab035336440293" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_8bb159a3fedc577c1c8feb6d14a" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_plans_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_82d0e6077d884da30557fc19c88" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."actions" ADD CONSTRAINT "FK_actions_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_a6a196107377ba69657bdfd8163" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."actions" ADD CONSTRAINT "FK_actions_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_actions" ADD CONSTRAINT "FK_e4eb336fa30dc3f416f55468402" FOREIGN KEY ("finding_id") REFERENCES "improvement"."findings"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_findings_criticality_type_id" FOREIGN KEY ("criticality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_actions" ADD CONSTRAINT "FK_a2a1769dd904b2a3f0dd1544370" FOREIGN KEY ("action_id") REFERENCES "improvement"."actions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_findings_instrument_id" FOREIGN KEY ("instrument_id") REFERENCES "evidence"."instruments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plan_actions" ADD CONSTRAINT "FK_8cc0b96651ab5867e0e83ec442e" FOREIGN KEY ("plan_id") REFERENCES "improvement"."plans"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_findings_staff_id" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plan_actions" ADD CONSTRAINT "FK_9cf0aecd2f7635e698f7567b641" FOREIGN KEY ("finding_action_id") REFERENCES "improvement"."finding_actions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_findings_course_id" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_outcomes" ADD CONSTRAINT "FK_5eb171ec32f4884e90b47deec5b" FOREIGN KEY ("finding_id") REFERENCES "improvement"."findings"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_findings_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_outcomes" ADD CONSTRAINT "FK_2701838bd914e1c89012710be40" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."findings" ADD CONSTRAINT "FK_findings_campus_id" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."ifcs" ADD CONSTRAINT "FK_ed6e1bb0dd8c28adcb279ef94d5" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."finding_actions" ADD CONSTRAINT "FK_finding_actions_finding_id" FOREIGN KEY ("finding_id") REFERENCES "improvement"."findings"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."ifcs" ADD CONSTRAINT "FK_ec1fc4fb915c886b871cd5d492b" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."finding_actions" ADD CONSTRAINT "FK_finding_actions_action_id" FOREIGN KEY ("action_id") REFERENCES "improvement"."actions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."statuses" ADD CONSTRAINT "FK_b880e46ee378768a6f4a032cb86" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."plan_actions" ADD CONSTRAINT "FK_plan_actions_plan_id" FOREIGN KEY ("plan_id") REFERENCES "improvement"."plans"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."statuses" ADD CONSTRAINT "FK_f8b5dfa2dcb03df1b77c30bdaed" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."plan_actions" ADD CONSTRAINT "FK_plan_actions_finding_action_id" FOREIGN KEY ("finding_action_id") REFERENCES "improvement"."finding_actions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."ifc_findings" ADD CONSTRAINT "FK_fa2257fa21d62f5823789902cd1" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."finding_outcomes" ADD CONSTRAINT "FK_finding_outcomes_finding_id" FOREIGN KEY ("finding_id") REFERENCES "improvement"."findings"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."ifc_findings" ADD CONSTRAINT "FK_11936d3138eaa3ebb84540830f4" FOREIGN KEY ("finding_id") REFERENCES "improvement"."findings"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "improvement"."finding_outcomes" ADD CONSTRAINT "FK_finding_outcomes_outcome_id" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_f713067637a7fae926e12670297" FOREIGN KEY ("school_id") REFERENCES "organization"."schools"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."ifcs" ADD CONSTRAINT "FK_ifcs_course_id" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_235074c210b929308c3ee4b8ec6" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."ifcs" ADD CONSTRAINT "FK_ifcs_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_25e766780a4dab387ec7797b144" FOREIGN KEY ("trigger_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."statuses" ADD CONSTRAINT "FK_statuses_ifc_id" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_47f96cc66aa222368281dbb4f8c" FOREIGN KEY ("ifc_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."statuses" ADD CONSTRAINT "FK_statuses_staff_id" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."users" ADD CONSTRAINT "FK_9e86f4e5144e5f0c754ec343bea" FOREIGN KEY ("document_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."ifc_findings" ADD CONSTRAINT "FK_ifc_findings_ifc_id" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91" FOREIGN KEY ("course_id") REFERENCES "academic"."courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."ifc_findings" ADD CONSTRAINT "FK_ifc_findings_finding_id" FOREIGN KEY ("finding_id") REFERENCES "improvement"."findings"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_a629bdf7af991a09332156cf090" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_notification_configs_school_id" FOREIGN KEY ("school_id") REFERENCES "organization"."schools"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_9f050e51dcc8c94037242889065" FOREIGN KEY ("notified_staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_notification_configs_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_710e611b0159d1e6c85ea1fd260" FOREIGN KEY ("notifier_staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_notification_configs_trigger_type_id" FOREIGN KEY ("trigger_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" ADD CONSTRAINT "FK_273a2def92ca98ca5b08cc44def" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_configs" ADD CONSTRAINT "FK_notification_configs_ifc_status_type_id" FOREIGN KEY ("ifc_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_12ff6a3275ca209d440644c1eed" FOREIGN KEY ("student_id") REFERENCES "academic"."students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."users" ADD CONSTRAINT "FK_users_document_type_id" FOREIGN KEY ("document_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_c805f90e056db372ebdfb6423b6" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_ifc_id" FOREIGN KEY ("ifc_id") REFERENCES "evidence"."ifcs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."student_section_enrollments" ADD CONSTRAINT "FK_3f9b6366ae909fd085358b64803" FOREIGN KEY ("enrolled_student_id") REFERENCES "academic"."enrolled_students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_chart_id" FOREIGN KEY ("chart_id") REFERENCES "organization"."charts"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."student_section_enrollments" ADD CONSTRAINT "FK_f1979a38b2fc4be66a62f06de19" FOREIGN KEY ("course_section_id") REFERENCES "academic"."course_sections"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_notification_config_id" FOREIGN KEY ("notification_config_id") REFERENCES "ifc"."notification_configs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."student_course_outcome_grades" ADD CONSTRAINT "FK_1956ae5a1d423350e1a0b7ca2d6" FOREIGN KEY ("student_section_enrollment_id") REFERENCES "academic"."student_section_enrollments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "ifc"."notification_logs" ADD CONSTRAINT "FK_notification_logs_notifier_user_id" FOREIGN KEY ("notifier_user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."student_course_outcome_grades" ADD CONSTRAINT "FK_74f59f74bf46c6224fcc44e8315" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_enrolled_students_student_id" FOREIGN KEY ("student_id") REFERENCES "academic"."students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_evaluators" ADD CONSTRAINT "FK_6e239cee87fbc8145c259a57afe" FOREIGN KEY ("project_id") REFERENCES "evaluation"."projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_enrolled_students_campus_id" FOREIGN KEY ("campus_id") REFERENCES "organization"."campuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_evaluators" ADD CONSTRAINT "FK_bc50693334616aaea73fa04acb9" FOREIGN KEY ("professor_id") REFERENCES "academic"."professors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."student_section_enrollments" ADD CONSTRAINT "FK_student_section_enrollments_enrolled_student_id" FOREIGN KEY ("enrolled_student_id") REFERENCES "academic"."enrolled_students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_students" ADD CONSTRAINT "FK_03fe9c891618b667a122233f067" FOREIGN KEY ("project_id") REFERENCES "evaluation"."projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "academic"."student_section_enrollments" ADD CONSTRAINT "FK_student_section_enrollments_course_section_id" FOREIGN KEY ("course_section_id") REFERENCES "academic"."course_sections"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_students" ADD CONSTRAINT "FK_c3ecb1a05e9f7f41142457de284" FOREIGN KEY ("student_section_enrollment_id") REFERENCES "academic"."student_section_enrollments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."student_course_outcome_grades" ADD CONSTRAINT "FK_student_course_outcome_grades_student_section_enrollment_id" FOREIGN KEY ("student_section_enrollment_id") REFERENCES "academic"."student_section_enrollments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_d8115d6a5ea8c9170bfd417f525" FOREIGN KEY ("project_student_id") REFERENCES "evaluation"."project_students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."student_course_outcome_grades" ADD CONSTRAINT "FK_student_course_outcome_grades_outcome_id" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_e83ae3bbb89a4a8140408cc5ee4" FOREIGN KEY ("project_evaluator_id") REFERENCES "evaluation"."project_evaluators"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."project_evaluators" ADD CONSTRAINT "FK_project_evaluators_project_id" FOREIGN KEY ("project_id") REFERENCES "evaluation"."projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_8e2f1c4d5a6b7e8f9a0b1c2d3e4" FOREIGN KEY ("rubric_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."project_evaluators" ADD CONSTRAINT "FK_project_evaluators_professor_id" FOREIGN KEY ("professor_id") REFERENCES "academic"."professors"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_9f3a2b5c6d7e8f9a0b1c2d3e4f5" FOREIGN KEY ("grade_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."project_students" ADD CONSTRAINT "FK_project_students_project_id" FOREIGN KEY ("project_id") REFERENCES "evaluation"."projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_f23cab684bfd6263435e05121c4" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."project_students" ADD CONSTRAINT "FK_project_students_student_section_enrollment_id" FOREIGN KEY ("student_section_enrollment_id") REFERENCES "academic"."student_section_enrollments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_scores" ADD CONSTRAINT "FK_6b7a0e963995aac32b706b65b1e" FOREIGN KEY ("evaluation_id") REFERENCES "evidence"."evaluations"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_evaluations_project_student_id" FOREIGN KEY ("project_student_id") REFERENCES "evaluation"."project_students"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_scores" ADD CONSTRAINT "FK_0f54742a01d56561986c77b0aa2" FOREIGN KEY ("rubric_question_criteria_id") REFERENCES "evaluation"."rubric_question_criterias"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_evaluations_project_evaluator_id" FOREIGN KEY ("project_evaluator_id") REFERENCES "evaluation"."project_evaluators"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_questions" ADD CONSTRAINT "FK_60b889a63baa36375f264f812d9" FOREIGN KEY ("rubric_id") REFERENCES "evaluation"."rubrics"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_rubrics_rubric_type_id" FOREIGN KEY ("rubric_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_questions" ADD CONSTRAINT "FK_828d98255d254f812a0d6732fb9" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_rubrics_grade_type_id" FOREIGN KEY ("grade_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "core"."types" ADD CONSTRAINT "FK_d1bfd236db1805a762aa30de369" FOREIGN KEY ("type_group_id") REFERENCES "core"."type_groups"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubrics" ADD CONSTRAINT "FK_rubrics_study_plan_course_id" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."student_course_grades" ADD CONSTRAINT "FK_8a14c3786b1412d4b11ebf144e7" FOREIGN KEY ("student_section_enrollment_id") REFERENCES "academic"."student_section_enrollments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubric_scores" ADD CONSTRAINT "FK_rubric_scores_evaluation_id" FOREIGN KEY ("evaluation_id") REFERENCES "evidence"."evaluations"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."performance_levels" ADD CONSTRAINT "FK_d525cfd1a21b9e0488ef04cd09a" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubric_scores" ADD CONSTRAINT "FK_rubric_scores_rubric_question_criteria_id" FOREIGN KEY ("rubric_question_criteria_id") REFERENCES "evaluation"."rubric_question_criterias"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_a968164f8aa1859576af56971c2" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubric_questions" ADD CONSTRAINT "FK_rubric_questions_rubric_id" FOREIGN KEY ("rubric_id") REFERENCES "evaluation"."rubrics"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_11ba9460ef5a797504d1ab63b9a" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "evaluation"."rubric_questions" ADD CONSTRAINT "FK_rubric_questions_outcome_id" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."types" ADD CONSTRAINT "FK_types_type_group_id" FOREIGN KEY ("type_group_id") REFERENCES "core"."type_groups"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_course_grades" ADD CONSTRAINT "FK_student_course_grades_student_section_enrollment_id" FOREIGN KEY ("student_section_enrollment_id") REFERENCES "academic"."student_section_enrollments"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."performance_levels" ADD CONSTRAINT "FK_performance_levels_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_outcome_id" FOREIGN KEY ("outcome_id") REFERENCES "accreditation"."outcomes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_study_plan_course_id" FOREIGN KEY ("study_plan_course_id") REFERENCES "academic"."study_plan_courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."user_roles" ADD CONSTRAINT "FK_user_roles_user" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."user_roles" ADD CONSTRAINT "FK_user_roles_role" FOREIGN KEY ("role_id") REFERENCES "core"."roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_role" FOREIGN KEY ("role_id") REFERENCES "core"."roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_module_type" FOREIGN KEY ("module_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "core"."role_module_permissions" ADD CONSTRAINT "FK_rmp_permission_type" FOREIGN KEY ("permission_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."academic_periods" ADD CONSTRAINT "FK_academic_periods_modality_type_id" FOREIGN KEY ("modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."programs" ADD CONSTRAINT "FK_programs_modality_type_id" FOREIGN KEY ("modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" ADD CONSTRAINT "FK_program_commissions_commission_type_id" FOREIGN KEY ("commission_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" ADD CONSTRAINT "FK_staff_position_type_id" FOREIGN KEY ("position_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."students" ADD CONSTRAINT "FK_students_graduation_modality_type_id" FOREIGN KEY ("graduation_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_survey_type_id" FOREIGN KEY ("survey_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" ADD CONSTRAINT "FK_surveys_survey_status_type_id" FOREIGN KEY ("survey_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notifications" ADD CONSTRAINT "FK_notifications_notification_status_type_id" FOREIGN KEY ("notification_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notification_messages" ADD CONSTRAINT "FK_notification_messages_survey_type_id" FOREIGN KEY ("survey_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."chart_levels" ADD CONSTRAINT "FK_chart_levels_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."instruments" ADD CONSTRAINT "FK_instruments_constituent_type_id" FOREIGN KEY ("constituent_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."statuses" ADD CONSTRAINT "FK_statuses_status_type_id" FOREIGN KEY ("status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_enrolled_students_enrollement_modality_type_id" FOREIGN KEY ("enrollement_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_question_criterias" ADD CONSTRAINT "FK_rubric_question_criterias_rubric_question_id" FOREIGN KEY ("rubric_question_id") REFERENCES "evaluation"."rubric_questions"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_evaluators" ADD CONSTRAINT "FK_project_evaluators_evaluator_type_id" FOREIGN KEY ("evaluator_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."evaluations" ADD CONSTRAINT "FK_evaluations_qualification_status_type_id" FOREIGN KEY ("qualification_status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_course_grades" ADD CONSTRAINT "FK_student_course_grades_grade_type_id" FOREIGN KEY ("grade_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."performance_levels" ADD CONSTRAINT "FK_performance_levels_instrument_type_id" FOREIGN KEY ("instrument_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_outcome_type_id" FOREIGN KEY ("outcome_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_11ba9460ef5a797504d1ab63b9a"`,
+			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_permission_type"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_a968164f8aa1859576af56971c2"`,
+			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_module_type"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."performance_levels" DROP CONSTRAINT "FK_d525cfd1a21b9e0488ef04cd09a"`,
+			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_role"`,
 		);
+		await queryRunner.query(`ALTER TABLE "core"."user_roles" DROP CONSTRAINT "FK_user_roles_role"`);
+		await queryRunner.query(`ALTER TABLE "core"."user_roles" DROP CONSTRAINT "FK_user_roles_user"`);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_8a14c3786b1412d4b11ebf144e7"`,
+			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_course_outcome_mappings_study_plan_course_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "core"."types" DROP CONSTRAINT "FK_d1bfd236db1805a762aa30de369"`,
+			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_course_outcome_mappings_outcome_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_828d98255d254f812a0d6732fb9"`,
+			`ALTER TABLE "academic"."performance_levels" DROP CONSTRAINT "FK_performance_levels_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_60b889a63baa36375f264f812d9"`,
+			`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_student_course_grades_student_section_enrollment_id"`,
 		);
+		await queryRunner.query(`ALTER TABLE "core"."types" DROP CONSTRAINT "FK_types_type_group_id"`);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_0f54742a01d56561986c77b0aa2"`,
+			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_rubric_questions_outcome_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_6b7a0e963995aac32b706b65b1e"`,
+			`ALTER TABLE "evaluation"."rubric_questions" DROP CONSTRAINT "FK_rubric_questions_rubric_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_f23cab684bfd6263435e05121c4"`,
+			`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_rubric_scores_rubric_question_criteria_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_9f3a2b5c6d7e8f9a0b1c2d3e4f5"`,
+			`ALTER TABLE "evaluation"."rubric_scores" DROP CONSTRAINT "FK_rubric_scores_evaluation_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_8e2f1c4d5a6b7e8f9a0b1c2d3e4"`,
+			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_rubrics_study_plan_course_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_e83ae3bbb89a4a8140408cc5ee4"`,
+			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_rubrics_grade_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_d8115d6a5ea8c9170bfd417f525"`,
+			`ALTER TABLE "evaluation"."rubrics" DROP CONSTRAINT "FK_rubrics_rubric_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_c3ecb1a05e9f7f41142457de284"`,
+			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_evaluations_project_evaluator_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_03fe9c891618b667a122233f067"`,
+			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_evaluations_project_student_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_bc50693334616aaea73fa04acb9"`,
+			`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_project_students_student_section_enrollment_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_6e239cee87fbc8145c259a57afe"`,
+			`ALTER TABLE "evaluation"."project_students" DROP CONSTRAINT "FK_project_students_project_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_74f59f74bf46c6224fcc44e8315"`,
+			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_project_evaluators_professor_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_1956ae5a1d423350e1a0b7ca2d6"`,
+			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_project_evaluators_project_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_f1979a38b2fc4be66a62f06de19"`,
+			`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_student_course_outcome_grades_outcome_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_3f9b6366ae909fd085358b64803"`,
+			`ALTER TABLE "evidence"."student_course_outcome_grades" DROP CONSTRAINT "FK_student_course_outcome_grades_student_section_enrollment_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_c805f90e056db372ebdfb6423b6"`,
+			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_student_section_enrollments_course_section_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_12ff6a3275ca209d440644c1eed"`,
+			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_student_section_enrollments_enrolled_student_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_273a2def92ca98ca5b08cc44def"`,
+			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_enrolled_students_campus_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_710e611b0159d1e6c85ea1fd260"`,
+			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_enrolled_students_student_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_9f050e51dcc8c94037242889065"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_notifier_user_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_a629bdf7af991a09332156cf090"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_notification_config_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_log" DROP CONSTRAINT "FK_52a53f8905f57e18b942bc0aa91"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_chart_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."users" DROP CONSTRAINT "FK_9e86f4e5144e5f0c754ec343bea"`,
+			`ALTER TABLE "ifc"."notification_logs" DROP CONSTRAINT "FK_notification_logs_ifc_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_47f96cc66aa222368281dbb4f8c"`,
+			`ALTER TABLE "organization"."users" DROP CONSTRAINT "FK_users_document_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_25e766780a4dab387ec7797b144"`,
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_notification_configs_ifc_status_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_235074c210b929308c3ee4b8ec6"`,
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_notification_configs_trigger_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_f713067637a7fae926e12670297"`,
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_notification_configs_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_11936d3138eaa3ebb84540830f4"`,
+			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_notification_configs_school_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_fa2257fa21d62f5823789902cd1"`,
+			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_ifc_findings_finding_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_f8b5dfa2dcb03df1b77c30bdaed"`,
+			`ALTER TABLE "ifc"."ifc_findings" DROP CONSTRAINT "FK_ifc_findings_ifc_id"`,
 		);
+		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_staff_id"`);
+		await queryRunner.query(`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_ifc_id"`);
 		await queryRunner.query(
-			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_b880e46ee378768a6f4a032cb86"`,
+			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ifcs_academic_period_id"`,
 		);
+		await queryRunner.query(`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ifcs_course_id"`);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ec1fc4fb915c886b871cd5d492b"`,
+			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_finding_outcomes_outcome_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."ifcs" DROP CONSTRAINT "FK_ed6e1bb0dd8c28adcb279ef94d5"`,
+			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_finding_outcomes_finding_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_2701838bd914e1c89012710be40"`,
+			`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_plan_actions_finding_action_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_outcomes" DROP CONSTRAINT "FK_5eb171ec32f4884e90b47deec5b"`,
+			`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_plan_actions_plan_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_9cf0aecd2f7635e698f7567b641"`,
+			`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_finding_actions_action_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plan_actions" DROP CONSTRAINT "FK_8cc0b96651ab5867e0e83ec442e"`,
+			`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_finding_actions_finding_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_a2a1769dd904b2a3f0dd1544370"`,
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_findings_campus_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."finding_actions" DROP CONSTRAINT "FK_e4eb336fa30dc3f416f55468402"`,
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_findings_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a6a196107377ba69657bdfd8163"`,
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_findings_course_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_82d0e6077d884da30557fc19c88"`,
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_findings_criticality_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_8bb159a3fedc577c1c8feb6d14a"`,
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_findings_staff_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_7074bb1ffc321ab035336440293"`,
+			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_findings_instrument_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."findings" DROP CONSTRAINT "FK_a28bcdfbddcadeb4087822d1a72"`,
+			`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_actions_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_97c368289c2688d42c338d21823"`,
+			`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_actions_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."actions" DROP CONSTRAINT "FK_2325b483c937fa28616029ba0f1"`,
+			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_plans_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_72f85c54d1c16ba598f9bc5bdc0"`,
+			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_plans_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_7c9285fc09f3e86c715e210808e"`,
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_chart_level_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_19cd031fd090d85727123449f03"`,
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_ed6f544d34bc05b62407c971753"`,
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_staff_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_263811162a1ce42c386bf651451"`,
+			`ALTER TABLE "organization"."schools" DROP CONSTRAINT "FK_schools_faculty_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."schools" DROP CONSTRAINT "FK_fd58337f0f869a8b883f6fab518"`,
+			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_notification_messages_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_04df17b688b6db08ccb0e0a1cf5"`,
+			`ALTER TABLE "survey"."notifications" DROP CONSTRAINT "FK_notifications_survey_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."notifications" DROP CONSTRAINT "FK_b8613819b0c854f82e9578bb13b"`,
+			`ALTER TABLE "survey"."outcome_configs" DROP CONSTRAINT "FK_outcome_configs_outcome_id"`,
 		);
+		await queryRunner.query(`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_scores_outcome_id"`);
+		await queryRunner.query(`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_scores_survey_id"`);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."outcome_configs" DROP CONSTRAINT "FK_5bb175dcc2d9ef833fc7790604b"`,
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_course_section_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_e360c3ba135fd978fdbe8391033"`,
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "survey"."scores" DROP CONSTRAINT "FK_f9c51419385591b860fe3153b3b"`,
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_campus_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_ff6454c0b5a61cbc19540cf87d2"`,
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_1911b4f441dc5a55522d91fc5a9"`,
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_student_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_7c0654dddcd08cb7dcbbb460558"`,
+			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_students_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_8b4a1983abc06fdd685fec02cf1"`,
+			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_students_user_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_1e2e74b43d94a79367b61e4eab1"`,
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_course_sections_professor_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_2a7ac955ea573f8be71d736cef8"`,
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_course_sections_campus_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_fb3eff90b11bddf7285f9b4e281"`,
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_course_sections_study_plan_course_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_e23836d20c9e7c447ffa727292a"`,
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_course_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_08af529c306b942a0eb284bbb17"`,
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_study_plan_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_9e808a12c6fcda1f271e0b8e194"`,
+			`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_study_plan_academic_periods_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_ca51537ec992562128c681f31ca"`,
+			`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_study_plan_academic_periods_study_plan_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_5684f9badf760b33d503896ff7f"`,
+			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_study_plans_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_86bdb6267d08ac016e1217dfd28"`,
+			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_professors_staff_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plan_academic_periods" DROP CONSTRAINT "FK_8be7ba65daa2348105b750d911f"`,
+			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_user_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_b6f8c14929dad8515c26f0e99ca"`,
+			`ALTER TABLE "accreditation"."outcomes" DROP CONSTRAINT "FK_outcomes_program_commission_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_85d939ce84e33b8c05e5ab5c6b7"`,
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_program_commissions_academic_period_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_cec9365d9fc3a3409158b645f2e"`,
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_program_commissions_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."outcomes" DROP CONSTRAINT "FK_097598f7aa4d58807224829c9e3"`,
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_program_commissions_commission_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_a177876dc3e2ceca34941a843af"`,
+			`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_commissions_accreditor_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_c9db3e661bf32fdb6e6ef308855"`,
+			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_course_outcome_mappings_outcome_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_511d4b62c287b78c4af8f40316f"`,
+			`ALTER TABLE "academic"."performance_levels" DROP CONSTRAINT "FK_performance_levels_instrument_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "accreditation"."commissions" DROP CONSTRAINT "FK_abde2f6c7c2c15d86d1ad18ff51"`,
+			`ALTER TABLE "academic"."student_course_grades" DROP CONSTRAINT "FK_student_course_grades_grade_type_id"`,
 		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."evaluations" DROP CONSTRAINT "FK_evaluations_qualification_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."project_evaluators" DROP CONSTRAINT "FK_project_evaluators_evaluator_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evaluation"."rubric_question_criterias" DROP CONSTRAINT "FK_rubric_question_criterias_rubric_question_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_enrolled_students_enrollement_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "ifc"."statuses" DROP CONSTRAINT "FK_statuses_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."instruments" DROP CONSTRAINT "FK_instruments_constituent_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."chart_levels" DROP CONSTRAINT "FK_chart_levels_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_notification_messages_survey_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "survey"."notifications" DROP CONSTRAINT "FK_notifications_notification_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_survey_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "evidence"."surveys" DROP CONSTRAINT "FK_surveys_survey_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."students" DROP CONSTRAINT "FK_students_graduation_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_course_sections_section_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_position_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."program_commissions" DROP CONSTRAINT "FK_program_commissions_commission_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."programs" DROP CONSTRAINT "FK_programs_modality_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."academic_periods" DROP CONSTRAINT "FK_academic_periods_modality_type_id"`,
+		);
+		await queryRunner.query(`DROP INDEX "core"."IDX_role_module_permissions_lookup"`);
+		await queryRunner.query(`DROP TABLE "core"."role_module_permissions"`);
+		await queryRunner.query(`DROP INDEX "core"."IDX_user_roles_user_active"`);
+		await queryRunner.query(`DROP TABLE "core"."user_roles"`);
+		await queryRunner.query(`DROP TABLE "core"."roles"`);
 		await queryRunner.query(`DROP TABLE "academic"."course_outcome_mappings"`);
 		await queryRunner.query(`DROP TABLE "academic"."performance_levels"`);
 		await queryRunner.query(`DROP TABLE "academic"."student_course_grades"`);
@@ -714,14 +924,18 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "evidence"."student_course_outcome_grades"`);
 		await queryRunner.query(`DROP TABLE "academic"."student_section_enrollments"`);
 		await queryRunner.query(`DROP TABLE "academic"."enrolled_students"`);
-		await queryRunner.query(`DROP TABLE "ifc"."notification_log"`);
+		await queryRunner.query(`DROP INDEX "ifc"."IDX_notification_logs_ifc_id"`);
+		await queryRunner.query(`DROP INDEX "ifc"."IDX_notification_logs_chart_id"`);
+		await queryRunner.query(`DROP TABLE "ifc"."notification_logs"`);
 		await queryRunner.query(`DROP TABLE "ifc"."notification_configs"`);
 		await queryRunner.query(`DROP TABLE "ifc"."ifc_findings"`);
 		await queryRunner.query(`DROP TABLE "ifc"."statuses"`);
+		await queryRunner.query(`DROP INDEX "evidence"."IDX_ifcs_course_period"`);
 		await queryRunner.query(`DROP TABLE "evidence"."ifcs"`);
 		await queryRunner.query(`DROP TABLE "improvement"."finding_outcomes"`);
 		await queryRunner.query(`DROP TABLE "improvement"."plan_actions"`);
 		await queryRunner.query(`DROP TABLE "improvement"."finding_actions"`);
+		await queryRunner.query(`DROP INDEX "improvement"."IDX_findings_course_period"`);
 		await queryRunner.query(`DROP TABLE "improvement"."findings"`);
 		await queryRunner.query(`DROP TABLE "evidence"."instruments"`);
 		await queryRunner.query(`DROP TABLE "improvement"."actions"`);
@@ -750,6 +964,8 @@ export class InitialMigration1778723980112 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "academic"."programs"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."commissions"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."accreditors"`);
+		await queryRunner.query(`DROP INDEX "academic"."IDX_academic_periods_year"`);
 		await queryRunner.query(`DROP TABLE "academic"."academic_periods"`);
+		await queryRunner.query(`DROP TABLE IF EXISTS "typeorm_metadata"`);
 	}
 }

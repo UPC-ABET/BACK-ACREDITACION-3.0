@@ -438,18 +438,19 @@ Table "ifc"."notification_configs" {
   cc_chart_level_type_ids json
 }
 
-Table "ifc"."notification_log" {
+Table "ifc"."notification_logs" {
   id int
   extra json
   is_active boolean
   created_at timestamp [null]
   updated_at timestamp [null]
-  course_id int
-  academic_period_id int
-  notified_staff_id int
-  notifier_staff_id int
-  user_id int
-  sent_at timestamp
+  ifc_id int [null]
+  chart_id int
+  notification_config_id int
+  notifier_user_id int [null]
+  to_staff_ids json
+  cc_staff_ids json
+  provider_message_id varchar [null]
 }
 
 Table "academic"."enrolled_students" {
@@ -572,7 +573,7 @@ Table "evaluation"."rubric_questions" {
   created_at timestamp [null]
   updated_at timestamp [null]
   rubric_id int
-  outcome_id int
+  outcome_id int [null]
   question json
 }
 
@@ -650,6 +651,35 @@ Table "academic"."course_outcome_mappings" {
   outcome_type_id int
 }
 
+Table "core"."roles" {
+  id int
+  name json
+  code varchar
+  description json [null]
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table "core"."user_roles" {
+  id int
+  user_id int
+  role_id int
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table "core"."role_module_permissions" {
+  id int
+  role_id int
+  module_type_id int
+  permission_type_id int
+  is_active boolean
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
 Ref: "accreditation"."commissions"."accreditor_id" > "accreditation"."accreditors"."id"
 Ref: "accreditation"."program_commissions"."commission_id" > "accreditation"."commissions"."id"
 Ref: "accreditation"."program_commissions"."program_id" > "academic"."programs"."id"
@@ -704,11 +734,10 @@ Ref: "ifc"."ifc_findings"."ifc_id" > "evidence"."ifcs"."id"
 Ref: "ifc"."ifc_findings"."finding_id" > "improvement"."findings"."id"
 Ref: "ifc"."notification_configs"."school_id" > "organization"."schools"."id"
 Ref: "ifc"."notification_configs"."academic_period_id" > "academic"."academic_periods"."id"
-Ref: "ifc"."notification_log"."course_id" > "academic"."courses"."id"
-Ref: "ifc"."notification_log"."academic_period_id" > "academic"."academic_periods"."id"
-Ref: "ifc"."notification_log"."notified_staff_id" > "organization"."staff"."id"
-Ref: "ifc"."notification_log"."notifier_staff_id" > "organization"."staff"."id"
-Ref: "ifc"."notification_log"."user_id" > "organization"."users"."id"
+Ref: "ifc"."notification_logs"."ifc_id" > "evidence"."ifcs"."id"
+Ref: "ifc"."notification_logs"."chart_id" > "organization"."charts"."id"
+Ref: "ifc"."notification_logs"."notification_config_id" > "ifc"."notification_configs"."id"
+Ref: "ifc"."notification_logs"."notifier_user_id" > "organization"."users"."id"
 Ref: "academic"."enrolled_students"."student_id" > "academic"."students"."id"
 Ref: "academic"."enrolled_students"."campus_id" > "organization"."campuses"."id"
 Ref: "academic"."student_section_enrollments"."enrolled_student_id" > "academic"."enrolled_students"."id"
@@ -731,3 +760,7 @@ Ref: "academic"."student_course_grades"."student_section_enrollment_id" > "acade
 Ref: "academic"."performance_levels"."academic_period_id" > "academic"."academic_periods"."id"
 Ref: "academic"."course_outcome_mappings"."outcome_id" > "accreditation"."outcomes"."id"
 Ref: "academic"."course_outcome_mappings"."study_plan_course_id" > "academic"."study_plan_courses"."id"
+Ref: "core"."user_roles"."user_id" > "organization"."users"."id"
+Ref: "core"."user_roles"."role_id" > "core"."roles"."id"
+Ref: "core"."role_module_permissions"."role_id" > "core"."roles"."id"
+Ref: "evaluation"."rubric_question_criterias"."rubric_question_id" > "evaluation"."rubric_questions"."id"
