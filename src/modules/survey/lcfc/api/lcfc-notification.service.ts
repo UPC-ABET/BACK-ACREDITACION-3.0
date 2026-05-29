@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
+import { SurveyEmailService } from 'src/modules/survey/shared/survey-email.service';
 import { DataSource } from 'typeorm';
 import { LcfcNotificationRepository } from '../core/lcfc-notification.repository';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
@@ -25,6 +26,7 @@ export class LcfcNotificationService {
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
+		private readonly surveyEmailService: SurveyEmailService,
 	) {}
 
 	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
@@ -84,14 +86,14 @@ export class LcfcNotificationService {
 
 		// 2. Collect active course_section_ids, applying optional filters
 		let courseSectionIds = activeConfigs
-			.map((c) => (c.extra as any)?.course_section_id as number)
+			.map((c) => c.extra?.course_section_id as number)
 			.filter((id): id is number => typeof id === 'number');
 
 		if (dto.campus_id) {
 			const campusId = dto.campus_id;
 			courseSectionIds = courseSectionIds.filter((id) => {
-				const cfg = activeConfigs.find((c) => (c.extra as any)?.course_section_id === id);
-				return (cfg?.extra as any)?.campus_id === campusId;
+				const cfg = activeConfigs.find((c) => c.extra?.course_section_id === id);
+				return cfg?.extra?.campus_id === campusId;
 			});
 		}
 
@@ -125,12 +127,11 @@ export class LcfcNotificationService {
 			await this.dataSource.transaction(async (manager) => {
 				for (const student of enrolledStudents) {
 					const config = activeConfigs.find(
-						(c) => (c.extra as any)?.course_section_id === student.course_section_id,
+						(c) => c.extra?.course_section_id === student.course_section_id,
 					);
 					const programId =
-						dto.program_id ?? student.program_id ?? (config?.extra as any)?.program_id ?? null;
-					const campusId =
-						dto.campus_id ?? student.campus_id ?? (config?.extra as any)?.campus_id ?? null;
+						dto.program_id ?? student.program_id ?? config?.extra?.program_id ?? null;
+					const campusId = dto.campus_id ?? student.campus_id ?? config?.extra?.campus_id ?? null;
 
 					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
 						lcfcSurveyTypeId,
@@ -138,7 +139,26 @@ export class LcfcNotificationService {
 						student.course_section_id,
 					);
 
-					if (!existingSurvey) {
+					if (existingSurvey) {
+						alreadyExisted++;
+						const existingNotif = await manager.query(
+							`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
+							[existingSurvey.id, scheduledStatusId],
+						);
+
+						if (existingNotif?.[0]) {
+							pendingNotifications.push({
+								student_id: student.student_id,
+								student_name: student.student_name,
+								student_code: student.student_code,
+								student_email: student.student_email,
+								survey_id: existingSurvey.id,
+								token: existingNotif[0].token,
+								course_name: student.course_name,
+								program_name: student.program_name,
+							});
+						}
+					} else {
 						const inserted = await manager.query(
 							`INSERT INTO evidence.surveys
 							 (survey_type_id, survey_status_type_id, student_id, academic_period_id, campus_id, program_id, course_section_id)
@@ -175,25 +195,6 @@ export class LcfcNotificationService {
 							course_name: student.course_name,
 							program_name: student.program_name,
 						});
-					} else {
-						alreadyExisted++;
-						const existingNotif = await manager.query(
-							`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
-							[existingSurvey.id, scheduledStatusId],
-						);
-
-						if (existingNotif?.[0]) {
-							pendingNotifications.push({
-								student_id: student.student_id,
-								student_name: student.student_name,
-								student_code: student.student_code,
-								student_email: student.student_email,
-								survey_id: existingSurvey.id,
-								token: existingNotif[0].token,
-								course_name: student.course_name,
-								program_name: student.program_name,
-							});
-						}
 					}
 				}
 			});
@@ -206,7 +207,7 @@ export class LcfcNotificationService {
 			dto.survey_base_url ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
-		const emailTemplate = await this.getEmailTemplate();
+		const emailTemplate = await this.surveyEmailService.getEmailTemplate('TG601-T004');
 
 		let emailsSent = 0;
 		let emailsFailed = 0;
@@ -215,7 +216,7 @@ export class LcfcNotificationService {
 		for (const notif of pendingNotifications) {
 			try {
 				const surveyUrl = `${surveyBaseUrl}/encuesta/lcfc?token=${notif.token}`;
-				const emailBody = this.replacePlaceholders(emailTemplate.body, {
+				const emailBody = this.surveyEmailService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: notif.student_name,
 					CodigoAlumno: notif.student_code,
 					NombreCurso: notif.course_name,
@@ -253,18 +254,19 @@ export class LcfcNotificationService {
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		LcfcValidation.validateToken(tokenData, token);
+		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		return {
 			valid: true,
-			survey_id: tokenData!.survey_id,
-			student_id: tokenData!.student_id,
-			student_name: tokenData!.student_name,
-			student_code: tokenData!.student_code,
-			program_id: tokenData!.program_id,
-			program_name: tokenData!.program_name,
-			academic_period_id: tokenData!.academic_period_id,
-			course_section_id: tokenData!.course_section_id,
-			max_register_date: tokenData!.max_register_date,
+			survey_id: tokenData.survey_id,
+			student_id: tokenData.student_id,
+			student_name: tokenData.student_name,
+			student_code: tokenData.student_code,
+			program_id: tokenData.program_id,
+			program_name: tokenData.program_name,
+			academic_period_id: tokenData.academic_period_id,
+			course_section_id: tokenData.course_section_id,
+			max_register_date: tokenData.max_register_date,
 		};
 	}
 
@@ -273,10 +275,9 @@ export class LcfcNotificationService {
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData, dto.token);
+		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
-			tokenData!.course_section_id,
-		);
+		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData.course_section_id);
 		const language = dto.language ?? 'es';
 
 		// Outcome names come from the DB in Spanish; English falls back to Spanish
@@ -288,11 +289,11 @@ export class LcfcNotificationService {
 		}));
 
 		return {
-			survey_id: tokenData!.survey_id,
-			student_id: tokenData!.student_id,
-			student_name: tokenData!.student_name,
-			program_id: tokenData!.program_id,
-			course_section_id: tokenData!.course_section_id,
+			survey_id: tokenData.survey_id,
+			student_id: tokenData.student_id,
+			student_name: tokenData.student_name,
+			program_id: tokenData.program_id,
+			course_section_id: tokenData.course_section_id,
 			language,
 			outcomes: outcomeList,
 		};
@@ -303,27 +304,29 @@ export class LcfcNotificationService {
 	async completeSurvey(dto: CompleteLcfcSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData, dto.token);
+		if (!tokenData) throw new BadRequestException('Token no encontrado');
 		LcfcValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
+		const surveyId = tokenData.survey_id;
 
 		try {
 			await this.dataSource.transaction(async (manager) => {
 				for (const item of dto.scores) {
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[tokenData!.survey_id, item.outcome_id],
+						[surveyId, item.outcome_id],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, tokenData!.survey_id, item.outcome_id],
+							[item.score, item.commentaries ?? null, surveyId, item.outcome_id],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[tokenData!.survey_id, item.outcome_id, item.score, item.commentaries ?? null],
+							[surveyId, item.outcome_id, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -337,14 +340,14 @@ export class LcfcNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, tokenData!.survey_id, commentariesJson]
-						: [closedStatusId, tokenData!.survey_id],
+						? [closedStatusId, surveyId, commentariesJson]
+						: [closedStatusId, surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				survey_id: tokenData!.survey_id,
+				survey_id: surveyId,
 				scores_saved: dto.scores.length,
 				message: 'Encuesta LCFC completada exitosamente. ¡Gracias por tu participación!',
 			};
@@ -381,41 +384,5 @@ export class LcfcNotificationService {
 			by_course: data.by_course,
 			filters: dto,
 		};
-	}
-
-	// ─── Internal helpers ────────────────────────────────────────────────────────
-
-	private async getEmailTemplate(): Promise<{ subject: string; body: string }> {
-		const rows = await this.dataSource.query(
-			`SELECT nm.title, nm.body
-			 FROM survey.notification_messages nm
-			 INNER JOIN core.types t ON t.id = nm.survey_type_id
-			 WHERE t.code = 'TG601-T004'
-			   AND nm.is_active = true
-			 ORDER BY nm.id ASC
-			 LIMIT 1`,
-		);
-
-		if (rows?.[0]) {
-			return { subject: rows[0].title, body: rows[0].body };
-		}
-
-		return {
-			subject: 'Encuesta de Logro de Fin de Ciclo (LCFC)',
-			body: `<p>Estimado(a) [NombreAlumno],</p>
-<p>Te invitamos a completar la encuesta de Logro de Fin de Ciclo para el curso <strong>[NombreCurso]</strong>.</p>
-<p>Por favor accede al siguiente enlace para responder la encuesta:</p>
-<p><a href="[LinkEncuesta]">Completar Encuesta LCFC</a></p>
-<p>Token de acceso: [Token]</p>
-<p>Saludos,<br/>Equipo ABET</p>`,
-		};
-	}
-
-	private replacePlaceholders(template: string, data: Record<string, string>): string {
-		let result = template;
-		for (const [key, value] of Object.entries(data)) {
-			result = result.replaceAll(`[${key}]`, value ?? '');
-		}
-		return result;
 	}
 }

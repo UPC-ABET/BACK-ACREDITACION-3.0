@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 
 export class LcfcValidation {
 	static validateToken(tokenData: any, token: string): void {
@@ -13,15 +14,13 @@ export class LcfcValidation {
 			);
 		}
 		if (tokenData.survey_status === 'Cerrada') {
-			throw new BadRequestException('Esta encuesta LCFC ya ha sido completada anteriormente.');
+			throw new BadRequestException(lcfcValidationStrings.error.alreadyCompleted);
 		}
 	}
 
 	static validateCompleteScores(scores: { outcome_id: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
-			throw new BadRequestException(
-				'Debe proporcionar al menos un puntaje para completar la encuesta LCFC.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noScores);
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 10) {
@@ -34,9 +33,7 @@ export class LcfcValidation {
 
 	static validateSendRequest(pendingCount: number): void {
 		if (pendingCount === 0) {
-			throw new BadRequestException(
-				'No hay estudiantes pendientes de notificación para enviar en el período y configuración seleccionados.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noPending);
 		}
 	}
 }

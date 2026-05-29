@@ -1,7 +1,6 @@
 import { Body, Param } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
-import { LcfcConfigService } from './lcfc-config.service';
-import { LcfcNotificationService } from './lcfc-notification.service';
+import { LcfcService } from './lcfc.service';
 import {
 	SwaggerLcfcController,
 	SwaggerLcfcConfigGenerate,
@@ -26,63 +25,60 @@ import {
 
 @SwaggerLcfcController()
 export class LcfcController {
-	constructor(
-		private readonly configService: LcfcConfigService,
-		private readonly notifService: LcfcNotificationService,
-	) {}
+	constructor(private readonly lcfcService: LcfcService) {}
 
 	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerLcfcConfigGenerate()
 	async configGenerate(@Body() dto: GenerateLcfcConfigDto) {
-		return parseSuccessResponse(await this.configService.generateConfigs(dto));
+		return parseSuccessResponse(await this.lcfcService.generateConfigs(dto));
 	}
 
 	@SwaggerLcfcConfigGetAll()
 	async configGetAll() {
-		return parseSuccessResponse(await this.configService.getAll());
+		return parseSuccessResponse(await this.lcfcService.getAll());
 	}
 
 	@SwaggerLcfcConfigGetByFilters()
 	async configGetByFilters(@Body() dto: FilterLcfcConfigDto) {
-		return parseSuccessResponse(await this.configService.getAll(dto));
+		return parseSuccessResponse(await this.lcfcService.getAll(dto));
 	}
 
 	@SwaggerLcfcConfigUpdateStatus()
 	async configUpdateStatus(@Body() dto: UpdateLcfcConfigStatusDto) {
-		return parseSuccessResponse(await this.configService.updateStatus(dto));
+		return parseSuccessResponse(await this.lcfcService.updateStatus(dto));
 	}
 
 	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────
 
 	@SwaggerLcfcNotificationSend()
 	async notificationSend(@Body() dto: SendLcfcNotificationDto) {
-		return parseSuccessResponse(await this.notifService.sendNotifications(dto));
+		return parseSuccessResponse(await this.lcfcService.sendNotifications(dto));
 	}
 
 	// ── TOKEN ENDPOINTS ───────────────────────────────────────────────
 
 	@SwaggerLcfcTokenValidate()
 	async tokenValidate(@Param('token') token: string) {
-		return parseSuccessResponse(await this.notifService.validateToken(token));
+		return parseSuccessResponse(await this.lcfcService.validateToken(token));
 	}
 
 	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerLcfcSurveyGetByToken()
 	async surveyGetByToken(@Body() dto: GetLcfcSurveyByTokenDto) {
-		return parseSuccessResponse(await this.notifService.getSurveyByToken(dto));
+		return parseSuccessResponse(await this.lcfcService.getSurveyByToken(dto));
 	}
 
 	@SwaggerLcfcSurveyComplete()
 	async surveyComplete(@Body() dto: CompleteLcfcSurveyDto) {
-		return parseSuccessResponse(await this.notifService.completeSurvey(dto));
+		return parseSuccessResponse(await this.lcfcService.completeSurvey(dto));
 	}
 
 	// ── DASHBOARD ENDPOINTS ───────────────────────────────────────────
 
 	@SwaggerLcfcDashboard()
 	async dashboardGet(@Body() dto: DashboardLcfcDto) {
-		return parseSuccessResponse(await this.notifService.getDashboard(dto));
+		return parseSuccessResponse(await this.lcfcService.getDashboard(dto));
 	}
 }
