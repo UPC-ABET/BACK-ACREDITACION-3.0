@@ -366,9 +366,9 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		[
 			'TG403',
 			'TG403-T001',
-			i18n('Comite', 'Committee'),
+			i18n('Comité', 'Committee'),
 			i18n(
-				'Comite - promedia notas de todos los evaluadores COM',
+				'Comité - promedia notas de todos los evaluadores COM',
 				'Committee - averages scores from all COM evaluators',
 			),
 			'{}',

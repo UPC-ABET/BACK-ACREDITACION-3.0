@@ -54,9 +54,12 @@ export class ProjectConfigService {
 		private readonly dataSource: DataSource,
 	) {}
 
-	private async resolveGradeTypeIdByCode(code: string): Promise<number | null> {
+	private async resolveGradeTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
-		return type?.id ?? null;
+		if (!type) {
+			throw new BadRequestException(projectsValidationStrings.error.invalidGradeTypeCode);
+		}
+		return type.id;
 	}
 
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {

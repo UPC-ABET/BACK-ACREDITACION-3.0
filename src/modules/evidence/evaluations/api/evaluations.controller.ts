@@ -45,18 +45,18 @@ export class EvaluationController extends BaseController<EvaluationService> {
 		return parseSuccessResponse(await this.submissionService.finalizeProject(dto));
 	}
 
-	@Get('student/:studentId')
-	async getStudentEvaluations(@Param('studentId', ParseIntPipe) studentId: number) {
+	@Get('student/:student_id')
+	async getStudentEvaluations(@Param('student_id', ParseIntPipe) studentId: number) {
 		return parseSuccessResponse(await this.submissionService.getStudentEvaluations(studentId));
 	}
 
-	@Get('evaluator/:evaluatorId')
-	async getEvaluatorEvaluations(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
+	@Get('evaluator/:evaluator_id')
+	async getEvaluatorEvaluations(@Param('evaluator_id', ParseIntPipe) evaluatorId: number) {
 		return parseSuccessResponse(await this.submissionService.getEvaluatorEvaluations(evaluatorId));
 	}
 
-	@Get('evaluation/:evaluationId')
-	async getEvaluationWithScores(@Param('evaluationId', ParseIntPipe) evaluationId: number) {
+	@Get('evaluation/:evaluation_id')
+	async getEvaluationWithScores(@Param('evaluation_id', ParseIntPipe) evaluationId: number) {
 		return parseSuccessResponse(await this.submissionService.getEvaluationById(evaluationId));
 	}
 

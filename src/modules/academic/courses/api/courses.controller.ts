@@ -56,10 +56,10 @@ export class CourseController extends BaseController<CourseService> {
 		return await super.getByFilters(dto);
 	}
 
-	@Post(':courseId/enrolled-students')
+	@Post(':course_id/enrolled-students')
 	@ApiOkResponse({ type: [CourseEnrolledStudentDto] })
 	async getEnrolledStudents(
-		@Param('courseId', ParseIntPipe) courseId: number,
+		@Param('course_id', ParseIntPipe) courseId: number,
 		@Body() filters?: FilterCourseEnrolledStudentsDto,
 	) {
 		return parseSuccessResponse(
