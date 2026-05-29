@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { graValidationStrings } from '../config/strings/gra.validation';
 
 export class GraValidation {
 	static validateToken(tokenData: any, token: string): void {
@@ -13,15 +14,13 @@ export class GraValidation {
 			);
 		}
 		if (tokenData.survey_status === 'Cerrada') {
-			throw new BadRequestException('Esta encuesta GRA ya ha sido completada anteriormente.');
+			throw new BadRequestException(graValidationStrings.error.alreadyCompleted);
 		}
 	}
 
 	static validateCompleteScores(scores: { outcome_config_id: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
-			throw new BadRequestException(
-				'Debe proporcionar al menos un puntaje para completar la encuesta GRA.',
-			);
+			throw new BadRequestException(graValidationStrings.error.noScores);
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 5) {
@@ -34,9 +33,7 @@ export class GraValidation {
 
 	static validateSendEmailRequest(pendingCount: number): void {
 		if (pendingCount === 0) {
-			throw new BadRequestException(
-				'No hay estudiantes pendientes de notificación para enviar en el período seleccionado.',
-			);
+			throw new BadRequestException(graValidationStrings.error.noPending);
 		}
 	}
 }

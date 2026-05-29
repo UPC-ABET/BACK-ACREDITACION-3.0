@@ -2,8 +2,8 @@ import { Injectable, BadRequestException, Logger, NotFoundException } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
+import { SurveyEmailService } from 'src/modules/survey/shared/survey-email.service';
 import { DataSource } from 'typeorm';
-import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { GraNotificationRepository } from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
@@ -28,6 +28,7 @@ export class GraNotificationService {
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
+		private readonly surveyEmailService: SurveyEmailService,
 	) {}
 
 	// ─── Helpers: obtener IDs de tipos ─────────────────────────────────────────
@@ -82,17 +83,15 @@ export class GraNotificationService {
 		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
 
 		// Crear la encuesta GRA si no existe
-		if (!survey) {
-			survey = (await this.surveyRepo.create({
-				survey_type_id: graSurveyTypeId,
-				survey_status_type_id: activeStatusId,
-				student_id: dto.student_id,
-				academic_period_id: dto.academic_period_id,
-				campus_id: dto.campus_id,
-				program_id: dto.program_id,
-				course_section_id: courseSectionId ?? 1,
-			})) as SurveyEntity;
-		}
+		survey ??= await this.surveyRepo.create({
+			survey_type_id: graSurveyTypeId,
+			survey_status_type_id: activeStatusId,
+			student_id: dto.student_id,
+			academic_period_id: dto.academic_period_id,
+			campus_id: dto.campus_id,
+			program_id: dto.program_id,
+			course_section_id: courseSectionId ?? 1,
+		});
 
 		// Verificar si ya existe notificación para esta encuesta
 		const alreadyNotified = await this.notifRepo.existsForStudent(survey.id);
@@ -157,7 +156,7 @@ export class GraNotificationService {
 		GraValidation.validateSendEmailRequest(pending.length);
 
 		// Obtener template de email (notification_messages) - primer registro activo del tipo GRA
-		const emailTemplate = await this.getEmailTemplate();
+		const emailTemplate = await this.surveyEmailService.getEmailTemplate('TG601-T002');
 
 		const surveyBaseUrl =
 			dto.survey_base_url ||
@@ -169,7 +168,7 @@ export class GraNotificationService {
 			try {
 				const surveyUrl = `${surveyBaseUrl}/encuesta/gra?token=${student.token}`;
 
-				const emailBody = this.replacePlaceholders(emailTemplate.body, {
+				const emailBody = this.surveyEmailService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: student.student_name,
 					CodigoAlumno: student.student_code,
 					NombreCarrera: student.program_name,
@@ -199,17 +198,18 @@ export class GraNotificationService {
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		GraValidation.validateToken(tokenData, token);
+		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		return {
 			valid: true,
-			survey_id: tokenData!.survey_id,
-			student_id: tokenData!.student_id,
-			student_name: tokenData!.student_name,
-			student_code: tokenData!.student_code,
-			program_id: tokenData!.program_id,
-			program_name: tokenData!.program_name,
-			academic_period_id: tokenData!.academic_period_id,
-			max_register_date: tokenData!.max_register_date,
+			survey_id: tokenData.survey_id,
+			student_id: tokenData.student_id,
+			student_name: tokenData.student_name,
+			student_code: tokenData.student_code,
+			program_id: tokenData.program_id,
+			program_name: tokenData.program_name,
+			academic_period_id: tokenData.academic_period_id,
+			max_register_date: tokenData.max_register_date,
 		};
 	}
 
@@ -218,10 +218,11 @@ export class GraNotificationService {
 	async getSurveyByToken(dto: GetSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		GraValidation.validateToken(tokenData, dto.token);
+		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		// Cargar configuraciones GRA para el programa del estudiante
 		const configs = await this.configRepo.findAllGra({
-			program_id: tokenData!.program_id,
+			program_id: tokenData.program_id,
 			is_active: true,
 			is_visible: true,
 		});
@@ -243,10 +244,10 @@ export class GraNotificationService {
 		});
 
 		return {
-			survey_id: tokenData!.survey_id,
-			student_id: tokenData!.student_id,
-			student_name: tokenData!.student_name,
-			program_id: tokenData!.program_id,
+			survey_id: tokenData.survey_id,
+			student_id: tokenData.student_id,
+			student_name: tokenData.student_name,
+			program_id: tokenData.program_id,
 			outcomes,
 		};
 	}
@@ -256,9 +257,11 @@ export class GraNotificationService {
 	async completeSurvey(dto: CompleteGraSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		GraValidation.validateToken(tokenData, dto.token);
+		if (!tokenData) throw new BadRequestException('Token no encontrado');
 		GraValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
+		const surveyId = tokenData.survey_id;
 
 		try {
 			await this.dataSource.transaction(async (manager) => {
@@ -274,18 +277,18 @@ export class GraNotificationService {
 
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[tokenData!.survey_id, outcomeId],
+						[surveyId, outcomeId],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, tokenData!.survey_id, outcomeId],
+							[item.score, item.commentaries ?? null, surveyId, outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[tokenData!.survey_id, outcomeId, item.score, item.commentaries ?? null],
+							[surveyId, outcomeId, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -299,14 +302,14 @@ export class GraNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, tokenData!.survey_id, commentariesJson]
-						: [closedStatusId, tokenData!.survey_id],
+						? [closedStatusId, surveyId, commentariesJson]
+						: [closedStatusId, surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				survey_id: tokenData!.survey_id,
+				survey_id: surveyId,
 				scores_saved: dto.scores.length,
 				message: 'Encuesta GRA completada exitosamente. ¡Gracias por tu participación!',
 			};
@@ -343,43 +346,5 @@ export class GraNotificationService {
 			by_program: data.by_program,
 			filters: dto,
 		};
-	}
-
-	// ─── Helpers internos ────────────────────────────────────────────────────────
-
-	private async getEmailTemplate(): Promise<{ subject: string; body: string }> {
-		const rows = await this.dataSource.query(
-			`SELECT nm.title, nm.body
-			 FROM survey.notification_messages nm
-			 INNER JOIN core.types t ON t.id = nm.survey_type_id
-			 WHERE t.code = 'TG601-T002'
-			   AND nm.is_active = true
-			 ORDER BY nm.id ASC
-			 LIMIT 1`,
-		);
-
-		if (rows?.[0]) {
-			return {
-				subject: rows[0].title,
-				body: rows[0].body,
-			};
-		}
-
-		return {
-			subject: 'Encuesta de Competencias de Graduandos',
-			body: `<p>Estimado(a) [NombreAlumno],</p>
-<p>Te invitamos a completar la encuesta de competencias de graduandos. Por favor accede al siguiente enlace:</p>
-<p><a href="[LinkEncuesta]">Completar Encuesta</a></p>
-<p>Token: [Token]</p>
-<p>Saludos,<br/>Equipo ABET</p>`,
-		};
-	}
-
-	private replacePlaceholders(template: string, data: Record<string, string>): string {
-		let result = template;
-		for (const [key, value] of Object.entries(data)) {
-			result = result.replaceAll(`[${key}]`, value ?? '');
-		}
-		return result;
 	}
 }

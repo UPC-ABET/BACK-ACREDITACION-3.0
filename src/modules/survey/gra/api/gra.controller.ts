@@ -1,7 +1,6 @@
 import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
-import { GraConfigService } from './gra-config.service';
-import { GraNotificationService } from './gra-notification.service';
+import { GraService } from './gra.service';
 import {
 	SwaggerGraController,
 	SwaggerGraConfigCreate,
@@ -37,102 +36,99 @@ import {
 
 @SwaggerGraController()
 export class GraController {
-	constructor(
-		private readonly configService: GraConfigService,
-		private readonly notifService: GraNotificationService,
-	) {}
+	constructor(private readonly graService: GraService) {}
 
 	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerGraConfigCreate()
 	async configCreate(@Body() dto: CreateGraConfigDto) {
-		return parseSuccessResponse(await this.configService.create(dto), HttpStatus.CREATED);
+		return parseSuccessResponse(await this.graService.create(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerGraConfigGetAll()
 	async configGetAll() {
-		return parseSuccessResponse(await this.configService.getAll());
+		return parseSuccessResponse(await this.graService.getAll());
 	}
 
 	@SwaggerGraConfigGetByFilters()
 	async configGetByFilters(@Body() dto: FilterGraConfigDto) {
-		return parseSuccessResponse(await this.configService.getAll(dto));
+		return parseSuccessResponse(await this.graService.getAll(dto));
 	}
 
 	@SwaggerGraConfigGetById()
 	async configGetById(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.configService.getById(id));
+		return parseSuccessResponse(await this.graService.getById(id));
 	}
 
 	@SwaggerGraConfigUpdate()
 	async configUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateGraConfigDto) {
-		return parseSuccessResponse(await this.configService.update(id, dto));
+		return parseSuccessResponse(await this.graService.update(id, dto));
 	}
 
 	@SwaggerGraConfigDelete()
 	async configDelete(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.configService.delete(id));
+		return parseSuccessResponse(await this.graService.delete(id));
 	}
 
 	@SwaggerGraConfigReplicate()
 	async configReplicate(@Body() dto: ReplicateGraConfigDto) {
-		return parseSuccessResponse(await this.configService.replicate(dto));
+		return parseSuccessResponse(await this.graService.replicate(dto));
 	}
 
 	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────
 
 	@SwaggerGraNotificationSave()
 	async notificationSave(@Body() dto: SaveGraNotificationDto) {
-		return parseSuccessResponse(await this.notifService.saveNotification(dto));
+		return parseSuccessResponse(await this.graService.saveNotification(dto));
 	}
 
 	@SwaggerGraNotificationListStudents()
 	async notificationListStudents(@Body() dto: ListStudentsGraDto) {
-		return parseSuccessResponse(await this.notifService.listStudents(dto));
+		return parseSuccessResponse(await this.graService.listStudents(dto));
 	}
 
 	@SwaggerGraNotificationDelete()
 	async notificationDelete(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.notifService.deleteNotification(id));
+		return parseSuccessResponse(await this.graService.deleteNotification(id));
 	}
 
 	// ── EMAIL ENDPOINTS ───────────────────────────────────────────────
 
 	@SwaggerGraEmailSend()
 	async emailSend(@Body() dto: SendGraEmailDto) {
-		return parseSuccessResponse(await this.notifService.sendEmails(dto));
+		return parseSuccessResponse(await this.graService.sendEmails(dto));
 	}
 
 	// ── TOKEN ENDPOINTS ───────────────────────────────────────────────
 
 	@SwaggerGraTokenValidate()
 	async tokenValidate(@Param('token') token: string) {
-		return parseSuccessResponse(await this.notifService.validateToken(token));
+		return parseSuccessResponse(await this.graService.validateToken(token));
 	}
 
 	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerGraSurveyGetByToken()
 	async surveyGetByToken(@Body() dto: GetSurveyByTokenDto) {
-		return parseSuccessResponse(await this.notifService.getSurveyByToken(dto));
+		return parseSuccessResponse(await this.graService.getSurveyByToken(dto));
 	}
 
 	@SwaggerGraSurveyComplete()
 	async surveyComplete(@Body() dto: CompleteGraSurveyDto) {
-		return parseSuccessResponse(await this.notifService.completeSurvey(dto));
+		return parseSuccessResponse(await this.graService.completeSurvey(dto));
 	}
 
 	// ── OUTCOMES ENDPOINTS ────────────────────────────────────────────
 
 	@SwaggerGraOutcomesList()
 	async outcomesList(@Body() dto: ListGraSurveyOutcomesDto) {
-		return parseSuccessResponse(await this.configService.listOutcomesForSurvey(dto));
+		return parseSuccessResponse(await this.graService.listOutcomesForSurvey(dto));
 	}
 
 	// ── DASHBOARD ENDPOINTS ───────────────────────────────────────────
 
 	@SwaggerGraDashboard()
 	async dashboardGet(@Body() dto: DashboardGraDto) {
-		return parseSuccessResponse(await this.notifService.getDashboard(dto));
+		return parseSuccessResponse(await this.graService.getDashboard(dto));
 	}
 }
