@@ -366,9 +366,9 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		[
 			'TG403',
 			'TG403-T001',
-			i18n('COM', 'COM'),
+			i18n('Comité', 'Committee'),
 			i18n(
-				'Comite - promedia notas de todos los evaluadores COM',
+				'Comité - promedia notas de todos los evaluadores COM',
 				'Committee - averages scores from all COM evaluators',
 			),
 			'{}',
@@ -376,7 +376,7 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		[
 			'TG403',
 			'TG403-T002',
-			i18n('GER', 'GER'),
+			i18n('Gerente', 'Manager'),
 			i18n(
 				'Gerente - escribe directo sin promediar (WASC/PA)',
 				'Manager - writes directly without averaging (WASC/PA)',
@@ -386,21 +386,21 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		[
 			'TG403',
 			'TG403-T003',
-			i18n('DOC', 'DOC'),
+			i18n('Docente', 'Professor'),
 			i18n('Docente - escribe directo', 'Professor - writes directly'),
 			'{}',
 		],
 		[
 			'TG403',
 			'TG403-T004',
-			i18n('CLI', 'CLI'),
+			i18n('Cliente', 'Client'),
 			i18n('Cliente - escribe directo', 'Client - writes directly'),
 			'{}',
 		],
 		[
 			'TG403',
 			'TG403-T005',
-			i18n('COA', 'COA'),
+			i18n('Coautor', 'Co-author'),
 			i18n('Coautor - escribe directo', 'Co-author - writes directly'),
 			'{}',
 		],

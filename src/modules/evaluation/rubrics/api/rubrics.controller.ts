@@ -29,13 +29,13 @@ export class RubricController extends BaseController<RubricService> {
 		return await this.rubricConfigService.createRubric(dto);
 	}
 
-	@Get('course/:courseId')
-	async getRubricByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
+	@Get('course/:course_id')
+	async getRubricByCourse(@Param('course_id', ParseIntPipe) courseId: number) {
 		return await this.rubricConfigService.getRubricByCourse(courseId);
 	}
 
-	@Get('rubric/:rubricId')
-	async getRubricWithDetails(@Param('rubricId', ParseIntPipe) rubricId: number) {
+	@Get('rubric/:rubric_id')
+	async getRubricWithDetails(@Param('rubric_id', ParseIntPipe) rubricId: number) {
 		return await this.rubricConfigService.getRubricById(rubricId);
 	}
 

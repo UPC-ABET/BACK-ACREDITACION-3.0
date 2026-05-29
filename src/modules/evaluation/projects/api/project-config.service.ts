@@ -54,6 +54,14 @@ export class ProjectConfigService {
 		private readonly dataSource: DataSource,
 	) {}
 
+	private async resolveGradeTypeIdByCode(code: string): Promise<number> {
+		const type = await this.typeRepo.findOne({ where: { code } });
+		if (!type) {
+			throw new BadRequestException(projectsValidationStrings.error.invalidGradeTypeCode);
+		}
+		return type.id;
+	}
+
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
 		const raw = await this.dataSource.query(
 			`
@@ -272,9 +280,12 @@ export class ProjectConfigService {
 	async getProjectWithDetails(
 		projectId: number,
 		isEvaluationMode: boolean,
-		gradeTypeId?: number,
+		gradeTypeCode?: string,
 		rubricTypeId?: number,
 	): Promise<ProjectDetailsResponseDto> {
+		const gradeTypeId = gradeTypeCode
+			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
+			: undefined;
 		// ── 1. Proyecto con cadena de enrollment ─────────────────────────────
 		const project = await this.projectRepo
 			.createQueryBuilder('p')
@@ -508,8 +519,11 @@ export class ProjectConfigService {
 		professorId: number,
 		academicPeriodId?: number,
 		schoolId?: number,
-		gradeTypeId?: number,
+		gradeTypeCode?: string,
 	): Promise<ProjectEvaluatorResponseDto[]> {
+		const gradeTypeId = gradeTypeCode
+			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
+			: undefined;
 		// ── QUERY 1 ───────────────────────────────────────────────────────────
 		let filterSql = `
     SELECT DISTINCT pe.project_id

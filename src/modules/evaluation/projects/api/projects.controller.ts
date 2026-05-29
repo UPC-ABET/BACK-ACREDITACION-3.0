@@ -38,38 +38,38 @@ export class ProjectController extends BaseController<ProjectService> {
 		);
 	}
 
-	@Get('professor/:professorId')
+	@Get('professor/:professor_id')
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
-	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
-	@ApiQuery({ name: 'schoolId', required: false, type: Number })
-	@ApiQuery({ name: 'gradeTypeId', required: false, type: Number })
+	@ApiQuery({ name: 'academic_period_id', required: false, type: Number })
+	@ApiQuery({ name: 'school_id', required: false, type: Number })
+	@ApiQuery({ name: 'grade_type_code', required: false, type: String })
 	async getProjectsByProfessor(
-		@Param('professorId', ParseIntPipe) professorId: number,
-		@Query('academicPeriodId') academicPeriodId?: string,
-		@Query('schoolId') schoolId?: string,
-		@Query('gradeTypeId') gradeTypeId?: string,
+		@Param('professor_id', ParseIntPipe) professorId: number,
+		@Query('academic_period_id') academicPeriodId?: string,
+		@Query('school_id') schoolId?: string,
+		@Query('grade_type_code') gradeTypeCode?: string,
 	) {
 		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
 		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
-		const parsedGradeTypeId = gradeTypeId ? parseInt(gradeTypeId, 10) : undefined;
 
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectsByProfessor(
 				professorId,
 				parsedAcademicPeriodId,
 				parsedSchoolId,
-				parsedGradeTypeId,
+				gradeTypeCode,
 			),
 		);
 	}
 
-	@Get('project/:projectId')
+	@Get('project/:project_id')
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
 	@ApiQuery({ name: 'is_evaluation_mode', required: false, type: Boolean })
+	@ApiQuery({ name: 'grade_type_code', required: false, type: String })
 	async getProjectWithDetails(
-		@Param('projectId', ParseIntPipe) projectId: number,
+		@Param('project_id', ParseIntPipe) projectId: number,
 		@Query('is_evaluation_mode') isEvaluationMode?: string,
-		@Query('grade_type_id', new ParseIntPipe({ optional: true })) gradeTypeId?: number,
+		@Query('grade_type_code') gradeTypeCode?: string,
 		@Query('rubric_type_id', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		const isEvalMode = isEvaluationMode === 'true';
@@ -77,7 +77,7 @@ export class ProjectController extends BaseController<ProjectService> {
 			await this.projectConfigService.getProjectWithDetails(
 				projectId,
 				isEvalMode,
-				gradeTypeId,
+				gradeTypeCode,
 				rubricTypeId,
 			),
 		);
