@@ -6,7 +6,7 @@ export class GetScopeDto {
 	@IsInt()
 	@IsPositive()
 	@ApiProperty({ example: 5, required: true, description: 'ID del período académico' })
-	period_id: number;
+	periodId: number;
 }
 
 // %% OTHER DTOS — Response documentation classes (Swagger only)
@@ -18,15 +18,15 @@ export class ScopeOptionDto {
 	label: I18nText;
 
 	@ApiProperty({ example: 5, nullable: true })
-	parent_id: number | null;
+	parentId: number | null;
 }
 
 export class ScopeLevelDto {
 	@ApiProperty({ example: 2 })
-	level_num: number;
+	levelNum: number;
 
 	@ApiProperty({ example: 'TG902-T002' })
-	type_code: string;
+	typeCode: string;
 
 	@ApiProperty({ type: [ScopeOptionDto] })
 	options: ScopeOptionDto[];
@@ -34,7 +34,7 @@ export class ScopeLevelDto {
 
 export class ScopeResponseDto {
 	@ApiProperty({ example: 2, nullable: true })
-	highest_level: number | null;
+	highestLevel: number | null;
 
 	@ApiProperty({ type: [ScopeLevelDto] })
 	levels: ScopeLevelDto[];

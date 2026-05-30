@@ -16,7 +16,7 @@ export class ScoreDetailDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	rubric_question_criteria_id: number;
+	rubricQuestionCriteriaId: number;
 
 	@IsNumber()
 	@IsNotEmpty()
@@ -38,12 +38,12 @@ export class SubmitEvaluationDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	project_student_id: number;
+	projectStudentId: number;
 
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	project_evaluator_id: number;
+	projectEvaluatorId: number;
 
 	@IsNumber()
 	@IsNotEmpty()
@@ -53,7 +53,7 @@ export class SubmitEvaluationDto {
 		description:
 			'ID de la rúbrica que se está evaluando (EA o EB). Se obtiene del GET /projects/project/:id.',
 	})
-	rubric_id: number;
+	rubricId: number;
 
 	@IsOptional()
 	@ApiProperty({
@@ -78,7 +78,7 @@ export class SubmitEvaluationDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@IsNotEmpty()
@@ -88,21 +88,21 @@ export class SubmitEvaluationDto {
 		description:
 			'Estado de calificación desde core.types (TG404). Ej: ASISTIO (TG404-T001), NR (TG404-T002), NA (TG404-T003).',
 	})
-	qualification_status_type_id: number;
+	qualificationStatusTypeId: number;
 }
 
 export class CreateEvaluationDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	project_student_id: number;
+	projectStudentId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	project_evaluator_id: number;
+	projectEvaluatorId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	qualification_status_type_id: number;
+	qualificationStatusTypeId: number;
 
 	@IsOptional()
 	@IsObject()
@@ -112,7 +112,7 @@ export class CreateEvaluationDto {
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
@@ -121,7 +121,7 @@ export class CreateEvaluationDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class UpdateEvaluationDto {
@@ -132,22 +132,22 @@ export class UpdateEvaluationDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	project_student_id?: number;
+	projectStudentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	project_evaluator_id?: number;
+	projectEvaluatorId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	qualification_status_type_id?: number;
+	qualificationStatusTypeId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -157,19 +157,19 @@ export class UpdateEvaluationDto {
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 }
 
 export class SaveObservationDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	project_student_id: number;
+	projectStudentId: number;
 
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	project_evaluator_id: number;
+	projectEvaluatorId: number;
 
 	@IsOptional()
 	@ApiProperty({
@@ -188,19 +188,19 @@ export class SaveObservationDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class FinalizeProjectDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	project_id: number;
+	projectId: number;
 
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
-	evaluator_id: number;
+	evaluatorId: number;
 
 	@IsOptional()
 	@IsBoolean()
@@ -209,7 +209,7 @@ export class FinalizeProjectDto {
 		required: false,
 		description: 'Indica si es evaluación de Participación (PA). Si es true, no exige observación.',
 	})
-	is_pa?: boolean;
+	isPa?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extra_value' }, required: false })
@@ -218,7 +218,7 @@ export class FinalizeProjectDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class FilterEvaluationDto {
@@ -228,19 +228,19 @@ export class FilterEvaluationDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	project_student_id?: number;
+	projectStudentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	project_evaluator_id?: number;
+	projectEvaluatorId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	qualification_status_type_id?: number;
+	qualificationStatusTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
@@ -248,5 +248,5 @@ export class FilterEvaluationDto {
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 }

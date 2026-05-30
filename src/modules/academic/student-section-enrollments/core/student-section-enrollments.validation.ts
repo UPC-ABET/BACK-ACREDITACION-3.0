@@ -8,8 +8,8 @@ export class StudentSectionEnrollmentValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				enrolled_student_id: data.enrolled_student_id,
-				course_section_id: data.course_section_id,
+				enrolledStudentId: data.enrolledStudentId,
+				courseSectionId: data.courseSectionId,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class StudentSectionEnrollmentValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studentSectionEnrollmentsValidationStrings.error.notFound);
 
-		if (data.enrolled_student_id && data.course_section_id) {
+		if (data.enrolledStudentId && data.courseSectionId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					enrolled_student_id: data.enrolled_student_id,
-					course_section_id: data.course_section_id,
+					enrolledStudentId: data.enrolledStudentId,
+					courseSectionId: data.courseSectionId,
 				},
 			});
 

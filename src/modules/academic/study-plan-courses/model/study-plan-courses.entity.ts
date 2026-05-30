@@ -10,16 +10,16 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_academic_period_id: number;
+	studyPlanAcademicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	course_id: number;
+	courseId: number;
 
 	@BooleanColumn({ nullable: false, withDefault: false, default: false })
-	is_elective: boolean;
+	isElective: boolean;
 
 	@IntegerFKIDColumn({ nullable: false })
-	level_type_id: number;
+	levelTypeId: number;
 
 	// %% RELATIONS
 
@@ -28,7 +28,7 @@ export class StudyPlanCourseEntity extends BaseEntity {
 		name: 'study_plan_academic_period_id',
 		foreignKeyConstraintName: 'FK_study_plan_courses_study_plan_academic_period_id',
 	})
-	study_plan_academic_period: StudyPlanAcademicPeriodEntity;
+	studyPlanAcademicPeriod: StudyPlanAcademicPeriodEntity;
 
 	@ManyToOne(() => CourseEntity)
 	@JoinColumn({ name: 'course_id', foreignKeyConstraintName: 'FK_study_plan_courses_course_id' })
@@ -39,5 +39,5 @@ export class StudyPlanCourseEntity extends BaseEntity {
 		name: 'level_type_id',
 		foreignKeyConstraintName: 'FK_study_plan_courses_level_type_id',
 	})
-	level_type: TypeEntity;
+	levelType: TypeEntity;
 }

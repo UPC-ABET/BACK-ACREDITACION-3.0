@@ -9,7 +9,7 @@ export class TypeEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	type_group_id: number;
+	typeGroupId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;
@@ -24,5 +24,5 @@ export class TypeEntity extends BaseEntity {
 
 	@ManyToOne(() => TypeGroupEntity)
 	@JoinColumn({ name: 'type_group_id', foreignKeyConstraintName: 'FK_types_type_group_id' })
-	type_group: TypeGroupEntity;
+	typeGroup: TypeGroupEntity;
 }

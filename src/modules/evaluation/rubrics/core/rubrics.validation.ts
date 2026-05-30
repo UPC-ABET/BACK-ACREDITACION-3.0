@@ -8,8 +8,8 @@ export class RubricValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				study_plan_course_id: data.study_plan_course_id,
-				grade_type_id: data.grade_type_id,
+				studyPlanCourseId: data.studyPlanCourseId,
+				gradeTypeId: data.gradeTypeId,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class RubricValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricsValidationStrings.error.notFound);
 
-		if (data.study_plan_course_id && data.grade_type_id) {
+		if (data.studyPlanCourseId && data.gradeTypeId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					study_plan_course_id: data.study_plan_course_id,
-					grade_type_id: data.grade_type_id,
+					studyPlanCourseId: data.studyPlanCourseId,
+					gradeTypeId: data.gradeTypeId,
 				},
 			});
 

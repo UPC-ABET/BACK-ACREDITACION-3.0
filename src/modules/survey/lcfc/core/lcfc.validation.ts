@@ -7,17 +7,17 @@ export class LcfcValidation {
 				`Token inválido: no se encontró la encuesta asociada al token "${token}"`,
 			);
 		}
-		if (tokenData.max_register_date && new Date(tokenData.max_register_date) < new Date()) {
+		if (tokenData.maxRegisterDate && new Date(tokenData.maxRegisterDate) < new Date()) {
 			throw new BadRequestException(
 				'El token ha expirado. El plazo para responder la encuesta LCFC ha vencido.',
 			);
 		}
-		if (tokenData.survey_status === 'Cerrada') {
+		if (tokenData.surveyStatus === 'Cerrada') {
 			throw new BadRequestException('Esta encuesta LCFC ya ha sido completada anteriormente.');
 		}
 	}
 
-	static validateCompleteScores(scores: { outcome_id: number; score: number }[]): void {
+	static validateCompleteScores(scores: { outcomeId: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
 			throw new BadRequestException(
 				'Debe proporcionar al menos un puntaje para completar la encuesta LCFC.',
@@ -26,7 +26,7 @@ export class LcfcValidation {
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 10) {
 				throw new BadRequestException(
-					`Puntaje inválido (${item.score}) para outcome_id ${item.outcome_id}. Debe estar entre 1 y 10.`,
+					`Puntaje inválido (${item.score}) para outcomeId ${item.outcomeId}. Debe estar entre 1 y 10.`,
 				);
 			}
 		}

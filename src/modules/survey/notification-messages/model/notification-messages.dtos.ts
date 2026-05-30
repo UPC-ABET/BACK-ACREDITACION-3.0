@@ -10,15 +10,15 @@ export class CreateNotificationMessageDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_id: number;
+	programId: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
@@ -29,7 +29,7 @@ export class CreateNotificationMessageDto {
 	body: I18nText;
 
 	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: true })
-	cc_receivers: any;
+	ccReceivers: any;
 }
 
 export class UpdateNotificationMessageDto {
@@ -40,17 +40,17 @@ export class UpdateNotificationMessageDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -64,7 +64,7 @@ export class UpdateNotificationMessageDto {
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
-	cc_receivers?: any;
+	ccReceivers?: any;
 }
 
 export class FilterNotificationMessageDto {
@@ -74,15 +74,15 @@ export class FilterNotificationMessageDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
@@ -94,5 +94,5 @@ export class FilterNotificationMessageDto {
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
-	cc_receivers?: any;
+	ccReceivers?: any;
 }

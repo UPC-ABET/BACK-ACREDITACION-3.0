@@ -74,9 +74,9 @@ export class GraNotificationService {
 		// Buscar encuesta GRA existente para este estudiante + período + programa
 		let survey = await this.surveyRepo.findExistingGraSurvey(
 			graSurveyTypeId,
-			dto.student_id,
-			dto.academic_period_id,
-			dto.program_id,
+			dto.studentId,
+			dto.academicPeriodId,
+			dto.programId,
 		);
 
 		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
@@ -84,13 +84,13 @@ export class GraNotificationService {
 		// Crear la encuesta GRA si no existe
 		if (!survey) {
 			survey = (await this.surveyRepo.create({
-				survey_type_id: graSurveyTypeId,
-				survey_status_type_id: activeStatusId,
-				student_id: dto.student_id,
-				academic_period_id: dto.academic_period_id,
-				campus_id: dto.campus_id,
-				program_id: dto.program_id,
-				course_section_id: courseSectionId ?? 1,
+				surveyTypeId: graSurveyTypeId,
+				surveyStatusTypeId: activeStatusId,
+				studentId: dto.studentId,
+				academicPeriodId: dto.academicPeriodId,
+				campusId: dto.campusId,
+				programId: dto.programId,
+				courseSectionId: courseSectionId ?? 1,
 			})) as SurveyEntity;
 		}
 
@@ -107,16 +107,16 @@ export class GraNotificationService {
 
 		// Crear notificación
 		const notification = await this.notifRepo.create({
-			survey_id: survey.id,
-			notification_status_type_id: scheduledStatusId,
+			surveyId: survey.id,
+			notificationStatusTypeId: scheduledStatusId,
 			token,
-			max_register_date: dto.max_register_date,
+			maxRegisterDate: dto.maxRegisterDate,
 		});
 
 		return {
-			notification_id: notification.id,
-			survey_id: survey.id,
-			student_id: dto.student_id,
+			notificationId: notification.id,
+			surveyId: survey.id,
+			studentId: dto.studentId,
 			token,
 			message: 'Estudiante agregado a la lista de encuesta GRA correctamente.',
 		};
@@ -127,10 +127,10 @@ export class GraNotificationService {
 	async listStudents(dto: ListStudentsGraDto) {
 		const { graSurveyTypeId } = await this.getTypeIds();
 		return await this.notifRepo.listStudentsGra(graSurveyTypeId, {
-			academic_period_id: dto.academic_period_id,
-			program_id: dto.program_id,
-			campus_id: dto.campus_id,
-			student_code: dto.student_code,
+			academicPeriodId: dto.academicPeriodId,
+			programId: dto.programId,
+			campusId: dto.campusId,
+			studentCode: dto.studentCode,
 		});
 	}
 
@@ -140,7 +140,7 @@ export class GraNotificationService {
 		const notif = await this.notifRepo.findOneById(id);
 		if (!notif) throw new NotFoundException(`Notificación GRA con ID ${id} no encontrada`);
 		await this.notifRepo.remove(id);
-		return { deleted: true, notification_id: id };
+		return { deleted: true, notificationId: id };
 	}
 
 	// ─── Enviar emails a estudiantes pendientes ─────────────────────────────────
@@ -150,8 +150,8 @@ export class GraNotificationService {
 
 		// Obtener estudiantes pendientes de notificación
 		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
-			academic_period_id: dto.academic_period_id,
-			program_id: dto.program_id,
+			academicPeriodId: dto.academicPeriodId,
+			programId: dto.programId,
 		});
 
 		GraValidation.validateSendEmailRequest(pending.length);
@@ -160,7 +160,7 @@ export class GraNotificationService {
 		const emailTemplate = await this.getEmailTemplate();
 
 		const surveyBaseUrl =
-			dto.survey_base_url ||
+			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
 		const results = { total: pending.length, sent: 0, failed: 0, errors: [] as string[] };
@@ -170,24 +170,24 @@ export class GraNotificationService {
 				const surveyUrl = `${surveyBaseUrl}/encuesta/gra?token=${student.token}`;
 
 				const emailBody = this.replacePlaceholders(emailTemplate.body, {
-					NombreAlumno: student.student_name,
-					CodigoAlumno: student.student_code,
-					NombreCarrera: student.program_name,
+					NombreAlumno: student.studentName,
+					CodigoAlumno: student.studentCode,
+					NombreCarrera: student.programName,
 					LinkEncuesta: surveyUrl,
 					Token: student.token,
 				});
 
 				await this.mailService.sendRawEmail({
-					to: student.student_email,
+					to: student.studentEmail,
 					subject: emailTemplate.subject,
 					html: emailBody,
 				});
 
-				await this.notifRepo.markAsSent(student.notification_id, sentStatusId);
+				await this.notifRepo.markAsSent(student.notificationId, sentStatusId);
 				results.sent++;
 			} catch (err) {
 				results.failed++;
-				results.errors.push(`Alumno ${student.student_code}: ${(err as Error).message}`);
+				results.errors.push(`Alumno ${student.studentCode}: ${(err as Error).message}`);
 			}
 		}
 
@@ -202,14 +202,14 @@ export class GraNotificationService {
 
 		return {
 			valid: true,
-			survey_id: tokenData!.survey_id,
-			student_id: tokenData!.student_id,
-			student_name: tokenData!.student_name,
-			student_code: tokenData!.student_code,
-			program_id: tokenData!.program_id,
-			program_name: tokenData!.program_name,
-			academic_period_id: tokenData!.academic_period_id,
-			max_register_date: tokenData!.max_register_date,
+			surveyId: tokenData!.surveyId,
+			studentId: tokenData!.studentId,
+			studentName: tokenData!.studentName,
+			studentCode: tokenData!.studentCode,
+			programId: tokenData!.programId,
+			programName: tokenData!.programName,
+			academicPeriodId: tokenData!.academicPeriodId,
+			maxRegisterDate: tokenData!.maxRegisterDate,
 		};
 	}
 
@@ -221,9 +221,9 @@ export class GraNotificationService {
 
 		// Cargar configuraciones GRA para el programa del estudiante
 		const configs = await this.configRepo.findAllGra({
-			program_id: tokenData!.program_id,
-			is_active: true,
-			is_visible: true,
+			programId: tokenData!.programId,
+			isActive: true,
+			isVisible: true,
 		});
 
 		const language = dto.language ?? 'es';
@@ -231,22 +231,22 @@ export class GraNotificationService {
 		const outcomes = configs.map((cfg) => {
 			const extra = (cfg.extra as Record<string, any>) ?? {};
 			return {
-				outcome_config_id: cfg.id,
-				outcome_id: cfg.outcome_id,
-				name: language === 'en' && extra.name_en ? extra.name_en : cfg.user_outcome_name,
+				outcomeConfigId: cfg.id,
+				outcomeId: cfg.outcomeId,
+				name: language === 'en' && extra.nameEn ? extra.nameEn : cfg.userOutcomeName,
 				description:
-					language === 'en' && extra.description_en
-						? extra.description_en
-						: (cfg.user_outcome_description ?? null),
+					language === 'en' && extra.descriptionEn
+						? extra.descriptionEn
+						: (cfg.userOutcomeDescription ?? null),
 				order: extra.order ?? null,
 			};
 		});
 
 		return {
-			survey_id: tokenData!.survey_id,
-			student_id: tokenData!.student_id,
-			student_name: tokenData!.student_name,
-			program_id: tokenData!.program_id,
+			surveyId: tokenData!.surveyId,
+			studentId: tokenData!.studentId,
+			studentName: tokenData!.studentName,
+			programId: tokenData!.programId,
 			outcomes,
 		};
 	}
@@ -265,27 +265,27 @@ export class GraNotificationService {
 				for (const item of dto.scores) {
 					const configRows = await manager.query(
 						`SELECT outcome_id FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
-						[item.outcome_config_id],
+						[item.outcomeConfigId],
 					);
 
 					if (!configRows?.[0]) continue;
 
-					const outcomeId = configRows[0].outcome_id;
+					const outcomeId = configRows[0].outcomeId;
 
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[tokenData!.survey_id, outcomeId],
+						[tokenData!.surveyId, outcomeId],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, tokenData!.survey_id, outcomeId],
+							[item.score, item.commentaries ?? null, tokenData!.surveyId, outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[tokenData!.survey_id, outcomeId, item.score, item.commentaries ?? null],
+							[tokenData!.surveyId, outcomeId, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -299,15 +299,15 @@ export class GraNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, tokenData!.survey_id, commentariesJson]
-						: [closedStatusId, tokenData!.survey_id],
+						? [closedStatusId, tokenData!.surveyId, commentariesJson]
+						: [closedStatusId, tokenData!.surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				survey_id: tokenData!.survey_id,
-				scores_saved: dto.scores.length,
+				surveyId: tokenData!.surveyId,
+				scoresSaved: dto.scores.length,
 				message: 'Encuesta GRA completada exitosamente. ¡Gracias por tu participación!',
 			};
 		} catch (err) {
@@ -325,9 +325,9 @@ export class GraNotificationService {
 			activeStatusId,
 			closedStatusId,
 			{
-				academic_period_id: dto.academic_period_id,
-				program_id: dto.program_id,
-				campus_id: dto.campus_id,
+				academicPeriodId: dto.academicPeriodId,
+				programId: dto.programId,
+				campusId: dto.campusId,
 			},
 		);
 
@@ -338,9 +338,9 @@ export class GraNotificationService {
 				completed: data.completed,
 				pending: data.pending,
 				total: data.total,
-				completion_rate_pct: completionRate,
+				completionRatePct: completionRate,
 			},
-			by_program: data.by_program,
+			byProgram: data.byProgram,
 			filters: dto,
 		};
 	}

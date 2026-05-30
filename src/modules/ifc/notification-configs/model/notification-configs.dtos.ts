@@ -19,23 +19,23 @@ export class CreateNotificationConfigDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	school_id: number;
+	schoolId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	trigger_type_id: number;
+	triggerTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	ifc_status_type_id: number;
+	ifcStatusTypeId: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
@@ -46,10 +46,10 @@ export class CreateNotificationConfigDto {
 	body: I18nText;
 
 	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: true })
-	to_chart_level_type_ids: any;
+	toChartLevelTypeIds: any;
 
 	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: true })
-	cc_chart_level_type_ids: any;
+	ccChartLevelTypeIds: any;
 }
 
 export class UpdateNotificationConfigDto {
@@ -60,27 +60,27 @@ export class UpdateNotificationConfigDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	school_id?: number;
+	schoolId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	trigger_type_id?: number;
+	triggerTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	ifc_status_type_id?: number;
+	ifcStatusTypeId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -94,11 +94,11 @@ export class UpdateNotificationConfigDto {
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: false })
-	to_chart_level_type_ids?: any;
+	toChartLevelTypeIds?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: false })
-	cc_chart_level_type_ids?: any;
+	ccChartLevelTypeIds?: any;
 }
 
 export class FilterNotificationConfigDto {
@@ -108,23 +108,23 @@ export class FilterNotificationConfigDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	school_id?: number;
+	schoolId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	trigger_type_id?: number;
+	triggerTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	ifc_status_type_id?: number;
+	ifcStatusTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
@@ -136,11 +136,11 @@ export class FilterNotificationConfigDto {
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: false })
-	to_chart_level_type_ids?: any;
+	toChartLevelTypeIds?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: false })
-	cc_chart_level_type_ids?: any;
+	ccChartLevelTypeIds?: any;
 }
 
 // %% OTHER DTOS
@@ -150,7 +150,7 @@ export class UpsertNotificationConfigDto {
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@ApiProperty({
 		example: 1,
@@ -160,7 +160,7 @@ export class UpsertNotificationConfigDto {
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	trigger_type_id: number;
+	triggerTypeId: number;
 
 	@ApiProperty({
 		example: 2,
@@ -170,7 +170,7 @@ export class UpsertNotificationConfigDto {
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	ifc_status_type_id: number;
+	ifcStatusTypeId: number;
 
 	@ApiProperty({
 		example: { es: 'IFC Enviado — {{course_name}}', en: 'IFC Submitted — {{course_name}}' },
@@ -197,18 +197,18 @@ export class UpsertNotificationConfigDto {
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
-	to_chart_level_type_ids?: number[];
+	toChartLevelTypeIds?: number[];
 
 	@ApiProperty({ example: [18, 17], required: false })
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
-	cc_chart_level_type_ids?: number[];
+	ccChartLevelTypeIds?: number[];
 
 	@ApiProperty({ example: true, required: false })
 	@IsOptional()
 	@IsBoolean()
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class NotificationConfigsByPeriodQueryDto {
@@ -216,22 +216,22 @@ export class NotificationConfigsByPeriodQueryDto {
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	period_id: number;
+	periodId: number;
 }
 
 export class NotificationConfigViewDto {
 	@ApiProperty() id: number;
-	@ApiProperty() school_id: number;
-	@ApiProperty() academic_period_id: number;
-	@ApiProperty() trigger_type_id: number;
-	@ApiProperty() trigger_code: string;
-	@ApiProperty({ type: Object }) trigger_name: I18nText;
-	@ApiProperty() ifc_status_type_id: number;
-	@ApiProperty() status_code: string;
-	@ApiProperty({ type: Object }) status_name: I18nText;
+	@ApiProperty() schoolId: number;
+	@ApiProperty() academicPeriodId: number;
+	@ApiProperty() triggerTypeId: number;
+	@ApiProperty() triggerCode: string;
+	@ApiProperty({ type: Object }) triggerName: I18nText;
+	@ApiProperty() ifcStatusTypeId: number;
+	@ApiProperty() statusCode: string;
+	@ApiProperty({ type: Object }) statusName: I18nText;
 	@ApiProperty({ type: Object }) title: I18nText;
 	@ApiProperty({ type: Object }) body: I18nText;
-	@ApiProperty({ example: [19] }) to_chart_level_type_ids: number[];
-	@ApiProperty({ example: [18] }) cc_chart_level_type_ids: number[];
-	@ApiProperty() is_active: boolean;
+	@ApiProperty({ example: [19] }) toChartLevelTypeIds: number[];
+	@ApiProperty({ example: [18] }) ccChartLevelTypeIds: number[];
+	@ApiProperty() isActive: boolean;
 }

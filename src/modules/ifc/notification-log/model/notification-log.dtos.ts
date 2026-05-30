@@ -9,40 +9,40 @@ export class CreateNotificationLogDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 42, required: false, nullable: true })
-	ifc_id?: number | null;
+	ifcId?: number | null;
 
 	@IsInt()
 	@ApiProperty({ example: 310, required: true })
-	chart_id: number;
+	chartId: number;
 
 	@IsInt()
 	@ApiProperty({ example: 7, required: true })
-	notification_config_id: number;
+	notificationConfigId: number;
 
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 99, required: false, nullable: true })
-	notifier_user_id?: number | null;
+	notifierUserId?: number | null;
 
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({ example: [11], required: true })
-	to_staff_ids: number[];
+	toStaffIds: number[];
 
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({ example: [12, 13], required: true })
-	cc_staff_ids: number[];
+	ccStaffIds: number[];
 
 	@IsOptional()
 	@IsString()
 	@ApiProperty({ example: 'pm-abc-123', required: false, nullable: true })
-	provider_message_id?: string | null;
+	providerMessageId?: string | null;
 }
 
 export class UpdateNotificationLogDto {
@@ -53,44 +53,44 @@ export class UpdateNotificationLogDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 42, required: false, nullable: true })
-	ifc_id?: number | null;
+	ifcId?: number | null;
 
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 310, required: false })
-	chart_id?: number;
+	chartId?: number;
 
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 7, required: false })
-	notification_config_id?: number;
+	notificationConfigId?: number;
 
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 99, required: false, nullable: true })
-	notifier_user_id?: number | null;
+	notifierUserId?: number | null;
 
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({ example: [11], required: false })
-	to_staff_ids?: number[];
+	toStaffIds?: number[];
 
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({ example: [12, 13], required: false })
-	cc_staff_ids?: number[];
+	ccStaffIds?: number[];
 
 	@IsOptional()
 	@IsString()
 	@ApiProperty({ example: 'pm-abc-123', required: false, nullable: true })
-	provider_message_id?: string | null;
+	providerMessageId?: string | null;
 }
 
 export class FilterNotificationLogDto {
@@ -100,25 +100,25 @@ export class FilterNotificationLogDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 42, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 310, required: false })
-	chart_id?: number;
+	chartId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 7, required: false })
-	notification_config_id?: number;
+	notificationConfigId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 99, required: false })
-	notifier_user_id?: number;
+	notifierUserId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'pm-abc-123', required: false })
-	provider_message_id?: string;
+	providerMessageId?: string;
 }

@@ -9,23 +9,23 @@ export class CreateStudyPlanCourseDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_academic_period_id: number;
+	studyPlanAcademicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	course_id: number;
+	courseId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_elective: boolean;
+	isElective: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	level_type_id: number;
+	levelTypeId: number;
 }
 
 export class UpdateStudyPlanCourseDto {
@@ -36,27 +36,27 @@ export class UpdateStudyPlanCourseDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_academic_period_id?: number;
+	studyPlanAcademicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_elective?: boolean;
+	isElective?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	level_type_id?: number;
+	levelTypeId?: number;
 }
 
 export class FilterStudyPlanCourseDto {
@@ -66,31 +66,31 @@ export class FilterStudyPlanCourseDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_academic_period_id?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	studyPlanAcademicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	school_id?: number;
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	schoolId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_elective?: boolean;
+	isElective?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	level_type_id?: number;
+	levelTypeId?: number;
 }

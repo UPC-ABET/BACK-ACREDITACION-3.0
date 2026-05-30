@@ -47,41 +47,41 @@ export class PppSurveyService {
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
 		const information = JSON.stringify({
-			company_name: dto.company_name ?? null,
-			boss_name: dto.boss_name ?? null,
-			boss_role: dto.boss_role ?? null,
+			companyName: dto.companyName ?? null,
+			bossName: dto.bossName ?? null,
+			bossRole: dto.bossRole ?? null,
 			phone: dto.phone ?? null,
 			email: dto.email ?? null,
 			ruc: dto.ruc ?? null,
-			total_hours: dto.total_hours ?? null,
-			start_date: dto.start_date ?? null,
-			end_date: dto.end_date ?? null,
+			totalHours: dto.totalHours ?? null,
+			startDate: dto.startDate ?? null,
+			endDate: dto.endDate ?? null,
 		});
 
 		const survey = await this.surveyRepo.create({
-			survey_type_id: typeId,
-			survey_status_type_id: statusId,
-			student_id: dto.student_id,
-			academic_period_id: dto.academic_period_id,
-			campus_id: dto.campus_id,
-			program_id: dto.program_id,
-			survey_number: dto.practice_number,
+			surveyTypeId: typeId,
+			surveyStatusTypeId: statusId,
+			studentId: dto.studentId,
+			academicPeriodId: dto.academicPeriodId,
+			campusId: dto.campusId,
+			programId: dto.programId,
+			surveyNumber: dto.practiceNumber,
 			information: information as any,
-			course_section_id: 1,
+			courseSectionId: 1,
 		});
 
 		if (dto.scores?.length) {
 			await this.scoreRepo.bulkCreate(
 				dto.scores.map((s) => ({
-					survey_id: survey.id,
-					outcome_id: s.outcome_id,
+					surveyId: survey.id,
+					outcomeId: s.outcomeId,
 					score: s.score,
 					...(s.commentaries !== undefined && { commentaries: s.commentaries }),
 				})),
 			);
 		}
 
-		return { survey_id: survey.id, scores_created: dto.scores?.length ?? 0 };
+		return { surveyId: survey.id, scores_created: dto.scores?.length ?? 0 };
 	}
 
 	async getAll() {
@@ -108,9 +108,9 @@ export class PppSurveyService {
 
 		// Get active PPP configs to know which outcomes to score
 		const configs = await this.configRepo.findAllPpp({
-			program_id: dto.program_id,
-			academic_period_id: dto.academic_period_id,
-			is_active: true,
+			programId: dto.programId,
+			academicPeriodId: dto.academicPeriodId,
+			isActive: true,
 		});
 
 		if (configs.length === 0) {
@@ -122,7 +122,7 @@ export class PppSurveyService {
 		// Parse Excel from base64
 		let workbook: XLSX.WorkBook;
 		try {
-			const buffer = Buffer.from(dto.file_base64, 'base64');
+			const buffer = Buffer.from(dto.fileBase64, 'base64');
 			workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 		} catch {
 			throw new BadRequestException('El archivo base64 proporcionado no es un Excel válido');
@@ -152,31 +152,31 @@ export class PppSurveyService {
 
 			// Map Excel columns (normalize header names)
 			const normalizedRow = {
-				student_code: String(
+				studentCode: String(
 					row['Codigo Alumno'] ??
 						row['Código Alumno'] ??
 						row['CODIGO_ALUMNO'] ??
 						row['student_code'] ??
 						'',
 				).trim(),
-				practice_number: Number(
+				practiceNumber: Number(
 					row['# Practica'] ?? row['N Practica'] ?? row['practice_number'] ?? row['Practica'] ?? 0,
 				),
-				total_hours:
+				totalHours:
 					Number(
 						row['Horas'] ?? row['Total Horas'] ?? row['TOTAL_HORAS'] ?? row['total_hours'] ?? 0,
 					) || null,
-				company_name:
+				companyName:
 					String(row['Razon Social'] ?? row['Razón Social'] ?? row['company_name'] ?? '').trim() ||
 					null,
 				ruc: String(row['RUC'] ?? row['ruc'] ?? '').trim() || null,
-				boss_name: String(row['Nombre Jefe'] ?? row['boss_name'] ?? '').trim() || null,
-				boss_role:
+				bossName: String(row['Nombre Jefe'] ?? row['boss_name'] ?? '').trim() || null,
+				bossRole:
 					String(row['Cargo Jefe'] ?? row['Cargo'] ?? row['boss_role'] ?? '').trim() || null,
 				phone: String(row['Telefono'] ?? row['Teléfono'] ?? row['phone'] ?? '').trim() || null,
 				email: String(row['Email Jefe'] ?? row['email'] ?? '').trim() || null,
-				start_date: row['Fecha Inicio'] ?? row['start_date'] ?? null,
-				end_date: row['Fecha Fin'] ?? row['end_date'] ?? null,
+				startDate: row['Fecha Inicio'] ?? row['start_date'] ?? null,
+				endDate: row['Fecha Fin'] ?? row['end_date'] ?? null,
 			};
 
 			const { valid, errors } = PppValidation.validateExcelRow(normalizedRow, rowNum);
@@ -187,55 +187,55 @@ export class PppSurveyService {
 			}
 
 			// Look up student by code
-			const student = await this.surveyRepo.findStudentByCode(normalizedRow.student_code);
+			const student = await this.surveyRepo.findStudentByCode(normalizedRow.studentCode);
 			if (!student) {
 				results.failed++;
 				results.errors.push(
-					`Fila ${rowNum}: Alumno con código "${normalizedRow.student_code}" no encontrado`,
+					`Fila ${rowNum}: Alumno con código "${normalizedRow.studentCode}" no encontrado`,
 				);
 				continue;
 			}
 
 			// Extract scores from Excel columns (one column per outcome config, in order)
-			const scores: { outcome_id: number; score: number }[] = [];
+			const scores: { outcomeId: number; score: number }[] = [];
 			configs.forEach((config, idx) => {
 				const colName = `Competencia ${idx + 1}`;
-				const altColName = config.user_outcome_name as unknown as string;
+				const altColName = config.userOutcomeName as unknown as string;
 				const rawScore = row[colName] ?? row[altColName] ?? null;
 				const score = rawScore !== null ? parseFloat(String(rawScore)) : null;
 
 				if (score !== null && !isNaN(score) && score >= 1 && score <= 5) {
-					scores.push({ outcome_id: config.outcome_id, score });
+					scores.push({ outcomeId: config.outcomeId, score });
 				}
 			});
 
 			const information = JSON.stringify({
-				company_name: normalizedRow.company_name,
-				boss_name: normalizedRow.boss_name,
-				boss_role: normalizedRow.boss_role,
+				companyName: normalizedRow.companyName,
+				bossName: normalizedRow.bossName,
+				bossRole: normalizedRow.bossRole,
 				phone: normalizedRow.phone,
 				email: normalizedRow.email,
 				ruc: normalizedRow.ruc,
-				total_hours: normalizedRow.total_hours,
-				start_date: normalizedRow.start_date,
-				end_date: normalizedRow.end_date,
+				totalHours: normalizedRow.totalHours,
+				startDate: normalizedRow.startDate,
+				endDate: normalizedRow.endDate,
 			});
 
 			try {
 				const survey = await this.surveyRepo.create({
-					survey_type_id: typeId,
-					survey_status_type_id: statusId,
-					student_id: student.id,
-					academic_period_id: dto.academic_period_id,
-					campus_id: dto.campus_id,
-					program_id: dto.program_id,
-					survey_number: Number(normalizedRow.practice_number),
+					surveyTypeId: typeId,
+					surveyStatusTypeId: statusId,
+					studentId: student.id,
+					academicPeriodId: dto.academicPeriodId,
+					campusId: dto.campusId,
+					programId: dto.programId,
+					surveyNumber: Number(normalizedRow.practiceNumber),
 					information: information as any,
-					course_section_id: 1,
+					courseSectionId: 1,
 				});
 
 				if (scores.length > 0) {
-					await this.scoreRepo.bulkCreate(scores.map((s) => ({ ...s, survey_id: survey.id })));
+					await this.scoreRepo.bulkCreate(scores.map((s) => ({ ...s, surveyId: survey.id })));
 				}
 
 				results.success++;
@@ -257,16 +257,16 @@ export class PppSurveyService {
 		]);
 
 		const outcomeResults = dashboardData.map((row) => ({
-			outcome_id: row.outcome_id,
-			outcome_name: row.outcome_name,
-			avg_score: parseFloat(String(row.avg_score)),
-			total_surveys: row.total_surveys,
-			color: PppValidation.classifyScore(parseFloat(String(row.avg_score))),
+			outcomeId: row.outcomeId,
+			outcomeName: row.outcomeName,
+			avgScore: parseFloat(String(row.avgScore)),
+			totalSurveys: row.totalSurveys,
+			color: PppValidation.classifyScore(parseFloat(String(row.avgScore))),
 		}));
 
 		const summary = {
-			total_surveys: surveyCount,
-			outcomes_analyzed: outcomeResults.length,
+			totalSurveys: surveyCount,
+			outcomesAnalyzed: outcomeResults.length,
 			rojo: outcomeResults.filter((o) => o.color === 'ROJO').length,
 			amarillo: outcomeResults.filter((o) => o.color === 'AMARILLO').length,
 			verde: outcomeResults.filter((o) => o.color === 'VERDE').length,
@@ -279,10 +279,10 @@ export class PppSurveyService {
 		const typeId = await this.getPppTypeId();
 
 		const dashboardData = await this.surveyRepo.getDashboardData(typeId, {
-			program_id: dto.program_id,
-			academic_period_id: dto.academic_period_id,
-			campus_id: dto.campus_id,
-			practice_number: dto.practice_number,
+			programId: dto.programId,
+			academicPeriodId: dto.academicPeriodId,
+			campusId: dto.campusId,
+			practiceNumber: dto.practiceNumber,
 		});
 
 		if (dashboardData.length === 0) {
@@ -290,7 +290,7 @@ export class PppSurveyService {
 		}
 
 		const findings = dashboardData.map((row) => {
-			const avgScore = parseFloat(String(row.avg_score));
+			const avgScore = parseFloat(String(row.avgScore));
 			const color = PppValidation.classifyScore(avgScore);
 
 			let severity: string;
@@ -298,20 +298,20 @@ export class PppSurveyService {
 
 			if (color === 'ROJO') {
 				severity = 'ALTA';
-				recommendation = `La competencia "${row.outcome_name}" tiene un puntaje promedio crítico (${avgScore.toFixed(2)}). Se requiere intervención inmediata y plan de mejora.`;
+				recommendation = `La competencia "${row.outcomeName}" tiene un puntaje promedio crítico (${avgScore.toFixed(2)}). Se requiere intervención inmediata y plan de mejora.`;
 			} else if (color === 'AMARILLO') {
 				severity = 'MEDIA';
-				recommendation = `La competencia "${row.outcome_name}" tiene un puntaje promedio en alerta (${avgScore.toFixed(2)}). Se recomienda seguimiento y acciones preventivas.`;
+				recommendation = `La competencia "${row.outcomeName}" tiene un puntaje promedio en alerta (${avgScore.toFixed(2)}). Se recomienda seguimiento y acciones preventivas.`;
 			} else {
 				severity = 'BAJA';
-				recommendation = `La competencia "${row.outcome_name}" cumple el umbral de aceptación (${avgScore.toFixed(2)}). Mantener el nivel actual.`;
+				recommendation = `La competencia "${row.outcomeName}" cumple el umbral de aceptación (${avgScore.toFixed(2)}). Mantener el nivel actual.`;
 			}
 
 			return {
-				outcome_id: row.outcome_id,
-				outcome_name: row.outcome_name,
-				avg_score: avgScore,
-				total_surveys: row.total_surveys,
+				outcomeId: row.outcomeId,
+				outcomeName: row.outcomeName,
+				avgScore,
+				totalSurveys: row.totalSurveys,
 				color,
 				severity,
 				recommendation,
@@ -324,12 +324,12 @@ export class PppSurveyService {
 		return {
 			findings,
 			summary: {
-				total_outcomes: findings.length,
+				totalOutcomes: findings.length,
 				critical: findings.filter((f) => f.color === 'ROJO').length,
 				alert: findings.filter((f) => f.color === 'AMARILLO').length,
 				acceptable: findings.filter((f) => f.color === 'VERDE').length,
 			},
-			requires_action: criticalFindings.length > 0,
+			requiresAction: criticalFindings.length > 0,
 			message:
 				criticalFindings.length > 0
 					? `Se detectaron ${criticalFindings.length} competencia(s) que requieren atención (ROJO/AMARILLO)`

@@ -112,7 +112,7 @@ export class EvaluationSubmissionService {
 		let gTypeId = gradeTypeId;
 		if (!gTypeId && rubricId) {
 			const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
-			gTypeId = rubric?.grade_type_id;
+			gTypeId = rubric?.gradeTypeId;
 		}
 		if (!gTypeId) return false;
 		const type = await this.typeRepo.findOne({ where: { id: gTypeId } });
@@ -131,10 +131,10 @@ export class EvaluationSubmissionService {
 
 	private async getValidPerformanceLevelValues(rubric: RubricEntity): Promise<Set<number>> {
 		const course = await this.studyPlanCourseRepo.findOne({
-			where: { id: rubric.study_plan_course_id },
-			relations: ['study_plan_academic_period'],
+			where: { id: rubric.studyPlanCourseId },
+			relations: ['studyPlanAcademicPeriod'],
 		});
-		const academicPeriodId = course?.study_plan_academic_period?.academic_period_id;
+		const academicPeriodId = course?.studyPlanAcademicPeriod?.academicPeriodId;
 		if (!academicPeriodId) return new Set();
 
 		const instrType = await this.typeRepo.findOne({
@@ -143,26 +143,25 @@ export class EvaluationSubmissionService {
 		if (!instrType) return new Set();
 
 		const levels = await this.performanceLevelRepo.find({
-			where: { instrument_type_id: instrType.id, academic_period_id: academicPeriodId },
+			where: { instrumentTypeId: instrType.id, academicPeriodId: academicPeriodId },
 		});
-		return new Set(levels.map((l) => Number(l.unique_value)));
+		return new Set(levels.map((l) => Number(l.uniqueValue)));
 	}
 
 	private async getRubricForProject(
 		projectId: number,
 	): Promise<{ rubric: RubricEntity | null; studyPlanCourseId: number | null }> {
 		const student = await this.studentRepo.findOne({
-			where: { project_id: projectId },
-			relations: ['student_section_enrollment', 'student_section_enrollment.course_section'],
+			where: { projectId: projectId },
+			relations: ['studentSectionEnrollment', 'studentSectionEnrollment.courseSection'],
 		});
-		if (!student?.student_section_enrollment) return { rubric: null, studyPlanCourseId: null };
+		if (!student?.studentSectionEnrollment) return { rubric: null, studyPlanCourseId: null };
 
-		const studyPlanCourseId =
-			student.student_section_enrollment.course_section?.study_plan_course_id;
+		const studyPlanCourseId = student.studentSectionEnrollment.courseSection?.studyPlanCourseId;
 		if (!studyPlanCourseId) return { rubric: null, studyPlanCourseId: null };
 
 		const rubric = await this.rubricRepo.findOne({
-			where: { study_plan_course_id: studyPlanCourseId },
+			where: { studyPlanCourseId: studyPlanCourseId },
 			relations: ['questions', 'questions.criterias'],
 		});
 		return { rubric, studyPlanCourseId };
@@ -178,8 +177,8 @@ export class EvaluationSubmissionService {
 		outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
 	}> {
 		const allScores = await manager.find(RubricScoreEntity, {
-			where: { evaluation_id: evaluationId },
-			relations: ['rubric_question_criteria', 'rubric_question_criteria.question'],
+			where: { evaluationId: evaluationId },
+			relations: ['rubricQuestionCriteria', 'rubricQuestionCriteria.question'],
 		});
 
 		const scoresByQuestion = new Map<
@@ -187,14 +186,14 @@ export class EvaluationSubmissionService {
 			{ scores: RubricScoreEntity[]; maxValues: number[] }
 		>();
 		for (const score of allScores) {
-			const questionId = score.rubric_question_criteria?.rubric_question_id;
+			const questionId = score.rubricQuestionCriteria?.rubricQuestionId;
 			if (!questionId) continue;
 			if (!scoresByQuestion.has(questionId)) {
 				scoresByQuestion.set(questionId, { scores: [], maxValues: [] });
 			}
 			const bucket = scoresByQuestion.get(questionId)!;
 			bucket.scores.push(score);
-			bucket.maxValues.push(score.rubric_question_criteria.max_value); // string, no number
+			bucket.maxValues.push(score.rubricQuestionCriteria.maxValue); // string, no number
 		}
 
 		let notaRubrica = 0;
@@ -211,9 +210,9 @@ export class EvaluationSubmissionService {
 			resultByQuestion.set(questionId, { notaOutcome, notaMaxOutcome });
 
 			const question = await manager.findOne(RubricQuestionEntity, { where: { id: questionId } });
-			if (question?.outcome_id) {
+			if (question?.outcomeId) {
 				outcomeGrades.push({
-					outcomeId: question.outcome_id,
+					outcomeId: question.outcomeId,
 					grade: notaOutcome,
 					maxValue: notaMaxOutcome,
 				});
@@ -231,8 +230,8 @@ export class EvaluationSubmissionService {
 		for (const og of outcomeGrades) {
 			const existing = await manager.findOne(StudentCourseOutcomeGradeEntity, {
 				where: {
-					student_section_enrollment_id: studentSectionEnrollmentId,
-					outcome_id: og.outcomeId,
+					studentSectionEnrollmentId: studentSectionEnrollmentId,
+					outcomeId: og.outcomeId,
 				},
 			});
 			if (existing) {
@@ -240,8 +239,8 @@ export class EvaluationSubmissionService {
 				await manager.save(existing);
 			} else {
 				const newGrade = manager.create(StudentCourseOutcomeGradeEntity, {
-					student_section_enrollment_id: studentSectionEnrollmentId,
-					outcome_id: og.outcomeId,
+					studentSectionEnrollmentId: studentSectionEnrollmentId,
+					outcomeId: og.outcomeId,
 					grade: og.grade,
 				});
 				await manager.save(newGrade);
@@ -255,7 +254,7 @@ export class EvaluationSubmissionService {
 		projectEvaluatorId: number,
 		observation: I18nText | string | null | undefined,
 		scores: Array<{
-			rubric_question_criteria_id: number;
+			rubricQuestionCriteriaId: number;
 			score: number;
 			commentaries?: I18nText | string;
 		}>,
@@ -263,25 +262,25 @@ export class EvaluationSubmissionService {
 	): Promise<EvaluationEntity> {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
-				project_student_id: projectStudentId,
-				project_evaluator_id: projectEvaluatorId,
+				projectStudentId: projectStudentId,
+				projectEvaluatorId: projectEvaluatorId,
 			},
 		});
 
 		if (evaluation) {
-			evaluation.qualification_status_type_id = statusTypeId;
+			evaluation.qualificationStatusTypeId = statusTypeId;
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
 			}
 			await manager.save(evaluation);
 		} else {
 			evaluation = manager.create(EvaluationEntity, {
-				project_student_id: projectStudentId,
-				project_evaluator_id: projectEvaluatorId,
-				qualification_status_type_id: statusTypeId,
+				projectStudentId: projectStudentId,
+				projectEvaluatorId: projectEvaluatorId,
+				qualificationStatusTypeId: statusTypeId,
 				observation: i18nText(observation),
-				register_at: new Date(),
-				is_active: true,
+				registerAt: new Date(),
+				isActive: true,
 			});
 			evaluation = await manager.save(evaluation);
 		}
@@ -289,8 +288,8 @@ export class EvaluationSubmissionService {
 		for (const scoreDto of scores) {
 			const existingScore = await manager.findOne(RubricScoreEntity, {
 				where: {
-					evaluation_id: evaluation.id,
-					rubric_question_criteria_id: scoreDto.rubric_question_criteria_id,
+					evaluationId: evaluation.id,
+					rubricQuestionCriteriaId: scoreDto.rubricQuestionCriteriaId,
 				},
 			});
 
@@ -300,11 +299,11 @@ export class EvaluationSubmissionService {
 				await manager.save(existingScore);
 			} else {
 				const newScore = manager.create(RubricScoreEntity, {
-					evaluation_id: evaluation.id,
-					rubric_question_criteria_id: scoreDto.rubric_question_criteria_id,
+					evaluationId: evaluation.id,
+					rubricQuestionCriteriaId: scoreDto.rubricQuestionCriteriaId,
 					score: scoreDto.score,
 					commentaries: i18nText(scoreDto.commentaries) as any,
-					is_active: true,
+					isActive: true,
 				});
 				await manager.save(newScore);
 			}
@@ -330,39 +329,39 @@ export class EvaluationSubmissionService {
 		dto: SubmitEvaluationDto,
 	): Promise<{ success: boolean; evaluationId: number; scaledScore?: number }> {
 		const evaluator = await this.evaluatorRepo.findOne({
-			where: { id: dto.project_evaluator_id },
+			where: { id: dto.projectEvaluatorId },
 			relations: ['project'],
 		});
 		const student = await this.studentRepo.findOne({
-			where: { id: dto.project_student_id },
+			where: { id: dto.projectStudentId },
 			relations: ['project'],
 		});
 
 		if (!evaluator || !student) {
 			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
 		}
-		if (evaluator.project_id !== student.project_id) {
+		if (evaluator.projectId !== student.projectId) {
 			throw new ConflictException(evaluationsValidationStrings.error.notSameProject);
 		}
 
-		const criteriaIds = dto.scores.map((s) => s.rubric_question_criteria_id);
+		const criteriaIds = dto.scores.map((s) => s.rubricQuestionCriteriaId);
 		const criterias = await this.criteriaRepo.find({ where: { id: In(criteriaIds) } });
 
 		const rubric = await this.rubricRepo.findOne({
-			where: { id: dto.rubric_id },
+			where: { id: dto.rubricId },
 			relations: ['questions', 'questions.criterias'],
 		});
 		if (!rubric) {
-			throw new NotFoundException(`Rúbrica con ID ${dto.rubric_id} no encontrada.`);
+			throw new NotFoundException(`Rúbrica con ID ${dto.rubricId} no encontrada.`);
 		}
 
-		const statusCode = await this.resolveEvaluatorTypeCode(dto.qualification_status_type_id);
+		const statusCode = await this.resolveEvaluatorTypeCode(dto.qualificationStatusTypeId);
 		const isNr = statusCode === TYPE_CODES.QUALIFICATION_STATUS.NR;
 		const isNa = statusCode === TYPE_CODES.QUALIFICATION_STATUS.NA;
 		const isNrOrNa = isNr || isNa;
 
-		const isCapstone = await this.isCapstoneRubric(rubric.rubric_type_id);
-		const isFinal = await this.isFinalEvaluation(rubric.grade_type_id);
+		const isCapstone = await this.isCapstoneRubric(rubric.rubricTypeId);
+		const isFinal = await this.isFinalEvaluation(rubric.gradeTypeId);
 		const isCapstoneFinal = isCapstone && isFinal;
 
 		// Mapa criteriaId → questionId construido desde la rúbrica
@@ -377,7 +376,7 @@ export class EvaluationSubmissionService {
 			if (isCapstoneFinal) {
 				// Todos los criterios de la rúbrica deben estar en el DTO
 				const allCriteriaIds = new Set(criteriaToQuestion.keys());
-				const scoredIds = new Set(dto.scores.map((s) => s.rubric_question_criteria_id));
+				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
 				if (missing.length > 0) {
 					throw new BadRequestException(
@@ -388,7 +387,7 @@ export class EvaluationSubmissionService {
 				// Capstone parcial o no capstone: máximo 1 criterio por pregunta
 				const countByQuestion = new Map<number, number>();
 				for (const scoreDto of dto.scores) {
-					const questionId = criteriaToQuestion.get(scoreDto.rubric_question_criteria_id);
+					const questionId = criteriaToQuestion.get(scoreDto.rubricQuestionCriteriaId);
 					if (!questionId) continue;
 					countByQuestion.set(questionId, (countByQuestion.get(questionId) ?? 0) + 1);
 				}
@@ -407,10 +406,10 @@ export class EvaluationSubmissionService {
 				: null;
 
 			for (const scoreDto of dto.scores) {
-				const criteria = criterias.find((c) => c.id === scoreDto.rubric_question_criteria_id);
+				const criteria = criterias.find((c) => c.id === scoreDto.rubricQuestionCriteriaId);
 				if (!criteria) {
 					throw new NotFoundException(
-						`Criterio con ID ${scoreDto.rubric_question_criteria_id} no encontrado.`,
+						`Criterio con ID ${scoreDto.rubricQuestionCriteriaId} no encontrado.`,
 					);
 				}
 				if (validPerfLevelValues) {
@@ -421,11 +420,11 @@ export class EvaluationSubmissionService {
 					}
 				} else {
 					if (
-						Number(scoreDto.score) < Number(criteria.min_value) ||
-						Number(scoreDto.score) > Number(criteria.max_value)
+						Number(scoreDto.score) < Number(criteria.minValue) ||
+						Number(scoreDto.score) > Number(criteria.maxValue)
 					) {
 						throw new BadRequestException(
-							`Puntaje ${scoreDto.score} inválido. Rango: [${criteria.min_value} - ${criteria.max_value}].`,
+							`Puntaje ${scoreDto.score} inválido. Rango: [${criteria.minValue} - ${criteria.maxValue}].`,
 						);
 					}
 				}
@@ -435,7 +434,7 @@ export class EvaluationSubmissionService {
 		const scoresToSave =
 			isCapstoneFinal && isNrOrNa
 				? [...criteriaToQuestion.keys()].map((criteriaId) => ({
-						rubric_question_criteria_id: criteriaId,
+						rubricQuestionCriteriaId: criteriaId,
 						score: 0,
 					}))
 				: dto.scores;
@@ -444,20 +443,18 @@ export class EvaluationSubmissionService {
 			async (manager) => {
 				const evaluation = await this.saveEvaluationScores(
 					manager,
-					dto.project_student_id,
-					dto.project_evaluator_id,
+					dto.projectStudentId,
+					dto.projectEvaluatorId,
 					dto.observation,
 					scoresToSave,
-					dto.qualification_status_type_id,
+					dto.qualificationStatusTypeId,
 				);
 
 				if (!isCapstoneFinal) {
-					const submittedCriteriaIds = new Set(
-						dto.scores.map((s) => s.rubric_question_criteria_id),
-					);
+					const submittedCriteriaIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 					const questionsInSubmission = new Set(
 						dto.scores
-							.map((s) => criteriaToQuestion.get(s.rubric_question_criteria_id))
+							.map((s) => criteriaToQuestion.get(s.rubricQuestionCriteriaId))
 							.filter((qId): qId is number => qId !== undefined),
 					);
 					const criteriaToDelete: number[] = [];
@@ -471,13 +468,13 @@ export class EvaluationSubmissionService {
 					}
 					if (criteriaToDelete.length > 0) {
 						await manager.delete(RubricScoreEntity, {
-							evaluation_id: evaluation.id,
-							rubric_question_criteria_id: In(criteriaToDelete),
+							evaluationId: evaluation.id,
+							rubricQuestionCriteriaId: In(criteriaToDelete),
 						});
 					}
 				}
 
-				const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluator_type_id);
+				const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 				const isPa = await this.isPaRubric(rubric.id);
 
 				let txOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
@@ -485,8 +482,8 @@ export class EvaluationSubmissionService {
 				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.COM) {
 					const comEvaluators = await manager.find(ProjectEvaluatorEntity, {
 						where: {
-							project_id: evaluator.project_id,
-							evaluator_type_id: evaluator.evaluator_type_id,
+							projectId: evaluator.projectId,
+							evaluatorTypeId: evaluator.evaluatorTypeId,
 						},
 					});
 					const comEvaluatorIds = comEvaluators.map((e) => e.id);
@@ -498,11 +495,11 @@ export class EvaluationSubmissionService {
 
 					const comEvaluations = await manager.find(EvaluationEntity, {
 						where: {
-							project_student_id: dto.project_student_id,
-							project_evaluator_id: In(comEvaluatorIds),
+							projectStudentId: dto.projectStudentId,
+							projectEvaluatorId: In(comEvaluatorIds),
 						},
 					});
-					const evalMap = new Map(comEvaluations.map((e) => [e.project_evaluator_id, e]));
+					const evalMap = new Map(comEvaluations.map((e) => [e.projectEvaluatorId, e]));
 
 					for (const comEvalId of comEvaluatorIds) {
 						const comStudentEval = evalMap.get(comEvalId);
@@ -535,7 +532,7 @@ export class EvaluationSubmissionService {
 
 					await this.upsertOutcomeGrades(
 						manager,
-						student.student_section_enrollment_id,
+						student.studentSectionEnrollmentId,
 						txOutcomeGrades,
 					);
 				} else if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
@@ -543,7 +540,7 @@ export class EvaluationSubmissionService {
 					txOutcomeGrades = outcomeGrades;
 					await this.upsertOutcomeGrades(
 						manager,
-						student.student_section_enrollment_id,
+						student.studentSectionEnrollmentId,
 						txOutcomeGrades,
 					);
 				} else {
@@ -551,7 +548,7 @@ export class EvaluationSubmissionService {
 					txOutcomeGrades = outcomeGrades;
 					await this.upsertOutcomeGrades(
 						manager,
-						student.student_section_enrollment_id,
+						student.studentSectionEnrollmentId,
 						txOutcomeGrades,
 					);
 				}
@@ -580,27 +577,27 @@ export class EvaluationSubmissionService {
 		await this.dataSource.transaction(async (manager) => {
 			let evaluation = await manager.findOne(EvaluationEntity, {
 				where: {
-					project_student_id: dto.project_student_id,
-					project_evaluator_id: dto.project_evaluator_id,
+					projectStudentId: dto.projectStudentId,
+					projectEvaluatorId: dto.projectEvaluatorId,
 				},
 			});
 
 			if (!evaluation) {
 				evaluation = manager.create(EvaluationEntity, {
-					project_student_id: dto.project_student_id,
-					project_evaluator_id: dto.project_evaluator_id,
-					qualification_status_type_id: nrStatusTypeId,
+					projectStudentId: dto.projectStudentId,
+					projectEvaluatorId: dto.projectEvaluatorId,
+					qualificationStatusTypeId: nrStatusTypeId,
 					observation: i18nText(dto.observation),
-					register_at: new Date(),
+					registerAt: new Date(),
 				});
 			} else {
 				evaluation.observation = i18nText(dto.observation);
 			}
 
 			if (!evaluation.observation || !i18nTrim(evaluation.observation)) {
-				evaluation.qualification_status_type_id = nrStatusTypeId;
+				evaluation.qualificationStatusTypeId = nrStatusTypeId;
 			} else {
-				evaluation.qualification_status_type_id = asistioStatusTypeId;
+				evaluation.qualificationStatusTypeId = asistioStatusTypeId;
 			}
 
 			await manager.save(evaluation);
@@ -614,15 +611,15 @@ export class EvaluationSubmissionService {
 	 */
 	async finalizeProject(dto: FinalizeProjectDto): Promise<{ success: boolean; message: string }> {
 		const project = await this.projectRepo.findOne({
-			where: { id: dto.project_id },
-			relations: ['students', 'students.student_section_enrollment'],
+			where: { id: dto.projectId },
+			relations: ['students', 'students.studentSectionEnrollment'],
 		});
 
 		if (!project) {
 			throw new NotFoundException(evaluationsValidationStrings.error.projectNotFound);
 		}
 
-		const { rubric } = await this.getRubricForProject(dto.project_id);
+		const { rubric } = await this.getRubricForProject(dto.projectId);
 		if (!rubric) {
 			throw new BadRequestException(evaluationsValidationStrings.error.noRubricForProject);
 		}
@@ -638,36 +635,36 @@ export class EvaluationSubmissionService {
 			for (const ps of project.students) {
 				const evaluation = await manager.findOne(EvaluationEntity, {
 					where: {
-						project_student_id: ps.id,
-						project_evaluator_id: dto.evaluator_id,
+						projectStudentId: ps.id,
+						projectEvaluatorId: dto.evaluatorId,
 					},
 				});
 
-				if (!ps.student_section_enrollment) continue;
+				if (!ps.studentSectionEnrollment) continue;
 
 				if (!evaluation) {
 					throw new BadRequestException(
-						`Debe calificar al alumno con enrollment ${ps.student_section_enrollment_id}.`,
+						`Debe calificar al alumno con enrollment ${ps.studentSectionEnrollmentId}.`,
 					);
 				}
 
-				if (!dto.is_pa && !i18nTrim(evaluation.observation)) {
+				if (!dto.isPa && !i18nTrim(evaluation.observation)) {
 					throw new BadRequestException(
-						`Debe ingresar y guardar las observaciones para el alumno ${ps.student_section_enrollment_id}.`,
+						`Debe ingresar y guardar las observaciones para el alumno ${ps.studentSectionEnrollmentId}.`,
 					);
 				}
 
 				const criteriaCount = await manager.count(RubricScoreEntity, {
-					where: { evaluation_id: evaluation.id },
+					where: { evaluationId: evaluation.id },
 				});
 
 				if (criteriaCount < totalCriteria) {
 					throw new BadRequestException(
-						`Debe calificar todos los criterios para el alumno ${ps.student_section_enrollment_id}.`,
+						`Debe calificar todos los criterios para el alumno ${ps.studentSectionEnrollmentId}.`,
 					);
 				}
 
-				evaluation.qualification_status_type_id = asistioStatusTypeId;
+				evaluation.qualificationStatusTypeId = asistioStatusTypeId;
 				await manager.save(evaluation);
 			}
 		});
@@ -678,7 +675,7 @@ export class EvaluationSubmissionService {
 	async getEvaluationById(id: number): Promise<EvaluationEntity> {
 		const evaluation = await this.evaluationRepo.findOne({
 			where: { id },
-			relations: ['scores', 'project_student', 'project_evaluator'],
+			relations: ['scores', 'projectStudent', 'projectEvaluator'],
 		});
 
 		if (!evaluation) {
@@ -690,15 +687,15 @@ export class EvaluationSubmissionService {
 
 	async getStudentEvaluations(studentId: number): Promise<EvaluationEntity[]> {
 		return await this.evaluationRepo.find({
-			where: { project_student_id: studentId },
-			relations: ['scores', 'project_evaluator'],
+			where: { projectStudentId: studentId },
+			relations: ['scores', 'projectEvaluator'],
 		});
 	}
 
 	async getEvaluatorEvaluations(evaluatorId: number): Promise<EvaluationEntity[]> {
 		return await this.evaluationRepo.find({
-			where: { project_evaluator_id: evaluatorId },
-			relations: ['scores', 'project_student'],
+			where: { projectEvaluatorId: evaluatorId },
+			relations: ['scores', 'projectStudent'],
 		});
 	}
 }

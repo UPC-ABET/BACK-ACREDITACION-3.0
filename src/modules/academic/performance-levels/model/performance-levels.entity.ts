@@ -15,10 +15,10 @@ export class PerformanceLevelEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	instrument_type_id: number;
+	instrumentTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@JsonColumn({ nullable: false })
 	name: I18nText;
@@ -27,16 +27,16 @@ export class PerformanceLevelEntity extends BaseEntity {
 	code: string;
 
 	@DecimalColumn({ nullable: false })
-	unique_value: number;
+	uniqueValue: number;
 
 	@DecimalColumn({ nullable: false })
-	min_score: number;
+	minScore: number;
 
 	@DecimalColumn({ nullable: false })
-	max_score: number;
+	maxScore: number;
 
 	@DecimalColumn({ nullable: false })
-	max_value: number;
+	maxValue: number;
 
 	// %% RELATIONS
 
@@ -45,12 +45,12 @@ export class PerformanceLevelEntity extends BaseEntity {
 		name: 'instrument_type_id',
 		foreignKeyConstraintName: 'FK_performance_levels_instrument_type_id',
 	})
-	instrument_type: TypeEntity;
+	instrumentType: TypeEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_performance_levels_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 }

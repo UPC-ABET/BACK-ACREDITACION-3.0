@@ -9,11 +9,11 @@ export class CreateAcademicPeriodDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	modality_type_id: number;
+	modalityTypeId: number;
 
 	@IsString()
 	@Length(1, 1000)
@@ -22,11 +22,11 @@ export class CreateAcademicPeriodDto {
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	start_date: Date;
+	startDate: Date;
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	end_date: Date;
+	endDate: Date;
 }
 
 export class UpdateAcademicPeriodDto {
@@ -37,12 +37,12 @@ export class UpdateAcademicPeriodDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_id?: number;
+	modalityTypeId?: number;
 
 	@IsOptional()
 	@IsString()
@@ -53,12 +53,12 @@ export class UpdateAcademicPeriodDto {
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	start_date?: Date;
+	startDate?: Date;
 
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	end_date?: Date;
+	endDate?: Date;
 }
 
 export class FilterAcademicPeriodDto {
@@ -68,11 +68,11 @@ export class FilterAcademicPeriodDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_id?: number;
+	modalityTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })
@@ -80,9 +80,9 @@ export class FilterAcademicPeriodDto {
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	start_date?: Date;
+	startDate?: Date;
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	end_date?: Date;
+	endDate?: Date;
 }

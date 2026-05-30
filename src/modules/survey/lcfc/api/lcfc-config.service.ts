@@ -14,9 +14,9 @@ export class LcfcConfigService {
 		dto: GenerateLcfcConfigDto,
 	): Promise<{ created: number; skipped: number; configs: any[] }> {
 		const sections = await this.configRepo.getCourseSectionsForPeriod(
-			dto.academic_period_id,
-			dto.program_id,
-			dto.campus_id,
+			dto.academicPeriodId,
+			dto.programId,
+			dto.campusId,
 		);
 
 		if (sections.length === 0) {
@@ -25,10 +25,10 @@ export class LcfcConfigService {
 			);
 		}
 
-		const outcomeId = await this.configRepo.findFirstProgramOutcomeId(dto.program_id);
+		const outcomeId = await this.configRepo.findFirstProgramOutcomeId(dto.programId);
 		if (!outcomeId) {
 			throw new BadRequestException(
-				`No se encontraron outcomes para el programa ${dto.program_id}. Verifique que existan outcomes en accreditation.outcomes.`,
+				`No se encontraron outcomes para el programa ${dto.programId}. Verifique que existan outcomes en accreditation.outcomes.`,
 			);
 		}
 
@@ -38,8 +38,8 @@ export class LcfcConfigService {
 
 		for (const section of sections) {
 			const existing = await this.configRepo.findByCourseSection(
-				section.course_section_id,
-				dto.academic_period_id,
+				section.courseSectionId,
+				dto.academicPeriodId,
 			);
 
 			if (existing) {
@@ -49,22 +49,22 @@ export class LcfcConfigService {
 			}
 
 			const extra = {
-				survey_type: LCFC_SURVEY_TYPE,
-				course_section_id: section.course_section_id,
-				course_id: section.course_id,
-				course_name: section.course_name,
-				section_code: section.section_code,
-				academic_period_id: dto.academic_period_id,
-				program_id: dto.program_id,
-				campus_id: dto.campus_id ?? section.campus_id,
+				surveyType: LCFC_SURVEY_TYPE,
+				courseSectionId: section.courseSectionId,
+				courseId: section.courseId,
+				courseName: section.courseName,
+				sectionCode: section.sectionCode,
+				academicPeriodId: dto.academicPeriodId,
+				programId: dto.programId,
+				campusId: dto.campusId ?? section.campusId,
 			};
 
 			const config = await this.configRepo.create({
-				outcome_id: outcomeId,
-				user_outcome_name: section.course_name as any,
-				user_outcome_description: `Sección: ${section.section_code}` as any,
+				outcomeId: outcomeId,
+				userOutcomeName: section.courseName as any,
+				userOutcomeDescription: `Sección: ${section.sectionCode}` as any,
 				extra,
-				is_active: true,
+				isActive: true,
 			});
 
 			created++;
@@ -81,10 +81,10 @@ export class LcfcConfigService {
 	async updateStatus(dto: UpdateLcfcConfigStatusDto): Promise<{ updated: number }> {
 		let updated = 0;
 		for (const item of dto.updates) {
-			const existing = await this.configRepo.findOneById(item.config_id);
+			const existing = await this.configRepo.findOneById(item.configId);
 			if (!existing)
-				throw new NotFoundException(`Configuración LCFC con ID ${item.config_id} no encontrada.`);
-			await this.configRepo.update(item.config_id, { is_active: item.is_active });
+				throw new NotFoundException(`Configuración LCFC con ID ${item.configId} no encontrada.`);
+			await this.configRepo.update(item.configId, { isActive: item.isActive });
 			updated++;
 		}
 		return { updated };

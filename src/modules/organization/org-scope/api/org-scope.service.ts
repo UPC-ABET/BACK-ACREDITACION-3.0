@@ -5,11 +5,11 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 interface ScopeRow {
 	id: number;
-	parent_id: number | null;
-	level_num: number;
-	type_code: string;
+	parentId: number | null;
+	levelNum: number;
+	typeCode: string;
 	label: I18nText;
-	is_anchor: boolean;
+	isAnchor: boolean;
 }
 
 @Injectable()
@@ -18,7 +18,7 @@ export class OrgScopeService {
 
 	async getScope(userId: number, schoolId: number | null, periodId: number) {
 		if (schoolId === null || schoolId === undefined) {
-			return { highest_level: null, levels: [] };
+			return { highestLevel: null, levels: [] };
 		}
 
 		const rows: ScopeRow[] = await this.dataSource.query(SCOPE_SQL, [
@@ -28,23 +28,23 @@ export class OrgScopeService {
 			TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
 		]);
 
-		if (rows.length === 0) return { highest_level: null, levels: [] };
+		if (rows.length === 0) return { highestLevel: null, levels: [] };
 
-		const byLevel = new Map<number, { type_code: string; options: any[] }>();
+		const byLevel = new Map<number, { typeCode: string; options: any[] }>();
 		for (const r of rows) {
-			const entry = byLevel.get(r.level_num) ?? { type_code: r.type_code, options: [] };
-			entry.options.push({ id: r.id, label: r.label, parent_id: r.parent_id });
-			byLevel.set(r.level_num, entry);
+			const entry = byLevel.get(r.levelNum) ?? { typeCode: r.typeCode, options: [] };
+			entry.options.push({ id: r.id, label: r.label, parentId: r.parentId });
+			byLevel.set(r.levelNum, entry);
 		}
 
-		const anchorLevels = rows.filter((r) => r.is_anchor).map((r) => r.level_num);
-		const highest_level = anchorLevels.length ? Math.min(...anchorLevels) : null;
+		const anchorLevels = rows.filter((r) => r.isAnchor).map((r) => r.levelNum);
+		const highestLevel = anchorLevels.length ? Math.min(...anchorLevels) : null;
 
 		const levels = [...byLevel.entries()]
 			.sort(([a], [b]) => a - b)
-			.map(([level_num, v]) => ({ level_num, type_code: v.type_code, options: v.options }));
+			.map(([levelNum, v]) => ({ levelNum, typeCode: v.typeCode, options: v.options }));
 
-		return { highest_level, levels };
+		return { highestLevel, levels };
 	}
 }
 
@@ -106,14 +106,14 @@ scope AS (
 	FROM (SELECT * FROM ancestors UNION SELECT * FROM descendants) combined
 )
 SELECT
-	s.id::int                                           AS id,
-	s.root_chart_detail_id::int                         AS parent_id,
-	cl.level                                            AS level_num,
-	ct.code                                             AS type_code,
-	s.level_title                                       AS label,
-	EXISTS(SELECT 1 FROM anchors a WHERE a.id = s.id)   AS is_anchor
+	s.id::int                                           AS "id",
+	s.root_chart_detail_id::int                         AS "parentId",
+	cl.level                                            AS "levelNum",
+	ct.code                                             AS "typeCode",
+	s.level_title                                       AS "label",
+	EXISTS(SELECT 1 FROM anchors a WHERE a.id = s.id)   AS "isAnchor"
 FROM scope s
 JOIN organization.chart_levels cl ON s.chart_level_id = cl.id
 JOIN core.types ct               ON ct.id = cl.level_type_id
-ORDER BY level_num ASC, s.id ASC
+ORDER BY "levelNum" ASC, s.id ASC
 `;

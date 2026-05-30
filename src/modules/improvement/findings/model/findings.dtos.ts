@@ -10,20 +10,20 @@ export class CreateFindingDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	criticality_type_id: number;
+	criticalityTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	instrument_id: number;
+	instrumentId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -36,19 +36,19 @@ export class CreateFindingDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	course_id: number;
+	courseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	campus_id: number;
+	campusId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_automatic: boolean;
+	isAutomatic: boolean;
 }
 
 export class UpdateFindingDto {
@@ -59,22 +59,22 @@ export class UpdateFindingDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	criticality_type_id?: number;
+	criticalityTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	instrument_id?: number;
+	instrumentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -89,22 +89,22 @@ export class UpdateFindingDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_automatic?: boolean;
+	isAutomatic?: boolean;
 }
 
 export class FilterFindingDto {
@@ -114,19 +114,19 @@ export class FilterFindingDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	criticality_type_id?: number;
+	criticalityTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	instrument_id?: number;
+	instrumentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
@@ -138,17 +138,17 @@ export class FilterFindingDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_automatic?: boolean;
+	isAutomatic?: boolean;
 }

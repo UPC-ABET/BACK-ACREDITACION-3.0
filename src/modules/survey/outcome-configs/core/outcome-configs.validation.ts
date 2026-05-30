@@ -8,7 +8,7 @@ export class OutcomeConfigValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				outcome_id: data.outcome_id,
+				outcomeId: data.outcomeId,
 			},
 		});
 
@@ -31,11 +31,11 @@ export class OutcomeConfigValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(outcomeConfigsValidationStrings.error.notFound);
 
-		const outcomeId = data.outcome_id ?? entity?.outcome_id;
+		const outcomeId = data.outcomeId ?? entity?.outcomeId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				outcome_id: outcomeId,
+				outcomeId: outcomeId,
 			},
 		});
 

@@ -63,34 +63,34 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		if (filters.code) {
 			qb.andWhere('project.code = :code', { code: filters.code });
 		}
-		if (filters.is_active !== undefined) {
-			qb.andWhere('project.is_active = :is_active', { is_active: filters.is_active });
+		if (filters.isActive !== undefined) {
+			qb.andWhere('project.is_active = :isActive', { isActive: filters.isActive });
 		}
 
 		// ── Evaluador ────────────────────────────────────────────────────
 
-		if (filters.professor_id) {
-			qb.andWhere('pe.professor_id = :professor_id', { professor_id: filters.professor_id });
+		if (filters.professorId) {
+			qb.andWhere('pe.professor_id = :professorId', { professorId: filters.professorId });
 		}
 
 		// ── Flags to build JOINs only when needed ──────────
 
 		const needsEnrollment = !!(
-			filters.student_id ||
-			filters.course_id ||
-			filters.academic_period_id ||
-			filters.program_id ||
-			filters.school_id
+			filters.studentId ||
+			filters.courseId ||
+			filters.academicPeriodId ||
+			filters.programId ||
+			filters.schoolId
 		);
 		const needsCourseSection = !!(
-			filters.course_id ||
-			filters.academic_period_id ||
-			filters.program_id ||
-			filters.school_id
+			filters.courseId ||
+			filters.academicPeriodId ||
+			filters.programId ||
+			filters.schoolId
 		);
 		const needsSpc = needsCourseSection;
-		const needsSpap = !!(filters.academic_period_id || filters.program_id || filters.school_id);
-		const needsSp = !!(filters.program_id || filters.school_id);
+		const needsSpap = !!(filters.academicPeriodId || filters.programId || filters.schoolId);
+		const needsSp = !!(filters.programId || filters.schoolId);
 
 		// ── JOIN: Student Section Enrollment ────────────────────────────
 
@@ -104,9 +104,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 		// ── Student ───────────────────────────────────────────────────────
 
-		if (filters.student_id) {
+		if (filters.studentId) {
 			qb.leftJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
-			qb.andWhere('es.student_id = :student_id', { student_id: filters.student_id });
+			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
 		// ── JOIN: Course Section ────────────────────────────────────────
@@ -123,8 +123,8 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 		// ── Course ────────────────────────────────────────────────────────
 
-		if (filters.course_id) {
-			qb.andWhere('spc.course_id = :course_id', { course_id: filters.course_id });
+		if (filters.courseId) {
+			qb.andWhere('spc.course_id = :courseId', { courseId: filters.courseId });
 		}
 
 		// ── JOIN: Study Plan Academic Period ────────────────────────────
@@ -139,9 +139,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 		// ── Academic Period ────────────────────────────────────────────
 
-		if (filters.academic_period_id) {
-			qb.andWhere('spap.academic_period_id = :academic_period_id', {
-				academic_period_id: filters.academic_period_id,
+		if (filters.academicPeriodId) {
+			qb.andWhere('spap.academic_period_id = :academicPeriodId', {
+				academicPeriodId: filters.academicPeriodId,
 			});
 		}
 
@@ -153,12 +153,12 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 		// ── Program ─────────────────────────────────────────────
 
-		if (filters.program_id) {
-			qb.andWhere('sp.program_id = :program_id', { program_id: filters.program_id });
+		if (filters.programId) {
+			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 		}
 
 		// ── School ──────────────────────────────────────────────────────
-		if (filters.school_id) {
+		if (filters.schoolId) {
 			qb.andWhere(
 				`sp.program_id IN (
                 SELECT ch_prog.entity_code
@@ -173,16 +173,16 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
                        AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
                 INNER JOIN organization.schools sch
                        ON  sch.id      = ch_sch.entity_code
-                WHERE  sch.id = :school_id
+                WHERE  sch.id = :schoolId
             )`,
 			);
-			qb.setParameter('school_id', filters.school_id);
+			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		const { entities, raw } = await qb.getRawAndEntities();
 
 		return entities.map((project) => {
-			const projectRaws = raw.filter((r) => r.project_id === project.id);
+			const projectRaws = raw.filter((r) => r.projectId === project.id);
 
 			return {
 				...project,
@@ -190,13 +190,13 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 					const studentRaw = projectRaws.find((r) => r.ps_id === student.id);
 					return {
 						...student,
-						student_info: studentRaw
+						studentInfo: studentRaw
 							? {
-									first_name: studentRaw.u_enrich_first_name,
-									last_name: studentRaw.u_enrich_last_name,
-									student_id: studentRaw.st_enrich_id,
-									section_code: studentRaw.cs_enrich_section_code,
-									section_id: studentRaw.cs_enrich_id,
+									firstName: studentRaw.u_enrich_first_name,
+									lastName: studentRaw.u_enrich_last_name,
+									studentId: studentRaw.st_enrich_id,
+									sectionCode: studentRaw.cs_enrich_section_code,
+									sectionId: studentRaw.cs_enrich_id,
 								}
 							: null,
 					};
@@ -205,12 +205,12 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 					const evalRaw = projectRaws.find((r) => r.pe_id === evaluator.id);
 					return {
 						...evaluator,
-						evaluator_info: evalRaw
+						evaluatorInfo: evalRaw
 							? {
-									first_name: evalRaw.u_prof_enrich_first_name,
-									last_name: evalRaw.u_prof_enrich_last_name,
-									evaluator_type_name: evalRaw.eval_type_enrich_name,
-									evaluator_type_code: evalRaw.eval_type_enrich_code,
+									firstName: evalRaw.u_prof_enrich_first_name,
+									lastName: evalRaw.u_prof_enrich_last_name,
+									evaluatorTypeName: evalRaw.eval_type_enrich_name,
+									evaluatorTypeCode: evalRaw.eval_type_enrich_code,
 								}
 							: null,
 					};

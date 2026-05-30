@@ -57,27 +57,27 @@ export class CourseService extends BaseService<CourseRepository> {
 			.innerJoinAndSelect('st.user', 'prof_user');
 
 		// Apply filters
-		if (filters?.is_active !== undefined) {
-			qb.andWhere('sse.is_active = :sse_is_active', { sse_is_active: filters.is_active });
-			qb.andWhere('es.is_active = :es_is_active', { es_is_active: filters.is_active });
+		if (filters?.isActive !== undefined) {
+			qb.andWhere('sse.is_active = :sseIsActive', { sseIsActive: filters.isActive });
+			qb.andWhere('es.is_active = :esIsActive', { esIsActive: filters.isActive });
 		}
 
-		if (filters?.academic_period_id !== undefined) {
+		if (filters?.academicPeriodId !== undefined) {
 			qb.innerJoin(
 				'spc.study_plan_academic_period',
 				'spap',
-				'spap.academic_period_id = :academic_period_id',
-				{ academic_period_id: filters.academic_period_id },
+				'spap.academic_period_id = :academicPeriodId',
+				{ academicPeriodId: filters.academicPeriodId },
 			);
 		}
 
-		if (filters?.campus_id !== undefined) {
-			qb.andWhere('cs.campus_id = :campus_id', { campus_id: filters.campus_id });
+		if (filters?.campusId !== undefined) {
+			qb.andWhere('cs.campus_id = :campusId', { campusId: filters.campusId });
 		}
 
-		if (filters?.study_plan_academic_period_id !== undefined) {
-			qb.andWhere('spc.study_plan_academic_period_id = :spap_id', {
-				spap_id: filters.study_plan_academic_period_id,
+		if (filters?.studyPlanAcademicPeriodId !== undefined) {
+			qb.andWhere('spc.study_plan_academic_period_id = :studyPlanAcademicPeriodId', {
+				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
 			});
 		}
 
@@ -86,21 +86,21 @@ export class CourseService extends BaseService<CourseRepository> {
 		return results.map(
 			(item) =>
 				({
-					id: item.enrolled_student_id,
-					student_section_enrollment_id: item.id,
-					student_id: item.enrolled_student.student_id,
-					first_name: item.enrolled_student.student.user.first_name,
-					last_name: item.enrolled_student.student.user.last_name,
-					email: item.enrolled_student.student.user.email,
-					student_code: `EST-${item.enrolled_student.student.user.document_code}`,
-					course_section_id: item.course_section_id,
-					section_code: item.course_section.section_code,
-					professor_id: item.course_section.professor_id,
-					professor_first_name: item.course_section.professor.staff.user.first_name,
-					professor_last_name: item.course_section.professor.staff.user.last_name,
-					campus_id: item.course_section.campus_id,
-					enrollment_date: item.created_at,
-					is_active: item.is_active,
+					id: item.enrolledStudentId,
+					studentSectionEnrollmentId: item.id,
+					studentId: item.enrolledStudent.studentId,
+					firstName: item.enrolledStudent.student.user.firstName,
+					lastName: item.enrolledStudent.student.user.lastName,
+					email: item.enrolledStudent.student.user.email,
+					studentCode: `EST-${item.enrolledStudent.student.user.documentCode}`,
+					courseSectionId: item.courseSectionId,
+					sectionCode: item.courseSection.sectionCode,
+					professorId: item.courseSection.professorId,
+					professorFirstName: item.courseSection.professor.staff.user.firstName,
+					professorLastName: item.courseSection.professor.staff.user.lastName,
+					campusId: item.courseSection.campusId,
+					enrollmentDate: item.createdAt,
+					isActive: item.isActive,
 				}) as CourseEnrolledStudentDto,
 		);
 	}

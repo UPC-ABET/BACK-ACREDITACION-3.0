@@ -9,8 +9,8 @@ export class IfcFindingValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				ifc_id: data.ifc_id,
-				finding_id: data.finding_id,
+				ifcId: data.ifcId,
+				findingId: data.findingId,
 			},
 		});
 
@@ -33,13 +33,13 @@ export class IfcFindingValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(ifcFindingsValidationStrings.error.notFound);
 
-		const ifcId = data.ifc_id ?? entity?.ifc_id;
-		const findingId = data.finding_id ?? entity?.finding_id;
+		const ifcId = data.ifcId ?? entity?.ifcId;
+		const findingId = data.findingId ?? entity?.findingId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				ifc_id: ifcId,
-				finding_id: findingId,
+				ifcId: ifcId,
+				findingId: findingId,
 			},
 		});
 
@@ -71,7 +71,7 @@ export class IfcFindingValidation {
 
 	static async assertFindingExists(em: EntityManager, id: number) {
 		const rows = await em.query(
-			'SELECT id, course_id::int AS course_id, academic_period_id::int AS academic_period_id FROM improvement.findings WHERE id = $1 LIMIT 1',
+			'SELECT id, course_id::int AS "courseId", academic_period_id::int AS "academicPeriodId" FROM improvement.findings WHERE id = $1 LIMIT 1',
 			[id],
 		);
 		if (rows.length === 0) {
@@ -93,7 +93,7 @@ export class IfcFindingValidation {
 		courseLevelCode: string,
 	) {
 		const rows = await em.query(
-			`SELECT c.id::int AS id, c.staff_id::int AS staff_id
+			`SELECT c.id::int AS "id", c.staff_id::int AS "staffId"
 			 FROM organization.charts c
 			 JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
 			 JOIN core.types ct                ON ct.id = cl.level_type_id

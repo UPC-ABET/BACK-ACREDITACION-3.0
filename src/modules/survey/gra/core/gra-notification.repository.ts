@@ -36,31 +36,31 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 	async findGraPending(
 		graSurveyTypeId: number,
 		scheduledStatusId: number,
-		filters: { academic_period_id: number; program_id?: number },
+		filters: { academicPeriodId: number; programId?: number },
 	): Promise<
 		{
-			notification_id: number;
+			notificationId: number;
 			token: string;
-			max_register_date: string;
-			survey_id: number;
-			student_id: number;
-			student_name: string;
-			student_code: string;
-			student_email: string;
-			program_name: string;
+			maxRegisterDate: string;
+			surveyId: number;
+			studentId: number;
+			studentName: string;
+			studentCode: string;
+			studentEmail: string;
+			programName: string;
 		}[]
 	> {
 		let query = `
 			SELECT
-				n.id              AS notification_id,
+				n.id                               AS "notificationId",
 				n.token,
-				n.max_register_date,
-				n.survey_id,
-				s.student_id,
-				u.first_name || ' ' || u.last_name AS student_name,
-				u.document_code::text              AS student_code,
-				u.email                            AS student_email,
-				p.name->>'es'                      AS program_name
+				n.max_register_date                AS "maxRegisterDate",
+				n.survey_id                        AS "surveyId",
+				s.student_id                       AS "studentId",
+				u.first_name || ' ' || u.last_name AS "studentName",
+				u.document_code::text              AS "studentCode",
+				u.email                            AS "studentEmail",
+				p.name->>'es'                      AS "programName"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
@@ -70,11 +70,11 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			  AND n.notification_status_type_id = $2
 			  AND s.academic_period_id = $3
 		`;
-		const params: any[] = [graSurveyTypeId, scheduledStatusId, filters.academic_period_id];
+		const params: any[] = [graSurveyTypeId, scheduledStatusId, filters.academicPeriodId];
 
-		if (filters.program_id) {
+		if (filters.programId) {
 			query += ` AND s.program_id = $${params.length + 1}`;
-			params.push(filters.program_id);
+			params.push(filters.programId);
 		}
 
 		return await this.dataSource.query(query, params);
@@ -84,38 +84,38 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 	async listStudentsGra(
 		graSurveyTypeId: number,
 		filters: {
-			academic_period_id?: number;
-			program_id?: number;
-			campus_id?: number;
-			student_code?: string;
+			academicPeriodId?: number;
+			programId?: number;
+			campusId?: number;
+			studentCode?: string;
 		},
 	): Promise<
 		{
-			notification_id: number;
-			survey_id: number;
-			student_id: number;
-			student_name: string;
-			student_code: string;
-			student_email: string;
-			program_name: string;
-			notification_status: string;
-			sent_date: string | null;
-			max_register_date: string;
+			notificationId: number;
+			surveyId: number;
+			studentId: number;
+			studentName: string;
+			studentCode: string;
+			studentEmail: string;
+			programName: string;
+			notificationStatus: string;
+			sentDate: string | null;
+			maxRegisterDate: string;
 			token: string;
 		}[]
 	> {
 		let query = `
 			SELECT
-				n.id                AS notification_id,
-				n.survey_id,
-				s.student_id,
-				u.first_name || ' ' || u.last_name AS student_name,
-				u.document_code::text              AS student_code,
-				u.email                            AS student_email,
-				p.name->>'es'                      AS program_name,
-				t.name->>'es'                      AS notification_status,
-				n.sent_date,
-				n.max_register_date,
+				n.id                               AS "notificationId",
+				n.survey_id                        AS "surveyId",
+				s.student_id                       AS "studentId",
+				u.first_name || ' ' || u.last_name AS "studentName",
+				u.document_code::text              AS "studentCode",
+				u.email                            AS "studentEmail",
+				p.name->>'es'                      AS "programName",
+				t.name->>'es'                      AS "notificationStatus",
+				n.sent_date                        AS "sentDate",
+				n.max_register_date                AS "maxRegisterDate",
 				n.token
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
@@ -127,21 +127,21 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		`;
 		const params: any[] = [graSurveyTypeId];
 
-		if (filters.academic_period_id) {
+		if (filters.academicPeriodId) {
 			query += ` AND s.academic_period_id = $${params.length + 1}`;
-			params.push(filters.academic_period_id);
+			params.push(filters.academicPeriodId);
 		}
-		if (filters.program_id) {
+		if (filters.programId) {
 			query += ` AND s.program_id = $${params.length + 1}`;
-			params.push(filters.program_id);
+			params.push(filters.programId);
 		}
-		if (filters.campus_id) {
+		if (filters.campusId) {
 			query += ` AND s.campus_id = $${params.length + 1}`;
-			params.push(filters.campus_id);
+			params.push(filters.campusId);
 		}
-		if (filters.student_code) {
+		if (filters.studentCode) {
 			query += ` AND u.document_code::text ILIKE $${params.length + 1}`;
-			params.push(`%${filters.student_code}%`);
+			params.push(`%${filters.studentCode}%`);
 		}
 
 		query += ` ORDER BY u.first_name ASC`;
@@ -161,31 +161,31 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 
 	/** Busca una notificación por token (incluyendo datos del survey) para validación */
 	async findByTokenWithDetails(token: string): Promise<{
-		notification_id: number;
-		survey_id: number;
-		student_id: number;
-		student_name: string;
-		student_code: string;
-		program_id: number;
-		program_name: string;
-		academic_period_id: number;
-		max_register_date: string;
-		notification_status: string;
-		survey_status: string;
+		notificationId: number;
+		surveyId: number;
+		studentId: number;
+		studentName: string;
+		studentCode: string;
+		programId: number;
+		programName: string;
+		academicPeriodId: number;
+		maxRegisterDate: string;
+		notificationStatus: string;
+		surveyStatus: string;
 	} | null> {
 		const rows = await this.dataSource.query(
 			`SELECT
-				n.id                AS notification_id,
-				n.survey_id,
-				s.student_id,
-				u.first_name || ' ' || u.last_name AS student_name,
-				u.document_code::text              AS student_code,
-				s.program_id,
-				p.name->>'es'                      AS program_name,
-				s.academic_period_id,
-				n.max_register_date,
-				nt.name->>'es'                     AS notification_status,
-				st2.name->>'es'                    AS survey_status
+				n.id                AS "notificationId",
+				n.survey_id                        AS "surveyId",
+				s.student_id                       AS "studentId",
+				u.first_name || ' ' || u.last_name AS "studentName",
+				u.document_code::text              AS "studentCode",
+				s.program_id                       AS "programId",
+				p.name->>'es'                      AS "programName",
+				s.academic_period_id               AS "academicPeriodId",
+				n.max_register_date                AS "maxRegisterDate",
+				nt.name->>'es'                     AS "notificationStatus",
+				st2.name->>'es'                    AS "surveyStatus"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
@@ -202,7 +202,7 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 
 	/** Verifica si ya existe una notificación GRA para un estudiante en un período */
 	async existsForStudent(surveyId: number): Promise<boolean> {
-		const count = await this.repository.count({ where: { survey_id: surveyId } });
+		const count = await this.repository.count({ where: { surveyId: surveyId } });
 		return count > 0;
 	}
 }

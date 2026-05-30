@@ -21,11 +21,11 @@ export class GenerateLcfcConfigDto {
 		example: 3,
 		description: 'ID del período académico para el que se generan configuraciones',
 	})
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
-	program_id: number;
+	programId: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -34,24 +34,24 @@ export class GenerateLcfcConfigDto {
 		description: 'ID del campus (opcional, filtra por sede)',
 		required: false,
 	})
-	campus_id?: number;
+	campusId?: number;
 }
 
 export class FilterLcfcConfigDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 3, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 5, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class LcfcConfigStatusItemDto {
@@ -60,11 +60,11 @@ export class LcfcConfigStatusItemDto {
 		example: 12,
 		description: 'ID del registro de configuración LCFC (outcome_config.id)',
 	})
-	config_id: number;
+	configId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, description: 'true = activo para LCFC, false = inactivo' })
-	is_active: boolean;
+	isActive: boolean;
 }
 
 export class UpdateLcfcConfigStatusDto {
@@ -85,17 +85,17 @@ export class UpdateLcfcConfigStatusDto {
 export class SendLcfcNotificationDto {
 	@IsNumber()
 	@ApiProperty({ example: 3, description: 'ID del período académico' })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 5, description: 'Filtrar por programa (opcional)', required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 2, description: 'Filtrar por campus (opcional)', required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -104,7 +104,7 @@ export class SendLcfcNotificationDto {
 		description: 'Enviar solo para esta sección de curso (opcional, 0=todas las activas)',
 		required: false,
 	})
-	course_section_id?: number;
+	courseSectionId?: number;
 
 	@IsOptional()
 	@IsString()
@@ -113,7 +113,7 @@ export class SendLcfcNotificationDto {
 		description: 'Fecha límite para responder la encuesta',
 		required: false,
 	})
-	max_register_date?: string;
+	maxRegisterDate?: string;
 
 	@IsOptional()
 	@IsString()
@@ -122,7 +122,7 @@ export class SendLcfcNotificationDto {
 		description: 'URL base del frontend para el link de encuesta',
 		required: false,
 	})
-	survey_base_url?: string;
+	surveyBaseUrl?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -146,7 +146,7 @@ export class GetLcfcSurveyByTokenDto {
 export class LcfcScoreItemDto {
 	@IsNumber()
 	@ApiProperty({ example: 102, description: 'ID del outcome de accreditation.outcomes' })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsNumber()
 	@Min(1)
@@ -188,15 +188,15 @@ export class DashboardLcfcDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 3, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 5, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 2, required: false })
-	campus_id?: number;
+	campusId?: number;
 }

@@ -10,11 +10,11 @@ export class CreateProgramDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	modality_type_id: number;
+	modalityTypeId: number;
 
 	@IsString()
 	@Length(1, 50)
@@ -38,12 +38,12 @@ export class UpdateProgramDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_id?: number;
+	modalityTypeId?: number;
 
 	@IsOptional()
 	@IsString()
@@ -69,11 +69,11 @@ export class FilterProgramDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_id?: number;
+	modalityTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })
@@ -92,10 +92,10 @@ export class FilterProgramDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	school_id?: number;
+	schoolId?: number;
 }

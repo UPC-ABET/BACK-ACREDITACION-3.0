@@ -9,24 +9,24 @@ export class CreateCourseSectionDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	campus_id: number;
+	campusId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	professor_id: number;
+	professorId: number;
 
 	@IsString()
 	@Length(1, 50)
 	@ApiProperty({ example: 'section_code_example', required: true })
-	section_code: string;
+	sectionCode: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
@@ -34,7 +34,7 @@ export class CreateCourseSectionDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	section_modality_type_id: number;
+	sectionModalityTypeId: number;
 }
 
 export class UpdateCourseSectionDto {
@@ -45,28 +45,28 @@ export class UpdateCourseSectionDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	studyPlanCourseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	professorId?: number;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
 	@ApiProperty({ example: 'section_code_example', required: false })
-	section_code?: string;
+	sectionCode?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
@@ -75,7 +75,7 @@ export class UpdateCourseSectionDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	section_modality_type_id?: number;
+	sectionModalityTypeId?: number;
 }
 
 export class FilterCourseSectionDto {
@@ -85,23 +85,23 @@ export class FilterCourseSectionDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	studyPlanCourseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	professorId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'section_code_example', required: false })
-	section_code?: string;
+	sectionCode?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
@@ -109,5 +109,5 @@ export class FilterCourseSectionDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	section_modality_type_id?: number;
+	sectionModalityTypeId?: number;
 }

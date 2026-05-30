@@ -11,19 +11,19 @@ export class StatusEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	ifc_id: number;
+	ifcId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	status_type_id: number;
+	statusTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	staff_id: number;
+	staffId: number;
 
 	@JsonColumn({ nullable: true })
 	comment: I18nText;
 
 	@DateColumn({ nullable: false })
-	register_at: Date;
+	registerAt: Date;
 
 	// %% RELATIONS
 
@@ -33,7 +33,7 @@ export class StatusEntity extends BaseEntity {
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'status_type_id', foreignKeyConstraintName: 'FK_statuses_status_type_id' })
-	status_type: TypeEntity;
+	statusType: TypeEntity;
 
 	@ManyToOne(() => StaffEntity)
 	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_statuses_staff_id' })

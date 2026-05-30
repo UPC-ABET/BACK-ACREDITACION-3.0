@@ -10,27 +10,27 @@ export class CreateOutcomeDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_commission_id: number;
+	programCommissionId: number;
 
 	@IsString()
 	@Length(1, 50)
 	@ApiProperty({ example: 'outcome_code_example', required: true })
-	outcome_code: string;
+	outcomeCode: string;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: true })
-	outcome_name: I18nText;
+	outcomeName: I18nText;
 
 	@IsObject()
 	@ApiProperty({
 		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
 		required: true,
 	})
-	outcome_description: I18nText;
+	outcomeDescription: I18nText;
 }
 
 export class UpdateOutcomeDto {
@@ -41,23 +41,23 @@ export class UpdateOutcomeDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_commission_id?: number;
+	programCommissionId?: number;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
 	@ApiProperty({ example: 'outcome_code_example', required: false })
-	outcome_code?: string;
+	outcomeCode?: string;
 
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: false })
-	outcome_name?: I18nText;
+	outcomeName?: I18nText;
 
 	@IsOptional()
 	@IsObject()
@@ -65,7 +65,7 @@ export class UpdateOutcomeDto {
 		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
 		required: false,
 	})
-	outcome_description?: I18nText;
+	outcomeDescription?: I18nText;
 }
 
 export class FilterOutcomeDto {
@@ -75,24 +75,24 @@ export class FilterOutcomeDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_commission_id?: number;
+	programCommissionId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'outcome_code_example', required: false })
-	outcome_code?: string;
+	outcomeCode?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: false })
-	outcome_name?: I18nText;
+	outcomeName?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({
 		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
 		required: false,
 	})
-	outcome_description?: I18nText;
+	outcomeDescription?: I18nText;
 }

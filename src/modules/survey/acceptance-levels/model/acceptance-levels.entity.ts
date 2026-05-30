@@ -17,10 +17,10 @@ export class AcceptanceLevelEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@JsonColumn()
 	name: I18nText;
@@ -29,16 +29,16 @@ export class AcceptanceLevelEntity extends BaseEntity {
 	order: number | null;
 
 	@DecimalColumn({ nullable: false })
-	min_score: number;
+	minScore: number;
 
 	@DecimalColumn({ nullable: false })
-	max_score: number;
+	maxScore: number;
 
 	@TextShortColumn({ nullable: true })
 	color: string | null;
 
 	@BooleanColumn()
-	is_final: boolean;
+	isFinal: boolean;
 
 	// %% RELATIONS
 
@@ -47,12 +47,12 @@ export class AcceptanceLevelEntity extends BaseEntity {
 		name: 'survey_type_id',
 		foreignKeyConstraintName: 'FK_acceptance_levels_survey_type_id',
 	})
-	survey_type: TypeEntity;
+	surveyType: TypeEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_acceptance_levels_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 }

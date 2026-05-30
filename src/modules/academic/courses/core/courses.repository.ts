@@ -24,13 +24,13 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 		// ── Direct Filters ─────────────────────────────────────────────────
 		if (filters.code) qb.andWhere('c.code = :code', { code: filters.code });
-		if (filters.is_active !== undefined)
-			qb.andWhere('c.is_active = :is_active', { is_active: filters.is_active });
+		if (filters.isActive !== undefined)
+			qb.andWhere('c.is_active = :isActive', { isActive: filters.isActive });
 
 		// ── Flags ────────────────────────────────────────────────────────────
-		const needsSpc = !!(filters.academic_period_id || filters.program_id || filters.school_id);
+		const needsSpc = !!(filters.academicPeriodId || filters.programId || filters.schoolId);
 		const needsSpap = needsSpc;
-		const needsSp = !!(filters.program_id || filters.school_id);
+		const needsSp = !!(filters.programId || filters.schoolId);
 
 		// ── JOINs ────────────────────────────────────────────────────────────
 		if (needsSpc) {
@@ -42,9 +42,9 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 			);
 		}
 
-		if (filters.academic_period_id) {
-			qb.andWhere('spap.academic_period_id = :academic_period_id', {
-				academic_period_id: filters.academic_period_id,
+		if (filters.academicPeriodId) {
+			qb.andWhere('spap.academic_period_id = :academicPeriodId', {
+				academicPeriodId: filters.academicPeriodId,
 			});
 		}
 
@@ -52,12 +52,12 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 			qb.leftJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 		}
 
-		if (filters.program_id) {
-			qb.andWhere('sp.program_id = :program_id', { program_id: filters.program_id });
+		if (filters.programId) {
+			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 		}
 
 		// ── School ──────────────────────────────────────────────────────────
-		if (filters.school_id) {
+		if (filters.schoolId) {
 			qb.andWhere(
 				`sp.program_id IN (
                 SELECT ch_prog.entity_code
@@ -72,10 +72,10 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
                        AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
                 INNER JOIN organization.schools sch
                        ON  sch.id      = ch_sch.entity_code
-                WHERE  sch.id = :school_id
+                WHERE  sch.id = :schoolId
             )`,
 			);
-			qb.setParameter('school_id', filters.school_id);
+			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		return await qb.getMany();

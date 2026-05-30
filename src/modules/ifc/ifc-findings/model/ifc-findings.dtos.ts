@@ -20,15 +20,15 @@ export class CreateIfcFindingDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	ifc_id: number;
+	ifcId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	finding_id: number;
+	findingId: number;
 }
 
 export class UpdateIfcFindingDto {
@@ -39,17 +39,17 @@ export class UpdateIfcFindingDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 }
 
 export class FilterIfcFindingDto {
@@ -59,15 +59,15 @@ export class FilterIfcFindingDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 }
 
 // %% OTHER DTOS
@@ -81,23 +81,23 @@ export class ListIfcFindingsDto {
 	@IsArray()
 	@ArrayNotEmpty()
 	@IsInt({ each: true })
-	chart_ids: number[];
+	chartIds: number[];
 
 	@ApiProperty({ example: 5, required: true })
 	@IsInt()
 	@IsPositive()
-	period_id: number;
+	periodId: number;
 }
 
 export class IfcFindingRowDto {
 	@ApiProperty() id: number;
-	@ApiProperty() ifc_id: number;
-	@ApiProperty() course_id: number;
-	@ApiProperty() criticality_code: string;
-	@ApiProperty({ type: Object }) criticality_name: I18nText;
-	@ApiProperty() criticality_order: number;
-	@ApiProperty() finding_code: string;
-	@ApiProperty() academic_period_code: string;
+	@ApiProperty() ifcId: number;
+	@ApiProperty() courseId: number;
+	@ApiProperty() criticalityCode: string;
+	@ApiProperty({ type: Object }) criticalityName: I18nText;
+	@ApiProperty() criticalityOrder: number;
+	@ApiProperty() findingCode: string;
+	@ApiProperty() academicPeriodCode: string;
 	@ApiProperty({ type: Object }) description: I18nText;
 }
 
@@ -122,7 +122,7 @@ export class IfcFindingActionCompletenessDto {
 
 export class IfcFindingActionDetailDto {
 	@ApiProperty() id: number;
-	@ApiProperty() action_code: string;
+	@ApiProperty() actionCode: string;
 	@ApiProperty({ type: Object }) description: I18nText;
 	@ApiProperty({ type: () => IfcFindingActionCompletenessDto })
 	completeness: IfcFindingActionCompletenessDto;
@@ -135,8 +135,8 @@ export class IfcFindingCriticalityDto {
 
 export class IfcFindingDetailDto {
 	@ApiProperty() id: number;
-	@ApiProperty() finding_code: string;
-	@ApiProperty() academic_period_code: string;
+	@ApiProperty() findingCode: string;
+	@ApiProperty() academicPeriodCode: string;
 	@ApiProperty({ type: Object }) description: I18nText;
 	@ApiProperty({ type: () => IfcFindingCriticalityDto }) criticality: IfcFindingCriticalityDto;
 }

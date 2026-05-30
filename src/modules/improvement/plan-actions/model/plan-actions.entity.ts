@@ -9,10 +9,10 @@ export class PlanActionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	plan_id: number;
+	planId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	finding_action_id: number;
+	findingActionId: number;
 
 	// %% RELATIONS
 
@@ -25,5 +25,5 @@ export class PlanActionEntity extends BaseEntity {
 		name: 'finding_action_id',
 		foreignKeyConstraintName: 'FK_plan_actions_finding_action_id',
 	})
-	finding_action: FindingActionEntity;
+	findingAction: FindingActionEntity;
 }

@@ -10,15 +10,15 @@ export class CreatePlanDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_id: number;
+	programId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
@@ -31,7 +31,7 @@ export class CreatePlanDto {
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_open: boolean;
+	isOpen: boolean;
 }
 
 export class UpdatePlanDto {
@@ -42,17 +42,17 @@ export class UpdatePlanDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -67,7 +67,7 @@ export class UpdatePlanDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_open?: boolean;
+	isOpen?: boolean;
 }
 
 export class FilterPlanDto {
@@ -77,15 +77,15 @@ export class FilterPlanDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
@@ -97,5 +97,5 @@ export class FilterPlanDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_open?: boolean;
+	isOpen?: boolean;
 }

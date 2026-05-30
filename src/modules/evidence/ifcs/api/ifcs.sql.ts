@@ -1,21 +1,21 @@
 export const LIST_SQL = `
 SELECT
-	c.id::int                                          AS chart_id,
-	ac.code                                            AS course_code,
-	ac.name                                            AS course_name,
-	c_program.level_title                              AS program_label,
-	u.id::int                                          AS coordinator_user_id,
-	u.first_name || ' ' || u.last_name                 AS coordinator_name,
+	c.id::int                                          AS "chartId",
+	ac.code                                            AS "courseCode",
+	ac.name                                            AS "courseName",
+	c_program.level_title                              AS "programLabel",
+	u.id::int                                          AS "coordinatorUserId",
+	u.first_name || ' ' || u.last_name                 AS "coordinatorName",
 	CASE WHEN i.id IS NULL THEN NULL ELSE jsonb_build_object(
-		'id',           i.id,
-		'information',  i.information,
-		'extra',        i.extra,
-		'created_at',   i.created_at,
-		'updated_at',   i.updated_at,
-		'status_code',  ifc_st.code,
-		'status_label', ifc_st.name,
-		'status_color', ifc_st.extra->>'color'
-	) END                                              AS ifc
+		'id',          i.id,
+		'information', i.information,
+		'extra',       i.extra,
+		'createdAt',   i.created_at,
+		'updatedAt',   i.updated_at,
+		'statusCode',  ifc_st.code,
+		'statusLabel', ifc_st.name,
+		'statusColor', ifc_st.extra->>'color'
+	) END                                              AS "ifc"
 FROM organization.charts c
 JOIN core.types ct_entity            ON ct_entity.id = c.entity_type_id
 JOIN academic.courses ac             ON ac.id = c.entity_code
@@ -85,33 +85,33 @@ requester_staff AS (
 	LIMIT 1
 )
 SELECT
-	i.id                                            AS ifc_id,
-	i.course_id::int                                AS course_id,
-	i.academic_period_id::int                       AS academic_period_id,
+	i.id                                            AS "ifcId",
+	i.course_id::int                                AS "courseId",
+	i.academic_period_id::int                       AS "academicPeriodId",
 	i.information,
 	i.extra,
-	i.created_at                                    AS ifc_created_at,
-	ap.code                                         AS academic_period_code,
-	c_program.level_title                           AS program_label,
-	c_area.level_title                              AS area_label,
-	c_sub.level_title                               AS subarea_label,
-	ac.code                                         AS course_code,
-	ac.name                                         AS course_name,
-	ac.learning_outcome                             AS course_learning_outcome,
-	coord_u.id::int                                 AS coordinator_user_id,
-	coord_prof.code                                 AS coordinator_code,
-	coord_u.first_name || ' ' || coord_u.last_name  AS coordinator_name,
-	ifc_st.code                                     AS status_code,
-	ifc_st.name                                     AS status_name,
-	(ifc_st.extra->>'color')                        AS status_color,
-	latest_status.register_at                       AS status_at,
-	latest_status.comment                           AS status_comment,
-	u_by.first_name || ' ' || u_by.last_name        AS status_by_name,
+	i.created_at                                    AS "ifcCreatedAt",
+	ap.code                                         AS "academicPeriodCode",
+	c_program.level_title                           AS "programLabel",
+	c_area.level_title                              AS "areaLabel",
+	c_sub.level_title                               AS "subareaLabel",
+	ac.code                                         AS "courseCode",
+	ac.name                                         AS "courseName",
+	ac.learning_outcome                             AS "courseLearningOutcome",
+	coord_u.id::int                                 AS "coordinatorUserId",
+	coord_prof.code                                 AS "coordinatorCode",
+	coord_u.first_name || ' ' || coord_u.last_name  AS "coordinatorName",
+	ifc_st.code                                     AS "statusCode",
+	ifc_st.name                                     AS "statusName",
+	(ifc_st.extra->>'color')                        AS "statusColor",
+	latest_status.register_at                       AS "statusAt",
+	latest_status.comment                           AS "statusComment",
+	u_by.first_name || ' ' || u_by.last_name        AS "statusByName",
 	EXISTS (
 		SELECT 1
 		FROM chain_up cu, requester_staff rs
 		WHERE cu.staff_id = rs.staff_id
-	)                                               AS requester_in_chain
+	)                                               AS "requesterInChain"
 FROM evidence.ifcs i
 JOIN academic.academic_periods ap ON ap.id = i.academic_period_id
 JOIN academic.courses          ac ON ac.id = i.course_id
@@ -138,17 +138,17 @@ WHERE i.id = $1
 
 export const FINDINGS_SQL = `
 SELECT
-	f.id::int                          AS finding_id,
-	f.correlative                      AS finding_correlative,
-	f.description                      AS finding_description,
-	f.is_automatic                     AS is_automatic,
+	f.id::int                          AS "findingId",
+	f.correlative                      AS "findingCorrelative",
+	f.description                      AS "findingDescription",
+	f.is_automatic                     AS "isAutomatic",
 	(p_fnd.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || f.correlative::text  AS finding_code,
-	crit.code                          AS criticality_code,
-	crit.name                          AS criticality_name,
-	(crit.extra->>'color')             AS criticality_color
+		|| '-' || f.correlative::text  AS "findingCode",
+	crit.code                          AS "criticalityCode",
+	crit.name                          AS "criticalityName",
+	(crit.extra->>'color')             AS "criticalityColor"
 FROM ifc.ifc_findings ifc_f
 JOIN improvement.findings f      ON f.id    = ifc_f.finding_id
 JOIN core.types crit             ON crit.id = f.criticality_type_id
@@ -162,12 +162,12 @@ ORDER BY f.correlative
 
 export const FINDING_OUTCOMES_SQL = `
 SELECT
-	fo.finding_id::int                  AS finding_id,
-	o.outcome_code                      AS outcome_code,
-	o.outcome_name                      AS outcome_name,
-	o.outcome_description               AS outcome_description,
-	comm.code                           AS commission_code,
-	comm.name                           AS commission_name
+	fo.finding_id::int                  AS "findingId",
+	o.outcome_code                      AS "outcomeCode",
+	o.outcome_name                      AS "outcomeName",
+	o.outcome_description               AS "outcomeDescription",
+	comm.code                           AS "commissionCode",
+	comm.name                           AS "commissionName"
 FROM improvement.finding_outcomes fo
 JOIN accreditation.outcomes o                ON o.id    = fo.outcome_id
 JOIN accreditation.program_commissions pc    ON pc.id   = o.program_commission_id
@@ -178,17 +178,17 @@ ORDER BY fo.finding_id, o.outcome_code
 
 export const FINDING_ACTIONS_SQL = `
 SELECT
-	fa.finding_id::int                  AS finding_id,
-	a.id::int                           AS action_id,
-	a.correlative                       AS action_correlative,
-	a.description                       AS action_description,
+	fa.finding_id::int                  AS "findingId",
+	a.id::int                           AS "actionId",
+	a.correlative                       AS "actionCorrelative",
+	a.description                       AS "actionDescription",
 	(p_acn.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || a.correlative::text   AS action_code,
-	CASE WHEN fa.evidences IS NULL THEN $3 ELSE $4 END  AS completeness_code,
-	comp.name                           AS completeness_name,
-	(comp.extra->>'color')              AS completeness_color
+		|| '-' || a.correlative::text   AS "actionCode",
+	CASE WHEN fa.evidences IS NULL THEN $3 ELSE $4 END  AS "completenessCode",
+	comp.name                           AS "completenessName",
+	(comp.extra->>'color')              AS "completenessColor"
 FROM improvement.finding_actions fa
 JOIN improvement.actions  a      ON a.id    = fa.action_id
 JOIN improvement.findings f      ON f.id    = fa.finding_id
@@ -203,13 +203,13 @@ ORDER BY fa.finding_id, a.correlative
 
 export const OUTCOME_COURSE_BY_IFC_SQL = `
 SELECT
-	p.code                              AS program_code,
-	p.name                              AS program_name,
-	comm.code                           AS commission_code,
-	comm.name                           AS commission_name,
-	o.outcome_code                      AS outcome_code,
-	o.outcome_name                      AS outcome_name,
-	o.outcome_description               AS outcome_description
+	p.code                              AS "programCode",
+	p.name                              AS "programName",
+	comm.code                           AS "commissionCode",
+	comm.name                           AS "commissionName",
+	o.outcome_code                      AS "outcomeCode",
+	o.outcome_name                      AS "outcomeName",
+	o.outcome_description               AS "outcomeDescription"
 FROM evidence.ifcs i
 JOIN academic.study_plan_courses spc           ON spc.course_id = i.course_id
 JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
@@ -225,13 +225,13 @@ ORDER BY p.code, comm.code, o.outcome_code
 
 export const OUTCOME_COURSE_BY_CHART_SQL = `
 SELECT
-	p.code                              AS program_code,
-	p.name                              AS program_name,
-	comm.code                           AS commission_code,
-	comm.name                           AS commission_name,
-	o.outcome_code                      AS outcome_code,
-	o.outcome_name                      AS outcome_name,
-	o.outcome_description               AS outcome_description
+	p.code                              AS "programCode",
+	p.name                              AS "programName",
+	comm.code                           AS "commissionCode",
+	comm.name                           AS "commissionName",
+	o.outcome_code                      AS "outcomeCode",
+	o.outcome_name                      AS "outcomeName",
+	o.outcome_description               AS "outcomeDescription"
 FROM organization.charts c_course
 JOIN academic.courses ac                       ON ac.id = c_course.entity_code
 JOIN academic.study_plan_courses spc           ON spc.course_id = ac.id
@@ -280,10 +280,10 @@ school_check AS (
 	  )
 )
 SELECT
-	(SELECT course_chart_id FROM course_chart)::int AS course_chart_id,
-	(SELECT staff_id FROM course_chart)::int        AS ifc_course_staff_id,
-	rs.id::int                                       AS requester_staff_id,
-	ifc_st.code                                      AS current_status_code
+	(SELECT course_chart_id FROM course_chart)::int AS "courseChartId",
+	(SELECT staff_id FROM course_chart)::int        AS "ifcCourseStaffId",
+	rs.id::int                                       AS "requesterStaffId",
+	ifc_st.code                                      AS "currentStatusCode"
 FROM evidence.ifcs i
 LEFT JOIN organization.staff rs ON rs.user_id = $3
 LEFT JOIN LATERAL (
@@ -342,15 +342,15 @@ school_check AS (
 	  AND c_school.entity_code = $3
 )
 SELECT
-	ap.code                                         AS academic_period_code,
-	c_area.level_title                              AS area_label,
-	c_sub.level_title                               AS subarea_label,
-	ac.id::int                                      AS course_id,
-	ac.name                                         AS course_name,
-	ac.learning_outcome                             AS course_learning_outcome,
-	coord_u.id::int                                 AS coordinator_user_id,
-	coord_prof.code                                 AS coordinator_code,
-	coord_u.first_name || ' ' || coord_u.last_name  AS coordinator_name
+	ap.code                                         AS "academicPeriodCode",
+	c_area.level_title                              AS "areaLabel",
+	c_sub.level_title                               AS "subareaLabel",
+	ac.id::int                                      AS "courseId",
+	ac.name                                         AS "courseName",
+	ac.learning_outcome                             AS "courseLearningOutcome",
+	coord_u.id::int                                 AS "coordinatorUserId",
+	coord_prof.code                                 AS "coordinatorCode",
+	coord_u.first_name || ' ' || coord_u.last_name  AS "coordinatorName"
 FROM course_chart c_course
 JOIN academic.academic_periods ap   ON ap.id = c_course.academic_period_id
 JOIN academic.courses          ac   ON ac.id = c_course.entity_code
@@ -386,10 +386,10 @@ school_check AS (
 	  AND c_school.entity_code = $3
 )
 SELECT
-	c_course.entity_code::int    AS course_id,
-	c_course.staff_id::int       AS ifc_course_staff_id,
-	c_program.entity_code::int   AS program_id,
-	rs.id::int                    AS requester_staff_id
+	c_course.entity_code::int    AS "courseId",
+	c_course.staff_id::int       AS "ifcCourseStaffId",
+	c_program.entity_code::int   AS "programId",
+	rs.id::int                    AS "requesterStaffId"
 FROM course_chart c_course
 JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
 JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
@@ -429,8 +429,8 @@ target_programs AS (
 	  AND EXISTS (SELECT 1 FROM school_check)
 )
 SELECT
-	(SELECT code FROM organization.schools WHERE id = $2) AS school_code,
-	COALESCE(ARRAY(SELECT code FROM target_programs ORDER BY code), '{}') AS program_codes
+	(SELECT code FROM organization.schools WHERE id = $2) AS "schoolCode",
+	COALESCE(ARRAY(SELECT code FROM target_programs ORDER BY code), '{}') AS "programCodes"
 `;
 
 export const STATUS_REPORT_SQL = `
@@ -463,13 +463,13 @@ target_charts AS (
 	  AND c.is_active = true
 )
 SELECT
-	tc.level_title->>$6                                     AS course_name,
-	c_area.level_title->>$6                                 AS area_label,
-	c_program.level_title->>$6                              AS program_label,
-	coord_u.first_name || ' ' || coord_u.last_name          AS coordinator_name,
-	coord_u.email                                           AS coordinator_email,
-	coord_prof.code                                         AS coordinator_code,
-	ifc_st.code                                             AS status_code
+	tc.level_title->>$6                                     AS "courseName",
+	c_area.level_title->>$6                                 AS "areaLabel",
+	c_program.level_title->>$6                              AS "programLabel",
+	coord_u.first_name || ' ' || coord_u.last_name          AS "coordinatorName",
+	coord_u.email                                           AS "coordinatorEmail",
+	coord_prof.code                                         AS "coordinatorCode",
+	ifc_st.code                                             AS "statusCode"
 FROM target_charts tc
 JOIN organization.charts c_sub      ON c_sub.id     = tc.root_chart_detail_id
 JOIN organization.charts c_area     ON c_area.id    = c_sub.root_chart_detail_id
@@ -493,7 +493,7 @@ ORDER BY c_program.level_title->>$6 ASC, c_area.level_title->>$6 ASC, tc.level_t
 `;
 
 export const PROGRAM_BY_COURSE_PERIOD_SQL = `
-SELECT c_program.entity_code::int AS program_id
+SELECT c_program.entity_code::int AS "programId"
 FROM organization.charts c_course
 JOIN organization.chart_levels cl  ON cl.id = c_course.chart_level_id
 JOIN core.types ct                 ON ct.id = cl.level_type_id
@@ -544,29 +544,29 @@ candidates AS (
 	SELECT finding_action_id, action_id FROM via_action
 )
 SELECT
-	a.id::int                AS id,
-	fa.id::int               AS finding_action_id,
-	fa.finding_id::int       AS finding_id,
+	a.id::int                AS "id",
+	fa.id::int               AS "findingActionId",
+	fa.finding_id::int       AS "findingId",
 	(p_fnd.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || f.correlative::text                   AS finding_code,
-	a.correlative::int       AS correlative,
-	a.description            AS description,
-	fa.evidences             AS evidences,
-	CASE WHEN fa.evidences IS NULL THEN $5 ELSE $6 END  AS completeness_code,
-	comp.name                AS completeness_name,
-	(comp.extra->>'color')   AS completeness_color,
+		|| '-' || f.correlative::text                   AS "findingCode",
+	a.correlative::int       AS "correlative",
+	a.description            AS "description",
+	fa.evidences             AS "evidences",
+	CASE WHEN fa.evidences IS NULL THEN $5 ELSE $6 END  AS "completenessCode",
+	comp.name                AS "completenessName",
+	(comp.extra->>'color')   AS "completenessColor",
 	(p_acn.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || a.correlative::text                   AS code,
+		|| '-' || a.correlative::text                   AS "code",
 	CASE
 		WHEN EXISTS (SELECT 1 FROM via_plan vp WHERE vp.finding_action_id = fa.id AND vp.action_id = a.id)
 		 AND EXISTS (SELECT 1 FROM via_action va WHERE va.finding_action_id = fa.id AND va.action_id = a.id) THEN 'both'
 		WHEN EXISTS (SELECT 1 FROM via_plan vp WHERE vp.finding_action_id = fa.id AND vp.action_id = a.id) THEN 'plan'
 		ELSE 'direct'
-	END                      AS source
+	END                      AS "source"
 FROM candidates c
 JOIN improvement.finding_actions fa ON fa.id = c.finding_action_id
 JOIN improvement.actions a          ON a.id  = c.action_id

@@ -24,7 +24,7 @@ import { authValidationStrings } from '../config/strings/auth.validation';
 
 interface MicrosoftState {
 	csrf: string;
-	school_id: number;
+	schoolId: number;
 }
 
 @ApiTags('Autenticación')
@@ -41,23 +41,23 @@ export class AuthController {
 
 	@Public()
 	@Get('microsoft')
-	@ApiOperation({ summary: 'Iniciar login con Microsoft Entra ID (requiere school_code)' })
+	@ApiOperation({ summary: 'Iniciar login con Microsoft Entra ID (requiere schoolCode)' })
 	@ApiQuery({
-		name: 'school_code',
+		name: 'schoolCode',
 		required: true,
 		description: 'Código de la escuela seleccionada',
 	})
-	async loginWithMicrosoft(@Query('school_code') school_code: string, @Res() res: Response) {
-		if (!school_code) {
+	async loginWithMicrosoft(@Query('schoolCode') schoolCode: string, @Res() res: Response) {
+		if (!schoolCode) {
 			throw new HttpException(
 				{ message: 'error.school.required', errors: ['error.school.required'] },
 				HttpStatus.BAD_REQUEST,
 			);
 		}
 
-		const school_id = await this.authService.resolveSchoolIdByCode(school_code);
+		const schoolId = await this.authService.resolveSchoolIdByCode(schoolCode);
 		const csrf = randomBytes(24).toString('hex');
-		const state = this.signState({ csrf, school_id });
+		const state = this.signState({ csrf, schoolId });
 
 		const loginUrl = await this.authService.buildMicrosoftLoginUrl(state);
 
@@ -83,7 +83,7 @@ export class AuthController {
 		const storedCsrf = res.req?.cookies?.[MICROSOFT_STATE_COOKIE];
 		this.validateCsrf(parsed.csrf, storedCsrf);
 
-		const result = await this.authService.loginWithMicrosoftCode(code, parsed.school_id);
+		const result = await this.authService.loginWithMicrosoftCode(code, parsed.schoolId);
 
 		res.clearCookie(MICROSOFT_STATE_COOKIE);
 		saveAccessCookie(res, result);
@@ -117,7 +117,7 @@ export class AuthController {
 
 		try {
 			const obj = JSON.parse(Buffer.from(encoded, 'base64url').toString()) as MicrosoftState;
-			if (!obj.csrf || !obj.school_id) throw new Error();
+			if (!obj.csrf || !obj.schoolId) throw new Error();
 			return obj;
 		} catch {
 			throw new UnauthorizedException(authValidationStrings.error.invalidSession);

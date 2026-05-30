@@ -8,7 +8,7 @@ export class ProfessorValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				staff_id: data.staff_id,
+				staffId: data.staffId,
 			},
 		});
 
@@ -31,10 +31,10 @@ export class ProfessorValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(professorsValidationStrings.error.notFound);
 
-		if (data.staff_id) {
+		if (data.staffId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					staff_id: data.staff_id,
+					staffId: data.staffId,
 				},
 			});
 

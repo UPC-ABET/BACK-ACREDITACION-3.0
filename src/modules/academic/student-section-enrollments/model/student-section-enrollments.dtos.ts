@@ -9,15 +9,15 @@ export class CreateStudentSectionEnrollmentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	enrolled_student_id: number;
+	enrolledStudentId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	course_section_id: number;
+	courseSectionId: number;
 }
 
 export class UpdateStudentSectionEnrollmentDto {
@@ -28,17 +28,17 @@ export class UpdateStudentSectionEnrollmentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	enrolled_student_id?: number;
+	enrolledStudentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	course_section_id?: number;
+	courseSectionId?: number;
 }
 
 export class FilterStudentSectionEnrollmentDto {
@@ -48,13 +48,13 @@ export class FilterStudentSectionEnrollmentDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	enrolled_student_id?: number;
+	enrolledStudentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	course_section_id?: number;
+	courseSectionId?: number;
 }

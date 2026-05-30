@@ -10,7 +10,7 @@ export class CreateCourseDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsString()
 	@Length(1, 50)
@@ -30,7 +30,7 @@ export class CreateCourseDto {
 		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
 		required: true,
 	})
-	learning_outcome: I18nText;
+	learningOutcome: I18nText;
 }
 
 export class UpdateCourseDto {
@@ -41,7 +41,7 @@ export class UpdateCourseDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsString()
@@ -65,7 +65,7 @@ export class UpdateCourseDto {
 		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
 		required: false,
 	})
-	learning_outcome?: I18nText;
+	learningOutcome?: I18nText;
 }
 
 export class FilterCourseDto {
@@ -75,7 +75,7 @@ export class FilterCourseDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })
@@ -94,24 +94,24 @@ export class FilterCourseDto {
 		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
 		required: false,
 	})
-	learning_outcome?: I18nText;
+	learningOutcome?: I18nText;
 
 	// Filters by related entities
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	school_id?: number;
+	schoolId?: number;
 }
 
 // ── DTOs for Enrolled Students Endpoint ────────────────────────────────────
@@ -124,7 +124,7 @@ export class FilterCourseEnrolledStudentsDto {
 		required: false,
 		description: 'Filtrar por estado activo de la matrícula',
 	})
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
@@ -133,7 +133,7 @@ export class FilterCourseEnrolledStudentsDto {
 		required: false,
 		description: 'ID del período académico',
 	})
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -142,7 +142,7 @@ export class FilterCourseEnrolledStudentsDto {
 		required: false,
 		description: 'ID del campus',
 	})
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -151,7 +151,7 @@ export class FilterCourseEnrolledStudentsDto {
 		required: false,
 		description: 'ID del período académico del plan de estudios',
 	})
-	study_plan_academic_period_id?: number;
+	studyPlanAcademicPeriodId?: number;
 }
 
 export class CourseEnrolledStudentDto {
@@ -159,44 +159,44 @@ export class CourseEnrolledStudentDto {
 	id: number; // enrolled_student_id
 
 	@ApiProperty()
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	@ApiProperty()
-	student_id: number;
+	studentId: number;
 
 	@ApiProperty()
-	first_name: string;
+	firstName: string;
 
 	@ApiProperty()
-	last_name: string;
+	lastName: string;
 
 	@ApiProperty()
 	email: string;
 
 	@ApiProperty()
-	student_code: string;
+	studentCode: string;
 
 	@ApiProperty()
-	course_section_id: number;
+	courseSectionId: number;
 
 	@ApiProperty()
-	section_code: string;
+	sectionCode: string;
 
 	@ApiProperty()
-	professor_id: number;
+	professorId: number;
 
 	@ApiProperty()
-	professor_first_name: string;
+	professorFirstName: string;
 
 	@ApiProperty()
-	professor_last_name: string;
+	professorLastName: string;
 
 	@ApiProperty()
-	campus_id: number;
+	campusId: number;
 
 	@ApiProperty()
-	enrollment_date: Date;
+	enrollmentDate: Date;
 
 	@ApiProperty()
-	is_active: boolean;
+	isActive: boolean;
 }

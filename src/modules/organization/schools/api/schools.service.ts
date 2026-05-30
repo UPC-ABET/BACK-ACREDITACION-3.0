@@ -17,7 +17,7 @@ export class SchoolService extends BaseService<SchoolRepository> {
 
 	async findActiveByCode(code: string) {
 		return await this.baseRepository.findOneByCondition({
-			where: { code, is_active: true },
+			where: { code, isActive: true },
 		});
 	}
 

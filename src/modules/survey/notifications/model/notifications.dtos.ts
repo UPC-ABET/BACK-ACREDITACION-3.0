@@ -9,15 +9,15 @@ export class CreateNotificationDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_id: number;
+	surveyId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	notification_status_type_id: number;
+	notificationStatusTypeId: number;
 
 	@IsString()
 	@ApiProperty({ example: 'token_example', required: true })
@@ -25,11 +25,11 @@ export class CreateNotificationDto {
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	sent_date: Date;
+	sentDate: Date;
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	max_register_date: Date;
+	maxRegisterDate: Date;
 }
 
 export class UpdateNotificationDto {
@@ -40,17 +40,17 @@ export class UpdateNotificationDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_id?: number;
+	surveyId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	notification_status_type_id?: number;
+	notificationStatusTypeId?: number;
 
 	@IsOptional()
 	@IsString()
@@ -60,12 +60,12 @@ export class UpdateNotificationDto {
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	sent_date?: Date;
+	sentDate?: Date;
 
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	max_register_date?: Date;
+	maxRegisterDate?: Date;
 }
 
 export class FilterNotificationDto {
@@ -75,15 +75,15 @@ export class FilterNotificationDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_id?: number;
+	surveyId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	notification_status_type_id?: number;
+	notificationStatusTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'token_example', required: false })
@@ -91,9 +91,9 @@ export class FilterNotificationDto {
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	sent_date?: Date;
+	sentDate?: Date;
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	max_register_date?: Date;
+	maxRegisterDate?: Date;
 }

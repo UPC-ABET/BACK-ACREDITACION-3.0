@@ -10,19 +10,19 @@ export class CreateStatusDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	ifc_id: number;
+	ifcId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	status_type_id: number;
+	statusTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	staff_id: number;
+	staffId: number;
 
 	@IsOptional()
 	@IsObject()
@@ -31,7 +31,7 @@ export class CreateStatusDto {
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	register_at: Date;
+	registerAt: Date;
 }
 
 export class UpdateStatusDto {
@@ -42,22 +42,22 @@ export class UpdateStatusDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	status_type_id?: number;
+	statusTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -67,7 +67,7 @@ export class UpdateStatusDto {
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 }
 
 export class FilterStatusDto {
@@ -77,19 +77,19 @@ export class FilterStatusDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	status_type_id?: number;
+	statusTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
@@ -97,5 +97,5 @@ export class FilterStatusDto {
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 }

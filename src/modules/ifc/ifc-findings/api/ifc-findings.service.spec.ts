@@ -19,20 +19,20 @@ describe('IfcFindingService.getDetail', () => {
 
 	const headerRow = {
 		id: 201,
-		finding_code: 'H-INST_IFC-CRS_FUND_PROG-2026001',
-		academic_period_code: 'AP_2026_1',
+		findingCode: 'H-INST_IFC-CRS_FUND_PROG-2026001',
+		academicPeriodCode: 'AP_2026_1',
 		description: { es: 'Hallazgo' },
-		criticality_code: TYPE_CODES.CRITICALITY.NORMAL,
-		criticality_name: { es: 'Normal' },
+		criticalityCode: TYPE_CODES.CRITICALITY.NORMAL,
+		criticalityName: { es: 'Normal' },
 	};
 
 	const actionRow = {
 		id: 301,
-		action_code: 'A-INST_IFC-CRS_FUND_PROG-2026101',
+		actionCode: 'A-INST_IFC-CRS_FUND_PROG-2026101',
 		description: { es: 'Acción' },
-		completeness_code: TYPE_CODES.ACTION_COMPLETENESS.PENDING,
-		completeness_name: { es: 'Pendiente' },
-		completeness_color: '#71717A',
+		completenessCode: TYPE_CODES.ACTION_COMPLETENESS.PENDING,
+		completenessName: { es: 'Pendiente' },
+		completenessColor: '#71717A',
 	};
 
 	it('issues both queries with the expected positional params and TYPE_CODES constants', async () => {
@@ -67,24 +67,24 @@ describe('IfcFindingService.getDetail', () => {
 		expect(result).toEqual({
 			finding: {
 				id: 201,
-				finding_code: headerRow.finding_code,
-				academic_period_code: headerRow.academic_period_code,
+				findingCode: headerRow.findingCode,
+				academicPeriodCode: headerRow.academicPeriodCode,
 				description: headerRow.description,
 				criticality: {
-					code: headerRow.criticality_code,
-					name: headerRow.criticality_name,
+					code: headerRow.criticalityCode,
+					name: headerRow.criticalityName,
 					color: null,
 				},
 			},
 			actions: [
 				{
 					id: actionRow.id,
-					action_code: actionRow.action_code,
+					actionCode: actionRow.actionCode,
 					description: actionRow.description,
 					completeness: {
-						code: actionRow.completeness_code,
-						name: actionRow.completeness_name,
-						color: actionRow.completeness_color,
+						code: actionRow.completenessCode,
+						name: actionRow.completenessName,
+						color: actionRow.completenessColor,
 					},
 				},
 			],
@@ -119,10 +119,10 @@ describe('IfcFindingService.patch', () => {
 
 		assertFindingExistsSpy = jest
 			.spyOn(IfcFindingValidation, 'assertFindingExists')
-			.mockResolvedValue({ id: 201, course_id: 100, academic_period_id: 5 });
+			.mockResolvedValue({ id: 201, courseId: 100, academicPeriodId: 5 });
 		resolveCourseChartSpy = jest
 			.spyOn(IfcFindingValidation, 'resolveCourseChart')
-			.mockResolvedValue({ id: 500, staff_id: 11 });
+			.mockResolvedValue({ id: 500, staffId: 11 });
 		assertIsInCourseChainSpy = jest
 			.spyOn(IfcValidation, 'assertIsInCourseChain')
 			.mockResolvedValue(undefined as unknown as void);

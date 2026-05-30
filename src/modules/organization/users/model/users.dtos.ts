@@ -20,25 +20,25 @@ export class CreateUserDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	document_type_id: number;
+	documentTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	document_code: number;
+	documentCode: number;
 
 	@IsString()
 	@Length(1, 1000)
 	@ApiProperty({ example: 'first_name_example', required: true })
-	first_name: string;
+	firstName: string;
 
 	@IsString()
 	@Length(1, 1000)
 	@ApiProperty({ example: 'last_name_example', required: true })
-	last_name: string;
+	lastName: string;
 
 	@IsEmail()
 	@MaxLength(254)
@@ -52,7 +52,7 @@ export class CreateUserDto {
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_admin: boolean;
+	isAdmin: boolean;
 }
 
 export class UpdateUserDto {
@@ -63,29 +63,29 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	document_type_id?: number;
+	documentTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	document_code?: number;
+	documentCode?: number;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
 	@ApiProperty({ example: 'first_name_example', required: false })
-	first_name?: string;
+	firstName?: string;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
 	@ApiProperty({ example: 'last_name_example', required: false })
-	last_name?: string;
+	lastName?: string;
 
 	@IsOptional()
 	@IsEmail()
@@ -102,7 +102,7 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_admin?: boolean;
+	isAdmin?: boolean;
 }
 
 export class FilterUserDto {
@@ -112,23 +112,23 @@ export class FilterUserDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	document_type_id?: number;
+	documentTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	document_code?: number;
+	documentCode?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'first_name_example', required: false })
-	first_name?: string;
+	firstName?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: 'last_name_example', required: false })
-	last_name?: string;
+	lastName?: string;
 
 	@IsOptional()
 	@IsEmail()
@@ -142,7 +142,7 @@ export class FilterUserDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_admin?: boolean;
+	isAdmin?: boolean;
 }
 
 // %% OTHER DTOS
@@ -154,7 +154,7 @@ export class LoginUserByCredentialsDto {
 		required: true,
 		description: 'Código de la escuela seleccionada por el usuario',
 	})
-	school_code: string;
+	schoolCode: string;
 
 	@IsEmail()
 	@MaxLength(254)

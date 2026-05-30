@@ -10,10 +10,10 @@ export class ScoreEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_id: number;
+	surveyId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
 	@DecimalColumn({ nullable: false })
 	score: number;

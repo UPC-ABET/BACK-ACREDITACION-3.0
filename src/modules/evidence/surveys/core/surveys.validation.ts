@@ -8,9 +8,9 @@ export class SurveyValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				survey_type_id: data.survey_type_id,
-				student_id: data.student_id,
-				academic_period_id: data.academic_period_id,
+				surveyTypeId: data.surveyTypeId,
+				studentId: data.studentId,
+				academicPeriodId: data.academicPeriodId,
 			},
 		});
 
@@ -33,15 +33,15 @@ export class SurveyValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(surveysValidationStrings.error.notFound);
 
-		const surveyTypeId = data.survey_type_id ?? entity?.survey_type_id;
-		const studentId = data.student_id ?? entity?.student_id;
-		const academicPeriodId = data.academic_period_id ?? entity?.academic_period_id;
+		const surveyTypeId = data.surveyTypeId ?? entity?.surveyTypeId;
+		const studentId = data.studentId ?? entity?.studentId;
+		const academicPeriodId = data.academicPeriodId ?? entity?.academicPeriodId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				survey_type_id: surveyTypeId,
-				student_id: studentId,
-				academic_period_id: academicPeriodId,
+				surveyTypeId: surveyTypeId,
+				studentId: studentId,
+				academicPeriodId: academicPeriodId,
 			},
 		});
 

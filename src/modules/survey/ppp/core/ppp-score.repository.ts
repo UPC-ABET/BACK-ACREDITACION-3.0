@@ -16,17 +16,17 @@ export class PppScoreRepository extends BaseRepository<ScoreEntity> {
 
 	async findBySurveyId(surveyId: number): Promise<ScoreEntity[]> {
 		return await this.repository.find({
-			where: { survey_id: surveyId },
+			where: { surveyId: surveyId },
 			relations: ['outcome'],
 		});
 	}
 
 	async deleteBySurveyId(surveyId: number): Promise<void> {
-		await this.repository.delete({ survey_id: surveyId });
+		await this.repository.delete({ surveyId: surveyId });
 	}
 
 	async bulkCreate(
-		scores: { survey_id: number; outcome_id: number; score: number; commentaries?: string }[],
+		scores: { surveyId: number; outcomeId: number; score: number; commentaries?: string }[],
 	): Promise<ScoreEntity[]> {
 		const entities = scores.map((s) => this.repository.create(s as any) as unknown as ScoreEntity);
 		return await this.repository.save(entities);

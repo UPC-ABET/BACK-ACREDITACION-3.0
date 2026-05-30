@@ -10,18 +10,18 @@ export class CreateOutcomeConfigDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsObject()
 	@ApiProperty({
 		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
 		required: true,
 	})
-	user_outcome_name: I18nText;
+	userOutcomeName: I18nText;
 
 	@IsOptional()
 	@IsObject()
@@ -29,7 +29,7 @@ export class CreateOutcomeConfigDto {
 		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
 		required: false,
 	})
-	user_outcome_description?: I18nText;
+	userOutcomeDescription?: I18nText;
 }
 
 export class UpdateOutcomeConfigDto {
@@ -40,12 +40,12 @@ export class UpdateOutcomeConfigDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -53,7 +53,7 @@ export class UpdateOutcomeConfigDto {
 		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
 		required: false,
 	})
-	user_outcome_name?: I18nText;
+	userOutcomeName?: I18nText;
 
 	@IsOptional()
 	@IsObject()
@@ -61,7 +61,7 @@ export class UpdateOutcomeConfigDto {
 		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
 		required: false,
 	})
-	user_outcome_description?: I18nText;
+	userOutcomeDescription?: I18nText;
 }
 
 export class FilterOutcomeConfigDto {
@@ -71,23 +71,23 @@ export class FilterOutcomeConfigDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@ApiProperty({
 		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
 		required: false,
 	})
-	user_outcome_name?: I18nText;
+	userOutcomeName?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({
 		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
 		required: false,
 	})
-	user_outcome_description?: I18nText;
+	userOutcomeDescription?: I18nText;
 }

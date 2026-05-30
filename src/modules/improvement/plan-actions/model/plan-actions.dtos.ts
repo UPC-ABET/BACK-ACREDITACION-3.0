@@ -9,15 +9,15 @@ export class CreatePlanActionDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	plan_id: number;
+	planId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	finding_action_id: number;
+	findingActionId: number;
 }
 
 export class UpdatePlanActionDto {
@@ -28,17 +28,17 @@ export class UpdatePlanActionDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	plan_id?: number;
+	planId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	finding_action_id?: number;
+	findingActionId?: number;
 }
 
 export class FilterPlanActionDto {
@@ -48,13 +48,13 @@ export class FilterPlanActionDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	plan_id?: number;
+	planId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	finding_action_id?: number;
+	findingActionId?: number;
 }

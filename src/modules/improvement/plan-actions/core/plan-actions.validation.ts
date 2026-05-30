@@ -8,8 +8,8 @@ export class PlanActionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				plan_id: data.plan_id,
-				finding_action_id: data.finding_action_id,
+				planId: data.planId,
+				findingActionId: data.findingActionId,
 			},
 		});
 
@@ -32,13 +32,13 @@ export class PlanActionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(planActionsValidationStrings.error.notFound);
 
-		const planId = data.plan_id ?? entity?.plan_id;
-		const findingActionId = data.finding_action_id ?? entity?.finding_action_id;
+		const planId = data.planId ?? entity?.planId;
+		const findingActionId = data.findingActionId ?? entity?.findingActionId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				plan_id: planId,
-				finding_action_id: findingActionId,
+				planId: planId,
+				findingActionId: findingActionId,
 			},
 		});
 

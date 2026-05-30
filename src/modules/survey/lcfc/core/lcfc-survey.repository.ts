@@ -66,13 +66,13 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 	/** Gets outcomes mapped to a course section via course_outcome_mappings */
 	async getOutcomesForCourseSection(
 		courseSectionId: number,
-	): Promise<{ outcome_id: number; name: string; code: string; description: string | null }[]> {
+	): Promise<{ outcomeId: number; name: string; code: string; description: string | null }[]> {
 		const rows = await this.dataSource.query(
 			`SELECT DISTINCT
-				o.id                   AS outcome_id,
-				o.outcome_name         AS name,
-				o.outcome_code         AS code,
-				o.outcome_description  AS description
+				o.id                   AS "outcomeId",
+				o.outcome_name         AS "name",
+				o.outcome_code         AS "code",
+				o.outcome_description  AS "description"
 			FROM accreditation.outcomes o
 			INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
 			INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
@@ -89,41 +89,41 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		lcfcSurveyTypeId: number,
 		activeStatusId: number,
 		closedStatusId: number,
-		filters: { academic_period_id?: number; program_id?: number; campus_id?: number },
-	): Promise<{ completed: number; pending: number; total: number; by_course: any[] }> {
+		filters: { academicPeriodId?: number; programId?: number; campusId?: number },
+	): Promise<{ completed: number; pending: number; total: number; byCourse: any[] }> {
 		let whereClause = `s.survey_type_id = $1`;
 		const params: any[] = [lcfcSurveyTypeId];
 
-		if (filters.academic_period_id) {
+		if (filters.academicPeriodId) {
 			whereClause += ` AND s.academic_period_id = $${params.length + 1}`;
-			params.push(filters.academic_period_id);
+			params.push(filters.academicPeriodId);
 		}
-		if (filters.program_id) {
+		if (filters.programId) {
 			whereClause += ` AND s.program_id = $${params.length + 1}`;
-			params.push(filters.program_id);
+			params.push(filters.programId);
 		}
-		if (filters.campus_id) {
+		if (filters.campusId) {
 			whereClause += ` AND s.campus_id = $${params.length + 1}`;
-			params.push(filters.campus_id);
+			params.push(filters.campusId);
 		}
 
 		const [summary, byCourse] = await Promise.all([
 			this.dataSource.query(
 				`SELECT
-					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int AS completed,
-					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int AS pending,
-					COUNT(*)::int AS total
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int AS "completed",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int AS "pending",
+					COUNT(*)::int AS "total"
 				FROM evidence.surveys s
 				WHERE ${whereClause}`,
 				[...params, closedStatusId, activeStatusId],
 			),
 			this.dataSource.query(
 				`SELECT
-					c.name                                                                              AS course_name,
-					cs.section_code,
-					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int       AS completed,
-					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int       AS pending,
-					COUNT(*)::int                                                                       AS total
+					c.name                                                                              AS "courseName",
+					cs.section_code                                                                     AS "sectionCode",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int       AS "completed",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int       AS "pending",
+					COUNT(*)::int                                                                       AS "total"
 				FROM evidence.surveys s
 				INNER JOIN academic.course_sections cs ON cs.id = s.course_section_id
 				INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
@@ -139,7 +139,7 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 			completed: summary[0]?.completed ?? 0,
 			pending: summary[0]?.pending ?? 0,
 			total: summary[0]?.total ?? 0,
-			by_course: byCourse,
+			byCourse,
 		};
 	}
 }

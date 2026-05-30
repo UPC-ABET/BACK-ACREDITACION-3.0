@@ -9,7 +9,7 @@ export class CreateChartLevelDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -17,7 +17,7 @@ export class CreateChartLevelDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	level_type_id: number;
+	levelTypeId: number;
 }
 
 export class UpdateChartLevelDto {
@@ -28,7 +28,7 @@ export class UpdateChartLevelDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
@@ -38,7 +38,7 @@ export class UpdateChartLevelDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	level_type_id?: number;
+	levelTypeId?: number;
 }
 
 export class FilterChartLevelDto {
@@ -48,7 +48,7 @@ export class FilterChartLevelDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
@@ -56,5 +56,5 @@ export class FilterChartLevelDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	level_type_id?: number;
+	levelTypeId?: number;
 }

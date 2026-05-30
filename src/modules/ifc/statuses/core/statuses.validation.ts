@@ -8,9 +8,9 @@ export class StatusValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				ifc_id: data.ifc_id,
-				status_type_id: data.status_type_id,
-				register_at: data.register_at,
+				ifcId: data.ifcId,
+				statusTypeId: data.statusTypeId,
+				registerAt: data.registerAt,
 			},
 		});
 
@@ -33,15 +33,15 @@ export class StatusValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(statusesValidationStrings.error.notFound);
 
-		const ifcId = data.ifc_id ?? entity?.ifc_id;
-		const statusTypeId = data.status_type_id ?? entity?.status_type_id;
-		const registerAt = data.register_at ?? entity?.register_at;
+		const ifcId = data.ifcId ?? entity?.ifcId;
+		const statusTypeId = data.statusTypeId ?? entity?.statusTypeId;
+		const registerAt = data.registerAt ?? entity?.registerAt;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				ifc_id: ifcId,
-				status_type_id: statusTypeId,
-				register_at: registerAt,
+				ifcId: ifcId,
+				statusTypeId: statusTypeId,
+				registerAt: registerAt,
 			},
 		});
 

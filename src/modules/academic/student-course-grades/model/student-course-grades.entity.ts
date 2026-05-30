@@ -9,13 +9,13 @@ export class StudentCourseGradeEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	grade_type_id: number;
+	gradeTypeId: number;
 
 	@DecimalColumn({ nullable: false })
-	grade_type_percentage: number;
+	gradeTypePercentage: number;
 
 	@DecimalColumn({ nullable: false })
 	grade: number;
@@ -27,12 +27,12 @@ export class StudentCourseGradeEntity extends BaseEntity {
 		name: 'student_section_enrollment_id',
 		foreignKeyConstraintName: 'FK_student_course_grades_student_section_enrollment_id',
 	})
-	student_section_enrollment: StudentSectionEnrollmentEntity;
+	studentSectionEnrollment: StudentSectionEnrollmentEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'grade_type_id',
 		foreignKeyConstraintName: 'FK_student_course_grades_grade_type_id',
 	})
-	grade_type: TypeEntity;
+	gradeType: TypeEntity;
 }

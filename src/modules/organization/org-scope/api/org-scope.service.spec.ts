@@ -14,7 +14,7 @@ describe('OrgScopeService', () => {
 	it('returns empty scope when schoolId is null (user not attached to a school)', async () => {
 		const result = await service.getScope(1, null, 5);
 
-		expect(result).toEqual({ highest_level: null, levels: [] });
+		expect(result).toEqual({ highestLevel: null, levels: [] });
 		expect(dataSource.query).not.toHaveBeenCalled();
 	});
 
@@ -23,7 +23,7 @@ describe('OrgScopeService', () => {
 
 		const result = await service.getScope(1, 7, 5);
 
-		expect(result).toEqual({ highest_level: null, levels: [] });
+		expect(result).toEqual({ highestLevel: null, levels: [] });
 		expect(dataSource.query).toHaveBeenCalledTimes(1);
 		expect(dataSource.query.mock.calls[0][1]).toEqual([
 			1,
@@ -37,51 +37,51 @@ describe('OrgScopeService', () => {
 		dataSource.query.mockResolvedValueOnce([
 			{
 				id: 30,
-				parent_id: 20,
-				level_num: 3,
-				type_code: 'TG902-T003',
+				parentId: 20,
+				levelNum: 3,
+				typeCode: 'TG902-T003',
 				label: { es: 'Programa' },
-				is_anchor: false,
+				isAnchor: false,
 			},
 			{
 				id: 20,
-				parent_id: 10,
-				level_num: 2,
-				type_code: 'TG902-T002',
+				parentId: 10,
+				levelNum: 2,
+				typeCode: 'TG902-T002',
 				label: { es: 'Escuela' },
-				is_anchor: true,
+				isAnchor: true,
 			},
 			{
 				id: 10,
-				parent_id: null,
-				level_num: 1,
-				type_code: 'TG902-T001',
+				parentId: null,
+				levelNum: 1,
+				typeCode: 'TG902-T001',
 				label: { es: 'Decanato' },
-				is_anchor: false,
+				isAnchor: false,
 			},
 			{
 				id: 40,
-				parent_id: 30,
-				level_num: 4,
-				type_code: 'TG902-T004',
+				parentId: 30,
+				levelNum: 4,
+				typeCode: 'TG902-T004',
 				label: { es: 'Area' },
-				is_anchor: true,
+				isAnchor: true,
 			},
 		]);
 
 		const result = await service.getScope(7, 11, 5);
 
-		expect(result.highest_level).toBe(2);
-		expect(result.levels.map((l) => l.level_num)).toEqual([1, 2, 3, 4]);
+		expect(result.highestLevel).toBe(2);
+		expect(result.levels.map((l) => l.levelNum)).toEqual([1, 2, 3, 4]);
 		expect(result.levels[0]).toEqual({
-			level_num: 1,
-			type_code: 'TG902-T001',
-			options: [{ id: 10, label: { es: 'Decanato' }, parent_id: null }],
+			levelNum: 1,
+			typeCode: 'TG902-T001',
+			options: [{ id: 10, label: { es: 'Decanato' }, parentId: null }],
 		});
 		expect(result.levels[1]).toEqual({
-			level_num: 2,
-			type_code: 'TG902-T002',
-			options: [{ id: 20, label: { es: 'Escuela' }, parent_id: 10 }],
+			levelNum: 2,
+			typeCode: 'TG902-T002',
+			options: [{ id: 20, label: { es: 'Escuela' }, parentId: 10 }],
 		});
 	});
 
@@ -89,25 +89,25 @@ describe('OrgScopeService', () => {
 		dataSource.query.mockResolvedValueOnce([
 			{
 				id: 11,
-				parent_id: 1,
-				level_num: 2,
-				type_code: 'TG902-T002',
+				parentId: 1,
+				levelNum: 2,
+				typeCode: 'TG902-T002',
 				label: { es: 'A' },
-				is_anchor: true,
+				isAnchor: true,
 			},
 			{
 				id: 12,
-				parent_id: 1,
-				level_num: 2,
-				type_code: 'TG902-T002',
+				parentId: 1,
+				levelNum: 2,
+				typeCode: 'TG902-T002',
 				label: { es: 'B' },
-				is_anchor: false,
+				isAnchor: false,
 			},
 		]);
 
 		const result = await service.getScope(1, 11, 5);
 
-		expect(result.highest_level).toBe(2);
+		expect(result.highestLevel).toBe(2);
 		expect(result.levels).toHaveLength(1);
 		expect(result.levels[0].options).toHaveLength(2);
 	});
@@ -116,17 +116,17 @@ describe('OrgScopeService', () => {
 		dataSource.query.mockResolvedValueOnce([
 			{
 				id: 1,
-				parent_id: null,
-				level_num: 1,
-				type_code: 'TG902-T001',
+				parentId: null,
+				levelNum: 1,
+				typeCode: 'TG902-T001',
 				label: {},
-				is_anchor: false,
+				isAnchor: false,
 			},
 		]);
 
 		const result = await service.getScope(1, 11, 5);
 
-		expect(result.highest_level).toBeNull();
+		expect(result.highestLevel).toBeNull();
 		expect(result.levels).toHaveLength(1);
 	});
 });

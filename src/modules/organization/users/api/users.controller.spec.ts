@@ -17,12 +17,12 @@ describe('UserController', () => {
 		const res = fakeResponse();
 		const loginResult = {
 			user: { id: 8, email: 'admin@upc.edu.pe' },
-			access_token: 'signed-jwt-token',
+			accessToken: 'signed-jwt-token',
 		};
 		service.loginByCredentials.mockResolvedValueOnce(loginResult);
 
 		const response = await controller.loginByCredentials(
-			{ school_code: 'EISCB', email: 'admin@upc.edu.pe', password: 'secret' },
+			{ schoolCode: 'EISCB', email: 'admin@upc.edu.pe', password: 'secret' },
 			res as never,
 		);
 
@@ -43,13 +43,9 @@ describe('UserController', () => {
 
 	it('sets access_token cookie when active role changes', async () => {
 		const res = fakeResponse();
-		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, access_token: 'role-token' });
+		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, accessToken: 'role-token' });
 
-		await controller.changeRole(
-			{ newRole: 2 },
-			{ user: { userId: 8, school_id: 4 } },
-			res as never,
-		);
+		await controller.changeRole({ newRole: 2 }, { user: { userId: 8, schoolId: 4 } }, res as never);
 
 		expect(service.loginById).toHaveBeenCalledWith(8, 2, 4);
 		expect(res.cookie).toHaveBeenCalledWith(

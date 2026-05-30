@@ -8,8 +8,8 @@ export class StudyPlanCourseValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				study_plan_academic_period_id: data.study_plan_academic_period_id,
-				course_id: data.course_id,
+				studyPlanAcademicPeriodId: data.studyPlanAcademicPeriodId,
+				courseId: data.courseId,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class StudyPlanCourseValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studyPlanCoursesValidationStrings.error.notFound);
 
-		if (data.study_plan_academic_period_id && data.course_id) {
+		if (data.studyPlanAcademicPeriodId && data.courseId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					study_plan_academic_period_id: data.study_plan_academic_period_id,
-					course_id: data.course_id,
+					studyPlanAcademicPeriodId: data.studyPlanAcademicPeriodId,
+					courseId: data.courseId,
 				},
 			});
 

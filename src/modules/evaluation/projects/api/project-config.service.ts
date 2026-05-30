@@ -65,7 +65,7 @@ export class ProjectConfigService {
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
 		const raw = await this.dataSource.query(
 			`
-				SELECT DISTINCT c_child.entity_code AS program_id
+				SELECT DISTINCT c_child.entity_code AS "programId"
 				FROM organization.charts c_school
 				INNER JOIN organization.charts c_child 
 				ON c_child.root_chart_detail_id = c_school.id
@@ -76,7 +76,7 @@ export class ProjectConfigService {
 			`,
 			[TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId, TYPE_CODES.ENTITY_TYPE.PROGRAM],
 		);
-		return raw.map((row: { program_id: number }) => row.program_id);
+		return raw.map((row: { programId: number }) => row.programId);
 	}
 
 	/**
@@ -91,14 +91,14 @@ export class ProjectConfigService {
 	async createProject(dto: CreateProjectDto): Promise<ProjectEntity> {
 		// ── 1. Validar study_plan_course ──────────────────────────────────────
 		const studyPlanCourse = await this.studyPlanCourseRepo.findOne({
-			where: { id: dto.study_plan_course_id },
-			relations: ['study_plan_academic_period'],
+			where: { id: dto.studyPlanCourseId },
+			relations: ['studyPlanAcademicPeriod'],
 		});
 
 		if (!studyPlanCourse) {
 			throw new NotFoundException({
 				message: projectsValidationStrings.error.notFound,
-				errors: [`study_plan_course_id ${dto.study_plan_course_id}`],
+				errors: [`studyPlanCourseId ${dto.studyPlanCourseId}`],
 			});
 		}
 
@@ -106,7 +106,7 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.notEvaluateRubric);
 		}
 
-		const academicPeriodId = studyPlanCourse.study_plan_academic_period?.academic_period_id;
+		const academicPeriodId = studyPlanCourse.studyPlanAcademicPeriod?.academicPeriodId;
 		if (!academicPeriodId) {
 			throw new BadRequestException(projectsValidationStrings.error.noAcademicPeriod);
 		}
@@ -148,16 +148,16 @@ export class ProjectConfigService {
 		}
 
 		// ── 4. Validar alumnos ────────────────────────────────────────────────
-		if (!dto.student_section_enrollment_ids?.length) {
+		if (!dto.studentSectionEnrollmentIds?.length) {
 			throw new BadRequestException(projectsValidationStrings.error.noStudents);
 		}
 
 		const enrollments = await this.enrollmentRepo.find({
-			where: dto.student_section_enrollment_ids.map((id) => ({ id })),
-			relations: ['course_section'],
+			where: dto.studentSectionEnrollmentIds.map((id) => ({ id })),
+			relations: ['courseSection'],
 		});
 
-		for (const enrollmentId of dto.student_section_enrollment_ids) {
+		for (const enrollmentId of dto.studentSectionEnrollmentIds) {
 			const enrollment = enrollments.find((e) => e.id === enrollmentId);
 
 			if (!enrollment) {
@@ -167,14 +167,14 @@ export class ProjectConfigService {
 				});
 			}
 
-			if (!enrollment.is_active) {
+			if (!enrollment.isActive) {
 				throw new BadRequestException({
 					message: projectsValidationStrings.error.studentWithdrawn,
 					errors: [String(enrollmentId)],
 				});
 			}
 
-			if (enrollment.course_section?.study_plan_course_id !== dto.study_plan_course_id) {
+			if (enrollment.courseSection?.studyPlanCourseId !== dto.studyPlanCourseId) {
 				throw new BadRequestException({
 					message: projectsValidationStrings.error.studentNotInCourse,
 					errors: [String(enrollmentId)],
@@ -211,13 +211,13 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.noEvaluators);
 		}
 
-		const evaluatorTypeIds = [...new Set(dto.evaluators.map((e) => e.evaluator_type_id))];
+		const evaluatorTypeIds = [...new Set(dto.evaluators.map((e) => e.evaluatorTypeId))];
 		const evaluatorTypes = await this.typeRepo.findByIds(evaluatorTypeIds);
 		const typeCodeMap = new Map(evaluatorTypes.map((t) => [t.id, t.code]));
 
 		const evalKeys = new Set<string>();
 		for (const ev of dto.evaluators) {
-			const key = `${ev.professor_id}-${ev.evaluator_type_id}`;
+			const key = `${ev.professorId}-${ev.evaluatorTypeId}`;
 			if (evalKeys.has(key)) {
 				throw new BadRequestException(projectsValidationStrings.error.evaluatorDuplicate);
 			}
@@ -227,8 +227,8 @@ export class ProjectConfigService {
 		const typeCountInRequest = new Map<number, number>();
 		for (const ev of dto.evaluators) {
 			typeCountInRequest.set(
-				ev.evaluator_type_id,
-				(typeCountInRequest.get(ev.evaluator_type_id) ?? 0) + 1,
+				ev.evaluatorTypeId,
+				(typeCountInRequest.get(ev.evaluatorTypeId) ?? 0) + 1,
 			);
 		}
 
@@ -245,27 +245,27 @@ export class ProjectConfigService {
 				code: dto.code,
 				name: dto.name,
 				description: dto.description,
-				is_active: dto.is_active ?? true,
+				isActive: dto.isActive ?? true,
 				extra: dto.extra,
 			});
 
 			const savedProject = await manager.save(project);
 
-			const projectStudents = dto.student_section_enrollment_ids.map((enrollmentId) =>
+			const projectStudents = dto.studentSectionEnrollmentIds.map((enrollmentId) =>
 				manager.create(ProjectStudentEntity, {
-					project_id: savedProject.id,
-					student_section_enrollment_id: enrollmentId,
-					is_active: true,
+					projectId: savedProject.id,
+					studentSectionEnrollmentId: enrollmentId,
+					isActive: true,
 				}),
 			);
 			await manager.save(projectStudents);
 
 			const projectEvaluators = dto.evaluators.map((ev) =>
 				manager.create(ProjectEvaluatorEntity, {
-					project_id: savedProject.id,
-					professor_id: ev.professor_id,
-					evaluator_type_id: ev.evaluator_type_id,
-					is_active: true,
+					projectId: savedProject.id,
+					professorId: ev.professorId,
+					evaluatorTypeId: ev.evaluatorTypeId,
+					isActive: true,
 				}),
 			);
 			await manager.save(projectEvaluators);
@@ -310,28 +310,28 @@ export class ProjectConfigService {
 		}
 
 		const studentWithChain = project.students?.find(
-			(s) => s.student_section_enrollment?.course_section?.study_plan_course_id != null,
+			(s) => s.studentSectionEnrollment?.courseSection?.studyPlanCourseId != null,
 		);
 
 		const studyPlanCourseId =
-			studentWithChain?.student_section_enrollment?.course_section?.study_plan_course_id;
+			studentWithChain?.studentSectionEnrollment?.courseSection?.studyPlanCourseId;
 
 		if (!studyPlanCourseId) {
 			throw new BadRequestException(projectsValidationStrings.error.noStudentsWithCourse);
 		}
 
 		const academicPeriod =
-			studentWithChain?.student_section_enrollment?.course_section?.study_plan_course
-				?.study_plan_academic_period?.academic_period;
+			studentWithChain?.studentSectionEnrollment?.courseSection?.studyPlanCourse
+				?.studyPlanAcademicPeriod?.academicPeriod;
 
 		// ── 3. Rúbrica específica: curso + tipo de evaluación + tipo de rúbrica
 		const rubricWhere: any = {
-			study_plan_course_id: studyPlanCourseId,
-			is_active: true,
+			studyPlanCourseId: studyPlanCourseId,
+			isActive: true,
 		};
 
-		if (gradeTypeId) rubricWhere.grade_type_id = gradeTypeId;
-		if (rubricTypeId) rubricWhere.rubric_type_id = rubricTypeId;
+		if (gradeTypeId) rubricWhere.gradeTypeId = gradeTypeId;
+		if (rubricTypeId) rubricWhere.rubricTypeId = rubricTypeId;
 
 		const rubric = await this.dataSource
 			.getRepository(RubricEntity)
@@ -388,8 +388,8 @@ export class ProjectConfigService {
 
 		// ── 7. Estudiantes con nota total
 		const studentDtos = (project.students || []).map((s) => {
-			const user = s.student_section_enrollment?.enrolled_student?.student?.user;
-			const evals = evaluations.filter((ev) => ev.project_student_id === s.id);
+			const user = s.studentSectionEnrollment?.enrolledStudent?.student?.user;
+			const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
 
 			let totalGrade: number | null = null;
 
@@ -409,19 +409,19 @@ export class ProjectConfigService {
 
 			const evaluationStatuses = isEvaluationMode
 				? evals.map((ev) => ({
-						evaluator_id: ev.project_evaluator_id,
-						qualification_status_type_id: ev.qualification_status_type_id,
+						evaluatorId: ev.projectEvaluatorId,
+						qualificationStatusTypeId: ev.qualificationStatusTypeId,
 					}))
 				: [];
 
 			return {
 				id: s.id,
-				student_id: s.student_section_enrollment?.enrolled_student?.student_id || 0,
-				first_name: user?.first_name || '',
-				last_name: user?.last_name || '',
+				studentId: s.studentSectionEnrollment?.enrolledStudent?.studentId || 0,
+				firstName: user?.firstName || '',
+				lastName: user?.lastName || '',
 				email: user?.email || '',
-				student_code: user?.document_code ? String(user.document_code) : '',
-				total_grade: isEvaluationMode ? totalGrade : null,
+				studentCode: user?.documentCode ? String(user.documentCode) : '',
+				totalGrade: isEvaluationMode ? totalGrade : null,
 				evaluations: evaluationStatuses,
 			};
 		});
@@ -437,13 +437,11 @@ export class ProjectConfigService {
 				if (isEvaluationMode) {
 					criteriaScores = [];
 					evaluations.forEach((ev) => {
-						const scoreObj = (ev.scores || []).find(
-							(sc) => sc.rubric_question_criteria_id === c.id,
-						);
+						const scoreObj = (ev.scores || []).find((sc) => sc.rubricQuestionCriteriaId === c.id);
 						if (scoreObj) {
 							criteriaScores!.push({
-								student_id: ev.project_student_id,
-								evaluator_id: ev.project_evaluator_id,
+								studentId: ev.projectStudentId,
+								evaluatorId: ev.projectEvaluatorId,
 								score: Number(scoreObj.score),
 								commentaries: scoreObj.commentaries || '',
 							});
@@ -454,17 +452,15 @@ export class ProjectConfigService {
 				return {
 					id: c.id,
 					text: c.text,
-					min_value: c.min_value,
-					max_value: c.max_value,
+					minValue: c.minValue,
+					maxValue: c.maxValue,
 					scores: criteriaScores,
 				};
 			}),
 		}));
 
 		// ── 9. Mapear evaluadores con info del docente y tipo
-		const evaluatorTypeIds = [
-			...new Set((project.evaluators || []).map((e) => e.evaluator_type_id)),
-		];
+		const evaluatorTypeIds = [...new Set((project.evaluators || []).map((e) => e.evaluatorTypeId))];
 		const evaluatorTypesMap = new Map<number, any>();
 
 		if (evaluatorTypeIds.length > 0) {
@@ -474,16 +470,16 @@ export class ProjectConfigService {
 
 		const evaluatorDtos = (project.evaluators || []).map((e) => {
 			const professorUser = e.professor?.staff?.user;
-			const evaluatorType = evaluatorTypesMap.get(e.evaluator_type_id);
+			const evaluatorType = evaluatorTypesMap.get(e.evaluatorTypeId);
 
 			return {
 				id: e.id,
-				professor_id: e.professor_id,
-				professor_first_name: professorUser?.first_name || '',
-				professor_last_name: professorUser?.last_name || '',
-				professor_email: professorUser?.email || '',
-				evaluator_type_id: e.evaluator_type_id,
-				evaluator_type_name: evaluatorType?.name || '',
+				professorId: e.professorId,
+				professorFirstName: professorUser?.firstName || '',
+				professorLastName: professorUser?.lastName || '',
+				professorEmail: professorUser?.email || '',
+				evaluatorTypeId: e.evaluatorTypeId,
+				evaluatorTypeName: evaluatorType?.name || '',
 			};
 		});
 
@@ -495,9 +491,9 @@ export class ProjectConfigService {
 				name: project.name,
 				description: project.description || { es: '', en: '' },
 			},
-			academic_period: {
+			academicPeriod: {
 				id: academicPeriod?.id,
-				modality_type_id: academicPeriod?.modality_type_id,
+				modalityTypeId: academicPeriod?.modalityTypeId,
 				code: academicPeriod?.code,
 			},
 			students: studentDtos,
@@ -526,7 +522,7 @@ export class ProjectConfigService {
 			: undefined;
 		// ── QUERY 1 ───────────────────────────────────────────────────────────
 		let filterSql = `
-    SELECT DISTINCT pe.project_id
+    SELECT DISTINCT pe.project_id AS "projectId"
     FROM evaluation.project_evaluators pe
     INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
     INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
@@ -581,40 +577,40 @@ export class ProjectConfigService {
 			params.push(programIds);
 		}
 
-		const rows = (await this.dataSource.query(filterSql, params)) as { project_id: number }[];
+		const rows = (await this.dataSource.query(filterSql, params)) as { projectId: number }[];
 
-		const projectIds = rows.map((r) => r.project_id);
+		const projectIds = rows.map((r) => r.projectId);
 		if (projectIds.length === 0) return [];
 
 		// ── QUERY 2: todo en SQL nativo para evitar el producto cartesiano ────
 		const raw = (await this.dataSource.query(
 			`
     SELECT
-      p.id              AS project_id,
-      p.code            AS project_code,
-      p.name            AS project_name,
+      p.id              AS "projectId",
+      p.code            AS "projectCode",
+      p.name            AS "projectName",
       (
         SELECT MAX(ev.register_at)
         FROM evidence.evaluations ev
         INNER JOIN evaluation.project_students ev_ps ON ev_ps.id = ev.project_student_id
         WHERE ev_ps.project_id = p.id
-      )                 AS evaluation_date,
+      )                 AS "evaluationDate",
       -- evaluadores
-      all_pe.id         AS eval_id,
-      all_pe.professor_id AS eval_professor_id,
-      all_u.first_name  AS eval_first_name,
-      all_u.last_name   AS eval_last_name,
-      all_u.email       AS eval_email,
-      all_et.name       AS eval_type_name,
+      all_pe.id         AS "evalId",
+      all_pe.professor_id AS "evalProfessorId",
+      all_u.first_name  AS "evalFirstName",
+      all_u.last_name   AS "evalLastName",
+      all_u.email       AS "evalEmail",
+      all_et.name       AS "evalTypeName",
       -- estudiantes
-      ps.id             AS student_ps_id,
-      stu.id            AS student_id,
-      su.first_name     AS stu_first_name,
-      su.last_name      AS stu_last_name,
-      su.email          AS stu_email,
-      su.document_code  AS stu_code,
+      ps.id             AS "studentPsId",
+      stu.id            AS "studentId",
+      su.first_name     AS "stuFirstName",
+      su.last_name      AS "stuLastName",
+      su.email          AS "stuEmail",
+      su.document_code  AS "stuCode",
       -- curso
-      c.name            AS course_name
+      c.name            AS "courseName"
     FROM evaluation.projects p
     LEFT JOIN evaluation.project_evaluators all_pe ON all_pe.project_id = p.id
     LEFT JOIN academic.professors all_prof         ON all_prof.id = all_pe.professor_id
@@ -638,48 +634,48 @@ export class ProjectConfigService {
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
 
 		for (const row of raw) {
-			if (!projectMap.has(row.project_id)) {
-				const courseName = row.course_name;
+			if (!projectMap.has(row.projectId)) {
+				const courseName = row.courseName;
 				const resolvedCourseName =
 					typeof courseName === 'string' ? courseName : courseName?.es || courseName?.en || '';
 
-				projectMap.set(row.project_id, {
-					project_id: row.project_id,
-					project_code: row.project_code || '',
-					project_name: row.project_name,
-					evaluation_date: row.evaluation_date,
-					course_name: resolvedCourseName,
+				projectMap.set(row.projectId, {
+					projectId: row.projectId,
+					projectCode: row.projectCode || '',
+					projectName: row.projectName,
+					evaluationDate: row.evaluationDate,
+					courseName: resolvedCourseName,
 					evaluators: [],
 					students: [],
 				} as any);
 			}
 
-			const project = projectMap.get(row.project_id)!;
+			const project = projectMap.get(row.projectId)!;
 
-			// Evaluadores (deduplicar por eval_id)
-			if (row.eval_id && !(project.evaluators as any[]).find((e: any) => e.id === row.eval_id)) {
+			// Evaluadores (deduplicar por evalId)
+			if (row.evalId && !(project.evaluators as any[]).find((e: any) => e.id === row.evalId)) {
 				(project.evaluators as any[]).push({
-					id: row.eval_id,
-					professor_id: row.eval_professor_id,
-					first_name: row.eval_first_name || '',
-					last_name: row.eval_last_name || '',
-					email: row.eval_email || '',
-					evaluator_type: row.eval_type_name || '',
+					id: row.evalId,
+					professorId: row.evalProfessorId,
+					firstName: row.evalFirstName || '',
+					lastName: row.evalLastName || '',
+					email: row.evalEmail || '',
+					evaluatorType: row.evalTypeName || '',
 				});
 			}
 
-			// Estudiantes (deduplicar por student_ps_id)
+			// Estudiantes (deduplicar por studentPsId)
 			if (
-				row.student_ps_id &&
-				!(project.students as any[]).find((s: any) => s.id === row.student_ps_id)
+				row.studentPsId &&
+				!(project.students as any[]).find((s: any) => s.id === row.studentPsId)
 			) {
 				(project.students as any[]).push({
-					id: row.student_ps_id,
-					student_id: row.student_id || 0,
-					first_name: row.stu_first_name || '',
-					last_name: row.stu_last_name || '',
-					email: row.stu_email || '',
-					student_code: row.stu_code ? String(row.stu_code) : '',
+					id: row.studentPsId,
+					studentId: row.studentId || 0,
+					firstName: row.stuFirstName || '',
+					lastName: row.stuLastName || '',
+					email: row.stuEmail || '',
+					studentCode: row.stuCode ? String(row.stuCode) : '',
 				});
 			}
 		}

@@ -29,13 +29,13 @@ export class RubricController extends BaseController<RubricService> {
 		return await this.rubricConfigService.createRubric(dto);
 	}
 
-	@Get('course/:course_id')
-	async getRubricByCourse(@Param('course_id', ParseIntPipe) courseId: number) {
+	@Get('course/:courseId')
+	async getRubricByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
 		return await this.rubricConfigService.getRubricByCourse(courseId);
 	}
 
-	@Get('rubric/:rubric_id')
-	async getRubricWithDetails(@Param('rubric_id', ParseIntPipe) rubricId: number) {
+	@Get('rubric/:rubricId')
+	async getRubricWithDetails(@Param('rubricId', ParseIntPipe) rubricId: number) {
 		return await this.rubricConfigService.getRubricById(rubricId);
 	}
 
@@ -58,25 +58,25 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetAll()
-	@ApiQuery({ name: 'school_id', required: false, type: Number, description: 'ID de la escuela' })
+	@ApiQuery({ name: 'schoolId', required: false, type: Number, description: 'ID de la escuela' })
 	@ApiQuery({
-		name: 'program_id',
+		name: 'programId',
 		required: false,
 		type: Number,
 		description: 'ID del programa académico (carrera)',
 	})
 	@ApiQuery({
-		name: 'academic_period_id',
+		name: 'academicPeriodId',
 		required: false,
 		type: Number,
 		description: 'ID del período académico',
 	})
-	@ApiQuery({ name: 'course_id', required: false, type: Number, description: 'ID del curso' })
+	@ApiQuery({ name: 'courseId', required: false, type: Number, description: 'ID del curso' })
 	async getAll(
-		@Query('school_id', new ParseIntPipe({ optional: true })) schoolId?: number,
-		@Query('program_id', new ParseIntPipe({ optional: true })) programId?: number,
-		@Query('academic_period_id', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
-		@Query('course_id', new ParseIntPipe({ optional: true })) courseId?: number,
+		@Query('schoolId', new ParseIntPipe({ optional: true })) schoolId?: number,
+		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
+		@Query('academicPeriodId', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
+		@Query('courseId', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
 		return parseSuccessResponse(
 			await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }),

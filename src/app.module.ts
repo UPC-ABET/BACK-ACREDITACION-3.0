@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -140,6 +141,7 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 				autoLoadEntities: true,
 				timezone: 'Z',
 				logging: ['error', 'warn'],
+				namingStrategy: new SnakeNamingStrategy(),
 				extra: {
 					max: configService.get<number>('DB_POOL_MAX'),
 					idleTimeoutMillis: configService.get<number>('DB_POOL_IDLE_TIMEOUT'),

@@ -10,11 +10,11 @@ export class CreateRubricQuestionCriteriaDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_question_id: number;
+	rubricQuestionId: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: true })
@@ -22,11 +22,11 @@ export class CreateRubricQuestionCriteriaDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	min_value: number;
+	minValue: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	max_value: number;
+	maxValue: number;
 }
 
 export class UpdateRubricQuestionCriteriaDto {
@@ -37,12 +37,12 @@ export class UpdateRubricQuestionCriteriaDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_question_id?: number;
+	rubricQuestionId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -52,12 +52,12 @@ export class UpdateRubricQuestionCriteriaDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	min_value?: number;
+	minValue?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }
 
 export class FilterRubricQuestionCriteriaDto {
@@ -67,11 +67,11 @@ export class FilterRubricQuestionCriteriaDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rubric_question_id?: number;
+	rubricQuestionId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })
@@ -79,9 +79,9 @@ export class FilterRubricQuestionCriteriaDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	min_value?: number;
+	minValue?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }

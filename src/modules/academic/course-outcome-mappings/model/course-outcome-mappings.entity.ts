@@ -10,13 +10,13 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_type_id: number;
+	outcomeTypeId: number;
 
 	// %% RELATIONS
 
@@ -32,12 +32,12 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 		name: 'study_plan_course_id',
 		foreignKeyConstraintName: 'FK_course_outcome_mappings_study_plan_course_id',
 	})
-	study_plan_course: StudyPlanCourseEntity;
+	studyPlanCourse: StudyPlanCourseEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'outcome_type_id',
 		foreignKeyConstraintName: 'FK_course_outcome_mappings_outcome_type_id',
 	})
-	outcome_type: TypeEntity;
+	outcomeType: TypeEntity;
 }

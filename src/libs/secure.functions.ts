@@ -32,12 +32,12 @@ const SCHOOL_COOKIE_OPTIONS = {
 
 export function saveAccessCookie(res: Response, data: any) {
 	removeAccessCookie(res);
-	res.cookie(ACCESS_TOKEN_COOKIE_NAME, data.access_token, {
+	res.cookie(ACCESS_TOKEN_COOKIE_NAME, data.accessToken, {
 		...ACCESS_TOKEN_COOKIE_OPTIONS,
 		maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
 	});
-	if (data.school_id !== undefined && data.school_code !== undefined) {
-		res.cookie(SCHOOL_COOKIE_NAME, JSON.stringify({ id: data.school_id, code: data.school_code }), {
+	if (data.schoolId !== undefined && data.schoolCode !== undefined) {
+		res.cookie(SCHOOL_COOKIE_NAME, JSON.stringify({ id: data.schoolId, code: data.schoolCode }), {
 			...SCHOOL_COOKIE_OPTIONS,
 			maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
 		});

@@ -11,10 +11,10 @@ export class RubricQuestionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	rubric_id: number;
+	rubricId: number;
 
 	@IntegerFKIDColumn({ nullable: true })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@JsonColumn({ nullable: false })
 	question: I18nText;

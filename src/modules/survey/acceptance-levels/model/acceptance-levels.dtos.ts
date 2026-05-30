@@ -17,11 +17,11 @@ import { Type } from 'class-transformer';
 export class FilterAcceptanceLevelDto {
 	@IsNumber()
 	@ApiProperty({ example: 3, description: 'ID del período académico' })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID del tipo de encuesta (PPP, GRA, LCFC)' })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IsOptional()
 	@IsString()
@@ -30,7 +30,7 @@ export class FilterAcceptanceLevelDto {
 		description: 'Código del tipo de encuesta (alternativa a survey_type_id)',
 		required: false,
 	})
-	survey_type_code?: string;
+	surveyTypeCode?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -50,12 +50,12 @@ export class UpdateAcceptanceLevelItemDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 4.2, required: false })
-	min_score?: number;
+	minScore?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 5.0, required: false })
-	max_score?: number;
+	maxScore?: number;
 
 	@IsOptional()
 	@IsString()
@@ -70,7 +70,7 @@ export class UpdateAcceptanceLevelItemDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: false, required: false })
-	is_final?: boolean;
+	isFinal?: boolean;
 }
 
 export class BulkUpdateAcceptanceLevelsDto {
@@ -88,11 +88,11 @@ export class BulkUpdateAcceptanceLevelsDto {
 export class GenerateDefaultAcceptanceLevelsDto {
 	@IsNumber()
 	@ApiProperty({ example: 3, description: 'ID del período académico' })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID del tipo de encuesta' })
-	survey_type_id: number;
+	surveyTypeId: number;
 }
 
 // ─────────────────────────────────────────────
@@ -102,13 +102,13 @@ export class GenerateDefaultAcceptanceLevelsDto {
 export class CopyAcceptanceLevelsDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID del tipo de encuesta' })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 2, description: 'ID del período académico origen' })
-	source_academic_period_id: number;
+	sourceAcademicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 3, description: 'ID del período académico destino' })
-	target_academic_period_id: number;
+	targetAcademicPeriodId: number;
 }

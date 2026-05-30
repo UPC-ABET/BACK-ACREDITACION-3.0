@@ -8,8 +8,8 @@ export class NotificationMessageValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				survey_type_id: data.survey_type_id,
-				program_id: data.program_id,
+				surveyTypeId: data.surveyTypeId,
+				programId: data.programId,
 				title: data.title,
 			},
 		});
@@ -33,14 +33,14 @@ export class NotificationMessageValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(notificationMessagesValidationStrings.error.notFound);
 
-		const surveyTypeId = data.survey_type_id ?? entity?.survey_type_id;
-		const programId = data.program_id ?? entity?.program_id;
+		const surveyTypeId = data.surveyTypeId ?? entity?.surveyTypeId;
+		const programId = data.programId ?? entity?.programId;
 		const title = data.title ?? entity?.title;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				survey_type_id: surveyTypeId,
-				program_id: programId,
+				surveyTypeId: surveyTypeId,
+				programId: programId,
 				title,
 			},
 		});

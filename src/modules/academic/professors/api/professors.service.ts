@@ -45,12 +45,12 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 			.leftJoinAndSelect('staff.user', 'user');
 
 		// Apply exact match filters (staff_id, is_active, extra)
-		if (otherFilters.staff_id !== undefined) {
-			qb.andWhere('professor.staff_id = :staff_id', { staff_id: otherFilters.staff_id });
+		if (otherFilters.staffId !== undefined) {
+			qb.andWhere('professor.staff_id = :staffId', { staffId: otherFilters.staffId });
 		}
 
-		if (otherFilters.is_active !== undefined) {
-			qb.andWhere('professor.is_active = :is_active', { is_active: otherFilters.is_active });
+		if (otherFilters.isActive !== undefined) {
+			qb.andWhere('professor.is_active = :isActive', { isActive: otherFilters.isActive });
 		}
 
 		if (otherFilters.extra !== undefined) {
@@ -68,7 +68,7 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 		return await qb.getMany();
 	}
 
-	async getByUserId(user_id: number) {
-		return await this.repository.getByUserId(user_id);
+	async getByUserId(userId: number) {
+		return await this.repository.getByUserId(userId);
 	}
 }

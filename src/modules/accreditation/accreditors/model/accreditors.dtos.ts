@@ -10,7 +10,7 @@ export class CreateAccreditorDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsString()
 	@Length(1, 1000)
@@ -30,7 +30,7 @@ export class UpdateAccreditorDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsString()
@@ -51,7 +51,7 @@ export class FilterAccreditorDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })

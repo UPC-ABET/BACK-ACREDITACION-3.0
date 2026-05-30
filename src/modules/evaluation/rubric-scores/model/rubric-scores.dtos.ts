@@ -10,15 +10,15 @@ export class CreateRubricScoreDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	evaluation_id: number;
+	evaluationId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_question_criteria_id: number;
+	rubricQuestionCriteriaId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -38,17 +38,17 @@ export class UpdateRubricScoreDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	evaluation_id?: number;
+	evaluationId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_question_criteria_id?: number;
+	rubricQuestionCriteriaId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -68,15 +68,15 @@ export class FilterRubricScoreDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	evaluation_id?: number;
+	evaluationId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rubric_question_criteria_id?: number;
+	rubricQuestionCriteriaId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

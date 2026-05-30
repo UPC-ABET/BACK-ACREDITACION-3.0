@@ -10,15 +10,15 @@ export class CreatePerformanceLevelDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	instrument_type_id: number;
+	instrumentTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
@@ -31,19 +31,19 @@ export class CreatePerformanceLevelDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	unique_value: number;
+	uniqueValue: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	min_score: number;
+	minScore: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	max_score: number;
+	maxScore: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	max_value: number;
+	maxValue: number;
 }
 
 export class UpdatePerformanceLevelDto {
@@ -54,17 +54,17 @@ export class UpdatePerformanceLevelDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	instrument_type_id?: number;
+	instrumentTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -80,22 +80,22 @@ export class UpdatePerformanceLevelDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	unique_value?: number;
+	uniqueValue?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	min_score?: number;
+	minScore?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	max_score?: number;
+	maxScore?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }
 
 export class FilterPerformanceLevelDto {
@@ -105,15 +105,15 @@ export class FilterPerformanceLevelDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	instrument_type_id?: number;
+	instrumentTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
@@ -125,17 +125,17 @@ export class FilterPerformanceLevelDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	unique_value?: number;
+	uniqueValue?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	min_score?: number;
+	minScore?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	max_score?: number;
+	maxScore?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }

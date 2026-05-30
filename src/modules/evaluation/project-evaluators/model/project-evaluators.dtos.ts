@@ -9,19 +9,19 @@ export class CreateProjectEvaluatorDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	project_id: number;
+	projectId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	professor_id: number;
+	professorId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	evaluator_type_id: number;
+	evaluatorTypeId: number;
 }
 
 export class UpdateProjectEvaluatorDto {
@@ -32,22 +32,22 @@ export class UpdateProjectEvaluatorDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	project_id?: number;
+	projectId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	professorId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	evaluator_type_id?: number;
+	evaluatorTypeId?: number;
 }
 
 export class FilterProjectEvaluatorDto {
@@ -57,17 +57,17 @@ export class FilterProjectEvaluatorDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	project_id?: number;
+	projectId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	professorId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	evaluator_type_id?: number;
+	evaluatorTypeId?: number;
 }

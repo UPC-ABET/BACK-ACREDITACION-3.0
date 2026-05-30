@@ -11,29 +11,29 @@ export class NotificationLogEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: true, indexed: true, indexName: 'IDX_notification_logs_ifc_id' })
-	ifc_id: number | null;
+	ifcId: number | null;
 
 	@IntegerFKIDColumn({
 		nullable: false,
 		indexed: true,
 		indexName: 'IDX_notification_logs_chart_id',
 	})
-	chart_id: number;
+	chartId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	notification_config_id: number;
+	notificationConfigId: number;
 
 	@IntegerFKIDColumn({ nullable: true })
-	notifier_user_id: number | null;
+	notifierUserId: number | null;
 
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
-	to_staff_ids: number[];
+	toStaffIds: number[];
 
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
-	cc_staff_ids: number[];
+	ccStaffIds: number[];
 
 	@EmailColumn({ nullable: true })
-	provider_message_id: string | null;
+	providerMessageId: string | null;
 
 	// %% RELATIONS
 
@@ -50,12 +50,12 @@ export class NotificationLogEntity extends BaseEntity {
 		name: 'notification_config_id',
 		foreignKeyConstraintName: 'FK_notification_logs_notification_config_id',
 	})
-	notification_config: NotificationConfigEntity;
+	notificationConfig: NotificationConfigEntity;
 
 	@ManyToOne(() => UserEntity)
 	@JoinColumn({
 		name: 'notifier_user_id',
 		foreignKeyConstraintName: 'FK_notification_logs_notifier_user_id',
 	})
-	notifier_user: UserEntity | null;
+	notifierUser: UserEntity | null;
 }

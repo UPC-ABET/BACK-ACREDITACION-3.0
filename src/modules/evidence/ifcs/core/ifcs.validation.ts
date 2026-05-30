@@ -30,7 +30,7 @@ export class IfcValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				course_id: data.course_id,
+				courseId: data.courseId,
 			},
 		});
 
@@ -53,11 +53,11 @@ export class IfcValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(ifcsValidationStrings.error.notFound);
 
-		const studyPlanCourseId = data.course_id ?? entity?.course_id;
+		const studyPlanCourseId = data.courseId ?? entity?.courseId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				course_id: studyPlanCourseId,
+				courseId: studyPlanCourseId,
 			},
 		});
 
@@ -210,7 +210,7 @@ export class IfcValidation {
 
 	static assertFindingsAndActionsPresent(
 		findings: { tempId: string }[],
-		actions: { finding_temp_id: string }[],
+		actions: { findingTempId: string }[],
 		op: IfcOp,
 	) {
 		const errors: string[] = [];
@@ -218,7 +218,7 @@ export class IfcValidation {
 		if (!findings || findings.length === 0) {
 			errors.push(ifcsValidationStrings.error.findingsRequired);
 		} else {
-			const actionsByFinding = new Set((actions ?? []).map((a) => a.finding_temp_id));
+			const actionsByFinding = new Set((actions ?? []).map((a) => a.findingTempId));
 			const orphanFinding = findings.find((f) => !actionsByFinding.has(f.tempId));
 			if (orphanFinding) errors.push(ifcsValidationStrings.error.actionsRequiredPerFinding);
 		}

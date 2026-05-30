@@ -32,8 +32,8 @@ function fakeResponse(cookies: Record<string, string> = {}) {
 	return { res, cookieJar };
 }
 
-function signState(csrf: string, school_id: number): string {
-	const encoded = Buffer.from(JSON.stringify({ csrf, school_id })).toString('base64url');
+function signState(csrf: string, schoolId: number): string {
+	const encoded = Buffer.from(JSON.stringify({ csrf, schoolId })).toString('base64url');
 	const signature = createHmac('sha256', TEST_JWT_SECRET).update(encoded).digest('base64url');
 	return `${encoded}.${signature}`;
 }
@@ -84,7 +84,7 @@ describe('AuthController — MSAL state packing', () => {
 			expect(signature).toBe(expectedSig);
 
 			const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString());
-			expect(parsed).toMatchObject({ school_id: 7 });
+			expect(parsed).toMatchObject({ schoolId: 7 });
 			expect(typeof parsed.csrf).toBe('string');
 			expect(parsed.csrf.length).toBeGreaterThan(0);
 
@@ -131,14 +131,14 @@ describe('AuthController — MSAL state packing', () => {
 
 		it('throws when school_id is tampered in the payload', async () => {
 			const originalEncoded = Buffer.from(
-				JSON.stringify({ csrf: 'matching-csrf', school_id: 7 }),
+				JSON.stringify({ csrf: 'matching-csrf', schoolId: 7 }),
 			).toString('base64url');
 			const originalSig = createHmac('sha256', TEST_JWT_SECRET)
 				.update(originalEncoded)
 				.digest('base64url');
 
 			const tamperedEncoded = Buffer.from(
-				JSON.stringify({ csrf: 'matching-csrf', school_id: 999 }),
+				JSON.stringify({ csrf: 'matching-csrf', schoolId: 999 }),
 			).toString('base64url');
 			const tamperedState = `${tamperedEncoded}.${originalSig}`;
 
@@ -154,8 +154,8 @@ describe('AuthController — MSAL state packing', () => {
 			const { res } = fakeResponse({ microsoft_oauth_state: 'matching-csrf' });
 			authService.loginWithMicrosoftCode.mockResolvedValueOnce({
 				user: { id: 1 },
-				microsoft_profile: { email: 'a@b.com', name: 'A' },
-				access_token: 'tok',
+				microsoftProfile: { email: 'a@b.com', name: 'A' },
+				accessToken: 'tok',
 			});
 
 			const result = await controller.microsoftCallback('code-abc', state, res as never);
@@ -164,7 +164,7 @@ describe('AuthController — MSAL state packing', () => {
 			expect(res.clearCookie).toHaveBeenCalledWith('microsoft_oauth_state');
 			expect(result).toMatchObject({
 				code: 200,
-				data: expect.objectContaining({ access_token: 'tok' }),
+				data: expect.objectContaining({ accessToken: 'tok' }),
 			});
 		});
 	});

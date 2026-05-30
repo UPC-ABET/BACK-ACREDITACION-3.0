@@ -8,8 +8,8 @@ export class RubricScoreValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				evaluation_id: data.evaluation_id,
-				rubric_question_criteria_id: data.rubric_question_criteria_id,
+				evaluationId: data.evaluationId,
+				rubricQuestionCriteriaId: data.rubricQuestionCriteriaId,
 			},
 		});
 
@@ -36,14 +36,14 @@ export class RubricScoreValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricScoresValidationStrings.error.notFound);
 
-		const evaluationId = data.evaluation_id ?? entity?.evaluation_id;
+		const evaluationId = data.evaluationId ?? entity?.evaluationId;
 		const rubricQuestionCriteriaId =
-			data.rubric_question_criteria_id ?? entity?.rubric_question_criteria_id;
+			data.rubricQuestionCriteriaId ?? entity?.rubricQuestionCriteriaId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				evaluation_id: evaluationId,
-				rubric_question_criteria_id: rubricQuestionCriteriaId,
+				evaluationId: evaluationId,
+				rubricQuestionCriteriaId: rubricQuestionCriteriaId,
 			},
 		});
 

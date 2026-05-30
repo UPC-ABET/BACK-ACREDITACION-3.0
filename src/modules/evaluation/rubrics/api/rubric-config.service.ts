@@ -73,10 +73,10 @@ export class RubricConfigService {
 		const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
 		if (!rubric) throw new NotFoundException(rubricsValidationStrings.error.notFound);
 
-		const isWasc = await this.isWascRubric(rubric.grade_type_id);
+		const isWasc = await this.isWascRubric(rubric.gradeTypeId);
 
 		const questions = await this.questionRepo.find({
-			where: { rubric_id: rubricId },
+			where: { rubricId: rubricId },
 			relations: ['criterias'],
 		});
 
@@ -84,7 +84,7 @@ export class RubricConfigService {
 		let totalMaxScore = 0;
 
 		for (const question of questions) {
-			const maxValues = question.criterias.map((c) => c.max_value);
+			const maxValues = question.criterias.map((c) => c.maxValue);
 			if (maxValues.length === 0) continue;
 
 			const questionMax = isWasc
@@ -125,7 +125,7 @@ export class RubricConfigService {
 			  AND r.study_plan_course_id != $1
 			LIMIT 1
 		`,
-				[dto.study_plan_course_id, dto.grade_type_id],
+				[dto.studyPlanCourseId, dto.gradeTypeId],
 			)
 		)[0] as { id: number } | undefined;
 
@@ -136,9 +136,9 @@ export class RubricConfigService {
 		// Verificar si ya existe una rúbrica activa para el mismo study_plan_course + grade_type
 		const existingRubric = await this.rubricRepo.findOne({
 			where: {
-				study_plan_course_id: dto.study_plan_course_id,
-				grade_type_id: dto.grade_type_id,
-				is_active: true,
+				studyPlanCourseId: dto.studyPlanCourseId,
+				gradeTypeId: dto.gradeTypeId,
+				isActive: true,
 			},
 		});
 
@@ -147,13 +147,13 @@ export class RubricConfigService {
 		}
 
 		const outcomeIds = dto.questions
-			.map((q) => q.outcome_id)
+			.map((q) => q.outcomeId)
 			.filter((id): id is number => id != null);
 		if (outcomeIds.length > 0) {
 			const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
-				where: { study_plan_course_id: dto.study_plan_course_id },
+				where: { studyPlanCourseId: dto.studyPlanCourseId },
 			});
-			const validOutcomeIds = mappings.map((m) => m.outcome_id);
+			const validOutcomeIds = mappings.map((m) => m.outcomeId);
 			const invalidOutcomes = outcomeIds.filter((id) => !validOutcomeIds.includes(id));
 			if (invalidOutcomes.length > 0) {
 				throw new BadRequestException({
@@ -165,19 +165,19 @@ export class RubricConfigService {
 
 		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
 		const ebGradeTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.GRADE_TYPE.EB);
-		const isCapstone = capstoneTypeId != null && dto.rubric_type_id === capstoneTypeId;
-		const isEbGrade = ebGradeTypeId != null && dto.grade_type_id === ebGradeTypeId;
+		const isCapstone = capstoneTypeId != null && dto.rubricTypeId === capstoneTypeId;
+		const isEbGrade = ebGradeTypeId != null && dto.gradeTypeId === ebGradeTypeId;
 
 		// Solo se exige outcome_id en todas las preguntas si es Capstone Y el grade type es EB (Evaluación Final)
 		if (isCapstone && isEbGrade) {
-			const hasMissingOutcomes = dto.questions.some((q) => !q.outcome_id);
+			const hasMissingOutcomes = dto.questions.some((q) => !q.outcomeId);
 			if (hasMissingOutcomes) {
 				throw new BadRequestException(rubricsValidationStrings.error.capstoneRequiresOutcome);
 			}
 		}
 
 		const courseExists = await this.courseRepo.exists({
-			where: { id: dto.study_plan_course_id },
+			where: { id: dto.studyPlanCourseId },
 		});
 		if (!courseExists) {
 			throw new NotFoundException(rubricsValidationStrings.error.studyPlanCourseNotFound);
@@ -185,10 +185,10 @@ export class RubricConfigService {
 
 		const savedRubric = await this.dataSource.transaction(async (manager) => {
 			const rubric = manager.create(RubricEntity, {
-				rubric_type_id: dto.rubric_type_id,
-				grade_type_id: dto.grade_type_id,
-				study_plan_course_id: dto.study_plan_course_id,
-				is_active: dto.is_active ?? true,
+				rubricTypeId: dto.rubricTypeId,
+				gradeTypeId: dto.gradeTypeId,
+				studyPlanCourseId: dto.studyPlanCourseId,
+				isActive: dto.isActive ?? true,
 				extra: dto.extra,
 			});
 
@@ -197,20 +197,20 @@ export class RubricConfigService {
 			const questionEntities: RubricQuestionEntity[] = [];
 			for (const questionDto of dto.questions) {
 				const question = manager.create(RubricQuestionEntity, {
-					rubric_id: txSavedRubric.id,
-					outcome_id: questionDto.outcome_id,
+					rubricId: txSavedRubric.id,
+					outcomeId: questionDto.outcomeId,
 					question: toI18n(questionDto.question),
-					is_active: true,
+					isActive: true,
 				});
 				const savedQuestion = await manager.save(question);
 
 				const criteriaEntities = questionDto.criterias.map((criteriaDto) =>
 					manager.create(RubricQuestionCriteriaEntity, {
-						rubric_question_id: savedQuestion.id,
+						rubricQuestionId: savedQuestion.id,
 						criteria: toI18n(criteriaDto.criteria),
-						min_value: criteriaDto.min_value,
-						max_value: criteriaDto.max_value,
-						is_active: true,
+						minValue: criteriaDto.minValue,
+						maxValue: criteriaDto.maxValue,
+						isActive: true,
 					}),
 				);
 
@@ -237,7 +237,7 @@ export class RubricConfigService {
 	 */
 	async getRubricByCourse(courseId: number): Promise<RubricEntity> {
 		const rubric = await this.rubricRepo.findOne({
-			where: { study_plan_course_id: courseId },
+			where: { studyPlanCourseId: courseId },
 			relations: ['questions', 'questions.criterias', 'questions.outcome'],
 		});
 
@@ -279,14 +279,14 @@ export class RubricConfigService {
 				'questions',
 				'questions.criterias',
 				'questions.outcome',
-				'grade_type',
-				'rubric_type',
-				'study_plan_course',
-				'study_plan_course.course',
-				'study_plan_course.study_plan_academic_period',
-				'study_plan_course.study_plan_academic_period.study_plan',
-				'study_plan_course.study_plan_academic_period.study_plan.program',
-				'study_plan_course.study_plan_academic_period.academic_period',
+				'gradeType',
+				'rubricType',
+				'studyPlanCourse',
+				'studyPlanCourse.course',
+				'studyPlanCourse.studyPlanAcademicPeriod',
+				'studyPlanCourse.studyPlanAcademicPeriod.studyPlan',
+				'studyPlanCourse.studyPlanAcademicPeriod.studyPlan.program',
+				'studyPlanCourse.studyPlanAcademicPeriod.academicPeriod',
 			],
 			order: {
 				questions: {
@@ -306,8 +306,8 @@ export class RubricConfigService {
 		const commissionIds = [
 			...new Set(
 				(rubric.questions || [])
-					.filter((q) => q.outcome?.program_commission_id != null)
-					.map((q) => q.outcome!.program_commission_id),
+					.filter((q) => q.outcome?.programCommissionId != null)
+					.map((q) => q.outcome!.programCommissionId),
 			),
 		];
 
@@ -330,37 +330,37 @@ export class RubricConfigService {
 			questionsMap.set(q.id, {
 				id: q.id,
 				text: q.question,
-				outcomeId: q.outcome_id,
+				outcomeId: q.outcomeId,
 				criterias: (q.criterias || [])
 					.sort((a, b) => a.id - b.id)
 					.map((c) => ({
 						id: c.id,
 						text: c.criteria,
-						min_value: c.min_value,
-						max_value: c.max_value,
+						minValue: c.minValue,
+						maxValue: c.maxValue,
 					})),
 			});
 
-			if (q.outcome_id) {
-				if (!outcomeToQuestions.has(q.outcome_id)) {
-					outcomeToQuestions.set(q.outcome_id, []);
+			if (q.outcomeId) {
+				if (!outcomeToQuestions.has(q.outcomeId)) {
+					outcomeToQuestions.set(q.outcomeId, []);
 				}
-				outcomeToQuestions.get(q.outcome_id)!.push(q.id);
+				outcomeToQuestions.get(q.outcomeId)!.push(q.id);
 
 				if (q.outcome && !outcomesMap.has(q.outcome.id)) {
 					outcomesMap.set(q.outcome.id, {
 						id: q.outcome.id,
-						code: q.outcome.outcome_code,
-						name: q.outcome.outcome_name,
-						description: q.outcome.outcome_description,
-						program_commission_id: q.outcome.program_commission_id,
+						code: q.outcome.outcomeCode,
+						name: q.outcome.outcomeName,
+						description: q.outcome.outcomeDescription,
+						programCommissionId: q.outcome.programCommissionId,
 					});
 				}
 			}
 		});
 
 		(Array.from(outcomesMap.values()) as any).forEach((outcome: any) => {
-			const commission = commissions.find((c) => c.id === outcome.program_commission_id);
+			const commission = commissions.find((c) => c.id === outcome.programCommissionId);
 			if (commission) {
 				if (!commissionToOutcomes.has(commission.id)) {
 					commissionToOutcomes.set(commission.id, []);
@@ -373,56 +373,55 @@ export class RubricConfigService {
 		return {
 			rubric: {
 				id: rubric.id,
-				rubric_type_id: rubric.rubric_type_id,
-				grade_type_id: rubric.grade_type_id,
-				study_plan_course_id: rubric.study_plan_course_id,
-				is_active: rubric.is_active ?? false,
-				created_at: rubric.created_at,
-				rubric_type: rubric.rubric_type
+				rubricTypeId: rubric.rubricTypeId,
+				gradeTypeId: rubric.gradeTypeId,
+				studyPlanCourseId: rubric.studyPlanCourseId,
+				isActive: rubric.isActive ?? false,
+				createdAt: rubric.createdAt,
+				rubricType: rubric.rubricType
 					? {
-							id: rubric.rubric_type.id,
-							code: rubric.rubric_type.code,
-							name: rubric.rubric_type.name,
+							id: rubric.rubricType.id,
+							code: rubric.rubricType.code,
+							name: rubric.rubricType.name,
 						}
 					: undefined,
-				grade_type: rubric.grade_type
+				gradeType: rubric.gradeType
 					? {
-							id: rubric.grade_type.id,
-							code: rubric.grade_type.code,
-							name: rubric.grade_type.name,
+							id: rubric.gradeType.id,
+							code: rubric.gradeType.code,
+							name: rubric.gradeType.name,
 						}
 					: undefined,
 			},
-			course: rubric.study_plan_course?.course
+			course: rubric.studyPlanCourse?.course
 				? {
-						id: rubric.study_plan_course.course.id,
-						name: rubric.study_plan_course.course.name,
-						description: rubric.study_plan_course.course.description,
-						learning_outcome: rubric.study_plan_course.course.learning_outcome,
+						id: rubric.studyPlanCourse.course.id,
+						name: rubric.studyPlanCourse.course.name,
+						description: rubric.studyPlanCourse.course.description,
+						learningOutcome: rubric.studyPlanCourse.course.learningOutcome,
 					}
 				: undefined,
-			academicPeriod: rubric.study_plan_course?.study_plan_academic_period?.academic_period
+			academicPeriod: rubric.studyPlanCourse?.studyPlanAcademicPeriod?.academicPeriod
 				? {
-						id: rubric.study_plan_course.study_plan_academic_period.academic_period.id,
-						code: rubric.study_plan_course.study_plan_academic_period.academic_period.code,
-						start_date:
-							rubric.study_plan_course.study_plan_academic_period.academic_period.start_date,
-						end_date: rubric.study_plan_course.study_plan_academic_period.academic_period.end_date,
+						id: rubric.studyPlanCourse.studyPlanAcademicPeriod.academicPeriod.id,
+						code: rubric.studyPlanCourse.studyPlanAcademicPeriod.academicPeriod.code,
+						startDate: rubric.studyPlanCourse.studyPlanAcademicPeriod.academicPeriod.startDate,
+						endDate: rubric.studyPlanCourse.studyPlanAcademicPeriod.academicPeriod.endDate,
 					}
 				: undefined,
-			studyPlan: rubric.study_plan_course?.study_plan_academic_period?.study_plan
+			studyPlan: rubric.studyPlanCourse?.studyPlanAcademicPeriod?.studyPlan
 				? {
-						id: rubric.study_plan_course.study_plan_academic_period.study_plan.id,
-						code: rubric.study_plan_course.study_plan_academic_period.study_plan.code,
-						name: rubric.study_plan_course.study_plan_academic_period.study_plan.name,
+						id: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.id,
+						code: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.code,
+						name: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.name,
 					}
 				: undefined,
-			program: rubric.study_plan_course?.study_plan_academic_period?.study_plan?.program
+			program: rubric.studyPlanCourse?.studyPlanAcademicPeriod?.studyPlan?.program
 				? {
-						id: rubric.study_plan_course.study_plan_academic_period.study_plan.program.id,
-						code: rubric.study_plan_course.study_plan_academic_period.study_plan.program.code,
-						name: rubric.study_plan_course.study_plan_academic_period.study_plan.program.name,
-						degree: rubric.study_plan_course.study_plan_academic_period.study_plan.program.degree,
+						id: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.program.id,
+						code: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.program.code,
+						name: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.program.name,
+						degree: rubric.studyPlanCourse.studyPlanAcademicPeriod.studyPlan.program.degree,
 					}
 				: undefined,
 			commissions: commissions.map((c) => ({

@@ -38,20 +38,20 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 		return await this.dataSource.query(
 			`
 			SELECT
-				nc.id::int                       AS id,
-				nc.school_id::int                AS school_id,
-				nc.academic_period_id::int       AS academic_period_id,
-				nc.trigger_type_id::int          AS trigger_type_id,
-				nc.ifc_status_type_id::int       AS ifc_status_type_id,
-				nc.title                         AS title,
-				nc.body                          AS body,
-				nc.to_chart_level_type_ids       AS to_chart_level_type_ids,
-				nc.cc_chart_level_type_ids       AS cc_chart_level_type_ids,
-				nc.is_active                     AS is_active,
-				ct_trigger.code                  AS trigger_code,
-				ct_trigger.name                  AS trigger_name,
-				ct_status.code                   AS status_code,
-				ct_status.name                   AS status_name
+				nc.id::int                       AS "id",
+				nc.school_id::int                AS "schoolId",
+				nc.academic_period_id::int       AS "academicPeriodId",
+				nc.trigger_type_id::int          AS "triggerTypeId",
+				nc.ifc_status_type_id::int       AS "ifcStatusTypeId",
+				nc.title                         AS "title",
+				nc.body                          AS "body",
+				nc.to_chart_level_type_ids       AS "toChartLevelTypeIds",
+				nc.cc_chart_level_type_ids       AS "ccChartLevelTypeIds",
+				nc.is_active                     AS "isActive",
+				ct_trigger.code                  AS "triggerCode",
+				ct_trigger.name                  AS "triggerName",
+				ct_status.code                   AS "statusCode",
+				ct_status.name                   AS "statusName"
 			FROM ifc.notification_configs nc
 			JOIN core.types ct_trigger ON ct_trigger.id = nc.trigger_type_id
 			JOIN core.types ct_status  ON ct_status.id  = nc.ifc_status_type_id
@@ -78,25 +78,26 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 				cc_chart_level_type_ids   = EXCLUDED.cc_chart_level_type_ids,
 				is_active                 = EXCLUDED.is_active,
 				updated_at                = NOW()
-			RETURNING id::int                       AS id,
-					  school_id::int                AS school_id,
-					  academic_period_id::int       AS academic_period_id,
-					  trigger_type_id::int          AS trigger_type_id,
-					  ifc_status_type_id::int       AS ifc_status_type_id,
+			RETURNING id::int                       AS "id",
+					  school_id::int                AS "schoolId",
+					  academic_period_id::int       AS "academicPeriodId",
+					  trigger_type_id::int          AS "triggerTypeId",
+					  ifc_status_type_id::int       AS "ifcStatusTypeId",
 					  title, body,
-					  to_chart_level_type_ids, cc_chart_level_type_ids,
-					  is_active
+					  to_chart_level_type_ids       AS "toChartLevelTypeIds",
+					  cc_chart_level_type_ids       AS "ccChartLevelTypeIds",
+					  is_active                     AS "isActive"
 			`,
 			[
 				schoolId,
-				dto.academic_period_id,
-				dto.trigger_type_id,
-				dto.ifc_status_type_id,
+				dto.academicPeriodId,
+				dto.triggerTypeId,
+				dto.ifcStatusTypeId,
 				JSON.stringify(dto.title),
 				JSON.stringify(dto.body),
-				JSON.stringify(dto.to_chart_level_type_ids ?? []),
-				JSON.stringify(dto.cc_chart_level_type_ids ?? []),
-				dto.is_active ?? true,
+				JSON.stringify(dto.toChartLevelTypeIds ?? []),
+				JSON.stringify(dto.ccChartLevelTypeIds ?? []),
+				dto.isActive ?? true,
 			],
 		);
 		return rows[0];

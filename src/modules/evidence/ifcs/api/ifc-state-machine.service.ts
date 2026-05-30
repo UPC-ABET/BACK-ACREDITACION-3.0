@@ -9,7 +9,7 @@ import { RejectIfcDto } from '../model/ifcs.dtos';
 import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { TRANSITION_CONTEXT_SQL, INSERT_STATUS_SQL } from './ifcs.sql';
 
-type PeriodRow = { academic_period_id: number };
+type PeriodRow = { academicPeriodId: number };
 
 @Injectable()
 export class IfcStateMachineService {
@@ -57,10 +57,10 @@ export class IfcStateMachineService {
 			);
 
 			const periodRows: PeriodRow[] = await em.query(
-				`SELECT academic_period_id FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
+				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
 				[ifcId],
 			);
-			return { ctx, periodId: Number(periodRows[0]?.academic_period_id) };
+			return { ctx, periodId: Number(periodRows[0]?.academicPeriodId) };
 		});
 
 		const courseChartId = ctx.courseChartId;
@@ -167,10 +167,10 @@ export class IfcStateMachineService {
 		const row = rows[0];
 		const ctx: IfcTransitionContext = {
 			ifcId,
-			ifcCourseStaffId: row.ifc_course_staff_id == null ? null : Number(row.ifc_course_staff_id),
-			courseChartId: row.course_chart_id == null ? null : Number(row.course_chart_id),
-			requesterStaffId: row.requester_staff_id == null ? null : Number(row.requester_staff_id),
-			currentStatusCode: row.current_status_code ?? null,
+			ifcCourseStaffId: row.ifcCourseStaffId == null ? null : Number(row.ifcCourseStaffId),
+			courseChartId: row.courseChartId == null ? null : Number(row.courseChartId),
+			requesterStaffId: row.requesterStaffId == null ? null : Number(row.requesterStaffId),
+			currentStatusCode: row.currentStatusCode ?? null,
 		};
 
 		IfcValidation.assertRequesterIsStaff(ctx.requesterStaffId, op);

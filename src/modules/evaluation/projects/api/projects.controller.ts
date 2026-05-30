@@ -38,16 +38,16 @@ export class ProjectController extends BaseController<ProjectService> {
 		);
 	}
 
-	@Get('professor/:professor_id')
+	@Get('professor/:professorId')
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
-	@ApiQuery({ name: 'academic_period_id', required: false, type: Number })
-	@ApiQuery({ name: 'school_id', required: false, type: Number })
-	@ApiQuery({ name: 'grade_type_code', required: false, type: String })
+	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
+	@ApiQuery({ name: 'schoolId', required: false, type: Number })
+	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	async getProjectsByProfessor(
-		@Param('professor_id', ParseIntPipe) professorId: number,
-		@Query('academic_period_id') academicPeriodId?: string,
-		@Query('school_id') schoolId?: string,
-		@Query('grade_type_code') gradeTypeCode?: string,
+		@Param('professorId', ParseIntPipe) professorId: number,
+		@Query('academicPeriodId') academicPeriodId?: string,
+		@Query('schoolId') schoolId?: string,
+		@Query('gradeTypeCode') gradeTypeCode?: string,
 	) {
 		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
 		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
@@ -62,15 +62,15 @@ export class ProjectController extends BaseController<ProjectService> {
 		);
 	}
 
-	@Get('project/:project_id')
+	@Get('project/:projectId')
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
-	@ApiQuery({ name: 'is_evaluation_mode', required: false, type: Boolean })
-	@ApiQuery({ name: 'grade_type_code', required: false, type: String })
+	@ApiQuery({ name: 'isEvaluationMode', required: false, type: Boolean })
+	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	async getProjectWithDetails(
-		@Param('project_id', ParseIntPipe) projectId: number,
-		@Query('is_evaluation_mode') isEvaluationMode?: string,
-		@Query('grade_type_code') gradeTypeCode?: string,
-		@Query('rubric_type_id', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
+		@Param('projectId', ParseIntPipe) projectId: number,
+		@Query('isEvaluationMode') isEvaluationMode?: string,
+		@Query('gradeTypeCode') gradeTypeCode?: string,
+		@Query('rubricTypeId', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		const isEvalMode = isEvaluationMode === 'true';
 		return parseSuccessResponse(

@@ -55,7 +55,7 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	}
 
 	@SwaggerProfessorGetByUserId()
-	async getByUserId(@Param('id', ParseIntPipe) user_id: number) {
-		return parseSuccessResponse(await this.service.getByUserId(user_id));
+	async getByUserId(@Param('id', ParseIntPipe) userId: number) {
+		return parseSuccessResponse(await this.service.getByUserId(userId));
 	}
 }

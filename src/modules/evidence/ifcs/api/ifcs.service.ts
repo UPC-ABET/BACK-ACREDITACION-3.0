@@ -89,8 +89,8 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	async list(dto: ListIfcsDto) {
 		return await this.dataSource.query(LIST_SQL, [
-			dto.chart_ids,
-			dto.period_id,
+			dto.chartIds,
+			dto.periodId,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 		]);
 	}
@@ -98,29 +98,29 @@ export class IfcService extends BaseService<IfcRepository> {
 	async prefill(query: IfcPrefillQueryDto, schoolId: number) {
 		const [headerRows, outcomeRows] = await Promise.all([
 			this.dataSource.query(PREFILL_HEADER_SQL, [
-				query.chart_id,
-				query.period_id,
+				query.chartId,
+				query.periodId,
 				schoolId,
 				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			]),
-			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chart_id]),
+			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chartId]),
 		]);
 
 		IfcValidation.assertChartFound(headerRows, 'prefill');
 		const header = headerRows[0];
-		const previous_actions = await this.view.loadPreviousActions(
-			Number(header.course_id),
-			query.period_id,
+		const previousActions = await this.view.loadPreviousActions(
+			Number(header.courseId),
+			query.periodId,
 			null,
 		);
 
 		return {
 			...header,
-			coordinator_user_id:
-				header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
-			outcome_course_result: this.view.groupOutcomeRows(outcomeRows),
-			previous_actions,
+			coordinatorUserId:
+				header.coordinatorUserId === null ? null : Number(header.coordinatorUserId),
+			outcomeCourseResult: this.view.groupOutcomeRows(outcomeRows),
+			previousActions,
 		};
 	}
 
@@ -165,12 +165,12 @@ export class IfcService extends BaseService<IfcRepository> {
 
 		const sent: number[] = [];
 		const skipped: number[] = [];
-		const errors: Array<{ chart_id: number; message: string }> = [];
+		const errors: Array<{ chartId: number; message: string }> = [];
 		results.forEach((r, idx) => {
 			if (r.status === 'fulfilled') {
 				r.value.result.sent ? sent.push(r.value.chartId) : skipped.push(r.value.chartId);
 			} else {
-				errors.push({ chart_id: chartIds[idx], message: (r.reason as Error).message });
+				errors.push({ chartId: chartIds[idx], message: (r.reason as Error).message });
 			}
 		});
 		return { sent, skipped, errors };

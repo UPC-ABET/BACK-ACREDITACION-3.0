@@ -8,7 +8,7 @@ export class TypeValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				type_group_id: data.type_group_id,
+				typeGroupId: data.typeGroupId,
 				code: data.code,
 			},
 		});
@@ -32,10 +32,10 @@ export class TypeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(typesValidationStrings.error.notFound);
 
-		if (data.type_group_id && data.code) {
+		if (data.typeGroupId && data.code) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					type_group_id: data.type_group_id,
+					typeGroupId: data.typeGroupId,
 					code: data.code,
 				},
 			});

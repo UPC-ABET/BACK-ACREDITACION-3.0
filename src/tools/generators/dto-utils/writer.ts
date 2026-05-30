@@ -199,9 +199,9 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 
 	const entity = entityName.replace('Entity', '');
 
-	const EXCLUDE_CREATE = ['id', 'created_at', 'updated_at'];
-	const EXCLUDE_UPDATE = ['id', 'created_at', 'updated_at'];
-	const EXCLUDE_FILTER = ['created_at', 'updated_at'];
+	const EXCLUDE_CREATE = ['id', 'createdAt', 'updatedAt'];
+	const EXCLUDE_UPDATE = ['id', 'createdAt', 'updatedAt'];
+	const EXCLUDE_FILTER = ['createdAt', 'updatedAt'];
 
 	const createFields = fields.filter((f: any) => shouldIncludeField(fields, f, EXCLUDE_CREATE));
 	const updateFields = fields.filter((f: any) => shouldIncludeField(fields, f, EXCLUDE_UPDATE));

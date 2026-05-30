@@ -17,11 +17,11 @@ import type { I18nText } from 'src/shared/types/i18n';
 export class ProjectEvaluatorInputDto {
 	@IsInt()
 	@ApiProperty({ example: 1, required: true, description: 'ID del profesor evaluador' })
-	professor_id: number;
+	professorId: number;
 
 	@IsInt()
 	@ApiProperty({ example: 5, required: true, description: 'ID del tipo de evaluador (TG403)' })
-	evaluator_type_id: number;
+	evaluatorTypeId: number;
 }
 
 export class CreateProjectDto {
@@ -43,7 +43,7 @@ export class CreateProjectDto {
 
 	@IsInt()
 	@ApiProperty({ example: 1, required: true, description: 'ID del study_plan_course' })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IsArray()
 	@IsInt({ each: true })
@@ -53,7 +53,7 @@ export class CreateProjectDto {
 		required: true,
 		description: 'IDs de student_section_enrollments',
 	})
-	student_section_enrollment_ids: number[];
+	studentSectionEnrollmentIds: number[];
 
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -72,7 +72,7 @@ export class CreateProjectDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class UpdateProjectDto {
@@ -83,7 +83,7 @@ export class UpdateProjectDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
@@ -108,7 +108,7 @@ export class UpdateProjectDto {
 		example: [1, 2, 3],
 		required: false,
 	})
-	student_section_enrollment_ids?: number[];
+	studentSectionEnrollmentIds?: number[];
 
 	@IsOptional()
 	@IsArray()
@@ -118,7 +118,7 @@ export class UpdateProjectDto {
 		example: [1, 2],
 		required: false,
 	})
-	evaluator_professor_ids?: number[];
+	evaluatorProfessorIds?: number[];
 }
 
 export class EvaluatorInfoDto {
@@ -126,19 +126,19 @@ export class EvaluatorInfoDto {
 	id: number; // project_evaluator_id
 
 	@ApiProperty()
-	professor_id: number;
+	professorId: number;
 
 	@ApiProperty()
-	first_name: string;
+	firstName: string;
 
 	@ApiProperty()
-	last_name: string;
+	lastName: string;
 
 	@ApiProperty()
 	email: string;
 
 	@ApiProperty()
-	evaluator_type: string; // DOC, COM, GER...
+	evaluatorType: string; // DOC, COM, GER...
 }
 
 export class StudentInfoDto {
@@ -146,36 +146,36 @@ export class StudentInfoDto {
 	id: number; // project_student_id
 
 	@ApiProperty()
-	student_id: number;
+	studentId: number;
 
 	@ApiProperty()
-	first_name: string;
+	firstName: string;
 
 	@ApiProperty()
-	last_name: string;
+	lastName: string;
 
 	@ApiProperty()
 	email: string;
 
 	@ApiProperty()
-	student_code: string;
+	studentCode: string;
 }
 
 export class ProjectEvaluatorResponseDto {
 	@ApiProperty()
-	project_id: number;
+	projectId: number;
 
 	@ApiProperty()
-	project_code: string;
+	projectCode: string;
 
 	@ApiProperty()
-	project_name: I18nText;
+	projectName: I18nText;
 
 	@ApiProperty()
-	evaluation_date: Date;
+	evaluationDate: Date;
 
 	@ApiProperty()
-	course_name: string;
+	courseName: string;
 
 	@ApiProperty({ type: EvaluatorInfoDto })
 	evaluators: EvaluatorInfoDto[];
@@ -186,10 +186,10 @@ export class ProjectEvaluatorResponseDto {
 
 export class CriteriaScoreDto {
 	@ApiProperty()
-	student_id: number; // o project_student_id
+	studentId: number; // o project_student_id
 
 	@ApiProperty()
-	evaluator_id: number; // project_evaluator_id
+	evaluatorId: number; // project_evaluator_id
 
 	@ApiProperty()
 	score: number;
@@ -206,10 +206,10 @@ export class RubricCriteriaDetailsDto {
 	text: I18nText;
 
 	@ApiProperty()
-	min_value: string;
+	minValue: string;
 
 	@ApiProperty()
-	max_value: string;
+	maxValue: string;
 
 	@ApiProperty({ type: [CriteriaScoreDto], nullable: true })
 	scores: CriteriaScoreDto[] | null;
@@ -231,15 +231,15 @@ export class RubricQuestionDetailsDto {
 
 export class StudentEvaluationStatusDto {
 	@ApiProperty({ description: 'project_evaluator_id del evaluador que registró la evaluación' })
-	evaluator_id: number;
+	evaluatorId: number;
 
 	@ApiProperty({ description: 'ID del tipo de estado de calificación desde core.types (TG404)' })
-	qualification_status_type_id: number;
+	qualificationStatusTypeId: number;
 }
 
 export class ProjectDetailsStudentDto extends StudentInfoDto {
 	@ApiProperty({ nullable: true })
-	total_grade: number | null;
+	totalGrade: number | null;
 
 	@ApiProperty({
 		type: [StudentEvaluationStatusDto],
@@ -253,22 +253,22 @@ export class ProjectEvaluatorDetailDto {
 	id: number;
 
 	@ApiProperty()
-	professor_id: number;
+	professorId: number;
 
 	@ApiProperty()
-	professor_first_name: string;
+	professorFirstName: string;
 
 	@ApiProperty()
-	professor_last_name: string;
+	professorLastName: string;
 
 	@ApiProperty()
-	professor_email: string;
+	professorEmail: string;
 
 	@ApiProperty()
-	evaluator_type_id: number;
+	evaluatorTypeId: number;
 
 	@ApiProperty()
-	evaluator_type_name: string;
+	evaluatorTypeName: string;
 }
 
 export class ProjectDetailsResponseDto {
@@ -281,9 +281,9 @@ export class ProjectDetailsResponseDto {
 	};
 
 	@ApiProperty()
-	academic_period: {
+	academicPeriod: {
 		id: number;
-		modality_type_id: number;
+		modalityTypeId: number;
 		code: string;
 	};
 
@@ -312,7 +312,7 @@ export class FilterProjectDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'nombre', en: 'name' }, required: false })
@@ -334,7 +334,7 @@ export class FilterProjectDto {
 		required: false,
 		description: 'ID del periodo académico',
 	})
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -343,12 +343,12 @@ export class FilterProjectDto {
 		required: false,
 		description: 'ID del programa/carrera',
 	})
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	school_id?: number;
+	schoolId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -357,7 +357,7 @@ export class FilterProjectDto {
 		required: false,
 		description: 'ID del curso (academic.courses)',
 	})
-	course_id?: number;
+	courseId?: number;
 
 	// ── Filtros por personas ──────────────────────────────────────────────
 	@IsOptional()
@@ -366,7 +366,7 @@ export class FilterProjectDto {
 		required: false,
 		description: 'ID del estudiante.',
 	})
-	student_id?: number;
+	studentId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -375,5 +375,5 @@ export class FilterProjectDto {
 		required: false,
 		description: 'ID del profesor evaluador.',
 	})
-	professor_id?: number;
+	professorId?: number;
 }

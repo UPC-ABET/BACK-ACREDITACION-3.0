@@ -12,19 +12,19 @@ export class EvaluationEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	project_student_id: number;
+	projectStudentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	project_evaluator_id: number;
+	projectEvaluatorId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	qualification_status_type_id: number;
+	qualificationStatusTypeId: number;
 
 	@JsonColumn({ nullable: true })
 	observation: I18nText | null;
 
 	@DateColumn({ nullable: true })
-	register_at: Date | null;
+	registerAt: Date | null;
 
 	// %% RELATIONS
 
@@ -33,21 +33,21 @@ export class EvaluationEntity extends BaseEntity {
 		name: 'project_student_id',
 		foreignKeyConstraintName: 'FK_evaluations_project_student_id',
 	})
-	project_student: ProjectStudentEntity;
+	projectStudent: ProjectStudentEntity;
 
 	@ManyToOne(() => ProjectEvaluatorEntity)
 	@JoinColumn({
 		name: 'project_evaluator_id',
 		foreignKeyConstraintName: 'FK_evaluations_project_evaluator_id',
 	})
-	project_evaluator: ProjectEvaluatorEntity;
+	projectEvaluator: ProjectEvaluatorEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'qualification_status_type_id',
 		foreignKeyConstraintName: 'FK_evaluations_qualification_status_type_id',
 	})
-	qualification_status_type: TypeEntity;
+	qualificationStatusType: TypeEntity;
 
 	@OneToMany(() => RubricScoreEntity, (score) => score.evaluation, { cascade: true, eager: false })
 	scores: RubricScoreEntity[];

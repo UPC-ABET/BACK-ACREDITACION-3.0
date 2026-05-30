@@ -8,10 +8,10 @@ export class NotificationConfigValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				school_id: data.school_id,
-				academic_period_id: data.academic_period_id,
-				trigger_type_id: data.trigger_type_id,
-				ifc_status_type_id: data.ifc_status_type_id,
+				schoolId: data.schoolId,
+				academicPeriodId: data.academicPeriodId,
+				triggerTypeId: data.triggerTypeId,
+				ifcStatusTypeId: data.ifcStatusTypeId,
 			},
 		});
 

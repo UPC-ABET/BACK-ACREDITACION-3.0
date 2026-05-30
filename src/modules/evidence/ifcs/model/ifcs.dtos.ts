@@ -24,15 +24,15 @@ export class CreateIfcDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	course_id: number;
+	courseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'information_value' }, required: false })
@@ -47,17 +47,17 @@ export class UpdateIfcDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'information_value' }, required: false })
@@ -71,15 +71,15 @@ export class FilterIfcDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'information_value' }, required: false })
@@ -97,12 +97,12 @@ export class ListIfcsDto {
 		required: true,
 		description: 'IDs de nodos de chart (todos nivel Coordinador de Curso)',
 	})
-	chart_ids: number[];
+	chartIds: number[];
 
 	@IsInt()
 	@IsPositive()
 	@ApiProperty({ example: 5, required: true, description: 'ID del período académico' })
-	period_id: number;
+	periodId: number;
 }
 
 // --- Request DTO for /reject -------------------------------------------------
@@ -121,7 +121,7 @@ export class IfcPdfBulkDto {
 	@ArrayMaxSize(50)
 	@IsInt({ each: true })
 	@Type(() => Number)
-	ifc_ids: number[];
+	ifcIds: number[];
 
 	@ApiProperty({ example: 'es', required: true, enum: ['es', 'en'] })
 	@IsIn(['es', 'en'])
@@ -135,13 +135,13 @@ export class IfcStatusReportDto {
 	@ArrayMaxSize(500)
 	@IsInt({ each: true })
 	@Type(() => Number)
-	chart_ids: number[];
+	chartIds: number[];
 
 	@ApiProperty({ example: 5, required: true })
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	period_id: number;
+	periodId: number;
 
 	@ApiProperty({ example: 'es', required: true, enum: ['es', 'en'] })
 	@IsIn(['es', 'en'])
@@ -153,13 +153,13 @@ export class IfcNotifyDto {
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	chart_id: number;
+	chartId: number;
 
 	@ApiProperty({ example: 5, required: true })
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	period_id: number;
+	periodId: number;
 }
 
 export class IfcNotifyAllDto {
@@ -169,26 +169,26 @@ export class IfcNotifyAllDto {
 	@ArrayMaxSize(500)
 	@IsInt({ each: true })
 	@Type(() => Number)
-	chart_ids: number[];
+	chartIds: number[];
 
 	@ApiProperty({ example: 5, required: true })
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
-	period_id: number;
+	periodId: number;
 }
 
 export class NotificationDispatchResultDto {
 	@ApiProperty({ example: true }) sent: boolean;
-	@ApiProperty({ example: 1 }) recipients_count: number;
-	@ApiProperty({ example: 2 }) cc_count: number;
+	@ApiProperty({ example: 1 }) recipientsCount: number;
+	@ApiProperty({ example: 2 }) ccCount: number;
 	@ApiProperty({ nullable: true }) reason: string | null;
 }
 
 export class NotifyAllResultDto {
 	@ApiProperty({ example: [310, 312] }) sent: number[];
 	@ApiProperty({ example: [311] }) skipped: number[];
-	@ApiProperty({ example: [] }) errors: Array<{ chart_id: number; message: string }>;
+	@ApiProperty({ example: [] }) errors: Array<{ chartId: number; message: string }>;
 }
 
 export class RejectIfcDto {
@@ -204,7 +204,7 @@ export class RejectIfcDto {
 // --- Response DTOs (Swagger documentation only) ------------------------------
 
 export class IfcCoordinatorDto {
-	@ApiProperty() user_id: number | null;
+	@ApiProperty() userId: number | null;
 	@ApiProperty({ nullable: true }) code: string | null;
 	@ApiProperty() name: string | null;
 }
@@ -222,13 +222,13 @@ export class IfcHeaderDto {
 	@ApiProperty() id: number;
 	@ApiProperty({ type: Object }) information: Record<string, unknown>;
 	@ApiProperty({ type: Object }) extra: Record<string, unknown>;
-	@ApiProperty() created_at: string;
+	@ApiProperty() createdAt: string;
 	@ApiProperty() academic_period_code: string;
 	@ApiProperty({ type: Object }) program_label: I18nText;
 	@ApiProperty({ type: Object }) area_label: I18nText;
 	@ApiProperty({ type: Object }) subarea_label: I18nText;
 	@ApiProperty({ nullable: true }) course_code: string | null;
-	@ApiProperty({ type: Object }) course_name: I18nText;
+	@ApiProperty({ type: Object }) courseName: I18nText;
 	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
 	@ApiProperty({ type: () => IfcCoordinatorDto }) coordinator: IfcCoordinatorDto;
 	@ApiProperty({ type: () => IfcStatusInfoDto, nullable: true }) status: IfcStatusInfoDto | null;
@@ -236,13 +236,13 @@ export class IfcHeaderDto {
 		description:
 			'True when the requester is the own coordinator OR any ancestor of the course in the chart tree. Drives the Edit button on the view page.',
 	})
-	requester_in_chain: boolean;
+	requesterInChain: boolean;
 }
 
 export class IfcOutcomeItemDto {
-	@ApiProperty() outcome_code: string;
-	@ApiProperty({ type: Object }) outcome_name: I18nText;
-	@ApiProperty({ type: Object }) outcome_description: I18nText;
+	@ApiProperty() outcomeCode: string;
+	@ApiProperty({ type: Object }) outcomeName: I18nText;
+	@ApiProperty({ type: Object }) outcomeDescription: I18nText;
 }
 
 export class IfcCommissionGroupDto {
@@ -280,7 +280,7 @@ export class IfcFindingDto {
 	@ApiProperty() code: string;
 	@ApiProperty({ type: Object }) description: I18nText;
 	@ApiProperty() correlative: number;
-	@ApiProperty() is_automatic: boolean;
+	@ApiProperty() isAutomatic: boolean;
 	@ApiProperty({ type: Object }) criticality: {
 		code: string;
 		name: I18nText;
@@ -292,6 +292,6 @@ export class IfcFindingDto {
 
 export class IfcViewResponseDto {
 	@ApiProperty({ type: () => IfcHeaderDto }) ifc: IfcHeaderDto;
-	@ApiProperty({ type: [IfcProgramGroupDto] }) outcome_course_result: IfcProgramGroupDto[];
+	@ApiProperty({ type: [IfcProgramGroupDto] }) outcomeCourseResult: IfcProgramGroupDto[];
 	@ApiProperty({ type: [IfcFindingDto] }) findings: IfcFindingDto[];
 }

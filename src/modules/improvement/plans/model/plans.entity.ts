@@ -10,10 +10,10 @@ export class PlanEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@JsonColumn({ nullable: false })
 	name: I18nText;
@@ -22,7 +22,7 @@ export class PlanEntity extends BaseEntity {
 	description: I18nText;
 
 	@BooleanColumn({ nullable: false, default: false })
-	is_open: boolean;
+	isOpen: boolean;
 
 	// %% RELATIONS
 
@@ -35,5 +35,5 @@ export class PlanEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_plans_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 }

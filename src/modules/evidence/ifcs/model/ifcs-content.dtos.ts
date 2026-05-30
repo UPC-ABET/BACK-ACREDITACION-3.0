@@ -45,7 +45,7 @@ export class IfcFindingPayloadDto {
 		description: 'Código de TYPE_CODES.CRITICALITY.*',
 	})
 	@IsString()
-	criticality_code: string;
+	criticalityCode: string;
 }
 
 export class IfcActionPayloadDto {
@@ -68,7 +68,7 @@ export class IfcActionPayloadDto {
 		description: 'tempId del hallazgo al que pertenece (se resuelve a finding_id en el backend)',
 	})
 	@IsString()
-	finding_temp_id: string;
+	findingTempId: string;
 }
 
 export class IfcPreviousActionPayloadDto {
@@ -79,7 +79,7 @@ export class IfcPreviousActionPayloadDto {
 			'id de improvement.finding_actions (rows previas reutilizadas). Solo se permiten ids devueltos por GET (previous_actions)',
 	})
 	@IsInt()
-	finding_action_id: number;
+	findingActionId: number;
 
 	@ApiProperty({
 		example: { es: 'Nueva evidencia', en: 'New Evidence' },
@@ -129,14 +129,14 @@ export class IfcContentDto {
 	@IsArray()
 	@IsInt({ each: true })
 	@ArrayUnique()
-	deleted_finding_ids?: number[];
+	deletedFindingIds?: number[];
 
 	@ApiProperty({ example: [3], required: false })
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
 	@ArrayUnique()
-	deleted_action_ids?: number[];
+	deletedActionIds?: number[];
 
 	@ApiProperty({
 		type: [IfcPreviousActionPayloadDto],
@@ -148,7 +148,7 @@ export class IfcContentDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => IfcPreviousActionPayloadDto)
-	previous_actions?: IfcPreviousActionPayloadDto[];
+	previousActions?: IfcPreviousActionPayloadDto[];
 }
 
 export class CreateIfcDto extends IfcContentDto {
@@ -158,27 +158,27 @@ export class CreateIfcDto extends IfcContentDto {
 		description: 'id del nodo chart del coordinador del curso (level COURSE_COORDINATOR)',
 	})
 	@IsInt()
-	chart_id: number;
+	chartId: number;
 
 	@ApiProperty({ example: 5, required: true })
 	@IsInt()
-	period_id: number;
+	periodId: number;
 }
 
 export class IfcPrefillQueryDto {
 	@ApiProperty({ example: 310, required: true })
 	@IsInt()
 	@Type(() => Number)
-	chart_id: number;
+	chartId: number;
 
 	@ApiProperty({ example: 5, required: true })
 	@IsInt()
 	@Type(() => Number)
-	period_id: number;
+	periodId: number;
 }
 
 export class IfcPrefillResponseDto {
-	@ApiProperty({ type: Object }) course_name: I18nText;
+	@ApiProperty({ type: Object }) courseName: I18nText;
 	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
 	@ApiProperty({ type: Object }) area_label: I18nText;
 	@ApiProperty({ type: Object }) subarea_label: I18nText;
@@ -187,5 +187,5 @@ export class IfcPrefillResponseDto {
 	@ApiProperty({ nullable: true }) coordinator_name: string | null;
 	@ApiProperty({ nullable: true }) coordinator_user_id: number | null;
 	@ApiProperty({ type: 'array', items: { type: 'object' } })
-	outcome_course_result: any[];
+	outcomeCourseResult: any[];
 }

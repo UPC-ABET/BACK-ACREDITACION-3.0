@@ -7,7 +7,7 @@ export class GraValidation {
 				`Token inválido: no se encontró la encuesta asociada al token "${token}"`,
 			);
 		}
-		if (tokenData.max_register_date && new Date(tokenData.max_register_date) < new Date()) {
+		if (tokenData.maxRegisterDate && new Date(tokenData.maxRegisterDate) < new Date()) {
 			throw new BadRequestException(
 				'El token ha expirado. El plazo para responder la encuesta GRA ha vencido.',
 			);
@@ -17,7 +17,7 @@ export class GraValidation {
 		}
 	}
 
-	static validateCompleteScores(scores: { outcome_config_id: number; score: number }[]): void {
+	static validateCompleteScores(scores: { outcomeConfigId: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
 			throw new BadRequestException(
 				'Debe proporcionar al menos un puntaje para completar la encuesta GRA.',
@@ -26,7 +26,7 @@ export class GraValidation {
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 5) {
 				throw new BadRequestException(
-					`Puntaje inválido (${item.score}) para outcome_config_id ${item.outcome_config_id}. Debe estar entre 1 y 5.`,
+					`Puntaje inválido (${item.score}) para outcomeConfigId ${item.outcomeConfigId}. Debe estar entre 1 y 5.`,
 				);
 			}
 		}

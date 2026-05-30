@@ -10,31 +10,31 @@ export class CreateSurveyDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_status_type_id: number;
+	surveyStatusTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	student_id: number;
+	studentId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	campus_id: number;
+	campusId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_id: number;
+	programId: number;
 
 	@IsOptional()
 	@IsObject()
@@ -44,11 +44,11 @@ export class CreateSurveyDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_number?: number;
+	surveyNumber?: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	course_section_id: number;
+	courseSectionId: number;
 }
 
 export class UpdateSurveyDto {
@@ -59,37 +59,37 @@ export class UpdateSurveyDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_status_type_id?: number;
+	surveyStatusTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	student_id?: number;
+	studentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -99,12 +99,12 @@ export class UpdateSurveyDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_number?: number;
+	surveyNumber?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	course_section_id?: number;
+	courseSectionId?: number;
 }
 
 export class FilterSurveyDto {
@@ -114,31 +114,31 @@ export class FilterSurveyDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_status_type_id?: number;
+	surveyStatusTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	student_id?: number;
+	studentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
@@ -146,9 +146,9 @@ export class FilterSurveyDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_number?: number;
+	surveyNumber?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	course_section_id?: number;
+	courseSectionId?: number;
 }

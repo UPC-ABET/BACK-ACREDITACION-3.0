@@ -16,10 +16,10 @@ export class ActionEntity extends BaseEntity {
 	correlative: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	// %% RELATIONS
 
@@ -32,5 +32,5 @@ export class ActionEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_actions_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 }

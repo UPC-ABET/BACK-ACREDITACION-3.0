@@ -10,19 +10,19 @@ export class CreateFindingActionDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	finding_id: number;
+	findingId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	action_id: number;
+	actionId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	in_plan_required: boolean;
+	inPlanRequired: boolean;
 
 	@IsOptional()
 	@IsObject()
@@ -42,22 +42,22 @@ export class UpdateFindingActionDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	action_id?: number;
+	actionId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	in_plan_required?: boolean;
+	inPlanRequired?: boolean;
 
 	@IsOptional()
 	@IsObject()
@@ -76,19 +76,19 @@ export class FilterFindingActionDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	action_id?: number;
+	actionId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	in_plan_required?: boolean;
+	inPlanRequired?: boolean;
 
 	@IsOptional()
 	@IsObject()

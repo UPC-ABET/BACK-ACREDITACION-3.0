@@ -10,10 +10,10 @@ export class RubricScoreEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	evaluation_id: number;
+	evaluationId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	rubric_question_criteria_id: number;
+	rubricQuestionCriteriaId: number;
 
 	@DecimalColumn({ nullable: false })
 	score: number;
@@ -32,5 +32,5 @@ export class RubricScoreEntity extends BaseEntity {
 		name: 'rubric_question_criteria_id',
 		foreignKeyConstraintName: 'FK_rubric_scores_rubric_question_criteria_id',
 	})
-	rubric_question_criteria: RubricQuestionCriteriaEntity;
+	rubricQuestionCriteria: RubricQuestionCriteriaEntity;
 }

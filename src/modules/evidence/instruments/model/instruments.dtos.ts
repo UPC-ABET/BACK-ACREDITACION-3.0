@@ -10,11 +10,11 @@ export class CreateInstrumentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	constituent_type_id: number;
+	constituentTypeId: number;
 
 	@IsString()
 	@Length(1, 50)
@@ -32,7 +32,7 @@ export class CreateInstrumentDto {
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_for_accreditation: boolean;
+	isForAccreditation: boolean;
 }
 
 export class UpdateInstrumentDto {
@@ -43,12 +43,12 @@ export class UpdateInstrumentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	constituent_type_id?: number;
+	constituentTypeId?: number;
 
 	@IsOptional()
 	@IsString()
@@ -69,7 +69,7 @@ export class UpdateInstrumentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_for_accreditation?: boolean;
+	isForAccreditation?: boolean;
 }
 
 export class FilterInstrumentDto {
@@ -79,11 +79,11 @@ export class FilterInstrumentDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	constituent_type_id?: number;
+	constituentTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })
@@ -99,5 +99,5 @@ export class FilterInstrumentDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_for_accreditation?: boolean;
+	isForAccreditation?: boolean;
 }

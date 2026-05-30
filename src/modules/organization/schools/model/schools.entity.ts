@@ -9,7 +9,7 @@ export class SchoolEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	faculty_id: number;
+	facultyId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;

@@ -10,11 +10,11 @@ export class CreateSchoolDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	faculty_id: number;
+	facultyId: number;
 
 	@IsString()
 	@Length(1, 50)
@@ -34,12 +34,12 @@ export class UpdateSchoolDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	faculty_id?: number;
+	facultyId?: number;
 
 	@IsOptional()
 	@IsString()
@@ -60,11 +60,11 @@ export class FilterSchoolDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	faculty_id?: number;
+	facultyId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 'code_example', required: false })

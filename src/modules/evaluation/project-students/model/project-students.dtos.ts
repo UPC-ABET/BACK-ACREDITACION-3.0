@@ -9,15 +9,15 @@ export class CreateProjectStudentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	project_id: number;
+	projectId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 }
 
 export class UpdateProjectStudentDto {
@@ -28,17 +28,17 @@ export class UpdateProjectStudentDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	project_id?: number;
+	projectId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 }
 
 export class FilterProjectStudentDto {
@@ -48,13 +48,13 @@ export class FilterProjectStudentDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	project_id?: number;
+	projectId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 }

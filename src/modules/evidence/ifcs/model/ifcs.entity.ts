@@ -8,15 +8,15 @@ import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity'
 type IfcInformation = Record<string, { label: I18nText; value: I18nText; order: number }>;
 
 @Entity({ name: 'ifcs', schema: 'evidence' })
-@Index('IDX_ifcs_course_period', ['course_id', 'academic_period_id'])
+@Index('IDX_ifcs_course_period', ['courseId', 'academicPeriodId'])
 export class IfcEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	course_id: number;
+	courseId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@JsonColumn({ nullable: true })
 	information: IfcInformation;
@@ -32,5 +32,5 @@ export class IfcEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_ifcs_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 }

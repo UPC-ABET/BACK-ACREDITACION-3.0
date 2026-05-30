@@ -15,13 +15,13 @@ export class AcceptanceLevelRepository extends BaseRepository<AcceptanceLevelEnt
 	}
 
 	async findBySurveyTypeAndPeriod(
-		survey_type_id: number,
-		academic_period_id: number,
+		surveyTypeId: number,
+		academicPeriodId: number,
 	): Promise<AcceptanceLevelEntity[]> {
 		return await this.repository
 			.createQueryBuilder('al')
-			.where('al.survey_type_id = :survey_type_id', { survey_type_id })
-			.andWhere('al.academic_period_id = :academic_period_id', { academic_period_id })
+			.where('al.survey_type_id = :surveyTypeId', { surveyTypeId })
+			.andWhere('al.academic_period_id = :academicPeriodId', { academicPeriodId })
 			.andWhere('al.is_active = true')
 			.orderBy('al.order', 'ASC', 'NULLS LAST')
 			.addOrderBy('al.min_score', 'ASC')
@@ -29,13 +29,13 @@ export class AcceptanceLevelRepository extends BaseRepository<AcceptanceLevelEnt
 	}
 
 	async countBySurveyTypeAndPeriod(
-		survey_type_id: number,
-		academic_period_id: number,
+		surveyTypeId: number,
+		academicPeriodId: number,
 	): Promise<number> {
 		return await this.repository
 			.createQueryBuilder('al')
-			.where('al.survey_type_id = :survey_type_id', { survey_type_id })
-			.andWhere('al.academic_period_id = :academic_period_id', { academic_period_id })
+			.where('al.survey_type_id = :surveyTypeId', { surveyTypeId })
+			.andWhere('al.academic_period_id = :academicPeriodId', { academicPeriodId })
 			.andWhere('al.is_active = true')
 			.getCount();
 	}

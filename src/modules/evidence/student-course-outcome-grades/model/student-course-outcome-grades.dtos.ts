@@ -9,15 +9,15 @@ export class CreateStudentCourseOutcomeGradeDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -32,17 +32,17 @@ export class UpdateStudentCourseOutcomeGradeDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -57,15 +57,15 @@ export class FilterStudentCourseOutcomeGradeDto {
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
