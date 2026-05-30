@@ -7,11 +7,11 @@ export const ENTITY_CONFIG: Record<
 		plural: string;
 	}
 > = {
-	verification_note: {
+	verificationNote: {
 		entity: 'VerificationNoteEntity',
 		path: 'grades/verification-notes',
-		singular: 'verification_note',
-		plural: 'verification_notes',
+		singular: 'verificationNote',
+		plural: 'verificationNotes',
 	},
 
 	user: {
@@ -38,8 +38,8 @@ export const ENTITY_CONFIG: Record<
 	chartLevel: {
 		entity: 'ChartLevelEntity',
 		path: 'organization/chart-levels',
-		singular: 'chart_level',
-		plural: 'chart_levels',
+		singular: 'chartLevel',
+		plural: 'chartLevels',
 	},
 
 	accreditor: {
@@ -52,8 +52,8 @@ export const ENTITY_CONFIG: Record<
 	academicPeriod: {
 		entity: 'AcademicPeriodEntity',
 		path: 'academic/academic-periods',
-		singular: 'academic_period',
-		plural: 'academic_periods',
+		singular: 'academicPeriod',
+		plural: 'academicPeriods',
 	},
 
 	program: {
@@ -94,8 +94,8 @@ export const ENTITY_CONFIG: Record<
 	studyPlan: {
 		entity: 'StudyPlanEntity',
 		path: 'academic/study-plans',
-		singular: 'study_plan',
-		plural: 'study_plans',
+		singular: 'studyPlan',
+		plural: 'studyPlans',
 	},
 
 	professor: {
@@ -108,15 +108,15 @@ export const ENTITY_CONFIG: Record<
 	programCommission: {
 		entity: 'ProgramCommissionEntity',
 		path: 'accreditation/program-commissions',
-		singular: 'program_commission',
-		plural: 'program_commissions',
+		singular: 'programCommission',
+		plural: 'programCommissions',
 	},
 
 	studyPlanAcademicPeriod: {
 		entity: 'StudyPlanAcademicPeriodEntity',
 		path: 'academic/study-plan-academic-periods',
-		singular: 'study_plan_academic_period',
-		plural: 'study_plan_academic_periods',
+		singular: 'studyPlanAcademicPeriod',
+		plural: 'studyPlanAcademicPeriods',
 	},
 
 	outcome: {
@@ -129,50 +129,50 @@ export const ENTITY_CONFIG: Record<
 	enrolledStudent: {
 		entity: 'EnrolledStudentEntity',
 		path: 'academic/enrolled-students',
-		singular: 'enrolled_student',
-		plural: 'enrolled_students',
+		singular: 'enrolledStudent',
+		plural: 'enrolledStudents',
 	},
 
 	studyPlanCourse: {
 		entity: 'StudyPlanCourseEntity',
 		path: 'academic/study-plan-courses',
-		singular: 'study_plan_course',
-		plural: 'study_plan_courses',
+		singular: 'studyPlanCourse',
+		plural: 'studyPlanCourses',
 	},
 
 	courseSection: {
 		entity: 'CourseSectionEntity',
 		path: 'academic/course-sections',
-		singular: 'course_section',
-		plural: 'course_sections',
+		singular: 'courseSection',
+		plural: 'courseSections',
 	},
 
-	course_outcome_mapping: {
+	courseOutcomeMapping: {
 		entity: 'CourseOutcomeMappingEntity',
 		path: 'academic/course-outcome-mappings',
-		singular: 'course_outcome_mapping',
-		plural: 'course_outcome_mappings',
+		singular: 'courseOutcomeMapping',
+		plural: 'courseOutcomeMappings',
 	},
 
 	studentSectionEnrollment: {
 		entity: 'StudentSectionEnrollmentEntity',
 		path: 'academic/student-section-enrollments',
-		singular: 'student_section_enrollment',
-		plural: 'student_section_enrollements',
+		singular: 'studentSectionEnrollment',
+		plural: 'studentSectionEnrollments',
 	},
 
-	performance_level: {
+	performanceLevel: {
 		entity: 'PerformanceLevelEntity',
 		path: 'academic/performance-levels',
-		singular: 'performance_level',
-		plural: 'performance_levels',
+		singular: 'performanceLevel',
+		plural: 'performanceLevels',
 	},
 
 	typeGroup: {
 		entity: 'TypeGroupEntity',
 		path: 'core/type-groups',
-		singular: 'type_group',
-		plural: 'type_groups',
+		singular: 'typeGroup',
+		plural: 'typeGroups',
 	},
 
 	type: {
@@ -196,46 +196,46 @@ export const ENTITY_CONFIG: Record<
 		plural: 'rubrics',
 	},
 
-	rubric_performance_level: {
+	rubricPerformanceLevel: {
 		entity: 'RubricPerformanceLevelEntity',
 		path: 'rubrics/rubric-performance-levels',
-		singular: 'rubric_performance_level',
-		plural: 'rubric_performance_levels',
+		singular: 'rubricPerformanceLevel',
+		plural: 'rubricPerformanceLevels',
 	},
 
-	graded_outcome: {
+	gradedOutcome: {
 		entity: 'GradedOutcomeEntity',
 		path: 'rubrics/graded-outcomes',
-		singular: 'graded_outcome',
-		plural: 'graded_outcomes',
+		singular: 'gradedOutcome',
+		plural: 'gradedOutcomes',
 	},
 
-	outcome_rubric: {
+	outcomeRubric: {
 		entity: 'OutcomeRubricEntity',
 		path: 'rubrics/outcome-rubrics',
-		singular: 'outcome_rubric',
-		plural: 'outcome_rubrics',
+		singular: 'outcomeRubric',
+		plural: 'outcomeRubrics',
 	},
 
-	outcome_criteria: {
+	outcomeCriteria: {
 		entity: 'OutcomeCriteriaEntity',
 		path: 'rubrics/outcome-criterias',
-		singular: 'outcome_criteria',
-		plural: 'outcome_criterias',
+		singular: 'outcomeCriteria',
+		plural: 'outcomeCriterias',
 	},
 
-	criteria_performance_level: {
+	criteriaPerformanceLevel: {
 		entity: 'CriteriaPerformanceLevelEntity',
 		path: 'rubrics/criteria-performance-levels',
-		singular: 'criteria_performance_level',
-		plural: 'criteria_performance_levels',
+		singular: 'criteriaPerformanceLevel',
+		plural: 'criteriaPerformanceLevels',
 	},
 
-	graded_criteria: {
+	gradedCriteria: {
 		entity: 'GradedCriteriaEntity',
 		path: 'rubrics/graded-criteria',
-		singular: 'graded_criteria',
-		plural: 'graded_criteria',
+		singular: 'gradedCriteria',
+		plural: 'gradedCriteria',
 	},
 
 	faculty: {
@@ -262,8 +262,8 @@ export const ENTITY_CONFIG: Record<
 	rubricQuestionCriteria: {
 		entity: 'RubricQuestionCriteriaEntity',
 		path: 'evaluation/rubric-question-criterias',
-		singular: 'rubric_question_criteria',
-		plural: 'rubric_question_criterias',
+		singular: 'rubricQuestionCriteria',
+		plural: 'rubricQuestionCriterias',
 	},
 
 	instrument: {
@@ -290,8 +290,8 @@ export const ENTITY_CONFIG: Record<
 	projectEvaluator: {
 		entity: 'ProjectEvaluatorEntity',
 		path: 'evaluation/project-evaluators',
-		singular: 'project_evaluator',
-		plural: 'project_evaluators',
+		singular: 'projectEvaluator',
+		plural: 'projectEvaluators',
 	},
 
 	ifc: {
@@ -315,18 +315,18 @@ export const ENTITY_CONFIG: Record<
 		plural: 'findings',
 	},
 
-	rubric_question: {
+	rubricQuestion: {
 		entity: 'RubricQuestionEntity',
 		path: 'evaluation/rubric-questions',
-		singular: 'rubric_question',
-		plural: 'rubric_questions',
+		singular: 'rubricQuestion',
+		plural: 'rubricQuestions',
 	},
 
-	ifc_finding: {
+	ifcFinding: {
 		entity: 'IfcFindingEntity',
 		path: 'ifc/ifc-findings',
-		singular: 'ifc_finding',
-		plural: 'ifc_findings',
+		singular: 'ifcFinding',
+		plural: 'ifcFindings',
 	},
 
 	status: {
@@ -339,43 +339,43 @@ export const ENTITY_CONFIG: Record<
 	findingAction: {
 		entity: 'FindingActionEntity',
 		path: 'improvement/finding-actions',
-		singular: 'finding_action',
-		plural: 'finding_actions',
+		singular: 'findingAction',
+		plural: 'findingActions',
 	},
 
-	finding_outcome: {
+	findingOutcome: {
 		entity: 'FindingOutcomeEntity',
 		path: 'improvement/finding-outcomes',
-		singular: 'finding_outcome',
-		plural: 'finding_outcomes',
+		singular: 'findingOutcome',
+		plural: 'findingOutcomes',
 	},
 
-	student_course_grade: {
+	studentCourseGrade: {
 		entity: 'StudentCourseGradeEntity',
 		path: 'academic/student-course-grades',
-		singular: 'student-course-grade',
-		plural: 'student-course-grades',
+		singular: 'studentCourseGrade',
+		plural: 'studentCourseGrades',
 	},
 
 	projectStudent: {
 		entity: 'ProjectStudentEntity',
 		path: 'evaluation/project-students',
-		singular: 'project_student',
-		plural: 'project_students',
+		singular: 'projectStudent',
+		plural: 'projectStudents',
 	},
 
-	student_course_outcome_grade: {
+	studentCourseOutcomeGrade: {
 		entity: 'StudentCourseOutcomeGradeEntity',
 		path: 'evidence/student-course-outcome-grades',
-		singular: 'student-course-outcome-grade',
-		plural: 'student-course-outcome-grades',
+		singular: 'studentCourseOutcomeGrade',
+		plural: 'studentCourseOutcomeGrades',
 	},
 
-	plan_action: {
+	planAction: {
 		entity: 'PlanActionEntity',
 		path: 'improvement/plan-actions',
-		singular: 'plan_action',
-		plural: 'plan_actions',
+		singular: 'planAction',
+		plural: 'planActions',
 	},
 
 	evaluation: {
@@ -385,11 +385,11 @@ export const ENTITY_CONFIG: Record<
 		plural: 'evaluations',
 	},
 
-	rubric_score: {
+	rubricScore: {
 		entity: 'RubricScoreEntity',
 		path: 'evaluation/rubric-scores',
-		singular: 'rubric_score',
-		plural: 'rubric_scores',
+		singular: 'rubricScore',
+		plural: 'rubricScores',
 	},
 
 	parameter: {
@@ -406,11 +406,11 @@ export const ENTITY_CONFIG: Record<
 		plural: 'scores',
 	},
 
-	outcome_config: {
+	outcomeConfig: {
 		entity: 'OutcomeConfigEntity',
 		path: 'survey/outcome-configs',
-		singular: 'outcome_config',
-		plural: 'outcome_configs',
+		singular: 'outcomeConfig',
+		plural: 'outcomeConfigs',
 	},
 
 	notification: {
@@ -420,24 +420,24 @@ export const ENTITY_CONFIG: Record<
 		plural: 'notifications',
 	},
 
-	notification_message: {
+	notificationMessage: {
 		entity: 'NotificationMessageEntity',
 		path: 'survey/notification-messages',
-		singular: 'notification_message',
-		plural: 'notification_messages',
+		singular: 'notificationMessage',
+		plural: 'notificationMessages',
 	},
 
 	notificationConfig: {
 		entity: 'NotificationConfigEntity',
 		path: 'ifc/notification-configs',
-		singular: 'notification_config',
-		plural: 'notification_configs',
+		singular: 'notificationConfig',
+		plural: 'notificationConfigs',
 	},
 
-	notification_log: {
+	notificationLog: {
 		entity: 'NotificationLogEntity',
 		path: 'ifc/notification-log',
-		singular: 'notification_log',
-		plural: 'notification_log',
+		singular: 'notificationLog',
+		plural: 'notificationLogs',
 	},
 };

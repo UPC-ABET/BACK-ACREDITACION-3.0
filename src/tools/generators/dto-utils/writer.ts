@@ -15,8 +15,8 @@ function isRelationField(f: any) {
 }
 
 function isDuplicateRelation(fields: any[], f: any) {
-	if (!f.name || f.name.endsWith('_id')) return false;
-	return fields.some((x) => x.name === `${f.name}_id`);
+	if (!f.name || f.name.endsWith('Id')) return false;
+	return fields.some((x) => x.name === `${f.name}Id`);
 }
 
 function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {

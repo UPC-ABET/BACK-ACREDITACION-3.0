@@ -7,7 +7,7 @@ import { SchoolEntity } from 'src/modules/organization/schools/model/schools.ent
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notification_configs', schema: 'ifc' })
-@Unique('UQ_4689ce4c54254910a1e7ab56b1c', [
+@Unique('UQ_notification_configs_school_period_trigger_status', [
 	'schoolId',
 	'academicPeriodId',
 	'triggerTypeId',

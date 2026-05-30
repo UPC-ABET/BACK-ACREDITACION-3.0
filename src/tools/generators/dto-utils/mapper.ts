@@ -33,7 +33,7 @@ export function mapTypeFromDecorator(decorators: string[], name: string, tsType?
 	}
 
 	// FK fallback
-	if (name.endsWith('_id')) return 'number';
+	if (name.endsWith('Id')) return 'number';
 
 	return 'never';
 }
