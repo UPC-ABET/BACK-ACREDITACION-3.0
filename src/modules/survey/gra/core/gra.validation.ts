@@ -1,17 +1,28 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { graValidationStrings } from '../config/strings/gra.validation';
 
+type GraTokenData = {
+	survey_id: number;
+	student_id: number;
+	student_name: string;
+	student_code: string;
+	program_id: number;
+	program_name: string;
+	academic_period_id: number;
+	max_register_date: string | null;
+	survey_status: string;
+};
+
 export class GraValidation {
-	static validateToken(tokenData: any, token: string): void {
+	static validateToken(
+		tokenData: GraTokenData | null,
+		_token: string,
+	): asserts tokenData is GraTokenData {
 		if (!tokenData) {
-			throw new BadRequestException(
-				`Token inválido: no se encontró la encuesta asociada al token "${token}"`,
-			);
+			throw new NotFoundException(graValidationStrings.error.tokenNotFound);
 		}
 		if (tokenData.max_register_date && new Date(tokenData.max_register_date) < new Date()) {
-			throw new BadRequestException(
-				'El token ha expirado. El plazo para responder la encuesta GRA ha vencido.',
-			);
+			throw new BadRequestException(graValidationStrings.error.tokenExpired);
 		}
 		if (tokenData.survey_status === 'Cerrada') {
 			throw new BadRequestException(graValidationStrings.error.alreadyCompleted);
@@ -24,9 +35,7 @@ export class GraValidation {
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 5) {
-				throw new BadRequestException(
-					`Puntaje inválido (${item.score}) para outcome_config_id ${item.outcome_config_id}. Debe estar entre 1 y 5.`,
-				);
+				throw new BadRequestException(graValidationStrings.error.invalidScore);
 			}
 		}
 	}

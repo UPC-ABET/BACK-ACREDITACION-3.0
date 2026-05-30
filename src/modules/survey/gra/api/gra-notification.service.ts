@@ -198,7 +198,6 @@ export class GraNotificationService {
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		GraValidation.validateToken(tokenData, token);
-		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		return {
 			valid: true,
@@ -218,7 +217,6 @@ export class GraNotificationService {
 	async getSurveyByToken(dto: GetSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		GraValidation.validateToken(tokenData, dto.token);
-		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		// Cargar configuraciones GRA para el programa del estudiante
 		const configs = await this.configRepo.findAllGra({
@@ -257,7 +255,6 @@ export class GraNotificationService {
 	async completeSurvey(dto: CompleteGraSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		GraValidation.validateToken(tokenData, dto.token);
-		if (!tokenData) throw new BadRequestException('Token no encontrado');
 		GraValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
