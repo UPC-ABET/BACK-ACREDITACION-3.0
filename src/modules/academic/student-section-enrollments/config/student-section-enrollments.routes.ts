@@ -1,5 +1,5 @@
 export const studentSectionEnrollmentsRoutes = {
-	student_section_enrollments: {
+	studentSectionEnrollments: {
 		route: 'student-section-enrollments',
 		tag: 'Matrículas de estudiantes por sección',
 		operation: {

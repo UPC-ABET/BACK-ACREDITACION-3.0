@@ -1,5 +1,5 @@
 export const chartLevelsRoutes = {
-	chart_levels: {
+	chartLevels: {
 		route: 'chart-levels',
 		tag: 'Niveles de organigrama',
 		operation: {

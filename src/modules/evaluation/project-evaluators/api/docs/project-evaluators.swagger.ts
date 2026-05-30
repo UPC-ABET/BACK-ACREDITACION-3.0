@@ -6,7 +6,7 @@ import {
 	FilterProjectEvaluatorDto,
 } from '../../model/project-evaluators.dtos';
 
-const cfg = projectEvaluatorsRoutes.project_evaluators;
+const cfg = projectEvaluatorsRoutes.projectEvaluators;
 
 export const SwaggerProjectEvaluatorController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

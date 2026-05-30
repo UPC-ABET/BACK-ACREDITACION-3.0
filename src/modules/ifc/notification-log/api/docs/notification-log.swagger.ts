@@ -6,7 +6,7 @@ import {
 	FilterNotificationLogDto,
 } from '../../model/notification-log.dtos';
 
-const cfg = notificationLogRoutes.notification_log;
+const cfg = notificationLogRoutes.notificationLog;
 
 export const SwaggerNotificationLogController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

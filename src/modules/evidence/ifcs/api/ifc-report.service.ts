@@ -174,7 +174,7 @@ export class IfcReportService {
 					(a: any) =>
 						`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(a.completeness?.name?.[lang])}</td></tr>`,
 				)
-				.join('') || `<tr><td colspan="3" class="empty">${esc(L.s2_empty)}</td></tr>`;
+				.join('') || `<tr><td colspan="3" class="empty">${esc(L.s2Empty)}</td></tr>`;
 
 		const actionRows =
 			data.findings
@@ -195,7 +195,7 @@ export class IfcReportService {
 			<html lang="${lang}">
 			<head>
 				<meta charset="utf-8" />
-				<title>${esc(L.report_title)}</title>
+				<title>${esc(L.reportTitle)}</title>
 				<style>${PDF_STYLES}</style>
 			</head>
 			<body>
@@ -204,7 +204,7 @@ export class IfcReportService {
 					<h1 class="title">${esc(L.university)}</h1>
 					<h2 class="subtitle">${esc(ifc.programLabel?.[lang] ?? '')}</h2>
 					<hr class="rule" />
-					<h2 class="report-title">${esc(L.report_title)}</h2>
+					<h2 class="report-title">${esc(L.reportTitle)}</h2>
 					<p><strong>${esc(L.semester)}:</strong> ${esc(ifc.academicPeriodCode)}</p>
 					<p><strong>${esc(L.course)}:</strong> ${esc(ifc.courseCode ?? '')} - ${esc(ifc.courseName?.[lang])}</p>
 					<p><strong>${esc(L.coordinator)}:</strong> ${esc(ifc.coordinator?.name ?? '')}</p>
@@ -213,18 +213,18 @@ export class IfcReportService {
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s1_title)}</h3>
+					<h3>${esc(L.s1Title)}</h3>
 					<ul>${outcomeBullets}</ul>
-					<h4>${esc(L.s11_title)}</h4>
+					<h4>${esc(L.s11Title)}</h4>
 					<p>${esc(ifc.courseLearningOutcome?.[lang]) || '-'}</p>
 				</section>
 
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s2_title)}</h3>
+					<h3>${esc(L.s2Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s2_col_code)}</th><th>${esc(L.s2_col_desc)}</th><th>${esc(L.s2_col_state)}</th></tr></thead>
+						<thead><tr><th>${esc(L.s2ColCode)}</th><th>${esc(L.s2ColDesc)}</th><th>${esc(L.s2ColState)}</th></tr></thead>
 						<tbody>${previousActionRows}</tbody>
 					</table>
 				</section>
@@ -232,9 +232,9 @@ export class IfcReportService {
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s3_title)}</h3>
+					<h3>${esc(L.s3Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s3_col_code)}</th><th>${esc(L.s3_col_desc)}</th></tr></thead>
+						<thead><tr><th>${esc(L.s3ColCode)}</th><th>${esc(L.s3ColDesc)}</th></tr></thead>
 						<tbody>${findingRows}</tbody>
 					</table>
 				</section>
@@ -242,9 +242,9 @@ export class IfcReportService {
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s4_title)}</h3>
+					<h3>${esc(L.s4Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s4_col_code)}</th><th>${esc(L.s4_col_desc)}</th><th>${esc(L.s4_col_finding)}</th></tr></thead>
+						<thead><tr><th>${esc(L.s4ColCode)}</th><th>${esc(L.s4ColDesc)}</th><th>${esc(L.s4ColFinding)}</th></tr></thead>
 						<tbody>${actionRows}</tbody>
 					</table>
 				</section>

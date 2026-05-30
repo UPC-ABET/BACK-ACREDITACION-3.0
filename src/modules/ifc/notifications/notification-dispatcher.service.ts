@@ -51,7 +51,7 @@ interface LoadedConfig {
 
 interface NotificationVar {
 	var: string;
-	valid_status_codes: string[] | null;
+	validStatusCodes: string[] | null;
 }
 
 @Injectable()
@@ -70,7 +70,10 @@ export class NotificationDispatcherService {
 			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
 			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
 		);
-		return paramRow[0]?.value ?? [];
+		const rows: Array<{ var: string; valid_status_codes: string[] | null }> =
+			paramRow[0]?.value ?? [];
+		// JSONB content stays snake_case in the DB; map to camelCase at the boundary.
+		return rows.map((r) => ({ var: r.var, validStatusCodes: r.valid_status_codes }));
 	}
 
 	async dispatch(
@@ -292,7 +295,7 @@ export class NotificationDispatcherService {
 
 		const subs: Record<string, string> = {};
 		const allowed = (v: NotificationVar) =>
-			v.valid_status_codes === null || v.valid_status_codes.includes(statusCode);
+			v.validStatusCodes === null || v.validStatusCodes.includes(statusCode);
 
 		for (const v of vars) {
 			const key = v.var;

@@ -6,7 +6,7 @@ import {
 	FilterFindingActionDto,
 } from '../../model/finding-actions.dtos';
 
-const cfg = findingActionsRoutes.finding_actions;
+const cfg = findingActionsRoutes.findingActions;
 
 export const SwaggerFindingActionController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

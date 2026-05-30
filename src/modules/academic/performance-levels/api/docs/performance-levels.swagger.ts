@@ -6,7 +6,7 @@ import {
 	FilterPerformanceLevelDto,
 } from '../../model/performance-levels.dtos';
 
-const cfg = performanceLevelsRoutes.performance_levels;
+const cfg = performanceLevelsRoutes.performanceLevels;
 
 export const SwaggerPerformanceLevelController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

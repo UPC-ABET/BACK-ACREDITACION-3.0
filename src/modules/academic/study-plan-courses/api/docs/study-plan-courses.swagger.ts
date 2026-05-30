@@ -6,7 +6,7 @@ import {
 	FilterStudyPlanCourseDto,
 } from '../../model/study-plan-courses.dtos';
 
-const cfg = studyPlanCoursesRoutes.study_plan_courses;
+const cfg = studyPlanCoursesRoutes.studyPlanCourses;
 
 export const SwaggerStudyPlanCourseController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

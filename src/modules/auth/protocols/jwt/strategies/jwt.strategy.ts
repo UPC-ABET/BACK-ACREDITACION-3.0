@@ -7,7 +7,7 @@ import { getRequiredJwtSecret } from '../jwt.config';
 import { UserAuthorizationService } from 'src/modules/organization/users/api/user-authorization.service';
 import { usersValidationStrings } from 'src/modules/organization/users/config/strings/users.validation';
 
-const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {

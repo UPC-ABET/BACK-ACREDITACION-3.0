@@ -1,5 +1,5 @@
 export const notificationLogRoutes = {
-	notification_log: {
+	notificationLog: {
 		route: 'ifc-notification-log',
 		tag: 'Log de Notificaciones IFC',
 		operation: {

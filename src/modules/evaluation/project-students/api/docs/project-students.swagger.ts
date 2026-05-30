@@ -6,7 +6,7 @@ import {
 	FilterProjectStudentDto,
 } from '../../model/project-students.dtos';
 
-const cfg = projectStudentsRoutes.project_students;
+const cfg = projectStudentsRoutes.projectStudents;
 
 export const SwaggerProjectStudentController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

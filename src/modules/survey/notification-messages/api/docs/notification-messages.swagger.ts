@@ -6,7 +6,7 @@ import {
 	FilterNotificationMessageDto,
 } from '../../model/notification-messages.dtos';
 
-const cfg = notificationMessagesRoutes.notification_messages;
+const cfg = notificationMessagesRoutes.notificationMessages;
 
 export const SwaggerNotificationMessageController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

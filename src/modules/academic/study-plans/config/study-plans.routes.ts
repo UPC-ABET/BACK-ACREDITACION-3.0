@@ -1,5 +1,5 @@
 export const studyPlansRoutes = {
-	study_plans: {
+	studyPlans: {
 		route: 'study-plans',
 		tag: 'Planes de estudio',
 		operation: {

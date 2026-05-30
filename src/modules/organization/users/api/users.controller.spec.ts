@@ -13,7 +13,7 @@ describe('UserController', () => {
 		controller = new UserController(service as unknown as UserService);
 	});
 
-	it('sets access_token cookie when credentials login succeeds', async () => {
+	it('sets accessToken cookie when credentials login succeeds', async () => {
 		const res = fakeResponse();
 		const loginResult = {
 			user: { id: 8, email: 'admin@upc.edu.pe' },
@@ -28,7 +28,7 @@ describe('UserController', () => {
 
 		expect(service.loginByCredentials).toHaveBeenCalledWith('EISCB', 'admin@upc.edu.pe', 'secret');
 		expect(res.cookie).toHaveBeenCalledWith(
-			'access_token',
+			'accessToken',
 			'signed-jwt-token',
 			expect.objectContaining({
 				httpOnly: true,
@@ -41,7 +41,7 @@ describe('UserController', () => {
 		expect(response.data.user).toEqual(loginResult.user);
 	});
 
-	it('sets access_token cookie when active role changes', async () => {
+	it('sets accessToken cookie when active role changes', async () => {
 		const res = fakeResponse();
 		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, accessToken: 'role-token' });
 
@@ -49,7 +49,7 @@ describe('UserController', () => {
 
 		expect(service.loginById).toHaveBeenCalledWith(8, 2, 4);
 		expect(res.cookie).toHaveBeenCalledWith(
-			'access_token',
+			'accessToken',
 			'role-token',
 			expect.objectContaining({ httpOnly: true, path: '/' }),
 		);

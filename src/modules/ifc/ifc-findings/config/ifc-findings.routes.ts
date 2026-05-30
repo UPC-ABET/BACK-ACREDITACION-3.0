@@ -1,5 +1,5 @@
 export const ifcFindingsRoutes = {
-	ifc_findings: {
+	ifcFindings: {
 		route: 'ifc-findings',
 		tag: 'Hallazgos de IFC',
 		operation: {

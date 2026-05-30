@@ -1,5 +1,5 @@
 export const findingOutcomesRoutes = {
-	finding_outcomes: {
+	findingOutcomes: {
 		route: 'finding-outcomes',
 		tag: 'Outcomes de hallazgo',
 		operation: {

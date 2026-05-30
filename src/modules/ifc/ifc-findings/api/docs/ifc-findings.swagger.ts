@@ -10,7 +10,7 @@ import {
 	IfcFindingDetailResponseDto,
 } from '../../model/ifc-findings.dtos';
 
-const cfg = ifcFindingsRoutes.ifc_findings;
+const cfg = ifcFindingsRoutes.ifcFindings;
 
 export const SwaggerIfcFindingController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

@@ -11,9 +11,9 @@ export function hashPassword(password: string): Promise<string> {
 /*******************************************************************************************+*/
 /*******************************************************************************************+*/
 
-const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken';
 const SCHOOL_COOKIE_NAME = 'school';
-export const MICROSOFT_STATE_COOKIE = 'microsoft_oauth_state';
+export const MICROSOFT_STATE_COOKIE = 'microsoftOauthState';
 export const MICROSOFT_STATE_COOKIE_MAX_AGE_MS = 10 * 60 * 1000;
 
 const ACCESS_TOKEN_COOKIE_OPTIONS = {

@@ -9,7 +9,7 @@ import {
 	NotificationConfigViewDto,
 } from '../../model/notification-configs.dtos';
 
-const cfg = notificationConfigsRoutes.notification_configs;
+const cfg = notificationConfigsRoutes.notificationConfigs;
 
 export const SwaggerNotificationConfigController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

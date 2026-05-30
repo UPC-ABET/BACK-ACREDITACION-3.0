@@ -6,7 +6,7 @@ import {
 	FilterStudentSectionEnrollmentDto,
 } from '../../model/student-section-enrollments.dtos';
 
-const cfg = studentSectionEnrollmentsRoutes.student_section_enrollments;
+const cfg = studentSectionEnrollmentsRoutes.studentSectionEnrollments;
 
 export const SwaggerStudentSectionEnrollmentController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

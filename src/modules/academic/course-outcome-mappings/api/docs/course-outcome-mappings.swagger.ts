@@ -6,7 +6,7 @@ import {
 	FilterCourseOutcomeMappingDto,
 } from '../../model/course-outcome-mappings.dtos';
 
-const cfg = courseOutcomeMappingsRoutes.course_outcome_mappings;
+const cfg = courseOutcomeMappingsRoutes.courseOutcomeMappings;
 
 export const SwaggerCourseOutcomeMappingController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

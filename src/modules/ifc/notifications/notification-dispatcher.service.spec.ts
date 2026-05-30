@@ -7,15 +7,15 @@ import { NotificationLogService } from 'src/modules/ifc/notification-log/api/not
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 const ctxRow = (overrides: Partial<Record<string, any>> = {}) => ({
-	course_chart_id: 500,
+	courseChartId: 500,
 	schoolId: 9,
 	periodId: 5,
 	triggerTypeId: 101,
 	ifcStatusTypeId: 2,
 	ifcId: 42,
-	period_code: 'AP_2026_1',
+	periodCode: 'AP_2026_1',
 	courseName: { es: 'Curso', en: 'Course' },
-	coordinator_name: 'Ada Lovelace',
+	coordinatorName: 'Ada Lovelace',
 	...overrides,
 });
 

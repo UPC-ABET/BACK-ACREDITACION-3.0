@@ -1,5 +1,5 @@
 export const notificationConfigsRoutes = {
-	notification_configs: {
+	notificationConfigs: {
 		route: 'ifc-notification-configs',
 		tag: 'Configuracion de Notificaciones IFC',
 		operation: {

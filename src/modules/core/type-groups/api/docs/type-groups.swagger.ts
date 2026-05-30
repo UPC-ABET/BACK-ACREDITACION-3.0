@@ -6,7 +6,7 @@ import {
 	FilterTypeGroupDto,
 } from '../../model/type-groups.dtos';
 
-const cfg = typeGroupsRoutes.type_groups;
+const cfg = typeGroupsRoutes.typeGroups;
 
 export const SwaggerTypeGroupController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

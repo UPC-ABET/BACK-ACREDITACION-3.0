@@ -1,5 +1,5 @@
 export const studyPlanAcademicPeriodsRoutes = {
-	study_plan_academic_periods: {
+	studyPlanAcademicPeriods: {
 		route: 'study-plan-academic-periods',
 		tag: 'Planes de estudio por periodo académico',
 		operation: {

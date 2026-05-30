@@ -1,5 +1,5 @@
 export const enrolledStudentsRoutes = {
-	enrolled_students: {
+	enrolledStudents: {
 		route: 'enrolled-students',
 		tag: 'Estudiantes matriculados',
 		operation: {

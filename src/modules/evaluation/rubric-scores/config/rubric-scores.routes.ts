@@ -1,5 +1,5 @@
 export const rubricScoresRoutes = {
-	rubric_scores: {
+	rubricScores: {
 		route: 'rubric-scores',
 		tag: 'Puntajes de rúbrica',
 		operation: {

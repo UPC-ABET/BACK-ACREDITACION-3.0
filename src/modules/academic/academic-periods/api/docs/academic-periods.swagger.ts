@@ -6,7 +6,7 @@ import {
 	FilterAcademicPeriodDto,
 } from '../../model/academic-periods.dtos';
 
-const cfg = academicPeriodsRoutes.academic_periods;
+const cfg = academicPeriodsRoutes.academicPeriods;
 
 export const SwaggerAcademicPeriodController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

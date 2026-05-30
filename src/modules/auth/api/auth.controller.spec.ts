@@ -89,11 +89,11 @@ describe('AuthController — MSAL state packing', () => {
 			expect(parsed.csrf.length).toBeGreaterThan(0);
 
 			expect(res.cookie).toHaveBeenCalledWith(
-				'microsoft_oauth_state',
+				'microsoftOauthState',
 				parsed.csrf,
 				expect.objectContaining({ httpOnly: true, sameSite: 'lax' }),
 			);
-			expect(cookieJar['microsoft_oauth_state']).toBe(parsed.csrf);
+			expect(cookieJar['microsoftOauthState']).toBe(parsed.csrf);
 			expect(res.redirect).toHaveBeenCalledWith('https://login.microsoftonline.com/url?state=...');
 		});
 	});
@@ -101,7 +101,7 @@ describe('AuthController — MSAL state packing', () => {
 	describe('GET /callback/azure-ad', () => {
 		it('throws when CSRF in state does not match the cookie', async () => {
 			const state = signState('expected-csrf', 7);
-			const { res } = fakeResponse({ microsoft_oauth_state: 'different-csrf' });
+			const { res } = fakeResponse({ microsoftOauthState: 'different-csrf' });
 
 			await expect(
 				controller.microsoftCallback('code-abc', state, res as never),
@@ -110,7 +110,7 @@ describe('AuthController — MSAL state packing', () => {
 		});
 
 		it('throws when state is missing or malformed', async () => {
-			const { res } = fakeResponse({ microsoft_oauth_state: 'whatever' });
+			const { res } = fakeResponse({ microsoftOauthState: 'whatever' });
 			await expect(
 				controller.microsoftCallback('code-abc', '', res as never),
 			).rejects.toBeInstanceOf(UnauthorizedException);
@@ -122,7 +122,7 @@ describe('AuthController — MSAL state packing', () => {
 		it('throws when HMAC signature is tampered', async () => {
 			const state = signState('matching-csrf', 7);
 			const tampered = state.slice(0, -4) + 'XXXX';
-			const { res } = fakeResponse({ microsoft_oauth_state: 'matching-csrf' });
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 
 			await expect(
 				controller.microsoftCallback('code-abc', tampered, res as never),
@@ -142,7 +142,7 @@ describe('AuthController — MSAL state packing', () => {
 			).toString('base64url');
 			const tamperedState = `${tamperedEncoded}.${originalSig}`;
 
-			const { res } = fakeResponse({ microsoft_oauth_state: 'matching-csrf' });
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 
 			await expect(
 				controller.microsoftCallback('code-abc', tamperedState, res as never),
@@ -151,7 +151,7 @@ describe('AuthController — MSAL state packing', () => {
 
 		it('extracts school_id from signed state and forwards it to loginWithMicrosoftCode', async () => {
 			const state = signState('matching-csrf', 7);
-			const { res } = fakeResponse({ microsoft_oauth_state: 'matching-csrf' });
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 			authService.loginWithMicrosoftCode.mockResolvedValueOnce({
 				user: { id: 1 },
 				microsoftProfile: { email: 'a@b.com', name: 'A' },
@@ -161,7 +161,7 @@ describe('AuthController — MSAL state packing', () => {
 			const result = await controller.microsoftCallback('code-abc', state, res as never);
 
 			expect(authService.loginWithMicrosoftCode).toHaveBeenCalledWith('code-abc', 7);
-			expect(res.clearCookie).toHaveBeenCalledWith('microsoft_oauth_state');
+			expect(res.clearCookie).toHaveBeenCalledWith('microsoftOauthState');
 			expect(result).toMatchObject({
 				code: 200,
 				data: expect.objectContaining({ accessToken: 'tok' }),

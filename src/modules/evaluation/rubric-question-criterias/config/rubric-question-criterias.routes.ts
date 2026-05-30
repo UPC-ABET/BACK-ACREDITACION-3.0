@@ -1,5 +1,5 @@
 export const rubricQuestionCriteriasRoutes = {
-	rubric_question_criterias: {
+	rubricQuestionCriterias: {
 		route: 'rubric-question-criterias',
 		tag: 'Criterios de preguntas de rúbrica',
 		operation: {

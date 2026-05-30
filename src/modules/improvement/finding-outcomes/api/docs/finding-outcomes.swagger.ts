@@ -6,7 +6,7 @@ import {
 	FilterFindingOutcomeDto,
 } from '../../model/finding-outcomes.dtos';
 
-const cfg = findingOutcomesRoutes.finding_outcomes;
+const cfg = findingOutcomesRoutes.findingOutcomes;
 
 export const SwaggerFindingOutcomeController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

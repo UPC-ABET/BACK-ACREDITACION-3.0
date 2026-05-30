@@ -6,7 +6,7 @@ import {
 	FilterOutcomeConfigDto,
 } from '../../model/outcome-configs.dtos';
 
-const cfg = outcomeConfigsRoutes.outcome_configs;
+const cfg = outcomeConfigsRoutes.outcomeConfigs;
 
 export const SwaggerOutcomeConfigController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
