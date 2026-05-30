@@ -97,6 +97,10 @@ import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
 import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 
+//LOADS MODULES (bulk uploads + Phase-0 configuration)
+import { UploadsModule } from './modules/uploads/uploads.module';
+import { ConfigurationModule } from './modules/configuration/configuration.module';
+
 @Module({
 	imports: [
 		/* CONFIG */
@@ -211,6 +215,8 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,
+		UploadsModule,
+		ConfigurationModule,
 	],
 	controllers: [AppController],
 	providers: [
