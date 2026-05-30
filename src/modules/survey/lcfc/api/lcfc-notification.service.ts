@@ -254,7 +254,6 @@ export class LcfcNotificationService {
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		LcfcValidation.validateToken(tokenData, token);
-		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		return {
 			valid: true,
@@ -275,7 +274,6 @@ export class LcfcNotificationService {
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData, dto.token);
-		if (!tokenData) throw new BadRequestException('Token no encontrado');
 
 		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData.course_section_id);
 		const language = dto.language ?? 'es';
@@ -304,7 +302,6 @@ export class LcfcNotificationService {
 	async completeSurvey(dto: CompleteLcfcSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData, dto.token);
-		if (!tokenData) throw new BadRequestException('Token no encontrado');
 		LcfcValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
