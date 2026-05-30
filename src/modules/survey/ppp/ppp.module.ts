@@ -9,6 +9,7 @@ import { PppSurveyRepository } from './core/ppp-survey.repository';
 import { PppScoreRepository } from './core/ppp-score.repository';
 import { PppConfigService } from './api/ppp-config.service';
 import { PppSurveyService } from './api/ppp-survey.service';
+import { PppService } from './api/ppp.service';
 import { PppController } from './api/ppp.controller';
 
 @Module({
@@ -18,12 +19,13 @@ import { PppController } from './api/ppp.controller';
 	],
 	controllers: [PppController],
 	providers: [
+		PppService,
 		PppConfigService,
 		PppSurveyService,
 		PppConfigRepository,
 		PppSurveyRepository,
 		PppScoreRepository,
 	],
-	exports: [PppConfigService, PppSurveyService],
+	exports: [PppService, PppConfigService, PppSurveyService],
 })
 export class PppModule {}
