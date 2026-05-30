@@ -14,7 +14,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -32,12 +32,12 @@ export class CreateUserDto {
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'first_name_example', required: true })
+	@ApiProperty({ example: 'firstNameExample', required: true })
 	firstName: string;
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'last_name_example', required: true })
+	@ApiProperty({ example: 'lastNameExample', required: true })
 	lastName: string;
 
 	@IsEmail()
@@ -47,7 +47,7 @@ export class CreateUserDto {
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'phone_example', required: true })
+	@ApiProperty({ example: '+51 999 999 999', required: true })
 	phone: string;
 
 	@IsBoolean()
@@ -57,7 +57,7 @@ export class CreateUserDto {
 
 export class UpdateUserDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -78,13 +78,13 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'first_name_example', required: false })
+	@ApiProperty({ example: 'firstNameExample', required: false })
 	firstName?: string;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'last_name_example', required: false })
+	@ApiProperty({ example: 'lastNameExample', required: false })
 	lastName?: string;
 
 	@IsOptional()
@@ -96,7 +96,7 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'phone_example', required: false })
+	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
 
 	@IsOptional()
@@ -107,7 +107,7 @@ export class UpdateUserDto {
 
 export class FilterUserDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -123,11 +123,11 @@ export class FilterUserDto {
 	documentCode?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'first_name_example', required: false })
+	@ApiProperty({ example: 'firstNameExample', required: false })
 	firstName?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'last_name_example', required: false })
+	@ApiProperty({ example: 'lastNameExample', required: false })
 	lastName?: string;
 
 	@IsOptional()
@@ -137,7 +137,7 @@ export class FilterUserDto {
 	email?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'phone_example', required: false })
+	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
 
 	@IsOptional()
@@ -150,7 +150,7 @@ export class LoginUserByCredentialsDto {
 	@IsString()
 	@IsNotEmpty()
 	@ApiProperty({
-		example: 'EISCB',
+		example: 'schoolCodeExample',
 		required: true,
 		description: 'Código de la escuela seleccionada por el usuario',
 	})
@@ -159,7 +159,7 @@ export class LoginUserByCredentialsDto {
 	@IsEmail()
 	@MaxLength(254)
 	@ApiProperty({
-		example: 'juan.perez@example.com',
+		example: 'user@example.com',
 		required: true,
 	})
 	email: string;
@@ -167,7 +167,7 @@ export class LoginUserByCredentialsDto {
 	@IsString()
 	@MinLength(8)
 	@ApiProperty({
-		example: 'password123',
+		example: 'passwordExample',
 		required: true,
 	})
 	password: string;
@@ -175,6 +175,6 @@ export class LoginUserByCredentialsDto {
 
 export class ChangeRoleDto {
 	@IsNumber()
-	@ApiProperty({ example: 2 })
+	@ApiProperty({ example: 1 })
 	newRole: number;
 }

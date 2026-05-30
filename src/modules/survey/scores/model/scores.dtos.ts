@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -26,13 +26,13 @@ export class CreateScoreDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
 	commentaries?: I18nText;
 }
 
 export class UpdateScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -57,13 +57,13 @@ export class UpdateScoreDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
 	commentaries?: I18nText;
 }
 
 export class FilterScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -83,6 +83,6 @@ export class FilterScoreDto {
 	score?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
 	commentaries?: I18nText;
 }

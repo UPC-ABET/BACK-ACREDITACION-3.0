@@ -21,11 +21,11 @@ export class CreateRubricCriteriaDto {
 	criteria: I18nText | string;
 
 	@IsNumber()
-	@ApiProperty({ example: 0, required: true })
+	@ApiProperty({ example: 1, required: true })
 	minValue: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 100, required: true })
+	@ApiProperty({ example: 1, required: true })
 	maxValue: number;
 }
 
@@ -53,7 +53,7 @@ export class CreateRubricQuestionDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => CreateRubricCriteriaDto)
-	@ApiProperty({ type: [CreateRubricCriteriaDto], required: true })
+	@ApiProperty({ example: {}, type: [CreateRubricCriteriaDto], required: true })
 	criterias: CreateRubricCriteriaDto[];
 }
 
@@ -73,11 +73,11 @@ export class CreateRubricDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => CreateRubricQuestionDto)
-	@ApiProperty({ type: [CreateRubricQuestionDto], required: true })
+	@ApiProperty({ example: {}, type: [CreateRubricQuestionDto], required: true })
 	questions: CreateRubricQuestionDto[];
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -106,11 +106,11 @@ export class UpdateRubricDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => CreateRubricQuestionDto) // reutilizamos porque ya tiene id opcional
-	@ApiProperty({ type: [CreateRubricQuestionDto], required: false })
+	@ApiProperty({ example: {}, type: [CreateRubricQuestionDto], required: false })
 	questions?: CreateRubricQuestionDto[];
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -121,7 +121,7 @@ export class UpdateRubricDto {
 
 export class FilterRubricDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()

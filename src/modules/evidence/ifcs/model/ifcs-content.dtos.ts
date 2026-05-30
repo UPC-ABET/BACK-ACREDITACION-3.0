@@ -17,7 +17,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class IfcFindingPayloadDto {
 	@ApiProperty({
-		example: 'a1f6-uuid',
+		example: 'tempIdExample',
 		required: true,
 		description:
 			'Cliente: UUID que identifica al hallazgo en la sesión actual (referenciado por acciones)',
@@ -26,7 +26,7 @@ export class IfcFindingPayloadDto {
 	tempId: string;
 
 	@ApiProperty({
-		example: 10,
+		example: 1,
 		nullable: true,
 		required: true,
 		description: 'null = nuevo; número = id existente a actualizar',
@@ -35,12 +35,12 @@ export class IfcFindingPayloadDto {
 	@IsInt()
 	id: number | null;
 
-	@ApiProperty({ example: { es: 'Brecha detectada', en: 'Gap detected' }, required: true })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: true })
 	@IsObject()
 	description: I18nText;
 
 	@ApiProperty({
-		example: 'TG801-T001',
+		example: 'criticalityCodeExample',
 		required: true,
 		description: 'Código de TYPE_CODES.CRITICALITY.*',
 	})
@@ -49,21 +49,21 @@ export class IfcFindingPayloadDto {
 }
 
 export class IfcActionPayloadDto {
-	@ApiProperty({ example: 'b2c4-uuid', required: true })
+	@ApiProperty({ example: 'tempIdExample', required: true })
 	@IsString()
 	tempId: string;
 
-	@ApiProperty({ example: 5, nullable: true, required: true })
+	@ApiProperty({ example: 1, nullable: true, required: true })
 	@IsOptional()
 	@IsInt()
 	id: number | null;
 
-	@ApiProperty({ example: { es: 'Implementar X', en: 'Implement X' }, required: true })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: true })
 	@IsObject()
 	description: I18nText;
 
 	@ApiProperty({
-		example: 'a1f6-uuid',
+		example: 'findingTempIdExample',
 		required: true,
 		description: 'tempId del hallazgo al que pertenece (se resuelve a finding_id en el backend)',
 	})
@@ -73,7 +73,7 @@ export class IfcActionPayloadDto {
 
 export class IfcPreviousActionPayloadDto {
 	@ApiProperty({
-		example: 4,
+		example: 1,
 		required: true,
 		description:
 			'id de improvement.finding_actions (rows previas reutilizadas). Solo se permiten ids devueltos por GET (previous_actions)',
@@ -82,7 +82,7 @@ export class IfcPreviousActionPayloadDto {
 	findingActionId: number;
 
 	@ApiProperty({
-		example: { es: 'Nueva evidencia', en: 'New Evidence' },
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
 		nullable: true,
 		required: true,
 		description:
@@ -95,7 +95,7 @@ export class IfcPreviousActionPayloadDto {
 
 export class IfcContentDto {
 	@ApiProperty({
-		example: false,
+		example: true,
 		required: true,
 		description: 'true = al guardar, transicionar a SUBMITTED; false = quedar en SAVED',
 	})
@@ -103,7 +103,7 @@ export class IfcContentDto {
 	submit: boolean;
 
 	@ApiProperty({
-		example: { infrastructure: { es: 'Lab con 30 PCs', en: 'Lab with 30 PCs' } },
+		example: { key: 'informationValue' },
 		required: false,
 		description:
 			'Map keyed por `PARAMETER_IFC_FIELDS[].key` → valor I18nText. Almacenado tal cual en evidence.ifcs.information.',
@@ -112,26 +112,26 @@ export class IfcContentDto {
 	@IsObject()
 	information?: Record<string, I18nText>;
 
-	@ApiProperty({ type: [IfcFindingPayloadDto], required: true })
+	@ApiProperty({ example: {}, type: [IfcFindingPayloadDto], required: true })
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => IfcFindingPayloadDto)
 	findings: IfcFindingPayloadDto[];
 
-	@ApiProperty({ type: [IfcActionPayloadDto], required: true })
+	@ApiProperty({ example: {}, type: [IfcActionPayloadDto], required: true })
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => IfcActionPayloadDto)
 	actions: IfcActionPayloadDto[];
 
-	@ApiProperty({ example: [7], required: false })
+	@ApiProperty({ example: [1, 2, 3], required: false })
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
 	@ArrayUnique()
 	deletedFindingIds?: number[];
 
-	@ApiProperty({ example: [3], required: false })
+	@ApiProperty({ example: [1, 2, 3], required: false })
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
@@ -139,6 +139,7 @@ export class IfcContentDto {
 	deletedActionIds?: number[];
 
 	@ApiProperty({
+		example: {},
 		type: [IfcPreviousActionPayloadDto],
 		required: false,
 		description:
@@ -153,39 +154,39 @@ export class IfcContentDto {
 
 export class CreateIfcDto extends IfcContentDto {
 	@ApiProperty({
-		example: 310,
+		example: 1,
 		required: true,
 		description: 'id del nodo chart del coordinador del curso (level COURSE_COORDINATOR)',
 	})
 	@IsInt()
 	chartId: number;
 
-	@ApiProperty({ example: 5, required: true })
+	@ApiProperty({ example: 1, required: true })
 	@IsInt()
 	periodId: number;
 }
 
 export class IfcPrefillQueryDto {
-	@ApiProperty({ example: 310, required: true })
+	@ApiProperty({ example: 1, required: true })
 	@IsInt()
 	@Type(() => Number)
 	chartId: number;
 
-	@ApiProperty({ example: 5, required: true })
+	@ApiProperty({ example: 1, required: true })
 	@IsInt()
 	@Type(() => Number)
 	periodId: number;
 }
 
 export class IfcPrefillResponseDto {
-	@ApiProperty({ type: Object }) courseName: I18nText;
-	@ApiProperty({ type: Object }) course_learning_outcome: I18nText;
-	@ApiProperty({ type: Object }) area_label: I18nText;
-	@ApiProperty({ type: Object }) subarea_label: I18nText;
-	@ApiProperty() academic_period_code: string;
-	@ApiProperty({ nullable: true }) coordinator_code: string | null;
-	@ApiProperty({ nullable: true }) coordinator_name: string | null;
-	@ApiProperty({ nullable: true }) coordinator_user_id: number | null;
-	@ApiProperty({ type: 'array', items: { type: 'object' } })
+	@ApiProperty({ example: { es: 'courseNameEs', en: 'courseNameEn' }, type: Object }) courseName: I18nText;
+	@ApiProperty({ example: { es: 'course_learning_outcomeEs', en: 'course_learning_outcomeEn' }, type: Object }) course_learning_outcome: I18nText;
+	@ApiProperty({ example: { es: 'area_labelEs', en: 'area_labelEn' }, type: Object }) area_label: I18nText;
+	@ApiProperty({ example: { es: 'subarea_labelEs', en: 'subarea_labelEn' }, type: Object }) subarea_label: I18nText;
+	@ApiProperty({ example: 'academic_period_codeExample' }) academic_period_code: string;
+	@ApiProperty({ example: 'coordinator_codeExample', nullable: true }) coordinator_code: string | null;
+	@ApiProperty({ example: 'coordinator_nameExample', nullable: true }) coordinator_name: string | null;
+	@ApiProperty({ example: 1, nullable: true }) coordinator_user_id: number | null;
+	@ApiProperty({ example: [{ key: 'outcomeCourseResultValue' }], type: 'array', items: { type: 'object' } })
 	outcomeCourseResult: any[];
 }

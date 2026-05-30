@@ -16,7 +16,7 @@ import { Type } from 'class-transformer';
 
 export class FilterAcceptanceLevelDto {
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
 	academicPeriodId: number;
 
 	@IsNumber()
@@ -26,7 +26,7 @@ export class FilterAcceptanceLevelDto {
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'PPP',
+		example: 'surveyTypeCodeExample',
 		description: 'Código del tipo de encuesta (alternativa a survey_type_id)',
 		required: false,
 	})
@@ -44,32 +44,32 @@ export class UpdateAcceptanceLevelItemDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'Excelente', en: 'Excellent' }, required: false })
+	@ApiProperty({ example: { key: 'nameValue' }, required: false })
 	name?: Record<string, string>;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 4.2, required: false })
+	@ApiProperty({ example: 1, required: false })
 	minScore?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5.0, required: false })
+	@ApiProperty({ example: 1, required: false })
 	maxScore?: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: '#276749', required: false })
+	@ApiProperty({ example: 'colorExample', required: false })
 	color?: string;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
+	@ApiProperty({ example: 1, required: false })
 	order?: number;
 
 	@IsOptional()
 	@IsBoolean()
-	@ApiProperty({ example: false, required: false })
+	@ApiProperty({ example: true, required: false })
 	isFinal?: boolean;
 }
 
@@ -77,7 +77,7 @@ export class BulkUpdateAcceptanceLevelsDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => UpdateAcceptanceLevelItemDto)
-	@ApiProperty({ type: [UpdateAcceptanceLevelItemDto] })
+	@ApiProperty({ example: {}, type: [UpdateAcceptanceLevelItemDto] })
 	items: UpdateAcceptanceLevelItemDto[];
 }
 
@@ -87,7 +87,7 @@ export class BulkUpdateAcceptanceLevelsDto {
 
 export class GenerateDefaultAcceptanceLevelsDto {
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
 	academicPeriodId: number;
 
 	@IsNumber()
@@ -105,10 +105,10 @@ export class CopyAcceptanceLevelsDto {
 	surveyTypeId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'ID del período académico origen' })
+	@ApiProperty({ example: 1, description: 'ID del período académico origen' })
 	sourceAcademicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico destino' })
+	@ApiProperty({ example: 1, description: 'ID del período académico destino' })
 	targetAcademicPeriodId: number;
 }

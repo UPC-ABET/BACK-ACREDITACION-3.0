@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStatusDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -26,7 +26,7 @@ export class CreateStatusDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentEs', en: 'commentEn' }, required: false })
 	comment?: I18nText;
 
 	@IsDate()
@@ -36,7 +36,7 @@ export class CreateStatusDto {
 
 export class UpdateStatusDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -61,7 +61,7 @@ export class UpdateStatusDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentEs', en: 'commentEn' }, required: false })
 	comment?: I18nText;
 
 	@IsOptional()
@@ -72,7 +72,7 @@ export class UpdateStatusDto {
 
 export class FilterStatusDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -92,7 +92,7 @@ export class FilterStatusDto {
 	staffId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'comment_es', en: 'comment_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentEs', en: 'commentEn' }, required: false })
 	comment?: I18nText;
 
 	@IsOptional()

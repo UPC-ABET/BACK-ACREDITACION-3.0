@@ -22,7 +22,7 @@ export class CreatePppConfigDto {
 
 	@IsString()
 	@ApiProperty({
-		example: 'Comunicación efectiva',
+		example: 'nameEsExample',
 		description: 'Nombre de la competencia en español',
 	})
 	nameEs: string;
@@ -30,7 +30,7 @@ export class CreatePppConfigDto {
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'Effective communication',
+		example: 'nameEnExample',
 		description: 'Nombre en inglés',
 		required: false,
 	})
@@ -38,12 +38,12 @@ export class CreatePppConfigDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Capacidad para expresar ideas con claridad', required: false })
+	@ApiProperty({ example: 'descriptionEsExample', required: false })
 	descriptionEs?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Ability to express ideas clearly', required: false })
+	@ApiProperty({ example: 'descriptionEnExample', required: false })
 	descriptionEn?: string;
 
 	@IsOptional()
@@ -53,12 +53,12 @@ export class CreatePppConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera', required: false })
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera', required: false })
 	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico', required: false })
+	@ApiProperty({ example: 1, description: 'ID del período académico', required: false })
 	academicPeriodId?: number;
 
 	@IsOptional()
@@ -75,22 +75,22 @@ export class UpdatePppConfigDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Comunicación efectiva', required: false })
+	@ApiProperty({ example: 'nameEsExample', required: false })
 	nameEs?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Effective communication', required: false })
+	@ApiProperty({ example: 'nameEnExample', required: false })
 	nameEn?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ required: false })
+	@ApiProperty({ example: 'descriptionEsExample', required: false })
 	descriptionEs?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ required: false })
+	@ApiProperty({ example: 'descriptionEnExample', required: false })
 	descriptionEn?: string;
 
 	@IsOptional()
@@ -100,12 +100,12 @@ export class UpdatePppConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
+	@ApiProperty({ example: 1, required: false })
 	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
+	@ApiProperty({ example: 1, required: false })
 	academicPeriodId?: number;
 
 	@IsOptional()
@@ -122,12 +122,12 @@ export class UpdatePppConfigDto {
 export class FilterPppConfigDto {
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
+	@ApiProperty({ example: 1, required: false })
 	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
+	@ApiProperty({ example: 1, required: false })
 	academicPeriodId?: number;
 
 	@IsOptional()
@@ -143,17 +143,17 @@ export class FilterPppConfigDto {
 
 export class ReplicatePppConfigDto {
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'ID del período académico origen (a copiar)' })
+	@ApiProperty({ example: 1, description: 'ID del período académico origen (a copiar)' })
 	sourceAcademicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico destino (nuevo período)' })
+	@ApiProperty({ example: 1, description: 'ID del período académico destino (nuevo período)' })
 	targetAcademicPeriodId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 5,
+		example: 1,
 		description: 'Filtrar por programa/carrera (opcional)',
 		required: false,
 	})
@@ -172,12 +172,12 @@ export class PppScoreItemDto {
 	@IsNumber()
 	@Min(1)
 	@Max(5)
-	@ApiProperty({ example: 4.5, description: 'Puntaje del outcome (1.0 - 5.0)' })
+	@ApiProperty({ example: 1, description: 'Puntaje del outcome (1.0 - 5.0)' })
 	score: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Demostró excelente manejo del tema', required: false })
+	@ApiProperty({ example: 'commentariesExample', required: false })
 	commentaries?: string;
 }
 
@@ -187,15 +187,15 @@ export class CreatePppSurveyDto {
 	studentId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
 	academicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'ID del campus/sede' })
+	@ApiProperty({ example: 1, description: 'ID del campus/sede' })
 	campusId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera' })
 	programId: number;
 
 	@IsNumber()
@@ -206,70 +206,70 @@ export class CreatePppSurveyDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Tech Corp S.A.C.', required: false })
+	@ApiProperty({ example: 'companyNameExample', required: false })
 	companyName?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Juan Pérez', required: false })
+	@ApiProperty({ example: 'bossNameExample', required: false })
 	bossName?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Jefe de Proyectos', required: false })
+	@ApiProperty({ example: 'bossRoleExample', required: false })
 	bossRole?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: '+51987654321', required: false })
+	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'jefe@techcorp.com', required: false })
+	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: '20123456789', required: false })
+	@ApiProperty({ example: 'rucExample', required: false })
 	ruc?: string;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 160, description: 'Total de horas de práctica', required: false })
+	@ApiProperty({ example: 1, description: 'Total de horas de práctica', required: false })
 	totalHours?: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: '2024-03-01', required: false })
+	@ApiProperty({ example: 'startDateExample', required: false })
 	startDate?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: '2024-07-31', required: false })
+	@ApiProperty({ example: 'endDateExample', required: false })
 	endDate?: string;
 
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => PppScoreItemDto)
-	@ApiProperty({ type: [PppScoreItemDto], description: 'Puntajes por competencia' })
+	@ApiProperty({ example: {}, type: [PppScoreItemDto], description: 'Puntajes por competencia' })
 	scores: PppScoreItemDto[];
 }
 
 export class FilterPppSurveyDto {
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
+	@ApiProperty({ example: 1, required: false })
 	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
+	@ApiProperty({ example: 1, required: false })
 	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 2, required: false })
+	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
 
 	@IsOptional()
@@ -285,36 +285,36 @@ export class FilterPppSurveyDto {
 
 export class UploadPppExcelDto {
 	@IsString()
-	@ApiProperty({ description: 'Archivo Excel codificado en base64' })
+	@ApiProperty({ example: 'fileBase64Example', description: 'Archivo Excel codificado en base64' })
 	fileBase64: string;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
 	academicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera' })
 	programId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'ID del campus/sede' })
+	@ApiProperty({ example: 1, description: 'ID del campus/sede' })
 	campusId: number;
 }
 
 export class DashboardPppDto {
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
+	@ApiProperty({ example: 1, required: false })
 	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
+	@ApiProperty({ example: 1, required: false })
 	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 2, required: false })
+	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
 
 	@IsOptional()
@@ -325,16 +325,16 @@ export class DashboardPppDto {
 
 export class GenerateFindingsPppDto {
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera' })
 	programId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
 	academicPeriodId: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 2, required: false })
+	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
 
 	@IsOptional()

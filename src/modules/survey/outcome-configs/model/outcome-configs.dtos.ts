@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateOutcomeConfigDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -18,7 +18,7 @@ export class CreateOutcomeConfigDto {
 
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
+		example: { es: 'userOutcomeNameEs', en: 'userOutcomeNameEn' },
 		required: true,
 	})
 	userOutcomeName: I18nText;
@@ -26,7 +26,7 @@ export class CreateOutcomeConfigDto {
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
+		example: { es: 'userOutcomeDescriptionEs', en: 'userOutcomeDescriptionEn' },
 		required: false,
 	})
 	userOutcomeDescription?: I18nText;
@@ -34,7 +34,7 @@ export class CreateOutcomeConfigDto {
 
 export class UpdateOutcomeConfigDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -50,7 +50,7 @@ export class UpdateOutcomeConfigDto {
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
+		example: { es: 'userOutcomeNameEs', en: 'userOutcomeNameEn' },
 		required: false,
 	})
 	userOutcomeName?: I18nText;
@@ -58,7 +58,7 @@ export class UpdateOutcomeConfigDto {
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
+		example: { es: 'userOutcomeDescriptionEs', en: 'userOutcomeDescriptionEn' },
 		required: false,
 	})
 	userOutcomeDescription?: I18nText;
@@ -66,7 +66,7 @@ export class UpdateOutcomeConfigDto {
 
 export class FilterOutcomeConfigDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -79,14 +79,14 @@ export class FilterOutcomeConfigDto {
 
 	@IsOptional()
 	@ApiProperty({
-		example: { es: 'user_outcome_name_es', en: 'user_outcome_name_en' },
+		example: { es: 'userOutcomeNameEs', en: 'userOutcomeNameEn' },
 		required: false,
 	})
 	userOutcomeName?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({
-		example: { es: 'user_outcome_description_es', en: 'user_outcome_description_en' },
+		example: { es: 'userOutcomeDescriptionEs', en: 'userOutcomeDescriptionEn' },
 		required: false,
 	})
 	userOutcomeDescription?: I18nText;

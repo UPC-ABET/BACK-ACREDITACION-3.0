@@ -13,7 +13,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateNotificationConfigDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -38,23 +38,23 @@ export class CreateNotificationConfigDto {
 	ifcStatusTypeId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
 	title: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: true })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
 	body: I18nText;
 
-	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: true })
+	@ApiProperty({ example: { key: 'toChartLevelTypeIdsValue' }, required: true })
 	toChartLevelTypeIds: any;
 
-	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: true })
+	@ApiProperty({ example: { key: 'ccChartLevelTypeIdsValue' }, required: true })
 	ccChartLevelTypeIds: any;
 }
 
 export class UpdateNotificationConfigDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -84,26 +84,26 @@ export class UpdateNotificationConfigDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: false })
+	@ApiProperty({ example: { key: 'toChartLevelTypeIdsValue' }, required: false })
 	toChartLevelTypeIds?: any;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: false })
+	@ApiProperty({ example: { key: 'ccChartLevelTypeIdsValue' }, required: false })
 	ccChartLevelTypeIds?: any;
 }
 
 export class FilterNotificationConfigDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -127,26 +127,26 @@ export class FilterNotificationConfigDto {
 	ifcStatusTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'to_chart_level_type_ids_value' }, required: false })
+	@ApiProperty({ example: { key: 'toChartLevelTypeIdsValue' }, required: false })
 	toChartLevelTypeIds?: any;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_chart_level_type_ids_value' }, required: false })
+	@ApiProperty({ example: { key: 'ccChartLevelTypeIdsValue' }, required: false })
 	ccChartLevelTypeIds?: any;
 }
 
 // %% OTHER DTOS
 
 export class UpsertNotificationConfigDto {
-	@ApiProperty({ example: 5, required: true })
+	@ApiProperty({ example: 1, required: true })
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
@@ -163,7 +163,7 @@ export class UpsertNotificationConfigDto {
 	triggerTypeId: number;
 
 	@ApiProperty({
-		example: 2,
+		example: 1,
 		required: true,
 		description: 'core.types.id from TG701 (the IFC status this config applies to)',
 	})
@@ -173,24 +173,21 @@ export class UpsertNotificationConfigDto {
 	ifcStatusTypeId: number;
 
 	@ApiProperty({
-		example: { es: 'IFC Enviado — {{course_name}}', en: 'IFC Submitted — {{course_name}}' },
+		example: { es: 'titleEs', en: 'titleEn' },
 		required: true,
 	})
 	@IsObject()
 	title: I18nText;
 
 	@ApiProperty({
-		example: {
-			es: '<p>Hola, {{submitter_name}} envió...</p>',
-			en: '<p>Hi, {{submitter_name}} submitted...</p>',
-		},
+		example: { es: 'bodyEs', en: 'bodyEn' },
 		required: true,
 	})
 	@IsObject()
 	body: I18nText;
 
 	@ApiProperty({
-		example: [19],
+		example: [1, 2, 3],
 		required: false,
 		description: 'array of core.types.id from TG902 (chart level types)',
 	})
@@ -199,7 +196,7 @@ export class UpsertNotificationConfigDto {
 	@IsInt({ each: true })
 	toChartLevelTypeIds?: number[];
 
-	@ApiProperty({ example: [18, 17], required: false })
+	@ApiProperty({ example: [1, 2, 3], required: false })
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
@@ -212,7 +209,7 @@ export class UpsertNotificationConfigDto {
 }
 
 export class NotificationConfigsByPeriodQueryDto {
-	@ApiProperty({ example: 5, required: true })
+	@ApiProperty({ example: 1, required: true })
 	@IsInt()
 	@IsPositive()
 	@Type(() => Number)
@@ -220,18 +217,18 @@ export class NotificationConfigsByPeriodQueryDto {
 }
 
 export class NotificationConfigViewDto {
-	@ApiProperty() id: number;
-	@ApiProperty() schoolId: number;
-	@ApiProperty() academicPeriodId: number;
-	@ApiProperty() triggerTypeId: number;
-	@ApiProperty() triggerCode: string;
-	@ApiProperty({ type: Object }) triggerName: I18nText;
-	@ApiProperty() ifcStatusTypeId: number;
-	@ApiProperty() statusCode: string;
-	@ApiProperty({ type: Object }) statusName: I18nText;
-	@ApiProperty({ type: Object }) title: I18nText;
-	@ApiProperty({ type: Object }) body: I18nText;
-	@ApiProperty({ example: [19] }) toChartLevelTypeIds: number[];
-	@ApiProperty({ example: [18] }) ccChartLevelTypeIds: number[];
-	@ApiProperty() isActive: boolean;
+	@ApiProperty({ example: 1 }) id: number;
+	@ApiProperty({ example: 1 }) schoolId: number;
+	@ApiProperty({ example: 1 }) academicPeriodId: number;
+	@ApiProperty({ example: 1 }) triggerTypeId: number;
+	@ApiProperty({ example: 'triggerCodeExample' }) triggerCode: string;
+	@ApiProperty({ example: { es: 'triggerNameEs', en: 'triggerNameEn' }, type: Object }) triggerName: I18nText;
+	@ApiProperty({ example: 1 }) ifcStatusTypeId: number;
+	@ApiProperty({ example: 'statusCodeExample' }) statusCode: string;
+	@ApiProperty({ example: { es: 'statusNameEs', en: 'statusNameEn' }, type: Object }) statusName: I18nText;
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, type: Object }) title: I18nText;
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, type: Object }) body: I18nText;
+	@ApiProperty({ example: [1, 2, 3] }) toChartLevelTypeIds: number[];
+	@ApiProperty({ example: [1, 2, 3] }) ccChartLevelTypeIds: number[];
+	@ApiProperty({ example: true }) isActive: boolean;
 }

@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateFindingActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -27,7 +27,7 @@ export class CreateFindingActionDto {
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'Evidencia en español', en: 'Evidence in English' },
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
 		required: false,
 		nullable: true,
 	})
@@ -36,7 +36,7 @@ export class CreateFindingActionDto {
 
 export class UpdateFindingActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -62,7 +62,7 @@ export class UpdateFindingActionDto {
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'Evidencia en español', en: 'Evidence in English' },
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
 		required: false,
 		nullable: true,
 	})
@@ -71,7 +71,7 @@ export class UpdateFindingActionDto {
 
 export class FilterFindingActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -93,7 +93,7 @@ export class FilterFindingActionDto {
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'Evidencia en español', en: 'Evidence in English' },
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
 		required: false,
 		nullable: true,
 	})

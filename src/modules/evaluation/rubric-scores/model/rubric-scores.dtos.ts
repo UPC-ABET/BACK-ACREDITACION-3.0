@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateRubricScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -26,13 +26,13 @@ export class CreateRubricScoreDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
 	commentaries?: I18nText;
 }
 
 export class UpdateRubricScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -57,13 +57,13 @@ export class UpdateRubricScoreDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
 	commentaries?: I18nText;
 }
 
 export class FilterRubricScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -83,6 +83,6 @@ export class FilterRubricScoreDto {
 	score?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'commentaries_es', en: 'commentaries_en' }, required: false })
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
 	commentaries?: I18nText;
 }

@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateInstrumentDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -18,16 +18,16 @@ export class CreateInstrumentDto {
 
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: true })
+	@ApiProperty({ example: 'codeExample', required: true })
 	code: string;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
 	name: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsBoolean()
@@ -37,7 +37,7 @@ export class CreateInstrumentDto {
 
 export class UpdateInstrumentDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -53,17 +53,17 @@ export class UpdateInstrumentDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
@@ -74,7 +74,7 @@ export class UpdateInstrumentDto {
 
 export class FilterInstrumentDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -86,15 +86,15 @@ export class FilterInstrumentDto {
 	constituentTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()

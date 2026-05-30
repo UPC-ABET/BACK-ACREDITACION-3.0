@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateSurveyDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -38,7 +38,7 @@ export class CreateSurveyDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
+	@ApiProperty({ example: { es: 'informationEs', en: 'informationEn' }, required: false })
 	information?: I18nText;
 
 	@IsOptional()
@@ -53,7 +53,7 @@ export class CreateSurveyDto {
 
 export class UpdateSurveyDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -93,7 +93,7 @@ export class UpdateSurveyDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
+	@ApiProperty({ example: { es: 'informationEs', en: 'informationEn' }, required: false })
 	information?: I18nText;
 
 	@IsOptional()
@@ -109,7 +109,7 @@ export class UpdateSurveyDto {
 
 export class FilterSurveyDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -141,7 +141,7 @@ export class FilterSurveyDto {
 	programId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'information_es', en: 'information_en' }, required: false })
+	@ApiProperty({ example: { es: 'informationEs', en: 'informationEn' }, required: false })
 	information?: I18nText;
 
 	@IsOptional()

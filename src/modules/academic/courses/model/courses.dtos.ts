@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateCourseDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -14,20 +14,20 @@ export class CreateCourseDto {
 
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: true })
+	@ApiProperty({ example: 'codeExample', required: true })
 	code: string;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
 	name: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: true })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: true })
 	description: I18nText;
 
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
+		example: { es: 'learningOutcomeEs', en: 'learningOutcomeEn' },
 		required: true,
 	})
 	learningOutcome: I18nText;
@@ -35,7 +35,7 @@ export class CreateCourseDto {
 
 export class UpdateCourseDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -46,23 +46,23 @@ export class UpdateCourseDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
+		example: { es: 'learningOutcomeEs', en: 'learningOutcomeEn' },
 		required: false,
 	})
 	learningOutcome?: I18nText;
@@ -70,7 +70,7 @@ export class UpdateCourseDto {
 
 export class FilterCourseDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -78,20 +78,20 @@ export class FilterCourseDto {
 	isActive?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({
-		example: { es: 'learning_outcome_es', en: 'learning_outcome_en' },
+		example: { es: 'learningOutcomeEs', en: 'learningOutcomeEn' },
 		required: false,
 	})
 	learningOutcome?: I18nText;
@@ -129,7 +129,7 @@ export class FilterCourseEnrolledStudentsDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 5,
+		example: 1,
 		required: false,
 		description: 'ID del período académico',
 	})
@@ -138,7 +138,7 @@ export class FilterCourseEnrolledStudentsDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 2,
+		example: 1,
 		required: false,
 		description: 'ID del campus',
 	})
@@ -155,48 +155,48 @@ export class FilterCourseEnrolledStudentsDto {
 }
 
 export class CourseEnrolledStudentDto {
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	id: number; // enrolled_student_id
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	studentSectionEnrollmentId: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	studentId: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'firstNameExample' })
 	firstName: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'lastNameExample' })
 	lastName: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'user@example.com' })
 	email: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'studentCodeExample' })
 	studentCode: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	courseSectionId: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'sectionCodeExample' })
 	sectionCode: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	professorId: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'professorFirstNameExample' })
 	professorFirstName: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'professorLastNameExample' })
 	professorLastName: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	campusId: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: '2024-01-01T00:00:00Z' })
 	enrollmentDate: Date;
 
-	@ApiProperty()
+	@ApiProperty({ example: true })
 	isActive: boolean;
 }

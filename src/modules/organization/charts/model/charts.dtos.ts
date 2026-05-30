@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -30,7 +30,7 @@ export class CreateChartDto {
 	rootChartDetailId?: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: true })
+	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: true })
 	levelTitle: I18nText;
 
 	@IsOptional()
@@ -46,7 +46,7 @@ export class CreateChartDto {
 
 export class UpdateChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -76,7 +76,7 @@ export class UpdateChartDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: false })
+	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: false })
 	levelTitle?: I18nText;
 
 	@IsOptional()
@@ -92,7 +92,7 @@ export class UpdateChartDto {
 
 export class FilterChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -116,7 +116,7 @@ export class FilterChartDto {
 	rootChartDetailId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: false })
+	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: false })
 	levelTitle?: I18nText;
 
 	@IsOptional()

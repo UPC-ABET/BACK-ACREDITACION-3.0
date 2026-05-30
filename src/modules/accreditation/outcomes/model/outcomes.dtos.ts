@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateOutcomeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -18,16 +18,16 @@ export class CreateOutcomeDto {
 
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'outcome_code_example', required: true })
+	@ApiProperty({ example: 'outcomeCodeExample', required: true })
 	outcomeCode: string;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: true })
+	@ApiProperty({ example: { es: 'outcomeNameEs', en: 'outcomeNameEn' }, required: true })
 	outcomeName: I18nText;
 
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
+		example: { es: 'outcomeDescriptionEs', en: 'outcomeDescriptionEn' },
 		required: true,
 	})
 	outcomeDescription: I18nText;
@@ -35,7 +35,7 @@ export class CreateOutcomeDto {
 
 export class UpdateOutcomeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -51,18 +51,18 @@ export class UpdateOutcomeDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'outcome_code_example', required: false })
+	@ApiProperty({ example: 'outcomeCodeExample', required: false })
 	outcomeCode?: string;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: false })
+	@ApiProperty({ example: { es: 'outcomeNameEs', en: 'outcomeNameEn' }, required: false })
 	outcomeName?: I18nText;
 
 	@IsOptional()
 	@IsObject()
 	@ApiProperty({
-		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
+		example: { es: 'outcomeDescriptionEs', en: 'outcomeDescriptionEn' },
 		required: false,
 	})
 	outcomeDescription?: I18nText;
@@ -70,7 +70,7 @@ export class UpdateOutcomeDto {
 
 export class FilterOutcomeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -82,16 +82,16 @@ export class FilterOutcomeDto {
 	programCommissionId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'outcome_code_example', required: false })
+	@ApiProperty({ example: 'outcomeCodeExample', required: false })
 	outcomeCode?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'outcome_name_es', en: 'outcome_name_en' }, required: false })
+	@ApiProperty({ example: { es: 'outcomeNameEs', en: 'outcomeNameEn' }, required: false })
 	outcomeName?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({
-		example: { es: 'outcome_description_es', en: 'outcome_description_en' },
+		example: { es: 'outcomeDescriptionEs', en: 'outcomeDescriptionEn' },
 		required: false,
 	})
 	outcomeDescription?: I18nText;

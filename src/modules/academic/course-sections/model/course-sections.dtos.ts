@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCourseSectionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -25,11 +25,11 @@ export class CreateCourseSectionDto {
 
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'section_code_example', required: true })
+	@ApiProperty({ example: 'sectionCodeExample', required: true })
 	sectionCode: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
+	@ApiProperty({ example: { key: 'scheduleValue' }, required: false })
 	schedule?: any;
 
 	@IsNumber()
@@ -39,7 +39,7 @@ export class CreateCourseSectionDto {
 
 export class UpdateCourseSectionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -65,11 +65,11 @@ export class UpdateCourseSectionDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'section_code_example', required: false })
+	@ApiProperty({ example: 'sectionCodeExample', required: false })
 	sectionCode?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
+	@ApiProperty({ example: { key: 'scheduleValue' }, required: false })
 	schedule?: any;
 
 	@IsOptional()
@@ -80,7 +80,7 @@ export class UpdateCourseSectionDto {
 
 export class FilterCourseSectionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -100,11 +100,11 @@ export class FilterCourseSectionDto {
 	professorId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'section_code_example', required: false })
+	@ApiProperty({ example: 'sectionCodeExample', required: false })
 	sectionCode?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
+	@ApiProperty({ example: { key: 'scheduleValue' }, required: false })
 	schedule?: any;
 
 	@IsOptional()

@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -31,7 +31,7 @@ export class CreateFindingDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsNumber()
@@ -53,7 +53,7 @@ export class CreateFindingDto {
 
 export class UpdateFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -83,7 +83,7 @@ export class UpdateFindingDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
@@ -109,7 +109,7 @@ export class UpdateFindingDto {
 
 export class FilterFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -133,7 +133,7 @@ export class FilterFindingDto {
 	correlative?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()

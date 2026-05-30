@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -13,7 +13,7 @@ export class CreateActionDto {
 	isActive?: boolean;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: true })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: true })
 	description: I18nText;
 
 	@IsNumber()
@@ -31,7 +31,7 @@ export class CreateActionDto {
 
 export class UpdateActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -41,7 +41,7 @@ export class UpdateActionDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
@@ -62,7 +62,7 @@ export class UpdateActionDto {
 
 export class FilterActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -70,7 +70,7 @@ export class FilterActionDto {
 	isActive?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()

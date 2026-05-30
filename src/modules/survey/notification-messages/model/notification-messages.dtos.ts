@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -21,20 +21,20 @@ export class CreateNotificationMessageDto {
 	programId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
 	title: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: true })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
 	body: I18nText;
 
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: true })
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: true })
 	ccReceivers: any;
 }
 
 export class UpdateNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -54,22 +54,22 @@ export class UpdateNotificationMessageDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
 	ccReceivers?: any;
 }
 
 export class FilterNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -85,14 +85,14 @@ export class FilterNotificationMessageDto {
 	programId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
 	ccReceivers?: any;
 }

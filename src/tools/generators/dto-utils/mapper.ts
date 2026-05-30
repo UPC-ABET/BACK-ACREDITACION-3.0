@@ -66,20 +66,14 @@ export function mapLength(decorators: string[]) {
 }
 
 export function mapExample(type: string, name: string, decorators: string[] = []) {
-	if (type === 'I18nText') {
-		return `{ es: '${name}_es', en: '${name}_en' }`;
-	}
-
-	if (decorators.includes('JsonColumn')) {
-		return `{ key: "${name}_value" }`;
-	}
-
+	if (type === 'I18nText') return `{ es: '${name}Es', en: '${name}En' }`;
+	if (decorators.includes('JsonColumn')) return `{ key: '${name}Value' }`;
 	if (decorators.includes('EmailColumn')) return `'user@example.com'`;
-
-	if (type === 'string') return `'${name}_example'`;
+	if (decorators.includes('PhoneColumn')) return `'+51 999 999 999'`;
+	if (type === 'string') return `'${name}Example'`;
 	if (type === 'number') return 1;
 	if (type === 'boolean') return true;
 	if (type === 'Date') return `'2024-01-01T00:00:00Z'`;
-
 	return `'${name}'`;
 }
+

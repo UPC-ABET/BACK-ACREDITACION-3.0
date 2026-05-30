@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreatePerformanceLevelDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -21,12 +21,12 @@ export class CreatePerformanceLevelDto {
 	academicPeriodId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
 	name: I18nText;
 
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: true })
+	@ApiProperty({ example: 'codeExample', required: true })
 	code: string;
 
 	@IsNumber()
@@ -48,7 +48,7 @@ export class CreatePerformanceLevelDto {
 
 export class UpdatePerformanceLevelDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -68,13 +68,13 @@ export class UpdatePerformanceLevelDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
@@ -100,7 +100,7 @@ export class UpdatePerformanceLevelDto {
 
 export class FilterPerformanceLevelDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -116,11 +116,11 @@ export class FilterPerformanceLevelDto {
 	academicPeriodId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()

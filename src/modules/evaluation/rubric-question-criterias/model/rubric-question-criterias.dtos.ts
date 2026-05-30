@@ -4,7 +4,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateRubricQuestionCriteriaDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -17,7 +17,7 @@ export class CreateRubricQuestionCriteriaDto {
 	rubricQuestionId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: true })
+	@ApiProperty({ example: { es: 'criteriaEs', en: 'criteriaEn' }, required: true })
 	criteria: I18nText;
 
 	@IsNumber()
@@ -31,7 +31,7 @@ export class CreateRubricQuestionCriteriaDto {
 
 export class UpdateRubricQuestionCriteriaDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -46,7 +46,7 @@ export class UpdateRubricQuestionCriteriaDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })
+	@ApiProperty({ example: { es: 'criteriaEs', en: 'criteriaEn' }, required: false })
 	criteria?: I18nText;
 
 	@IsOptional()
@@ -62,7 +62,7 @@ export class UpdateRubricQuestionCriteriaDto {
 
 export class FilterRubricQuestionCriteriaDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -74,7 +74,7 @@ export class FilterRubricQuestionCriteriaDto {
 	rubricQuestionId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'criteria_es', en: 'criteria_en' }, required: false })
+	@ApiProperty({ example: { es: 'criteriaEs', en: 'criteriaEn' }, required: false })
 	criteria?: I18nText;
 
 	@IsOptional()

@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateAcademicPeriodDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -17,7 +17,7 @@ export class CreateAcademicPeriodDto {
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'code_example', required: true })
+	@ApiProperty({ example: 'codeExample', required: true })
 	code: string;
 
 	@IsDate()
@@ -31,7 +31,7 @@ export class CreateAcademicPeriodDto {
 
 export class UpdateAcademicPeriodDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -47,7 +47,7 @@ export class UpdateAcademicPeriodDto {
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
@@ -63,7 +63,7 @@ export class UpdateAcademicPeriodDto {
 
 export class FilterAcademicPeriodDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -75,7 +75,7 @@ export class FilterAcademicPeriodDto {
 	modalityTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()

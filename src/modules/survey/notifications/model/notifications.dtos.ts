@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateNotificationDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -20,7 +20,7 @@ export class CreateNotificationDto {
 	notificationStatusTypeId: number;
 
 	@IsString()
-	@ApiProperty({ example: 'token_example', required: true })
+	@ApiProperty({ example: 'tokenExample', required: true })
 	token: string;
 
 	@IsDate()
@@ -34,7 +34,7 @@ export class CreateNotificationDto {
 
 export class UpdateNotificationDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -54,7 +54,7 @@ export class UpdateNotificationDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'token_example', required: false })
+	@ApiProperty({ example: 'tokenExample', required: false })
 	token?: string;
 
 	@IsOptional()
@@ -70,7 +70,7 @@ export class UpdateNotificationDto {
 
 export class FilterNotificationDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -86,7 +86,7 @@ export class FilterNotificationDto {
 	notificationStatusTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'token_example', required: false })
+	@ApiProperty({ example: 'tokenExample', required: false })
 	token?: string;
 
 	@IsOptional()

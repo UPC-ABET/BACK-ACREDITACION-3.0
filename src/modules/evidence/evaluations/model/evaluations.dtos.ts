@@ -20,7 +20,7 @@ export class ScoreDetailDto {
 
 	@IsNumber()
 	@IsNotEmpty()
-	@ApiProperty({ example: 85.5, required: true })
+	@ApiProperty({ example: 1, required: true })
 	score: number;
 
 	@IsOptional()
@@ -68,11 +68,11 @@ export class SubmitEvaluationDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => ScoreDetailDto)
-	@ApiProperty({ type: [ScoreDetailDto], required: true })
+	@ApiProperty({ example: {}, type: [ScoreDetailDto], required: true })
 	scores: ScoreDetailDto[];
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -106,7 +106,7 @@ export class CreateEvaluationDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
+	@ApiProperty({ example: { es: 'observationEs', en: 'observationEn' }, required: false })
 	observation?: I18nText;
 
 	@IsOptional()
@@ -115,7 +115,7 @@ export class CreateEvaluationDto {
 	registerAt?: Date;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -126,7 +126,7 @@ export class CreateEvaluationDto {
 
 export class UpdateEvaluationDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -151,7 +151,7 @@ export class UpdateEvaluationDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
+	@ApiProperty({ example: { es: 'observationEs', en: 'observationEn' }, required: false })
 	observation?: I18nText;
 
 	@IsOptional()
@@ -182,7 +182,7 @@ export class SaveObservationDto {
 	observation?: I18nText | string;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -205,14 +205,14 @@ export class FinalizeProjectDto {
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({
-		example: false,
+		example: true,
 		required: false,
 		description: 'Indica si es evaluación de Participación (PA). Si es true, no exige observación.',
 	})
 	isPa?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -223,7 +223,7 @@ export class FinalizeProjectDto {
 
 export class FilterEvaluationDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
@@ -243,7 +243,7 @@ export class FilterEvaluationDto {
 	qualificationStatusTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'observation_es', en: 'observation_en' }, required: false })
+	@ApiProperty({ example: { es: 'observationEs', en: 'observationEn' }, required: false })
 	observation?: I18nText;
 
 	@IsOptional()
