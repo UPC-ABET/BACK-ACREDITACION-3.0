@@ -1,5 +1,5 @@
 export const academicPeriodsRoutes = {
-	academic_periods: {
+	academicPeriods: {
 		route: 'academic-periods',
 		tag: 'Periodos académicos',
 		operation: {

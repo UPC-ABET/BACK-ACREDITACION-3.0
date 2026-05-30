@@ -13,11 +13,11 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 		super(repository, dataSource);
 	}
 
-	async getByUserId(user_id: number): Promise<ProfessorEntity | null> {
+	async getByUserId(userId: number): Promise<ProfessorEntity | null> {
 		return await this.dataSource
 			.createQueryBuilder(ProfessorEntity, 'p')
 			.innerJoin(StaffEntity, 's', 's.id = p.staff_id')
-			.where('s.user_id = :user_id', { user_id })
+			.where('s.user_id = :userId', { userId })
 			.getOne();
 	}
 }

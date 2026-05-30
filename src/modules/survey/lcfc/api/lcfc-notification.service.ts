@@ -73,9 +73,9 @@ export class LcfcNotificationService {
 
 		// 1. Load active LCFC configs for the period
 		const activeConfigs = await this.configRepo.findAllLcfc({
-			academic_period_id: dto.academic_period_id,
-			program_id: dto.program_id,
-			is_active: true,
+			academicPeriodId: dto.academicPeriodId,
+			programId: dto.programId,
+			isActive: true,
 		});
 
 		if (activeConfigs.length === 0) {
@@ -86,19 +86,19 @@ export class LcfcNotificationService {
 
 		// 2. Collect active course_section_ids, applying optional filters
 		let courseSectionIds = activeConfigs
-			.map((c) => c.extra?.course_section_id as number)
+			.map((c) => (c.extra as any)?.courseSectionId as number)
 			.filter((id): id is number => typeof id === 'number');
 
-		if (dto.campus_id) {
-			const campusId = dto.campus_id;
+		if (dto.campusId) {
+			const campusId = dto.campusId;
 			courseSectionIds = courseSectionIds.filter((id) => {
-				const cfg = activeConfigs.find((c) => c.extra?.course_section_id === id);
-				return cfg?.extra?.campus_id === campusId;
+				const cfg = activeConfigs.find((c) => (c.extra as any)?.courseSectionId === id);
+				return (cfg?.extra as any)?.campusId === campusId;
 			});
 		}
 
-		if (dto.course_section_id) {
-			const csId = dto.course_section_id;
+		if (dto.courseSectionId) {
+			const csId = dto.courseSectionId;
 			courseSectionIds = courseSectionIds.filter((id) => id === csId);
 		}
 
@@ -118,7 +118,7 @@ export class LcfcNotificationService {
 		}
 
 		// 4. Create surveys + notifications in a transaction for new student-course pairs
-		const maxRegisterDate = dto.max_register_date ?? null;
+		const maxRegisterDate = dto.maxRegisterDate ?? null;
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
 		const pendingNotifications: any[] = [];
@@ -127,16 +127,17 @@ export class LcfcNotificationService {
 			await this.dataSource.transaction(async (manager) => {
 				for (const student of enrolledStudents) {
 					const config = activeConfigs.find(
-						(c) => c.extra?.course_section_id === student.course_section_id,
+						(c) => (c.extra as any)?.courseSectionId === student.courseSectionId,
 					);
 					const programId =
-						dto.program_id ?? student.program_id ?? config?.extra?.program_id ?? null;
-					const campusId = dto.campus_id ?? student.campus_id ?? config?.extra?.campus_id ?? null;
+						dto.programId ?? student.programId ?? (config?.extra as any)?.programId ?? null;
+					const campusId =
+						dto.campusId ?? student.campusId ?? (config?.extra as any)?.campusId ?? null;
 
 					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
 						lcfcSurveyTypeId,
-						student.student_id,
-						student.course_section_id,
+						student.studentId,
+						student.courseSectionId,
 					);
 
 					if (existingSurvey) {
@@ -167,11 +168,11 @@ export class LcfcNotificationService {
 							[
 								lcfcSurveyTypeId,
 								activeStatusId,
-								student.student_id,
-								dto.academic_period_id,
+								student.studentId,
+								dto.academicPeriodId,
 								campusId,
 								programId,
-								student.course_section_id,
+								student.courseSectionId,
 							],
 						);
 
@@ -186,15 +187,34 @@ export class LcfcNotificationService {
 
 						surveysCreated++;
 						pendingNotifications.push({
-							student_id: student.student_id,
-							student_name: student.student_name,
-							student_code: student.student_code,
-							student_email: student.student_email,
-							survey_id: surveyId,
+							studentId: student.studentId,
+							studentName: student.studentName,
+							studentCode: student.studentCode,
+							studentEmail: student.studentEmail,
+							surveyId: surveyId,
 							token,
-							course_name: student.course_name,
-							program_name: student.program_name,
+							courseName: student.courseName,
+							programName: student.programName,
 						});
+					} else {
+						alreadyExisted++;
+						const existingNotif = await manager.query(
+							`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
+							[existingSurvey.id, scheduledStatusId],
+						);
+
+						if (existingNotif?.[0]) {
+							pendingNotifications.push({
+								studentId: student.studentId,
+								studentName: student.studentName,
+								studentCode: student.studentCode,
+								studentEmail: student.studentEmail,
+								surveyId: existingSurvey.id,
+								token: existingNotif[0].token,
+								courseName: student.courseName,
+								programName: student.programName,
+							});
+						}
 					}
 				}
 			});
@@ -204,7 +224,7 @@ export class LcfcNotificationService {
 
 		// 5. Send emails to all pending notifications
 		const surveyBaseUrl =
-			dto.survey_base_url ||
+			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
 		const emailTemplate = await this.surveyEmailService.getEmailTemplate('TG601-T004');
@@ -216,35 +236,35 @@ export class LcfcNotificationService {
 		for (const notif of pendingNotifications) {
 			try {
 				const surveyUrl = `${surveyBaseUrl}/encuesta/lcfc?token=${notif.token}`;
-				const emailBody = this.surveyEmailService.replacePlaceholders(emailTemplate.body, {
-					NombreAlumno: notif.student_name,
-					CodigoAlumno: notif.student_code,
-					NombreCurso: notif.course_name,
-					NombreCarrera: notif.program_name,
+				const emailBody = this.replacePlaceholders(emailTemplate.body, {
+					NombreAlumno: notif.studentName,
+					CodigoAlumno: notif.studentCode,
+					NombreCurso: notif.courseName,
+					NombreCarrera: notif.programName,
 					LinkEncuesta: surveyUrl,
 					Token: notif.token,
 				});
 
 				await this.mailService.sendRawEmail({
-					to: notif.student_email,
+					to: notif.studentEmail,
 					subject: emailTemplate.subject,
 					html: emailBody,
 				});
 
-				await this.notifRepo.markAsSentBySurveyId(notif.survey_id, sentStatusId);
+				await this.notifRepo.markAsSentBySurveyId(notif.surveyId, sentStatusId);
 				emailsSent++;
 			} catch (err) {
 				emailsFailed++;
-				errors.push(`Alumno ${notif.student_code}: ${(err as Error).message}`);
+				errors.push(`Alumno ${notif.studentCode}: ${(err as Error).message}`);
 			}
 		}
 
 		return {
-			total_students: enrolledStudents.length,
-			surveys_created: surveysCreated,
-			already_existed: alreadyExisted,
-			emails_sent: emailsSent,
-			emails_failed: emailsFailed,
+			totalStudents: enrolledStudents.length,
+			surveysCreated,
+			alreadyExisted,
+			emailsSent,
+			emailsFailed,
 			errors,
 		};
 	}
@@ -257,15 +277,15 @@ export class LcfcNotificationService {
 
 		return {
 			valid: true,
-			survey_id: tokenData.survey_id,
-			student_id: tokenData.student_id,
-			student_name: tokenData.student_name,
-			student_code: tokenData.student_code,
-			program_id: tokenData.program_id,
-			program_name: tokenData.program_name,
-			academic_period_id: tokenData.academic_period_id,
-			course_section_id: tokenData.course_section_id,
-			max_register_date: tokenData.max_register_date,
+			surveyId: tokenData!.surveyId,
+			studentId: tokenData!.studentId,
+			studentName: tokenData!.studentName,
+			studentCode: tokenData!.studentCode,
+			programId: tokenData!.programId,
+			programName: tokenData!.programName,
+			academicPeriodId: tokenData!.academicPeriodId,
+			courseSectionId: tokenData!.courseSectionId,
+			maxRegisterDate: tokenData!.maxRegisterDate,
 		};
 	}
 
@@ -274,24 +294,23 @@ export class LcfcNotificationService {
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData, dto.token);
-
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData.course_section_id);
+		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData!.courseSectionId);
 		const language = dto.language ?? 'es';
 
 		// Outcome names come from the DB in Spanish; English falls back to Spanish
 		const outcomeList = outcomes.map((o) => ({
-			outcome_id: o.outcome_id,
+			outcomeId: o.outcomeId,
 			code: o.code,
 			name: o.name,
 			description: o.description ?? null,
 		}));
 
 		return {
-			survey_id: tokenData.survey_id,
-			student_id: tokenData.student_id,
-			student_name: tokenData.student_name,
-			program_id: tokenData.program_id,
-			course_section_id: tokenData.course_section_id,
+			surveyId: tokenData!.surveyId,
+			studentId: tokenData!.studentId,
+			studentName: tokenData!.studentName,
+			programId: tokenData!.programId,
+			courseSectionId: tokenData!.courseSectionId,
 			language,
 			outcomes: outcomeList,
 		};
@@ -312,18 +331,18 @@ export class LcfcNotificationService {
 				for (const item of dto.scores) {
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[surveyId, item.outcome_id],
+						[tokenData!.surveyId, item.outcomeId],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, surveyId, item.outcome_id],
+							[item.score, item.commentaries ?? null, tokenData!.surveyId, item.outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[surveyId, item.outcome_id, item.score, item.commentaries ?? null],
+							[tokenData!.surveyId, item.outcomeId, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -337,15 +356,15 @@ export class LcfcNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, surveyId, commentariesJson]
-						: [closedStatusId, surveyId],
+						? [closedStatusId, tokenData!.surveyId, commentariesJson]
+						: [closedStatusId, tokenData!.surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				survey_id: surveyId,
-				scores_saved: dto.scores.length,
+				surveyId: tokenData!.surveyId,
+				scoresSaved: dto.scores.length,
 				message: 'Encuesta LCFC completada exitosamente. ¡Gracias por tu participación!',
 			};
 		} catch (err) {
@@ -363,9 +382,9 @@ export class LcfcNotificationService {
 			activeStatusId,
 			closedStatusId,
 			{
-				academic_period_id: dto.academic_period_id,
-				program_id: dto.program_id,
-				campus_id: dto.campus_id,
+				academicPeriodId: dto.academicPeriodId,
+				programId: dto.programId,
+				campusId: dto.campusId,
 			},
 		);
 
@@ -376,9 +395,9 @@ export class LcfcNotificationService {
 				completed: data.completed,
 				pending: data.pending,
 				total: data.total,
-				completion_rate_pct: completionRate,
+				completionRatePct: completionRate,
 			},
-			by_course: data.by_course,
+			byCourse: data.byCourse,
 			filters: dto,
 		};
 	}

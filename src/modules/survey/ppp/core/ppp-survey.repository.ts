@@ -17,11 +17,11 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 	async findAllPpp(
 		pppTypeId: number,
 		filters?: {
-			program_id?: number;
-			academic_period_id?: number;
-			campus_id?: number;
-			student_id?: number;
-			practice_number?: number;
+			programId?: number;
+			academicPeriodId?: number;
+			campusId?: number;
+			studentId?: number;
+			practiceNumber?: number;
 		},
 	): Promise<SurveyEntity[]> {
 		const qb = this.repository
@@ -32,16 +32,16 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 			.leftJoinAndSelect('s.campus', 'campus')
 			.where('s.survey_type_id = :typeId', { typeId: pppTypeId });
 
-		if (filters?.program_id !== undefined)
-			qb.andWhere('s.program_id = :programId', { programId: filters.program_id });
-		if (filters?.academic_period_id !== undefined)
-			qb.andWhere('s.academic_period_id = :periodId', { periodId: filters.academic_period_id });
-		if (filters?.campus_id !== undefined)
-			qb.andWhere('s.campus_id = :campusId', { campusId: filters.campus_id });
-		if (filters?.student_id !== undefined)
-			qb.andWhere('s.student_id = :studentId', { studentId: filters.student_id });
-		if (filters?.practice_number !== undefined)
-			qb.andWhere('s.survey_number = :practiceNum', { practiceNum: filters.practice_number });
+		if (filters?.programId !== undefined)
+			qb.andWhere('s.program_id = :programId', { programId: filters.programId });
+		if (filters?.academicPeriodId !== undefined)
+			qb.andWhere('s.academic_period_id = :periodId', { periodId: filters.academicPeriodId });
+		if (filters?.campusId !== undefined)
+			qb.andWhere('s.campus_id = :campusId', { campusId: filters.campusId });
+		if (filters?.studentId !== undefined)
+			qb.andWhere('s.student_id = :studentId', { studentId: filters.studentId });
+		if (filters?.practiceNumber !== undefined)
+			qb.andWhere('s.survey_number = :practiceNum', { practiceNum: filters.practiceNumber });
 
 		qb.orderBy('s.created_at', 'DESC');
 
@@ -63,31 +63,31 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 	async getDashboardData(
 		pppTypeId: number,
 		filters?: {
-			program_id?: number;
-			academic_period_id?: number;
-			campus_id?: number;
-			practice_number?: number;
+			programId?: number;
+			academicPeriodId?: number;
+			campusId?: number;
+			practiceNumber?: number;
 		},
 	): Promise<
-		{ outcome_id: number; outcome_name: string; avg_score: number; total_surveys: number }[]
+		{ outcomeId: number; outcomeName: string; avgScore: number; totalSurveys: number }[]
 	> {
 		const params: any[] = [pppTypeId];
 		const conditions: string[] = [`s.survey_type_id = $1`];
 
-		if (filters?.program_id !== undefined) {
-			params.push(filters.program_id);
+		if (filters?.programId !== undefined) {
+			params.push(filters.programId);
 			conditions.push(`s.program_id = $${params.length}`);
 		}
-		if (filters?.academic_period_id !== undefined) {
-			params.push(filters.academic_period_id);
+		if (filters?.academicPeriodId !== undefined) {
+			params.push(filters.academicPeriodId);
 			conditions.push(`s.academic_period_id = $${params.length}`);
 		}
-		if (filters?.campus_id !== undefined) {
-			params.push(filters.campus_id);
+		if (filters?.campusId !== undefined) {
+			params.push(filters.campusId);
 			conditions.push(`s.campus_id = $${params.length}`);
 		}
-		if (filters?.practice_number !== undefined) {
-			params.push(filters.practice_number);
+		if (filters?.practiceNumber !== undefined) {
+			params.push(filters.practiceNumber);
 			conditions.push(`s.survey_number = $${params.length}`);
 		}
 
@@ -95,10 +95,10 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 
 		return await this.dataSource.query(
 			`SELECT
-				sc.outcome_id,
-				oc.user_outcome_name AS outcome_name,
-				ROUND(AVG(sc.score)::numeric, 4) AS avg_score,
-				COUNT(DISTINCT s.id)::int AS total_surveys
+				sc.outcome_id                    AS "outcomeId",
+				oc.user_outcome_name             AS "outcomeName",
+				ROUND(AVG(sc.score)::numeric, 4) AS "avgScore",
+				COUNT(DISTINCT s.id)::int        AS "totalSurveys"
 			FROM evidence.surveys s
 			INNER JOIN survey.scores sc ON sc.survey_id = s.id
 			LEFT JOIN survey.outcome_configs oc ON oc.outcome_id = sc.outcome_id

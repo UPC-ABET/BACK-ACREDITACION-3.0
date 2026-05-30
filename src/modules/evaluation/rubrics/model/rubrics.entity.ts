@@ -10,13 +10,13 @@ export class RubricEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerColumn({ nullable: false })
-	rubric_type_id: number;
+	rubricTypeId: number;
 
 	@IntegerColumn({ nullable: false })
-	grade_type_id: number;
+	gradeTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	// %% RELATIONS
 
@@ -25,15 +25,15 @@ export class RubricEntity extends BaseEntity {
 		name: 'study_plan_course_id',
 		foreignKeyConstraintName: 'FK_rubrics_study_plan_course_id',
 	})
-	study_plan_course: StudyPlanCourseEntity;
+	studyPlanCourse: StudyPlanCourseEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'grade_type_id', foreignKeyConstraintName: 'FK_rubrics_grade_type_id' })
-	grade_type: TypeEntity;
+	gradeType: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'rubric_type_id', foreignKeyConstraintName: 'FK_rubrics_rubric_type_id' })
-	rubric_type: TypeEntity;
+	rubricType: TypeEntity;
 
 	@OneToMany(() => RubricQuestionEntity, (rq) => rq.rubric, { cascade: true, eager: false })
 	questions: RubricQuestionEntity[];

@@ -9,10 +9,10 @@ export class FindingOutcomeEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	finding_id: number;
+	findingId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
 	// %% RELATIONS
 

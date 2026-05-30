@@ -17,13 +17,13 @@ import * as ExcelJS from 'exceljs';
 import { XLSX_THEME } from './pdf-theme';
 
 interface StatusReportRow {
-	course_name: string;
-	area_label: string;
-	program_label: string;
-	coordinator_name: string | null;
-	coordinator_email: string | null;
-	coordinator_code: string | null;
-	status_code: string | null;
+	courseName: string;
+	areaLabel: string;
+	programLabel: string;
+	coordinatorName: string | null;
+	coordinatorEmail: string | null;
+	coordinatorCode: string | null;
+	statusCode: string | null;
 }
 
 @Injectable()
@@ -93,17 +93,17 @@ export class IfcReportService {
 
 	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number) {
 		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [
-			dto.chart_ids,
+			dto.chartIds,
 			schoolId,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
-		const schoolCode: string | undefined = codeRow[0]?.school_code;
+		const schoolCode: string | undefined = codeRow[0]?.schoolCode;
 		if (!schoolCode) {
 			this.logger.warn(
 				`generateStatusReport: REPORT_CODES_SQL returned no school_code for schoolId=${schoolId}`,
 			);
 		}
-		const programCodes: string[] = codeRow[0]?.program_codes ?? [];
+		const programCodes: string[] = codeRow[0]?.programCodes ?? [];
 		const codePrefix = schoolCode ?? IFC_INSTRUMENT_CODE;
 		const suffix = programCodes.length === 1 ? `${codePrefix}_${programCodes[0]}` : codePrefix;
 
@@ -117,8 +117,8 @@ export class IfcReportService {
 		);
 
 		const rows: StatusReportRow[] = await this.dataSource.query(STATUS_REPORT_SQL, [
-			dto.chart_ids,
-			dto.period_id,
+			dto.chartIds,
+			dto.periodId,
 			schoolId,
 			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
@@ -137,9 +137,9 @@ export class IfcReportService {
 
 	private buildPdfFilename(data: any, lang: 'es' | 'en'): string {
 		const ifc = data.ifc;
-		const courseCode = ifc.course_code ?? '';
-		const courseName = (ifc.course_name?.[lang] ?? ifc.course_name?.es ?? '').replace(/\s+/g, '_');
-		const period = ifc.academic_period_code ?? '';
+		const courseCode = ifc.courseCode ?? '';
+		const courseName = (ifc.courseName?.[lang] ?? ifc.courseName?.es ?? '').replace(/\s+/g, '_');
+		const period = ifc.academicPeriodCode ?? '';
 		const profCode = ifc.coordinator?.code ?? '';
 		return `${IFC_INSTRUMENT_CODE}_${courseCode}_${courseName}_${period}_${profCode}.pdf`;
 	}
@@ -149,14 +149,14 @@ export class IfcReportService {
 		const ifc = data.ifc;
 
 		const outcomeBullets =
-			data.outcome_course_result
+			data.outcomeCourseResult
 				.flatMap((p: any) =>
 					p.commissions.flatMap((c: any) =>
 						c.outcomes.map(
 							(o: any) => `
 							<li><strong>Student Outcome</strong>
-								(${esc(p.program_name?.[lang])} - ${esc(c.commission_name?.[lang])} - ${esc(o.outcome_name?.[lang])})
-								"${esc(o.outcome_description?.[lang])}"
+								(${esc(p.programName?.[lang])} - ${esc(c.commissionName?.[lang])} - ${esc(o.outcomeName?.[lang])})
+								"${esc(o.outcomeDescription?.[lang])}"
 							</li>`,
 						),
 					),
@@ -169,12 +169,12 @@ export class IfcReportService {
 				.join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
 
 		const previousActionRows =
-			data.previous_actions
+			data.previousActions
 				.map(
 					(a: any) =>
 						`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(a.completeness?.name?.[lang])}</td></tr>`,
 				)
-				.join('') || `<tr><td colspan="3" class="empty">${esc(L.s2_empty)}</td></tr>`;
+				.join('') || `<tr><td colspan="3" class="empty">${esc(L.s2Empty)}</td></tr>`;
 
 		const actionRows =
 			data.findings
@@ -195,36 +195,36 @@ export class IfcReportService {
 			<html lang="${lang}">
 			<head>
 				<meta charset="utf-8" />
-				<title>${esc(L.report_title)}</title>
+				<title>${esc(L.reportTitle)}</title>
 				<style>${PDF_STYLES}</style>
 			</head>
 			<body>
 				<header>
 					${logoTag}
 					<h1 class="title">${esc(L.university)}</h1>
-					<h2 class="subtitle">${esc(ifc.program_label?.[lang] ?? '')}</h2>
+					<h2 class="subtitle">${esc(ifc.programLabel?.[lang] ?? '')}</h2>
 					<hr class="rule" />
-					<h2 class="report-title">${esc(L.report_title)}</h2>
-					<p><strong>${esc(L.semester)}:</strong> ${esc(ifc.academic_period_code)}</p>
-					<p><strong>${esc(L.course)}:</strong> ${esc(ifc.course_code ?? '')} - ${esc(ifc.course_name?.[lang])}</p>
+					<h2 class="report-title">${esc(L.reportTitle)}</h2>
+					<p><strong>${esc(L.semester)}:</strong> ${esc(ifc.academicPeriodCode)}</p>
+					<p><strong>${esc(L.course)}:</strong> ${esc(ifc.courseCode ?? '')} - ${esc(ifc.courseName?.[lang])}</p>
 					<p><strong>${esc(L.coordinator)}:</strong> ${esc(ifc.coordinator?.name ?? '')}</p>
 				</header>
 
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s1_title)}</h3>
+					<h3>${esc(L.s1Title)}</h3>
 					<ul>${outcomeBullets}</ul>
-					<h4>${esc(L.s11_title)}</h4>
-					<p>${esc(ifc.course_learning_outcome?.[lang]) || '-'}</p>
+					<h4>${esc(L.s11Title)}</h4>
+					<p>${esc(ifc.courseLearningOutcome?.[lang]) || '-'}</p>
 				</section>
 
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s2_title)}</h3>
+					<h3>${esc(L.s2Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s2_col_code)}</th><th>${esc(L.s2_col_desc)}</th><th>${esc(L.s2_col_state)}</th></tr></thead>
+						<thead><tr><th>${esc(L.s2ColCode)}</th><th>${esc(L.s2ColDesc)}</th><th>${esc(L.s2ColState)}</th></tr></thead>
 						<tbody>${previousActionRows}</tbody>
 					</table>
 				</section>
@@ -232,9 +232,9 @@ export class IfcReportService {
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s3_title)}</h3>
+					<h3>${esc(L.s3Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s3_col_code)}</th><th>${esc(L.s3_col_desc)}</th></tr></thead>
+						<thead><tr><th>${esc(L.s3ColCode)}</th><th>${esc(L.s3ColDesc)}</th></tr></thead>
 						<tbody>${findingRows}</tbody>
 					</table>
 				</section>
@@ -242,9 +242,9 @@ export class IfcReportService {
 				<hr class="rule" />
 
 				<section>
-					<h3>${esc(L.s4_title)}</h3>
+					<h3>${esc(L.s4Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s4_col_code)}</th><th>${esc(L.s4_col_desc)}</th><th>${esc(L.s4_col_finding)}</th></tr></thead>
+						<thead><tr><th>${esc(L.s4ColCode)}</th><th>${esc(L.s4ColDesc)}</th><th>${esc(L.s4ColFinding)}</th></tr></thead>
 						<tbody>${actionRows}</tbody>
 					</table>
 				</section>
@@ -286,15 +286,15 @@ export class IfcReportService {
 		});
 
 		for (const r of rows) {
-			const statusCode = r.status_code ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
+			const statusCode = r.statusCode ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
 			ws.addRow([
-				r.course_name,
-				r.area_label,
-				r.program_label,
+				r.courseName,
+				r.areaLabel,
+				r.programLabel,
 				statusLabelByCode[statusCode] ?? statusCode,
-				r.coordinator_name ?? '—',
-				r.coordinator_code ?? '—',
-				r.coordinator_email ?? '—',
+				r.coordinatorName ?? '—',
+				r.coordinatorCode ?? '—',
+				r.coordinatorEmail ?? '—',
 			]);
 		}
 

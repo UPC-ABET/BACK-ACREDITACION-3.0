@@ -6,7 +6,7 @@ import {
 	FilterStudentCourseGradeDto,
 } from '../../model/student-course-grades.dtos';
 
-const cfg = studentCourseGradesRoutes.student_course_grades;
+const cfg = studentCourseGradesRoutes.studentCourseGrades;
 
 export const SwaggerStudentCourseGradeController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

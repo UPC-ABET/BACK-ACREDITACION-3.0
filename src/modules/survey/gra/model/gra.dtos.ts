@@ -18,26 +18,26 @@ import { Type } from 'class-transformer';
 export class CreateGraConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID del outcome académico vinculado' })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsString()
-	@ApiProperty({ example: 'Liderazgo', description: 'Nombre de la competencia en español' })
-	name_es: string;
-
-	@IsOptional()
-	@IsString()
-	@ApiProperty({ example: 'Leadership', required: false })
-	name_en?: string;
+	@ApiProperty({ example: 'nameEsExample', description: 'Nombre de la competencia en español' })
+	nameEs: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Capacidad para dirigir y motivar equipos', required: false })
-	description_es?: string;
+	@ApiProperty({ example: 'nameEnExample', required: false })
+	nameEn?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Ability to lead and motivate teams', required: false })
-	description_en?: string;
+	@ApiProperty({ example: 'descriptionEsExample', required: false })
+	descriptionEs?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: 'descriptionEnExample', required: false })
+	descriptionEn?: string;
 
 	@IsOptional()
 	@IsNumber()
@@ -46,54 +46,54 @@ export class CreateGraConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera', required: false })
-	program_id?: number;
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera', required: false })
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico', required: false })
-	academic_period_id?: number;
+	@ApiProperty({ example: 1, description: 'ID del período académico', required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 7,
+		example: 1,
 		description: 'ID de la comisión (WASC, no-WASC, etc.)',
 		required: false,
 	})
-	commission_id?: number;
+	commissionId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, description: 'Visible en la encuesta', required: false })
-	is_visible?: boolean;
+	isVisible?: boolean;
 }
 
 export class UpdateGraConfigDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Liderazgo', required: false })
-	name_es?: string;
+	@ApiProperty({ example: 'nameEsExample', required: false })
+	nameEs?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Leadership', required: false })
-	name_en?: string;
+	@ApiProperty({ example: 'nameEnExample', required: false })
+	nameEn?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ required: false })
-	description_es?: string;
+	@ApiProperty({ example: 'descriptionEsExample', required: false })
+	descriptionEs?: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ required: false })
-	description_en?: string;
+	@ApiProperty({ example: 'descriptionEnExample', required: false })
+	descriptionEn?: string;
 
 	@IsOptional()
 	@IsNumber()
@@ -102,55 +102,55 @@ export class UpdateGraConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
-	program_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
-	academic_period_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 7, description: 'ID de la comisión', required: false })
-	commission_id?: number;
+	@ApiProperty({ example: 1, description: 'ID de la comisión', required: false })
+	commissionId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_visible?: boolean;
+	isVisible?: boolean;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class FilterGraConfigDto {
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
-	program_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
-	academic_period_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 7, description: 'Filtrar por comisión', required: false })
-	commission_id?: number;
+	@ApiProperty({ example: 1, description: 'Filtrar por comisión', required: false })
+	commissionId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_visible?: boolean;
+	isVisible?: boolean;
 }
 
 // ─────────────────────────────────────────────
@@ -159,21 +159,21 @@ export class FilterGraConfigDto {
 
 export class ReplicateGraConfigDto {
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'ID del período académico origen (a copiar)' })
-	source_academic_period_id: number;
+	@ApiProperty({ example: 1, description: 'ID del período académico origen (a copiar)' })
+	sourceAcademicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico destino (nuevo período)' })
-	target_academic_period_id: number;
+	@ApiProperty({ example: 1, description: 'ID del período académico destino (nuevo período)' })
+	targetAcademicPeriodId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 5,
+		example: 1,
 		description: 'Filtrar por programa/carrera (opcional)',
 		required: false,
 	})
-	program_id?: number;
+	programId?: number;
 }
 
 // ─────────────────────────────────────────────
@@ -182,12 +182,12 @@ export class ReplicateGraConfigDto {
 
 export class ListGraSurveyOutcomesDto {
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
-	program_id: number;
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera' })
+	programId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
-	academic_period_id: number;
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
+	academicPeriodId: number;
 }
 
 // ─────────────────────────────────────────────
@@ -196,53 +196,53 @@ export class ListGraSurveyOutcomesDto {
 
 export class SaveGraNotificationDto {
 	@IsNumber()
-	@ApiProperty({ example: 42, description: 'ID del estudiante a agregar' })
-	student_id: number;
+	@ApiProperty({ example: 1, description: 'ID del estudiante a agregar' })
+	studentId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 5, description: 'ID del programa/carrera' })
-	program_id: number;
+	@ApiProperty({ example: 1, description: 'ID del programa/carrera' })
+	programId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
-	academic_period_id: number;
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
+	academicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'ID del campus/sede' })
-	campus_id: number;
+	@ApiProperty({ example: 1, description: 'ID del campus/sede' })
+	campusId: number;
 
 	@IsString()
 	@ApiProperty({
-		example: '2026-07-31T23:59:59Z',
+		example: 'maxRegisterDateExample',
 		description: 'Fecha límite para responder la encuesta',
 	})
-	max_register_date: string;
+	maxRegisterDate: string;
 }
 
 export class ListStudentsGraDto {
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
-	program_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
-	academic_period_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 2, required: false })
-	campus_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	campusId?: number;
 
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: '20210001',
+		example: 'studentCodeExample',
 		description: 'Búsqueda por código de alumno',
 		required: false,
 	})
-	student_code?: string;
+	studentCode?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -251,26 +251,26 @@ export class ListStudentsGraDto {
 
 export class SendGraEmailDto {
 	@IsNumber()
-	@ApiProperty({ example: 3, description: 'ID del período académico' })
-	academic_period_id: number;
+	@ApiProperty({ example: 1, description: 'ID del período académico' })
+	academicPeriodId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 5,
+		example: 1,
 		description: 'Filtrar por programa (opcional, 0=todos)',
 		required: false,
 	})
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'http://localhost:3001',
+		example: 'surveyBaseUrlExample',
 		description: 'URL base del frontend para el link de encuesta',
 		required: false,
 	})
-	survey_base_url?: string;
+	surveyBaseUrl?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -280,51 +280,51 @@ export class SendGraEmailDto {
 export class GetSurveyByTokenDto {
 	@IsString()
 	@ApiProperty({
-		example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+		example: 'tokenExample',
 		description: 'Token único de la encuesta',
 	})
 	token: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'es', description: 'Idioma de respuesta: es | en', required: false })
+	@ApiProperty({ example: 'languageExample', description: 'Idioma de respuesta: es | en', required: false })
 	language?: string;
 }
 
 export class GraScoreItemDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID del outcome de la config GRA' })
-	outcome_config_id: number;
+	outcomeConfigId: number;
 
 	@IsNumber()
 	@Min(1)
 	@Max(5)
-	@ApiProperty({ example: 4, description: 'Puntaje del outcome (1 - 5)' })
+	@ApiProperty({ example: 1, description: 'Puntaje del outcome (1 - 5)' })
 	score: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Muy buen dominio del tema', required: false })
+	@ApiProperty({ example: 'commentariesExample', required: false })
 	commentaries?: string;
 }
 
 export class CompleteGraSurveyDto {
 	@IsString()
 	@ApiProperty({
-		example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+		example: 'tokenExample',
 		description: 'Token único de la encuesta',
 	})
 	token: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'Excelente formación recibida', required: false })
+	@ApiProperty({ example: 'commentariesExample', required: false })
 	commentaries?: string;
 
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => GraScoreItemDto)
-	@ApiProperty({ type: [GraScoreItemDto], description: 'Puntajes por competencia GRA' })
+	@ApiProperty({ example: {}, type: [GraScoreItemDto], description: 'Puntajes por competencia GRA' })
 	scores: GraScoreItemDto[];
 }
 
@@ -335,16 +335,16 @@ export class CompleteGraSurveyDto {
 export class DashboardGraDto {
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 3, required: false })
-	academic_period_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 5, required: false })
-	program_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 2, required: false })
-	campus_id?: number;
+	@ApiProperty({ example: 1, required: false })
+	campusId?: number;
 }

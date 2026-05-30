@@ -9,7 +9,7 @@ export class ProgramEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	modality_type_id: number;
+	modalityTypeId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;
@@ -27,5 +27,5 @@ export class ProgramEntity extends BaseEntity {
 		name: 'modality_type_id',
 		foreignKeyConstraintName: 'FK_programs_modality_type_id',
 	})
-	modality_type: TypeEntity;
+	modalityType: TypeEntity;
 }

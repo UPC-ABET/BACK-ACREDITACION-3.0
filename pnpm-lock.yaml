@@ -113,6 +113,9 @@ importers:
       typeorm:
         specifier: ^0.3.20
         version: 0.3.29(pg@8.20.0)(ts-node@10.9.2(@types/node@20.19.41)(typescript@5.9.3))
+      typeorm-naming-strategies:
+        specifier: ^4.1.0
+        version: 4.1.0(typeorm@0.3.29(pg@8.20.0)(ts-node@10.9.2(@types/node@20.19.41)(typescript@5.9.3)))
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
@@ -3602,6 +3605,11 @@ packages:
 
   typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
+
+  typeorm-naming-strategies@4.1.0:
+    resolution: {integrity: sha512-vPekJXzZOTZrdDvTl1YoM+w+sUIfQHG4kZTpbFYoTsufyv9NIBRe4Q+PdzhEAFA2std3D9LZHEb1EjE9zhRpiQ==}
+    peerDependencies:
+      typeorm: ^0.2.0 || ^0.3.0
 
   typeorm-ts-node-commonjs@0.3.20:
     resolution: {integrity: sha512-lXjve7w7OcF3s5+dHnCsrBjUTukpVeiS0bDe5KDXWcDx8TyRW0GTTg9kjWgHzFgHgBIBBu4WGXM0iuGpEgaV9g==}
@@ -7782,6 +7790,10 @@ snapshots:
   typed-query-selector@2.12.2: {}
 
   typedarray@0.0.6: {}
+
+  typeorm-naming-strategies@4.1.0(typeorm@0.3.29(pg@8.20.0)(ts-node@10.9.2(@types/node@20.19.41)(typescript@5.9.3))):
+    dependencies:
+      typeorm: 0.3.29(pg@8.20.0)(ts-node@10.9.2(@types/node@20.19.41)(typescript@5.9.3))
 
   typeorm-ts-node-commonjs@0.3.20: {}
 

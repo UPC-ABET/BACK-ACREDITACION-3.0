@@ -95,22 +95,22 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		graSurveyTypeId: number,
 		activeStatusId: number,
 		closedStatusId: number,
-		filters: { academic_period_id?: number; program_id?: number; campus_id?: number },
-	): Promise<{ completed: number; pending: number; total: number; by_program: any[] }> {
+		filters: { academicPeriodId?: number; programId?: number; campusId?: number },
+	): Promise<{ completed: number; pending: number; total: number; byProgram: any[] }> {
 		let whereClause = `s.survey_type_id = $1`;
 		const params: any[] = [graSurveyTypeId];
 
-		if (filters.academic_period_id) {
+		if (filters.academicPeriodId) {
 			whereClause += ` AND s.academic_period_id = $${params.length + 1}`;
-			params.push(filters.academic_period_id);
+			params.push(filters.academicPeriodId);
 		}
-		if (filters.program_id) {
+		if (filters.programId) {
 			whereClause += ` AND s.program_id = $${params.length + 1}`;
-			params.push(filters.program_id);
+			params.push(filters.programId);
 		}
-		if (filters.campus_id) {
+		if (filters.campusId) {
 			whereClause += ` AND s.campus_id = $${params.length + 1}`;
-			params.push(filters.campus_id);
+			params.push(filters.campusId);
 		}
 
 		const [summary, byProgram] = await Promise.all([
@@ -125,11 +125,11 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			),
 			this.dataSource.query(
 				`SELECT
-					p.name AS program_name,
-					p.code AS program_code,
-					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int AS completed,
-					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int AS pending,
-					COUNT(*)::int AS total
+					p.name AS "programName",
+					p.code AS "programCode",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int AS "completed",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int AS "pending",
+					COUNT(*)::int AS "total"
 				FROM evidence.surveys s
 				INNER JOIN academic.programs p ON p.id = s.program_id
 				WHERE ${whereClause}
@@ -143,7 +143,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			completed: summary[0]?.completed ?? 0,
 			pending: summary[0]?.pending ?? 0,
 			total: summary[0]?.total ?? 0,
-			by_program: byProgram,
+			byProgram,
 		};
 	}
 

@@ -3,21 +3,21 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateStudentCourseOutcomeGradeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -26,23 +26,23 @@ export class CreateStudentCourseOutcomeGradeDto {
 
 export class UpdateStudentCourseOutcomeGradeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -52,20 +52,20 @@ export class UpdateStudentCourseOutcomeGradeDto {
 
 export class FilterStudentCourseOutcomeGradeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

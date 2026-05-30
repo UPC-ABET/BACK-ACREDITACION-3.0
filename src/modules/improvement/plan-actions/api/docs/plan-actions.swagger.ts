@@ -6,7 +6,7 @@ import {
 	FilterPlanActionDto,
 } from '../../model/plan-actions.dtos';
 
-const cfg = planActionsRoutes.plan_actions;
+const cfg = planActionsRoutes.planActions;
 
 export const SwaggerPlanActionController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

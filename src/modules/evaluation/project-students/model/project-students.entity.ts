@@ -9,10 +9,10 @@ export class ProjectStudentEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	project_id: number;
+	projectId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	// %% RELATIONS
 
@@ -25,5 +25,5 @@ export class ProjectStudentEntity extends BaseEntity {
 		name: 'student_section_enrollment_id',
 		foreignKeyConstraintName: 'FK_project_students_student_section_enrollment_id',
 	})
-	student_section_enrollment: StudentSectionEnrollmentEntity;
+	studentSectionEnrollment: StudentSectionEnrollmentEntity;
 }

@@ -7,7 +7,7 @@ import { getRequiredJwtSecret } from '../jwt.config';
 import { UserAuthorizationService } from 'src/modules/organization/users/api/user-authorization.service';
 import { usersValidationStrings } from 'src/modules/organization/users/config/strings/users.validation';
 
-const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -25,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 	}
 
-	async validate(payload: { userId: number; activeRoleId?: number; school_id: number }) {
+	async validate(payload: { userId: number; activeRoleId?: number; schoolId: number }) {
 		try {
 			const profile = await this.userAuthorizationService.buildAuthorizationProfile(
 				Number(payload.userId),
@@ -37,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 				activeRole: profile.activeRole,
 				allowedRoles: profile.allowedRoles,
 				permissions: profile.permissions,
-				school_id: payload.school_id,
+				schoolId: payload.schoolId,
 			};
 		} catch {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);

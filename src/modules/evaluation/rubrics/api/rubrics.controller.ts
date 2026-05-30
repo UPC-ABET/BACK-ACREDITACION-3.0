@@ -58,25 +58,25 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetAll()
-	@ApiQuery({ name: 'school_id', required: false, type: Number, description: 'ID de la escuela' })
+	@ApiQuery({ name: 'schoolId', required: false, type: Number, description: 'ID de la escuela' })
 	@ApiQuery({
-		name: 'program_id',
+		name: 'programId',
 		required: false,
 		type: Number,
 		description: 'ID del programa académico (carrera)',
 	})
 	@ApiQuery({
-		name: 'academic_period_id',
+		name: 'academicPeriodId',
 		required: false,
 		type: Number,
 		description: 'ID del período académico',
 	})
-	@ApiQuery({ name: 'course_id', required: false, type: Number, description: 'ID del curso' })
+	@ApiQuery({ name: 'courseId', required: false, type: Number, description: 'ID del curso' })
 	async getAll(
-		@Query('school_id', new ParseIntPipe({ optional: true })) schoolId?: number,
-		@Query('program_id', new ParseIntPipe({ optional: true })) programId?: number,
-		@Query('academic_period_id', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
-		@Query('course_id', new ParseIntPipe({ optional: true })) courseId?: number,
+		@Query('schoolId', new ParseIntPipe({ optional: true })) schoolId?: number,
+		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
+		@Query('academicPeriodId', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
+		@Query('courseId', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
 		return parseSuccessResponse(
 			await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }),

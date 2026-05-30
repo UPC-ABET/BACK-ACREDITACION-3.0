@@ -11,25 +11,25 @@ export class ChartEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	staff_id: number;
+	staffId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	chart_level_id: number;
+	chartLevelId: number;
 
 	@IntegerColumn({ nullable: true })
-	root_chart_detail_id: number | null;
+	rootChartDetailId: number | null;
 
 	@JsonColumn({ nullable: false })
-	level_title: I18nText;
+	levelTitle: I18nText;
 
 	@IntegerColumn({ nullable: true })
-	entity_type_id: number | null;
+	entityTypeId: number | null;
 
 	@IntegerColumn({ nullable: true })
-	entity_code: number | null;
+	entityCode: number | null;
 
 	// %% RELATIONS
 
@@ -42,9 +42,9 @@ export class ChartEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_charts_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 
 	@ManyToOne(() => ChartLevelEntity)
 	@JoinColumn({ name: 'chart_level_id', foreignKeyConstraintName: 'FK_charts_chart_level_id' })
-	chart_level: ChartLevelEntity;
+	chartLevel: ChartLevelEntity;
 }

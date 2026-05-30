@@ -23,16 +23,16 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 
 		// ── Direct Filters ─────────────────────────────────────────────────
 		if (filters.code) qb.andWhere('prog.code = :code', { code: filters.code });
-		if (filters.is_active !== undefined)
-			qb.andWhere('prog.is_active = :is_active', { is_active: filters.is_active });
-		if (filters.modality_type_id)
-			qb.andWhere('prog.modality_type_id = :modality_type_id', {
-				modality_type_id: filters.modality_type_id,
+		if (filters.isActive !== undefined)
+			qb.andWhere('prog.is_active = :isActive', { isActive: filters.isActive });
+		if (filters.modalityTypeId)
+			qb.andWhere('prog.modality_type_id = :modalityTypeId', {
+				modalityTypeId: filters.modalityTypeId,
 			});
 
 		// ── Flags ────────────────────────────────────────────────────────────
-		const needsSp = !!(filters.academic_period_id || filters.school_id);
-		const needsSpap = !!filters.academic_period_id;
+		const needsSp = !!(filters.academicPeriodId || filters.schoolId);
+		const needsSpap = !!filters.academicPeriodId;
 
 		// ── JOINs ────────────────────────────────────────────────────────────
 		if (needsSp) {
@@ -40,14 +40,14 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 		}
 		if (needsSpap) {
 			qb.leftJoin(StudyPlanAcademicPeriodEntity, 'spap', 'spap.study_plan_id = sp.id');
-			qb.andWhere('spap.academic_period_id = :academic_period_id', {
-				academic_period_id: filters.academic_period_id,
+			qb.andWhere('spap.academic_period_id = :academicPeriodId', {
+				academicPeriodId: filters.academicPeriodId,
 			});
 		}
 
 		// ── School ──────────────────────────────────────────────────────────
 		// ── School ──────────────────────────────────────────────────────────
-		if (filters.school_id) {
+		if (filters.schoolId) {
 			qb.andWhere(
 				`prog.id IN (
             SELECT ch_prog.entity_code
@@ -62,10 +62,10 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
                    AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
             INNER JOIN organization.schools sch
                    ON  sch.id      = ch_sch.entity_code
-            WHERE  sch.id = :school_id
+            WHERE  sch.id = :schoolId
         )`,
 			);
-			qb.setParameter('school_id', filters.school_id);
+			qb.setParameter('schoolId', filters.schoolId);
 		}
 		return await qb.getMany();
 	}

@@ -7,26 +7,26 @@ import { SchoolEntity } from 'src/modules/organization/schools/model/schools.ent
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notification_configs', schema: 'ifc' })
-@Unique('UQ_4689ce4c54254910a1e7ab56b1c', [
-	'school_id',
-	'academic_period_id',
-	'trigger_type_id',
-	'ifc_status_type_id',
+@Unique('UQ_notification_configs_school_period_trigger_status', [
+	'schoolId',
+	'academicPeriodId',
+	'triggerTypeId',
+	'ifcStatusTypeId',
 ])
 export class NotificationConfigEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	school_id: number;
+	schoolId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	trigger_type_id: number;
+	triggerTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	ifc_status_type_id: number;
+	ifcStatusTypeId: number;
 
 	@JsonColumn({ nullable: false })
 	title: I18nText;
@@ -35,10 +35,10 @@ export class NotificationConfigEntity extends BaseEntity {
 	body: I18nText;
 
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
-	to_chart_level_type_ids: string[];
+	toChartLevelTypeIds: string[];
 
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
-	cc_chart_level_type_ids: string[];
+	ccChartLevelTypeIds: string[];
 
 	// %% RELATIONS
 
@@ -51,19 +51,19 @@ export class NotificationConfigEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_notification_configs_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'trigger_type_id',
 		foreignKeyConstraintName: 'FK_notification_configs_trigger_type_id',
 	})
-	trigger_type: TypeEntity;
+	triggerType: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'ifc_status_type_id',
 		foreignKeyConstraintName: 'FK_notification_configs_ifc_status_type_id',
 	})
-	ifc_status_type: TypeEntity;
+	ifcStatusType: TypeEntity;
 }

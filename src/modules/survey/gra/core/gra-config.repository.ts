@@ -17,36 +17,36 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}
 
 	async findAllGra(filters?: {
-		program_id?: number;
-		academic_period_id?: number;
-		commission_id?: number;
-		is_active?: boolean;
-		is_visible?: boolean;
+		programId?: number;
+		academicPeriodId?: number;
+		commissionId?: number;
+		isActive?: boolean;
+		isVisible?: boolean;
 	}): Promise<OutcomeConfigEntity[]> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
 			.where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
-		if (filters?.program_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.program_id });
+		if (filters?.programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
 		}
-		if (filters?.academic_period_id !== undefined) {
+		if (filters?.academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
-				periodId: filters.academic_period_id,
+				periodId: filters.academicPeriodId,
 			});
 		}
-		if (filters?.commission_id !== undefined) {
+		if (filters?.commissionId !== undefined) {
 			qb.andWhere(`(oc.extra->>'commission_id')::int = :commissionId`, {
-				commissionId: filters.commission_id,
+				commissionId: filters.commissionId,
 			});
 		}
-		if (filters?.is_active !== undefined) {
-			qb.andWhere('oc.is_active = :isActive', { isActive: filters.is_active });
+		if (filters?.isActive !== undefined) {
+			qb.andWhere('oc.is_active = :isActive', { isActive: filters.isActive });
 		}
-		if (filters?.is_visible !== undefined) {
+		if (filters?.isVisible !== undefined) {
 			qb.andWhere(`(oc.extra->>'is_visible')::boolean = :isVisible`, {
-				isVisible: filters.is_visible,
+				isVisible: filters.isVisible,
 			});
 		}
 
@@ -65,21 +65,21 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}
 
 	async existsGra(
-		outcome_id: number,
-		program_id?: number,
-		academic_period_id?: number,
+		outcomeId: number,
+		programId?: number,
+		academicPeriodId?: number,
 	): Promise<boolean> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
-			.where('oc.outcome_id = :outcome_id', { outcome_id })
+			.where('oc.outcome_id = :outcomeId', { outcomeId })
 			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
-		if (program_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: program_id });
+		if (programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
 		}
-		if (academic_period_id !== undefined) {
+		if (academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
-				periodId: academic_period_id,
+				periodId: academicPeriodId,
 			});
 		}
 
@@ -96,18 +96,18 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 
 	/** Retorna outcomes agrupados por comisión para un programa y período (usado en selector de UI) */
 	async findOutcomesGroupedByCommission(
-		program_id: number,
-		academic_period_id: number,
+		programId: number,
+		academicPeriodId: number,
 	): Promise<Record<string, any>[]> {
 		return await this.dataSource.query(
 			`SELECT
-				pc.id         AS program_commission_id,
-				pc.commission_id,
-				c.name        AS commission_name,
-				o.id          AS outcome_id,
-				o.outcome_code,
-				o.outcome_name,
-				o.outcome_description
+				pc.id         AS "programCommissionId",
+				pc.commission_id AS "commissionId",
+				c.name        AS "commissionName",
+				o.id          AS "outcomeId",
+				o.outcome_code AS "outcomeCode",
+				o.outcome_name AS "outcomeName",
+				o.outcome_description AS "outcomeDescription"
 			FROM accreditation.outcomes o
 			JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
 			LEFT JOIN accreditation.commissions c ON c.id = pc.commission_id
@@ -115,7 +115,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			  AND pc.academic_period_id = $2
 			  AND o.is_active = true
 			ORDER BY pc.commission_id, o.outcome_code`,
-			[program_id, academic_period_id],
+			[programId, academicPeriodId],
 		);
 	}
 }

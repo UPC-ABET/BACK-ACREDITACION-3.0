@@ -20,21 +20,21 @@ export class PppConfigService {
 		await PppValidation.validateCreateConfig(this.configRepo, dto);
 
 		const extra = {
-			survey_type: PPP_SURVEY_TYPE,
-			name_en: dto.name_en ?? null,
-			description_en: dto.description_en ?? null,
+			surveyType: PPP_SURVEY_TYPE,
+			nameEn: dto.nameEn ?? null,
+			descriptionEn: dto.descriptionEn ?? null,
 			order: dto.order ?? null,
-			program_id: dto.program_id ?? null,
-			academic_period_id: dto.academic_period_id ?? null,
-			is_visible: dto.is_visible ?? true,
+			programId: dto.programId ?? null,
+			academicPeriodId: dto.academicPeriodId ?? null,
+			isVisible: dto.isVisible ?? true,
 		};
 
 		return await this.configRepo.create({
-			outcome_id: dto.outcome_id,
-			user_outcome_name: dto.name_es as any,
-			user_outcome_description: (dto.description_es ?? null) as any,
+			outcomeId: dto.outcomeId,
+			userOutcomeName: dto.nameEs as any,
+			userOutcomeDescription: (dto.descriptionEs ?? null) as any,
 			extra,
-			is_active: true,
+			isActive: true,
 		});
 	}
 
@@ -56,40 +56,39 @@ export class PppConfigService {
 
 		const extra = {
 			...currentExtra,
-			...(dto.name_en !== undefined && { name_en: dto.name_en }),
-			...(dto.description_en !== undefined && { description_en: dto.description_en }),
+			...(dto.nameEn !== undefined && { nameEn: dto.nameEn }),
+			...(dto.descriptionEn !== undefined && { descriptionEn: dto.descriptionEn }),
 			...(dto.order !== undefined && { order: dto.order }),
-			...(dto.program_id !== undefined && { program_id: dto.program_id }),
-			...(dto.academic_period_id !== undefined && { academic_period_id: dto.academic_period_id }),
-			...(dto.is_visible !== undefined && { is_visible: dto.is_visible }),
+			...(dto.programId !== undefined && { programId: dto.programId }),
+			...(dto.academicPeriodId !== undefined && { academicPeriodId: dto.academicPeriodId }),
+			...(dto.isVisible !== undefined && { isVisible: dto.isVisible }),
 		};
 
 		const updatePayload: Record<string, any> = { extra };
-		if (dto.outcome_id !== undefined) updatePayload.outcome_id = dto.outcome_id;
-		if (dto.name_es !== undefined) updatePayload.user_outcome_name = dto.name_es;
-		if (dto.description_es !== undefined)
-			updatePayload.user_outcome_description = dto.description_es;
-		if (dto.is_active !== undefined) updatePayload.is_active = dto.is_active;
+		if (dto.outcomeId !== undefined) updatePayload.outcomeId = dto.outcomeId;
+		if (dto.nameEs !== undefined) updatePayload.userOutcomeName = dto.nameEs;
+		if (dto.descriptionEs !== undefined) updatePayload.userOutcomeDescription = dto.descriptionEs;
+		if (dto.isActive !== undefined) updatePayload.isActive = dto.isActive;
 
 		return await this.configRepo.update(id, updatePayload);
 	}
 
 	async delete(id: number) {
 		await PppValidation.validateDeleteConfig(this.configRepo, id);
-		return await this.configRepo.update(id, { is_active: false });
+		return await this.configRepo.update(id, { isActive: false });
 	}
 
 	async replicate(dto: ReplicatePppConfigDto) {
 		const sourceConfigs = await this.configRepo.findAllPpp({
-			academic_period_id: dto.source_academic_period_id,
-			...(dto.program_id && { program_id: dto.program_id }),
-			is_active: true,
+			academicPeriodId: dto.sourceAcademicPeriodId,
+			...(dto.programId && { programId: dto.programId }),
+			isActive: true,
 		});
 
 		if (sourceConfigs.length === 0) {
 			return {
-				replicated_configs: 0,
-				replicated_levels: 0,
+				replicatedConfigs: 0,
+				replicatedLevels: 0,
 				message: 'No se encontraron configuraciones en el período origen',
 			};
 		}
@@ -98,18 +97,18 @@ export class PppConfigService {
 		for (const config of sourceConfigs) {
 			const sourceExtra = (config.extra as Record<string, any>) ?? {};
 			const alreadyExists = await this.configRepo.existsPpp(
-				config.outcome_id,
-				sourceExtra.program_id,
-				dto.target_academic_period_id,
+				config.outcomeId,
+				sourceExtra.programId,
+				dto.targetAcademicPeriodId,
 			);
 			if (alreadyExists) continue;
 
 			await this.configRepo.create({
-				outcome_id: config.outcome_id,
-				user_outcome_name: config.user_outcome_name,
-				user_outcome_description: config.user_outcome_description,
-				extra: { ...sourceExtra, academic_period_id: dto.target_academic_period_id },
-				is_active: true,
+				outcomeId: config.outcomeId,
+				userOutcomeName: config.userOutcomeName,
+				userOutcomeDescription: config.userOutcomeDescription,
+				extra: { ...sourceExtra, academicPeriodId: dto.targetAcademicPeriodId },
+				isActive: true,
 			});
 			replicatedConfigs++;
 		}
@@ -119,16 +118,16 @@ export class PppConfigService {
 		let replicatedLevels = 0;
 		if (pppTypeId) {
 			replicatedLevels = await this.acceptanceLevelService.copyFromPeriod({
-				survey_type_id: pppTypeId,
-				source_academic_period_id: dto.source_academic_period_id,
-				target_academic_period_id: dto.target_academic_period_id,
+				surveyTypeId: pppTypeId,
+				sourceAcademicPeriodId: dto.sourceAcademicPeriodId,
+				targetAcademicPeriodId: dto.targetAcademicPeriodId,
 			});
 		}
 
 		return {
-			replicated_configs: replicatedConfigs,
-			total_source_configs: sourceConfigs.length,
-			replicated_levels: replicatedLevels,
+			replicatedConfigs,
+			totalSourceConfigs: sourceConfigs.length,
+			replicatedLevels,
 			message: `Se replicaron ${replicatedConfigs} configuraciones PPP y ${replicatedLevels} niveles de aceptación al período destino`,
 		};
 	}

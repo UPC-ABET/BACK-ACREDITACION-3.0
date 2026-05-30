@@ -1,5 +1,5 @@
 export const notificationMessagesRoutes = {
-	notification_messages: {
+	notificationMessages: {
 		route: 'notification-messages',
 		tag: 'Mensajes de notificación',
 		operation: {

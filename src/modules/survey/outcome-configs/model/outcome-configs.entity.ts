@@ -9,13 +9,13 @@ export class OutcomeConfigEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
 	@JsonColumn({ nullable: false })
-	user_outcome_name: I18nText;
+	userOutcomeName: I18nText;
 
 	@JsonColumn({ nullable: true })
-	user_outcome_description: I18nText;
+	userOutcomeDescription: I18nText;
 
 	// %% RELATIONS
 

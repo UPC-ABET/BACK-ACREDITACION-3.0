@@ -1,5 +1,5 @@
 export const courseSectionsRoutes = {
-	course_sections: {
+	courseSections: {
 		route: 'course-sections',
 		tag: 'Secciones de curso',
 		operation: {

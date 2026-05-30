@@ -4,114 +4,114 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStaffDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	user_id: number;
+	userId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	position_type_id: number;
+	positionTypeId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'job_title_es', en: 'job_title_en' }, required: true })
-	job_title: I18nText;
+	@ApiProperty({ example: { es: 'jobTitleEs', en: 'jobTitleEn' }, required: true })
+	jobTitle: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'job_description_es', en: 'job_description_en' }, required: true })
-	job_description: I18nText;
+	@ApiProperty({ example: { es: 'jobDescriptionEs', en: 'jobDescriptionEn' }, required: true })
+	jobDescription: I18nText;
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'staff_email_example', required: true })
-	staff_email: string;
+	@ApiProperty({ example: 'staffEmailExample', required: true })
+	staffEmail: string;
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'staff_phone_example', required: true })
-	staff_phone: string;
+	@ApiProperty({ example: 'staffPhoneExample', required: true })
+	staffPhone: string;
 }
 
 export class UpdateStaffDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	user_id?: number;
+	userId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	position_type_id?: number;
+	positionTypeId?: number;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'job_title_es', en: 'job_title_en' }, required: false })
-	job_title?: I18nText;
+	@ApiProperty({ example: { es: 'jobTitleEs', en: 'jobTitleEn' }, required: false })
+	jobTitle?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'job_description_es', en: 'job_description_en' }, required: false })
-	job_description?: I18nText;
+	@ApiProperty({ example: { es: 'jobDescriptionEs', en: 'jobDescriptionEn' }, required: false })
+	jobDescription?: I18nText;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'staff_email_example', required: false })
-	staff_email?: string;
+	@ApiProperty({ example: 'staffEmailExample', required: false })
+	staffEmail?: string;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'staff_phone_example', required: false })
-	staff_phone?: string;
+	@ApiProperty({ example: 'staffPhoneExample', required: false })
+	staffPhone?: string;
 }
 
 export class FilterStaffDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	user_id?: number;
+	userId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	position_type_id?: number;
+	positionTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'job_title_es', en: 'job_title_en' }, required: false })
-	job_title?: I18nText;
+	@ApiProperty({ example: { es: 'jobTitleEs', en: 'jobTitleEn' }, required: false })
+	jobTitle?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'job_description_es', en: 'job_description_en' }, required: false })
-	job_description?: I18nText;
+	@ApiProperty({ example: { es: 'jobDescriptionEs', en: 'jobDescriptionEn' }, required: false })
+	jobDescription?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'staff_email_example', required: false })
-	staff_email?: string;
+	@ApiProperty({ example: 'staffEmailExample', required: false })
+	staffEmail?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'staff_phone_example', required: false })
-	staff_phone?: string;
+	@ApiProperty({ example: 'staffPhoneExample', required: false })
+	staffPhone?: string;
 }

@@ -8,8 +8,8 @@ export class PlanValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				program_id: data.program_id,
-				academic_period_id: data.academic_period_id,
+				programId: data.programId,
+				academicPeriodId: data.academicPeriodId,
 				name: data.name,
 			},
 		});
@@ -33,14 +33,14 @@ export class PlanValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(plansValidationStrings.error.notFound);
 
-		const programId = data.program_id ?? entity?.program_id;
-		const academicPeriodId = data.academic_period_id ?? entity?.academic_period_id;
+		const programId = data.programId ?? entity?.programId;
+		const academicPeriodId = data.academicPeriodId ?? entity?.academicPeriodId;
 		const name = data.name ?? entity?.name;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				program_id: programId,
-				academic_period_id: academicPeriodId,
+				programId: programId,
+				academicPeriodId: academicPeriodId,
 				name,
 			},
 		});

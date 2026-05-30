@@ -10,10 +10,10 @@ export class NotificationMessageEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@JsonColumn({ nullable: false })
 	title: I18nText;
@@ -22,7 +22,7 @@ export class NotificationMessageEntity extends BaseEntity {
 	body: I18nText;
 
 	@JsonColumn()
-	cc_receivers: unknown;
+	ccReceivers: unknown;
 
 	// %% RELATIONS
 
@@ -31,7 +31,7 @@ export class NotificationMessageEntity extends BaseEntity {
 		name: 'survey_type_id',
 		foreignKeyConstraintName: 'FK_notification_messages_survey_type_id',
 	})
-	survey_type: TypeEntity;
+	surveyType: TypeEntity;
 
 	@ManyToOne(() => ProgramEntity)
 	@JoinColumn({

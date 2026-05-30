@@ -1,5 +1,5 @@
 export const findingActionsRoutes = {
-	finding_actions: {
+	findingActions: {
 		route: 'finding-actions',
 		tag: 'Acciones de hallazgo',
 		operation: {

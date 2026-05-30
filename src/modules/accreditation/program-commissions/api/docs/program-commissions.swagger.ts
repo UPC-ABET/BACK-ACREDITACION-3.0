@@ -6,7 +6,7 @@ import {
 	FilterProgramCommissionDto,
 } from '../../model/program-commissions.dtos';
 
-const cfg = programCommissionsRoutes.program_commissions;
+const cfg = programCommissionsRoutes.programCommissions;
 
 export const SwaggerProgramCommissionController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

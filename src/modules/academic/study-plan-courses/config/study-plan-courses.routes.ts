@@ -1,5 +1,5 @@
 export const studyPlanCoursesRoutes = {
-	study_plan_courses: {
+	studyPlanCourses: {
 		route: 'study-plan-courses',
 		tag: 'Cursos de plan de estudio',
 		operation: {

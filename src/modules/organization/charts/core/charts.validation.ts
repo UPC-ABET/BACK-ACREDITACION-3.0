@@ -8,9 +8,9 @@ export class ChartValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				staff_id: data.staff_id,
-				academic_period_id: data.academic_period_id,
-				chart_level_id: data.chart_level_id,
+				staffId: data.staffId,
+				academicPeriodId: data.academicPeriodId,
+				chartLevelId: data.chartLevelId,
 			},
 		});
 
@@ -33,12 +33,12 @@ export class ChartValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(chartsValidationStrings.error.notFound);
 
-		if (data.staff_id && data.academic_period_id && data.chart_level_id) {
+		if (data.staffId && data.academicPeriodId && data.chartLevelId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					staff_id: data.staff_id,
-					academic_period_id: data.academic_period_id,
-					chart_level_id: data.chart_level_id,
+					staffId: data.staffId,
+					academicPeriodId: data.academicPeriodId,
+					chartLevelId: data.chartLevelId,
 				},
 			});
 

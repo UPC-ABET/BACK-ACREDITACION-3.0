@@ -39,7 +39,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 
 	@SwaggerIfcFindingDelete()
 	async deleteCascade(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		await this.service.deleteWithCascade(id, req.user.userId, req.user.school_id);
+		await this.service.deleteWithCascade(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(null);
 	}
 
@@ -52,7 +52,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	// the Swagger factory still mounts it at `GET /get-by-id/:id`, replacing the base shape.
 	@SwaggerIfcFindingGetById()
 	async getDetail(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.getDetail(id, req.user.school_id);
+		const result = await this.service.getDetail(id, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -63,7 +63,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 
 	@SwaggerIfcFindingList()
 	async list(@Body() dto: ListIfcFindingsDto, @Req() req: any) {
-		const rows = await this.service.list(dto, req.user.school_id);
+		const rows = await this.service.list(dto, req.user.schoolId);
 		return parseSuccessResponse(rows);
 	}
 
@@ -73,7 +73,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 		@Body() dto: PatchIfcFindingDto,
 		@Req() req: any,
 	) {
-		const result = await this.service.patch(id, dto, req.user.userId, req.user.school_id);
+		const result = await this.service.patch(id, dto, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 }

@@ -96,8 +96,8 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 		[SCHOOL_CODE, ACADEMIC_PERIOD_CODE],
 	);
 
-	const schoolId = idsRow[0]?.school_id;
-	const academicPeriodId = idsRow[0]?.academic_period_id;
+	const schoolId = idsRow[0]?.schoolId;
+	const academicPeriodId = idsRow[0]?.academicPeriodId;
 	if (!schoolId || !academicPeriodId) {
 		throw new Error(
 			`School code='${SCHOOL_CODE}' or period code='${ACADEMIC_PERIOD_CODE}' not found. (school_id=${schoolId}, academic_period_id=${academicPeriodId})`,

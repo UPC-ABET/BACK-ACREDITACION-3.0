@@ -1,5 +1,5 @@
 export const performanceLevelsRoutes = {
-	performance_levels: {
+	performanceLevels: {
 		route: 'performance-levels',
 		tag: 'Niveles de desempeño',
 		operation: {

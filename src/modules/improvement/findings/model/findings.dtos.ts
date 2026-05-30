@@ -4,26 +4,26 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	criticality_type_id: number;
+	criticalityTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	instrument_id: number;
+	instrumentId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -31,50 +31,50 @@ export class CreateFindingDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	course_id: number;
+	courseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	campus_id: number;
+	campusId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_automatic: boolean;
+	isAutomatic: boolean;
 }
 
 export class UpdateFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	criticality_type_id?: number;
+	criticalityTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	instrument_id?: number;
+	instrumentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -83,72 +83,72 @@ export class UpdateFindingDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_automatic?: boolean;
+	isAutomatic?: boolean;
 }
 
 export class FilterFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	criticality_type_id?: number;
+	criticalityTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	instrument_id?: number;
+	instrumentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	correlative?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	campusId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_automatic?: boolean;
+	isAutomatic?: boolean;
 }

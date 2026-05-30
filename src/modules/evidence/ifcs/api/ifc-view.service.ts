@@ -64,7 +64,7 @@ export class IfcViewService {
 			errors.push('outcome_course');
 		}
 
-		const findingIds = findingRows.map((r: any) => Number(r.finding_id));
+		const findingIds = findingRows.map((r: any) => Number(r.findingId));
 		const header = headerRows[0];
 
 		const [findingOutcomeResult, findingActionResult, previousActionsResult] =
@@ -80,7 +80,7 @@ export class IfcViewService {
 							TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
 						])
 					: Promise.resolve([]),
-				this.loadPreviousActions(Number(header.course_id), Number(header.academic_period_id), id),
+				this.loadPreviousActions(Number(header.courseId), Number(header.academicPeriodId), id),
 			]);
 
 		const findingOutcomeRows =
@@ -126,36 +126,36 @@ export class IfcViewService {
 	groupOutcomeRows(rows: any[]) {
 		const programIndex = new Map<
 			string,
-			{ program_code: string; program_name: I18nText; commissions: Map<string, any> }
+			{ programCode: string; programName: I18nText; commissions: Map<string, any> }
 		>();
 		for (const row of rows) {
-			let pg = programIndex.get(row.program_code);
+			let pg = programIndex.get(row.programCode);
 			if (!pg) {
 				pg = {
-					program_code: row.program_code,
-					program_name: row.program_name,
+					programCode: row.programCode,
+					programName: row.programName,
 					commissions: new Map(),
 				};
-				programIndex.set(row.program_code, pg);
+				programIndex.set(row.programCode, pg);
 			}
-			let cm = pg.commissions.get(row.commission_code);
+			let cm = pg.commissions.get(row.commissionCode);
 			if (!cm) {
 				cm = {
-					commission_code: row.commission_code,
-					commission_name: row.commission_name,
+					commissionCode: row.commissionCode,
+					commissionName: row.commissionName,
 					outcomes: [] as any[],
 				};
-				pg.commissions.set(row.commission_code, cm);
+				pg.commissions.set(row.commissionCode, cm);
 			}
 			cm.outcomes.push({
-				outcome_code: row.outcome_code,
-				outcome_name: row.outcome_name,
-				outcome_description: row.outcome_description,
+				outcomeCode: row.outcomeCode,
+				outcomeName: row.outcomeName,
+				outcomeDescription: row.outcomeDescription,
 			});
 		}
 		return Array.from(programIndex.values()).map((pg) => ({
-			program_code: pg.program_code,
-			program_name: pg.program_name,
+			programCode: pg.programCode,
+			programName: pg.programName,
 			commissions: Array.from(pg.commissions.values()),
 		}));
 	}
@@ -172,19 +172,19 @@ export class IfcViewService {
 		]);
 		return rows.map((r: any) => ({
 			id: Number(r.id),
-			finding_action_id: Number(r.finding_action_id),
+			findingActionId: Number(r.findingActionId),
 			finding: {
-				id: Number(r.finding_id),
-				code: r.finding_code,
+				id: Number(r.findingId),
+				code: r.findingCode,
 			},
 			code: r.code,
 			correlative: Number(r.correlative),
 			description: r.description,
 			evidences: r.evidences,
 			completeness: {
-				code: r.completeness_code,
-				name: r.completeness_name,
-				color: r.completeness_color ?? null,
+				code: r.completenessCode,
+				name: r.completenessName,
+				color: r.completenessColor ?? null,
 			},
 			source: r.source as 'plan' | 'direct' | 'both',
 		}));
@@ -208,78 +208,78 @@ export class IfcViewService {
 		} = input;
 
 		const ifc = {
-			id: Number(header.ifc_id),
+			id: Number(header.ifcId),
 			information: header.information,
 			extra: header.extra,
-			created_at: header.ifc_created_at,
-			academic_period_code: header.academic_period_code,
-			program_label: header.program_label,
-			area_label: header.area_label,
-			subarea_label: header.subarea_label,
-			course_code: header.course_code ?? null,
-			course_name: header.course_name,
-			course_learning_outcome: header.course_learning_outcome,
+			createdAt: header.ifcCreatedAt,
+			academicPeriodCode: header.academicPeriodCode,
+			programLabel: header.programLabel,
+			areaLabel: header.areaLabel,
+			subareaLabel: header.subareaLabel,
+			courseCode: header.courseCode ?? null,
+			courseName: header.courseName,
+			courseLearningOutcome: header.courseLearningOutcome,
 			coordinator: {
-				user_id: header.coordinator_user_id === null ? null : Number(header.coordinator_user_id),
-				code: header.coordinator_code ?? null,
-				name: header.coordinator_name,
+				userId: header.coordinatorUserId === null ? null : Number(header.coordinatorUserId),
+				code: header.coordinatorCode ?? null,
+				name: header.coordinatorName,
 			},
-			status: header.status_code
+			status: header.statusCode
 				? {
-						code: header.status_code,
-						name: header.status_name,
-						color: header.status_color ?? null,
-						at: header.status_at,
-						comment: header.status_comment ?? null,
-						by: header.status_by_name ?? null,
+						code: header.statusCode,
+						name: header.statusName,
+						color: header.statusColor ?? null,
+						at: header.statusAt,
+						comment: header.statusComment ?? null,
+						by: header.statusByName ?? null,
 					}
 				: null,
-			requester_in_chain: Boolean(header.requester_in_chain),
+			requesterInChain: Boolean(header.requesterInChain),
 		};
 
 		const outcomesByFinding = new Map<number, any[]>();
 		for (const row of findingOutcomeRows) {
-			const fid = Number(row.finding_id);
+			const fid = Number(row.findingId);
 			const arr = outcomesByFinding.get(fid) ?? [];
 			arr.push({
-				outcome_code: row.outcome_code,
-				outcome_name: row.outcome_name,
-				outcome_description: row.outcome_description,
-				commission: { code: row.commission_code, name: row.commission_name },
+				outcomeCode: row.outcomeCode,
+				outcomeName: row.outcomeName,
+				outcomeDescription: row.outcomeDescription,
+				commission: { code: row.commissionCode, name: row.commissionName },
 			});
 			outcomesByFinding.set(fid, arr);
 		}
 
 		const actionsByFinding = new Map<number, any[]>();
 		for (const row of findingActionRows) {
-			const fid = Number(row.finding_id);
+			const fid = Number(row.findingId);
 			const arr = actionsByFinding.get(fid) ?? [];
 			arr.push({
-				id: Number(row.action_id),
-				code: row.action_code,
-				description: row.action_description,
-				correlative: row.action_correlative,
+				id: Number(row.actionId),
+				code: row.actionCode,
+				description: row.actionDescription,
+				correlative: row.actionCorrelative,
 				completeness: {
-					code: row.completeness_code,
-					name: row.completeness_name,
-					color: row.completeness_color ?? null,
+					code: row.completenessCode,
+					name: row.completenessName,
+					color: row.completenessColor ?? null,
 				},
 			});
 			actionsByFinding.set(fid, arr);
 		}
 
 		const findings = findingRows.map((row: any) => {
-			const fid = Number(row.finding_id);
+			const fid = Number(row.findingId);
 			return {
 				id: fid,
-				code: row.finding_code,
-				description: row.finding_description,
-				correlative: row.finding_correlative,
-				is_automatic: row.is_automatic,
+				code: row.findingCode,
+				description: row.findingDescription,
+				correlative: row.findingCorrelative,
+				isAutomatic: row.isAutomatic,
 				criticality: {
-					code: row.criticality_code,
-					name: row.criticality_name,
-					color: row.criticality_color ?? null,
+					code: row.criticalityCode,
+					name: row.criticalityName,
+					color: row.criticalityColor ?? null,
 				},
 				outcomes: outcomesByFinding.get(fid) ?? [],
 				actions: actionsByFinding.get(fid) ?? [],
@@ -288,9 +288,9 @@ export class IfcViewService {
 
 		return {
 			ifc,
-			outcome_course_result: this.groupOutcomeRows(outcomeCourseRows),
+			outcomeCourseResult: this.groupOutcomeRows(outcomeCourseRows),
 			findings,
-			previous_actions: previousActions,
+			previousActions: previousActions,
 		};
 	}
 }

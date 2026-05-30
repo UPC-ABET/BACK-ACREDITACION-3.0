@@ -11,11 +11,11 @@ export class ChartLevelEntity extends BaseEntity {
 	level: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	level_type_id: number;
+	levelTypeId: number;
 
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'level_type_id', foreignKeyConstraintName: 'FK_chart_levels_level_type_id' })
-	level_type: TypeEntity;
+	levelType: TypeEntity;
 }

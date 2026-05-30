@@ -9,16 +9,16 @@ export class RubricQuestionCriteriaEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	rubric_question_id: number;
+	rubricQuestionId: number;
 
 	@JsonColumn({ nullable: false })
 	criteria: I18nText;
 
 	@DecimalColumn({ nullable: false })
-	min_value: number;
+	minValue: number;
 
 	@DecimalColumn({ nullable: false })
-	max_value: number;
+	maxValue: number;
 
 	// %% RELATIONS
 

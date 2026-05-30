@@ -24,34 +24,34 @@ export type DispatchReason =
 
 export type DispatchResult = {
 	sent: boolean;
-	recipients_count: number;
-	cc_count: number;
+	recipientsCount: number;
+	ccCount: number;
 	reason: DispatchReason;
 };
 
 interface ResolvedContext {
-	course_chart_id: number;
-	school_id: number;
-	period_id: number;
-	trigger_type_id: number;
-	ifc_status_type_id: number;
-	ifc_id: number | null;
-	period_code: string;
-	course_name: I18nText | null;
-	coordinator_name: string | null;
+	courseChartId: number;
+	schoolId: number;
+	periodId: number;
+	triggerTypeId: number;
+	ifcStatusTypeId: number;
+	ifcId: number | null;
+	periodCode: string;
+	courseName: I18nText | null;
+	coordinatorName: string | null;
 }
 
 interface LoadedConfig {
 	id: number;
 	title: I18nText;
 	body: I18nText;
-	to_chart_level_type_ids: number[] | null;
-	cc_chart_level_type_ids: number[] | null;
+	toChartLevelTypeIds: number[] | null;
+	ccChartLevelTypeIds: number[] | null;
 }
 
 interface NotificationVar {
 	var: string;
-	valid_status_codes: string[] | null;
+	validStatusCodes: string[] | null;
 }
 
 @Injectable()
@@ -70,7 +70,10 @@ export class NotificationDispatcherService {
 			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
 			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
 		);
-		return paramRow[0]?.value ?? [];
+		const rows: Array<{ var: string; valid_status_codes: string[] | null }> =
+			paramRow[0]?.value ?? [];
+		// JSONB content stays snake_case in the DB; map to camelCase at the boundary.
+		return rows.map((r) => ({ var: r.var, validStatusCodes: r.valid_status_codes }));
 	}
 
 	async dispatch(
@@ -83,22 +86,22 @@ export class NotificationDispatcherService {
 			this.logger.log(
 				`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_course_chart`,
 			);
-			return { sent: false, reason: 'no_course_chart', recipients_count: 0, cc_count: 0 };
+			return { sent: false, reason: 'no_course_chart', recipientsCount: 0, ccCount: 0 };
 		}
 
 		const config = await this.loadConfig(ctx);
 		if (config === null) {
 			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_config`);
-			return { sent: false, reason: 'no_config', recipients_count: 0, cc_count: 0 };
+			return { sent: false, reason: 'no_config', recipientsCount: 0, ccCount: 0 };
 		}
 
 		const { toEmails, ccEmails, toStaffIds, ccStaffIds } = await this.resolveRecipients(
-			ctx.course_chart_id,
+			ctx.courseChartId,
 			config,
 		);
 		if (toEmails.length === 0) {
 			this.logger.log(`dispatch.skip chartId=${chartId} periodId=${periodId} reason=no_recipients`);
-			return { sent: false, reason: 'no_recipients', recipients_count: 0, cc_count: 0 };
+			return { sent: false, reason: 'no_recipients', recipientsCount: 0, ccCount: 0 };
 		}
 
 		const subs = await this.buildSubstitutions(ctx, input.notifierUserId, notificationVars);
@@ -118,19 +121,19 @@ export class NotificationDispatcherService {
 			await this.writeLog(ctx, config, toStaffIds, ccStaffIds, input.notifierUserId, messageId);
 
 			this.logger.log(
-				`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id} recipients=${toEmails.length} cc=${ccEmails.length}`,
+				`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifcId} recipients=${toEmails.length} cc=${ccEmails.length}`,
 			);
 			return {
 				sent: true,
-				recipients_count: toEmails.length,
-				cc_count: ccEmails.length,
+				recipientsCount: toEmails.length,
+				ccCount: ccEmails.length,
 				reason: null,
 			};
 		} catch (e) {
 			this.logger.error(
-				`dispatch.failed chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifc_id}: ${(e as Error).message}`,
+				`dispatch.failed chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifcId}: ${(e as Error).message}`,
 			);
-			return { sent: false, reason: 'send_failed', recipients_count: 0, cc_count: 0 };
+			return { sent: false, reason: 'send_failed', recipientsCount: 0, ccCount: 0 };
 		}
 	}
 
@@ -168,17 +171,17 @@ export class NotificationDispatcherService {
 				LIMIT 1
 			)
 			SELECT
-				cc.id::int                                                                            AS course_chart_id,
-				(SELECT school_id FROM school_chart)::int                                             AS school_id,
-				$2::int                                                                               AS period_id,
-				(SELECT id::int FROM core.types WHERE code = $3)                                      AS trigger_type_id,
-				(SELECT id::int FROM core.types WHERE code = $5)                                      AS ifc_status_type_id,
-				(SELECT i.id::int FROM evidence.ifcs i WHERE i.course_id = cc.course_id AND i.academic_period_id = $2 LIMIT 1) AS ifc_id,
-				(SELECT ap.code FROM academic.academic_periods ap WHERE ap.id = $2)                   AS period_code,
-				(SELECT ac.name FROM academic.courses ac WHERE ac.id = cc.course_id)                  AS course_name,
+				cc.id::int                                                                            AS "courseChartId",
+				(SELECT school_id FROM school_chart)::int                                             AS "schoolId",
+				$2::int                                                                               AS "periodId",
+				(SELECT id::int FROM core.types WHERE code = $3)                                      AS "triggerTypeId",
+				(SELECT id::int FROM core.types WHERE code = $5)                                      AS "ifcStatusTypeId",
+				(SELECT i.id::int FROM evidence.ifcs i WHERE i.course_id = cc.course_id AND i.academic_period_id = $2 LIMIT 1) AS "ifcId",
+				(SELECT ap.code FROM academic.academic_periods ap WHERE ap.id = $2)                   AS "periodCode",
+				(SELECT ac.name FROM academic.courses ac WHERE ac.id = cc.course_id)                  AS "courseName",
 				(SELECT u.first_name || ' ' || u.last_name
 					 FROM organization.staff s JOIN organization.users u ON u.id = s.user_id
-					 WHERE s.id = cc.staff_id)                                                        AS coordinator_name
+					 WHERE s.id = cc.staff_id)                                                        AS "coordinatorName"
 			FROM course_chart cc
 			`,
 			[
@@ -191,7 +194,7 @@ export class NotificationDispatcherService {
 			],
 		);
 
-		if (rows.length === 0 || rows[0].school_id == null) return null;
+		if (rows.length === 0 || rows[0].schoolId == null) return null;
 		return rows[0] as ResolvedContext;
 	}
 
@@ -199,11 +202,11 @@ export class NotificationDispatcherService {
 		const rows = await this.dataSource.query(
 			`
 			SELECT
-				nc.id::int                     AS id,
-				nc.title                       AS title,
-				nc.body                        AS body,
-				nc.to_chart_level_type_ids     AS to_chart_level_type_ids,
-				nc.cc_chart_level_type_ids     AS cc_chart_level_type_ids
+				nc.id::int                     AS "id",
+				nc.title                       AS "title",
+				nc.body                        AS "body",
+				nc.to_chart_level_type_ids     AS "toChartLevelTypeIds",
+				nc.cc_chart_level_type_ids     AS "ccChartLevelTypeIds"
 			FROM ifc.notification_configs nc
 			WHERE nc.school_id          = $1
 			  AND nc.academic_period_id = $2
@@ -212,14 +215,14 @@ export class NotificationDispatcherService {
 			  AND nc.is_active          = true
 			LIMIT 1
 			`,
-			[ctx.school_id, ctx.period_id, ctx.trigger_type_id, ctx.ifc_status_type_id],
+			[ctx.schoolId, ctx.periodId, ctx.triggerTypeId, ctx.ifcStatusTypeId],
 		);
 		return (rows[0] as LoadedConfig | undefined) ?? null;
 	}
 
 	private async resolveRecipients(courseChartId: number, config: LoadedConfig) {
-		const toIds = (config.to_chart_level_type_ids ?? []).map((n) => Number(n));
-		const ccIds = (config.cc_chart_level_type_ids ?? []).map((n) => Number(n));
+		const toIds = (config.toChartLevelTypeIds ?? []).map((n) => Number(n));
+		const ccIds = (config.ccChartLevelTypeIds ?? []).map((n) => Number(n));
 		const wanted = [...toIds, ...ccIds];
 		if (wanted.length === 0) return { toEmails: [], ccEmails: [], toStaffIds: [], ccStaffIds: [] };
 
@@ -237,7 +240,7 @@ export class NotificationDispatcherService {
 				JOIN chain_up cu ON c.id = cu.root_chart_detail_id
 				WHERE c.is_active = true AND cu.depth < 20
 			)
-			SELECT cl.level_type_id::int AS level_type_id, s.id::int AS staff_id, s.staff_email AS staff_email
+			SELECT cl.level_type_id::int AS "levelTypeId", s.id::int AS "staffId", s.staff_email AS "staffEmail"
 			FROM chain_up cu
 			JOIN organization.chart_levels cl ON cl.id = cu.chart_level_id
 			JOIN organization.staff s         ON s.id  = cu.staff_id
@@ -253,8 +256,8 @@ export class NotificationDispatcherService {
 		const toPairs: Array<{ email: string; staffId: number }> = [];
 		const ccPairs: Array<{ email: string; staffId: number }> = [];
 		for (const r of rows) {
-			const levelTypeId = Number(r.level_type_id);
-			const pair = { email: r.staff_email as string, staffId: Number(r.staff_id) };
+			const levelTypeId = Number(r.levelTypeId);
+			const pair = { email: r.staffEmail as string, staffId: Number(r.staffId) };
 			if (toSet.has(levelTypeId)) toPairs.push(pair);
 			else if (ccSet.has(levelTypeId)) ccPairs.push(pair);
 		}
@@ -288,11 +291,11 @@ export class NotificationDispatcherService {
 	): Promise<Record<string, string>> {
 		const vars: NotificationVar[] = preloadedVars ?? (await this.loadNotificationVars());
 
-		const statusCode = await this.lookupStatusCode(ctx.ifc_status_type_id);
+		const statusCode = await this.lookupStatusCode(ctx.ifcStatusTypeId);
 
 		const subs: Record<string, string> = {};
 		const allowed = (v: NotificationVar) =>
-			v.valid_status_codes === null || v.valid_status_codes.includes(statusCode);
+			v.validStatusCodes === null || v.validStatusCodes.includes(statusCode);
 
 		for (const v of vars) {
 			const key = v.var;
@@ -303,35 +306,35 @@ export class NotificationDispatcherService {
 
 			switch (key) {
 				case '{{course_name}}':
-					subs[key] = (ctx.course_name?.es ?? '') as string;
+					subs[key] = (ctx.courseName?.es ?? '') as string;
 					break;
 				case '{{coordinator_name}}':
-					subs[key] = ctx.coordinator_name ?? '';
+					subs[key] = ctx.coordinatorName ?? '';
 					break;
 				case '{{academic_period}}':
-					subs[key] = ctx.period_code ?? '';
+					subs[key] = ctx.periodCode ?? '';
 					break;
 				case '{{notifier_name}}':
 					subs[key] = await this.lookupUserName(notifierUserId);
 					break;
 				case '{{ifc_link}}':
-					subs[key] = this.buildIfcLink(ctx.ifc_id);
+					subs[key] = this.buildIfcLink(ctx.ifcId);
 					break;
 				case '{{observer_name}}':
 					subs[key] = await this.lookupLatestStatusUserName(
-						ctx.ifc_id,
+						ctx.ifcId,
 						TYPE_CODES.IFC_STATUS.OBSERVED,
 					);
 					break;
 				case '{{comment}}':
 					subs[key] = await this.lookupLatestStatusComment(
-						ctx.ifc_id,
+						ctx.ifcId,
 						TYPE_CODES.IFC_STATUS.OBSERVED,
 					);
 					break;
 				case '{{submitter_name}}':
 					subs[key] = await this.lookupLatestStatusUserName(
-						ctx.ifc_id,
+						ctx.ifcId,
 						TYPE_CODES.IFC_STATUS.SUBMITTED,
 					);
 					break;
@@ -416,13 +419,13 @@ export class NotificationDispatcherService {
 		messageId: string,
 	) {
 		await this.notificationLogService.create({
-			ifc_id: ctx.ifc_id,
-			chart_id: ctx.course_chart_id,
-			notification_config_id: config.id,
-			notifier_user_id: notifierUserId,
-			to_staff_ids: toStaffIds,
-			cc_staff_ids: ccStaffIds,
-			provider_message_id: messageId,
+			ifcId: ctx.ifcId,
+			chartId: ctx.courseChartId,
+			notificationConfigId: config.id,
+			notifierUserId: notifierUserId,
+			toStaffIds: toStaffIds,
+			ccStaffIds: ccStaffIds,
+			providerMessageId: messageId,
 		});
 	}
 }

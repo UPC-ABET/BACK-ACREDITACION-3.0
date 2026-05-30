@@ -29,8 +29,8 @@ export class IfcContentService {
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
 			const chartRows = await em.query(CHART_RESOLUTION_SQL, [
-				dto.chart_id,
-				dto.period_id,
+				dto.chartId,
+				dto.periodId,
 				schoolId,
 				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
@@ -39,12 +39,12 @@ export class IfcContentService {
 			IfcValidation.assertChartFound(chartRows, op);
 
 			const row = chartRows[0];
-			const courseId = Number(row.course_id);
+			const courseId = Number(row.courseId);
 			const ifcCourseStaffId =
-				row.ifc_course_staff_id === null ? null : Number(row.ifc_course_staff_id);
+				row.ifcCourseStaffId === null ? null : Number(row.ifcCourseStaffId);
 			const requesterStaffId =
-				row.requester_staff_id === null ? null : Number(row.requester_staff_id);
-			const programId = row.program_id === null ? null : Number(row.program_id);
+				row.requesterStaffId === null ? null : Number(row.requesterStaffId);
+			const programId = row.programId === null ? null : Number(row.programId);
 
 			IfcValidation.assertRequesterIsStaff(requesterStaffId, op);
 			await IfcValidation.assertIsInCourseChain(
@@ -52,39 +52,39 @@ export class IfcContentService {
 				{
 					ifcId: 0,
 					ifcCourseStaffId,
-					courseChartId: dto.chart_id,
+					courseChartId: dto.chartId,
 					requesterStaffId,
 					currentStatusCode: null,
 				},
 				op,
 			);
 
-			await IfcValidation.assertNoIfcExists(em, courseId, dto.period_id, op);
+			await IfcValidation.assertNoIfcExists(em, courseId, dto.periodId, op);
 
 			const ifcInsert = await em.query(
 				`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`,
-				[courseId, dto.period_id, JSON.stringify(dto.information ?? {})],
+				[courseId, dto.periodId, JSON.stringify(dto.information ?? {})],
 			);
 			const ifcId = Number(ifcInsert[0].id);
 
 			await this.resolveFindingsAndActions(em, {
 				ifcId,
 				courseId,
-				periodId: dto.period_id,
+				periodId: dto.periodId,
 				programId,
 				requesterStaffId: requesterStaffId!,
 				op,
 				findings: dto.findings,
 				actions: dto.actions,
-				deletedFindingIds: dto.deleted_finding_ids,
-				deletedActionIds: dto.deleted_action_ids,
+				deletedFindingIds: dto.deletedFindingIds,
+				deletedActionIds: dto.deletedActionIds,
 			});
 
 			await this.applyPreviousActionEvidences(em, {
 				courseId,
-				periodId: dto.period_id,
+				periodId: dto.periodId,
 				excludeIfcId: null,
-				items: dto.previous_actions,
+				items: dto.previousActions,
 				op,
 			});
 
@@ -96,12 +96,12 @@ export class IfcContentService {
 			return { id: ifcId };
 		});
 
-		if (dto.submit && Number.isFinite(dto.chart_id) && Number.isFinite(dto.period_id)) {
+		if (dto.submit && Number.isFinite(dto.chartId) && Number.isFinite(dto.periodId)) {
 			setImmediate(() => {
 				this.dispatcher
 					.dispatch({
-						chartId: dto.chart_id,
-						periodId: dto.period_id,
+						chartId: dto.chartId,
+						periodId: dto.periodId,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
 						notifierUserId: userId,
@@ -124,11 +124,11 @@ export class IfcContentService {
 			IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
 
 			const ifcRows = await em.query(
-				`SELECT course_id, academic_period_id FROM evidence.ifcs WHERE id = $1`,
+				`SELECT course_id AS "courseId", academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1`,
 				[id],
 			);
-			const courseId = Number(ifcRows[0].course_id);
-			const periodId = Number(ifcRows[0].academic_period_id);
+			const courseId = Number(ifcRows[0].courseId);
+			const periodId = Number(ifcRows[0].academicPeriodId);
 
 			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
 				courseId,
@@ -136,9 +136,9 @@ export class IfcContentService {
 				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 			]);
 			const programId =
-				programRows[0]?.program_id === undefined || programRows[0]?.program_id === null
+				programRows[0]?.programId === undefined || programRows[0]?.programId === null
 					? null
-					: Number(programRows[0].program_id);
+					: Number(programRows[0].programId);
 
 			await em.query(
 				`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`,
@@ -154,15 +154,15 @@ export class IfcContentService {
 				op,
 				findings: dto.findings,
 				actions: dto.actions,
-				deletedFindingIds: dto.deleted_finding_ids,
-				deletedActionIds: dto.deleted_action_ids,
+				deletedFindingIds: dto.deletedFindingIds,
+				deletedActionIds: dto.deletedActionIds,
 			});
 
 			await this.applyPreviousActionEvidences(em, {
 				courseId,
 				periodId,
 				excludeIfcId: id,
-				items: dto.previous_actions,
+				items: dto.previousActions,
 				op,
 			});
 
@@ -206,13 +206,13 @@ export class IfcContentService {
 				tempId: string;
 				id: number | null;
 				description: I18nText;
-				criticality_code: string;
+				criticalityCode: string;
 			}[];
 			actions: {
 				tempId: string;
 				id: number | null;
 				description: I18nText;
-				finding_temp_id: string;
+				findingTempId: string;
 			}[];
 			deletedFindingIds?: number[];
 			deletedActionIds?: number[];
@@ -239,7 +239,7 @@ export class IfcContentService {
 			);
 		}
 
-		const criticalityCodes = Array.from(new Set(input.findings.map((f) => f.criticality_code)));
+		const criticalityCodes = Array.from(new Set(input.findings.map((f) => f.criticalityCode)));
 		const criticalityRows = criticalityCodes.length
 			? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [
 					criticalityCodes,
@@ -264,12 +264,12 @@ export class IfcContentService {
 
 		const tempIdToId = new Map<string, number>();
 		for (const f of input.findings) {
-			const critId = criticalityByCode.get(f.criticality_code);
+			const critId = criticalityByCode.get(f.criticalityCode);
 			if (!critId) {
 				throw new HttpException(
 					{
 						message: ifcsValidationStrings.result[`${input.op}Failed`],
-						errors: [`error.ifc.criticalityNotFound:${f.criticality_code}`],
+						errors: [`error.ifc.criticalityNotFound:${f.criticalityCode}`],
 					},
 					HttpStatus.BAD_REQUEST,
 				);
@@ -326,7 +326,7 @@ export class IfcContentService {
 		}
 
 		for (const a of input.actions) {
-			const findingId = tempIdToId.get(a.finding_temp_id);
+			const findingId = tempIdToId.get(a.findingTempId);
 			IfcValidation.assertFindingTempIdResolved(findingId, input.op);
 
 			if (a.id === null) {
@@ -363,7 +363,7 @@ export class IfcContentService {
 			courseId: number;
 			periodId: number;
 			excludeIfcId: number | null;
-			items: { finding_action_id: number; evidences: I18nText | null }[] | undefined;
+			items: { findingActionId: number; evidences: I18nText | null }[] | undefined;
 			op: IfcOp;
 		},
 	) {
@@ -379,10 +379,10 @@ export class IfcContentService {
 			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
 			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
 		]);
-		const allowed = new Set<number>(rows.map((r: any) => Number(r.finding_action_id)));
+		const allowed = new Set<number>(rows.map((r: any) => Number(r.findingActionId)));
 
 		for (const item of items) {
-			if (!allowed.has(item.finding_action_id)) {
+			if (!allowed.has(item.findingActionId)) {
 				throw new HttpException(
 					{
 						message:
@@ -396,7 +396,7 @@ export class IfcContentService {
 			}
 			await em.query(
 				`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`,
-				[item.evidences === null ? null : JSON.stringify(item.evidences), item.finding_action_id],
+				[item.evidences === null ? null : JSON.stringify(item.evidences), item.findingActionId],
 			);
 		}
 	}

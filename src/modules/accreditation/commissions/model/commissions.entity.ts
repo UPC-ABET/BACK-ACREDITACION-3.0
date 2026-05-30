@@ -9,7 +9,7 @@ export class CommissionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	accreditor_id: number;
+	accreditorId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;

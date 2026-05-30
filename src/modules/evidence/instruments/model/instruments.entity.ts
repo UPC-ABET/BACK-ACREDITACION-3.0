@@ -14,7 +14,7 @@ export class InstrumentEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	constituent_type_id: number;
+	constituentTypeId: number;
 
 	@CodeColumn({ nullable: false, unique: true })
 	code: string;
@@ -26,7 +26,7 @@ export class InstrumentEntity extends BaseEntity {
 	description: I18nText;
 
 	@BooleanColumn({ nullable: false, default: true })
-	is_for_accreditation: boolean;
+	isForAccreditation: boolean;
 
 	// %% RELATIONS
 
@@ -35,5 +35,5 @@ export class InstrumentEntity extends BaseEntity {
 		name: 'constituent_type_id',
 		foreignKeyConstraintName: 'FK_instruments_constituent_type_id',
 	})
-	constituent_type: TypeEntity;
+	constituentType: TypeEntity;
 }

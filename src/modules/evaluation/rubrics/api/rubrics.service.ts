@@ -46,7 +46,7 @@ export class RubricService extends BaseService<RubricRepository> {
 		const incomingIds = criterias.filter((c) => c.id).map((c) => c.id as number);
 
 		// Borrar las que ya no vienen (si criterias = [] borra todas)
-		const existing = await criteriaRepo.find({ where: { rubric_question_id: questionId } });
+		const existing = await criteriaRepo.find({ where: { rubricQuestionId: questionId } });
 		const toDelete = existing.filter((c) => !incomingIds.includes(c.id));
 		if (toDelete.length > 0) {
 			await criteriaRepo.delete(toDelete.map((c) => c.id));
@@ -57,8 +57,8 @@ export class RubricService extends BaseService<RubricRepository> {
 		for (const c of toUpdate) {
 			await criteriaRepo.update(c.id as number, {
 				criteria: this.normalizeI18n(c.criteria),
-				min_value: c.min_value,
-				max_value: c.max_value,
+				minValue: c.minValue,
+				maxValue: c.maxValue,
 			});
 		}
 
@@ -67,10 +67,10 @@ export class RubricService extends BaseService<RubricRepository> {
 		if (toInsert.length > 0) {
 			await criteriaRepo.save(
 				toInsert.map((c) => ({
-					rubric_question_id: questionId,
+					rubricQuestionId: questionId,
 					criteria: this.normalizeI18n(c.criteria),
-					min_value: c.min_value,
-					max_value: c.max_value,
+					minValue: c.minValue,
+					maxValue: c.maxValue,
 				})) as DeepPartial<RubricQuestionCriteriaEntity>[],
 			);
 		}
@@ -89,11 +89,11 @@ export class RubricService extends BaseService<RubricRepository> {
 		const incomingIds = questions.filter((q) => q.id).map((q) => q.id as number);
 
 		// Borrar questions que ya no vienen (y sus criterias primero)
-		const existing = await questionRepo.find({ where: { rubric_id: rubricId } });
+		const existing = await questionRepo.find({ where: { rubricId: rubricId } });
 		const toDelete = existing.filter((q) => !incomingIds.includes(q.id));
 		if (toDelete.length > 0) {
 			const deletedIds = toDelete.map((q) => q.id);
-			await criteriaRepo.delete({ rubric_question_id: In(deletedIds) });
+			await criteriaRepo.delete({ rubricQuestionId: In(deletedIds) });
 			await questionRepo.delete(deletedIds);
 		}
 
@@ -116,17 +116,17 @@ export class RubricService extends BaseService<RubricRepository> {
 			const { criterias, ...questionData } = q;
 			const saved = await questionRepo.save({
 				...questionData,
-				rubric_id: rubricId,
+				rubricId: rubricId,
 				question: this.normalizeI18n(q.question),
 			} as DeepPartial<RubricQuestionEntity>);
 
 			if (criterias && criterias.length > 0) {
 				await criteriaRepo.save(
 					criterias.map((c) => ({
-						rubric_question_id: saved.id,
+						rubricQuestionId: saved.id,
 						criteria: this.normalizeI18n(c.criteria),
-						min_value: c.min_value,
-						max_value: c.max_value,
+						minValue: c.minValue,
+						maxValue: c.maxValue,
 					})) as DeepPartial<RubricQuestionCriteriaEntity>[],
 				);
 			}
@@ -137,18 +137,18 @@ export class RubricService extends BaseService<RubricRepository> {
 
 	private async isRubricUsed(rubricId: number): Promise<boolean> {
 		const questions = await this.dataSource.getRepository(RubricQuestionEntity).find({
-			where: { rubric_id: rubricId },
+			where: { rubricId: rubricId },
 		});
 		if (questions.length === 0) return false;
 
 		const questionIds = questions.map((q) => q.id);
 		const criteriaList = await this.dataSource.getRepository(RubricQuestionCriteriaEntity).find({
-			where: { rubric_question_id: In(questionIds) },
+			where: { rubricQuestionId: In(questionIds) },
 		});
 		if (criteriaList.length === 0) return false;
 
 		return await this.dataSource.getRepository(RubricScoreEntity).exists({
-			where: { rubric_question_criteria_id: In(criteriaList.map((c) => c.id)) },
+			where: { rubricQuestionCriteriaId: In(criteriaList.map((c) => c.id)) },
 		});
 	}
 
@@ -170,7 +170,7 @@ export class RubricService extends BaseService<RubricRepository> {
 				INNER JOIN school_tree st ON c.root_chart_detail_id = st.id
 				WHERE st.depth < 20
 			)
-			SELECT DISTINCT entity_code AS program_id
+			SELECT DISTINCT entity_code AS "programId"
 			FROM school_tree
 			WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $3)
 			  AND entity_code IS NOT NULL
@@ -178,7 +178,7 @@ export class RubricService extends BaseService<RubricRepository> {
 			[TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId, TYPE_CODES.ENTITY_TYPE.PROGRAM],
 		);
 
-		return raw.map((row: { program_id: number }) => row.program_id);
+		return raw.map((row: { programId: number }) => row.programId);
 	}
 	// ── CRUD ──────────────────────────────────────────────────────────────
 
@@ -287,17 +287,17 @@ export class RubricService extends BaseService<RubricRepository> {
 
 		await this.dataSource.transaction(async (txManager) => {
 			const questions = await txManager.find(RubricQuestionEntity, {
-				where: { rubric_id: id },
+				where: { rubricId: id },
 			});
 			const questionIds = questions.map((q) => q.id);
 
 			if (questionIds.length > 0) {
 				await txManager.delete(RubricQuestionCriteriaEntity, {
-					rubric_question_id: In(questionIds),
+					rubricQuestionId: In(questionIds),
 				});
 			}
 
-			await txManager.delete(RubricQuestionEntity, { rubric_id: id });
+			await txManager.delete(RubricQuestionEntity, { rubricId: id });
 			await txManager.delete(rubric.constructor, id);
 		});
 

@@ -44,8 +44,8 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 
 	async list(dto: ListIfcFindingsDto, schoolId: number) {
 		return await this.dataSource.query(LIST_SQL, [
-			dto.chart_ids,
-			dto.period_id,
+			dto.chartIds,
+			dto.periodId,
 			schoolId,
 			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
@@ -57,8 +57,8 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 			const finding = await IfcFindingValidation.assertFindingExists(em, id);
 			const courseChart = await IfcFindingValidation.resolveCourseChart(
 				em,
-				finding.course_id,
-				finding.academic_period_id,
+				finding.courseId,
+				finding.academicPeriodId,
 				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 			);
 
@@ -86,10 +86,10 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 			void schoolId;
 
 			const [deletedFindingActions] = (await em.query(
-				'DELETE FROM improvement.finding_actions WHERE finding_id = $1 RETURNING action_id',
+				'DELETE FROM improvement.finding_actions WHERE finding_id = $1 RETURNING action_id AS "actionId"',
 				[id],
-			)) as [Array<{ action_id: number }>, number];
-			const actionIds: number[] = deletedFindingActions.map((r) => Number(r.action_id));
+			)) as [Array<{ actionId: number }>, number];
+			const actionIds: number[] = deletedFindingActions.map((r) => Number(r.actionId));
 
 			if (actionIds.length > 0) {
 				await em.query('DELETE FROM improvement.actions WHERE id = ANY($1::int[])', [actionIds]);
@@ -133,23 +133,23 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 		return {
 			finding: {
 				id: Number(row.id),
-				finding_code: row.finding_code,
-				academic_period_code: row.academic_period_code,
+				findingCode: row.findingCode,
+				academicPeriodCode: row.academicPeriodCode,
 				description: row.description,
 				criticality: {
-					code: row.criticality_code,
-					name: row.criticality_name,
-					color: row.criticality_color ?? null,
+					code: row.criticalityCode,
+					name: row.criticalityName,
+					color: row.criticalityColor ?? null,
 				},
 			},
 			actions: actionRows.map((a: any) => ({
 				id: Number(a.id),
-				action_code: a.action_code,
+				actionCode: a.actionCode,
 				description: a.description,
 				completeness: {
-					code: a.completeness_code,
-					name: a.completeness_name,
-					color: a.completeness_color ?? null,
+					code: a.completenessCode,
+					name: a.completenessName,
+					color: a.completenessColor ?? null,
 				},
 			})),
 		};
@@ -160,8 +160,8 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 			const finding = await IfcFindingValidation.assertFindingExists(em, id);
 			const courseChart = await IfcFindingValidation.resolveCourseChart(
 				em,
-				finding.course_id,
-				finding.academic_period_id,
+				finding.courseId,
+				finding.academicPeriodId,
 				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
 			);
 
@@ -256,19 +256,19 @@ school_check AS (
 	)
 )
 SELECT
-	f.id::int                                                   AS id,
-	ifc_f.ifc_id::int                                           AS ifc_id,
-	f.course_id::int                                            AS course_id,
-	ct_crit.code                                                AS criticality_code,
-	ct_crit.name                                                AS criticality_name,
-	(ct_crit.extra->>'color')                                   AS criticality_color,
-	(ct_crit.extra->>'order')::int                              AS criticality_order,
+	f.id::int                                                   AS "id",
+	ifc_f.ifc_id::int                                           AS "ifcId",
+	f.course_id::int                                            AS "courseId",
+	ct_crit.code                                                AS "criticalityCode",
+	ct_crit.name                                                AS "criticalityName",
+	(ct_crit.extra->>'color')                                   AS "criticalityColor",
+	(ct_crit.extra->>'order')::int                              AS "criticalityOrder",
 	(p_fnd.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || f.correlative::text                           AS finding_code,
-	ap.code                                                     AS academic_period_code,
-	f.description                                               AS description
+		|| '-' || f.correlative::text                           AS "findingCode",
+	ap.code                                                     AS "academicPeriodCode",
+	f.description                                               AS "description"
 FROM improvement.findings f
 JOIN ifc.ifc_findings ifc_f         ON ifc_f.finding_id = f.id
 JOIN core.types ct_crit             ON ct_crit.id = f.criticality_type_id
@@ -301,16 +301,16 @@ WITH school_check AS (
 	  AND c_school.entity_code = $2
 )
 SELECT
-	f.id::int                                                AS id,
+	f.id::int                                                AS "id",
 	(p_fnd.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || f.correlative::text                        AS finding_code,
-	ap.code                                                  AS academic_period_code,
-	f.description                                            AS description,
-	ct_crit.code                                             AS criticality_code,
-	ct_crit.name                                             AS criticality_name,
-	(ct_crit.extra->>'color')                                AS criticality_color
+		|| '-' || f.correlative::text                        AS "findingCode",
+	ap.code                                                  AS "academicPeriodCode",
+	f.description                                            AS "description",
+	ct_crit.code                                             AS "criticalityCode",
+	ct_crit.name                                             AS "criticalityName",
+	(ct_crit.extra->>'color')                                AS "criticalityColor"
 FROM improvement.findings f
 JOIN core.types ct_crit             ON ct_crit.id = f.criticality_type_id
 JOIN evidence.instruments inst      ON inst.id    = f.instrument_id
@@ -324,15 +324,15 @@ WHERE f.id        = $1
 
 const FINDING_ACTIONS_SQL = `
 SELECT
-	a.id::int                                                AS id,
+	a.id::int                                                AS "id",
 	(p_acn.value #>> '{}')
 		|| '-' || inst.code
 		|| CASE WHEN ac.code IS NOT NULL THEN '-' || ac.code ELSE '' END
-		|| '-' || a.correlative::text                        AS action_code,
-	a.description                                            AS description,
-	CASE WHEN fa.evidences IS NULL THEN $3 ELSE $4 END       AS completeness_code,
-	comp.name                                                AS completeness_name,
-	(comp.extra->>'color')                                   AS completeness_color
+		|| '-' || a.correlative::text                        AS "actionCode",
+	a.description                                            AS "description",
+	CASE WHEN fa.evidences IS NULL THEN $3 ELSE $4 END       AS "completenessCode",
+	comp.name                                                AS "completenessName",
+	(comp.extra->>'color')                                   AS "completenessColor"
 FROM improvement.finding_actions fa
 JOIN improvement.actions  a      ON a.id    = fa.action_id
 JOIN improvement.findings f      ON f.id    = fa.finding_id

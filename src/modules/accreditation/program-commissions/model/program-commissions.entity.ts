@@ -11,16 +11,16 @@ export class ProgramCommissionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	commission_id: number;
+	commissionId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	commission_type_id: number;
+	commissionTypeId: number;
 
 	// %% RELATIONS
 
@@ -40,12 +40,12 @@ export class ProgramCommissionEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_program_commissions_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'commission_type_id',
 		foreignKeyConstraintName: 'FK_program_commissions_commission_type_id',
 	})
-	commission_type: TypeEntity;
+	commissionType: TypeEntity;
 }

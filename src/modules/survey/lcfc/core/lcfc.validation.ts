@@ -22,21 +22,25 @@ export class LcfcValidation {
 		if (!tokenData) {
 			throw new NotFoundException(lcfcValidationStrings.error.tokenNotFound);
 		}
-		if (tokenData.max_register_date && new Date(tokenData.max_register_date) < new Date()) {
-			throw new BadRequestException(lcfcValidationStrings.error.tokenExpired);
+		if (tokenData.maxRegisterDate && new Date(tokenData.maxRegisterDate) < new Date()) {
+			throw new BadRequestException(
+				'El token ha expirado. El plazo para responder la encuesta LCFC ha vencido.',
+			);
 		}
-		if (tokenData.survey_status === 'Cerrada') {
-			throw new BadRequestException(lcfcValidationStrings.error.alreadyCompleted);
+		if (tokenData.surveyStatus === 'Cerrada') {
+			throw new BadRequestException('Esta encuesta LCFC ya ha sido completada anteriormente.');
 		}
 	}
 
-	static validateCompleteScores(scores: { outcome_id: number; score: number }[]): void {
+	static validateCompleteScores(scores: { outcomeId: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noScores);
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 10) {
-				throw new BadRequestException(lcfcValidationStrings.error.invalidScore);
+				throw new BadRequestException(
+					`Puntaje inválido (${item.score}) para outcomeId ${item.outcomeId}. Debe estar entre 1 y 10.`,
+				);
 			}
 		}
 	}

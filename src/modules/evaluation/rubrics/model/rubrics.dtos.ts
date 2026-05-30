@@ -21,12 +21,12 @@ export class CreateRubricCriteriaDto {
 	criteria: I18nText | string;
 
 	@IsNumber()
-	@ApiProperty({ example: 0, required: true })
-	min_value: number;
+	@ApiProperty({ example: 1, required: true })
+	minValue: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 100, required: true })
-	max_value: number;
+	@ApiProperty({ example: 1, required: true })
+	maxValue: number;
 }
 
 export class CreateRubricQuestionDto {
@@ -38,7 +38,7 @@ export class CreateRubricQuestionDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@Allow()
 	@ApiProperty({
@@ -53,90 +53,90 @@ export class CreateRubricQuestionDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => CreateRubricCriteriaDto)
-	@ApiProperty({ type: [CreateRubricCriteriaDto], required: true })
+	@ApiProperty({ example: {}, type: [CreateRubricCriteriaDto], required: true })
 	criterias: CreateRubricCriteriaDto[];
 }
 
 export class CreateRubricDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_type_id: number;
+	rubricTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	grade_type_id: number;
+	gradeTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => CreateRubricQuestionDto)
-	@ApiProperty({ type: [CreateRubricQuestionDto], required: true })
+	@ApiProperty({ example: {}, type: [CreateRubricQuestionDto], required: true })
 	questions: CreateRubricQuestionDto[];
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class UpdateRubricDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_type_id?: number;
+	rubricTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	grade_type_id?: number;
+	gradeTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	studyPlanCourseId?: number;
 
 	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => CreateRubricQuestionDto) // reutilizamos porque ya tiene id opcional
-	@ApiProperty({ type: [CreateRubricQuestionDto], required: false })
+	@ApiProperty({ example: {}, type: [CreateRubricQuestionDto], required: false })
 	questions?: CreateRubricQuestionDto[];
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class FilterRubricDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rubric_type_id?: number;
+	rubricTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	grade_type_id?: number;
+	gradeTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	studyPlanCourseId?: number;
 }

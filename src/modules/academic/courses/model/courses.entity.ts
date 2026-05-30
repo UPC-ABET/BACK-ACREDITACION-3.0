@@ -17,7 +17,7 @@ export class CourseEntity extends BaseEntity {
 	description: I18nText;
 
 	@JsonColumn({ nullable: false })
-	learning_outcome: I18nText;
+	learningOutcome: I18nText;
 
 	// %% RELATIONS
 }

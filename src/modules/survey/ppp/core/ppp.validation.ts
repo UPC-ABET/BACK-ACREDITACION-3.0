@@ -9,7 +9,7 @@ export class PppValidation {
 	): Promise<void> {
 		const errors: string[] = [];
 
-		const exists = await repo.existsPpp(dto.outcome_id, dto.program_id, dto.academic_period_id);
+		const exists = await repo.existsPpp(dto.outcomeId, dto.programId, dto.academicPeriodId);
 		if (exists) {
 			errors.push(
 				'Ya existe una configuración PPP para este outcome en el programa y período seleccionados',
@@ -53,7 +53,7 @@ export class PppValidation {
 	static validateCreateSurvey(dto: CreatePppSurveyDto): void {
 		const errors: string[] = [];
 
-		if (dto.practice_number !== 1 && dto.practice_number !== 2) {
+		if (dto.practiceNumber !== 1 && dto.practiceNumber !== 2) {
 			errors.push('El número de práctica debe ser 1 (Práctica I) o 2 (Práctica II)');
 		}
 
@@ -82,8 +82,8 @@ export class PppValidation {
 	static validateExcelRow(row: any, rowNumber: number): { valid: boolean; errors: string[] } {
 		const errors: string[] = [];
 
-		if (!row.student_code) errors.push(`Fila ${rowNumber}: Código de alumno requerido`);
-		if (!row.practice_number || ![1, 2].includes(Number(row.practice_number))) {
+		if (!row.studentCode) errors.push(`Fila ${rowNumber}: Código de alumno requerido`);
+		if (!row.practiceNumber || ![1, 2].includes(Number(row.practiceNumber))) {
 			errors.push(`Fila ${rowNumber}: Número de práctica inválido (debe ser 1 o 2)`);
 		}
 		if (row.ruc && !/^\d{11}$/.test(String(row.ruc))) {

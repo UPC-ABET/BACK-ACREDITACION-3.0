@@ -8,7 +8,7 @@ export class ProfessorEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	staff_id: number;
+	staffId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;

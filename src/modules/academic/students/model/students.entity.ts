@@ -10,13 +10,13 @@ export class StudentEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	user_id: number;
+	userId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	graduation_modality_type_id: number;
+	graduationModalityTypeId: number;
 
 	// %% RELATIONS
 
@@ -33,5 +33,5 @@ export class StudentEntity extends BaseEntity {
 		name: 'graduation_modality_type_id',
 		foreignKeyConstraintName: 'FK_students_graduation_modality_type_id',
 	})
-	graduation_modality_type: TypeEntity;
+	graduationModalityType: TypeEntity;
 }

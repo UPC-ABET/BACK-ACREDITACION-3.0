@@ -14,44 +14,44 @@ export class SurveyEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_status_type_id: number;
+	surveyStatusTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_id: number;
+	studentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	campus_id: number;
+	campusId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@JsonColumn({ nullable: true })
 	information: I18nText;
 
 	@IntegerColumn({ nullable: true })
-	survey_number: number;
+	surveyNumber: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	course_section_id: number;
+	courseSectionId: number;
 
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'survey_type_id', foreignKeyConstraintName: 'FK_surveys_survey_type_id' })
-	survey_type: TypeEntity;
+	surveyType: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
 		name: 'survey_status_type_id',
 		foreignKeyConstraintName: 'FK_surveys_survey_status_type_id',
 	})
-	survey_status_type: TypeEntity;
+	surveyStatusType: TypeEntity;
 
 	@ManyToOne(() => StudentEntity)
 	@JoinColumn({ name: 'student_id', foreignKeyConstraintName: 'FK_surveys_student_id' })
@@ -62,7 +62,7 @@ export class SurveyEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_surveys_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_surveys_campus_id' })
@@ -77,5 +77,5 @@ export class SurveyEntity extends BaseEntity {
 		name: 'course_section_id',
 		foreignKeyConstraintName: 'FK_surveys_course_section_id',
 	})
-	course_section: CourseSectionEntity;
+	courseSection: CourseSectionEntity;
 }

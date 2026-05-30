@@ -9,19 +9,19 @@ export class NotificationEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_id: number;
+	surveyId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	notification_status_type_id: number;
+	notificationStatusTypeId: number;
 
 	@TextFullColumn({ nullable: false })
 	token: string;
 
 	@DateColumn({ nullable: false })
-	sent_date: string;
+	sentDate: string;
 
 	@DateColumn({ nullable: false })
-	max_register_date: string;
+	maxRegisterDate: string;
 
 	// %% RELATIONS
 
@@ -34,5 +34,5 @@ export class NotificationEntity extends BaseEntity {
 		name: 'notification_status_type_id',
 		foreignKeyConstraintName: 'FK_notifications_notification_status_type_id',
 	})
-	notification_status_type: TypeEntity;
+	notificationStatusType: TypeEntity;
 }

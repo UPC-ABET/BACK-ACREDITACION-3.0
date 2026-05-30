@@ -1,5 +1,5 @@
 export const projectStudentsRoutes = {
-	project_students: {
+	projectStudents: {
 		route: 'project-students',
 		tag: 'Estudiantes de proyecto',
 		operation: {

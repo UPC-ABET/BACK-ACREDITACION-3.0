@@ -21,21 +21,25 @@ export class GraValidation {
 		if (!tokenData) {
 			throw new NotFoundException(graValidationStrings.error.tokenNotFound);
 		}
-		if (tokenData.max_register_date && new Date(tokenData.max_register_date) < new Date()) {
-			throw new BadRequestException(graValidationStrings.error.tokenExpired);
+		if (tokenData.maxRegisterDate && new Date(tokenData.maxRegisterDate) < new Date()) {
+			throw new BadRequestException(
+				'El token ha expirado. El plazo para responder la encuesta GRA ha vencido.',
+			);
 		}
 		if (tokenData.survey_status === 'Cerrada') {
 			throw new BadRequestException(graValidationStrings.error.alreadyCompleted);
 		}
 	}
 
-	static validateCompleteScores(scores: { outcome_config_id: number; score: number }[]): void {
+	static validateCompleteScores(scores: { outcomeConfigId: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
 			throw new BadRequestException(graValidationStrings.error.noScores);
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 5) {
-				throw new BadRequestException(graValidationStrings.error.invalidScore);
+				throw new BadRequestException(
+					`Puntaje inválido (${item.score}) para outcomeConfigId ${item.outcomeConfigId}. Debe estar entre 1 y 5.`,
+				);
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 export const programCommissionsRoutes = {
-	program_commissions: {
+	programCommissions: {
 		route: 'program-commissions',
 		tag: 'Comisiones de programa',
 		operation: {

@@ -7,15 +7,15 @@ import { NotificationLogService } from 'src/modules/ifc/notification-log/api/not
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 const ctxRow = (overrides: Partial<Record<string, any>> = {}) => ({
-	course_chart_id: 500,
-	school_id: 9,
-	period_id: 5,
-	trigger_type_id: 101,
-	ifc_status_type_id: 2,
-	ifc_id: 42,
-	period_code: 'AP_2026_1',
-	course_name: { es: 'Curso', en: 'Course' },
-	coordinator_name: 'Ada Lovelace',
+	courseChartId: 500,
+	schoolId: 9,
+	periodId: 5,
+	triggerTypeId: 101,
+	ifcStatusTypeId: 2,
+	ifcId: 42,
+	periodCode: 'AP_2026_1',
+	courseName: { es: 'Curso', en: 'Course' },
+	coordinatorName: 'Ada Lovelace',
 	...overrides,
 });
 
@@ -23,8 +23,8 @@ const configRow = (overrides: Partial<Record<string, any>> = {}) => ({
 	id: 7,
 	title: { es: 'Hola {{course_name}}', en: 'Hi {{course_name}}' },
 	body: { es: '<p>{{coordinator_name}}</p>', en: '<p>{{coordinator_name}}</p>' },
-	to_chart_level_type_ids: [19],
-	cc_chart_level_type_ids: [18],
+	toChartLevelTypeIds: [19],
+	ccChartLevelTypeIds: [18],
 	...overrides,
 });
 
@@ -60,8 +60,8 @@ describe('NotificationDispatcherService.dispatch', () => {
 		expect(result).toEqual({
 			sent: false,
 			reason: 'no_course_chart',
-			recipients_count: 0,
-			cc_count: 0,
+			recipientsCount: 0,
+			ccCount: 0,
 		});
 	});
 
@@ -71,7 +71,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 
 		const result = await dispatcher.dispatch(baseInput);
 
-		expect(result).toEqual({ sent: false, reason: 'no_config', recipients_count: 0, cc_count: 0 });
+		expect(result).toEqual({ sent: false, reason: 'no_config', recipientsCount: 0, ccCount: 0 });
 	});
 
 	it('returns no_recipients when the chain has no matching staff emails', async () => {
@@ -86,8 +86,8 @@ describe('NotificationDispatcherService.dispatch', () => {
 		expect(result).toEqual({
 			sent: false,
 			reason: 'no_recipients',
-			recipients_count: 0,
-			cc_count: 0,
+			recipientsCount: 0,
+			ccCount: 0,
 		});
 	});
 
@@ -96,7 +96,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 		dataSource.query
 			.mockResolvedValueOnce([ctxRow()]) // ctx
 			.mockResolvedValueOnce([configRow()]) // config
-			.mockResolvedValueOnce([{ level_type_id: 19, staff_id: 1, staff_email: 'a@x.com' }]) // recipients
+			.mockResolvedValueOnce([{ levelTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }]) // recipients
 			.mockResolvedValueOnce([{ value: [] }]) // parameter vars (empty list)
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]); // lookupStatusCode
 		(mailService.sendRawEmail as jest.Mock).mockRejectedValueOnce(new BadGatewayException('boom'));
@@ -113,9 +113,9 @@ describe('NotificationDispatcherService.dispatch', () => {
 			.mockResolvedValueOnce([ctxRow()])
 			.mockResolvedValueOnce([configRow()])
 			.mockResolvedValueOnce([
-				{ level_type_id: 19, staff_id: 1, staff_email: 'shared@x.com' },
-				{ level_type_id: 18, staff_id: 1, staff_email: 'shared@x.com' },
-				{ level_type_id: 18, staff_id: 2, staff_email: 'cc-only@x.com' },
+				{ levelTypeId: 19, staffId: 1, staffEmail: 'shared@x.com' },
+				{ levelTypeId: 18, staffId: 1, staffEmail: 'shared@x.com' },
+				{ levelTypeId: 18, staffId: 2, staffEmail: 'cc-only@x.com' },
 			])
 			.mockResolvedValueOnce([{ value: [] }])
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]);
@@ -124,8 +124,8 @@ describe('NotificationDispatcherService.dispatch', () => {
 		const result = await dispatcher.dispatch(baseInput);
 
 		expect(result.sent).toBe(true);
-		expect(result.recipients_count).toBe(1);
-		expect(result.cc_count).toBe(1);
+		expect(result.recipientsCount).toBe(1);
+		expect(result.ccCount).toBe(1);
 		const callArgs = (mailService.sendRawEmail as jest.Mock).mock.calls[0][0];
 		expect(callArgs.to).toBe('shared@x.com');
 		expect(callArgs.cc).toEqual(['cc-only@x.com']);
@@ -144,7 +144,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 					body: { es: '<p>{{course_name}}</p>', en: '<p>{{course_name}}</p>' },
 				}),
 			])
-			.mockResolvedValueOnce([{ level_type_id: 19, staff_id: 1, staff_email: 'a@x.com' }])
+			.mockResolvedValueOnce([{ levelTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }])
 			.mockResolvedValueOnce([
 				{
 					value: [

@@ -42,42 +42,42 @@ export class ProjectController extends BaseController<ProjectService> {
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
 	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
 	@ApiQuery({ name: 'schoolId', required: false, type: Number })
-	@ApiQuery({ name: 'gradeTypeId', required: false, type: Number })
+	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	async getProjectsByProfessor(
 		@Param('professorId', ParseIntPipe) professorId: number,
 		@Query('academicPeriodId') academicPeriodId?: string,
 		@Query('schoolId') schoolId?: string,
-		@Query('gradeTypeId') gradeTypeId?: string,
+		@Query('gradeTypeCode') gradeTypeCode?: string,
 	) {
 		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
 		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
-		const parsedGradeTypeId = gradeTypeId ? parseInt(gradeTypeId, 10) : undefined;
 
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectsByProfessor(
 				professorId,
 				parsedAcademicPeriodId,
 				parsedSchoolId,
-				parsedGradeTypeId,
+				gradeTypeCode,
 			),
 		);
 	}
 
 	@Get('project/:projectId')
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
-	@ApiQuery({ name: 'is_evaluation_mode', required: false, type: Boolean })
+	@ApiQuery({ name: 'isEvaluationMode', required: false, type: Boolean })
+	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	async getProjectWithDetails(
 		@Param('projectId', ParseIntPipe) projectId: number,
-		@Query('is_evaluation_mode') isEvaluationMode?: string,
-		@Query('grade_type_id', new ParseIntPipe({ optional: true })) gradeTypeId?: number,
-		@Query('rubric_type_id', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
+		@Query('isEvaluationMode') isEvaluationMode?: string,
+		@Query('gradeTypeCode') gradeTypeCode?: string,
+		@Query('rubricTypeId', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		const isEvalMode = isEvaluationMode === 'true';
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectWithDetails(
 				projectId,
 				isEvalMode,
-				gradeTypeId,
+				gradeTypeCode,
 				rubricTypeId,
 			),
 		);

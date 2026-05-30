@@ -6,7 +6,7 @@ import {
 	FilterCourseSectionDto,
 } from '../../model/course-sections.dtos';
 
-const cfg = courseSectionsRoutes.course_sections;
+const cfg = courseSectionsRoutes.courseSections;
 
 export const SwaggerCourseSectionController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

@@ -1,5 +1,5 @@
 export const courseOutcomeMappingsRoutes = {
-	course_outcome_mappings: {
+	courseOutcomeMappings: {
 		route: 'course-outcome-mappings',
 		tag: 'Mapeos de outcomes por curso',
 		operation: {

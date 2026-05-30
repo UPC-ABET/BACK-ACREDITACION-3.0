@@ -9,8 +9,8 @@ export class RubricQuestionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				rubric_id: data.rubric_id,
-				outcome_id: data.outcome_id ?? IsNull(),
+				rubricId: data.rubricId,
+				outcomeId: data.outcomeId ?? IsNull(),
 				question: data.question,
 			},
 		});
@@ -34,14 +34,14 @@ export class RubricQuestionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricQuestionsValidationStrings.error.notFound);
 
-		const rubricId = data.rubric_id ?? entity?.rubric_id;
-		const outcomeId = data.outcome_id ?? entity?.outcome_id ?? IsNull();
+		const rubricId = data.rubricId ?? entity?.rubricId;
+		const outcomeId = data.outcomeId ?? entity?.outcomeId ?? IsNull();
 		const question = data.question ?? entity?.question;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				rubric_id: rubricId,
-				outcome_id: outcomeId,
+				rubricId: rubricId,
+				outcomeId: outcomeId,
 				question,
 			},
 		});

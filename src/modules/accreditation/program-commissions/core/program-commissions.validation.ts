@@ -8,9 +8,9 @@ export class ProgramCommissionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				commission_id: data.commission_id,
-				program_id: data.program_id,
-				academic_period_id: data.academic_period_id,
+				commissionId: data.commissionId,
+				programId: data.programId,
+				academicPeriodId: data.academicPeriodId,
 			},
 		});
 
@@ -33,12 +33,12 @@ export class ProgramCommissionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(programCommissionsValidationStrings.error.notFound);
 
-		if (data.commission_id && data.program_id && data.academic_period_id) {
+		if (data.commissionId && data.programId && data.academicPeriodId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					commission_id: data.commission_id,
-					program_id: data.program_id,
-					academic_period_id: data.academic_period_id,
+					commissionId: data.commissionId,
+					programId: data.programId,
+					academicPeriodId: data.academicPeriodId,
 				},
 			});
 

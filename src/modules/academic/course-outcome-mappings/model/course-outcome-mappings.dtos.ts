@@ -3,71 +3,71 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCourseOutcomeMappingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	outcome_type_id: number;
+	outcomeTypeId: number;
 }
 
 export class UpdateCourseOutcomeMappingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	studyPlanCourseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_type_id?: number;
+	outcomeTypeId?: number;
 }
 
 export class FilterCourseOutcomeMappingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	studyPlanCourseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	outcome_type_id?: number;
+	outcomeTypeId?: number;
 }

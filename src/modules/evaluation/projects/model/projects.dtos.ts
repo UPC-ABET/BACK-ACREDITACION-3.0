@@ -17,33 +17,33 @@ import type { I18nText } from 'src/shared/types/i18n';
 export class ProjectEvaluatorInputDto {
 	@IsInt()
 	@ApiProperty({ example: 1, required: true, description: 'ID del profesor evaluador' })
-	professor_id: number;
+	professorId: number;
 
 	@IsInt()
-	@ApiProperty({ example: 5, required: true, description: 'ID del tipo de evaluador (TG403)' })
-	evaluator_type_id: number;
+	@ApiProperty({ example: 1, required: true, description: 'ID del tipo de evaluador (TG403)' })
+	evaluatorTypeId: number;
 }
 
 export class CreateProjectDto {
 	@IsString()
 	@IsNotEmpty()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: true })
+	@ApiProperty({ example: 'codeExample', required: true })
 	code: string;
 
 	@IsObject()
 	@IsNotEmpty()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: true })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
 	name: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsInt()
 	@ApiProperty({ example: 1, required: true, description: 'ID del study_plan_course' })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IsArray()
 	@IsInt({ each: true })
@@ -53,12 +53,13 @@ export class CreateProjectDto {
 		required: true,
 		description: 'IDs de student_section_enrollments',
 	})
-	student_section_enrollment_ids: number[];
+	studentSectionEnrollmentIds: number[];
 
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => ProjectEvaluatorInputDto)
 	@ApiProperty({
+		example: {},
 		type: [ProjectEvaluatorInputDto],
 		required: true,
 		description: 'Evaluadores con su tipo',
@@ -66,38 +67,38 @@ export class CreateProjectDto {
 	evaluators: ProjectEvaluatorInputDto[];
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 }
 
 export class UpdateProjectDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 	@IsOptional()
 	@IsString()
 	@Length(1, 50)
-	@ApiProperty({ example: 'code_example', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'name_es', en: 'name_en' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'description_es', en: 'description_en' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
@@ -108,140 +109,141 @@ export class UpdateProjectDto {
 		example: [1, 2, 3],
 		required: false,
 	})
-	student_section_enrollment_ids?: number[];
+	studentSectionEnrollmentIds?: number[];
 
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({
 		type: [Number],
-		example: [1, 2],
+		example: [1, 2, 3],
 		required: false,
 	})
-	evaluator_professor_ids?: number[];
+	evaluatorProfessorIds?: number[];
 }
 
 export class EvaluatorInfoDto {
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	id: number; // project_evaluator_id
 
-	@ApiProperty()
-	professor_id: number;
+	@ApiProperty({ example: 1 })
+	professorId: number;
 
-	@ApiProperty()
-	first_name: string;
+	@ApiProperty({ example: 'firstNameExample' })
+	firstName: string;
 
-	@ApiProperty()
-	last_name: string;
+	@ApiProperty({ example: 'lastNameExample' })
+	lastName: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'user@example.com' })
 	email: string;
 
-	@ApiProperty()
-	evaluator_type: string; // DOC, COM, GER...
+	@ApiProperty({ example: 'evaluatorTypeExample' })
+	evaluatorType: string; // DOC, COM, GER...
 }
 
 export class StudentInfoDto {
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	id: number; // project_student_id
 
-	@ApiProperty()
-	student_id: number;
+	@ApiProperty({ example: 1 })
+	studentId: number;
 
-	@ApiProperty()
-	first_name: string;
+	@ApiProperty({ example: 'firstNameExample' })
+	firstName: string;
 
-	@ApiProperty()
-	last_name: string;
+	@ApiProperty({ example: 'lastNameExample' })
+	lastName: string;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'user@example.com' })
 	email: string;
 
-	@ApiProperty()
-	student_code: string;
+	@ApiProperty({ example: 'studentCodeExample' })
+	studentCode: string;
 }
 
 export class ProjectEvaluatorResponseDto {
-	@ApiProperty()
-	project_id: number;
+	@ApiProperty({ example: 1 })
+	projectId: number;
 
-	@ApiProperty()
-	project_code: string;
+	@ApiProperty({ example: 'projectCodeExample' })
+	projectCode: string;
 
-	@ApiProperty()
-	project_name: I18nText;
+	@ApiProperty({ example: { es: 'projectNameEs', en: 'projectNameEn' } })
+	projectName: I18nText;
 
-	@ApiProperty()
-	evaluation_date: Date;
+	@ApiProperty({ example: '2024-01-01T00:00:00Z' })
+	evaluationDate: Date;
 
-	@ApiProperty()
-	course_name: string;
+	@ApiProperty({ example: 'courseNameExample' })
+	courseName: string;
 
-	@ApiProperty({ type: EvaluatorInfoDto })
+	@ApiProperty({ example: {}, type: EvaluatorInfoDto })
 	evaluators: EvaluatorInfoDto[];
 
-	@ApiProperty({ type: [StudentInfoDto] })
+	@ApiProperty({ example: {}, type: [StudentInfoDto] })
 	students: StudentInfoDto[];
 }
 
 export class CriteriaScoreDto {
-	@ApiProperty()
-	student_id: number; // o project_student_id
+	@ApiProperty({ example: 1 })
+	studentId: number; // o project_student_id
 
-	@ApiProperty()
-	evaluator_id: number; // project_evaluator_id
+	@ApiProperty({ example: 1 })
+	evaluatorId: number; // project_evaluator_id
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	score: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: 'commentariesExample' })
 	commentaries: string;
 }
 
 export class RubricCriteriaDetailsDto {
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	id: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: { es: 'textEs', en: 'textEn' } })
 	text: I18nText;
 
-	@ApiProperty()
-	min_value: string;
+	@ApiProperty({ example: 'minValueExample' })
+	minValue: string;
 
-	@ApiProperty()
-	max_value: string;
+	@ApiProperty({ example: 'maxValueExample' })
+	maxValue: string;
 
-	@ApiProperty({ type: [CriteriaScoreDto], nullable: true })
+	@ApiProperty({ example: {}, type: [CriteriaScoreDto], nullable: true })
 	scores: CriteriaScoreDto[] | null;
 }
 
 export class RubricQuestionDetailsDto {
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	id: number;
 
-	@ApiProperty()
+	@ApiProperty({ example: { es: 'textEs', en: 'textEn' } })
 	text: I18nText;
 
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	outcomeId: number | null;
 
-	@ApiProperty({ type: [RubricCriteriaDetailsDto] })
+	@ApiProperty({ example: {}, type: [RubricCriteriaDetailsDto] })
 	criterias: RubricCriteriaDetailsDto[];
 }
 
 export class StudentEvaluationStatusDto {
-	@ApiProperty({ description: 'project_evaluator_id del evaluador que registró la evaluación' })
-	evaluator_id: number;
+	@ApiProperty({ example: 1, description: 'project_evaluator_id del evaluador que registró la evaluación' })
+	evaluatorId: number;
 
-	@ApiProperty({ description: 'ID del tipo de estado de calificación desde core.types (TG404)' })
-	qualification_status_type_id: number;
+	@ApiProperty({ example: 1, description: 'ID del tipo de estado de calificación desde core.types (TG404)' })
+	qualificationStatusTypeId: number;
 }
 
 export class ProjectDetailsStudentDto extends StudentInfoDto {
-	@ApiProperty({ nullable: true })
-	total_grade: number | null;
+	@ApiProperty({ example: 1, nullable: true })
+	totalGrade: number | null;
 
 	@ApiProperty({
+		example: {},
 		type: [StudentEvaluationStatusDto],
 		description: 'Estado de calificación por evaluador. Solo presente en modo evaluación.',
 	})
@@ -249,30 +251,30 @@ export class ProjectDetailsStudentDto extends StudentInfoDto {
 }
 
 export class ProjectEvaluatorDetailDto {
-	@ApiProperty()
+	@ApiProperty({ example: 1 })
 	id: number;
 
-	@ApiProperty()
-	professor_id: number;
+	@ApiProperty({ example: 1 })
+	professorId: number;
 
-	@ApiProperty()
-	professor_first_name: string;
+	@ApiProperty({ example: 'professorFirstNameExample' })
+	professorFirstName: string;
 
-	@ApiProperty()
-	professor_last_name: string;
+	@ApiProperty({ example: 'professorLastNameExample' })
+	professorLastName: string;
 
-	@ApiProperty()
-	professor_email: string;
+	@ApiProperty({ example: 'professorEmailExample' })
+	professorEmail: string;
 
-	@ApiProperty()
-	evaluator_type_id: number;
+	@ApiProperty({ example: 1 })
+	evaluatorTypeId: number;
 
-	@ApiProperty()
-	evaluator_type_name: string;
+	@ApiProperty({ example: 'evaluatorTypeNameExample' })
+	evaluatorTypeName: string;
 }
 
 export class ProjectDetailsResponseDto {
-	@ApiProperty()
+	@ApiProperty({ example: { es: 'Ejemplo', en: 'Example' } })
 	project: {
 		id: number;
 		code: string;
@@ -280,20 +282,20 @@ export class ProjectDetailsResponseDto {
 		description: I18nText;
 	};
 
-	@ApiProperty()
-	academic_period: {
+	@ApiProperty({ example: {} })
+	academicPeriod: {
 		id: number;
-		modality_type_id: number;
+		modalityTypeId: number;
 		code: string;
 	};
 
-	@ApiProperty({ type: [ProjectDetailsStudentDto] })
+	@ApiProperty({ example: {}, type: [ProjectDetailsStudentDto] })
 	students: ProjectDetailsStudentDto[];
 
-	@ApiProperty({ type: [ProjectEvaluatorDetailDto] })
+	@ApiProperty({ example: {}, type: [ProjectEvaluatorDetailDto] })
 	evaluators: ProjectEvaluatorDetailDto[];
 
-	@ApiProperty()
+	@ApiProperty({ example: {} })
 	rubric: {
 		rubric: any;
 		course: any;
@@ -306,74 +308,74 @@ export class FilterProjectDto {
 	// ── Filtros propios del proyecto ──────────────────────────────────────
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'PROJ-001', required: false })
+	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'nombre', en: 'name' }, required: false })
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'descripción', en: 'description' }, required: false })
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	// ── Filtros contextuales ──────────────────────────────────────────────
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 5,
+		example: 1,
 		required: false,
 		description: 'ID del periodo académico',
 	})
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 3,
+		example: 1,
 		required: false,
 		description: 'ID del programa/carrera',
 	})
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	school_id?: number;
+	schoolId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 12,
+		example: 1,
 		required: false,
 		description: 'ID del curso (academic.courses)',
 	})
-	course_id?: number;
+	courseId?: number;
 
 	// ── Filtros por personas ──────────────────────────────────────────────
 	@IsOptional()
 	@ApiProperty({
-		example: 15,
+		example: 1,
 		required: false,
 		description: 'ID del estudiante.',
 	})
-	student_id?: number;
+	studentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
-		example: 8,
+		example: 1,
 		required: false,
 		description: 'ID del profesor evaluador.',
 	})
-	professor_id?: number;
+	professorId?: number;
 }

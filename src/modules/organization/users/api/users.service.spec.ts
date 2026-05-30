@@ -33,7 +33,7 @@ describe('UserService - school-aware login', () => {
 		id: 42,
 		email: 'juan.perez@example.com',
 		password: 'hashed-password',
-		is_admin: true,
+		isAdmin: true,
 	};
 
 	beforeEach(() => {
@@ -77,7 +77,7 @@ describe('UserService - school-aware login', () => {
 			schoolService.findActiveByCode.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
-				is_active: true,
+				isActive: true,
 			});
 			userRepository.findForLogin.mockResolvedValueOnce(baseUser);
 			(bcrypt.compare as unknown as jest.Mock).mockResolvedValueOnce(true);
@@ -85,11 +85,11 @@ describe('UserService - school-aware login', () => {
 			const result = await service.loginByCredentials('EISCB', baseUser.email, 'plain-password');
 
 			expect(result).toEqual({
-				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
-				access_token: 'signed-jwt-token',
-				expires_in: JWT_EXPIRES_IN_SECONDS,
-				school_id: 7,
-				school_code: 'EISCB',
+				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
+				accessToken: 'signed-jwt-token',
+				expiresIn: JWT_EXPIRES_IN_SECONDS,
+				schoolId: 7,
+				schoolCode: 'EISCB',
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(
@@ -101,7 +101,7 @@ describe('UserService - school-aware login', () => {
 			expect(payload).toEqual({
 				userId: baseUser.id,
 				activeRoleId: authorizationProfile.activeRole.id,
-				school_id: 7,
+				schoolId: 7,
 			});
 		});
 
@@ -109,7 +109,7 @@ describe('UserService - school-aware login', () => {
 			schoolService.findActiveByCode.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
-				is_active: true,
+				isActive: true,
 			});
 			userRepository.findForLogin.mockResolvedValueOnce(baseUser);
 			(bcrypt.compare as unknown as jest.Mock).mockResolvedValueOnce(false);
@@ -128,7 +128,7 @@ describe('UserService - school-aware login', () => {
 			expect(jwtService.sign).toHaveBeenCalledWith({
 				userId: baseUser.id,
 				activeRoleId: authorizationProfile.activeRole.id,
-				school_id: 13,
+				schoolId: 13,
 			});
 		});
 
@@ -151,16 +151,16 @@ describe('UserService - school-aware login', () => {
 			const result = await service.loginById(baseUser.id, 2, 99);
 
 			expect(result).toEqual({
-				user: { id: baseUser.id, email: baseUser.email, is_admin: baseUser.is_admin },
-				access_token: 'signed-jwt-token',
-				expires_in: JWT_EXPIRES_IN_SECONDS,
+				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
+				accessToken: 'signed-jwt-token',
+				expiresIn: JWT_EXPIRES_IN_SECONDS,
 			});
 			expect(result.user.password).toBeUndefined();
 			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, 2);
 			expect(jwtService.sign).toHaveBeenCalledWith({
 				userId: baseUser.id,
 				activeRoleId: authorizationProfile.activeRole.id,
-				school_id: 99,
+				schoolId: 99,
 			});
 		});
 	});

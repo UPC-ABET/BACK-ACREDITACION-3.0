@@ -10,13 +10,13 @@ export class FindingActionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	finding_id: number;
+	findingId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	action_id: number;
+	actionId: number;
 
 	@BooleanColumn({ nullable: false, default: false })
-	in_plan_required: boolean;
+	inPlanRequired: boolean;
 
 	@JsonColumn({ nullable: true })
 	evidences: I18nText | null;

@@ -9,16 +9,16 @@ export class AcademicPeriodEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	modality_type_id: number;
+	modalityTypeId: number;
 
 	@NameColumn({ nullable: false })
 	code: string;
 
 	@DateColumn({ nullable: false })
-	start_date: Date;
+	startDate: Date;
 
 	@DateColumn({ nullable: false })
-	end_date: Date;
+	endDate: Date;
 
 	@Column({
 		type: 'int',
@@ -36,5 +36,5 @@ export class AcademicPeriodEntity extends BaseEntity {
 		name: 'modality_type_id',
 		foreignKeyConstraintName: 'FK_academic_periods_modality_type_id',
 	})
-	modality_type: TypeEntity;
+	modalityType: TypeEntity;
 }

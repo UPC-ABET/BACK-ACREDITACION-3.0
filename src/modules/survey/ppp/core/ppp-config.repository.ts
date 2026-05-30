@@ -17,30 +17,30 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}
 
 	async findAllPpp(filters?: {
-		program_id?: number;
-		academic_period_id?: number;
-		is_active?: boolean;
-		is_visible?: boolean;
+		programId?: number;
+		academicPeriodId?: number;
+		isActive?: boolean;
+		isVisible?: boolean;
 	}): Promise<OutcomeConfigEntity[]> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
 			.where(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
 
-		if (filters?.program_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.program_id });
+		if (filters?.programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
 		}
-		if (filters?.academic_period_id !== undefined) {
+		if (filters?.academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
-				periodId: filters.academic_period_id,
+				periodId: filters.academicPeriodId,
 			});
 		}
-		if (filters?.is_active !== undefined) {
-			qb.andWhere('oc.is_active = :isActive', { isActive: filters.is_active });
+		if (filters?.isActive !== undefined) {
+			qb.andWhere('oc.is_active = :isActive', { isActive: filters.isActive });
 		}
-		if (filters?.is_visible !== undefined) {
+		if (filters?.isVisible !== undefined) {
 			qb.andWhere(`(oc.extra->>'is_visible')::boolean = :isVisible`, {
-				isVisible: filters.is_visible,
+				isVisible: filters.isVisible,
 			});
 		}
 
@@ -67,21 +67,21 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}
 
 	async existsPpp(
-		outcome_id: number,
-		program_id?: number,
-		academic_period_id?: number,
+		outcomeId: number,
+		programId?: number,
+		academicPeriodId?: number,
 	): Promise<boolean> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
-			.where('oc.outcome_id = :outcome_id', { outcome_id })
+			.where('oc.outcome_id = :outcomeId', { outcomeId })
 			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
 
-		if (program_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: program_id });
+		if (programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
 		}
-		if (academic_period_id !== undefined) {
+		if (academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
-				periodId: academic_period_id,
+				periodId: academicPeriodId,
 			});
 		}
 

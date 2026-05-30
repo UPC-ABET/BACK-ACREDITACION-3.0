@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const ROOT = path.resolve('src/modules');
-const OUTPUT = path.resolve('src/tools/entity-relations-generator/config.ts');
+const OUTPUT = path.resolve('src/tools/generators/relation-utils/config.ts');
 
 /* ---------------- WALK ---------------- */
 
@@ -33,8 +33,8 @@ function extractTableName(content: string): string | null {
 
 /* ---------------- NORMALIZE ---------------- */
 
-function normalizeTableName(name: string): string {
-	return name.replace(/-/g, '_');
+function snakeToCamel(name: string): string {
+	return name.replace(/[_-]([a-z0-9])/g, (_, c) => c.toUpperCase());
 }
 
 function inferSingular(plural: string): string {
@@ -67,7 +67,8 @@ function run() {
 
 		if (!entity || !tableRaw) return;
 
-		const plural = normalizeTableName(tableRaw);
+		// Table names are snake_case in Postgres; TS-side names are camelCase.
+		const plural = snakeToCamel(tableRaw);
 		const singular = inferSingular(plural);
 		const modulePath = extractModulePath(filePath.replace(/\\/g, '/'));
 

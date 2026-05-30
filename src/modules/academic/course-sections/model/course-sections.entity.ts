@@ -11,22 +11,22 @@ export class CourseSectionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_course_id: number;
+	studyPlanCourseId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	campus_id: number;
+	campusId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	professor_id: number;
+	professorId: number;
 
 	@CodeColumn({ nullable: false })
-	section_code: string;
+	sectionCode: string;
 
 	@JsonColumn({ nullable: true })
 	schedule: any;
 
 	@IntegerFKIDColumn({ nullable: false })
-	section_modality_type_id: number;
+	sectionModalityTypeId: number;
 
 	// %% RELATIONS
 
@@ -35,7 +35,7 @@ export class CourseSectionEntity extends BaseEntity {
 		name: 'study_plan_course_id',
 		foreignKeyConstraintName: 'FK_course_sections_study_plan_course_id',
 	})
-	study_plan_course: StudyPlanCourseEntity;
+	studyPlanCourse: StudyPlanCourseEntity;
 
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_course_sections_campus_id' })
@@ -50,5 +50,5 @@ export class CourseSectionEntity extends BaseEntity {
 		name: 'section_modality_type_id',
 		foreignKeyConstraintName: 'FK_course_sections_section_modality_type_id',
 	})
-	section_modality_type: TypeEntity;
+	sectionModalityType: TypeEntity;
 }

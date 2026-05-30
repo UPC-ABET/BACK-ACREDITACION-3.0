@@ -1,5 +1,5 @@
 export const rubricQuestionsRoutes = {
-	rubric_questions: {
+	rubricQuestions: {
 		route: 'rubric-questions',
 		tag: 'Preguntas de rúbrica',
 		operation: {

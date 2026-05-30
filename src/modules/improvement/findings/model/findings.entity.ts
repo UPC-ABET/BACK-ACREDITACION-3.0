@@ -15,18 +15,18 @@ import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'findings', schema: 'improvement' })
-@Index('IDX_findings_course_period', ['course_id', 'academic_period_id'])
+@Index('IDX_findings_course_period', ['courseId', 'academicPeriodId'])
 export class FindingEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	criticality_type_id: number;
+	criticalityTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	instrument_id: number;
+	instrumentId: number;
 
 	@IntegerFKIDColumn({ nullable: true })
-	staff_id: number;
+	staffId: number;
 
 	@IntegerColumn({ nullable: false })
 	correlative: number;
@@ -35,16 +35,16 @@ export class FindingEntity extends BaseEntity {
 	description: I18nText;
 
 	@IntegerFKIDColumn({ nullable: false })
-	course_id: number;
+	courseId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: true })
-	campus_id: number;
+	campusId: number;
 
 	@BooleanColumn({ nullable: false, default: true })
-	is_automatic: boolean;
+	isAutomatic: boolean;
 
 	// %% RELATIONS
 
@@ -53,7 +53,7 @@ export class FindingEntity extends BaseEntity {
 		name: 'criticality_type_id',
 		foreignKeyConstraintName: 'FK_findings_criticality_type_id',
 	})
-	criticality_type: TypeEntity;
+	criticalityType: TypeEntity;
 
 	@ManyToOne(() => InstrumentEntity)
 	@JoinColumn({ name: 'instrument_id', foreignKeyConstraintName: 'FK_findings_instrument_id' })
@@ -72,7 +72,7 @@ export class FindingEntity extends BaseEntity {
 		name: 'academic_period_id',
 		foreignKeyConstraintName: 'FK_findings_academic_period_id',
 	})
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_findings_campus_id' })

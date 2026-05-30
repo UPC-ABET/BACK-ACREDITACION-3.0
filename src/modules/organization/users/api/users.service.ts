@@ -27,12 +27,12 @@ export class UserService extends BaseService<UserRepository> {
 	async signJWTWithAuthorization(
 		user: any,
 		authorization: AuthorizationProfile,
-		school_id: number,
+		schoolId: number,
 	): Promise<string> {
 		const payload = {
 			userId: user.id,
 			activeRoleId: authorization.activeRole.id,
-			school_id,
+			schoolId,
 		};
 
 		return this.jwtService.sign(payload);
@@ -42,7 +42,7 @@ export class UserService extends BaseService<UserRepository> {
 		user: any,
 		passToValidate: string | null,
 		activeRoleId: number | undefined,
-		school_id: number,
+		schoolId: number,
 	): Promise<string> {
 		if (!user) {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
@@ -53,15 +53,15 @@ export class UserService extends BaseService<UserRepository> {
 		}
 
 		const authorization = await this.getAuthorizationProfile(user.id, activeRoleId);
-		return await this.signJWTWithAuthorization(user, authorization, school_id);
+		return await this.signJWTWithAuthorization(user, authorization, schoolId);
 	}
 
-	async getUser(user_id?: number | null, email?: string | null) {
-		if (user_id) {
+	async getUser(userId?: number | null, email?: string | null) {
+		if (userId) {
 			return await this.baseRepository.findOneByCondition({
 				where: {
-					id: user_id,
-					is_active: true,
+					id: userId,
+					isActive: true,
 				},
 			});
 		}
@@ -70,7 +70,7 @@ export class UserService extends BaseService<UserRepository> {
 			return await this.baseRepository.findOneByCondition({
 				where: {
 					email,
-					is_active: true,
+					isActive: true,
 				},
 			});
 		}
@@ -78,24 +78,24 @@ export class UserService extends BaseService<UserRepository> {
 		return null;
 	}
 
-	async loginById(user_id: number, activeRoleId: number | undefined, school_id: number) {
-		const user = await this.getUser(user_id);
-		const accessToken = await this.createUserLogin(user, null, activeRoleId, school_id);
+	async loginById(userId: number, activeRoleId: number | undefined, schoolId: number) {
+		const user = await this.getUser(userId);
+		const accessToken = await this.createUserLogin(user, null, activeRoleId, schoolId);
 
 		return {
 			user: this.sanitizeUser(user),
-			access_token: accessToken,
-			expires_in: JWT_EXPIRES_IN_SECONDS,
+			accessToken,
+			expiresIn: JWT_EXPIRES_IN_SECONDS,
 		};
 	}
 
 	async loginByCredentials(
-		school_code: string,
+		schoolCode: string,
 		email: string,
 		password: string,
 		activeRoleId?: number,
 	) {
-		const school = await this.schoolService.findActiveByCode(school_code);
+		const school = await this.schoolService.findActiveByCode(schoolCode);
 
 		if (!school) {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
@@ -106,10 +106,10 @@ export class UserService extends BaseService<UserRepository> {
 
 		return {
 			user: this.sanitizeUser(user),
-			access_token: accessToken,
-			expires_in: JWT_EXPIRES_IN_SECONDS,
-			school_id: school.id,
-			school_code: school_code,
+			accessToken,
+			expiresIn: JWT_EXPIRES_IN_SECONDS,
+			schoolId: school.id,
+			schoolCode: schoolCode,
 		};
 	}
 
@@ -142,7 +142,7 @@ export class UserService extends BaseService<UserRepository> {
 		activeRole: any;
 		allowedRoles: any[];
 		permissions: any[];
-		school_id: number;
+		schoolId: number;
 	}) {
 		const user = await this.getUser(jwtPayload.userId);
 		if (!user) {
@@ -154,7 +154,7 @@ export class UserService extends BaseService<UserRepository> {
 			activeRole: jwtPayload.activeRole,
 			allowedRoles: jwtPayload.allowedRoles,
 			permissions: jwtPayload.permissions,
-			school_id: jwtPayload.school_id,
+			schoolId: jwtPayload.schoolId,
 		};
 	}
 

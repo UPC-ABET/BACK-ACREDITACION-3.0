@@ -14,98 +14,98 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateIfcFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	ifc_id: number;
+	ifcId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	finding_id: number;
+	findingId: number;
 }
 
 export class UpdateIfcFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 }
 
 export class FilterIfcFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 }
 
 // %% OTHER DTOS
 
 export class ListIfcFindingsDto {
 	@ApiProperty({
-		example: [310, 311, 312],
+		example: [1, 2, 3],
 		required: true,
 		description: 'IDs de nodos chart (todos a nivel COURSE_COORDINATOR)',
 	})
 	@IsArray()
 	@ArrayNotEmpty()
 	@IsInt({ each: true })
-	chart_ids: number[];
+	chartIds: number[];
 
-	@ApiProperty({ example: 5, required: true })
+	@ApiProperty({ example: 1, required: true })
 	@IsInt()
 	@IsPositive()
-	period_id: number;
+	periodId: number;
 }
 
 export class IfcFindingRowDto {
-	@ApiProperty() id: number;
-	@ApiProperty() ifc_id: number;
-	@ApiProperty() course_id: number;
-	@ApiProperty() criticality_code: string;
-	@ApiProperty({ type: Object }) criticality_name: I18nText;
-	@ApiProperty() criticality_order: number;
-	@ApiProperty() finding_code: string;
-	@ApiProperty() academic_period_code: string;
-	@ApiProperty({ type: Object }) description: I18nText;
+	@ApiProperty({ example: 1 }) id: number;
+	@ApiProperty({ example: 1 }) ifcId: number;
+	@ApiProperty({ example: 1 }) courseId: number;
+	@ApiProperty({ example: 'criticalityCodeExample' }) criticalityCode: string;
+	@ApiProperty({ example: { es: 'criticalityNameEs', en: 'criticalityNameEn' }, type: Object }) criticalityName: I18nText;
+	@ApiProperty({ example: 1 }) criticalityOrder: number;
+	@ApiProperty({ example: 'findingCodeExample' }) findingCode: string;
+	@ApiProperty({ example: 'academicPeriodCodeExample' }) academicPeriodCode: string;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object }) description: I18nText;
 }
 
 // --- Request: PATCH /:id ----------------------------------------------------
 
 export class PatchIfcFindingDto {
 	@ApiProperty({
-		example: { es: 'Descripción actualizada', en: 'Updated description' },
+		example: { es: 'descriptionEs', en: 'descriptionEn' },
 		required: true,
 	})
 	@IsObject()
@@ -115,33 +115,33 @@ export class PatchIfcFindingDto {
 // --- Response: GET /get-by-id/:id ------------------------------------------
 
 export class IfcFindingActionCompletenessDto {
-	@ApiProperty() code: string;
-	@ApiProperty({ type: Object }) name: I18nText;
-	@ApiProperty({ nullable: true, example: '#10B981' }) color: string | null;
+	@ApiProperty({ example: 'codeExample' }) code: string;
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, type: Object }) name: I18nText;
+	@ApiProperty({ nullable: true, example: 'colorExample' }) color: string | null;
 }
 
 export class IfcFindingActionDetailDto {
-	@ApiProperty() id: number;
-	@ApiProperty() action_code: string;
-	@ApiProperty({ type: Object }) description: I18nText;
-	@ApiProperty({ type: () => IfcFindingActionCompletenessDto })
+	@ApiProperty({ example: 1 }) id: number;
+	@ApiProperty({ example: 'actionCodeExample' }) actionCode: string;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object }) description: I18nText;
+	@ApiProperty({ example: {}, type: () => IfcFindingActionCompletenessDto })
 	completeness: IfcFindingActionCompletenessDto;
 }
 
 export class IfcFindingCriticalityDto {
-	@ApiProperty() code: string;
-	@ApiProperty({ type: Object }) name: I18nText;
+	@ApiProperty({ example: 'codeExample' }) code: string;
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, type: Object }) name: I18nText;
 }
 
 export class IfcFindingDetailDto {
-	@ApiProperty() id: number;
-	@ApiProperty() finding_code: string;
-	@ApiProperty() academic_period_code: string;
-	@ApiProperty({ type: Object }) description: I18nText;
-	@ApiProperty({ type: () => IfcFindingCriticalityDto }) criticality: IfcFindingCriticalityDto;
+	@ApiProperty({ example: 1 }) id: number;
+	@ApiProperty({ example: 'findingCodeExample' }) findingCode: string;
+	@ApiProperty({ example: 'academicPeriodCodeExample' }) academicPeriodCode: string;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object }) description: I18nText;
+	@ApiProperty({ example: {}, type: () => IfcFindingCriticalityDto }) criticality: IfcFindingCriticalityDto;
 }
 
 export class IfcFindingDetailResponseDto {
-	@ApiProperty({ type: () => IfcFindingDetailDto }) finding: IfcFindingDetailDto;
-	@ApiProperty({ type: [IfcFindingActionDetailDto] }) actions: IfcFindingActionDetailDto[];
+	@ApiProperty({ example: {}, type: () => IfcFindingDetailDto }) finding: IfcFindingDetailDto;
+	@ApiProperty({ example: {}, type: [IfcFindingActionDetailDto] }) actions: IfcFindingActionDetailDto[];
 }

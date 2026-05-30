@@ -11,8 +11,8 @@ export class OrgScopeController {
 	@SwaggerOrgScopeGetScope()
 	async getScope(@Body() dto: GetScopeDto, @Req() req: any) {
 		const userId = req.user.userId;
-		const schoolId = req.user.school_id;
-		const result = await this.service.getScope(userId, schoolId, dto.period_id);
+		const schoolId = req.user.schoolId;
+		const result = await this.service.getScope(userId, schoolId, dto.periodId);
 		return parseSuccessResponse(result);
 	}
 }

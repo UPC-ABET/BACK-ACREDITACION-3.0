@@ -44,13 +44,13 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcPrefill()
 	async prefill(@Query() query: IfcPrefillQueryDto, @Req() req: any) {
-		const result = await this.service.prefill(query, req.user.school_id);
+		const result = await this.service.prefill(query, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcCreate()
 	async createIfc(@Body() dto: CreateIfcDto, @Req() req: any) {
-		const result = await this.service.createIfc(dto, req.user.userId, req.user.school_id);
+		const result = await this.service.createIfc(dto, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -81,31 +81,31 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcGetView()
 	async getView(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.getView(id, req.user.userId, req.user.school_id);
+		const result = await this.service.getView(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcSubmit()
 	async submit(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.submit(id, req.user.userId, req.user.school_id);
+		const result = await this.service.submit(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcApprove()
 	async approve(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.approve(id, req.user.userId, req.user.school_id);
+		const result = await this.service.approve(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcReject()
 	async reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectIfcDto, @Req() req: any) {
-		const result = await this.service.reject(id, req.user.userId, req.user.school_id, dto);
+		const result = await this.service.reject(id, req.user.userId, req.user.schoolId, dto);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcPatch()
 	async patch(@Param('id', ParseIntPipe) id: number, @Body() dto: IfcContentDto, @Req() req: any) {
-		const result = await this.service.patch(id, dto, req.user.userId, req.user.school_id);
+		const result = await this.service.patch(id, dto, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -120,7 +120,7 @@ export class IfcController extends BaseController<IfcService> {
 		const { pdf, filename } = await this.service.generatePdf(
 			id,
 			req.user.userId,
-			req.user.school_id,
+			req.user.schoolId,
 			lang,
 		);
 		writeBinary(res, pdf, filename, 'application/pdf');
@@ -133,9 +133,9 @@ export class IfcController extends BaseController<IfcService> {
 		@Res({ passthrough: false }) res: Response,
 	) {
 		const { zip, filename } = await this.service.generatePdfBulk(
-			dto.ifc_ids,
+			dto.ifcIds,
 			req.user.userId,
-			req.user.school_id,
+			req.user.schoolId,
 			dto.lang,
 		);
 		writeBinary(res, zip, filename, 'application/zip');
@@ -147,7 +147,7 @@ export class IfcController extends BaseController<IfcService> {
 		@Req() req: any,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { xlsx, filename } = await this.service.generateStatusReport(dto, req.user.school_id);
+		const { xlsx, filename } = await this.service.generateStatusReport(dto, req.user.schoolId);
 		writeBinary(
 			res,
 			xlsx,
@@ -158,13 +158,13 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcNotify()
 	async notify(@Body() dto: IfcNotifyDto, @Req() req: any) {
-		const result = await this.service.notify(dto.chart_id, dto.period_id, req.user.userId);
+		const result = await this.service.notify(dto.chartId, dto.periodId, req.user.userId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcNotifyAll()
 	async notifyAll(@Body() dto: IfcNotifyAllDto, @Req() req: any) {
-		const result = await this.service.notifyAll(dto.chart_ids, dto.period_id, req.user.userId);
+		const result = await this.service.notifyAll(dto.chartIds, dto.periodId, req.user.userId);
 		return parseSuccessResponse(result);
 	}
 }

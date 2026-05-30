@@ -10,13 +10,13 @@ export class ProjectEvaluatorEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	project_id: number;
+	projectId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	professor_id: number;
+	professorId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	evaluator_type_id: number;
+	evaluatorTypeId: number;
 
 	// %% RELATIONS
 
@@ -36,5 +36,5 @@ export class ProjectEvaluatorEntity extends BaseEntity {
 		name: 'evaluator_type_id',
 		foreignKeyConstraintName: 'FK_project_evaluators_evaluator_type_id',
 	})
-	evaluator_type: TypeEntity;
+	evaluatorType: TypeEntity;
 }

@@ -1,5 +1,5 @@
 export const projectEvaluatorsRoutes = {
-	project_evaluators: {
+	projectEvaluators: {
 		route: 'project-evaluators',
 		tag: 'Evaluadores de proyecto',
 		operation: {

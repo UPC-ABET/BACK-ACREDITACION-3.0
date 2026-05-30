@@ -18,22 +18,22 @@ export class GraConfigService {
 
 	async create(dto: CreateGraConfigDto) {
 		const extra = {
-			survey_type: GRA_SURVEY_TYPE,
-			name_en: dto.name_en ?? null,
-			description_en: dto.description_en ?? null,
+			surveyType: GRA_SURVEY_TYPE,
+			nameEn: dto.nameEn ?? null,
+			descriptionEn: dto.descriptionEn ?? null,
 			order: dto.order ?? null,
-			program_id: dto.program_id ?? null,
-			academic_period_id: dto.academic_period_id ?? null,
-			commission_id: dto.commission_id ?? null,
-			is_visible: dto.is_visible ?? true,
+			programId: dto.programId ?? null,
+			academicPeriodId: dto.academicPeriodId ?? null,
+			commissionId: dto.commissionId ?? null,
+			isVisible: dto.isVisible ?? true,
 		};
 
 		return await this.configRepo.create({
-			outcome_id: dto.outcome_id,
-			user_outcome_name: dto.name_es as any,
-			user_outcome_description: (dto.description_es ?? null) as any,
+			outcomeId: dto.outcomeId,
+			userOutcomeName: dto.nameEs as any,
+			userOutcomeDescription: (dto.descriptionEs ?? null) as any,
 			extra,
-			is_active: true,
+			isActive: true,
 		});
 	}
 
@@ -55,21 +55,20 @@ export class GraConfigService {
 
 		const extra = {
 			...currentExtra,
-			...(dto.name_en !== undefined && { name_en: dto.name_en }),
-			...(dto.description_en !== undefined && { description_en: dto.description_en }),
+			...(dto.nameEn !== undefined && { nameEn: dto.nameEn }),
+			...(dto.descriptionEn !== undefined && { descriptionEn: dto.descriptionEn }),
 			...(dto.order !== undefined && { order: dto.order }),
-			...(dto.program_id !== undefined && { program_id: dto.program_id }),
-			...(dto.academic_period_id !== undefined && { academic_period_id: dto.academic_period_id }),
-			...(dto.commission_id !== undefined && { commission_id: dto.commission_id }),
-			...(dto.is_visible !== undefined && { is_visible: dto.is_visible }),
+			...(dto.programId !== undefined && { programId: dto.programId }),
+			...(dto.academicPeriodId !== undefined && { academicPeriodId: dto.academicPeriodId }),
+			...(dto.commissionId !== undefined && { commissionId: dto.commissionId }),
+			...(dto.isVisible !== undefined && { isVisible: dto.isVisible }),
 		};
 
 		const updatePayload: Record<string, any> = { extra };
-		if (dto.outcome_id !== undefined) updatePayload.outcome_id = dto.outcome_id;
-		if (dto.name_es !== undefined) updatePayload.user_outcome_name = dto.name_es;
-		if (dto.description_es !== undefined)
-			updatePayload.user_outcome_description = dto.description_es;
-		if (dto.is_active !== undefined) updatePayload.is_active = dto.is_active;
+		if (dto.outcomeId !== undefined) updatePayload.outcomeId = dto.outcomeId;
+		if (dto.nameEs !== undefined) updatePayload.userOutcomeName = dto.nameEs;
+		if (dto.descriptionEs !== undefined) updatePayload.userOutcomeDescription = dto.descriptionEs;
+		if (dto.isActive !== undefined) updatePayload.isActive = dto.isActive;
 
 		return await this.configRepo.update(id, updatePayload);
 	}
@@ -77,20 +76,20 @@ export class GraConfigService {
 	async delete(id: number) {
 		const config = await this.configRepo.findOneGra(id);
 		if (!config) throw new NotFoundException(`Configuración GRA con ID ${id} no encontrada`);
-		return await this.configRepo.update(id, { is_active: false });
+		return await this.configRepo.update(id, { isActive: false });
 	}
 
 	async replicate(dto: ReplicateGraConfigDto) {
 		const sourceConfigs = await this.configRepo.findAllGra({
-			academic_period_id: dto.source_academic_period_id,
-			...(dto.program_id && { program_id: dto.program_id }),
-			is_active: true,
+			academicPeriodId: dto.sourceAcademicPeriodId,
+			...(dto.programId && { programId: dto.programId }),
+			isActive: true,
 		});
 
 		if (sourceConfigs.length === 0) {
 			return {
-				replicated_configs: 0,
-				replicated_levels: 0,
+				replicatedConfigs: 0,
+				replicatedLevels: 0,
 				message: 'No se encontraron configuraciones en el período origen',
 			};
 		}
@@ -99,18 +98,18 @@ export class GraConfigService {
 		for (const config of sourceConfigs) {
 			const sourceExtra = (config.extra as Record<string, any>) ?? {};
 			const alreadyExists = await this.configRepo.existsGra(
-				config.outcome_id,
-				sourceExtra.program_id,
-				dto.target_academic_period_id,
+				config.outcomeId,
+				sourceExtra.programId,
+				dto.targetAcademicPeriodId,
 			);
 			if (alreadyExists) continue;
 
 			await this.configRepo.create({
-				outcome_id: config.outcome_id,
-				user_outcome_name: config.user_outcome_name,
-				user_outcome_description: config.user_outcome_description,
-				extra: { ...sourceExtra, academic_period_id: dto.target_academic_period_id },
-				is_active: true,
+				outcomeId: config.outcomeId,
+				userOutcomeName: config.userOutcomeName,
+				userOutcomeDescription: config.userOutcomeDescription,
+				extra: { ...sourceExtra, academicPeriodId: dto.targetAcademicPeriodId },
+				isActive: true,
 			});
 			replicatedConfigs++;
 		}
@@ -120,42 +119,40 @@ export class GraConfigService {
 		let replicatedLevels = 0;
 		if (graTypeId) {
 			replicatedLevels = await this.acceptanceLevelService.copyFromPeriod({
-				survey_type_id: graTypeId,
-				source_academic_period_id: dto.source_academic_period_id,
-				target_academic_period_id: dto.target_academic_period_id,
+				surveyTypeId: graTypeId,
+				sourceAcademicPeriodId: dto.sourceAcademicPeriodId,
+				targetAcademicPeriodId: dto.targetAcademicPeriodId,
 			});
 		}
 
 		return {
-			replicated_configs: replicatedConfigs,
-			total_source_configs: sourceConfigs.length,
-			replicated_levels: replicatedLevels,
+			replicatedConfigs,
+			totalSourceConfigs: sourceConfigs.length,
+			replicatedLevels,
 			message: `Se replicaron ${replicatedConfigs} configuraciones GRA y ${replicatedLevels} niveles de aceptación al período destino`,
 		};
 	}
 
 	async listOutcomesForSurvey(dto: ListGraSurveyOutcomesDto) {
 		const rows = await this.configRepo.findOutcomesGroupedByCommission(
-			dto.program_id,
-			dto.academic_period_id,
+			dto.programId,
+			dto.academicPeriodId,
 		);
 
-		// Agrupar por commission_id
-		const grouped: Record<
-			number,
-			{ commission_id: number; commission_name: any; outcomes: any[] }
-		> = {};
+		// Agrupar por commissionId
+		const grouped: Record<number, { commissionId: number; commissionName: any; outcomes: any[] }> =
+			{};
 		for (const row of rows) {
-			const cid = row.commission_id;
+			const cid = row.commissionId;
 			if (!grouped[cid]) {
-				grouped[cid] = { commission_id: cid, commission_name: row.commission_name, outcomes: [] };
+				grouped[cid] = { commissionId: cid, commissionName: row.commissionName, outcomes: [] };
 			}
 			grouped[cid].outcomes.push({
-				outcome_id: row.outcome_id,
-				outcome_code: row.outcome_code,
-				outcome_name: row.outcome_name,
-				outcome_description: row.outcome_description,
-				program_commission_id: row.program_commission_id,
+				outcomeId: row.outcomeId,
+				outcomeCode: row.outcomeCode,
+				outcomeName: row.outcomeName,
+				outcomeDescription: row.outcomeDescription,
+				programCommissionId: row.programCommissionId,
 			});
 		}
 

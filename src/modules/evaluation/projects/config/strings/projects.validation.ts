@@ -17,6 +17,7 @@ export const projectsValidationStrings = {
 		noStudentsWithCourse: 'error.project.noStudentsWithCourse',
 		activeRubricNotFound: 'error.project.activeRubricNotFound',
 		rubricContextError: 'error.project.rubricContextError',
+		invalidGradeTypeCode: 'error.project.invalidGradeTypeCode',
 	},
 	result: {
 		createFailed: 'error.project.createFailed',

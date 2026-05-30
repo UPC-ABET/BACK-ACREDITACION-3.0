@@ -1,5 +1,5 @@
 export const planActionsRoutes = {
-	plan_actions: {
+	planActions: {
 		route: 'plan-actions',
 		tag: 'Acciones de plan',
 		operation: {

@@ -6,7 +6,7 @@ import {
 	FilterChartLevelDto,
 } from '../../model/chart-levels.dtos';
 
-const cfg = chartLevelsRoutes.chart_levels;
+const cfg = chartLevelsRoutes.chartLevels;
 
 export const SwaggerChartLevelController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });

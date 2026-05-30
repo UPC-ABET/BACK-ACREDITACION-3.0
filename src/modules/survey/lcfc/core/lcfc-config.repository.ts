@@ -17,24 +17,24 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}
 
 	async findAllLcfc(filters?: {
-		program_id?: number;
-		academic_period_id?: number;
-		is_active?: boolean;
+		programId?: number;
+		academicPeriodId?: number;
+		isActive?: boolean;
 	}): Promise<OutcomeConfigEntity[]> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
 
-		if (filters?.program_id !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.program_id });
+		if (filters?.programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
 		}
-		if (filters?.academic_period_id !== undefined) {
+		if (filters?.academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
-				periodId: filters.academic_period_id,
+				periodId: filters.academicPeriodId,
 			});
 		}
-		if (filters?.is_active !== undefined) {
-			qb.andWhere('oc.is_active = :isActive', { isActive: filters.is_active });
+		if (filters?.isActive !== undefined) {
+			qb.andWhere('oc.is_active = :isActive', { isActive: filters.isActive });
 		}
 
 		qb.orderBy('oc.user_outcome_name', 'ASC');
@@ -76,20 +76,20 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		campusId?: number,
 	): Promise<
 		{
-			course_section_id: number;
-			course_id: number;
-			course_name: string;
-			section_code: string;
-			campus_id: number;
+			courseSectionId: number;
+			courseId: number;
+			courseName: string;
+			sectionCode: string;
+			campusId: number;
 		}[]
 	> {
 		let query = `
 			SELECT
-				cs.id           AS course_section_id,
-				c.id            AS course_id,
-				c.name          AS course_name,
-				cs.section_code,
-				cs.campus_id
+				cs.id           AS "courseSectionId",
+				c.id            AS "courseId",
+				c.name          AS "courseName",
+				cs.section_code AS "sectionCode",
+				cs.campus_id    AS "campusId"
 			FROM academic.course_sections cs
 			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
 			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id

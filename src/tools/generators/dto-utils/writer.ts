@@ -15,8 +15,8 @@ function isRelationField(f: any) {
 }
 
 function isDuplicateRelation(fields: any[], f: any) {
-	if (!f.name || f.name.endsWith('_id')) return false;
-	return fields.some((x) => x.name === `${f.name}_id`);
+	if (!f.name || f.name.endsWith('Id')) return false;
+	return fields.some((x) => x.name === `${f.name}Id`);
 }
 
 function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {
@@ -199,9 +199,9 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 
 	const entity = entityName.replace('Entity', '');
 
-	const EXCLUDE_CREATE = ['id', 'created_at', 'updated_at'];
-	const EXCLUDE_UPDATE = ['id', 'created_at', 'updated_at'];
-	const EXCLUDE_FILTER = ['created_at', 'updated_at'];
+	const EXCLUDE_CREATE = ['id', 'createdAt', 'updatedAt'];
+	const EXCLUDE_UPDATE = ['id', 'createdAt', 'updatedAt'];
+	const EXCLUDE_FILTER = ['createdAt', 'updatedAt'];
 
 	const createFields = fields.filter((f: any) => shouldIncludeField(fields, f, EXCLUDE_CREATE));
 	const updateFields = fields.filter((f: any) => shouldIncludeField(fields, f, EXCLUDE_UPDATE));

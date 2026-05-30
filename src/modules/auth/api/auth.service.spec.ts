@@ -32,7 +32,7 @@ describe('AuthService — MSAL login', () => {
 			schoolService.findActiveByCode.mockResolvedValueOnce({
 				id: 7,
 				code: 'EISCB',
-				is_active: true,
+				isActive: true,
 			});
 
 			await expect(service.resolveSchoolIdByCode('EISCB')).resolves.toBe(7);
@@ -55,7 +55,7 @@ describe('AuthService — MSAL login', () => {
 
 	describe('loginWithMicrosoftCode', () => {
 		it('forwards the supplied school_id through to createUserLogin', async () => {
-			const fakeUser = { id: 99, email: 'jane.doe@example.com', is_admin: true };
+			const fakeUser = { id: 99, email: 'jane.doe@example.com', isAdmin: true };
 			const acquireSpy = jest
 				.spyOn(
 					service as unknown as { acquireMicrosoftTokenByCode: jest.Mock },
@@ -75,9 +75,9 @@ describe('AuthService — MSAL login', () => {
 			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null, undefined, 42);
 			expect(result).toEqual({
 				user: fakeUser,
-				microsoft_profile: { email: 'jane.doe@example.com', name: 'Jane Doe' },
-				access_token: 'signed-jwt-token',
-				expires_in: JWT_EXPIRES_IN_SECONDS,
+				microsoftProfile: { email: 'jane.doe@example.com', name: 'Jane Doe' },
+				accessToken: 'signed-jwt-token',
+				expiresIn: JWT_EXPIRES_IN_SECONDS,
 			});
 		});
 	});

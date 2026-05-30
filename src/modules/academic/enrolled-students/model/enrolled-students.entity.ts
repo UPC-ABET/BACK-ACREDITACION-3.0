@@ -10,16 +10,16 @@ export class EnrolledStudentEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_id: number;
+	studentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_academic_period: number;
+	studyPlanAcademicPeriod: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	campus_id: number;
+	campusId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	enrollement_modality_type_id: number;
+	enrollementModalityTypeId: number;
 
 	// %% RELATIONS
 
@@ -36,5 +36,5 @@ export class EnrolledStudentEntity extends BaseEntity {
 		name: 'enrollement_modality_type_id',
 		foreignKeyConstraintName: 'FK_enrolled_students_enrollement_modality_type_id',
 	})
-	enrollement_modality_type: TypeEntity;
+	enrollementModalityType: TypeEntity;
 }

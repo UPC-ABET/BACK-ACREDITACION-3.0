@@ -16,35 +16,35 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 
 	/** Finds notification by token with full details for validation and survey rendering */
 	async findByTokenWithDetails(token: string): Promise<{
-		notification_id: number;
-		survey_id: number;
-		student_id: number;
-		student_name: string;
-		student_code: string;
-		program_id: number;
-		program_name: string;
-		academic_period_id: number;
-		campus_id: number;
-		course_section_id: number;
-		max_register_date: string;
-		notification_status: string;
-		survey_status: string;
+		notificationId: number;
+		surveyId: number;
+		studentId: number;
+		studentName: string;
+		studentCode: string;
+		programId: number;
+		programName: string;
+		academicPeriodId: number;
+		campusId: number;
+		courseSectionId: number;
+		maxRegisterDate: string;
+		notificationStatus: string;
+		surveyStatus: string;
 	} | null> {
 		const rows = await this.dataSource.query(
 			`SELECT
-				n.id                   AS notification_id,
-				n.survey_id,
-				s.student_id,
-				u.first_name || ' ' || u.last_name AS student_name,
-				u.document_code::text              AS student_code,
-				s.program_id,
-				p.name->>'es'                      AS program_name,
-				s.academic_period_id,
-				s.campus_id,
-				s.course_section_id,
-				n.max_register_date,
-				nt.name->>'es'                     AS notification_status,
-				st2.name->>'es'                    AS survey_status
+				n.id                   AS "notificationId",
+				n.survey_id            AS "surveyId",
+				s.student_id           AS "studentId",
+				u.first_name || ' ' || u.last_name AS "studentName",
+				u.document_code::text              AS "studentCode",
+				s.program_id           AS "programId",
+				p.name->>'es'                      AS "programName",
+				s.academic_period_id   AS "academicPeriodId",
+				s.campus_id            AS "campusId",
+				s.course_section_id    AS "courseSectionId",
+				n.max_register_date    AS "maxRegisterDate",
+				nt.name->>'es'                     AS "notificationStatus",
+				st2.name->>'es'                    AS "surveyStatus"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
@@ -62,28 +62,28 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 	/** Gets all students enrolled in the given course sections with their info */
 	async getEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<
 		{
-			student_id: number;
-			student_name: string;
-			student_code: string;
-			student_email: string;
-			course_section_id: number;
-			course_name: string;
-			campus_id: number;
-			program_id: number;
-			program_name: string;
+			studentId: number;
+			studentName: string;
+			studentCode: string;
+			studentEmail: string;
+			courseSectionId: number;
+			courseName: string;
+			campusId: number;
+			programId: number;
+			programName: string;
 		}[]
 	> {
 		const rows = await this.dataSource.query(
 			`SELECT DISTINCT
-				st.id                                   AS student_id,
-				u.first_name || ' ' || u.last_name     AS student_name,
-				u.document_code::text                  AS student_code,
-				u.email                                AS student_email,
-				sse.course_section_id,
-				c.name->>'es'                          AS course_name,
-				cs.campus_id,
-				sp.program_id,
-				p.name->>'es'                          AS program_name
+				st.id                                   AS "studentId",
+				u.first_name || ' ' || u.last_name     AS "studentName",
+				u.document_code::text                  AS "studentCode",
+				u.email                                AS "studentEmail",
+				sse.course_section_id                  AS "courseSectionId",
+				c.name->>'es'                          AS "courseName",
+				cs.campus_id                           AS "campusId",
+				sp.program_id                          AS "programId",
+				p.name->>'es'                          AS "programName"
 			FROM academic.student_section_enrollments sse
 			INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 			INNER JOIN academic.students st ON st.id = es.student_id
@@ -106,37 +106,37 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		lcfcSurveyTypeId: number,
 		scheduledStatusId: number,
 		filters: {
-			academic_period_id: number;
-			program_id?: number;
-			campus_id?: number;
-			course_section_id?: number;
+			academicPeriodId: number;
+			programId?: number;
+			campusId?: number;
+			courseSectionId?: number;
 		},
 	): Promise<
 		{
-			notification_id: number;
+			notificationId: number;
 			token: string;
-			max_register_date: string;
-			survey_id: number;
-			student_id: number;
-			student_name: string;
-			student_code: string;
-			student_email: string;
-			course_name: string;
-			program_name: string;
+			maxRegisterDate: string;
+			surveyId: number;
+			studentId: number;
+			studentName: string;
+			studentCode: string;
+			studentEmail: string;
+			courseName: string;
+			programName: string;
 		}[]
 	> {
 		let query = `
 			SELECT
-				n.id                                AS notification_id,
-				n.token,
-				n.max_register_date,
-				n.survey_id,
-				s.student_id,
-				u.first_name || ' ' || u.last_name  AS student_name,
-				u.document_code::text               AS student_code,
-				u.email                             AS student_email,
-				c.name->>'es'                       AS course_name,
-				p.name->>'es'                       AS program_name
+				n.id                                AS "notificationId",
+				n.token                             AS "token",
+				n.max_register_date                 AS "maxRegisterDate",
+				n.survey_id                         AS "surveyId",
+				s.student_id                        AS "studentId",
+				u.first_name || ' ' || u.last_name  AS "studentName",
+				u.document_code::text               AS "studentCode",
+				u.email                             AS "studentEmail",
+				c.name->>'es'                       AS "courseName",
+				p.name->>'es'                       AS "programName"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
@@ -149,19 +149,19 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			  AND n.notification_status_type_id = $2
 			  AND s.academic_period_id = $3
 		`;
-		const params: any[] = [lcfcSurveyTypeId, scheduledStatusId, filters.academic_period_id];
+		const params: any[] = [lcfcSurveyTypeId, scheduledStatusId, filters.academicPeriodId];
 
-		if (filters.program_id) {
+		if (filters.programId) {
 			query += ` AND s.program_id = $${params.length + 1}`;
-			params.push(filters.program_id);
+			params.push(filters.programId);
 		}
-		if (filters.campus_id) {
+		if (filters.campusId) {
 			query += ` AND s.campus_id = $${params.length + 1}`;
-			params.push(filters.campus_id);
+			params.push(filters.campusId);
 		}
-		if (filters.course_section_id) {
+		if (filters.courseSectionId) {
 			query += ` AND s.course_section_id = $${params.length + 1}`;
-			params.push(filters.course_section_id);
+			params.push(filters.courseSectionId);
 		}
 
 		return await this.dataSource.query(query, params);
@@ -179,7 +179,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 
 	/** Checks if a notification already exists for a survey */
 	async existsForSurvey(surveyId: number): Promise<boolean> {
-		const count = await this.repository.count({ where: { survey_id: surveyId } });
+		const count = await this.repository.count({ where: { surveyId: surveyId } });
 		return count > 0;
 	}
 }

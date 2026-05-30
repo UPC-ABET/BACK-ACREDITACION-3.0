@@ -28,8 +28,8 @@ export class AuthService {
 		private readonly schoolService: SchoolService,
 	) {}
 
-	async resolveSchoolIdByCode(school_code: string): Promise<number> {
-		const school = await this.schoolService.findActiveByCode(school_code);
+	async resolveSchoolIdByCode(schoolCode: string): Promise<number> {
+		const school = await this.schoolService.findActiveByCode(schoolCode);
 
 		if (!school) {
 			throw new HttpException(
@@ -53,22 +53,22 @@ export class AuthService {
 		});
 	}
 
-	async loginWithMicrosoftCode(code: string, school_id: number) {
+	async loginWithMicrosoftCode(code: string, schoolId: number) {
 		const tokenResponse = await this.acquireMicrosoftTokenByCode(code);
 		const claims = tokenResponse.idTokenClaims as MicrosoftIdTokenClaims;
 		const email = this.getEmailFromResult(tokenResponse, claims);
 		const user = await this.userService.getUser(null, email);
 
-		const accessToken = await this.userService.createUserLogin(user, null, undefined, school_id);
+		const accessToken = await this.userService.createUserLogin(user, null, undefined, schoolId);
 
 		return {
 			user,
-			microsoft_profile: {
+			microsoftProfile: {
 				email,
 				name: claims.name,
 			},
-			access_token: accessToken,
-			expires_in: JWT_EXPIRES_IN_SECONDS,
+			accessToken,
+			expiresIn: JWT_EXPIRES_IN_SECONDS,
 		};
 	}
 

@@ -9,7 +9,7 @@ import {
 	ApiProduces,
 	ApiQuery,
 } from '@nestjs/swagger';
-import { strings_swagger } from './swagger.strings';
+import { swaggerStrings } from './swagger.strings';
 
 const methodDecorators = {
 	POST: Post,
@@ -20,8 +20,8 @@ const methodDecorators = {
 };
 export function ControllerWithTags(data: { tag: string; route: string }) {
 	return applyDecorators(
-		ApiConsumes(strings_swagger.api.consumes),
-		ApiProduces(strings_swagger.api.produces),
+		ApiConsumes(swaggerStrings.api.consumes),
+		ApiProduces(swaggerStrings.api.produces),
 		ApiTags(data.tag),
 		Controller(data.route),
 	);
@@ -45,8 +45,8 @@ export function HttpMethodWithSwagger(data: {
 	const successStatus = data.status ?? (data.method === 'POST' ? 201 : 200);
 	const defaultDescription =
 		successStatus === 201
-			? strings_swagger.swagger_description.s201
-			: strings_swagger.swagger_description.s200;
+			? swaggerStrings.swaggerDescription.s201
+			: swaggerStrings.swaggerDescription.s200;
 	const paramDecorators = !data.params
 		? []
 		: data.params.map((param) =>
@@ -77,11 +77,11 @@ export function HttpMethodWithSwagger(data: {
 		responseDecorator,
 		ApiResponse({
 			status: 400,
-			description: data.s400 ?? strings_swagger.swagger_description.s400,
+			description: data.s400 ?? swaggerStrings.swaggerDescription.s400,
 		}),
 		ApiResponse({
 			status: 500,
-			description: data.s500 ?? strings_swagger.swagger_description.s500,
+			description: data.s500 ?? swaggerStrings.swaggerDescription.s500,
 		}),
 		...paramDecorators,
 		...singleParamDecorator,

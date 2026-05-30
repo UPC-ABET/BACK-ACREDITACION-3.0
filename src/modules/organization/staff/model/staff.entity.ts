@@ -10,22 +10,22 @@ export class StaffEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	user_id: number;
+	userId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	position_type_id: number;
+	positionTypeId: number;
 
 	@JsonColumn({ nullable: false })
-	job_title: I18nText;
+	jobTitle: I18nText;
 
 	@JsonColumn({ nullable: false })
-	job_description: I18nText;
+	jobDescription: I18nText;
 
 	@NameColumn({ nullable: false })
-	staff_email: string;
+	staffEmail: string;
 
 	@NameColumn({ nullable: false })
-	staff_phone: string;
+	staffPhone: string;
 
 	// %% RELATIONS
 
@@ -35,5 +35,5 @@ export class StaffEntity extends BaseEntity {
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'position_type_id', foreignKeyConstraintName: 'FK_staff_position_type_id' })
-	position_type: TypeEntity;
+	positionType: TypeEntity;
 }

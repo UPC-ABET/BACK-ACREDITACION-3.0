@@ -1,5 +1,5 @@
 export const outcomeConfigsRoutes = {
-	outcome_configs: {
+	outcomeConfigs: {
 		route: 'outcome-configs',
 		tag: 'Configuraciones de outcomes',
 		operation: {

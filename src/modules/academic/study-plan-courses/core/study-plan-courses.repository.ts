@@ -23,33 +23,33 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 			.createQueryBuilder(StudyPlanCourseEntity, 'spc')
 			.leftJoinAndSelect('spc.course', 'course');
 
-		if (filters.is_active !== undefined)
-			qb.andWhere('spc.is_active = :is_active', { is_active: filters.is_active });
-		if (filters.course_id !== undefined)
-			qb.andWhere('spc.course_id = :course_id', { course_id: filters.course_id });
-		if (filters.is_elective !== undefined)
-			qb.andWhere('spc.is_elective = :is_elective', { is_elective: filters.is_elective });
-		if (filters.level_type_id !== undefined)
-			qb.andWhere('spc.level_type_id = :level_type_id', { level_type_id: filters.level_type_id });
-		if (filters.study_plan_academic_period_id !== undefined)
-			qb.andWhere('spc.study_plan_academic_period_id = :spap_id', {
-				spap_id: filters.study_plan_academic_period_id,
+		if (filters.isActive !== undefined)
+			qb.andWhere('spc.is_active = :isActive', { isActive: filters.isActive });
+		if (filters.courseId !== undefined)
+			qb.andWhere('spc.course_id = :courseId', { courseId: filters.courseId });
+		if (filters.isElective !== undefined)
+			qb.andWhere('spc.is_elective = :isElective', { isElective: filters.isElective });
+		if (filters.levelTypeId !== undefined)
+			qb.andWhere('spc.level_type_id = :levelTypeId', { levelTypeId: filters.levelTypeId });
+		if (filters.studyPlanAcademicPeriodId !== undefined)
+			qb.andWhere('spc.study_plan_academic_period_id = :studyPlanAcademicPeriodId', {
+				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
 			});
 
-		if (filters.academic_period_id !== undefined || filters.school_id !== undefined) {
+		if (filters.academicPeriodId !== undefined || filters.schoolId !== undefined) {
 			qb.innerJoin(
 				StudyPlanAcademicPeriodEntity,
 				'spap',
 				'spap.id = spc.study_plan_academic_period_id',
 			);
 
-			if (filters.academic_period_id !== undefined) {
-				qb.andWhere('spap.academic_period_id = :academic_period_id', {
-					academic_period_id: filters.academic_period_id,
+			if (filters.academicPeriodId !== undefined) {
+				qb.andWhere('spap.academic_period_id = :academicPeriodId', {
+					academicPeriodId: filters.academicPeriodId,
 				});
 			}
 
-			if (filters.school_id !== undefined) {
+			if (filters.schoolId !== undefined) {
 				qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 				qb.andWhere(
 					`sp.program_id IN (
@@ -65,10 +65,10 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 						       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
 						INNER JOIN organization.schools sch
 						       ON  sch.id      = ch_sch.entity_code
-						WHERE  sch.id = :school_id
+						WHERE  sch.id = :schoolId
 					)`,
 				);
-				qb.setParameter('school_id', filters.school_id);
+				qb.setParameter('schoolId', filters.schoolId);
 			}
 		}
 

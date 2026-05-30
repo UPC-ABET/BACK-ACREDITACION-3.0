@@ -4,95 +4,95 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_id: number;
+	programId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: true })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
 	title: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: true })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
 	body: I18nText;
 
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: true })
-	cc_receivers: any;
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: true })
+	ccReceivers: any;
 }
 
 export class UpdateNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
-	cc_receivers?: any;
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
+	ccReceivers?: any;
 }
 
 export class FilterNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'title_es', en: 'title_en' }, required: false })
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
 	title?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'body_es', en: 'body_en' }, required: false })
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
-	cc_receivers?: any;
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
+	ccReceivers?: any;
 }

@@ -9,16 +9,16 @@ export class OutcomeEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_commission_id: number;
+	programCommissionId: number;
 
 	@CodeColumn({ nullable: false })
-	outcome_code: string;
+	outcomeCode: string;
 
 	@JsonColumn({ nullable: false })
-	outcome_name: I18nText;
+	outcomeName: I18nText;
 
 	@JsonColumn({ nullable: false })
-	outcome_description: I18nText;
+	outcomeDescription: I18nText;
 
 	// %% RELATIONS
 
@@ -27,5 +27,5 @@ export class OutcomeEntity extends BaseEntity {
 		name: 'program_commission_id',
 		foreignKeyConstraintName: 'FK_outcomes_program_commission_id',
 	})
-	program_commission: ProgramCommissionEntity;
+	programCommission: ProgramCommissionEntity;
 }

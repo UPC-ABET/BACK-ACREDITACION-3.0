@@ -4,126 +4,126 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	staff_id: number;
+	staffId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	chart_level_id: number;
+	chartLevelId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	root_chart_detail_id?: number;
+	rootChartDetailId?: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: true })
-	level_title: I18nText;
+	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: true })
+	levelTitle: I18nText;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	entity_type_id?: number;
+	entityTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	entity_code?: number;
+	entityCode?: number;
 }
 
 export class UpdateChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	chart_level_id?: number;
+	chartLevelId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	root_chart_detail_id?: number;
+	rootChartDetailId?: number;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: false })
-	level_title?: I18nText;
+	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: false })
+	levelTitle?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	entity_type_id?: number;
+	entityTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	entity_code?: number;
+	entityCode?: number;
 }
 
 export class FilterChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	chart_level_id?: number;
+	chartLevelId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	root_chart_detail_id?: number;
+	rootChartDetailId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'level_title_es', en: 'level_title_en' }, required: false })
-	level_title?: I18nText;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	entity_type_id?: number;
+	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: false })
+	levelTitle?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	entity_code?: number;
+	entityTypeId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	entityCode?: number;
 }

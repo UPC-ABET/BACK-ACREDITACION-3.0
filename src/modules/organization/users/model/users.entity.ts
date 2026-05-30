@@ -16,16 +16,16 @@ export class UserEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	document_type_id: number;
+	documentTypeId: number;
 
 	@IntegerColumn({ nullable: false })
-	document_code: number;
+	documentCode: number;
 
 	@NameColumn({ nullable: false })
-	first_name: string;
+	firstName: string;
 
 	@NameColumn({ nullable: false })
-	last_name: string;
+	lastName: string;
 
 	@EmailColumn({ nullable: false })
 	email: string;
@@ -38,11 +38,11 @@ export class UserEntity extends BaseEntity {
 	password: string;
 
 	@BooleanColumn()
-	is_admin: boolean;
+	isAdmin: boolean;
 
 	// %% RELATIONS
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'document_type_id', foreignKeyConstraintName: 'FK_users_document_type_id' })
-	document_type: TypeEntity;
+	documentType: TypeEntity;
 }
