@@ -222,10 +222,12 @@ export class NotificationConfigViewDto {
 	@ApiProperty({ example: 1 }) academicPeriodId: number;
 	@ApiProperty({ example: 1 }) triggerTypeId: number;
 	@ApiProperty({ example: 'triggerCodeExample' }) triggerCode: string;
-	@ApiProperty({ example: { es: 'triggerNameEs', en: 'triggerNameEn' }, type: Object }) triggerName: I18nText;
+	@ApiProperty({ example: { es: 'triggerNameEs', en: 'triggerNameEn' }, type: Object })
+	triggerName: I18nText;
 	@ApiProperty({ example: 1 }) ifcStatusTypeId: number;
 	@ApiProperty({ example: 'statusCodeExample' }) statusCode: string;
-	@ApiProperty({ example: { es: 'statusNameEs', en: 'statusNameEn' }, type: Object }) statusName: I18nText;
+	@ApiProperty({ example: { es: 'statusNameEs', en: 'statusNameEn' }, type: Object })
+	statusName: I18nText;
 	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, type: Object }) title: I18nText;
 	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, type: Object }) body: I18nText;
 	@ApiProperty({ example: [1, 2, 3] }) toChartLevelTypeIds: number[];

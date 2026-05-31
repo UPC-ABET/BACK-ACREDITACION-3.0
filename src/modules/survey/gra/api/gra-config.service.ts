@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { GraConfigRepository, GRA_SURVEY_TYPE } from '../core/gra-config.repository';
-import { PerformanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
 import {
 	CreateGraConfigDto,
 	UpdateGraConfigDto,
@@ -8,6 +7,7 @@ import {
 	ReplicateGraConfigDto,
 	ListGraSurveyOutcomesDto,
 } from '../model/gra.dtos';
+import { PerformanceLevelService } from 'src/modules/academic/performance-levels/api/performance-levels.service';
 
 @Injectable()
 export class GraConfigService {

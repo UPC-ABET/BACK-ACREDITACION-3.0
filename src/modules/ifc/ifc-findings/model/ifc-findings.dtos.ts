@@ -94,11 +94,13 @@ export class IfcFindingRowDto {
 	@ApiProperty({ example: 1 }) ifcId: number;
 	@ApiProperty({ example: 1 }) courseId: number;
 	@ApiProperty({ example: 'criticalityCodeExample' }) criticalityCode: string;
-	@ApiProperty({ example: { es: 'criticalityNameEs', en: 'criticalityNameEn' }, type: Object }) criticalityName: I18nText;
+	@ApiProperty({ example: { es: 'criticalityNameEs', en: 'criticalityNameEn' }, type: Object })
+	criticalityName: I18nText;
 	@ApiProperty({ example: 1 }) criticalityOrder: number;
 	@ApiProperty({ example: 'findingCodeExample' }) findingCode: string;
 	@ApiProperty({ example: 'academicPeriodCodeExample' }) academicPeriodCode: string;
-	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object }) description: I18nText;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object })
+	description: I18nText;
 }
 
 // --- Request: PATCH /:id ----------------------------------------------------
@@ -123,7 +125,8 @@ export class IfcFindingActionCompletenessDto {
 export class IfcFindingActionDetailDto {
 	@ApiProperty({ example: 1 }) id: number;
 	@ApiProperty({ example: 'actionCodeExample' }) actionCode: string;
-	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object }) description: I18nText;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object })
+	description: I18nText;
 	@ApiProperty({ example: {}, type: () => IfcFindingActionCompletenessDto })
 	completeness: IfcFindingActionCompletenessDto;
 }
@@ -137,11 +140,14 @@ export class IfcFindingDetailDto {
 	@ApiProperty({ example: 1 }) id: number;
 	@ApiProperty({ example: 'findingCodeExample' }) findingCode: string;
 	@ApiProperty({ example: 'academicPeriodCodeExample' }) academicPeriodCode: string;
-	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object }) description: I18nText;
-	@ApiProperty({ example: {}, type: () => IfcFindingCriticalityDto }) criticality: IfcFindingCriticalityDto;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, type: Object })
+	description: I18nText;
+	@ApiProperty({ example: {}, type: () => IfcFindingCriticalityDto })
+	criticality: IfcFindingCriticalityDto;
 }
 
 export class IfcFindingDetailResponseDto {
 	@ApiProperty({ example: {}, type: () => IfcFindingDetailDto }) finding: IfcFindingDetailDto;
-	@ApiProperty({ example: {}, type: [IfcFindingActionDetailDto] }) actions: IfcFindingActionDetailDto[];
+	@ApiProperty({ example: {}, type: [IfcFindingActionDetailDto] })
+	actions: IfcFindingActionDetailDto[];
 }

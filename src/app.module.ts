@@ -93,7 +93,6 @@ import { NotificationMessageModule } from './modules/survey/notification-message
 import { NotificationModule } from './modules/survey/notifications/notifications.module';
 import { OutcomeConfigModule } from './modules/survey/outcome-configs/outcome-configs.module';
 import { ScoreModule } from './modules/survey/scores/scores.module';
-import { AcceptanceLevelsModule } from './modules/survey/acceptance-levels/acceptance-levels.module';
 import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
 import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
@@ -206,7 +205,6 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		NotificationModule,
 		OutcomeConfigModule,
 		ScoreModule,
-		AcceptanceLevelsModule,
 		PppModule,
 		GraModule,
 		LcfcModule,

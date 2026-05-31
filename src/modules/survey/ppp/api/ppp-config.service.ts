@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PppConfigRepository, PPP_SURVEY_TYPE } from '../core/ppp-config.repository';
-import { PerformanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
 import { PppValidation } from '../core/ppp.validation';
 import {
 	CreatePppConfigDto,
@@ -8,6 +7,7 @@ import {
 	FilterPppConfigDto,
 	ReplicatePppConfigDto,
 } from '../model/ppp.dtos';
+import { PerformanceLevelService } from 'src/modules/academic/performance-levels/api/performance-levels.service';
 
 @Injectable()
 export class PppConfigService {

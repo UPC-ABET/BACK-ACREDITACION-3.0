@@ -231,10 +231,16 @@ export class RubricQuestionDetailsDto {
 }
 
 export class StudentEvaluationStatusDto {
-	@ApiProperty({ example: 1, description: 'project_evaluator_id del evaluador que registró la evaluación' })
+	@ApiProperty({
+		example: 1,
+		description: 'project_evaluator_id del evaluador que registró la evaluación',
+	})
 	evaluatorId: number;
 
-	@ApiProperty({ example: 1, description: 'ID del tipo de estado de calificación desde core.types (TG404)' })
+	@ApiProperty({
+		example: 1,
+		description: 'ID del tipo de estado de calificación desde core.types (TG404)',
+	})
 	qualificationStatusTypeId: number;
 }
 
