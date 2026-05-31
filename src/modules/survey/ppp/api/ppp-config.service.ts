@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PppConfigRepository, PPP_SURVEY_TYPE } from '../core/ppp-config.repository';
-import { AcceptanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
+import { PerformanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
 import { PppValidation } from '../core/ppp.validation';
 import {
 	CreatePppConfigDto,
@@ -13,7 +13,7 @@ import {
 export class PppConfigService {
 	constructor(
 		private readonly configRepo: PppConfigRepository,
-		private readonly acceptanceLevelService: AcceptanceLevelService,
+		private readonly acceptanceLevelService: PerformanceLevelService,
 	) {}
 
 	async create(dto: CreatePppConfigDto) {
@@ -44,7 +44,7 @@ export class PppConfigService {
 
 	async getById(id: number) {
 		const config = await this.configRepo.findOnePpp(id);
-		if (!config) throw new NotFoundException(`Configuración PPP con ID ${id} no encontrada`);
+		if (!config) throw new NotFoundException(`PPP configuration with ID ${id} not found`);
 		return config;
 	}
 
@@ -89,7 +89,7 @@ export class PppConfigService {
 			return {
 				replicatedConfigs: 0,
 				replicatedLevels: 0,
-				message: 'No se encontraron configuraciones en el período origen',
+				message: 'No configurations found in the source period',
 			};
 		}
 
@@ -113,7 +113,7 @@ export class PppConfigService {
 			replicatedConfigs++;
 		}
 
-		// Copiar niveles de aceptación del período anterior al nuevo
+		// Copy performance levels from the previous period to the new one
 		const pppTypeId = await this.configRepo.findSurveyTypeIdByCode(PPP_SURVEY_TYPE);
 		let replicatedLevels = 0;
 		if (pppTypeId) {
@@ -128,7 +128,7 @@ export class PppConfigService {
 			replicatedConfigs,
 			totalSourceConfigs: sourceConfigs.length,
 			replicatedLevels,
-			message: `Se replicaron ${replicatedConfigs} configuraciones PPP y ${replicatedLevels} niveles de aceptación al período destino`,
+			message: `Replicated ${replicatedConfigs} PPP configurations and ${replicatedLevels} performance levels to the target period`,
 		};
 	}
 }

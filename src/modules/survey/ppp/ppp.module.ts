@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { ScoreEntity } from 'src/modules/survey/scores/model/scores.entity';
-import { AcceptanceLevelsModule } from 'src/modules/survey/acceptance-levels/acceptance-levels.module';
+import { PerformanceLevelsModule } from 'src/modules/survey/acceptance-levels/acceptance-levels.module';
 import { PppConfigRepository } from './core/ppp-config.repository';
 import { PppSurveyRepository } from './core/ppp-survey.repository';
 import { PppScoreRepository } from './core/ppp-score.repository';
@@ -15,7 +15,7 @@ import { PppController } from './api/ppp.controller';
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, ScoreEntity]),
-		AcceptanceLevelsModule,
+		PerformanceLevelsModule,
 	],
 	controllers: [PppController],
 	providers: [

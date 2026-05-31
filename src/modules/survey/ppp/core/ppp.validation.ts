@@ -12,13 +12,13 @@ export class PppValidation {
 		const exists = await repo.existsPpp(dto.outcomeId, dto.programId, dto.academicPeriodId);
 		if (exists) {
 			errors.push(
-				'Ya existe una configuración PPP para este outcome en el programa y período seleccionados',
+				'A PPP configuration already exists for this outcome in the selected program and period',
 			);
 		}
 
 		if (errors.length > 0) {
 			throw new HttpException(
-				{ message: 'Error al crear configuración PPP', errors },
+				{ message: 'Error creating PPP configuration', errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}
@@ -29,8 +29,8 @@ export class PppValidation {
 		if (!exists) {
 			throw new HttpException(
 				{
-					message: 'Configuración PPP no encontrada',
-					errors: [`No existe configuración PPP con ID ${id}`],
+					message: 'PPP configuration not found',
+					errors: [`No PPP configuration exists with ID ${id}`],
 				},
 				HttpStatus.NOT_FOUND,
 			);
@@ -42,8 +42,8 @@ export class PppValidation {
 		if (!exists) {
 			throw new HttpException(
 				{
-					message: 'Configuración PPP no encontrada',
-					errors: [`No existe configuración PPP con ID ${id}`],
+					message: 'PPP configuration not found',
+					errors: [`No PPP configuration exists with ID ${id}`],
 				},
 				HttpStatus.NOT_FOUND,
 			);
@@ -54,26 +54,26 @@ export class PppValidation {
 		const errors: string[] = [];
 
 		if (dto.practiceNumber !== 1 && dto.practiceNumber !== 2) {
-			errors.push('El número de práctica debe ser 1 (Práctica I) o 2 (Práctica II)');
+			errors.push('Practice number must be 1 (Practice I) or 2 (Practice II)');
 		}
 
 		if (dto.scores?.length === 0) {
-			errors.push('Debe registrar al menos un puntaje de competencia');
+			errors.push('At least one outcome score must be provided');
 		}
 
 		dto.scores?.forEach((s, i) => {
 			if (s.score < 1 || s.score > 5) {
-				errors.push(`Puntaje inválido en competencia #${i + 1}: debe estar entre 1.0 y 5.0`);
+				errors.push(`Invalid score for outcome #${i + 1}: must be between 1.0 and 5.0`);
 			}
 		});
 
 		if (dto.ruc && !/^\d{11}$/.test(dto.ruc)) {
-			errors.push('El RUC debe tener exactamente 11 dígitos numéricos');
+			errors.push('RUC must be exactly 11 numeric digits');
 		}
 
 		if (errors.length > 0) {
 			throw new HttpException(
-				{ message: 'Error al registrar encuesta PPP', errors },
+				{ message: 'Error registering PPP survey', errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}
@@ -82,12 +82,12 @@ export class PppValidation {
 	static validateExcelRow(row: any, rowNumber: number): { valid: boolean; errors: string[] } {
 		const errors: string[] = [];
 
-		if (!row.studentCode) errors.push(`Fila ${rowNumber}: Código de alumno requerido`);
+		if (!row.studentCode) errors.push(`Row ${rowNumber}: Student code is required`);
 		if (!row.practiceNumber || ![1, 2].includes(Number(row.practiceNumber))) {
-			errors.push(`Fila ${rowNumber}: Número de práctica inválido (debe ser 1 o 2)`);
+			errors.push(`Row ${rowNumber}: Invalid practice number (must be 1 or 2)`);
 		}
 		if (row.ruc && !/^\d{11}$/.test(String(row.ruc))) {
-			errors.push(`Fila ${rowNumber}: RUC inválido (debe tener 11 dígitos)`);
+			errors.push(`Row ${rowNumber}: Invalid RUC (must have 11 digits)`);
 		}
 
 		return { valid: errors.length === 0, errors };

@@ -27,7 +27,7 @@ export class PppSurveyService {
 		const id = await this.surveyRepo.getPppTypeId(PPP_TYPE_CODE);
 		if (!id)
 			throw new BadRequestException(
-				`Tipo de encuesta PPP (${PPP_TYPE_CODE}) no encontrado. Ejecuta el seed de tipos.`,
+				`PPP survey type (${PPP_TYPE_CODE}) not found. Run the type seeds.`,
 			);
 		return id;
 	}
@@ -36,7 +36,7 @@ export class PppSurveyService {
 		const id = await this.surveyRepo.getPppStatusTypeId(PPP_STATUS_ACTIVE_CODE);
 		if (!id)
 			throw new BadRequestException(
-				`Estado de encuesta (${PPP_STATUS_ACTIVE_CODE}) no encontrado. Ejecuta el seed de tipos.`,
+				`Survey status (${PPP_STATUS_ACTIVE_CODE}) not found. Run the type seeds.`,
 			);
 		return id;
 	}
@@ -92,7 +92,7 @@ export class PppSurveyService {
 	async getById(id: number) {
 		const typeId = await this.getPppTypeId();
 		const survey = await this.surveyRepo.findOnePpp(id, typeId);
-		if (!survey) throw new NotFoundException(`Encuesta PPP con ID ${id} no encontrada`);
+		if (!survey) throw new NotFoundException(`PPP survey with ID ${id} not found`);
 
 		const scores = await this.scoreRepo.findBySurveyId(id);
 		return { ...survey, scores };
@@ -115,7 +115,7 @@ export class PppSurveyService {
 
 		if (configs.length === 0) {
 			throw new BadRequestException(
-				'No existen configuraciones PPP activas para el programa y período seleccionados. Crea las competencias primero.',
+				'No active PPP configurations found for the selected program and period. Create the outcome configurations first.',
 			);
 		}
 
@@ -125,19 +125,17 @@ export class PppSurveyService {
 			const buffer = Buffer.from(dto.fileBase64, 'base64');
 			workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 		} catch {
-			throw new BadRequestException('El archivo base64 proporcionado no es un Excel válido');
+			throw new BadRequestException('The provided base64 file is not a valid Excel file');
 		}
 
 		const sheetName = workbook.SheetNames[0];
-		if (!sheetName) throw new BadRequestException('El archivo Excel no contiene hojas');
+		if (!sheetName) throw new BadRequestException('The Excel file contains no sheets');
 
 		const sheet = workbook.Sheets[sheetName];
 		const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
 		if (rows.length === 0)
-			throw new BadRequestException(
-				'El archivo Excel está vacío o no tiene datos en la primera hoja',
-			);
+			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
 
 		const results = {
 			total: rows.length,
@@ -191,7 +189,7 @@ export class PppSurveyService {
 			if (!student) {
 				results.failed++;
 				results.errors.push(
-					`Fila ${rowNum}: Alumno con código "${normalizedRow.studentCode}" no encontrado`,
+					`Row ${rowNum}: Student with code "${normalizedRow.studentCode}" not found`,
 				);
 				continue;
 			}
@@ -241,7 +239,7 @@ export class PppSurveyService {
 				results.success++;
 			} catch (err) {
 				results.failed++;
-				results.errors.push(`Fila ${rowNum}: Error al guardar – ${(err as Error).message}`);
+				results.errors.push(`Row ${rowNum}: Save error – ${(err as Error).message}`);
 			}
 		}
 
@@ -286,7 +284,7 @@ export class PppSurveyService {
 		});
 
 		if (dashboardData.length === 0) {
-			return { findings: [], message: 'No hay datos de encuestas PPP para el filtro seleccionado' };
+			return { findings: [], message: 'No PPP survey data found for the selected filters' };
 		}
 
 		const findings = dashboardData.map((row) => {
@@ -297,14 +295,14 @@ export class PppSurveyService {
 			let recommendation: string;
 
 			if (color === 'ROJO') {
-				severity = 'ALTA';
-				recommendation = `La competencia "${row.outcomeName}" tiene un puntaje promedio crítico (${avgScore.toFixed(2)}). Se requiere intervención inmediata y plan de mejora.`;
+				severity = 'HIGH';
+				recommendation = `Outcome "${row.outcomeName}" has a critical average score (${avgScore.toFixed(2)}). Immediate intervention and an improvement plan are required.`;
 			} else if (color === 'AMARILLO') {
-				severity = 'MEDIA';
-				recommendation = `La competencia "${row.outcomeName}" tiene un puntaje promedio en alerta (${avgScore.toFixed(2)}). Se recomienda seguimiento y acciones preventivas.`;
+				severity = 'MEDIUM';
+				recommendation = `Outcome "${row.outcomeName}" has an at-risk average score (${avgScore.toFixed(2)}). Follow-up and preventive actions are recommended.`;
 			} else {
-				severity = 'BAJA';
-				recommendation = `La competencia "${row.outcomeName}" cumple el umbral de aceptación (${avgScore.toFixed(2)}). Mantener el nivel actual.`;
+				severity = 'LOW';
+				recommendation = `Outcome "${row.outcomeName}" meets the acceptance threshold (${avgScore.toFixed(2)}). Maintain the current level.`;
 			}
 
 			return {
@@ -332,8 +330,8 @@ export class PppSurveyService {
 			requiresAction: criticalFindings.length > 0,
 			message:
 				criticalFindings.length > 0
-					? `Se detectaron ${criticalFindings.length} competencia(s) que requieren atención (ROJO/AMARILLO)`
-					: 'Todas las competencias están dentro del umbral de aceptación',
+					? `${criticalFindings.length} outcome(s) require attention (RED/YELLOW)`
+					: 'All outcomes are within the acceptance threshold',
 		};
 	}
 }
