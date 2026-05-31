@@ -26,6 +26,12 @@ export abstract class BaseRepository<
 		this.repository = repository;
 	}
 
+	public getJsonbColumnNames(): string[] {
+		return this.repository.metadata.columns
+			.filter((column) => String(column.type) === 'jsonb' || String(column.type) === 'json')
+			.map((column) => column.propertyName);
+	}
+
 	public async save(data: DeepPartial<E>, manager?: EntityManager): Promise<E> {
 		return await this.resolveRepository(manager).save(data);
 	}

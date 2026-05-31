@@ -81,7 +81,7 @@ export class PppSurveyService {
 			);
 		}
 
-		return { surveyId: survey.id, scores_created: dto.scores?.length ?? 0 };
+		return { surveyId: survey.id, scoresCreated: dto.scores?.length ?? 0 };
 	}
 
 	async getAll() {
