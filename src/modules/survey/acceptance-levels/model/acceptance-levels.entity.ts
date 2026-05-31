@@ -13,7 +13,7 @@ import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/mode
 import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'acceptance_levels', schema: 'survey' })
-export class AcceptanceLevelEntity extends BaseEntity {
+export class PerformanceLevelEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })

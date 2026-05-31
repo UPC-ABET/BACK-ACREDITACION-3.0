@@ -1,29 +1,29 @@
 export const outcomeConfigsRoutes = {
 	outcomeConfigs: {
 		route: 'outcome-configs',
-		tag: 'Configuraciones de outcomes',
+		tag: 'Outcome Configurations',
 		operation: {
-			create: { method: 'POST', route: '/create', summary: 'Registrar configuración de outcome' },
+			create: { method: 'POST', route: '/create', summary: 'Create outcome configuration' },
 			update: {
 				method: 'PUT',
 				route: '/update/:id',
-				summary: 'Actualizar configuración de outcome',
+				summary: 'Update outcome configuration',
 			},
 			delete: {
 				method: 'DELETE',
 				route: '/delete/:id',
-				summary: 'Eliminar configuración de outcome',
+				summary: 'Delete outcome configuration',
 			},
-			getAll: { method: 'GET', route: '/get-all', summary: 'Listar configuraciones de outcomes' },
+			getAll: { method: 'GET', route: '/get-all', summary: 'List outcome configurations' },
 			getById: {
 				method: 'GET',
 				route: '/get-by-id/:id',
-				summary: 'Obtener configuración de outcome',
+				summary: 'Get outcome configuration by ID',
 			},
 			getByFilters: {
 				method: 'POST',
 				route: '/get-by-filters',
-				summary: 'Buscar configuraciones de outcomes',
+				summary: 'Search outcome configurations',
 			},
 		},
 	},

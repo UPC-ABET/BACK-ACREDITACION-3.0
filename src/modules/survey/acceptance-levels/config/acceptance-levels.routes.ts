@@ -1,21 +1,19 @@
 export const acceptanceLevelsRoutes = {
 	root: 'acceptance-levels',
-	tag: 'Acceptance Levels - Niveles de Aceptación de Encuestas',
+	tag: 'Performance Levels - Survey Performance Levels',
 	list: {
 		method: 'POST',
 		route: 'list',
-		summary:
-			'Listar niveles de aceptación por tipo de encuesta y período (genera defaults si no existen)',
+		summary: 'List performance levels by survey type and period (generates defaults if none exist)',
 	},
 	bulkUpdate: {
 		method: 'PUT',
 		route: 'bulk-update',
-		summary: 'Actualizar rangos y nombres de niveles de aceptación',
+		summary: 'Bulk update performance level ranges and names',
 	},
 	generateDefaults: {
 		method: 'POST',
 		route: 'generate-defaults',
-		summary:
-			'Generar niveles de aceptación predeterminados (1-5) para un tipo de encuesta y período',
+		summary: 'Generate default performance levels (1–5) for a survey type and period',
 	},
 };

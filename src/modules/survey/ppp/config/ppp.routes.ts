@@ -1,66 +1,66 @@
 export const pppRoutes = {
 	root: 'ppp',
-	tag: 'PPP - Encuestas de Prácticas Pre-Profesionales',
+	tag: 'PPP - Pre-Professional Internship Survey',
 	config: {
 		create: {
 			method: 'POST',
 			route: 'config/create',
-			summary: 'Crear configuración de competencia PPP',
+			summary: 'Create PPP outcome configuration',
 		},
 		getAll: {
 			method: 'GET',
 			route: 'config/get-all',
-			summary: 'Listar todas las configuraciones PPP',
+			summary: 'List all PPP configurations',
 		},
 		getByFilters: {
 			method: 'POST',
 			route: 'config/get-by-filters',
-			summary: 'Filtrar configuraciones PPP',
+			summary: 'Filter PPP configurations',
 		},
 		getById: {
 			method: 'GET',
 			route: 'config/get-by-id/:id',
-			summary: 'Obtener configuración PPP por ID',
+			summary: 'Get PPP configuration by ID',
 		},
-		update: { method: 'PUT', route: 'config/update/:id', summary: 'Actualizar configuración PPP' },
-		delete: { method: 'DELETE', route: 'config/delete/:id', summary: 'Eliminar configuración PPP' },
+		update: { method: 'PUT', route: 'config/update/:id', summary: 'Update PPP configuration' },
+		delete: { method: 'DELETE', route: 'config/delete/:id', summary: 'Delete PPP configuration' },
 		replicate: {
 			method: 'POST',
 			route: 'config/replicate',
-			summary: 'Replicar configuraciones PPP del período anterior',
+			summary: 'Replicate PPP configurations from previous period',
 		},
 	},
 	survey: {
 		create: {
 			method: 'POST',
 			route: 'survey/create',
-			summary: 'Registrar encuesta PPP individual',
+			summary: 'Register individual PPP survey',
 		},
-		getAll: { method: 'GET', route: 'survey/get-all', summary: 'Listar encuestas PPP' },
+		getAll: { method: 'GET', route: 'survey/get-all', summary: 'List PPP surveys' },
 		getByFilters: {
 			method: 'POST',
 			route: 'survey/get-by-filters',
-			summary: 'Filtrar encuestas PPP',
+			summary: 'Filter PPP surveys',
 		},
 		getById: {
 			method: 'GET',
 			route: 'survey/get-by-id/:id',
-			summary: 'Obtener encuesta PPP por ID',
+			summary: 'Get PPP survey by ID',
 		},
 		uploadExcel: {
 			method: 'POST',
 			route: 'survey/upload-excel',
-			summary: 'Carga masiva de datos PPP desde Excel base64',
+			summary: 'Bulk import PPP data from base64 Excel',
 		},
 		dashboard: {
 			method: 'POST',
 			route: 'survey/dashboard',
-			summary: 'Dashboard de resultados y puntajes PPP',
+			summary: 'PPP results and scores dashboard',
 		},
 		generateFindings: {
 			method: 'POST',
 			route: 'survey/generate-findings',
-			summary: 'Análisis automático de hallazgos PPP (ROJO/AMARILLO/VERDE)',
+			summary: 'Automatic PPP findings analysis (RED/YELLOW/GREEN)',
 		},
 	},
 };

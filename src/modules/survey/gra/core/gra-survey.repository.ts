@@ -14,7 +14,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		super(repository, dataSource);
 	}
 
-	/** Busca una encuesta GRA existente para un estudiante en un período y programa */
+	/** Finds an existing GRA survey for a student in a given period and program */
 	async findExistingGraSurvey(
 		graSurveyTypeId: number,
 		studentId: number,
@@ -30,7 +30,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			.getOne();
 	}
 
-	/** Obtiene el type_id de encuesta GRA desde core.types */
+	/** Returns the type_id for the GRA survey type from core.types */
 	async getGraSurveyTypeId(code = 'TG601-T002'): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
@@ -38,7 +38,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Obtiene el type_id para estado activo de encuesta */
+	/** Returns the type_id for the active survey status */
 	async getActiveSurveyStatusId(code = 'TG602-T001'): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
@@ -46,7 +46,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Obtiene el type_id para estado cerrado de encuesta */
+	/** Returns the type_id for the closed survey status */
 	async getClosedSurveyStatusId(code = 'TG602-T002'): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
@@ -54,7 +54,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Obtiene el type_id para notificación programada */
+	/** Returns the type_id for the scheduled notification status */
 	async getScheduledNotificationStatusId(code = 'TG1001-T001'): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
@@ -62,7 +62,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Obtiene el type_id para notificación enviada */
+	/** Returns the type_id for the sent notification status */
 	async getSentNotificationStatusId(code = 'TG1001-T002'): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
@@ -70,7 +70,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Actualiza el estado de la encuesta a cerrado (COM) */
+	/** Updates the survey status to closed */
 	async closeSurvey(
 		surveyId: number,
 		closedStatusId: number,
@@ -90,7 +90,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		);
 	}
 
-	/** Dashboard: cuenta encuestas GRA completadas vs pendientes */
+	/** Dashboard: counts completed vs pending GRA surveys */
 	async getDashboardData(
 		graSurveyTypeId: number,
 		activeStatusId: number,
@@ -147,7 +147,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		};
 	}
 
-	/** Busca el default course_section_id (requerido como FK) */
+	/** Returns the default course_section_id (required as FK) */
 	async getDefaultCourseSectionId(): Promise<number | null> {
 		const rows = await this.dataSource.query(
 			`SELECT id FROM academic.course_sections ORDER BY id LIMIT 1`,

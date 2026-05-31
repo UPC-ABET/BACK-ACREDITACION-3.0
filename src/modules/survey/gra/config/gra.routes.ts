@@ -1,87 +1,86 @@
 export const graRoutes = {
 	root: 'gra',
-	tag: 'GRA - Encuestas de Graduandos',
+	tag: 'GRA - Graduate Survey',
 	config: {
 		create: {
 			method: 'POST',
 			route: 'config/create',
-			summary: 'Crear configuración de competencia GRA',
+			summary: 'Create GRA outcome configuration',
 		},
 		getAll: {
 			method: 'GET',
 			route: 'config/get-all',
-			summary: 'Listar todas las configuraciones GRA',
+			summary: 'List all GRA configurations',
 		},
 		getByFilters: {
 			method: 'POST',
 			route: 'config/get-by-filters',
-			summary: 'Filtrar configuraciones GRA',
+			summary: 'Filter GRA configurations',
 		},
 		getById: {
 			method: 'GET',
 			route: 'config/get-by-id/:id',
-			summary: 'Obtener configuración GRA por ID',
+			summary: 'Get GRA configuration by ID',
 		},
-		update: { method: 'PUT', route: 'config/update/:id', summary: 'Actualizar configuración GRA' },
-		delete: { method: 'DELETE', route: 'config/delete/:id', summary: 'Eliminar configuración GRA' },
+		update: { method: 'PUT', route: 'config/update/:id', summary: 'Update GRA configuration' },
+		delete: { method: 'DELETE', route: 'config/delete/:id', summary: 'Delete GRA configuration' },
 		replicate: {
 			method: 'POST',
 			route: 'config/replicate',
-			summary: 'Replicar configuraciones GRA del período anterior (incluye niveles de aceptación)',
+			summary: 'Replicate GRA configurations from previous period (includes performance levels)',
 		},
 	},
 	notification: {
 		save: {
 			method: 'POST',
 			route: 'notification/save',
-			summary: 'Agregar estudiante a lista de encuesta GRA',
+			summary: 'Add student to GRA survey list',
 		},
 		listStudents: {
 			method: 'POST',
 			route: 'notification/list-students',
-			summary: 'Listar estudiantes con estado de notificación GRA',
+			summary: 'List students with GRA notification status',
 		},
 		delete: {
 			method: 'DELETE',
 			route: 'notification/delete/:id',
-			summary: 'Eliminar estudiante de la lista GRA',
+			summary: 'Remove student from GRA list',
 		},
 	},
 	email: {
 		send: {
 			method: 'POST',
 			route: 'email/send',
-			summary: 'Enviar encuestas GRA por correo a estudiantes pendientes',
+			summary: 'Send GRA surveys by email to pending students',
 		},
 	},
 	token: {
 		validate: {
 			method: 'GET',
 			route: 'token/validate/:token',
-			summary: 'Validar token de encuesta GRA (sin autenticación)',
+			summary: 'Validate GRA survey token (no authentication)',
 		},
 	},
 	survey: {
 		getByToken: {
 			method: 'POST',
 			route: 'survey/get-by-token',
-			summary: 'Obtener formulario de encuesta GRA por token',
+			summary: 'Get GRA survey form by token',
 		},
 		complete: {
 			method: 'POST',
 			route: 'survey/complete',
-			summary: 'Completar y enviar encuesta GRA',
+			summary: 'Submit completed GRA survey',
 		},
 	},
 	outcomes: {
 		list: {
 			method: 'POST',
 			route: 'outcomes/list',
-			summary:
-				'Listar outcomes disponibles agrupados por comisión (para selector de competencias GRA)',
+			summary: 'List available outcomes grouped by commission (for GRA outcome selector)',
 		},
 	},
 	dashboard: {
-		get: { method: 'POST', route: 'dashboard', summary: 'Dashboard de progreso de encuestas GRA' },
+		get: { method: 'POST', route: 'dashboard', summary: 'GRA survey progress dashboard' },
 	},
 };

@@ -11,40 +11,80 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 // ─────────────────────────────────────────────
-// FILTER
+// CREATE
 // ─────────────────────────────────────────────
 
-export class FilterAcceptanceLevelDto {
+export class CreatePerformanceLevelDto {
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
 	academicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del tipo de encuesta (PPP, GRA, LCFC)' })
+	@ApiProperty({ example: 1, description: 'Survey type ID (PPP, GRA, LCFC)' })
+	surveyTypeId: number;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'Satisfactory', en: 'Satisfactory' } })
+	name: Record<string, string>;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Display order' })
+	order: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Minimum score (inclusive)' })
+	minScore: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 2, description: 'Maximum score (exclusive, except for the final level)' })
+	maxScore: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: '#68D391', description: 'Hex color for UI display', required: false })
+	color?: string;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description: 'True if this is the highest/final level',
+		required: false,
+	})
+	isFinal?: boolean;
+}
+
+// ─────────────────────────────────────────────
+// FILTER
+// ─────────────────────────────────────────────
+
+export class FilterPerformanceLevelDto {
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
+	academicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Survey type ID (PPP, GRA, LCFC)' })
 	surveyTypeId: number;
 
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'surveyTypeCodeExample',
-		description: 'Código del tipo de encuesta (alternativa a survey_type_id)',
+		example: 'TG601-T002',
+		description: 'Survey type code (alternative to surveyTypeId)',
 		required: false,
 	})
 	surveyTypeCode?: string;
 }
 
 // ─────────────────────────────────────────────
-// UPDATE (bulk)
+// UPDATE (individual)
 // ─────────────────────────────────────────────
 
-export class UpdateAcceptanceLevelItemDto {
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del nivel de aceptación' })
-	id: number;
-
+export class UpdatePerformanceLevelDto {
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { key: 'nameValue' }, required: false })
+	@ApiProperty({ example: { es: 'Satisfactory', en: 'Satisfactory' }, required: false })
 	name?: Record<string, string>;
 
 	@IsOptional()
@@ -54,12 +94,12 @@ export class UpdateAcceptanceLevelItemDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
+	@ApiProperty({ example: 2, required: false })
 	maxScore?: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'colorExample', required: false })
+	@ApiProperty({ example: '#68D391', required: false })
 	color?: string;
 
 	@IsOptional()
@@ -69,29 +109,72 @@ export class UpdateAcceptanceLevelItemDto {
 
 	@IsOptional()
 	@IsBoolean()
-	@ApiProperty({ example: true, required: false })
+	@ApiProperty({ example: false, required: false })
 	isFinal?: boolean;
 }
 
-export class BulkUpdateAcceptanceLevelsDto {
+// ─────────────────────────────────────────────
+// UPDATE (bulk)
+// ─────────────────────────────────────────────
+
+export class UpdatePerformanceLevelItemDto {
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Performance level ID' })
+	id: number;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'Satisfactory', en: 'Satisfactory' }, required: false })
+	name?: Record<string, string>;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	minScore?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 2, required: false })
+	maxScore?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: '#68D391', required: false })
+	color?: string;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	order?: number;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({ example: false, required: false })
+	isFinal?: boolean;
+}
+
+export class BulkUpdatePerformanceLevelsDto {
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => UpdateAcceptanceLevelItemDto)
-	@ApiProperty({ example: {}, type: [UpdateAcceptanceLevelItemDto] })
-	items: UpdateAcceptanceLevelItemDto[];
+	@Type(() => UpdatePerformanceLevelItemDto)
+	@ApiProperty({
+		example: [{ id: 1, minScore: 1, maxScore: 2 }],
+		type: [UpdatePerformanceLevelItemDto],
+	})
+	items: UpdatePerformanceLevelItemDto[];
 }
 
 // ─────────────────────────────────────────────
 // GENERATE DEFAULTS
 // ─────────────────────────────────────────────
 
-export class GenerateDefaultAcceptanceLevelsDto {
+export class GenerateDefaultPerformanceLevelsDto {
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
 	academicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del tipo de encuesta' })
+	@ApiProperty({ example: 1, description: 'Survey type ID' })
 	surveyTypeId: number;
 }
 
@@ -99,16 +182,16 @@ export class GenerateDefaultAcceptanceLevelsDto {
 // COPY (used internally by replicate)
 // ─────────────────────────────────────────────
 
-export class CopyAcceptanceLevelsDto {
+export class CopyPerformanceLevelsDto {
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del tipo de encuesta' })
+	@ApiProperty({ example: 1, description: 'Survey type ID' })
 	surveyTypeId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del período académico origen' })
+	@ApiProperty({ example: 1, description: 'Source academic period ID' })
 	sourceAcademicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del período académico destino' })
+	@ApiProperty({ example: 2, description: 'Target academic period ID' })
 	targetAcademicPeriodId: number;
 }

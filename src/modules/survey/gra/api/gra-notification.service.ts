@@ -1,13 +1,23 @@
-import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import {
+	Injectable,
+	BadRequestException,
+	Logger,
+	NotFoundException,
+	InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
+import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
+import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
 import { DataSource } from 'typeorm';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { GraNotificationRepository } from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { graValidationStrings } from '../config/strings/gra.validation';
 import {
 	SaveGraNotificationDto,
 	ListStudentsGraDto,
@@ -28,9 +38,10 @@ export class GraNotificationService {
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
+		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
-	// ─── Helpers: obtener IDs de tipos ─────────────────────────────────────────
+	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
 
 	private async getTypeIds() {
 		const [graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
@@ -42,36 +53,33 @@ export class GraNotificationService {
 				this.surveyRepo.getSentNotificationStatusId(),
 			]);
 
-		if (!graSurveyTypeId)
-			throw new BadRequestException(
-				'Tipo de encuesta GRA (TG601-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!activeStatusId)
-			throw new BadRequestException(
-				'Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!closedStatusId)
-			throw new BadRequestException(
-				'Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!scheduledStatusId)
-			throw new BadRequestException(
-				'Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!sentStatusId)
-			throw new BadRequestException(
-				'Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
+		const missing: string[] = [];
+		if (!graSurveyTypeId) missing.push(TYPE_CODES.SURVEY_TYPE.GRA);
+		if (!activeStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.ACTIVE);
+		if (!closedStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.CLOSED);
+		if (!scheduledStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SCHEDULED);
+		if (!sentStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SENT);
 
-		return { graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
+		if (missing.length) {
+			this.logger.error(`Missing type seeds: ${missing.join(', ')}`);
+			throw new InternalServerErrorException(graValidationStrings.error.seedMissing);
+		}
+
+		return {
+			graSurveyTypeId: graSurveyTypeId!,
+			activeStatusId: activeStatusId!,
+			closedStatusId: closedStatusId!,
+			scheduledStatusId: scheduledStatusId!,
+			sentStatusId: sentStatusId!,
+		};
 	}
 
-	// ─── Guardar notificación (agregar estudiante a lista GRA) ─────────────────
+	// ─── Add student to GRA survey list ─────────────────────────────────────────
 
 	async saveNotification(dto: SaveGraNotificationDto) {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
-		// Buscar encuesta GRA existente para este estudiante + período + programa
+		// Find existing GRA survey for this student + period + program
 		let survey = await this.surveyRepo.findExistingGraSurvey(
 			graSurveyTypeId,
 			dto.studentId,
@@ -81,7 +89,7 @@ export class GraNotificationService {
 
 		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
 
-		// Crear la encuesta GRA si no existe
+		// Create GRA survey if it does not exist
 		if (!survey) {
 			survey = (await this.surveyRepo.create({
 				surveyTypeId: graSurveyTypeId,
@@ -94,20 +102,18 @@ export class GraNotificationService {
 			})) as SurveyEntity;
 		}
 
-		// Verificar si ya existe notificación para esta encuesta
-		const alreadyNotified = await this.notifRepo.existsForStudent(survey.id);
+		const resolvedSurvey = survey;
+
+		// Check if a notification already exists for this survey
+		const alreadyNotified = await this.notifRepo.existsForStudent(resolvedSurvey.id);
 		if (alreadyNotified) {
-			throw new BadRequestException(
-				`El estudiante ya se encuentra en la lista de encuesta GRA para este período y programa.`,
-			);
+			throw new BadRequestException(graValidationStrings.error.studentAlreadyNotified);
 		}
 
-		// Generar token único
 		const token = uuidv4();
 
-		// Crear notificación
 		const notification = await this.notifRepo.create({
-			surveyId: survey.id,
+			surveyId: resolvedSurvey.id,
 			notificationStatusTypeId: scheduledStatusId,
 			token,
 			maxRegisterDate: dto.maxRegisterDate,
@@ -115,14 +121,14 @@ export class GraNotificationService {
 
 		return {
 			notificationId: notification.id,
-			surveyId: survey.id,
+			surveyId: resolvedSurvey.id,
 			studentId: dto.studentId,
 			token,
-			message: 'Estudiante agregado a la lista de encuesta GRA correctamente.',
+			message: graValidationStrings.success.notificationCreated,
 		};
 	}
 
-	// ─── Listar estudiantes con estado de notificación ──────────────────────────
+	// ─── List students with notification status ──────────────────────────────────
 
 	async listStudents(dto: ListStudentsGraDto) {
 		const { graSurveyTypeId } = await this.getTypeIds();
@@ -134,21 +140,23 @@ export class GraNotificationService {
 		});
 	}
 
-	// ─── Eliminar notificación de la lista GRA ──────────────────────────────────
+	// ─── Remove student from GRA survey list ────────────────────────────────────
 
 	async deleteNotification(id: number) {
 		const notif = await this.notifRepo.findOneById(id);
-		if (!notif) throw new NotFoundException(`Notificación GRA con ID ${id} no encontrada`);
+		if (!notif)
+			throw new NotFoundException(graValidationStrings.error.notificationNotFound, {
+				description: String(id),
+			});
 		await this.notifRepo.remove(id);
 		return { deleted: true, notificationId: id };
 	}
 
-	// ─── Enviar emails a estudiantes pendientes ─────────────────────────────────
+	// ─── Send emails to pending students ────────────────────────────────────────
 
 	async sendEmails(dto: SendGraEmailDto) {
 		const { graSurveyTypeId, scheduledStatusId, sentStatusId } = await this.getTypeIds();
 
-		// Obtener estudiantes pendientes de notificación
 		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
 			academicPeriodId: dto.academicPeriodId,
 			programId: dto.programId,
@@ -156,8 +164,10 @@ export class GraNotificationService {
 
 		GraValidation.validateSendEmailRequest(pending.length);
 
-		// Obtener template de email (notification_messages) - primer registro activo del tipo GRA
-		const emailTemplate = await this.getEmailTemplate();
+		// Fetch email template for GRA survey type
+		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
+			TYPE_CODES.SURVEY_TYPE.GRA,
+		);
 
 		const surveyBaseUrl =
 			dto.surveyBaseUrl ||
@@ -167,9 +177,9 @@ export class GraNotificationService {
 
 		for (const student of pending) {
 			try {
-				const surveyUrl = `${surveyBaseUrl}/encuesta/gra?token=${student.token}`;
+				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.GRA}?token=${student.token}`;
 
-				const emailBody = this.replacePlaceholders(emailTemplate.body, {
+				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: student.studentName,
 					CodigoAlumno: student.studentCode,
 					NombreCarrera: student.programName,
@@ -187,41 +197,40 @@ export class GraNotificationService {
 				results.sent++;
 			} catch (err) {
 				results.failed++;
-				results.errors.push(`Alumno ${student.studentCode}: ${(err as Error).message}`);
+				results.errors.push(`Student ${student.studentCode}: ${(err as Error).message}`);
 			}
 		}
 
 		return results;
 	}
 
-	// ─── Validar token (sin autenticación requerida) ────────────────────────────
+	// ─── Validate token (no auth required) ──────────────────────────────────────
 
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
-		GraValidation.validateToken(tokenData, token);
+		GraValidation.validateToken(tokenData);
 
 		return {
 			valid: true,
-			surveyId: tokenData!.surveyId,
-			studentId: tokenData!.studentId,
-			studentName: tokenData!.studentName,
-			studentCode: tokenData!.studentCode,
-			programId: tokenData!.programId,
-			programName: tokenData!.programName,
-			academicPeriodId: tokenData!.academicPeriodId,
-			maxRegisterDate: tokenData!.maxRegisterDate,
+			surveyId: tokenData.surveyId,
+			studentId: tokenData.studentId,
+			studentName: tokenData.studentName,
+			studentCode: tokenData.studentCode,
+			programId: tokenData.programId,
+			programName: tokenData.programName,
+			academicPeriodId: tokenData.academicPeriodId,
+			maxRegisterDate: tokenData.maxRegisterDate,
 		};
 	}
 
-	// ─── Obtener formulario GRA por token (outcomes a evaluar) ─────────────────
+	// ─── Get GRA survey form by token (outcomes to rate) ────────────────────────
 
 	async getSurveyByToken(dto: GetSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
-		GraValidation.validateToken(tokenData, dto.token);
+		GraValidation.validateToken(tokenData);
 
-		// Cargar configuraciones GRA para el programa del estudiante
 		const configs = await this.configRepo.findAllGra({
-			programId: tokenData!.programId,
+			programId: tokenData.programId,
 			isActive: true,
 			isVisible: true,
 		});
@@ -243,22 +252,23 @@ export class GraNotificationService {
 		});
 
 		return {
-			surveyId: tokenData!.surveyId,
-			studentId: tokenData!.studentId,
-			studentName: tokenData!.studentName,
-			programId: tokenData!.programId,
+			surveyId: tokenData.surveyId,
+			studentId: tokenData.studentId,
+			studentName: tokenData.studentName,
+			programId: tokenData.programId,
 			outcomes,
 		};
 	}
 
-	// ─── Completar encuesta GRA ─────────────────────────────────────────────────
+	// ─── Complete GRA survey ─────────────────────────────────────────────────────
 
 	async completeSurvey(dto: CompleteGraSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
-		GraValidation.validateToken(tokenData, dto.token);
+		GraValidation.validateToken(tokenData);
 		GraValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
+		const surveyId = tokenData.surveyId;
 
 		try {
 			await this.dataSource.transaction(async (manager) => {
@@ -274,18 +284,18 @@ export class GraNotificationService {
 
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[tokenData!.surveyId, outcomeId],
+						[surveyId, outcomeId],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, tokenData!.surveyId, outcomeId],
+							[item.score, item.commentaries ?? null, surveyId, outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[tokenData!.surveyId, outcomeId, item.score, item.commentaries ?? null],
+							[surveyId, outcomeId, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -299,23 +309,25 @@ export class GraNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, tokenData!.surveyId, commentariesJson]
-						: [closedStatusId, tokenData!.surveyId],
+						? [closedStatusId, surveyId, commentariesJson]
+						: [closedStatusId, surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				surveyId: tokenData!.surveyId,
+				surveyId,
 				scoresSaved: dto.scores.length,
-				message: 'Encuesta GRA completada exitosamente. ¡Gracias por tu participación!',
+				message: graValidationStrings.success.completed,
 			};
 		} catch (err) {
-			throw new BadRequestException(`Error al guardar la encuesta GRA: ${(err as Error).message}`);
+			throw new BadRequestException(graValidationStrings.error.completeFailed, {
+				description: (err as Error).message,
+			});
 		}
 	}
 
-	// ─── Dashboard GRA ──────────────────────────────────────────────────────────
+	// ─── GRA Dashboard ───────────────────────────────────────────────────────────
 
 	async getDashboard(dto: DashboardGraDto) {
 		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
@@ -343,43 +355,5 @@ export class GraNotificationService {
 			byProgram: data.byProgram,
 			filters: dto,
 		};
-	}
-
-	// ─── Helpers internos ────────────────────────────────────────────────────────
-
-	private async getEmailTemplate(): Promise<{ subject: string; body: string }> {
-		const rows = await this.dataSource.query(
-			`SELECT nm.title, nm.body
-			 FROM survey.notification_messages nm
-			 INNER JOIN core.types t ON t.id = nm.survey_type_id
-			 WHERE t.code = 'TG601-T002'
-			   AND nm.is_active = true
-			 ORDER BY nm.id ASC
-			 LIMIT 1`,
-		);
-
-		if (rows?.[0]) {
-			return {
-				subject: rows[0].title,
-				body: rows[0].body,
-			};
-		}
-
-		return {
-			subject: 'Encuesta de Competencias de Graduandos',
-			body: `<p>Estimado(a) [NombreAlumno],</p>
-<p>Te invitamos a completar la encuesta de competencias de graduandos. Por favor accede al siguiente enlace:</p>
-<p><a href="[LinkEncuesta]">Completar Encuesta</a></p>
-<p>Token: [Token]</p>
-<p>Saludos,<br/>Equipo ABET</p>`,
-		};
-	}
-
-	private replacePlaceholders(template: string, data: Record<string, string>): string {
-		let result = template;
-		for (const [key, value] of Object.entries(data)) {
-			result = result.replaceAll(`[${key}]`, value ?? '');
-		}
-		return result;
 	}
 }

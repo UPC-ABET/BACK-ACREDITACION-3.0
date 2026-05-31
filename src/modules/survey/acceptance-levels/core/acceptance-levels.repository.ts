@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
-import { AcceptanceLevelEntity } from '../model/acceptance-levels.entity';
+import { PerformanceLevelEntity } from '../model/acceptance-levels.entity';
 
 @Injectable()
-export class AcceptanceLevelRepository extends BaseRepository<AcceptanceLevelEntity> {
+export class PerformanceLevelRepository extends BaseRepository<PerformanceLevelEntity> {
 	constructor(
-		@InjectRepository(AcceptanceLevelEntity)
-		repository: Repository<AcceptanceLevelEntity>,
+		@InjectRepository(PerformanceLevelEntity)
+		repository: Repository<PerformanceLevelEntity>,
 		dataSource: DataSource,
 	) {
 		super(repository, dataSource);
@@ -17,7 +17,7 @@ export class AcceptanceLevelRepository extends BaseRepository<AcceptanceLevelEnt
 	async findBySurveyTypeAndPeriod(
 		surveyTypeId: number,
 		academicPeriodId: number,
-	): Promise<AcceptanceLevelEntity[]> {
+	): Promise<PerformanceLevelEntity[]> {
 		return await this.repository
 			.createQueryBuilder('al')
 			.where('al.survey_type_id = :surveyTypeId', { surveyTypeId })

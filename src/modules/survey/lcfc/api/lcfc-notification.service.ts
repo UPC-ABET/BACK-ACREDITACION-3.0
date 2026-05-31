@@ -1,12 +1,21 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+	Injectable,
+	BadRequestException,
+	Logger,
+	InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
+import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
+import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
 import { DataSource } from 'typeorm';
 import { LcfcNotificationRepository } from '../core/lcfc-notification.repository';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
 import { LcfcConfigRepository } from '../core/lcfc-config.repository';
 import { LcfcValidation } from '../core/lcfc.validation';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 import {
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
@@ -25,6 +34,7 @@ export class LcfcNotificationService {
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
+		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
 	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
@@ -39,28 +49,25 @@ export class LcfcNotificationService {
 				this.surveyRepo.getSentNotificationStatusId(),
 			]);
 
-		if (!lcfcSurveyTypeId)
-			throw new BadRequestException(
-				'Tipo de encuesta LCFC (TG601-T004) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!activeStatusId)
-			throw new BadRequestException(
-				'Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!closedStatusId)
-			throw new BadRequestException(
-				'Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!scheduledStatusId)
-			throw new BadRequestException(
-				'Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!sentStatusId)
-			throw new BadRequestException(
-				'Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
+		const missing: string[] = [];
+		if (!lcfcSurveyTypeId) missing.push(TYPE_CODES.SURVEY_TYPE.LCFC);
+		if (!activeStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.ACTIVE);
+		if (!closedStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.CLOSED);
+		if (!scheduledStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SCHEDULED);
+		if (!sentStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SENT);
 
-		return { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
+		if (missing.length) {
+			this.logger.error(`Missing type seeds: ${missing.join(', ')}`);
+			throw new InternalServerErrorException(lcfcValidationStrings.error.seedMissing);
+		}
+
+		return {
+			lcfcSurveyTypeId: lcfcSurveyTypeId!,
+			activeStatusId: activeStatusId!,
+			closedStatusId: closedStatusId!,
+			scheduledStatusId: scheduledStatusId!,
+			sentStatusId: sentStatusId!,
+		};
 	}
 
 	// ─── Send notifications: creates surveys + notifications + sends emails ─────
@@ -77,21 +84,19 @@ export class LcfcNotificationService {
 		});
 
 		if (activeConfigs.length === 0) {
-			throw new BadRequestException(
-				'No hay cursos LCFC activos para el período indicado. Genere y active configuraciones primero.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noActiveCourses);
 		}
 
 		// 2. Collect active course_section_ids, applying optional filters
 		let courseSectionIds = activeConfigs
-			.map((c) => (c.extra as any)?.courseSectionId as number)
+			.map((c) => c.extra?.courseSectionId)
 			.filter((id): id is number => typeof id === 'number');
 
 		if (dto.campusId) {
 			const campusId = dto.campusId;
 			courseSectionIds = courseSectionIds.filter((id) => {
-				const cfg = activeConfigs.find((c) => (c.extra as any)?.courseSectionId === id);
-				return (cfg?.extra as any)?.campusId === campusId;
+				const cfg = activeConfigs.find((c) => c.extra?.courseSectionId === id);
+				return cfg?.extra?.campusId === campusId;
 			});
 		}
 
@@ -101,36 +106,39 @@ export class LcfcNotificationService {
 		}
 
 		if (courseSectionIds.length === 0) {
-			throw new BadRequestException(
-				'No hay secciones de curso activas que coincidan con los filtros indicados.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noMatchingSections);
 		}
 
 		// 3. Get enrolled students for all relevant course sections
 		const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(courseSectionIds);
 
 		if (enrolledStudents.length === 0) {
-			throw new BadRequestException(
-				'No se encontraron estudiantes matriculados en los cursos LCFC activos.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
 
 		// 4. Create surveys + notifications in a transaction for new student-course pairs
 		const maxRegisterDate = dto.maxRegisterDate ?? null;
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
-		const pendingNotifications: any[] = [];
+		const pendingNotifications: {
+			studentId: number;
+			studentName: string;
+			studentCode: string;
+			studentEmail: string;
+			surveyId: number;
+			token: string;
+			courseName: string;
+			programName: string;
+		}[] = [];
 
 		try {
 			await this.dataSource.transaction(async (manager) => {
 				for (const student of enrolledStudents) {
 					const config = activeConfigs.find(
-						(c) => (c.extra as any)?.courseSectionId === student.courseSectionId,
+						(c) => c.extra?.courseSectionId === student.courseSectionId,
 					);
-					const programId =
-						dto.programId ?? student.programId ?? (config?.extra as any)?.programId ?? null;
-					const campusId =
-						dto.campusId ?? student.campusId ?? (config?.extra as any)?.campusId ?? null;
+					const programId = dto.programId ?? student.programId ?? config?.extra?.programId ?? null;
+					const campusId = dto.campusId ?? student.campusId ?? config?.extra?.campusId ?? null;
 
 					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
 						lcfcSurveyTypeId,
@@ -138,7 +146,26 @@ export class LcfcNotificationService {
 						student.courseSectionId,
 					);
 
-					if (!existingSurvey) {
+					if (existingSurvey) {
+						alreadyExisted++;
+						const existingNotif = await manager.query(
+							`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
+							[existingSurvey.id, scheduledStatusId],
+						);
+
+						if (existingNotif?.[0]) {
+							pendingNotifications.push({
+								studentId: student.studentId,
+								studentName: student.studentName,
+								studentCode: student.studentCode,
+								studentEmail: student.studentEmail,
+								surveyId: existingSurvey.id,
+								token: existingNotif[0].token,
+								courseName: student.courseName,
+								programName: student.programName,
+							});
+						}
+					} else {
 						const inserted = await manager.query(
 							`INSERT INTO evidence.surveys
 							 (survey_type_id, survey_status_type_id, student_id, academic_period_id, campus_id, program_id, course_section_id)
@@ -170,35 +197,18 @@ export class LcfcNotificationService {
 							studentName: student.studentName,
 							studentCode: student.studentCode,
 							studentEmail: student.studentEmail,
-							surveyId: surveyId,
+							surveyId,
 							token,
 							courseName: student.courseName,
 							programName: student.programName,
 						});
-					} else {
-						alreadyExisted++;
-						const existingNotif = await manager.query(
-							`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
-							[existingSurvey.id, scheduledStatusId],
-						);
-
-						if (existingNotif?.[0]) {
-							pendingNotifications.push({
-								studentId: student.studentId,
-								studentName: student.studentName,
-								studentCode: student.studentCode,
-								studentEmail: student.studentEmail,
-								surveyId: existingSurvey.id,
-								token: existingNotif[0].token,
-								courseName: student.courseName,
-								programName: student.programName,
-							});
-						}
 					}
 				}
 			});
 		} catch (err) {
-			throw new BadRequestException(`Error al procesar encuestas LCFC: ${(err as Error).message}`);
+			throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
+				description: (err as Error).message,
+			});
 		}
 
 		// 5. Send emails to all pending notifications
@@ -206,7 +216,9 @@ export class LcfcNotificationService {
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
-		const emailTemplate = await this.getEmailTemplate();
+		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
+			TYPE_CODES.SURVEY_TYPE.LCFC,
+		);
 
 		let emailsSent = 0;
 		let emailsFailed = 0;
@@ -214,8 +226,8 @@ export class LcfcNotificationService {
 
 		for (const notif of pendingNotifications) {
 			try {
-				const surveyUrl = `${surveyBaseUrl}/encuesta/lcfc?token=${notif.token}`;
-				const emailBody = this.replacePlaceholders(emailTemplate.body, {
+				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
+				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: notif.studentName,
 					CodigoAlumno: notif.studentCode,
 					NombreCurso: notif.courseName,
@@ -234,7 +246,7 @@ export class LcfcNotificationService {
 				emailsSent++;
 			} catch (err) {
 				emailsFailed++;
-				errors.push(`Alumno ${notif.studentCode}: ${(err as Error).message}`);
+				errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
 			}
 		}
 
@@ -252,19 +264,19 @@ export class LcfcNotificationService {
 
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
-		LcfcValidation.validateToken(tokenData, token);
+		LcfcValidation.validateToken(tokenData);
 
 		return {
 			valid: true,
-			surveyId: tokenData!.surveyId,
-			studentId: tokenData!.studentId,
-			studentName: tokenData!.studentName,
-			studentCode: tokenData!.studentCode,
-			programId: tokenData!.programId,
-			programName: tokenData!.programName,
-			academicPeriodId: tokenData!.academicPeriodId,
-			courseSectionId: tokenData!.courseSectionId,
-			maxRegisterDate: tokenData!.maxRegisterDate,
+			surveyId: tokenData.surveyId,
+			studentId: tokenData.studentId,
+			studentName: tokenData.studentName,
+			studentCode: tokenData.studentCode,
+			programId: tokenData.programId,
+			programName: tokenData.programName,
+			academicPeriodId: tokenData.academicPeriodId,
+			courseSectionId: tokenData.courseSectionId,
+			maxRegisterDate: tokenData.maxRegisterDate,
 		};
 	}
 
@@ -272,12 +284,10 @@ export class LcfcNotificationService {
 
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
-		LcfcValidation.validateToken(tokenData, dto.token);
-
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData!.courseSectionId);
+		LcfcValidation.validateToken(tokenData);
+		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData.courseSectionId);
 		const language = dto.language ?? 'es';
 
-		// Outcome names come from the DB in Spanish; English falls back to Spanish
 		const outcomeList = outcomes.map((o) => ({
 			outcomeId: o.outcomeId,
 			code: o.code,
@@ -286,11 +296,11 @@ export class LcfcNotificationService {
 		}));
 
 		return {
-			surveyId: tokenData!.surveyId,
-			studentId: tokenData!.studentId,
-			studentName: tokenData!.studentName,
-			programId: tokenData!.programId,
-			courseSectionId: tokenData!.courseSectionId,
+			surveyId: tokenData.surveyId,
+			studentId: tokenData.studentId,
+			studentName: tokenData.studentName,
+			programId: tokenData.programId,
+			courseSectionId: tokenData.courseSectionId,
 			language,
 			outcomes: outcomeList,
 		};
@@ -300,28 +310,29 @@ export class LcfcNotificationService {
 
 	async completeSurvey(dto: CompleteLcfcSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
-		LcfcValidation.validateToken(tokenData, dto.token);
+		LcfcValidation.validateToken(tokenData);
 		LcfcValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
+		const surveyId = tokenData.surveyId;
 
 		try {
 			await this.dataSource.transaction(async (manager) => {
 				for (const item of dto.scores) {
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[tokenData!.surveyId, item.outcomeId],
+						[surveyId, item.outcomeId],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, tokenData!.surveyId, item.outcomeId],
+							[item.score, item.commentaries ?? null, surveyId, item.outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[tokenData!.surveyId, item.outcomeId, item.score, item.commentaries ?? null],
+							[surveyId, item.outcomeId, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -335,19 +346,21 @@ export class LcfcNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, tokenData!.surveyId, commentariesJson]
-						: [closedStatusId, tokenData!.surveyId],
+						? [closedStatusId, surveyId, commentariesJson]
+						: [closedStatusId, surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				surveyId: tokenData!.surveyId,
+				surveyId,
 				scoresSaved: dto.scores.length,
-				message: 'Encuesta LCFC completada exitosamente. ¡Gracias por tu participación!',
+				message: lcfcValidationStrings.success.completed,
 			};
 		} catch (err) {
-			throw new BadRequestException(`Error al guardar la encuesta LCFC: ${(err as Error).message}`);
+			throw new BadRequestException(lcfcValidationStrings.error.completeFailed, {
+				description: (err as Error).message,
+			});
 		}
 	}
 
@@ -379,41 +392,5 @@ export class LcfcNotificationService {
 			byCourse: data.byCourse,
 			filters: dto,
 		};
-	}
-
-	// ─── Internal helpers ────────────────────────────────────────────────────────
-
-	private async getEmailTemplate(): Promise<{ subject: string; body: string }> {
-		const rows = await this.dataSource.query(
-			`SELECT nm.title, nm.body
-			 FROM survey.notification_messages nm
-			 INNER JOIN core.types t ON t.id = nm.survey_type_id
-			 WHERE t.code = 'TG601-T004'
-			   AND nm.is_active = true
-			 ORDER BY nm.id ASC
-			 LIMIT 1`,
-		);
-
-		if (rows?.[0]) {
-			return { subject: rows[0].title, body: rows[0].body };
-		}
-
-		return {
-			subject: 'Encuesta de Logro de Fin de Ciclo (LCFC)',
-			body: `<p>Estimado(a) [NombreAlumno],</p>
-<p>Te invitamos a completar la encuesta de Logro de Fin de Ciclo para el curso <strong>[NombreCurso]</strong>.</p>
-<p>Por favor accede al siguiente enlace para responder la encuesta:</p>
-<p><a href="[LinkEncuesta]">Completar Encuesta LCFC</a></p>
-<p>Token de acceso: [Token]</p>
-<p>Saludos,<br/>Equipo ABET</p>`,
-		};
-	}
-
-	private replacePlaceholders(template: string, data: Record<string, string>): string {
-		let result = template;
-		for (const [key, value] of Object.entries(data)) {
-			result = result.replaceAll(`[${key}]`, value ?? '');
-		}
-		return result;
 	}
 }

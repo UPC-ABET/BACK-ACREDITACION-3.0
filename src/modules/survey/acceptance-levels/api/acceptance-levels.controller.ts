@@ -1,34 +1,34 @@
 import { Body } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
-import { AcceptanceLevelService } from './acceptance-levels.service';
+import { PerformanceLevelService } from './acceptance-levels.service';
 import {
-	SwaggerAcceptanceLevelsController,
-	SwaggerAcceptanceLevelsList,
-	SwaggerAcceptanceLevelsBulkUpdate,
-	SwaggerAcceptanceLevelsGenerateDefaults,
+	SwaggerPerformanceLevelsController,
+	SwaggerPerformanceLevelsList,
+	SwaggerPerformanceLevelsBulkUpdate,
+	SwaggerPerformanceLevelsGenerateDefaults,
 } from './docs/acceptance-levels.swagger';
 import {
-	FilterAcceptanceLevelDto,
-	BulkUpdateAcceptanceLevelsDto,
-	GenerateDefaultAcceptanceLevelsDto,
+	FilterPerformanceLevelDto,
+	BulkUpdatePerformanceLevelsDto,
+	GenerateDefaultPerformanceLevelsDto,
 } from '../model/acceptance-levels.dtos';
 
-@SwaggerAcceptanceLevelsController()
-export class AcceptanceLevelController {
-	constructor(private readonly service: AcceptanceLevelService) {}
+@SwaggerPerformanceLevelsController()
+export class PerformanceLevelController {
+	constructor(private readonly service: PerformanceLevelService) {}
 
-	@SwaggerAcceptanceLevelsList()
-	async list(@Body() dto: FilterAcceptanceLevelDto) {
+	@SwaggerPerformanceLevelsList()
+	async list(@Body() dto: FilterPerformanceLevelDto) {
 		return parseSuccessResponse(await this.service.list(dto));
 	}
 
-	@SwaggerAcceptanceLevelsBulkUpdate()
-	async bulkUpdate(@Body() dto: BulkUpdateAcceptanceLevelsDto) {
+	@SwaggerPerformanceLevelsBulkUpdate()
+	async bulkUpdate(@Body() dto: BulkUpdatePerformanceLevelsDto) {
 		return parseSuccessResponse(await this.service.bulkUpdate(dto));
 	}
 
-	@SwaggerAcceptanceLevelsGenerateDefaults()
-	async generateDefaults(@Body() dto: GenerateDefaultAcceptanceLevelsDto) {
+	@SwaggerPerformanceLevelsGenerateDefaults()
+	async generateDefaults(@Body() dto: GenerateDefaultPerformanceLevelsDto) {
 		return parseSuccessResponse(await this.service.generateDefaults(dto));
 	}
 }

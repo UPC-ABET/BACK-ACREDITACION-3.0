@@ -1,7 +1,6 @@
 import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
-import { PppConfigService } from './ppp-config.service';
-import { PppSurveyService } from './ppp-survey.service';
+import { PppService } from './ppp.service';
 import {
 	SwaggerPppController,
 	SwaggerPppConfigCreate,
@@ -33,82 +32,79 @@ import {
 
 @SwaggerPppController()
 export class PppController {
-	constructor(
-		private readonly configService: PppConfigService,
-		private readonly surveyService: PppSurveyService,
-	) {}
+	constructor(private readonly pppService: PppService) {}
 
 	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerPppConfigCreate()
 	async configCreate(@Body() dto: CreatePppConfigDto) {
-		return parseSuccessResponse(await this.configService.create(dto), HttpStatus.CREATED);
+		return parseSuccessResponse(await this.pppService.createConfig(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerPppConfigGetAll()
 	async configGetAll() {
-		return parseSuccessResponse(await this.configService.getAll());
+		return parseSuccessResponse(await this.pppService.getAllConfigs());
 	}
 
 	@SwaggerPppConfigGetByFilters()
 	async configGetByFilters(@Body() dto: FilterPppConfigDto) {
-		return parseSuccessResponse(await this.configService.getAll(dto));
+		return parseSuccessResponse(await this.pppService.getAllConfigs(dto));
 	}
 
 	@SwaggerPppConfigGetById()
 	async configGetById(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.configService.getById(id));
+		return parseSuccessResponse(await this.pppService.getConfigById(id));
 	}
 
 	@SwaggerPppConfigUpdate()
 	async configUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePppConfigDto) {
-		return parseSuccessResponse(await this.configService.update(id, dto));
+		return parseSuccessResponse(await this.pppService.updateConfig(id, dto));
 	}
 
 	@SwaggerPppConfigDelete()
 	async configDelete(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.configService.delete(id));
+		return parseSuccessResponse(await this.pppService.deleteConfig(id));
 	}
 
 	@SwaggerPppConfigReplicate()
 	async configReplicate(@Body() dto: ReplicatePppConfigDto) {
-		return parseSuccessResponse(await this.configService.replicate(dto));
+		return parseSuccessResponse(await this.pppService.replicateConfig(dto));
 	}
 
 	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerPppSurveyCreate()
 	async surveyCreate(@Body() dto: CreatePppSurveyDto) {
-		return parseSuccessResponse(await this.surveyService.create(dto), HttpStatus.CREATED);
+		return parseSuccessResponse(await this.pppService.createSurvey(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerPppSurveyGetAll()
 	async surveyGetAll() {
-		return parseSuccessResponse(await this.surveyService.getAll());
+		return parseSuccessResponse(await this.pppService.getAllSurveys());
 	}
 
 	@SwaggerPppSurveyGetByFilters()
 	async surveyGetByFilters(@Body() dto: FilterPppSurveyDto) {
-		return parseSuccessResponse(await this.surveyService.getByFilters(dto));
+		return parseSuccessResponse(await this.pppService.getSurveysByFilters(dto));
 	}
 
 	@SwaggerPppSurveyGetById()
 	async surveyGetById(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.surveyService.getById(id));
+		return parseSuccessResponse(await this.pppService.getSurveyById(id));
 	}
 
 	@SwaggerPppSurveyUploadExcel()
 	async surveyUploadExcel(@Body() dto: UploadPppExcelDto) {
-		return parseSuccessResponse(await this.surveyService.uploadExcel(dto));
+		return parseSuccessResponse(await this.pppService.uploadExcel(dto));
 	}
 
 	@SwaggerPppSurveyDashboard()
 	async surveyDashboard(@Body() dto: DashboardPppDto) {
-		return parseSuccessResponse(await this.surveyService.getDashboard(dto));
+		return parseSuccessResponse(await this.pppService.getDashboard(dto));
 	}
 
 	@SwaggerPppSurveyGenerateFindings()
 	async surveyGenerateFindings(@Body() dto: GenerateFindingsPppDto) {
-		return parseSuccessResponse(await this.surveyService.generateFindings(dto));
+		return parseSuccessResponse(await this.pppService.generateFindings(dto));
 	}
 }

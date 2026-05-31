@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { GraConfigRepository, GRA_SURVEY_TYPE } from '../core/gra-config.repository';
-import { AcceptanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
+import { PerformanceLevelService } from 'src/modules/survey/acceptance-levels/api/acceptance-levels.service';
 import {
 	CreateGraConfigDto,
 	UpdateGraConfigDto,
@@ -13,7 +13,7 @@ import {
 export class GraConfigService {
 	constructor(
 		private readonly configRepo: GraConfigRepository,
-		private readonly acceptanceLevelService: AcceptanceLevelService,
+		private readonly acceptanceLevelService: PerformanceLevelService,
 	) {}
 
 	async create(dto: CreateGraConfigDto) {
@@ -43,7 +43,7 @@ export class GraConfigService {
 
 	async getById(id: number) {
 		const config = await this.configRepo.findOneGra(id);
-		if (!config) throw new NotFoundException(`Configuración GRA con ID ${id} no encontrada`);
+		if (!config) throw new NotFoundException(`GRA configuration with ID ${id} not found`);
 		return config;
 	}
 
@@ -75,7 +75,7 @@ export class GraConfigService {
 
 	async delete(id: number) {
 		const config = await this.configRepo.findOneGra(id);
-		if (!config) throw new NotFoundException(`Configuración GRA con ID ${id} no encontrada`);
+		if (!config) throw new NotFoundException(`GRA configuration with ID ${id} not found`);
 		return await this.configRepo.update(id, { isActive: false });
 	}
 
@@ -90,7 +90,7 @@ export class GraConfigService {
 			return {
 				replicatedConfigs: 0,
 				replicatedLevels: 0,
-				message: 'No se encontraron configuraciones en el período origen',
+				message: 'No configurations found in the source period',
 			};
 		}
 
@@ -114,7 +114,7 @@ export class GraConfigService {
 			replicatedConfigs++;
 		}
 
-		// Buscar el survey_type_id del tipo GRA para copiar niveles de aceptación
+		// Look up the survey_type_id for the GRA type to copy performance levels
 		const graTypeId = await this.configRepo.findSurveyTypeIdByCode(GRA_SURVEY_TYPE);
 		let replicatedLevels = 0;
 		if (graTypeId) {
@@ -129,7 +129,7 @@ export class GraConfigService {
 			replicatedConfigs,
 			totalSourceConfigs: sourceConfigs.length,
 			replicatedLevels,
-			message: `Se replicaron ${replicatedConfigs} configuraciones GRA y ${replicatedLevels} niveles de aceptación al período destino`,
+			message: `Replicated ${replicatedConfigs} GRA configurations and ${replicatedLevels} performance levels to the target period`,
 		};
 	}
 
@@ -139,7 +139,7 @@ export class GraConfigService {
 			dto.academicPeriodId,
 		);
 
-		// Agrupar por commissionId
+		// Group by commissionId
 		const grouped: Record<number, { commissionId: number; commissionName: any; outcomes: any[] }> =
 			{};
 		for (const row of rows) {
