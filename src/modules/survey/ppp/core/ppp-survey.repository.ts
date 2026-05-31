@@ -68,9 +68,7 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 			campusId?: number;
 			practiceNumber?: number;
 		},
-	): Promise<
-		{ outcomeId: number; outcomeName: string; avgScore: number; totalSurveys: number }[]
-	> {
+	): Promise<{ outcomeId: number; outcomeName: string; avgScore: number; totalSurveys: number }[]> {
 		const params: any[] = [pppTypeId];
 		const conditions: string[] = [`s.survey_type_id = $1`];
 
