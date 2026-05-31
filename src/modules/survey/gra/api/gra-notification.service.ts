@@ -1,8 +1,15 @@
-import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import {
+	Injectable,
+	BadRequestException,
+	Logger,
+	NotFoundException,
+	InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
-import { SurveyEmailService } from 'src/modules/survey/shared/survey-email.service';
+import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
+import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
 import { DataSource } from 'typeorm';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { GraNotificationRepository } from '../core/gra-notification.repository';
@@ -10,6 +17,7 @@ import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { graValidationStrings } from '../config/strings/gra.validation';
 import {
 	SaveGraNotificationDto,
 	ListStudentsGraDto,
@@ -30,7 +38,7 @@ export class GraNotificationService {
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
-		private readonly surveyEmailService: SurveyEmailService,
+		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
 	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
@@ -45,28 +53,25 @@ export class GraNotificationService {
 				this.surveyRepo.getSentNotificationStatusId(),
 			]);
 
-		if (!graSurveyTypeId)
-			throw new BadRequestException(
-				'Tipo de encuesta GRA (TG601-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!activeStatusId)
-			throw new BadRequestException(
-				'Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!closedStatusId)
-			throw new BadRequestException(
-				'Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!scheduledStatusId)
-			throw new BadRequestException(
-				'Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!sentStatusId)
-			throw new BadRequestException(
-				'Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
+		const missing: string[] = [];
+		if (!graSurveyTypeId) missing.push(TYPE_CODES.SURVEY_TYPE.GRA);
+		if (!activeStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.ACTIVE);
+		if (!closedStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.CLOSED);
+		if (!scheduledStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SCHEDULED);
+		if (!sentStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SENT);
 
-		return { graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
+		if (missing.length) {
+			this.logger.error(`Missing type seeds: ${missing.join(', ')}`);
+			throw new InternalServerErrorException(graValidationStrings.error.seedMissing);
+		}
+
+		return {
+			graSurveyTypeId: graSurveyTypeId!,
+			activeStatusId: activeStatusId!,
+			closedStatusId: closedStatusId!,
+			scheduledStatusId: scheduledStatusId!,
+			sentStatusId: sentStatusId!,
+		};
 	}
 
 	// ─── Add student to GRA survey list ─────────────────────────────────────────
@@ -102,9 +107,7 @@ export class GraNotificationService {
 		// Check if a notification already exists for this survey
 		const alreadyNotified = await this.notifRepo.existsForStudent(resolvedSurvey.id);
 		if (alreadyNotified) {
-			throw new BadRequestException(
-				`El estudiante ya se encuentra en la lista de encuesta GRA para este período y programa.`,
-			);
+			throw new BadRequestException(graValidationStrings.error.studentAlreadyNotified);
 		}
 
 		const token = uuidv4();
@@ -121,7 +124,7 @@ export class GraNotificationService {
 			surveyId: resolvedSurvey.id,
 			studentId: dto.studentId,
 			token,
-			message: 'Estudiante agregado a la lista de encuesta GRA correctamente.',
+			message: graValidationStrings.success.notificationCreated,
 		};
 	}
 
@@ -141,7 +144,10 @@ export class GraNotificationService {
 
 	async deleteNotification(id: number) {
 		const notif = await this.notifRepo.findOneById(id);
-		if (!notif) throw new NotFoundException(`Notificación GRA con ID ${id} no encontrada`);
+		if (!notif)
+			throw new NotFoundException(graValidationStrings.error.notificationNotFound, {
+				description: String(id),
+			});
 		await this.notifRepo.remove(id);
 		return { deleted: true, notificationId: id };
 	}
@@ -159,7 +165,7 @@ export class GraNotificationService {
 		GraValidation.validateSendEmailRequest(pending.length);
 
 		// Fetch email template for GRA survey type
-		const emailTemplate = await this.surveyEmailService.getEmailTemplate(
+		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
 			TYPE_CODES.SURVEY_TYPE.GRA,
 		);
 
@@ -171,9 +177,9 @@ export class GraNotificationService {
 
 		for (const student of pending) {
 			try {
-				const surveyUrl = `${surveyBaseUrl}/encuesta/gra?token=${student.token}`;
+				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.GRA}?token=${student.token}`;
 
-				const emailBody = this.surveyEmailService.replacePlaceholders(emailTemplate.body, {
+				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: student.studentName,
 					CodigoAlumno: student.studentCode,
 					NombreCarrera: student.programName,
@@ -191,7 +197,7 @@ export class GraNotificationService {
 				results.sent++;
 			} catch (err) {
 				results.failed++;
-				results.errors.push(`Alumno ${student.studentCode}: ${(err as Error).message}`);
+				results.errors.push(`Student ${student.studentCode}: ${(err as Error).message}`);
 			}
 		}
 
@@ -312,10 +318,12 @@ export class GraNotificationService {
 				success: true,
 				surveyId,
 				scoresSaved: dto.scores.length,
-				message: 'Encuesta GRA completada exitosamente. ¡Gracias por tu participación!',
+				message: graValidationStrings.success.completed,
 			};
 		} catch (err) {
-			throw new BadRequestException(`Error al guardar la encuesta GRA: ${(err as Error).message}`);
+			throw new BadRequestException(graValidationStrings.error.completeFailed, {
+				description: (err as Error).message,
+			});
 		}
 	}
 
