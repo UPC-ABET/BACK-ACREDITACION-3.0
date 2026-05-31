@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { SurveyEmailService } from './survey-email.service';
+import { SurveyEmailTemplateService } from './survey-email.service';
 
 @Module({
-	providers: [SurveyEmailService],
-	exports: [SurveyEmailService],
+	providers: [SurveyEmailTemplateService],
+	exports: [SurveyEmailTemplateService],
 })
 export class SurveySharedModule {}

@@ -76,4 +76,3 @@ export function mapExample(type: string, name: string, decorators: string[] = []
 	if (type === 'Date') return `'2024-01-01T00:00:00Z'`;
 	return `'${name}'`;
 }
-

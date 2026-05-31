@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 @Injectable()
-export class SurveyEmailService {
+export class SurveyEmailTemplateService {
 	constructor(private readonly dataSource: DataSource) {}
 
 	async getEmailTemplate(surveyTypeCode: string): Promise<{ subject: string; body: string }> {
