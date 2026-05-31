@@ -1,19 +1,19 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { acceptanceLevelsRoutes } from '../../config/acceptance-levels.routes';
 import {
-	FilterAcceptanceLevelDto,
-	BulkUpdateAcceptanceLevelsDto,
-	GenerateDefaultAcceptanceLevelsDto,
+	FilterPerformanceLevelDto,
+	BulkUpdatePerformanceLevelsDto,
+	GenerateDefaultPerformanceLevelsDto,
 } from '../../model/acceptance-levels.dtos';
 
 const cfg = acceptanceLevelsRoutes;
 
-export const SwaggerAcceptanceLevelsController = () =>
+export const SwaggerPerformanceLevelsController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.root });
 
-export const SwaggerAcceptanceLevelsList = () =>
-	HttpMethodWithSwagger({ ...cfg.list, body: FilterAcceptanceLevelDto });
-export const SwaggerAcceptanceLevelsBulkUpdate = () =>
-	HttpMethodWithSwagger({ ...cfg.bulkUpdate, body: BulkUpdateAcceptanceLevelsDto });
-export const SwaggerAcceptanceLevelsGenerateDefaults = () =>
-	HttpMethodWithSwagger({ ...cfg.generateDefaults, body: GenerateDefaultAcceptanceLevelsDto });
+export const SwaggerPerformanceLevelsList = () =>
+	HttpMethodWithSwagger({ ...cfg.list, body: FilterPerformanceLevelDto });
+export const SwaggerPerformanceLevelsBulkUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.bulkUpdate, body: BulkUpdatePerformanceLevelsDto });
+export const SwaggerPerformanceLevelsGenerateDefaults = () =>
+	HttpMethodWithSwagger({ ...cfg.generateDefaults, body: GenerateDefaultPerformanceLevelsDto });

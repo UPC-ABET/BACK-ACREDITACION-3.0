@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AcceptanceLevelRepository } from '../core/acceptance-levels.repository';
+import { PerformanceLevelRepository } from '../core/acceptance-levels.repository';
 import {
-	FilterAcceptanceLevelDto,
-	BulkUpdateAcceptanceLevelsDto,
-	GenerateDefaultAcceptanceLevelsDto,
-	CopyAcceptanceLevelsDto,
+	FilterPerformanceLevelDto,
+	BulkUpdatePerformanceLevelsDto,
+	GenerateDefaultPerformanceLevelsDto,
+	CopyPerformanceLevelsDto,
 } from '../model/acceptance-levels.dtos';
 
 const DEFAULT_LEVELS = [
@@ -51,23 +51,21 @@ const DEFAULT_LEVELS = [
 ];
 
 @Injectable()
-export class AcceptanceLevelService {
-	constructor(private readonly repository: AcceptanceLevelRepository) {}
+export class PerformanceLevelService {
+	constructor(private readonly repository: PerformanceLevelRepository) {}
 
-	async list(dto: FilterAcceptanceLevelDto) {
+	async list(dto: FilterPerformanceLevelDto) {
 		let { surveyTypeId } = dto;
 
 		if (!surveyTypeId && dto.surveyTypeCode) {
 			const resolved = await this.repository.findSurveyTypeIdByCode(dto.surveyTypeCode);
 			if (!resolved)
-				throw new NotFoundException(
-					`Tipo de encuesta con código "${dto.surveyTypeCode}" no encontrado`,
-				);
+				throw new NotFoundException(`Survey type with code "${dto.surveyTypeCode}" not found`);
 			surveyTypeId = resolved;
 		}
 
 		if (!surveyTypeId)
-			throw new BadRequestException('Se requiere survey_type_id o survey_type_code');
+			throw new BadRequestException('survey_type_id or survey_type_code is required');
 
 		const count = await this.repository.countBySurveyTypeAndPeriod(
 			surveyTypeId,
@@ -81,7 +79,7 @@ export class AcceptanceLevelService {
 		return await this.repository.findBySurveyTypeAndPeriod(surveyTypeId, dto.academicPeriodId);
 	}
 
-	async bulkUpdate(dto: BulkUpdateAcceptanceLevelsDto) {
+	async bulkUpdate(dto: BulkUpdatePerformanceLevelsDto) {
 		const results: { id: number; updated: boolean }[] = [];
 
 		for (const item of dto.items) {
@@ -104,20 +102,20 @@ export class AcceptanceLevelService {
 		return { updated: results.filter((r) => r.updated).length, total: dto.items.length };
 	}
 
-	async generateDefaults(dto: GenerateDefaultAcceptanceLevelsDto) {
+	async generateDefaults(dto: GenerateDefaultPerformanceLevelsDto) {
 		const existing = await this.repository.countBySurveyTypeAndPeriod(
 			dto.surveyTypeId,
 			dto.academicPeriodId,
 		);
 		if (existing > 0)
 			throw new BadRequestException(
-				'Ya existen niveles de aceptación para este tipo de encuesta y período',
+				'Performance levels already exist for this survey type and period',
 			);
 		await this.createDefaults(dto.surveyTypeId, dto.academicPeriodId);
 		return await this.repository.findBySurveyTypeAndPeriod(dto.surveyTypeId, dto.academicPeriodId);
 	}
 
-	async copyFromPeriod(dto: CopyAcceptanceLevelsDto): Promise<number> {
+	async copyFromPeriod(dto: CopyPerformanceLevelsDto): Promise<number> {
 		const source = await this.repository.findBySurveyTypeAndPeriod(
 			dto.surveyTypeId,
 			dto.sourceAcademicPeriodId,
