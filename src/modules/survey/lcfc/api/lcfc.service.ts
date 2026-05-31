@@ -22,7 +22,7 @@ export class LcfcService {
 		return this.configService.generateConfigs(dto);
 	}
 
-	getAll(filters?: FilterLcfcConfigDto) {
+	getAllConfigs(filters?: FilterLcfcConfigDto) {
 		return this.configService.getAll(filters);
 	}
 

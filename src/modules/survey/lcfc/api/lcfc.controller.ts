@@ -36,12 +36,12 @@ export class LcfcController {
 
 	@SwaggerLcfcConfigGetAll()
 	async configGetAll() {
-		return parseSuccessResponse(await this.lcfcService.getAll());
+		return parseSuccessResponse(await this.lcfcService.getAllConfigs());
 	}
 
 	@SwaggerLcfcConfigGetByFilters()
 	async configGetByFilters(@Body() dto: FilterLcfcConfigDto) {
-		return parseSuccessResponse(await this.lcfcService.getAll(dto));
+		return parseSuccessResponse(await this.lcfcService.getAllConfigs(dto));
 	}
 
 	@SwaggerLcfcConfigUpdateStatus()

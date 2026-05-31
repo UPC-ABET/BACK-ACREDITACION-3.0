@@ -140,7 +140,11 @@ export class GetLcfcSurveyByTokenDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'languageExample', description: 'Idioma de respuesta: es | en', required: false })
+	@ApiProperty({
+		example: 'languageExample',
+		description: 'Idioma de respuesta: es | en',
+		required: false,
+	})
 	language?: string;
 }
 
@@ -177,7 +181,11 @@ export class CompleteLcfcSurveyDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => LcfcScoreItemDto)
-	@ApiProperty({ example: {}, type: [LcfcScoreItemDto], description: 'Puntajes por outcome del curso (1-10)' })
+	@ApiProperty({
+		example: {},
+		type: [LcfcScoreItemDto],
+		description: 'Puntajes por outcome del curso (1-10)',
+	})
 	scores: LcfcScoreItemDto[];
 }
 

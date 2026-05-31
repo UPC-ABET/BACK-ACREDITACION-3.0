@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
+import { LcfcTokenData } from './lcfc.validation';
 
 @Injectable()
 export class LcfcNotificationRepository extends BaseRepository<NotificationEntity> {
@@ -15,24 +16,9 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 	}
 
 	/** Finds notification by token with full details for validation and survey rendering */
-	async findByTokenWithDetails(token: string): Promise<{
-		notificationId: number;
-		surveyId: number;
-		studentId: number;
-		studentName: string;
-		studentCode: string;
-		programId: number;
-		programName: string;
-		academicPeriodId: number;
-		campusId: number;
-		courseSectionId: number;
-		maxRegisterDate: string;
-		notificationStatus: string;
-		surveyStatus: string;
-	} | null> {
+	async findByTokenWithDetails(token: string): Promise<LcfcTokenData | null> {
 		const rows = await this.dataSource.query(
 			`SELECT
-				n.id                   AS "notificationId",
 				n.survey_id            AS "surveyId",
 				s.student_id           AS "studentId",
 				u.first_name || ' ' || u.last_name AS "studentName",
@@ -43,14 +29,12 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				s.campus_id            AS "campusId",
 				s.course_section_id    AS "courseSectionId",
 				n.max_register_date    AS "maxRegisterDate",
-				nt.name->>'es'                     AS "notificationStatus",
-				st2.name->>'es'                    AS "surveyStatus"
+				st2.code               AS "surveyStatusCode"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
 			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
-			INNER JOIN core.types nt ON nt.id = n.notification_status_type_id
 			INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id
 			WHERE n.token = $1
 			LIMIT 1`,

@@ -1,34 +1,31 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
-type LcfcTokenData = {
-	survey_id: number;
-	student_id: number;
-	student_name: string;
-	student_code: string;
-	program_id: number;
-	program_name: string;
-	academic_period_id: number;
-	course_section_id: number;
-	max_register_date: string | null;
-	survey_status: string;
+export type LcfcTokenData = {
+	surveyId: number;
+	studentId: number;
+	studentName: string;
+	studentCode: string;
+	programId: number;
+	programName: string;
+	academicPeriodId: number;
+	campusId: number;
+	courseSectionId: number;
+	maxRegisterDate: string | null;
+	surveyStatusCode: string;
 };
 
 export class LcfcValidation {
-	static validateToken(
-		tokenData: LcfcTokenData | null,
-		_token: string,
-	): asserts tokenData is LcfcTokenData {
+	static validateToken(tokenData: LcfcTokenData | null): asserts tokenData is LcfcTokenData {
 		if (!tokenData) {
 			throw new NotFoundException(lcfcValidationStrings.error.tokenNotFound);
 		}
 		if (tokenData.maxRegisterDate && new Date(tokenData.maxRegisterDate) < new Date()) {
-			throw new BadRequestException(
-				'El token ha expirado. El plazo para responder la encuesta LCFC ha vencido.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.tokenExpired);
 		}
-		if (tokenData.surveyStatus === 'Cerrada') {
-			throw new BadRequestException('Esta encuesta LCFC ya ha sido completada anteriormente.');
+		if (tokenData.surveyStatusCode === TYPE_CODES.SURVEY_STATUS.CLOSED) {
+			throw new BadRequestException(lcfcValidationStrings.error.alreadyCompleted);
 		}
 	}
 
@@ -38,9 +35,7 @@ export class LcfcValidation {
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 10) {
-				throw new BadRequestException(
-					`Puntaje inválido (${item.score}) para outcomeId ${item.outcomeId}. Debe estar entre 1 y 10.`,
-				);
+				throw new BadRequestException(lcfcValidationStrings.error.invalidScore);
 			}
 		}
 	}
