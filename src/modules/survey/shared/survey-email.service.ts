@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class SurveyEmailService {
 			return { subject: rows[0].title, body: rows[0].body };
 		}
 
-		return { subject: '', body: '' };
+		throw new NotFoundException('error.survey.emailTemplateMissing');
 	}
 
 	replacePlaceholders(template: string, data: Record<string, string>): string {
