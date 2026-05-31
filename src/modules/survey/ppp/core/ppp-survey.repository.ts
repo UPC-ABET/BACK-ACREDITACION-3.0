@@ -27,7 +27,7 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 		const qb = this.repository
 			.createQueryBuilder('s')
 			.leftJoinAndSelect('s.student', 'student')
-			.leftJoinAndSelect('s.academic_period', 'academic_period')
+			.leftJoinAndSelect('s.academicPeriod', 'academic_period')
 			.leftJoinAndSelect('s.program', 'program')
 			.leftJoinAndSelect('s.campus', 'campus')
 			.where('s.survey_type_id = :typeId', { typeId: pppTypeId });
@@ -52,7 +52,7 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 		return await this.repository
 			.createQueryBuilder('s')
 			.leftJoinAndSelect('s.student', 'student')
-			.leftJoinAndSelect('s.academic_period', 'academic_period')
+			.leftJoinAndSelect('s.academicPeriod', 'academic_period')
 			.leftJoinAndSelect('s.program', 'program')
 			.leftJoinAndSelect('s.campus', 'campus')
 			.where('s.id = :id', { id })

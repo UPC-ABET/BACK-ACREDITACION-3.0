@@ -10,7 +10,7 @@ import {
 } from '../model/performance-levels.dtos';
 import { DataSource, EntityManager, FindManyOptions } from 'typeorm';
 
-const PERFORMANCE_LEVEL_RELATIONS = ['instrument_type', 'academic_period'];
+const PERFORMANCE_LEVEL_RELATIONS = ['instrumentType', 'academicPeriod'];
 
 @Injectable()
 export class PerformanceLevelService extends BaseService<PerformanceLevelRepository> {

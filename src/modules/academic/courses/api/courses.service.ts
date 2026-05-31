@@ -47,9 +47,9 @@ export class CourseService extends BaseService<CourseRepository> {
 		const qb = this.dataSource
 			.getRepository(StudentSectionEnrollmentEntity)
 			.createQueryBuilder('sse')
-			.innerJoinAndSelect('sse.course_section', 'cs')
-			.innerJoinAndSelect('cs.study_plan_course', 'spc', 'spc.course_id = :courseId', { courseId })
-			.innerJoinAndSelect('sse.enrolled_student', 'es')
+			.innerJoinAndSelect('sse.courseSection', 'cs')
+			.innerJoinAndSelect('cs.studyPlanCourse', 'spc', 'spc.course_id = :courseId', { courseId })
+			.innerJoinAndSelect('sse.enrolledStudent', 'es')
 			.innerJoinAndSelect('es.student', 's')
 			.innerJoinAndSelect('s.user', 'student_user')
 			.innerJoinAndSelect('cs.professor', 'p')

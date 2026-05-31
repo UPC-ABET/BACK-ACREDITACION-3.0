@@ -15,7 +15,7 @@ export class OutcomeRepository extends BaseRepository<OutcomeEntity> {
 	async findByIdWithCommission(id: number): Promise<OutcomeEntity | null> {
 		return await this.dataSource
 			.createQueryBuilder(OutcomeEntity, 'outcome')
-			.leftJoinAndSelect('outcome.program_commission', 'program_commission')
+			.leftJoinAndSelect('outcome.programCommission', 'program_commission')
 			.leftJoinAndSelect('program_commission.commission', 'commission')
 			.where('outcome.id = :id', { id })
 			.getOne();

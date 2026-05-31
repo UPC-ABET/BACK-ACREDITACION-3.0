@@ -290,14 +290,14 @@ export class ProjectConfigService {
 		const project = await this.projectRepo
 			.createQueryBuilder('p')
 			.leftJoinAndSelect('p.students', 's')
-			.leftJoinAndSelect('s.student_section_enrollment', 'sse')
-			.leftJoinAndSelect('sse.enrolled_student', 'es')
+			.leftJoinAndSelect('s.studentSectionEnrollment', 'sse')
+			.leftJoinAndSelect('sse.enrolledStudent', 'es')
 			.leftJoinAndSelect('es.student', 'stu')
 			.leftJoinAndSelect('stu.user', 'suser')
-			.leftJoinAndSelect('sse.course_section', 'cs')
-			.leftJoinAndSelect('cs.study_plan_course', 'spc')
-			.leftJoinAndSelect('spc.study_plan_academic_period', 'spap')
-			.leftJoinAndSelect('spap.academic_period', 'ap')
+			.leftJoinAndSelect('sse.courseSection', 'cs')
+			.leftJoinAndSelect('cs.studyPlanCourse', 'spc')
+			.leftJoinAndSelect('spc.studyPlanAcademicPeriod', 'spap')
+			.leftJoinAndSelect('spap.academicPeriod', 'ap')
 			.leftJoinAndSelect('p.evaluators', 'pe')
 			.leftJoinAndSelect('pe.professor', 'prof')
 			.leftJoinAndSelect('prof.staff', 'staff')
@@ -374,7 +374,7 @@ export class ProjectConfigService {
 				.getRepository(EvaluationEntity)
 				.createQueryBuilder('ev')
 				.leftJoinAndSelect('ev.scores', 'score')
-				.innerJoin('ev.project_student', 'ps')
+				.innerJoin('ev.projectStudent', 'ps')
 				.innerJoin(
 					RubricQuestionCriteriaEntity,
 					'rqc',

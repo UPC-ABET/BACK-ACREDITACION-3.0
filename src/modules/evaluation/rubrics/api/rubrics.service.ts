@@ -218,13 +218,13 @@ export class RubricService extends BaseService<RubricRepository> {
 		const qb = this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('rubric')
-			.leftJoinAndSelect('rubric.study_plan_course', 'studyPlanCourse')
-			.leftJoinAndSelect('rubric.grade_type', 'gradeType')
-			.leftJoinAndSelect('rubric.rubric_type', 'rubricType')
+			.leftJoinAndSelect('rubric.studyPlanCourse', 'studyPlanCourse')
+			.leftJoinAndSelect('rubric.gradeType', 'gradeType')
+			.leftJoinAndSelect('rubric.rubricType', 'rubricType')
 			.leftJoinAndSelect('studyPlanCourse.course', 'course')
-			.leftJoinAndSelect('studyPlanCourse.study_plan_academic_period', 'studyPlanAcademicPeriod')
-			.leftJoinAndSelect('studyPlanAcademicPeriod.academic_period', 'academicPeriod')
-			.leftJoinAndSelect('studyPlanAcademicPeriod.study_plan', 'studyPlan')
+			.leftJoinAndSelect('studyPlanCourse.studyPlanAcademicPeriod', 'studyPlanAcademicPeriod')
+			.leftJoinAndSelect('studyPlanAcademicPeriod.academicPeriod', 'academicPeriod')
+			.leftJoinAndSelect('studyPlanAcademicPeriod.studyPlan', 'studyPlan')
 			.leftJoinAndSelect('studyPlan.program', 'program');
 
 		if (filters?.schoolId) {
