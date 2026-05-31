@@ -9,6 +9,14 @@ export const TYPE_GROUP_CODES = {
 } as const;
 
 export const TYPE_CODES = {
+	SURVEY_TYPE: {
+		GRA: 'TG601-T002',
+		LCFC: 'TG601-T004',
+	},
+	SURVEY_STATUS: {
+		ACTIVE: 'TG602-T001',
+		CLOSED: 'TG602-T002',
+	},
 	IFC_STATUS: {
 		SAVED: 'TG701-T001',
 		SUBMITTED: 'TG701-T002',
