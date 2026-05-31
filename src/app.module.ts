@@ -67,7 +67,7 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
-import { NotificationConfigModule } from './modules/ifc/notification-configs/notification-configs.module';
+import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
 
 //IMPROVEMENT MODULES

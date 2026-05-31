@@ -3,7 +3,7 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { EmailColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import { ChartEntity } from 'src/modules/organization/charts/model/charts.entity';
 import { IfcEntity } from 'src/modules/evidence/ifcs/model/ifcs.entity';
-import { NotificationConfigEntity } from 'src/modules/ifc/notification-configs/model/notification-configs.entity';
+import { NotificationConfigEntity } from 'src/modules/admin/ifc/notification-configs/model/notification-configs.entity';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Entity({ name: 'notification_logs', schema: 'ifc' })

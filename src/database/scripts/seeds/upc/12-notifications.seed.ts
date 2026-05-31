@@ -90,9 +90,9 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 	const idsRow = await tenantDataSource.query(
 		`
 		SELECT
-			(SELECT id FROM "organization"."schools"    WHERE code = $1)              AS school_id,
-			(SELECT id FROM "academic"."academic_periods" WHERE code = $2)            AS academic_period_id
-		`,
+			(SELECT id FROM "organization"."schools"    WHERE code = $1)              AS "schoolId",
+			(SELECT id FROM "academic"."academic_periods" WHERE code = $2)            AS "academicPeriodId"
+`,
 		[SCHOOL_CODE, ACADEMIC_PERIOD_CODE],
 	);
 
@@ -130,7 +130,7 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 					'[]'::jsonb
 				),
 				true
-			ON CONFLICT ON CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" DO UPDATE
+			ON CONFLICT ON CONSTRAINT "UQ_notification_configs_school_period_trigger_status" DO UPDATE
 			SET title                     = EXCLUDED.title,
 				body                      = EXCLUDED.body,
 				to_chart_level_type_ids   = EXCLUDED.to_chart_level_type_ids,

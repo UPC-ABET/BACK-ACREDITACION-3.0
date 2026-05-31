@@ -429,7 +429,7 @@ export const ENTITY_CONFIG: Record<
 
 	notificationConfig: {
 		entity: 'NotificationConfigEntity',
-		path: 'ifc/notification-configs',
+		path: 'admin/ifc/notification-configs',
 		singular: 'notificationConfig',
 		plural: 'notificationConfigs',
 	},
