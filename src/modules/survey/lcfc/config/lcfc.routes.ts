@@ -1,59 +1,59 @@
 export const lcfcRoutes = {
 	root: 'lcfc',
-	tag: 'LCFC - Logro de Fin de Ciclo',
+	tag: 'LCFC - End-of-Cycle Achievement Survey',
 	config: {
 		generate: {
 			method: 'POST',
 			route: 'config/generate',
-			summary: 'Generar configuraciones de cursos LCFC para un período y programa',
+			summary: 'Generate LCFC course configurations for a period and program',
 		},
 		getAll: {
 			method: 'GET',
 			route: 'config/get-all',
-			summary: 'Listar todas las configuraciones de cursos LCFC',
+			summary: 'List all LCFC course configurations',
 		},
 		getByFilters: {
 			method: 'POST',
 			route: 'config/get-by-filters',
-			summary: 'Filtrar configuraciones de cursos LCFC',
+			summary: 'Filter LCFC course configurations',
 		},
 		updateStatus: {
 			method: 'POST',
 			route: 'config/update-status',
-			summary: 'Actualizar estado activo/inactivo de cursos LCFC (bulk)',
+			summary: 'Bulk update active/inactive status of LCFC courses',
 		},
 	},
 	notification: {
 		send: {
 			method: 'POST',
 			route: 'notification/send',
-			summary: 'Enviar encuestas LCFC por correo a estudiantes matriculados en cursos activos',
+			summary: 'Send LCFC surveys by email to students enrolled in active courses',
 		},
 	},
 	token: {
 		validate: {
 			method: 'GET',
 			route: 'token/validate/:token',
-			summary: 'Validar token de encuesta LCFC (sin autenticación JWT)',
+			summary: 'Validate LCFC survey token (no JWT authentication)',
 		},
 	},
 	survey: {
 		getByToken: {
 			method: 'POST',
 			route: 'survey/get-by-token',
-			summary: 'Obtener formulario de encuesta LCFC con outcomes del curso',
+			summary: 'Get LCFC survey form with course outcomes',
 		},
 		complete: {
 			method: 'POST',
 			route: 'survey/complete',
-			summary: 'Completar y guardar encuesta LCFC con puntajes por outcome',
+			summary: 'Submit completed LCFC survey with outcome scores',
 		},
 	},
 	dashboard: {
 		get: {
 			method: 'POST',
 			route: 'dashboard',
-			summary: 'Dashboard LCFC: progreso de encuestas completadas vs pendientes',
+			summary: 'LCFC dashboard: completed vs pending survey progress',
 		},
 	},
 };

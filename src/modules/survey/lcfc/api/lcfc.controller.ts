@@ -46,7 +46,7 @@ export class LcfcController {
 
 	@SwaggerLcfcConfigUpdateStatus()
 	async configUpdateStatus(@Body() dto: UpdateLcfcConfigStatusDto) {
-		return parseSuccessResponse(await this.lcfcService.updateStatus(dto));
+		return parseSuccessResponse(await this.lcfcService.updateConfigStatus(dto));
 	}
 
 	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────

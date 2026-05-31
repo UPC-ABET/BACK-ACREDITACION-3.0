@@ -26,7 +26,7 @@ export class LcfcService {
 		return this.configService.getAll(filters);
 	}
 
-	updateStatus(dto: UpdateLcfcConfigStatusDto) {
+	updateConfigStatus(dto: UpdateLcfcConfigStatusDto) {
 		return this.configService.updateStatus(dto);
 	}
 

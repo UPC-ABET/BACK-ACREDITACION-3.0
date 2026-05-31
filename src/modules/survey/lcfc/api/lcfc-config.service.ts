@@ -21,14 +21,14 @@ export class LcfcConfigService {
 
 		if (sections.length === 0) {
 			throw new BadRequestException(
-				'No se encontraron secciones de curso para el período y programa indicados.',
+				'No course sections found for the specified period and program.',
 			);
 		}
 
 		const outcomeId = await this.configRepo.findFirstProgramOutcomeId(dto.programId);
 		if (!outcomeId) {
 			throw new BadRequestException(
-				`No se encontraron outcomes para el programa ${dto.programId}. Verifique que existan outcomes en accreditation.outcomes.`,
+				`No outcomes found for program ${dto.programId}. Verify that outcomes exist in accreditation.outcomes.`,
 			);
 		}
 
@@ -62,7 +62,7 @@ export class LcfcConfigService {
 			const config = await this.configRepo.create({
 				outcomeId: outcomeId,
 				userOutcomeName: section.courseName as any,
-				userOutcomeDescription: `Sección: ${section.sectionCode}` as any,
+				userOutcomeDescription: `Section: ${section.sectionCode}` as any,
 				extra,
 				isActive: true,
 			});
@@ -83,7 +83,7 @@ export class LcfcConfigService {
 		for (const item of dto.updates) {
 			const existing = await this.configRepo.findOneById(item.configId);
 			if (!existing)
-				throw new NotFoundException(`Configuración LCFC con ID ${item.configId} no encontrada.`);
+				throw new NotFoundException(`LCFC configuration with ID ${item.configId} not found.`);
 			await this.configRepo.update(item.configId, { isActive: item.isActive });
 			updated++;
 		}

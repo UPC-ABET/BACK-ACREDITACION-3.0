@@ -19,19 +19,19 @@ export class GenerateLcfcConfigDto {
 	@IsNumber()
 	@ApiProperty({
 		example: 1,
-		description: 'ID del período académico para el que se generan configuraciones',
+		description: 'Academic period ID for which configurations are generated',
 	})
 	academicPeriodId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del programa/carrera' })
+	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
 		example: 1,
-		description: 'ID del campus (opcional, filtra por sede)',
+		description: 'Campus ID (optional, filters by campus)',
 		required: false,
 	})
 	campusId?: number;
@@ -58,12 +58,12 @@ export class LcfcConfigStatusItemDto {
 	@IsNumber()
 	@ApiProperty({
 		example: 1,
-		description: 'ID del registro de configuración LCFC (outcome_config.id)',
+		description: 'LCFC configuration record ID (outcome_config.id)',
 	})
 	configId: number;
 
 	@IsBoolean()
-	@ApiProperty({ example: true, description: 'true = activo para LCFC, false = inactivo' })
+	@ApiProperty({ example: true, description: 'true = active for LCFC, false = inactive' })
 	isActive: boolean;
 }
 
@@ -72,9 +72,9 @@ export class UpdateLcfcConfigStatusDto {
 	@ValidateNested({ each: true })
 	@Type(() => LcfcConfigStatusItemDto)
 	@ApiProperty({
-		example: {},
+		example: [{ configId: 1, isActive: true }],
 		type: [LcfcConfigStatusItemDto],
-		description: 'Lista de configuraciones con su nuevo estado',
+		description: 'List of configurations with their new status',
 	})
 	updates: LcfcConfigStatusItemDto[];
 }
@@ -85,24 +85,24 @@ export class UpdateLcfcConfigStatusDto {
 
 export class SendLcfcNotificationDto {
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del período académico' })
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
 	academicPeriodId: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Filtrar por programa (opcional)', required: false })
+	@ApiProperty({ example: 1, description: 'Filter by program (optional)', required: false })
 	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Filtrar por campus (opcional)', required: false })
+	@ApiProperty({ example: 1, description: 'Filter by campus (optional)', required: false })
 	campusId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
 		example: 1,
-		description: 'Enviar solo para esta sección de curso (opcional, 0=todas las activas)',
+		description: 'Send only for this course section (optional, 0 = all active)',
 		required: false,
 	})
 	courseSectionId?: number;
@@ -110,8 +110,8 @@ export class SendLcfcNotificationDto {
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'maxRegisterDateExample',
-		description: 'Fecha límite para responder la encuesta',
+		example: '2025-12-31',
+		description: 'Deadline for completing the survey',
 		required: false,
 	})
 	maxRegisterDate?: string;
@@ -119,8 +119,8 @@ export class SendLcfcNotificationDto {
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'surveyBaseUrlExample',
-		description: 'URL base del frontend para el link de encuesta',
+		example: 'https://app.example.com',
+		description: 'Frontend base URL used to build the survey link',
 		required: false,
 	})
 	surveyBaseUrl?: string;
@@ -133,16 +133,16 @@ export class SendLcfcNotificationDto {
 export class GetLcfcSurveyByTokenDto {
 	@IsString()
 	@ApiProperty({
-		example: 'tokenExample',
-		description: 'Token único de la encuesta LCFC',
+		example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+		description: 'Unique LCFC survey token',
 	})
 	token: string;
 
 	@IsOptional()
 	@IsString()
 	@ApiProperty({
-		example: 'languageExample',
-		description: 'Idioma de respuesta: es | en',
+		example: 'es',
+		description: 'Response language: es | en',
 		required: false,
 	})
 	language?: string;
@@ -150,41 +150,41 @@ export class GetLcfcSurveyByTokenDto {
 
 export class LcfcScoreItemDto {
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'ID del outcome de accreditation.outcomes' })
+	@ApiProperty({ example: 1, description: 'Outcome ID from accreditation.outcomes' })
 	outcomeId: number;
 
 	@IsNumber()
 	@Min(1)
 	@Max(10)
-	@ApiProperty({ example: 1, description: 'Puntaje del outcome (1 - 10)' })
+	@ApiProperty({ example: 7, description: 'Outcome score (1 – 10)' })
 	score: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'commentariesExample', required: false })
+	@ApiProperty({ example: 'Student shows solid understanding of the topic.', required: false })
 	commentaries?: string;
 }
 
 export class CompleteLcfcSurveyDto {
 	@IsString()
 	@ApiProperty({
-		example: 'tokenExample',
-		description: 'Token único de la encuesta LCFC',
+		example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+		description: 'Unique LCFC survey token',
 	})
 	token: string;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'commentariesExample', required: false })
+	@ApiProperty({ example: 'Overall good performance.', required: false })
 	commentaries?: string;
 
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => LcfcScoreItemDto)
 	@ApiProperty({
-		example: {},
+		example: [{ outcomeId: 1, score: 7, commentaries: 'Meets expectations.' }],
 		type: [LcfcScoreItemDto],
-		description: 'Puntajes por outcome del curso (1-10)',
+		description: 'Scores per course outcome (1–10)',
 	})
 	scores: LcfcScoreItemDto[];
 }

@@ -1,14 +1,21 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+	Injectable,
+	BadRequestException,
+	Logger,
+	InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
-import { SurveyEmailService } from 'src/modules/survey/shared/survey-email.service';
+import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
+import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
 import { DataSource } from 'typeorm';
 import { LcfcNotificationRepository } from '../core/lcfc-notification.repository';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
 import { LcfcConfigRepository } from '../core/lcfc-config.repository';
 import { LcfcValidation } from '../core/lcfc.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 import {
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
@@ -27,7 +34,7 @@ export class LcfcNotificationService {
 		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
-		private readonly surveyEmailService: SurveyEmailService,
+		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
 	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
@@ -42,28 +49,25 @@ export class LcfcNotificationService {
 				this.surveyRepo.getSentNotificationStatusId(),
 			]);
 
-		if (!lcfcSurveyTypeId)
-			throw new BadRequestException(
-				'Tipo de encuesta LCFC (TG601-T004) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!activeStatusId)
-			throw new BadRequestException(
-				'Estado activo de encuesta (TG602-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!closedStatusId)
-			throw new BadRequestException(
-				'Estado cerrado de encuesta (TG602-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!scheduledStatusId)
-			throw new BadRequestException(
-				'Estado programada de notificación (TG1001-T001) no encontrado. Ejecuta el seed de tipos.',
-			);
-		if (!sentStatusId)
-			throw new BadRequestException(
-				'Estado enviada de notificación (TG1001-T002) no encontrado. Ejecuta el seed de tipos.',
-			);
+		const missing: string[] = [];
+		if (!lcfcSurveyTypeId) missing.push(TYPE_CODES.SURVEY_TYPE.LCFC);
+		if (!activeStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.ACTIVE);
+		if (!closedStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.CLOSED);
+		if (!scheduledStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SCHEDULED);
+		if (!sentStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SENT);
 
-		return { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
+		if (missing.length) {
+			this.logger.error(`Missing type seeds: ${missing.join(', ')}`);
+			throw new InternalServerErrorException(lcfcValidationStrings.error.seedMissing);
+		}
+
+		return {
+			lcfcSurveyTypeId: lcfcSurveyTypeId!,
+			activeStatusId: activeStatusId!,
+			closedStatusId: closedStatusId!,
+			scheduledStatusId: scheduledStatusId!,
+			sentStatusId: sentStatusId!,
+		};
 	}
 
 	// ─── Send notifications: creates surveys + notifications + sends emails ─────
@@ -80,9 +84,7 @@ export class LcfcNotificationService {
 		});
 
 		if (activeConfigs.length === 0) {
-			throw new BadRequestException(
-				'No hay cursos LCFC activos para el período indicado. Genere y active configuraciones primero.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noActiveCourses);
 		}
 
 		// 2. Collect active course_section_ids, applying optional filters
@@ -104,18 +106,14 @@ export class LcfcNotificationService {
 		}
 
 		if (courseSectionIds.length === 0) {
-			throw new BadRequestException(
-				'No hay secciones de curso activas que coincidan con los filtros indicados.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noMatchingSections);
 		}
 
 		// 3. Get enrolled students for all relevant course sections
 		const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(courseSectionIds);
 
 		if (enrolledStudents.length === 0) {
-			throw new BadRequestException(
-				'No se encontraron estudiantes matriculados en los cursos LCFC activos.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
 
 		// 4. Create surveys + notifications in a transaction for new student-course pairs
@@ -208,7 +206,9 @@ export class LcfcNotificationService {
 				}
 			});
 		} catch (err) {
-			throw new BadRequestException(`Error al procesar encuestas LCFC: ${(err as Error).message}`);
+			throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
+				description: (err as Error).message,
+			});
 		}
 
 		// 5. Send emails to all pending notifications
@@ -216,7 +216,7 @@ export class LcfcNotificationService {
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
-		const emailTemplate = await this.surveyEmailService.getEmailTemplate(
+		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
 			TYPE_CODES.SURVEY_TYPE.LCFC,
 		);
 
@@ -226,8 +226,8 @@ export class LcfcNotificationService {
 
 		for (const notif of pendingNotifications) {
 			try {
-				const surveyUrl = `${surveyBaseUrl}/encuesta/lcfc?token=${notif.token}`;
-				const emailBody = this.surveyEmailService.replacePlaceholders(emailTemplate.body, {
+				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
+				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: notif.studentName,
 					CodigoAlumno: notif.studentCode,
 					NombreCurso: notif.courseName,
@@ -246,7 +246,7 @@ export class LcfcNotificationService {
 				emailsSent++;
 			} catch (err) {
 				emailsFailed++;
-				errors.push(`Alumno ${notif.studentCode}: ${(err as Error).message}`);
+				errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
 			}
 		}
 
@@ -355,10 +355,12 @@ export class LcfcNotificationService {
 				success: true,
 				surveyId,
 				scoresSaved: dto.scores.length,
-				message: 'Encuesta LCFC completada exitosamente. ¡Gracias por tu participación!',
+				message: lcfcValidationStrings.success.completed,
 			};
 		} catch (err) {
-			throw new BadRequestException(`Error al guardar la encuesta LCFC: ${(err as Error).message}`);
+			throw new BadRequestException(lcfcValidationStrings.error.completeFailed, {
+				description: (err as Error).message,
+			});
 		}
 	}
 
