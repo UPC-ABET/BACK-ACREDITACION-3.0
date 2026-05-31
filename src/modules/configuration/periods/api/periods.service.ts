@@ -24,10 +24,10 @@ export class PeriodsService {
 
 			const inserted: Array<PeriodResponse> = await queryRunner.manager.query(
 				`INSERT INTO academic.academic_periods
-				 (code, start_date, end_date, modality_type_id, status, extra, is_active, created_at, updated_at)
-				 VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, true, NOW(), NOW())
-				 RETURNING id, code, start_date::text, end_date::text, modality_type_id, status`,
-				[dto.code, dto.start_date, dto.end_date, modalityTypeId, PERIOD_STATUS_ACTIVE],
+				 (code, start_date, end_date, modality_type_id, extra, is_active, created_at, updated_at)
+				 VALUES ($1, $2, $3, $4, '{}'::jsonb, true, NOW(), NOW())
+				 RETURNING id, code, start_date::text, end_date::text, modality_type_id, CASE WHEN is_active THEN '${PERIOD_STATUS_ACTIVE}' ELSE '${PERIOD_STATUS_INACTIVE}' END AS status`,
+				[dto.code, dto.start_date, dto.end_date, modalityTypeId],
 			);
 
 			await queryRunner.commitTransaction();
@@ -42,7 +42,7 @@ export class PeriodsService {
 
 	async listPeriods(): Promise<PeriodResponse[]> {
 		return await this.dataSource.query(
-			`SELECT id, code, start_date::text, end_date::text, modality_type_id, status
+			`SELECT id, code, start_date::text, end_date::text, modality_type_id, CASE WHEN is_active THEN '${PERIOD_STATUS_ACTIVE}' ELSE '${PERIOD_STATUS_INACTIVE}' END AS status
 			 FROM academic.academic_periods
 			 WHERE is_active = true
 			 ORDER BY code DESC`,
@@ -51,7 +51,7 @@ export class PeriodsService {
 
 	async findPeriod(id: number): Promise<PeriodResponse> {
 		const rows: Array<PeriodResponse> = await this.dataSource.query(
-			`SELECT id, code, start_date::text, end_date::text, modality_type_id, status
+			`SELECT id, code, start_date::text, end_date::text, modality_type_id, CASE WHEN is_active THEN '${PERIOD_STATUS_ACTIVE}' ELSE '${PERIOD_STATUS_INACTIVE}' END AS status
 			 FROM academic.academic_periods
 			 WHERE id = $1`,
 			[id],
@@ -74,9 +74,9 @@ export class PeriodsService {
 
 			await queryRunner.manager.query(
 				`UPDATE academic.academic_periods
-				 SET status = $1, is_active = false, updated_at = NOW()
-				 WHERE id = $2`,
-				[PERIOD_STATUS_INACTIVE, id],
+				 SET is_active = false, updated_at = NOW()
+				 WHERE id = $1`,
+				[id],
 			);
 
 			await queryRunner.commitTransaction();
