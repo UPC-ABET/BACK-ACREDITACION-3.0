@@ -22,27 +22,27 @@ export class GraService {
 		private readonly notifService: GraNotificationService,
 	) {}
 
-	create(dto: CreateGraConfigDto) {
+	createConfig(dto: CreateGraConfigDto) {
 		return this.configService.create(dto);
 	}
 
-	getAll(filters?: FilterGraConfigDto) {
+	getAllConfigs(filters?: FilterGraConfigDto) {
 		return this.configService.getAll(filters);
 	}
 
-	getById(id: number) {
+	getConfigById(id: number) {
 		return this.configService.getById(id);
 	}
 
-	update(id: number, dto: UpdateGraConfigDto) {
+	updateConfig(id: number, dto: UpdateGraConfigDto) {
 		return this.configService.update(id, dto);
 	}
 
-	delete(id: number) {
+	deleteConfig(id: number) {
 		return this.configService.delete(id);
 	}
 
-	replicate(dto: ReplicateGraConfigDto) {
+	replicateConfig(dto: ReplicateGraConfigDto) {
 		return this.configService.replicate(dto);
 	}
 

@@ -42,37 +42,37 @@ export class GraController {
 
 	@SwaggerGraConfigCreate()
 	async configCreate(@Body() dto: CreateGraConfigDto) {
-		return parseSuccessResponse(await this.graService.create(dto), HttpStatus.CREATED);
+		return parseSuccessResponse(await this.graService.createConfig(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerGraConfigGetAll()
 	async configGetAll() {
-		return parseSuccessResponse(await this.graService.getAll());
+		return parseSuccessResponse(await this.graService.getAllConfigs());
 	}
 
 	@SwaggerGraConfigGetByFilters()
 	async configGetByFilters(@Body() dto: FilterGraConfigDto) {
-		return parseSuccessResponse(await this.graService.getAll(dto));
+		return parseSuccessResponse(await this.graService.getAllConfigs(dto));
 	}
 
 	@SwaggerGraConfigGetById()
 	async configGetById(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.graService.getById(id));
+		return parseSuccessResponse(await this.graService.getConfigById(id));
 	}
 
 	@SwaggerGraConfigUpdate()
 	async configUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateGraConfigDto) {
-		return parseSuccessResponse(await this.graService.update(id, dto));
+		return parseSuccessResponse(await this.graService.updateConfig(id, dto));
 	}
 
 	@SwaggerGraConfigDelete()
 	async configDelete(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.graService.delete(id));
+		return parseSuccessResponse(await this.graService.deleteConfig(id));
 	}
 
 	@SwaggerGraConfigReplicate()
 	async configReplicate(@Body() dto: ReplicateGraConfigDto) {
-		return parseSuccessResponse(await this.graService.replicate(dto));
+		return parseSuccessResponse(await this.graService.replicateConfig(dto));
 	}
 
 	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────

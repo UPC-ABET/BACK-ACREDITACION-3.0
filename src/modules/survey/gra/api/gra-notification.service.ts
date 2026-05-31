@@ -4,10 +4,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailService } from 'src/modules/survey/shared/survey-email.service';
 import { DataSource } from 'typeorm';
+import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { GraNotificationRepository } from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	SaveGraNotificationDto,
 	ListStudentsGraDto,
@@ -31,7 +33,7 @@ export class GraNotificationService {
 		private readonly surveyEmailService: SurveyEmailService,
 	) {}
 
-	// ─── Helpers: obtener IDs de tipos ─────────────────────────────────────────
+	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
 
 	private async getTypeIds() {
 		const [graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
@@ -67,12 +69,12 @@ export class GraNotificationService {
 		return { graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId };
 	}
 
-	// ─── Guardar notificación (agregar estudiante a lista GRA) ─────────────────
+	// ─── Add student to GRA survey list ─────────────────────────────────────────
 
 	async saveNotification(dto: SaveGraNotificationDto) {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
-		// Buscar encuesta GRA existente para este estudiante + período + programa
+		// Find existing GRA survey for this student + period + program
 		let survey = await this.surveyRepo.findExistingGraSurvey(
 			graSurveyTypeId,
 			dto.studentId,
@@ -82,7 +84,7 @@ export class GraNotificationService {
 
 		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
 
-		// Crear la encuesta GRA si no existe
+		// Create GRA survey if it does not exist
 		if (!survey) {
 			survey = (await this.surveyRepo.create({
 				surveyTypeId: graSurveyTypeId,
@@ -95,20 +97,20 @@ export class GraNotificationService {
 			})) as SurveyEntity;
 		}
 
-		// Verificar si ya existe notificación para esta encuesta
-		const alreadyNotified = await this.notifRepo.existsForStudent(survey.id);
+		const resolvedSurvey = survey;
+
+		// Check if a notification already exists for this survey
+		const alreadyNotified = await this.notifRepo.existsForStudent(resolvedSurvey.id);
 		if (alreadyNotified) {
 			throw new BadRequestException(
 				`El estudiante ya se encuentra en la lista de encuesta GRA para este período y programa.`,
 			);
 		}
 
-		// Generar token único
 		const token = uuidv4();
 
-		// Crear notificación
 		const notification = await this.notifRepo.create({
-			surveyId: survey.id,
+			surveyId: resolvedSurvey.id,
 			notificationStatusTypeId: scheduledStatusId,
 			token,
 			maxRegisterDate: dto.maxRegisterDate,
@@ -116,14 +118,14 @@ export class GraNotificationService {
 
 		return {
 			notificationId: notification.id,
-			surveyId: survey.id,
+			surveyId: resolvedSurvey.id,
 			studentId: dto.studentId,
 			token,
 			message: 'Estudiante agregado a la lista de encuesta GRA correctamente.',
 		};
 	}
 
-	// ─── Listar estudiantes con estado de notificación ──────────────────────────
+	// ─── List students with notification status ──────────────────────────────────
 
 	async listStudents(dto: ListStudentsGraDto) {
 		const { graSurveyTypeId } = await this.getTypeIds();
@@ -135,7 +137,7 @@ export class GraNotificationService {
 		});
 	}
 
-	// ─── Eliminar notificación de la lista GRA ──────────────────────────────────
+	// ─── Remove student from GRA survey list ────────────────────────────────────
 
 	async deleteNotification(id: number) {
 		const notif = await this.notifRepo.findOneById(id);
@@ -144,12 +146,11 @@ export class GraNotificationService {
 		return { deleted: true, notificationId: id };
 	}
 
-	// ─── Enviar emails a estudiantes pendientes ─────────────────────────────────
+	// ─── Send emails to pending students ────────────────────────────────────────
 
 	async sendEmails(dto: SendGraEmailDto) {
 		const { graSurveyTypeId, scheduledStatusId, sentStatusId } = await this.getTypeIds();
 
-		// Obtener estudiantes pendientes de notificación
 		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
 			academicPeriodId: dto.academicPeriodId,
 			programId: dto.programId,
@@ -157,8 +158,10 @@ export class GraNotificationService {
 
 		GraValidation.validateSendEmailRequest(pending.length);
 
-		// Obtener template de email (notification_messages) - primer registro activo del tipo GRA
-		const emailTemplate = await this.surveyEmailService.getEmailTemplate('TG601-T002');
+		// Fetch email template for GRA survey type
+		const emailTemplate = await this.surveyEmailService.getEmailTemplate(
+			TYPE_CODES.SURVEY_TYPE.GRA,
+		);
 
 		const surveyBaseUrl =
 			dto.surveyBaseUrl ||
@@ -170,7 +173,7 @@ export class GraNotificationService {
 			try {
 				const surveyUrl = `${surveyBaseUrl}/encuesta/gra?token=${student.token}`;
 
-				const emailBody = this.replacePlaceholders(emailTemplate.body, {
+				const emailBody = this.surveyEmailService.replacePlaceholders(emailTemplate.body, {
 					NombreAlumno: student.studentName,
 					CodigoAlumno: student.studentCode,
 					NombreCarrera: student.programName,
@@ -195,34 +198,33 @@ export class GraNotificationService {
 		return results;
 	}
 
-	// ─── Validar token (sin autenticación requerida) ────────────────────────────
+	// ─── Validate token (no auth required) ──────────────────────────────────────
 
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
-		GraValidation.validateToken(tokenData, token);
+		GraValidation.validateToken(tokenData);
 
 		return {
 			valid: true,
-			surveyId: tokenData!.surveyId,
-			studentId: tokenData!.studentId,
-			studentName: tokenData!.studentName,
-			studentCode: tokenData!.studentCode,
-			programId: tokenData!.programId,
-			programName: tokenData!.programName,
-			academicPeriodId: tokenData!.academicPeriodId,
-			maxRegisterDate: tokenData!.maxRegisterDate
+			surveyId: tokenData.surveyId,
+			studentId: tokenData.studentId,
+			studentName: tokenData.studentName,
+			studentCode: tokenData.studentCode,
+			programId: tokenData.programId,
+			programName: tokenData.programName,
+			academicPeriodId: tokenData.academicPeriodId,
+			maxRegisterDate: tokenData.maxRegisterDate,
 		};
 	}
 
-	// ─── Obtener formulario GRA por token (outcomes a evaluar) ─────────────────
+	// ─── Get GRA survey form by token (outcomes to rate) ────────────────────────
 
 	async getSurveyByToken(dto: GetSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
-		GraValidation.validateToken(tokenData, dto.token);
+		GraValidation.validateToken(tokenData);
 
-		// Cargar configuraciones GRA para el programa del estudiante
 		const configs = await this.configRepo.findAllGra({
-			programId: tokenData!.programId,
+			programId: tokenData.programId,
 			isActive: true,
 			isVisible: true,
 		});
@@ -244,23 +246,23 @@ export class GraNotificationService {
 		});
 
 		return {
-			surveyId: tokenData!.surveyId,
-			studentId: tokenData!.studentId,
-			studentName: tokenData!.studentName,
-			programId: tokenData!.programId,
+			surveyId: tokenData.surveyId,
+			studentId: tokenData.studentId,
+			studentName: tokenData.studentName,
+			programId: tokenData.programId,
 			outcomes,
 		};
 	}
 
-	// ─── Completar encuesta GRA ─────────────────────────────────────────────────
+	// ─── Complete GRA survey ─────────────────────────────────────────────────────
 
 	async completeSurvey(dto: CompleteGraSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
-		GraValidation.validateToken(tokenData, dto.token);
+		GraValidation.validateToken(tokenData);
 		GraValidation.validateCompleteScores(dto.scores);
 
 		const { closedStatusId } = await this.getTypeIds();
-		const surveyId = tokenData.survey_id;
+		const surveyId = tokenData.surveyId;
 
 		try {
 			await this.dataSource.transaction(async (manager) => {
@@ -276,18 +278,18 @@ export class GraNotificationService {
 
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[tokenData!.surveyId, outcomeId],
+						[surveyId, outcomeId],
 					);
 
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, tokenData!.surveyId, outcomeId],
+							[item.score, item.commentaries ?? null, surveyId, outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[tokenData!.surveyId, outcomeId, item.score, item.commentaries ?? null],
+							[surveyId, outcomeId, item.score, item.commentaries ?? null],
 						);
 					}
 				}
@@ -301,14 +303,14 @@ export class GraNotificationService {
 					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
 					 WHERE id = $2`,
 					commentariesJson
-						? [closedStatusId, tokenData!.surveyId, commentariesJson]
-						: [closedStatusId, tokenData!.surveyId],
+						? [closedStatusId, surveyId, commentariesJson]
+						: [closedStatusId, surveyId],
 				);
 			});
 
 			return {
 				success: true,
-				surveyId: tokenData!.surveyId,
+				surveyId,
 				scoresSaved: dto.scores.length,
 				message: 'Encuesta GRA completada exitosamente. ¡Gracias por tu participación!',
 			};
@@ -317,7 +319,7 @@ export class GraNotificationService {
 		}
 	}
 
-	// ─── Dashboard GRA ──────────────────────────────────────────────────────────
+	// ─── GRA Dashboard ───────────────────────────────────────────────────────────
 
 	async getDashboard(dto: DashboardGraDto) {
 		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();

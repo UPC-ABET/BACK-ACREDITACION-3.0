@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
+import { GraTokenData } from './gra.validation';
 
 @Injectable()
 export class GraNotificationRepository extends BaseRepository<NotificationEntity> {
@@ -159,23 +160,10 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		);
 	}
 
-	/** Busca una notificación por token (incluyendo datos del survey) para validación */
-	async findByTokenWithDetails(token: string): Promise<{
-		notificationId: number;
-		surveyId: number;
-		studentId: number;
-		studentName: string;
-		studentCode: string;
-		programId: number;
-		programName: string;
-		academicPeriodId: number;
-		maxRegisterDate: string;
-		notificationStatus: string;
-		surveyStatus: string;
-	} | null> {
+	/** Finds a notification by token with full details for validation and survey rendering */
+	async findByTokenWithDetails(token: string): Promise<GraTokenData | null> {
 		const rows = await this.dataSource.query(
 			`SELECT
-				n.id                AS "notificationId",
 				n.survey_id                        AS "surveyId",
 				s.student_id                       AS "studentId",
 				u.first_name || ' ' || u.last_name AS "studentName",
@@ -184,14 +172,12 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 				p.name->>'es'                      AS "programName",
 				s.academic_period_id               AS "academicPeriodId",
 				n.max_register_date                AS "maxRegisterDate",
-				nt.name->>'es'                     AS "notificationStatus",
-				st2.name->>'es'                    AS "surveyStatus"
+				st2.code                           AS "surveyStatusCode"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
 			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
-			INNER JOIN core.types nt ON nt.id = n.notification_status_type_id
 			INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id
 			WHERE n.token = $1
 			LIMIT 1`,

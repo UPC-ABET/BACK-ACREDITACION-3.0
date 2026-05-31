@@ -287,7 +287,11 @@ export class GetSurveyByTokenDto {
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'languageExample', description: 'Idioma de respuesta: es | en', required: false })
+	@ApiProperty({
+		example: 'languageExample',
+		description: 'Idioma de respuesta: es | en',
+		required: false,
+	})
 	language?: string;
 }
 
@@ -324,7 +328,11 @@ export class CompleteGraSurveyDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => GraScoreItemDto)
-	@ApiProperty({ example: {}, type: [GraScoreItemDto], description: 'Puntajes por competencia GRA' })
+	@ApiProperty({
+		example: {},
+		type: [GraScoreItemDto],
+		description: 'Puntajes por competencia GRA',
+	})
 	scores: GraScoreItemDto[];
 }
 
