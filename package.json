@@ -11,7 +11,7 @@
 	"scripts": {
 		"build": "nest build",
 		"start": "nest start",
-		"start:dev": "npm run lint:fix && npm run format && nest start --watch",
+		"start:dev": "nest start --watch",
 		"start:debug": "nest start --debug --watch",
 		"start:prod": "node dist/main.js",
 		"test": "jest",
