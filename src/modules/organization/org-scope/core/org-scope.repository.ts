@@ -37,24 +37,17 @@ export class OrgScopeRepository {
 	async findUserSchools(userId: number): Promise<UserSchoolRow[]> {
 		return await this.dataSource.query(USER_SCHOOLS_SQL, [
 			userId,
-			TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
 	}
 }
 
 const USER_SCHOOLS_SQL = `
 WITH RECURSIVE
-latest_user_period AS (
-	SELECT c.academic_period_id
-	FROM organization.charts c
-	JOIN organization.staff s
-		ON s.id = c.staff_id
-	JOIN academic.academic_periods ap
-		ON ap.id = c.academic_period_id
-	WHERE s.user_id   = $1
-	  AND s.is_active = true
-	  AND c.is_active = true
-	  AND ap.is_active = true
+latest_period AS (
+	SELECT ap.id AS academic_period_id
+	FROM academic.academic_periods ap
+	WHERE ap.is_active = true
 	ORDER BY ap.start_date DESC, ap.end_date DESC, ap.id DESC
 	LIMIT 1
 ),
@@ -63,22 +56,23 @@ user_anchors AS (
 		c.id,
 		c.root_chart_id,
 		c.level_type_id,
+		c.entity_type_id,
 		c.entity_code,
 		ARRAY[c.id] AS path,
 		0 AS depth
 	FROM organization.charts c
 	JOIN organization.staff s ON s.id = c.staff_id
-	JOIN latest_user_period lup
-		ON lup.academic_period_id = c.academic_period_id
-	WHERE s.user_id            = $1
-	  AND s.is_active          = true
-	  AND c.is_active          = true
+	JOIN latest_period lp ON lp.academic_period_id = c.academic_period_id
+	WHERE s.user_id   = $1
+	  AND s.is_active = true
+	  AND c.is_active = true
 ),
 ancestors AS (
 	SELECT
 		ua.id,
 		ua.root_chart_id,
 		ua.level_type_id,
+		ua.entity_type_id,
 		ua.entity_code,
 		ua.path,
 		ua.depth
@@ -88,67 +82,29 @@ ancestors AS (
 		parent.id,
 		parent.root_chart_id,
 		parent.level_type_id,
+		parent.entity_type_id,
 		parent.entity_code,
 		anc.path || parent.id,
 		anc.depth + 1
 	FROM organization.charts parent
 	JOIN ancestors anc ON parent.id = anc.root_chart_id
-	JOIN latest_user_period lup
-		ON lup.academic_period_id = parent.academic_period_id
-	WHERE parent.is_active          = true
-	  AND anc.depth                 < 20
+	JOIN latest_period lp ON lp.academic_period_id = parent.academic_period_id
+	WHERE parent.is_active = true
+	  AND anc.depth        < 20
 	  AND NOT parent.id = ANY(anc.path)
-),
-descendants AS (
-	SELECT
-		ua.id,
-		ua.root_chart_id,
-		ua.level_type_id,
-		ua.entity_code,
-		ua.path,
-		ua.depth
-	FROM user_anchors ua
-	UNION ALL
-	SELECT
-		child.id,
-		child.root_chart_id,
-		child.level_type_id,
-		child.entity_code,
-		d.path || child.id,
-		d.depth + 1
-	FROM organization.charts child
-	JOIN descendants d ON child.root_chart_id = d.id
-	JOIN latest_user_period lup
-		ON lup.academic_period_id = child.academic_period_id
-	WHERE child.is_active          = true
-	  AND d.depth                  < 20
-	  AND NOT child.id = ANY(d.path)
-),
-scope AS (
-	SELECT DISTINCT id, level_type_id, entity_code
-	FROM (
-		SELECT id, level_type_id, entity_code FROM ancestors
-		UNION
-		SELECT id, level_type_id, entity_code FROM descendants
-	) combined
 )
 SELECT DISTINCT
-	sc.id::int        AS "id",
-	sc.code           AS "code",
-	sc.name           AS "name",
+	sc.id::int         AS "id",
+	sc.code            AS "code",
+	sc.name            AS "name",
 	sc.faculty_id::int AS "facultyId",
-	f.code            AS "facultyCode",
-	f.name            AS "facultyName"
-FROM scope s
-JOIN core.types level_type
-	ON level_type.id = s.level_type_id
-JOIN organization.schools sc
-	ON sc.id = s.entity_code
-LEFT JOIN organization.faculties f
-	ON f.id = sc.faculty_id
-WHERE level_type.code = $2
-  AND s.entity_code IS NOT NULL
-  AND sc.is_active    = true
+	f.code             AS "facultyCode",
+	f.name             AS "facultyName"
+FROM ancestors s
+JOIN core.types et_school  ON et_school.id  = s.entity_type_id AND et_school.code = $2
+JOIN organization.schools sc ON sc.id = s.entity_code
+LEFT JOIN organization.faculties f ON f.id = sc.faculty_id
+WHERE sc.is_active = true
 ORDER BY sc.code ASC
 `;
 
