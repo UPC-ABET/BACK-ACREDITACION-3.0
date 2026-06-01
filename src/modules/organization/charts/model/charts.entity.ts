@@ -31,6 +31,9 @@ export class ChartEntity extends BaseEntity {
 	@IntegerColumn({ nullable: true })
 	entityCode: number | null;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)

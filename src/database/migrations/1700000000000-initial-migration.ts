@@ -107,7 +107,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."schools" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "faculty_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_schools_code" UNIQUE ("code"), CONSTRAINT "PK_schools" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "level_type_id" integer NOT NULL, "root_chart_id" integer, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "level_type_id" integer NOT NULL, "root_chart_id" integer, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, "upload_log_id" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "improvement"."plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_open" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_plans" PRIMARY KEY ("id"))`,
@@ -351,6 +351,9 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -1081,9 +1084,210 @@ BEGIN
 END;
 $fn$;
 `);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_charts(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period and the "period already has an uploaded chart" guard are checked in the
+	-- service (request-level HTTP errors), not here.
+
+	-- intra-file duplicate node code
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE lower(trim(e->>'code')) IN (
+			SELECT lower(trim(d->>'code'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'code'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'code'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateCodeInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- per-row validation
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                 AS row_number,
+			NULLIF(trim(e->>'code'), '')           AS code,
+			NULLIF(trim(e->>'parentCode'), '')     AS parent_code,
+			NULLIF(trim(e->>'levelTypeCode'), '')  AS level_type_code,
+			COALESCE(e->'title', '{}'::jsonb)      AS title,
+			NULLIF(trim(e->>'email'), '')          AS email,
+			NULLIF(trim(e->>'entityTypeCode'), '') AS entity_type_code,
+			NULLIF(trim(e->>'entityCode'), '')     AS entity_code
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'codeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.level_type_code IS NULL OR NOT EXISTS (
+			SELECT 1 FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id
+			WHERE g.code = 'TG902' AND t.code = r.level_type_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'levelTypeInvalid'::text, NULL::integer;
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM jsonb_each_text(r.title) AS kv(k, v) WHERE NULLIF(trim(kv.v), '') IS NOT NULL) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'titleEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.email IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'emailEmpty'::text, NULL::integer;
+		ELSIF NOT EXISTS (SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'userNotFound'::text, NULL::integer;
+		ELSIF NOT EXISTS (
+			SELECT 1 FROM organization.users u JOIN organization.staff s ON s.user_id = u.id
+			WHERE lower(u.email) = lower(r.email)
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'staffNotFound'::text, NULL::integer;
+		END IF;
+
+		IF (r.entity_type_code IS NULL) <> (r.entity_code IS NULL) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'entityIncomplete'::text, NULL::integer;
+		ELSIF r.entity_type_code IS NOT NULL THEN
+			IF NOT EXISTS (
+				SELECT 1 FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id
+				WHERE g.code = 'TG903' AND t.code = r.entity_type_code
+			) THEN
+				v_has_errors := true;
+				RETURN QUERY SELECT r.row_number, 'entityTypeInvalid'::text, NULL::integer;
+			ELSIF NOT (
+				(r.entity_type_code = 'TG903-T001' AND EXISTS (SELECT 1 FROM organization.schools x WHERE x.code = r.entity_code)) OR
+				(r.entity_type_code = 'TG903-T002' AND EXISTS (SELECT 1 FROM academic.programs x WHERE x.code = r.entity_code)) OR
+				(r.entity_type_code = 'TG903-T003' AND EXISTS (SELECT 1 FROM academic.courses x WHERE x.code = r.entity_code))
+			) THEN
+				v_has_errors := true;
+				RETURN QUERY SELECT r.row_number, 'entityNotFound'::text, NULL::integer;
+			END IF;
+		END IF;
+
+		IF r.parent_code IS NOT NULL AND NOT EXISTS (
+			SELECT 1 FROM jsonb_array_elements(p_rows) AS d
+			WHERE lower(trim(d->>'code')) = lower(r.parent_code)
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'parentNotFound'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T004'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	-- pass 1: insert every node (root_chart_id NULL), keep the file code in extra for wiring
+	INSERT INTO organization.charts
+		(staff_id, academic_period_id, level_type_id, root_chart_id, title, entity_type_id, entity_code,
+		 upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT
+		s.id,
+		p_academic_period_id,
+		lt.id,
+		NULL,
+		COALESCE(e->'title', '{}'::jsonb),
+		et.id,
+		CASE
+			WHEN et.code = 'TG903-T001' THEN (SELECT id FROM organization.schools WHERE code = trim(e->>'entityCode'))
+			WHEN et.code = 'TG903-T002' THEN (SELECT id FROM academic.programs WHERE code = trim(e->>'entityCode'))
+			WHEN et.code = 'TG903-T003' THEN (SELECT id FROM academic.courses WHERE code = trim(e->>'entityCode'))
+			ELSE NULL
+		END,
+		v_log_id,
+		jsonb_build_object('uploadNodeCode', lower(trim(e->>'code'))),
+		true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.staff s
+		ON s.id = (SELECT ss.id FROM organization.staff ss
+		           JOIN organization.users uu ON uu.id = ss.user_id
+		           WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY ss.id LIMIT 1)
+	JOIN core.type_groups gl ON gl.code = 'TG902'
+	JOIN core.types lt ON lt.type_group_id = gl.id AND lt.code = trim(e->>'levelTypeCode')
+	LEFT JOIN core.type_groups ge ON ge.code = 'TG903'
+	LEFT JOIN core.types et ON et.type_group_id = ge.id AND et.code = NULLIF(trim(e->>'entityTypeCode'), '');
+
+	-- pass 2: wire root_chart_id by matching parentCode -> the node whose code matches (this upload)
+	UPDATE organization.charts child
+	SET root_chart_id = parent.id, updated_at = NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.charts parent
+		ON parent.upload_log_id = v_log_id
+	   AND parent.extra->>'uploadNodeCode' = lower(trim(e->>'parentCode'))
+	WHERE child.upload_log_id = v_log_id
+	  AND child.extra->>'uploadNodeCode' = lower(trim(e->>'code'))
+	  AND NULLIF(trim(e->>'parentCode'), '') IS NOT NULL;
+
+	-- drop the temporary wiring code from extra
+	UPDATE organization.charts SET extra = extra - 'uploadNodeCode' WHERE charts.upload_log_id = v_log_id;
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_charts(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- charts self-reference via root_chart_id; clear the links before deleting the rows.
+	UPDATE organization.charts SET root_chart_id = NULL WHERE upload_log_id = p_upload_log_id;
+	DELETE FROM organization.charts WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_charts(integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_charts(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_staff(integer)`);
 		await queryRunner.query(
 			`DROP FUNCTION IF EXISTS audit.fn_upload_staff(jsonb, integer, integer, text)`,
@@ -1259,6 +1463,9 @@ $fn$;
 		);
 		await queryRunner.query(
 			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_plans_program_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_upload_log_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_level_type_id"`,

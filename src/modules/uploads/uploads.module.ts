@@ -6,6 +6,7 @@ import { EnrolledStudentsUploadModule } from './enrolled-students/enrolled-stude
 import { GradesRcUploadModule } from './grades-rc/grades-rc-upload.module';
 import { StudyPlansUploadModule } from './study-plans/study-plans-upload.module';
 import { StaffUploadModule } from './staff/staff-upload.module';
+import { ChartsUploadModule } from './charts/charts-upload.module';
 import { OutcomesUploadModule } from './outcomes/outcomes-upload.module';
 import { StudentSectionsUploadModule } from './student-sections/student-sections-upload.module';
 
@@ -14,6 +15,7 @@ import { StudentSectionsUploadModule } from './student-sections/student-sections
 		UploadLogModule,
 		StudyPlansUploadModule,
 		StaffUploadModule,
+		ChartsUploadModule,
 		OutcomesUploadModule,
 		SectionsUploadModule,
 		EnrolledStudentsUploadModule,
