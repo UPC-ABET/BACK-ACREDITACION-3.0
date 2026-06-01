@@ -4,6 +4,7 @@ import { UploadLogModule } from './upload-logs/upload-logs.module';
 import { SectionsUploadModule } from './sections/sections-upload.module';
 import { EnrolledStudentsUploadModule } from './enrolled-students/enrolled-students-upload.module';
 import { GradesRcUploadModule } from './grades-rc/grades-rc-upload.module';
+import { GradesRvUploadModule } from './grades-rv/grades-rv-upload.module';
 import { StudyPlansUploadModule } from './study-plans/study-plans-upload.module';
 import { StaffUploadModule } from './staff/staff-upload.module';
 import { ChartsUploadModule } from './charts/charts-upload.module';
@@ -22,6 +23,7 @@ import { StudentSectionsUploadModule } from './student-sections/student-sections
 		SectionsUploadModule,
 		EnrolledStudentsUploadModule,
 		GradesRcUploadModule,
+		GradesRvUploadModule,
 		StudentSectionsUploadModule,
 	],
 })

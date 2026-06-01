@@ -16,18 +16,18 @@ import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/s
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 
-import { GradesRcUploadService } from './grades-rc-upload.service';
-import { gradesRcUploadRoutes } from '../config/grades-rc-upload.routes';
-import { GradesRcUploadDto, RollbackUploadDto } from '../model/grades-rc-upload.dtos';
+import { GradesRvUploadService } from './grades-rv-upload.service';
+import { gradesRvUploadRoutes } from '../config/grades-rv-upload.routes';
+import { GradesRvUploadDto, RollbackUploadDto } from '../model/grades-rv-upload.dtos';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
-const routes = gradesRcUploadRoutes.grades_rc_upload;
+const routes = gradesRvUploadRoutes.grades_rv_upload;
 
 // SCAFFOLD ONLY — endpoints are wired but the service throws NotImplemented (501) until built.
 @ApiTags(routes.tag)
 @Controller(routes.route)
-export class GradesRcUploadController {
-	constructor(private readonly service: GradesRcUploadService) {}
+export class GradesRvUploadController {
+	constructor(private readonly service: GradesRvUploadService) {}
 
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
@@ -62,7 +62,7 @@ export class GradesRcUploadController {
 	@HttpCode(HttpStatus.OK)
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
-		@Body() dto: GradesRcUploadDto,
+		@Body() dto: GradesRvUploadDto,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
