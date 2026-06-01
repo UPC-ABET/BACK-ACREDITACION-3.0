@@ -1,105 +1,153 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
+import type { I18nText } from 'src/shared/types/i18n';
 import { UploadLogRepository } from '../core/upload-logs.repository';
+import { UploadLogEntity } from '../model/upload-logs.entity';
 import { CreateUploadLogDto } from '../model/upload-logs.dtos';
+import { LEGACY_UPLOAD_TYPE_CODES } from '../model/upload-logs.constants';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
-// Filtros de la Vista 4.3 (historial).
 export interface ListUploadLogsFilters {
-	uploadType?: string;
-	status?: string;
+	uploadTypeCode?: string;
+	statusCode?: string;
 	academicPeriodId?: number;
 	limit: number;
 	offset: number;
 }
 
-export interface UploadLogListItem {
-	id: number;
-	upload_type: string;
-	status: string;
-	academic_period_id: number | null;
-	user_id: number | null;
-	source_file: string | null;
-	total_rows: number | null;
-	loaded_rows: number | null;
-	error_rows: number | null;
-	created_at: string;
-	rollback_at: string | null;
+export interface UploadTypeRef {
+	code: string;
+	name: I18nText;
 }
 
-export const UPLOAD_LOG_STATUS = {
-	IN_PROGRESS: 'IN_PROGRESS',
-	COMPLETED: 'COMPLETED',
-	FAILED: 'FAILED',
-	ROLLED_BACK: 'ROLLED_BACK',
-} as const;
+export interface UploadLogUserRef {
+	id: number;
+	fullName: string;
+	email: string;
+}
+
+export interface UploadLogItem {
+	id: number;
+	uploadType: UploadTypeRef;
+	status: UploadTypeRef;
+	academicPeriodId: number | null;
+	user: UploadLogUserRef;
+	sourceFile: string | null;
+	totalRows: number | null;
+	loadedRows: number | null;
+	errorRows: number | null;
+	createdAt: Date;
+	rollbackAt: Date | null;
+}
 
 @Injectable()
 export class UploadLogService extends BaseService<UploadLogRepository> {
-	constructor(
-		protected readonly repository: UploadLogRepository,
-		private readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: UploadLogRepository) {
 		super(repository);
 	}
 
-	// Crea el registro de carga (réplica de Usp_InsertLogCarga). Debe ejecutarse dentro de la
-	// transacción de la carga: el manager garantiza atomicidad con los INSERT de datos.
 	async start(dto: CreateUploadLogDto, manager?: EntityManager) {
-		return await this.repository.create({ ...dto, status: UPLOAD_LOG_STATUS.IN_PROGRESS }, manager);
+		const uploadTypeId = await this.resolveTypeId(LEGACY_UPLOAD_TYPE_CODES[dto.upload_type] ?? dto.upload_type);
+		const statusTypeId = await this.resolveTypeId(TYPE_CODES.UPLOAD_STATUS.COMPLETED);
+		return await this.repository.create(
+			{
+				uploadTypeId,
+				statusTypeId,
+				academicPeriodId: dto.academic_period_id,
+				userId: dto.user_id,
+				sourceFile: dto.source_file,
+				totalRows: dto.total_rows,
+				loadedRows: dto.loaded_rows,
+				errorRows: dto.error_rows,
+			},
+			manager,
+		);
 	}
 
-	async complete(id: number, totals: { total_rows: number; loaded_rows: number; error_rows: number }, manager?: EntityManager) {
-		return await this.repository.update(id, { status: UPLOAD_LOG_STATUS.COMPLETED, ...totals }, manager);
+	async complete(
+		id: number,
+		totals: { total_rows: number; loaded_rows: number; error_rows: number },
+		manager?: EntityManager,
+	) {
+		const statusTypeId = await this.resolveTypeId(TYPE_CODES.UPLOAD_STATUS.COMPLETED);
+		return await this.repository.update(
+			id,
+			{
+				statusTypeId,
+				totalRows: totals.total_rows,
+				loadedRows: totals.loaded_rows,
+				errorRows: totals.error_rows,
+			},
+			manager,
+		);
 	}
 
 	async markRolledBack(id: number, manager?: EntityManager) {
-		return await this.repository.markRolledBack(id, manager);
+		const statusTypeId = await this.resolveTypeId(TYPE_CODES.UPLOAD_STATUS.ROLLBACK);
+		return await this.repository.markRolledBack(id, statusTypeId, manager);
 	}
 
-	// Vista 4.3 — historial cronológico con filtros opcionales (raw SQL, on-pattern §15.2).
-	async listLogs(filters: ListUploadLogsFilters): Promise<UploadLogListItem[]> {
-		const where: string[] = [];
-		const params: (string | number)[] = [];
-		if (filters.uploadType) {
-			params.push(filters.uploadType);
-			where.push(`upload_type = $${params.length}`);
+	async assertRollbackable(id: number): Promise<void> {
+		const log = await this.repository.findOneById(id, ['statusType']);
+		if (!log) {
+			throw new HttpException(
+				{ message: 'uploads.common.error.uploadLogNotFound', errors: [`id=${id}`] },
+				HttpStatus.NOT_FOUND,
+			);
 		}
-		if (filters.status) {
-			params.push(filters.status);
-			where.push(`status = $${params.length}`);
+		if (log.statusType?.code === TYPE_CODES.UPLOAD_STATUS.ROLLBACK) {
+			throw new HttpException(
+				{ message: 'uploads.common.error.rollbackAlreadyDone', errors: [`id=${id}`] },
+				HttpStatus.CONFLICT,
+			);
 		}
-		if (filters.academicPeriodId !== undefined) {
-			params.push(filters.academicPeriodId);
-			where.push(`academic_period_id = $${params.length}`);
-		}
-		const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-		params.push(filters.limit, filters.offset);
-
-		return await this.dataSource.query(
-			`SELECT id, upload_type, status, academic_period_id, user_id, source_file,
-			        total_rows, loaded_rows, error_rows,
-			        created_at::text, rollback_at::text
-			 FROM audit.upload_logs
-			 ${whereSql}
-			 ORDER BY created_at DESC
-			 LIMIT $${params.length - 1} OFFSET $${params.length}`,
-			params,
-		);
 	}
 
-	async findLog(id: number): Promise<UploadLogListItem> {
-		const rows: UploadLogListItem[] = await this.dataSource.query(
-			`SELECT id, upload_type, status, academic_period_id, user_id, source_file,
-			        total_rows, loaded_rows, error_rows,
-			        created_at::text, rollback_at::text
-			 FROM audit.upload_logs
-			 WHERE id = $1`,
-			[id],
-		);
-		if (rows.length === 0) {
-			throw new HttpException({ message: 'Upload log no encontrado', errors: [`id=${id}`] }, HttpStatus.NOT_FOUND);
+	async listLogs(filters: ListUploadLogsFilters): Promise<UploadLogItem[]> {
+		const logs = await this.repository.findLogs(filters);
+		return logs.map((log) => this.toItem(log));
+	}
+
+	async findLog(id: number): Promise<UploadLogItem> {
+		const log = await this.repository.findLogById(id);
+		if (!log) {
+			throw new HttpException(
+				{ message: 'uploads.common.error.uploadLogNotFound', errors: [`id=${id}`] },
+				HttpStatus.NOT_FOUND,
+			);
 		}
-		return rows[0];
+		return this.toItem(log);
+	}
+
+	private toItem(log: UploadLogEntity): UploadLogItem {
+		return {
+			id: log.id,
+			uploadType: { code: log.uploadType.code, name: log.uploadType.name },
+			status: { code: log.statusType.code, name: log.statusType.name },
+			academicPeriodId: log.academicPeriodId,
+			user: {
+				id: log.user.id,
+				fullName: `${log.user.firstName} ${log.user.lastName}`.trim(),
+				email: log.user.email,
+			},
+			sourceFile: log.sourceFile,
+			totalRows: log.totalRows,
+			loadedRows: log.loadedRows,
+			errorRows: log.errorRows,
+			createdAt: log.createdAt,
+			rollbackAt: log.rollbackAt,
+		};
+	}
+
+	private async resolveTypeId(code: string): Promise<number> {
+		const id = await this.repository.findTypeIdByCode(code);
+		if (id === null) {
+			throw new HttpException(
+				{ message: 'uploads.common.error.typeCodeNotFound', errors: [`code=${code}`] },
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+		return id;
 	}
 }

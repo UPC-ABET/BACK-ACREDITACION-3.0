@@ -1,130 +1,178 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 
-import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
-import { StudyPlansUploadValidation, StudyPlansLookups, ResolvedStudyPlanRow } from '../core/study-plans-upload.validation';
+import { StudyPlanRow, UploadResult, UploadRowError, parseElective } from '../model/study-plans-upload.types';
 import type { StudyPlansUploadDto } from '../model/study-plans-upload.dtos';
-import { StudyPlanRow, UploadResult, parseBooleanLike } from '../model/study-plans-upload.types';
 import { studyPlansUploadStrings } from '../config/strings/study-plans-upload.validation';
-
-const UPLOAD_TYPE = 'MALLA_CURRICULAR';
-const LEVEL_TYPE_GROUP_CODE = 'LEVEL_TYPE';
+import {
+	DEFAULT_TEMPLATE_LANGUAGE,
+	languageDisplayNames,
+	studyPlansTemplateLabels,
+} from '../model/study-plans-template.labels';
+import { DEFAULT_LANGUAGES } from 'src/modules/core/parameters/constants/parameter-codes';
+import { StudyPlansUploadRepository } from '../core/study-plans-upload.repository';
+import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
 @Injectable()
 export class StudyPlansUploadService {
 	constructor(
-		private readonly dataSource: DataSource,
+		private readonly repository: StudyPlansUploadRepository,
 		private readonly uploadLogService: UploadLogService,
 	) {}
 
-	async processUpload(fileBuffer: Buffer, fileName: string, dto: StudyPlansUploadDto): Promise<UploadResult> {
+	async processUpload(
+		fileBuffer: Buffer,
+		fileName: string,
+		userId: number,
+		dto: StudyPlansUploadDto,
+	): Promise<UploadResult> {
+		const labels = this.resolveLabels(dto.lang);
+		const languages = await this.getLanguages();
+
 		const workbook = new ExcelJS.Workbook();
 		await workbook.xlsx.load(fileBuffer as unknown as ArrayBuffer);
-		const rows = this.parseWorkbook(workbook);
+		const rows = this.parseWorkbook(workbook, languages);
 
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
+		const result = await this.repository.callUploadFunction(
+			rows,
+			dto.academicPeriodId,
+			userId,
+			fileName,
+		);
 
-		try {
-			const lookups = await this.buildLookups(queryRunner.manager, dto.academic_period_id, rows);
-			const resolved = StudyPlansUploadValidation.validateAll(rows, lookups);
-			const withErrors = resolved.filter((r) => r.errors.length > 0);
+		const errors: UploadRowError[] = result
+			.filter((r) => r.error_code !== null)
+			.map((r) => ({ rowNumber: r.row_number as number, errorCode: r.error_code as string }));
 
-			if (withErrors.length > 0) {
-				const excel = await this.annotateErrors(workbook, withErrors);
-				return {
-					success: false,
-					message: studyPlansUploadStrings.result.uploadFailed,
-					uploadLogId: null,
-					totalRows: rows.length,
-					loadedRows: 0,
-					errorRows: withErrors.length,
-					excelWithErrors: excel,
-					fileName: studyPlansUploadStrings.file.errorsFileName,
-				};
-			}
-
-			await queryRunner.startTransaction();
-			try {
-				const log = await this.uploadLogService.start(
-					{ upload_type: UPLOAD_TYPE, status: 'IN_PROGRESS', academic_period_id: dto.academic_period_id, user_id: dto.user_id, source_file: fileName, total_rows: rows.length },
-					queryRunner.manager,
-				);
-
-				await this.insertStudyPlan(queryRunner.manager, resolved, rows, dto.academic_period_id, lookups, log.id);
-
-				await this.uploadLogService.complete(log.id, { total_rows: rows.length, loaded_rows: rows.length, error_rows: 0 }, queryRunner.manager);
-				await queryRunner.commitTransaction();
-
-				return {
-					success: true,
-					message: studyPlansUploadStrings.result.uploadSuccess,
-					uploadLogId: log.id,
-					totalRows: rows.length,
-					loadedRows: rows.length,
-					errorRows: 0,
-					excelWithErrors: null,
-					fileName: null,
-				};
-			} catch (err) {
-				await queryRunner.rollbackTransaction();
-				throw err;
-			}
-		} finally {
-			await queryRunner.release();
+		if (errors.length > 0) {
+			const excel = await this.annotateErrors(workbook, errors, languages.length, labels.errorColumn);
+			return {
+				success: false,
+				message: studyPlansUploadStrings.result.uploadFailed,
+				uploadLogId: null,
+				totalRows: rows.length,
+				loadedRows: 0,
+				errorRows: errors.length,
+				excelWithErrors: excel,
+				fileName: labels.errorsFileName,
+			};
 		}
+
+		const uploadLogId = result.find((r) => r.upload_log_id !== null)?.upload_log_id ?? null;
+		return {
+			success: true,
+			message: studyPlansUploadStrings.result.uploadSuccess,
+			uploadLogId,
+			totalRows: rows.length,
+			loadedRows: rows.length,
+			errorRows: 0,
+			excelWithErrors: null,
+			fileName: null,
+		};
 	}
 
-	// Réplica de USP_Rollback_MallaCurricular: borra hijos→padres por upload_log_id.
 	async rollback(uploadLogId: number): Promise<{ success: boolean }> {
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		await queryRunner.startTransaction();
-		try {
-			await queryRunner.manager.query('DELETE FROM academic.course_prerequisites WHERE upload_log_id = $1', [uploadLogId]);
-			await queryRunner.manager.query('DELETE FROM academic.study_plan_courses WHERE upload_log_id = $1', [uploadLogId]);
-			await queryRunner.manager.query('DELETE FROM academic.courses WHERE upload_log_id = $1', [uploadLogId]);
-			// SPAP no lleva upload_log_id: borrar solo los que quedaron huérfanos (sin SPCs) y que
-			// pertenecen a study_plans de esta carga, para poder eliminar esos study_plans.
-			await queryRunner.manager.query(
-				`DELETE FROM academic.study_plan_academic_periods spap
-				 WHERE spap.study_plan_id IN (SELECT id FROM academic.study_plans WHERE upload_log_id = $1)
-				   AND NOT EXISTS (SELECT 1 FROM academic.study_plan_courses spc WHERE spc.study_plan_academic_period_id = spap.id)`,
-				[uploadLogId],
-			);
-			await queryRunner.manager.query('DELETE FROM academic.study_plans WHERE upload_log_id = $1', [uploadLogId]);
-			await this.uploadLogService.markRolledBack(uploadLogId, queryRunner.manager);
-			await queryRunner.commitTransaction();
-			return { success: true };
-		} catch (err) {
-			await queryRunner.rollbackTransaction();
-			throw err;
-		} finally {
-			await queryRunner.release();
-		}
+		await this.uploadLogService.assertRollbackable(uploadLogId);
+		await this.repository.callRollbackFunction(uploadLogId);
+		return { success: true };
 	}
 
-	// %% INTERNOS
+	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
+		const language = studyPlansTemplateLabels[lang] ? lang : DEFAULT_TEMPLATE_LANGUAGE;
+		const labels = studyPlansTemplateLabels[language];
+		const displayNames = languageDisplayNames[language];
+		const languages = await this.getLanguages();
+		const levels = await this.repository.getLevelTypes(language);
 
-	private parseWorkbook(workbook: ExcelJS.Workbook): StudyPlanRow[] {
+		const workbook = new ExcelJS.Workbook();
+
+		const dataSheet = workbook.addWorksheet('Template');
+		const headers = [
+			labels.studyPlanCode,
+			...languages.map((l) => `${labels.studyPlanName} (${displayNames[l] ?? l})`),
+			labels.programCode,
+			labels.levelTypeCode,
+			labels.courseCode,
+			...languages.map((l) => `${labels.courseName} (${displayNames[l] ?? l})`),
+			...languages.map((l) => `${labels.learningOutcome} (${displayNames[l] ?? l})`),
+			labels.elective,
+		];
+		dataSheet.addRow(headers);
+		this.styleHeaderRow(dataSheet, headers);
+
+		const legendSheet = workbook.addWorksheet(labels.legendSheet);
+		const legendHeaders = [labels.legendCode, labels.legendName];
+		legendSheet.addRow(legendHeaders);
+		this.styleHeaderRow(legendSheet, legendHeaders);
+		for (const level of levels) {
+			legendSheet.addRow([level.code, level.name]);
+		}
+
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		return { buffer, fileName: labels.templateFileName };
+	}
+
+	private styleHeaderRow(sheet: ExcelJS.Worksheet, headers: string[], rowNumber = 1): void {
+		const row = sheet.getRow(rowNumber);
+		row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+		row.eachCell((cell, colNumber) => {
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+			sheet.getColumn(colNumber).width = headers[colNumber - 1].length + 2;
+		});
+	}
+
+	private resolveLabels(lang?: string): Record<string, string> {
+		const language = lang && studyPlansTemplateLabels[lang] ? lang : DEFAULT_TEMPLATE_LANGUAGE;
+		return studyPlansTemplateLabels[language];
+	}
+
+	private async getLanguages(): Promise<string[]> {
+		return (await this.repository.getSupportedLanguages()) ?? DEFAULT_LANGUAGES;
+	}
+
+	// Positional layout (header ignored), L = languages.length:
+	// studyPlanCode | studyPlanName×L | programCode | levelTypeCode | courseCode | courseName×L | learningOutcome×L | elective
+	private parseWorkbook(workbook: ExcelJS.Workbook, languages: string[]): StudyPlanRow[] {
 		const worksheet = workbook.worksheets[0];
+		const L = languages.length;
 		const rows: StudyPlanRow[] = [];
+
 		worksheet.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
+			let col = 1;
+			const studyPlanCode = this.cell(row, col++);
+			const studyPlanName = this.i18nCells(row, col, languages);
+			col += L;
+			const programCode = this.cell(row, col++);
+			const levelTypeCode = this.cell(row, col++);
+			const courseCode = this.cell(row, col++);
+			const courseName = this.i18nCells(row, col, languages);
+			col += L;
+			const learningOutcome = this.i18nCells(row, col, languages);
+			col += L;
+			const isElective = parseElective(this.cell(row, col));
+
 			rows.push({
 				rowNumber,
-				studyPlanCode: this.cell(row, 1),
-				studyPlanName: this.cell(row, 2),
-				programCode: this.cell(row, 3),
-				courseCode: this.cell(row, 4),
-				courseName: this.cell(row, 5),
-				isElective: this.cell(row, 6),
-				levelTypeCode: this.cell(row, 7),
-				prerequisites: this.cell(row, 8),
+				studyPlanCode,
+				studyPlanName,
+				programCode,
+				levelTypeCode,
+				courseCode,
+				courseName,
+				learningOutcome,
+				isElective,
 			});
 		});
 		return rows;
+	}
+
+	private i18nCells(row: ExcelJS.Row, startCol: number, languages: string[]): Record<string, string> {
+		const result: Record<string, string> = {};
+		languages.forEach((lang, i) => {
+			result[lang] = this.cell(row, startCol + i);
+		});
+		return result;
 	}
 
 	private cell(row: ExcelJS.Row, col: number): string {
@@ -132,160 +180,24 @@ export class StudyPlansUploadService {
 		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
-	private async buildLookups(manager: EntityManager, academicPeriodId: number, rows: StudyPlanRow[]): Promise<StudyPlansLookups> {
-		const programCodes = [...new Set(rows.map((r) => (r.programCode ?? '').trim()).filter(Boolean))];
-		const studyPlanCodes = [...new Set(rows.map((r) => (r.studyPlanCode ?? '').trim()).filter(Boolean))];
-		const rowCourseCodes = new Set(rows.map((r) => (r.courseCode ?? '').trim()).filter(Boolean));
-
-		const programs: Array<{ id: number; code: string }> = programCodes.length
-			? await manager.query('SELECT id, code FROM academic.programs WHERE code = ANY($1)', [programCodes])
-			: [];
-		const levels: Array<{ id: number; code: string }> = await manager.query(
-			`SELECT t.id, t.code FROM core.types t
-			 JOIN core.type_groups g ON g.id = t.type_group_id
-			 WHERE g.code = $1`,
-			[LEVEL_TYPE_GROUP_CODE],
-		);
-		const courses: Array<{ id: number; code: string }> = await manager.query('SELECT id, code FROM academic.courses');
-		const plans: Array<{ id: number; code: string }> = studyPlanCodes.length
-			? await manager.query('SELECT id, code FROM academic.study_plans WHERE code = ANY($1)', [studyPlanCodes])
-			: [];
-		const existingSpc: Array<{ plan_code: string; course_code: string }> = studyPlanCodes.length
-			? await manager.query(
-					`SELECT sp.code AS plan_code, c.code AS course_code
-					 FROM academic.study_plan_courses spc
-					 JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-					 JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
-					 JOIN academic.courses c ON c.id = spc.course_id
-					 WHERE spap.academic_period_id = $1 AND sp.code = ANY($2)`,
-					[academicPeriodId, studyPlanCodes],
-				)
-			: [];
-
-		return {
-			programIdByCode: new Map(programs.map((p) => [p.code, p.id])),
-			levelTypeIdByCode: new Map(levels.map((l) => [l.code, l.id])),
-			existingCourseIdByCode: new Map(courses.map((c) => [c.code.toLowerCase(), c.id])),
-			existingStudyPlanIdByCode: new Map(plans.map((p) => [p.code, p.id])),
-			existingSpcCodes: new Set(existingSpc.map((s) => `${s.plan_code}|${s.course_code}`)),
-			rowCourseCodes,
-		};
-	}
-
-	// INSERT en 4 fases (upserts por code para no duplicar plans/courses entre filas):
-	//   1) study_plans (upsert por code)
-	//   2) study_plan_academic_periods (upsert por (plan, periodo))
-	//   3) courses (upsert por LOWER(code)) + study_plan_courses (insert por fila)
-	//   4) course_prerequisites (insert por requisito)
-	// TODO(parity): study_plans.name/description quedan VACÍO (Bug #3 del MAPEO); ya se reciben en Excel.
-	private async insertStudyPlan(
-		manager: EntityManager,
-		resolved: ResolvedStudyPlanRow[],
-		rows: StudyPlanRow[],
-		academicPeriodId: number,
-		lookups: StudyPlansLookups,
-		uploadLogId: number,
-	): Promise<void> {
-		const planIdByCode = new Map(lookups.existingStudyPlanIdByCode);
-		const courseIdByCode = new Map(lookups.existingCourseIdByCode);
-		const spapIdByPlanId = new Map<number, number>();
-
-		// Fase 1+2: planes y SPAPs por código (deduplicado entre filas del lote).
-		const uniquePlans = new Map<string, { name: string; programId: number | undefined }>();
-		for (const r of resolved) uniquePlans.set(r.studyPlanCode!, { name: r.studyPlanName!, programId: r.programId });
-
-		for (const [code, info] of uniquePlans) {
-			let planId = planIdByCode.get(code);
-			if (planId === undefined) {
-				const inserted: Array<{ id: number }> = await manager.query(
-					`INSERT INTO academic.study_plans
-					 (code, name, description, program_id, upload_log_id, extra, is_active, created_at, updated_at)
-					 VALUES ($1, jsonb_build_object('es', $2::text, 'en', NULL), '{}'::jsonb, $3, $4, '{}'::jsonb, true, NOW(), NOW())
-					 RETURNING id`,
-					[code, info.name, info.programId, uploadLogId],
-				);
-				planId = inserted[0].id;
-				planIdByCode.set(code, planId);
-			}
-
-			const spapExisting: Array<{ id: number }> = await manager.query(
-				'SELECT id FROM academic.study_plan_academic_periods WHERE study_plan_id = $1 AND academic_period_id = $2 LIMIT 1',
-				[planId, academicPeriodId],
-			);
-			let spapId = spapExisting[0]?.id;
-			if (spapId === undefined) {
-				// study_plan_academic_periods no lleva upload_log_id en el canónico (asociación upsert
-				// compartida); no se estampa ni se borra en rollback (los SPC hijos sí por su log).
-				const inserted: Array<{ id: number }> = await manager.query(
-					`INSERT INTO academic.study_plan_academic_periods
-					 (study_plan_id, academic_period_id, extra, is_active, created_at, updated_at)
-					 VALUES ($1, $2, '{}'::jsonb, true, NOW(), NOW())
-					 RETURNING id`,
-					[planId, academicPeriodId],
-				);
-				spapId = inserted[0].id;
-			}
-			spapIdByPlanId.set(planId, spapId);
-		}
-
-		// Fase 3: cursos + study_plan_courses por fila.
-		const spcIdByPlanCourse = new Map<string, number>();
-		for (let i = 0; i < resolved.length; i++) {
-			const r = resolved[i];
-			const planId = planIdByCode.get(r.studyPlanCode!)!;
-			const spapId = spapIdByPlanId.get(planId)!;
-			const isElective = parseBooleanLike(rows[i].isElective);
-
-			let courseId = courseIdByCode.get(r.courseCode!.toLowerCase());
-			if (courseId === undefined) {
-				const inserted: Array<{ id: number }> = await manager.query(
-					`INSERT INTO academic.courses
-					 (code, name, description, learning_outcome, upload_log_id, extra, is_active, created_at, updated_at)
-					 VALUES ($1, jsonb_build_object('es', $2::text, 'en', NULL), '{}'::jsonb, '{}'::jsonb, $3, '{}'::jsonb, true, NOW(), NOW())
-					 RETURNING id`,
-					[r.courseCode, r.courseName, uploadLogId],
-				);
-				courseId = inserted[0].id;
-				courseIdByCode.set(r.courseCode!.toLowerCase(), courseId);
-			}
-
-			// level_type_id es NOT NULL (canónico); si la fila no trae NivelCurso, default LEVEL_TYPE/GENERAL.
-			const spc: Array<{ id: number }> = await manager.query(
-				`INSERT INTO academic.study_plan_courses
-				 (study_plan_academic_period_id, course_id, is_elective, level_type_id, upload_log_id, extra, is_active, created_at, updated_at)
-				 VALUES ($1, $2, $3,
-				   COALESCE($4, (SELECT t.id FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id WHERE g.code = 'LEVEL_TYPE' AND t.code = 'GENERAL' LIMIT 1)),
-				   $5, '{}'::jsonb, true, NOW(), NOW())
-				 RETURNING id`,
-				[spapId, courseId, isElective, r.levelTypeId, uploadLogId],
-			);
-			spcIdByPlanCourse.set(`${r.studyPlanCode}|${r.courseCode}`, spc[0].id);
-		}
-
-		// Fase 4: prerrequisitos.
-		for (const r of resolved) {
-			if (!r.prerequisites || r.prerequisites.length === 0) continue;
-			const planId = planIdByCode.get(r.studyPlanCode!)!;
-			const courseId = courseIdByCode.get(r.courseCode!.toLowerCase())!;
-			for (const prereqCode of r.prerequisites) {
-				const prereqId = courseIdByCode.get(prereqCode.toLowerCase());
-				if (prereqId === undefined) continue;
-				await manager.query(
-					`INSERT INTO academic.course_prerequisites
-					 (course_id, prerequisite_course_id, is_mandatory, study_plan_id, upload_log_id, extra, is_active, created_at, updated_at)
-					 VALUES ($1, $2, true, $3, $4, '{}'::jsonb, true, NOW(), NOW())`,
-					[courseId, prereqId, planId, uploadLogId],
-				);
-			}
-		}
-	}
-
-	private async annotateErrors(workbook: ExcelJS.Workbook, withErrors: ResolvedStudyPlanRow[]): Promise<string> {
+	private async annotateErrors(
+		workbook: ExcelJS.Workbook,
+		errors: UploadRowError[],
+		languageCount: number,
+		errorColumnHeader: string,
+	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		const errorColumn = 9;
-		worksheet.getRow(1).getCell(errorColumn).value = 'MensajeError';
-		for (const r of withErrors) {
-			worksheet.getRow(r.rowNumber).getCell(errorColumn).value = r.errors.join(' | ');
+		// data columns = 5 single + 3 bilingual groups; error column is the next one.
+		const errorColumn = 5 + 3 * languageCount + 1;
+		worksheet.getRow(1).getCell(errorColumn).value = errorColumnHeader;
+		const byRow = new Map<number, string[]>();
+		for (const e of errors) {
+			const list = byRow.get(e.rowNumber) ?? [];
+			list.push(e.errorCode);
+			byRow.set(e.rowNumber, list);
+		}
+		for (const [rowNumber, codes] of byRow) {
+			worksheet.getRow(rowNumber).getCell(errorColumn).value = codes.join(' | ');
 		}
 		const buffer = await workbook.xlsx.writeBuffer();
 		return Buffer.from(buffer).toString('base64');

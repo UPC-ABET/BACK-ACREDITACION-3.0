@@ -2,10 +2,9 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUploadLogDto {
-	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	user_id?: number;
+	@ApiProperty({ example: 1, required: true })
+	user_id: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -13,11 +12,11 @@ export class CreateUploadLogDto {
 	academic_period_id?: number;
 
 	@IsString()
-	@ApiProperty({ example: 'SECCION', required: true })
+	@ApiProperty({ example: 'MALLA_CURRICULAR', required: true })
 	upload_type: string;
 
 	@IsString()
-	@ApiProperty({ example: 'IN_PROGRESS', required: true })
+	@ApiProperty({ example: 'COMPLETED', required: true })
 	status: string;
 
 	@IsOptional()

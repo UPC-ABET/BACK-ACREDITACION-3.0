@@ -20,6 +20,9 @@ export class StudyPlanEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	description: I18nText;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => ProgramEntity)

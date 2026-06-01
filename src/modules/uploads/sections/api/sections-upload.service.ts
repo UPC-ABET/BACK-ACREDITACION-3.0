@@ -50,7 +50,7 @@ export class SectionsUploadService {
 			await queryRunner.startTransaction();
 			try {
 				const log = await this.uploadLogService.start(
-					{ upload_type: UPLOAD_TYPE_SECCION, status: 'IN_PROGRESS', academic_period_id: dto.academic_period_id, user_id: dto.user_id, source_file: fileName, total_rows: rows.length },
+					{ upload_type: UPLOAD_TYPE_SECCION, status: 'IN_PROGRESS', academic_period_id: dto.academic_period_id, user_id: dto.user_id as number, source_file: fileName, total_rows: rows.length },
 					queryRunner.manager,
 				);
 

@@ -247,6 +247,13 @@ type BaseOptions = Partial<ColumnOptions> & {
 };
 ```
 
+## Database Access (Repository Boundary)
+
+- **All database access lives in the repository (`core/<module>.repository.ts`), never in the service.** A service must not import or inject `DataSource`/`EntityManager`, must not call `.query(...)`, and must not build query builders. Any read, write, raw SQL, or PostgreSQL-function call belongs in a repository method that the service calls.
+- This applies to raw SQL too: if a query genuinely needs raw SQL (per the [Raw SQL convention](#raw-sql-convention)), it goes in a repository method — not inline in the service.
+- The service orchestrates (validation, mapping entities → response DTOs, i18n, business rules); the repository is the only layer that touches the DB.
+- **Legacy note:** several existing services still violate this (raw SQL/`DataSource` in the service). They are being migrated incrementally — when you touch such a service, move its DB access into the repository as part of the change.
+
 ## Database & Migrations
 
 - **`synchronize: false`** — always use migrations, never auto-sync.

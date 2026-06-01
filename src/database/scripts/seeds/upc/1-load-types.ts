@@ -132,6 +132,16 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				'Derived action state (Pending/Implemented)',
 			),
 		],
+		[
+			'TG1101',
+			i18n('Tipo de carga', 'Upload type'),
+			i18n('Tipos de carga masiva por Excel', 'Bulk Excel upload types'),
+		],
+		[
+			'TG1102',
+			i18n('Estado de carga', 'Upload status'),
+			i18n('Estados de una carga masiva', 'Bulk upload states'),
+		],
 	];
 
 	const typeGroupValues = typeGroupRows
@@ -244,6 +254,55 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			i18n('Tercer ciclo', 'Third cycle'),
 			i18n('Curso de tercer ciclo', 'Third-cycle course'),
 			'{"level":3}',
+		],
+		[
+			'TG203',
+			'TG203-T004',
+			i18n('Cuarto ciclo', 'Fourth cycle'),
+			i18n('Curso de cuarto ciclo', 'Fourth-cycle course'),
+			'{"level":4}',
+		],
+		[
+			'TG203',
+			'TG203-T005',
+			i18n('Quinto ciclo', 'Fifth cycle'),
+			i18n('Curso de quinto ciclo', 'Fifth-cycle course'),
+			'{"level":5}',
+		],
+		[
+			'TG203',
+			'TG203-T006',
+			i18n('Sexto ciclo', 'Sixth cycle'),
+			i18n('Curso de sexto ciclo', 'Sixth-cycle course'),
+			'{"level":6}',
+		],
+		[
+			'TG203',
+			'TG203-T007',
+			i18n('Septimo ciclo', 'Seventh cycle'),
+			i18n('Curso de septimo ciclo', 'Seventh-cycle course'),
+			'{"level":7}',
+		],
+		[
+			'TG203',
+			'TG203-T008',
+			i18n('Octavo ciclo', 'Eighth cycle'),
+			i18n('Curso de octavo ciclo', 'Eighth-cycle course'),
+			'{"level":8}',
+		],
+		[
+			'TG203',
+			'TG203-T009',
+			i18n('Noveno ciclo', 'Ninth cycle'),
+			i18n('Curso de noveno ciclo', 'Ninth-cycle course'),
+			'{"level":9}',
+		],
+		[
+			'TG203',
+			'TG203-T010',
+			i18n('Decimo ciclo', 'Tenth cycle'),
+			i18n('Curso de decimo ciclo', 'Tenth-cycle course'),
+			'{"level":10}',
 		],
 		[
 			'TG204',
@@ -676,6 +735,18 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			i18n('Accion con evidencias', 'Action with evidence'),
 			'{"color":"#10B981"}',
 		],
+		['TG1101', 'TG1101-T001', i18n('Personal', 'Staff'), i18n('Carga de personal', 'Staff upload'), '{}'],
+		['TG1101', 'TG1101-T002', i18n('Malla curricular', 'Study plan'), i18n('Carga de malla curricular', 'Study plan upload'), '{}'],
+		['TG1101', 'TG1101-T003', i18n('Resultados', 'Outcomes'), i18n('Carga de resultados', 'Outcomes upload'), '{}'],
+		['TG1101', 'TG1101-T004', i18n('Organigrama', 'Organization chart'), i18n('Carga de organigrama', 'Organization chart upload'), '{}'],
+		['TG1101', 'TG1101-T005', i18n('Secciones', 'Sections'), i18n('Carga de secciones', 'Sections upload'), '{}'],
+		['TG1101', 'TG1101-T006', i18n('Alumnos matriculados', 'Enrolled students'), i18n('Carga de alumnos matriculados', 'Enrolled students upload'), '{}'],
+		['TG1101', 'TG1101-T007', i18n('Notas RV', 'RV grades'), i18n('Carga de notas RV', 'RV grades upload'), '{}'],
+		['TG1101', 'TG1101-T008', i18n('Notas RC', 'RC grades'), i18n('Carga de notas RC', 'RC grades upload'), '{}'],
+		['TG1101', 'TG1101-T009', i18n('Articulacion', 'Articulation'), i18n('Carga de articulacion', 'Articulation upload'), '{}'],
+		['TG1101', 'TG1101-T010', i18n('Alumno por seccion', 'Student section enrollment'), i18n('Carga de alumnos por seccion', 'Student section enrollment upload'), '{}'],
+		['TG1102', 'TG1102-T001', i18n('Completado', 'Completed'), i18n('Carga completada', 'Upload completed'), '{}'],
+		['TG1102', 'TG1102-T002', i18n('Revertido', 'Rollback'), i18n('Carga revertida', 'Upload rolled back'), '{}'],
 	];
 
 	const typeValues = typeRows

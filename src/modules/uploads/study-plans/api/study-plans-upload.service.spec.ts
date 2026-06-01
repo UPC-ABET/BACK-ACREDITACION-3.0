@@ -1,11 +1,19 @@
 jest.mock('@nestjs/common', () => ({ Injectable: () => () => undefined }), { virtual: true });
-jest.mock('typeorm', () => ({ DataSource: class {}, EntityManager: class {} }), { virtual: true });
+jest.mock('../core/study-plans-upload.repository', () => ({ StudyPlansUploadRepository: class {} }), { virtual: true });
 jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), { virtual: true });
 
 import * as ExcelJS from 'exceljs';
 import { StudyPlansUploadService } from './study-plans-upload.service';
 
-const HEADER = ['CodigoMalla', 'NombreMalla', 'CodigoCarrera', 'CodigoCurso', 'NombreCurso', 'EsElectivo', 'NivelCurso', 'Requisitos'];
+const uploadLogServiceStub: any = { assertRollbackable: jest.fn() };
+
+// Positional layout for languages = ['es','en']:
+// studyPlanCode | name_es | name_en | programCode | levelTypeCode | courseCode |
+// courseName_es | courseName_en | learningOutcome_es | learningOutcome_en | elective
+const HEADER = [
+	'Code', 'Name (ES)', 'Name (EN)', 'Program', 'Level', 'Course',
+	'Course Name (ES)', 'Course Name (EN)', 'Outcome (ES)', 'Outcome (EN)', 'Elective',
+];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -16,92 +24,112 @@ async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	return Buffer.from(buf);
 }
 
-function makeQueryRunner(queryImpl: (sql: string, params?: any[]) => Promise<any>) {
-	return {
-		connect: jest.fn().mockResolvedValue(undefined),
-		startTransaction: jest.fn().mockResolvedValue(undefined),
-		commitTransaction: jest.fn().mockResolvedValue(undefined),
-		rollbackTransaction: jest.fn().mockResolvedValue(undefined),
-		release: jest.fn().mockResolvedValue(undefined),
-		manager: { query: jest.fn(queryImpl) },
+function makeRepository(langs: string[], uploadFnResult: any[]) {
+	const calls: { uploadArgs?: any[] } = {};
+	const repository: any = {
+		getSupportedLanguages: jest.fn().mockResolvedValue(langs),
+		callUploadFunction: jest.fn((...args: any[]) => {
+			calls.uploadArgs = args;
+			return Promise.resolve(uploadFnResult);
+		}),
+		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
+		getLevelTypes: jest.fn().mockResolvedValue([]),
 	};
+	return { repository, calls };
 }
 
-const happyQuery = (sql: string) => {
-	if (sql.includes('FROM academic.programs')) return Promise.resolve([{ id: 5, code: 'INF' }]);
-	if (sql.includes('core.types')) return Promise.resolve([{ id: 1, code: 'BASIC' }]);
-	if (sql.includes('FROM academic.courses')) return Promise.resolve([]);
-	if (sql.includes('FROM academic.study_plans')) return Promise.resolve([]);
-	if (sql.includes('FROM academic.study_plan_courses')) return Promise.resolve([]);
-	if (sql.includes('SELECT id FROM academic.study_plan_academic_periods')) return Promise.resolve([]);
-	if (sql.includes('INSERT INTO academic.study_plans')) return Promise.resolve([{ id: 200 }]);
-	if (sql.includes('INSERT INTO academic.study_plan_academic_periods')) return Promise.resolve([{ id: 201 }]);
-	if (sql.includes('INSERT INTO academic.courses')) return Promise.resolve([{ id: 300 }]);
-	if (sql.includes('INSERT INTO academic.study_plan_courses')) return Promise.resolve([{ id: 400 }]);
-	if (sql.includes('INSERT INTO academic.course_prerequisites')) return Promise.resolve([]);
-	return Promise.resolve([]);
-};
+describe('StudyPlansUploadService — positional parsing', () => {
+	it('assembles per-language jsonb from positional columns and sends structured rows', async () => {
+		const { repository, calls } = makeRepository(['es', 'en'], [{ row_number: null, error_code: null, upload_log_id: 42 }]);
+		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
-describe('StudyPlansUploadService (orquestación)', () => {
-	describe('processUpload — camino feliz', () => {
-		it('inserta plan + spap + course + spc y retorna success', async () => {
-			const qr = makeQueryRunner(happyQuery);
-			const dataSource: any = { createQueryRunner: () => qr };
-			const uploadLogService: any = {
-				start: jest.fn().mockResolvedValue({ id: 42 }),
-				complete: jest.fn().mockResolvedValue(undefined),
-				markRolledBack: jest.fn(),
-			};
-			const service = new StudyPlansUploadService(dataSource, uploadLogService);
+		const buffer = await makeXlsx([
+			['MALLA-2024', 'Malla ES', 'Plan EN', 'INF', 'TG203-T001', 'CS101', 'Algoritmos', 'Algorithms', 'Resultado', 'Outcome', 'X'],
+		]);
+		const result = await service.processUpload(buffer, 'malla.xlsx', 7, { academicPeriodId: 1 } as any);
 
-			const buffer = await makeXlsx([['MALLA-2024', 'Malla 2024', 'INF', 'CS101', 'Algoritmos', 'false', 'BASIC', '']]);
-			const result = await service.processUpload(buffer, 'malla.xlsx', { academic_period_id: 1 } as any);
+		expect(result.success).toBe(true);
+		expect(result.uploadLogId).toBe(42);
 
-			expect(result.success).toBe(true);
-			const sqls = qr.manager.query.mock.calls.map((c: any[]) => c[0] as string);
-			expect(sqls.some((s) => s.includes('INSERT INTO academic.study_plans'))).toBe(true);
-			expect(sqls.some((s) => s.includes('INSERT INTO academic.courses'))).toBe(true);
-			expect(sqls.some((s) => s.includes('INSERT INTO academic.study_plan_courses'))).toBe(true);
+		const [rows, academicPeriodId, userId] = calls.uploadArgs!;
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			rowNumber: 2,
+			studyPlanCode: 'MALLA-2024',
+			studyPlanName: { es: 'Malla ES', en: 'Plan EN' },
+			programCode: 'INF',
+			levelTypeCode: 'TG203-T001',
+			courseCode: 'CS101',
+			courseName: { es: 'Algoritmos', en: 'Algorithms' },
+			learningOutcome: { es: 'Resultado', en: 'Outcome' },
+			isElective: true,
 		});
+		expect(academicPeriodId).toBe(1);
+		expect(userId).toBe(7);
 	});
 
-	describe('processUpload — con errores', () => {
-		it('carrera no existe → Excel anotado, sin INSERT', async () => {
-			const qr = makeQueryRunner((sql: string) => {
-				if (sql.includes('core.types')) return Promise.resolve([{ id: 1, code: 'BASIC' }]);
-				return Promise.resolve([]);
-			});
-			const dataSource: any = { createQueryRunner: () => qr };
-			const uploadLogService: any = { start: jest.fn(), complete: jest.fn(), markRolledBack: jest.fn() };
-			const service = new StudyPlansUploadService(dataSource, uploadLogService);
+	it('empty elective cell → isElective false', async () => {
+		const { repository, calls } = makeRepository(['es', 'en'], [{ row_number: null, error_code: null, upload_log_id: 1 }]);
+		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
-			const buffer = await makeXlsx([['MALLA-2024', 'X', 'NOPE', 'CS101', 'Algo', 'false', 'BASIC', '']]);
-			const result = await service.processUpload(buffer, 'malla.xlsx', { academic_period_id: 1 } as any);
+		const buffer = await makeXlsx([
+			['M1', 'a', 'b', 'INF', 'TG203-T001', 'C1', 'c', 'd', 'e', 'f', ''],
+		]);
+		await service.processUpload(buffer, 'f.xlsx', 1, { academicPeriodId: 1 } as any);
 
-			expect(result.success).toBe(false);
-			expect(uploadLogService.start).not.toHaveBeenCalled();
-			const sqls = qr.manager.query.mock.calls.map((c: any[]) => c[0] as string);
-			expect(sqls.some((s) => s.includes('INSERT INTO'))).toBe(false);
-		});
+		expect(calls.uploadArgs![0][0].isElective).toBe(false);
 	});
 
-	describe('rollback', () => {
-		it('borra prereqs + spc + courses + spap + plans y marca log', async () => {
-			const qr = makeQueryRunner(() => Promise.resolve([]));
-			const dataSource: any = { createQueryRunner: () => qr };
-			const uploadLogService: any = { markRolledBack: jest.fn().mockResolvedValue(undefined) };
-			const service = new StudyPlansUploadService(dataSource, uploadLogService);
+	it('returns annotated excel when the function reports row errors', async () => {
+		const { repository } = makeRepository(['es', 'en'], [
+			{ row_number: 2, error_code: 'uploads.studyPlans.error.programNotFound', upload_log_id: null },
+		]);
+		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
-			const result = await service.rollback(42);
+		const buffer = await makeXlsx([
+			['M1', 'a', 'b', 'NOPE', 'TG203-T001', 'C1', 'c', 'd', 'e', 'f', 'X'],
+		]);
+		const result = await service.processUpload(buffer, 'f.xlsx', 1, { academicPeriodId: 1 } as any);
 
-			expect(result.success).toBe(true);
-			const calls = qr.manager.query.mock.calls.map((c: any[]) => c[0] as string);
-			expect(calls[0]).toContain('DELETE FROM academic.course_prerequisites');
-			expect(calls[1]).toContain('DELETE FROM academic.study_plan_courses');
-			expect(calls[2]).toContain('DELETE FROM academic.courses');
-			expect(calls[3]).toContain('DELETE FROM academic.study_plan_academic_periods');
-			expect(calls[4]).toContain('DELETE FROM academic.study_plans');
-			expect(uploadLogService.markRolledBack).toHaveBeenCalledWith(42, qr.manager);
-		});
+		expect(result.success).toBe(false);
+		expect(result.errorRows).toBe(1);
+		expect(result.excelWithErrors).toBeTruthy();
+	});
+});
+
+describe('StudyPlansUploadService — template', () => {
+	function makeTemplateRepository(langs: string[], levels: Array<{ code: string; name: string }>) {
+		return {
+			getSupportedLanguages: jest.fn().mockResolvedValue(langs),
+			getLevelTypes: jest.fn().mockResolvedValue(levels),
+		} as any;
+	}
+
+	it('builds a Template sheet and a localized Legend sheet with the level codes', async () => {
+		const repository = makeTemplateRepository(['es', 'en'], [
+			{ code: 'TG203-T001', name: 'Primer ciclo' },
+			{ code: 'TG203-T002', name: 'Segundo ciclo' },
+		]);
+		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
+
+		const { buffer, fileName } = await service.generateTemplate('es');
+		expect(fileName).toBe('PlantillaMallaCurricular.xlsx');
+
+		const wb = new ExcelJS.Workbook();
+		await wb.xlsx.load(buffer as any);
+		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
+		expect(header).toContain('Nombre de curso (Español)');
+		expect(header).toContain('Nombre de curso (Inglés)');
+
+		const legend = wb.getWorksheet('Leyenda')!;
+		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
+		expect(codes).toContain('TG203-T001');
+		expect(codes).toContain('TG203-T002');
+	});
+
+	it('falls back to the default language for an unknown lang', async () => {
+		const service = new StudyPlansUploadService(makeTemplateRepository(['es', 'en'], []), uploadLogServiceStub);
+		const { fileName } = await service.generateTemplate('zz');
+		expect(fileName).toBe('PlantillaMallaCurricular.xlsx');
 	});
 });

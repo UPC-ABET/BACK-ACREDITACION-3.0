@@ -1,43 +1,38 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, IntegerFKIDColumn, IntegerColumn, TextMediumColumn, DateColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, TextMediumColumn, DateColumn } from 'src/commons/configs/db.configs';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'upload_logs', schema: 'audit' })
 export class UploadLogEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	@IntegerFKIDColumn({ nullable: false })
+	userId: number;
 
 	@IntegerFKIDColumn({ nullable: true })
-	user_id: number;
+	academicPeriodId: number;
 
-	@IntegerFKIDColumn({ nullable: true })
-	academic_period_id: number;
+	@IntegerFKIDColumn({ nullable: false })
+	uploadTypeId: number;
 
-	// Código varchar del grupo UPLOAD_TYPE (SECCION, ALUMNOS_MATRICULADOS, ...). No es FK int — per SPEC_IFC_CORE_TYPES.
-	@CodeColumn({ nullable: false })
-	upload_type: string;
-
-	// IN_PROGRESS | COMPLETED | FAILED | ROLLED_BACK
-	@CodeColumn({ nullable: false })
-	status: string;
+	@IntegerFKIDColumn({ nullable: false })
+	statusTypeId: number;
 
 	@TextMediumColumn({ nullable: true })
-	source_file: string;
+	sourceFile: string;
 
 	@IntegerColumn({ nullable: true })
-	total_rows: number;
+	totalRows: number;
 
 	@IntegerColumn({ nullable: true })
-	loaded_rows: number;
+	loadedRows: number;
 
 	@IntegerColumn({ nullable: true })
-	error_rows: number;
+	errorRows: number;
 
 	@DateColumn({ nullable: true, withDefault: false })
-	rollback_at: Date;
-
-	// %% RELACIONES
+	rollbackAt: Date;
 
 	@ManyToOne(() => UserEntity)
 	@JoinColumn({ name: 'user_id' })
@@ -45,5 +40,13 @@ export class UploadLogEntity extends BaseEntity {
 
 	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({ name: 'academic_period_id' })
-	academic_period: AcademicPeriodEntity;
+	academicPeriod: AcademicPeriodEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'upload_type_id' })
+	uploadType: TypeEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'status_type_id' })
+	statusType: TypeEntity;
 }

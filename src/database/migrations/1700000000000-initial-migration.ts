@@ -13,6 +13,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "ifc"`);
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "evaluation"`);
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "core"`);
+		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "audit"`);
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "typeorm_metadata" ("type" varchar NOT NULL, "database" varchar, "schema" varchar, "table" varchar, "name" varchar, "value" text)`,
 		);
@@ -61,16 +62,22 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, CONSTRAINT "UQ_professors_code" UNIQUE ("code"), CONSTRAINT "PK_professors" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "learning_outcome" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_courses_code" UNIQUE ("code"), CONSTRAINT "PK_courses" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "audit"."upload_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "academic_period_id" integer, "upload_type_id" integer NOT NULL, "status_type_id" integer NOT NULL, "source_file" text, "total_rows" integer, "loaded_rows" integer, "error_rows" integer, "rollback_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_upload_logs" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."study_plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "code" character varying(10) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_study_plans_code" UNIQUE ("code"), CONSTRAINT "PK_study_plans" PRIMARY KEY ("id"))`,
+			`CREATE INDEX "IDX_upload_logs_type_created" ON "audit"."upload_logs" ("upload_type_id", "created_at")`,
+		);
+		await queryRunner.query(
+			`CREATE TABLE "academic"."courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "learning_outcome" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "UQ_courses_code" UNIQUE ("code"), CONSTRAINT "PK_courses" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(
+			`CREATE TABLE "academic"."study_plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "code" character varying(10) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "UQ_study_plans_code" UNIQUE ("code"), CONSTRAINT "PK_study_plans" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."study_plan_academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_id" integer NOT NULL, "academic_period_id" integer NOT NULL, CONSTRAINT "PK_study_plan_academic_periods" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."study_plan_courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_academic_period_id" integer NOT NULL, "course_id" integer NOT NULL, "is_elective" boolean NOT NULL DEFAULT false, "level_type_id" integer NOT NULL, CONSTRAINT "PK_study_plan_courses" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."study_plan_courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_academic_period_id" integer NOT NULL, "course_id" integer NOT NULL, "is_elective" boolean NOT NULL DEFAULT false, "level_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_study_plan_courses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."course_sections" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_course_id" integer NOT NULL, "campus_id" integer NOT NULL, "professor_id" integer NOT NULL, "section_code" character varying(50) NOT NULL, "schedule" jsonb DEFAULT '{}'::jsonb, "section_modality_type_id" integer NOT NULL, CONSTRAINT "UQ_course_sections_section_code" UNIQUE ("section_code"), CONSTRAINT "PK_course_sections" PRIMARY KEY ("id"))`,
@@ -263,6 +270,18 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_professors_staff_id" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_user_id" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_upload_type_id" FOREIGN KEY ("upload_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_status_type_id" FOREIGN KEY ("status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plans" ADD CONSTRAINT "FK_study_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -532,6 +551,15 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plans" ADD CONSTRAINT "FK_study_plans_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."courses" ADD CONSTRAINT "FK_courses_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
 			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
@@ -579,9 +607,215 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_outcome_type_id" FOREIGN KEY ("outcome_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_study_plans(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM academic.academic_periods WHERE id = p_academic_period_id) THEN
+		RETURN QUERY SELECT NULL::integer, 'uploads.studyPlans.error.periodNotFound'::text, NULL::integer;
+		RETURN;
+	END IF;
+
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS row_number
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE (trim(e->>'studyPlanCode'), lower(trim(e->>'courseCode'))) IN (
+			SELECT trim(d->>'studyPlanCode'), lower(trim(d->>'courseCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'studyPlanCode'), '') IS NOT NULL
+			  AND NULLIF(trim(d->>'courseCode'), '') IS NOT NULL
+			GROUP BY trim(d->>'studyPlanCode'), lower(trim(d->>'courseCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.duplicateRowInFile'::text, NULL::integer;
+	END LOOP;
+
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                AS row_number,
+			NULLIF(trim(e->>'studyPlanCode'), '') AS study_plan_code,
+			NULLIF(trim(e->>'programCode'), '')   AS program_code,
+			NULLIF(trim(e->>'levelTypeCode'), '') AS level_type_code,
+			NULLIF(trim(e->>'courseCode'), '')    AS course_code,
+			COALESCE(e->'courseName', '{}'::jsonb) AS course_name
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.study_plan_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.studyPlanCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.program_code IS NULL OR NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.program_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.programNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.course_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.courseCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM jsonb_each_text(r.course_name) AS kv(k, v) WHERE NULLIF(trim(kv.v), '') IS NOT NULL) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.courseNameEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.level_type_code IS NULL OR NOT EXISTS (
+			SELECT 1 FROM core.types t
+			JOIN core.type_groups g ON g.id = t.type_group_id
+			WHERE g.code = 'TG203' AND t.code = r.level_type_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.levelTypeInvalid'::text, NULL::integer;
+		END IF;
+
+		IF r.study_plan_code IS NOT NULL AND r.course_code IS NOT NULL AND EXISTS (
+			SELECT 1
+			FROM academic.study_plan_courses spc
+			JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+			JOIN academic.courses c ON c.id = spc.course_id
+			WHERE spap.academic_period_id = p_academic_period_id
+			  AND sp.code = r.study_plan_code
+			  AND c.code = r.course_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.courseAlreadyInStudyPlan'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T002'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	WITH plan_src AS (
+		SELECT DISTINCT ON (e->>'studyPlanCode')
+			trim(e->>'studyPlanCode')                AS code,
+			COALESCE(e->'studyPlanName','{}'::jsonb) AS name,
+			(SELECT p.id FROM academic.programs p WHERE p.code = trim(e->>'programCode')) AS program_id
+		FROM jsonb_array_elements(p_rows) AS e
+	)
+	INSERT INTO academic.study_plans (program_id, code, name, description, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT s.program_id, s.code, s.name, '{}'::jsonb, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM plan_src s
+	ON CONFLICT (code) DO NOTHING;
+
+	INSERT INTO academic.study_plan_academic_periods (study_plan_id, academic_period_id, extra, is_active, created_at, updated_at)
+	SELECT DISTINCT sp.id, p_academic_period_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
+	WHERE NOT EXISTS (
+		SELECT 1 FROM academic.study_plan_academic_periods x
+		WHERE x.study_plan_id = sp.id AND x.academic_period_id = p_academic_period_id
+	);
+
+	WITH course_src AS (
+		SELECT DISTINCT ON (lower(trim(e->>'courseCode')))
+			trim(e->>'courseCode')                     AS code,
+			COALESCE(e->'courseName','{}'::jsonb)      AS name,
+			COALESCE(e->'learningOutcome','{}'::jsonb) AS learning_outcome
+		FROM jsonb_array_elements(p_rows) AS e
+	)
+	INSERT INTO academic.courses (code, name, description, learning_outcome, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT c.code, c.name, '{}'::jsonb, c.learning_outcome, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM course_src c
+	ON CONFLICT (code) DO NOTHING;
+
+	INSERT INTO academic.study_plan_courses
+		(study_plan_academic_period_id, course_id, is_elective, level_type_id, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT
+		spap.id,
+		c.id,
+		COALESCE((e->>'isElective')::boolean, false),
+		t.id,
+		v_log_id,
+		'{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
+	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
+	JOIN core.type_groups g ON g.code = 'TG203'
+	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'levelTypeCode');
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_study_plans(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploads.common.error.uploadLogNotFound';
+	END IF;
+
+	IF EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		JOIN academic.course_sections cs ON cs.study_plan_course_id = spc.id
+		WHERE spc.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'uploads.common.error.rollbackBlockedSections';
+	END IF;
+
+	IF EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc.id
+		WHERE spc.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'uploads.common.error.rollbackBlockedOutcomes';
+	END IF;
+
+	DELETE FROM academic.study_plan_courses WHERE upload_log_id = p_upload_log_id;
+	DELETE FROM academic.courses WHERE upload_log_id = p_upload_log_id;
+	DELETE FROM academic.study_plan_academic_periods spap
+	WHERE spap.study_plan_id IN (SELECT id FROM academic.study_plans WHERE upload_log_id = p_upload_log_id)
+	  AND NOT EXISTS (SELECT 1 FROM academic.study_plan_courses spc WHERE spc.study_plan_academic_period_id = spap.id);
+	DELETE FROM academic.study_plans WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_study_plans(integer)`);
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_upload_study_plans(jsonb, integer, integer, text)`);
 		await queryRunner.query(
 			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_permission_type"`,
 		);
@@ -819,6 +1053,18 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_study_plans_program_id"`,
 		);
 		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_upload_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_academic_period_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_user_id"`,
+		);
+		await queryRunner.query(
 			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_professors_staff_id"`,
 		);
 		await queryRunner.query(
@@ -891,6 +1137,15 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
 		);
 		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."courses" DROP CONSTRAINT "FK_courses_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_study_plans_upload_log_id"`,
+		);
+		await queryRunner.query(
 			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_position_type_id"`,
 		);
 		await queryRunner.query(
@@ -957,6 +1212,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "academic"."courses"`);
 		await queryRunner.query(`DROP TABLE "academic"."professors"`);
 		await queryRunner.query(`DROP TABLE "organization"."staff"`);
+		await queryRunner.query(`DROP TABLE "audit"."upload_logs"`);
 		await queryRunner.query(`DROP TABLE "organization"."users"`);
 		await queryRunner.query(`DROP TABLE "organization"."campuses"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."outcomes"`);
