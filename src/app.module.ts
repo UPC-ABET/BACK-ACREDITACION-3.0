@@ -79,7 +79,6 @@ import { PlanModule } from './modules/improvement/plans/plans.module';
 
 //ORGANIZATION MODULES
 import { CampusModule } from './modules/organization/campuses/campuses.module';
-import { ChartLevelModule } from './modules/organization/chart-levels/chart-levels.module';
 import { ChartModule } from './modules/organization/charts/charts.module';
 import { FacultyModule } from './modules/organization/faculties/faculties.module';
 import { SchoolModule } from './modules/organization/schools/schools.module';
@@ -201,7 +200,6 @@ import { NotificationConfigModule } from './modules/admin/ifc/notification-confi
 		PlanActionModule,
 		PlanModule,
 		CampusModule,
-		ChartLevelModule,
 		ChartModule,
 		FacultyModule,
 		SchoolModule,

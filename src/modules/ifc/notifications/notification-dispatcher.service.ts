@@ -141,10 +141,9 @@ export class NotificationDispatcherService {
 		const rows = await this.dataSource.query(
 			`
 			WITH RECURSIVE course_chart AS (
-				SELECT c.id, c.staff_id, c.entity_code AS course_id, c.root_chart_detail_id
+				SELECT c.id, c.staff_id, c.entity_code AS course_id, c.root_chart_id
 				FROM organization.charts c
-				JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-				JOIN core.types ct                ON ct.id = cl.level_type_id
+				JOIN core.types ct                ON ct.id = c.level_type_id
 				WHERE c.id        = $1
 				  AND ct.code     = $4
 				  AND c.academic_period_id = $2
@@ -152,12 +151,12 @@ export class NotificationDispatcherService {
 				LIMIT 1
 			),
 			school_walk AS (
-				SELECT cc.root_chart_detail_id AS id, 1 AS depth
+				SELECT cc.root_chart_id AS id, 1 AS depth
 				FROM course_chart cc
 
 				UNION ALL
 
-				SELECT c.root_chart_detail_id, sw.depth + 1
+				SELECT c.root_chart_id, sw.depth + 1
 				FROM organization.charts c
 				JOIN school_walk sw ON c.id = sw.id
 				WHERE c.is_active = true AND sw.depth < 20
@@ -229,22 +228,21 @@ export class NotificationDispatcherService {
 		const rows = await this.dataSource.query(
 			`
 			WITH RECURSIVE chain_up AS (
-				SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.staff_id, 1 AS depth
+				SELECT c.id, c.root_chart_id, c.level_type_id, c.staff_id, 1 AS depth
 				FROM organization.charts c
 				WHERE c.id = $1 AND c.is_active = true
 
 				UNION ALL
 
-				SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.staff_id, cu.depth + 1
+				SELECT c.id, c.root_chart_id, c.level_type_id, c.staff_id, cu.depth + 1
 				FROM organization.charts c
-				JOIN chain_up cu ON c.id = cu.root_chart_detail_id
+				JOIN chain_up cu ON c.id = cu.root_chart_id
 				WHERE c.is_active = true AND cu.depth < 20
 			)
-			SELECT cl.level_type_id::int AS "levelTypeId", s.id::int AS "staffId", s.staff_email AS "staffEmail"
+			SELECT cu.level_type_id::int AS "levelTypeId", s.id::int AS "staffId", s.staff_email AS "staffEmail"
 			FROM chain_up cu
-			JOIN organization.chart_levels cl ON cl.id = cu.chart_level_id
 			JOIN organization.staff s         ON s.id  = cu.staff_id
-			WHERE cl.level_type_id = ANY($2::int[])
+			WHERE cu.level_type_id = ANY($2::int[])
 			  AND s.staff_email IS NOT NULL
 			`,
 			[courseChartId, wanted],

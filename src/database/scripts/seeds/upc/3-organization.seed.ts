@@ -95,25 +95,4 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 			SELECT 1 FROM "organization"."schools" s WHERE s.code = v.code
 		);
 	`);
-
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."chart_levels" (level, level_type_id)
-		SELECT v.level, t.id
-		FROM "core"."types" t
-		JOIN (
-			VALUES
-				(1, 'TG902-T001'),
-				(2, 'TG902-T002'),
-				(3, 'TG902-T003'),
-				(4, 'TG902-T004'),
-				(5, 'TG902-T005'),
-				(6, 'TG902-T006')
-		) AS v(level, level_type_code)
-			ON t.code = v.level_type_code
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM "organization"."chart_levels" cl
-			WHERE cl.level = v.level AND cl.level_type_id = t.id
-		);
-	`);
 });

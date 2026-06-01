@@ -22,16 +22,16 @@ export class CreateChartDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	chartLevelId: number;
+	levelTypeId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rootChartDetailId?: number;
+	rootChartId?: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: true })
-	levelTitle: I18nText;
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
+	title: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -67,17 +67,17 @@ export class UpdateChartDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	chartLevelId?: number;
+	levelTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rootChartDetailId?: number;
+	rootChartId?: number;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: false })
-	levelTitle?: I18nText;
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -109,15 +109,15 @@ export class FilterChartDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	chartLevelId?: number;
+	levelTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rootChartDetailId?: number;
+	rootChartId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'levelTitleEs', en: 'levelTitleEn' }, required: false })
-	levelTitle?: I18nText;
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

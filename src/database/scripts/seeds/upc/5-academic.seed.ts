@@ -499,18 +499,18 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		INSERT INTO "organization"."charts" (
 			staff_id,
 			academic_period_id,
-			chart_level_id,
-			root_chart_detail_id,
-			level_title,
+			level_type_id,
+			root_chart_id,
+			title,
 			entity_type_id,
 			entity_code
 		)
 		SELECT
 			staff.id,
 			ap.id,
-			cl.id,
-			v.root_chart_detail_id,
-			v.level_title,
+			level_type.id,
+			v.root_chart_id,
+			v.title,
 			entity_type.id,
 			CASE entity_type.code
 				WHEN 'TG903-T001' THEN (SELECT id FROM "organization"."schools" WHERE code = v.entity_ref_code)
@@ -520,61 +520,61 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM (
 			VALUES
 				${chartValues}
-		) AS v(staff_email, academic_period_code, chart_level_number, root_chart_detail_id, level_title, entity_type_code, entity_ref_code)
+		) AS v(staff_email, academic_period_code, chart_level_number, root_chart_id, title, entity_type_code, entity_ref_code)
 		JOIN "organization"."staff" staff
 			ON staff.staff_email = v.staff_email
 		JOIN "academic"."academic_periods" ap
 			ON ap.code = v.academic_period_code
-		JOIN "organization"."chart_levels" cl
-			ON cl.level = v.chart_level_number
+		JOIN "core"."types" level_type
+			ON (level_type.extra->>'level')::int = v.chart_level_number
+			AND level_type.type_group_id = (SELECT id FROM "core"."type_groups" WHERE code = 'TG902')
 		JOIN "core"."types" entity_type
 			ON entity_type.code = v.entity_type_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."charts" chart
 			WHERE chart.academic_period_id = ap.id
-			  AND chart.chart_level_id     = cl.id
+			  AND chart.level_type_id      = level_type.id
 			  AND chart.entity_type_id     = entity_type.id
 		);
 	`);
 
 	// EISCB 6-level chart tree, parameterized by academic period code.
-	// Chained inserts: each child's root_chart_detail_id resolves to the parent row via subquery.
+	// Chained inserts: each child's root_chart_id resolves to the parent row via subquery.
 	const seedEiscbChartTree = async (periodCode: string) => {
 		// Level 1 — Dean (school EISCB), no parent.
 		await tenantDataSource.query(`
 			INSERT INTO "organization"."charts" (
-				staff_id, academic_period_id, chart_level_id,
-				root_chart_detail_id, level_title, entity_type_id, entity_code
+				staff_id, academic_period_id, level_type_id,
+				root_chart_id, title, entity_type_id, entity_code
 			)
 			SELECT
-				staff.id, ap.id, cl.id, NULL,
+				staff.id, ap.id, level_type.id, NULL,
 				'${i18n('Decanato EISCB', "EISCB Dean's Office")}'::jsonb,
 				NULL, NULL
 			FROM "organization"."staff" staff
 			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'dean.eiscb@upc.edu.pe'
 			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
-			JOIN "organization"."chart_levels" cl   ON cl.level = 1
-			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T001'
+			JOIN "core"."types" level_type          ON level_type.code = 'TG902-T001'
 			WHERE NOT EXISTS (
 				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND c.chart_level_id     = cl.id
+				  AND c.level_type_id      = level_type.id
 			);
 		`);
 
 		// Level 2 — School Director (school EISCB), parent = level 1 row.
 		await tenantDataSource.query(`
 			INSERT INTO "organization"."charts" (
-				staff_id, academic_period_id, chart_level_id,
-				root_chart_detail_id, level_title, entity_type_id, entity_code
+				staff_id, academic_period_id, level_type_id,
+				root_chart_id, title, entity_type_id, entity_code
 			)
 			SELECT
-				staff.id, ap.id, cl.id,
+				staff.id, ap.id, level_type.id,
 				(
 					SELECT c.id FROM "organization"."charts" c
-					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					JOIN "core"."types" pcl ON pcl.id = c.level_type_id
 					WHERE c.academic_period_id = ap.id
-					  AND pcl.level            = 1
+					  AND (pcl.extra->>'level')::int =1
 				),
 				'${i18n('Direccion EISCB', 'EISCB School Direction')}'::jsonb,
 				entity_type.id,
@@ -582,13 +582,12 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			FROM "organization"."staff" staff
 			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
 			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
-			JOIN "organization"."chart_levels" cl   ON cl.level = 2
-			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T002'
+			JOIN "core"."types" level_type          ON level_type.code = 'TG902-T002'
 			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T001'
 			WHERE NOT EXISTS (
 				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND c.chart_level_id     = cl.id
+				  AND c.level_type_id      = level_type.id
 				  AND c.entity_type_id     = entity_type.id
 				  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
 			);
@@ -597,16 +596,16 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		// Level 3 — Program Coordinator (program CS), parent = level 2 row.
 		await tenantDataSource.query(`
 			INSERT INTO "organization"."charts" (
-				staff_id, academic_period_id, chart_level_id,
-				root_chart_detail_id, level_title, entity_type_id, entity_code
+				staff_id, academic_period_id, level_type_id,
+				root_chart_id, title, entity_type_id, entity_code
 			)
 			SELECT
-				staff.id, ap.id, cl.id,
+				staff.id, ap.id, level_type.id,
 				(
 					SELECT c.id FROM "organization"."charts" c
-					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					JOIN "core"."types" pcl ON pcl.id = c.level_type_id
 					WHERE c.academic_period_id = ap.id
-					  AND pcl.level            = 2
+					  AND (pcl.extra->>'level')::int =2
 					  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T001')
 					  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
 				),
@@ -616,13 +615,12 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			FROM "organization"."staff" staff
 			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'prog-coord.eiscb@upc.edu.pe'
 			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
-			JOIN "organization"."chart_levels" cl   ON cl.level = 3
-			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T003'
+			JOIN "core"."types" level_type          ON level_type.code = 'TG902-T003'
 			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T002'
 			WHERE NOT EXISTS (
 				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND c.chart_level_id     = cl.id
+				  AND c.level_type_id      = level_type.id
 				  AND c.entity_type_id     = entity_type.id
 				  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
 			);
@@ -631,16 +629,16 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		// Level 4 — Area Coordinator (role-only, no entity anchor), parent = level 3 row.
 		await tenantDataSource.query(`
 			INSERT INTO "organization"."charts" (
-				staff_id, academic_period_id, chart_level_id,
-				root_chart_detail_id, level_title, entity_type_id, entity_code
+				staff_id, academic_period_id, level_type_id,
+				root_chart_id, title, entity_type_id, entity_code
 			)
 			SELECT
-				staff.id, ap.id, cl.id,
+				staff.id, ap.id, level_type.id,
 				(
 					SELECT c.id FROM "organization"."charts" c
-					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					JOIN "core"."types" pcl ON pcl.id = c.level_type_id
 					WHERE c.academic_period_id = ap.id
-					  AND pcl.level            = 3
+					  AND (pcl.extra->>'level')::int =3
 					  AND c.entity_type_id     = (SELECT id FROM "core"."types" WHERE code = 'TG903-T002')
 					  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
 				),
@@ -649,40 +647,38 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			FROM "organization"."staff" staff
 			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'area-coord.eiscb@upc.edu.pe'
 			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
-			JOIN "organization"."chart_levels" cl   ON cl.level = 4
-			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T004'
+			JOIN "core"."types" level_type          ON level_type.code = 'TG902-T004'
 			WHERE NOT EXISTS (
 				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND c.chart_level_id     = cl.id
+				  AND c.level_type_id      = level_type.id
 			);
 		`);
 
 		// Level 5 — Subarea Coordinator (role-only, no entity anchor), parent = level 4 row.
 		await tenantDataSource.query(`
 			INSERT INTO "organization"."charts" (
-				staff_id, academic_period_id, chart_level_id,
-				root_chart_detail_id, level_title, entity_type_id, entity_code
+				staff_id, academic_period_id, level_type_id,
+				root_chart_id, title, entity_type_id, entity_code
 			)
 			SELECT
-				staff.id, ap.id, cl.id,
+				staff.id, ap.id, level_type.id,
 				(
 					SELECT c.id FROM "organization"."charts" c
-					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					JOIN "core"."types" pcl ON pcl.id = c.level_type_id
 					WHERE c.academic_period_id = ap.id
-					  AND pcl.level            = 4
+					  AND (pcl.extra->>'level')::int =4
 				),
 				'${i18n('Coordinacion de Subarea CS', 'CS Subarea Coordination')}'::jsonb,
 				NULL, NULL
 			FROM "organization"."staff" staff
 			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'subarea-coord.eiscb@upc.edu.pe'
 			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
-			JOIN "organization"."chart_levels" cl   ON cl.level = 5
-			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T005'
+			JOIN "core"."types" level_type          ON level_type.code = 'TG902-T005'
 			WHERE NOT EXISTS (
 				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND c.chart_level_id     = cl.id
+				  AND c.level_type_id      = level_type.id
 			);
 		`);
 
@@ -697,35 +693,34 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 
 		await tenantDataSource.query(`
 			INSERT INTO "organization"."charts" (
-				staff_id, academic_period_id, chart_level_id,
-				root_chart_detail_id, level_title, entity_type_id, entity_code
+				staff_id, academic_period_id, level_type_id,
+				root_chart_id, title, entity_type_id, entity_code
 			)
 			SELECT
-				staff.id, ap.id, cl.id,
+				staff.id, ap.id, level_type.id,
 				(
 					SELECT c.id FROM "organization"."charts" c
-					JOIN "organization"."chart_levels" pcl ON pcl.id = c.chart_level_id
+					JOIN "core"."types" pcl ON pcl.id = c.level_type_id
 					WHERE c.academic_period_id = ap.id
-					  AND pcl.level            = 5
+					  AND (pcl.extra->>'level')::int =5
 				),
-				v.level_title,
+				v.title,
 				entity_type.id,
 				(SELECT id FROM "academic"."courses" WHERE code = v.course_code)
 			FROM (
 				VALUES
 					${courseChartValues}
-			) AS v(course_code, level_title)
+			) AS v(course_code, title)
 			JOIN "organization"."staff" staff
 				ON staff.id IS NOT NULL
 			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'coord.eiscb@upc.edu.pe'
 			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
-			JOIN "organization"."chart_levels" cl   ON cl.level = 6
-			JOIN "core"."types" level_type          ON level_type.id = cl.level_type_id AND level_type.code = 'TG902-T006'
+			JOIN "core"."types" level_type          ON level_type.code = 'TG902-T006'
 			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T003'
 			WHERE NOT EXISTS (
 				SELECT 1 FROM "organization"."charts" c
 				WHERE c.academic_period_id = ap.id
-				  AND c.chart_level_id     = cl.id
+				  AND c.level_type_id      = level_type.id
 				  AND c.entity_type_id     = entity_type.id
 				  AND c.entity_code        = (SELECT id FROM "academic"."courses" WHERE code = v.course_code)
 			);

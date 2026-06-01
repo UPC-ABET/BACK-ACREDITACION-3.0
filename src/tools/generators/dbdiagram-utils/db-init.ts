@@ -13,6 +13,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "ifc"`);
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "evaluation"`);
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "core"`);
+		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "audit"`);
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "typeorm_metadata" ("type" varchar NOT NULL, "database" varchar, "schema" varchar, "table" varchar, "name" varchar, "value" text)`,
 		);
@@ -28,124 +29,127 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			],
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(255) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED NOT NULL, CONSTRAINT "PK_911f414fba24e3855a5ba1f51ad" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(255) NOT NULL, "start_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "end_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "year" integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM ("start_date" AT TIME ZONE 'UTC'))::int) STORED NOT NULL, CONSTRAINT "PK_academic_periods" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE INDEX "IDX_academic_periods_year" ON "academic"."academic_periods" ("year")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_db5d514f1f3dbbd718f2f8feaf0" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."accreditors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_accreditors" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "accreditor_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_feab7a246fd5bd9eee8a00e655c" UNIQUE ("code"), CONSTRAINT "PK_2701379966e2e670bb5ff0ae78e" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "accreditor_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_commissions_code" UNIQUE ("code"), CONSTRAINT "PK_commissions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."programs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "degree" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_11924ca2e0cb47a8d9400bada03" UNIQUE ("code"), CONSTRAINT "PK_d43c664bcaafc0e8a06dfd34e05" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."programs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "modality_type_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "degree" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_programs_code" UNIQUE ("code"), CONSTRAINT "PK_programs" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."program_commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "commission_id" integer NOT NULL, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "commission_type_id" integer NOT NULL, CONSTRAINT "PK_802df6ce3143654610a2cbb7853" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."program_commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "commission_id" integer NOT NULL, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "commission_type_id" integer NOT NULL, CONSTRAINT "PK_program_commissions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_db7ef6d23e512a822d661a2d793" UNIQUE ("outcome_code"), CONSTRAINT "PK_f5b8391e8300f8962eb1842dfca" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_outcomes_outcome_code" UNIQUE ("outcome_code"), CONSTRAINT "PK_outcomes" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_d6a06870edd505bfc2d002cb728" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_campuses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_users" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, CONSTRAINT "PK_e4ee98bb552756c180aec1e854a" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, CONSTRAINT "UQ_ACADEMIC_PROFESSORS_CODE" UNIQUE ("code"), CONSTRAINT "PK_6b249c6363a154820c909c45e27" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_professors_code" UNIQUE ("code"), CONSTRAINT "PK_professors" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "learning_outcome" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_ACADEMIC_COURSES_CODE" UNIQUE ("code"), CONSTRAINT "PK_3f70a487cc718ad8eda4e6d58c9" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "audit"."upload_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "academic_period_id" integer, "upload_type_id" integer NOT NULL, "status_type_id" integer NOT NULL, "source_file" text, "total_rows" integer, "loaded_rows" integer, "error_rows" integer, "rollback_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_upload_logs" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."study_plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "code" character varying(10) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_062984535cc33c18b7ced0ded63" UNIQUE ("code"), CONSTRAINT "PK_0e9610ccbc3b79324da329edb33" PRIMARY KEY ("id"))`,
+			`CREATE INDEX "IDX_upload_logs_type_created" ON "audit"."upload_logs" ("upload_type_id", "created_at")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."study_plan_academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_id" integer NOT NULL, "academic_period_id" integer NOT NULL, CONSTRAINT "PK_10ae889a6f4d93e1173a391b9a4" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "learning_outcome" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "UQ_courses_code" UNIQUE ("code"), CONSTRAINT "PK_courses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."study_plan_courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_academic_period_id" integer NOT NULL, "course_id" integer NOT NULL, "is_elective" boolean NOT NULL DEFAULT false, "level_type_id" integer NOT NULL, CONSTRAINT "PK_d910c3766a5a0fd283ff9d287a5" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."study_plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "code" character varying(10) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "UQ_study_plans_code" UNIQUE ("code"), CONSTRAINT "PK_study_plans" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."course_sections" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_course_id" integer NOT NULL, "campus_id" integer NOT NULL, "professor_id" integer NOT NULL, "section_code" character varying(50) NOT NULL, "schedule" jsonb DEFAULT '{}'::jsonb, "section_modality_type_id" integer NOT NULL, CONSTRAINT "UQ_39408d8e20866b0d10f315e2d2c" UNIQUE ("section_code"), CONSTRAINT "PK_03086ef0602f2721612a5ce610d" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."study_plan_academic_periods" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_id" integer NOT NULL, "academic_period_id" integer NOT NULL, CONSTRAINT "PK_study_plan_academic_periods" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "program_id" integer NOT NULL, "graduation_modality_type_id" integer NOT NULL, CONSTRAINT "PK_7d7f07271ad4ce999880713f05e" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."study_plan_courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_academic_period_id" integer NOT NULL, "course_id" integer NOT NULL, "is_elective" boolean NOT NULL DEFAULT false, "level_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_study_plan_courses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evidence"."surveys" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_type_id" integer NOT NULL, "survey_status_type_id" integer NOT NULL, "student_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer NOT NULL, "program_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, "survey_number" integer, "course_section_id" integer NOT NULL, CONSTRAINT "PK_1b5e3d4aaeb2321ffa98498c971" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."course_sections" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_course_id" integer NOT NULL, "campus_id" integer NOT NULL, "professor_id" integer NOT NULL, "section_code" character varying(50) NOT NULL, "schedule" jsonb DEFAULT '{}'::jsonb, "section_modality_type_id" integer NOT NULL, CONSTRAINT "UQ_course_sections_section_code" UNIQUE ("section_code"), CONSTRAINT "PK_course_sections" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "survey"."scores" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_id" integer NOT NULL, "outcome_id" integer NOT NULL, "score" numeric(12,6) NOT NULL, "commentaries" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_c36917e6f26293b91d04b8fd521" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "program_id" integer NOT NULL, "graduation_modality_type_id" integer NOT NULL, CONSTRAINT "PK_students" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "survey"."outcome_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "user_outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "user_outcome_description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_bc6dbcd1cb0f388ea81fc8f4544" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evidence"."surveys" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_type_id" integer NOT NULL, "survey_status_type_id" integer NOT NULL, "student_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer NOT NULL, "program_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, "survey_number" integer, "course_section_id" integer NOT NULL, CONSTRAINT "PK_surveys" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "survey"."notifications" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_id" integer NOT NULL, "notification_status_type_id" integer NOT NULL, "token" text NOT NULL, "sent_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "max_register_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6a72c3c0f683f6462415e653c3a" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "survey"."scores" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_id" integer NOT NULL, "outcome_id" integer NOT NULL, "score" numeric(12,6) NOT NULL, "commentaries" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_scores" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "survey"."notification_messages" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_type_id" integer NOT NULL, "program_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "cc_receivers" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_025a03ac35a495f0a6d8730350d" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "survey"."outcome_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "user_outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "user_outcome_description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_outcome_configs" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."faculties" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_f1b2cd43a96c6fb75c8ad44de88" UNIQUE ("code"), CONSTRAINT "PK_fd83e4a09c7182ccf7bdb3770b9" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "survey"."notifications" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_id" integer NOT NULL, "notification_status_type_id" integer NOT NULL, "token" text NOT NULL, "sent_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "max_register_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_notifications" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."schools" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "faculty_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_35e8277da52a915513e3ece8cf9" UNIQUE ("code"), CONSTRAINT "PK_95b932e47ac129dd8e23a0db548" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "survey"."notification_messages" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_type_id" integer NOT NULL, "program_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "cc_receivers" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_notification_messages" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."chart_levels" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "level" integer NOT NULL, "level_type_id" integer NOT NULL, CONSTRAINT "PK_ff95582bc789db38d51aff20d59" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."faculties" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_faculties_code" UNIQUE ("code"), CONSTRAINT "PK_faculties" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "chart_level_id" integer NOT NULL, "root_chart_detail_id" integer, "level_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, CONSTRAINT "PK_fa7124425552d2d37725307008b" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."schools" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "faculty_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_schools_code" UNIQUE ("code"), CONSTRAINT "PK_schools" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "improvement"."plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_open" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_3720521a81c7c24fe9b7202ba61" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "level_type_id" integer NOT NULL, "root_chart_id" integer, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "improvement"."actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "correlative" integer NOT NULL, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, CONSTRAINT "PK_7bfb822f56be449c0b8adbf83cf" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "improvement"."plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_open" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_plans" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evidence"."instruments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "constituent_type_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_for_accreditation" boolean NOT NULL DEFAULT true, CONSTRAINT "UQ_40686155516c825c49583a52c07" UNIQUE ("code"), CONSTRAINT "PK_44d772c3199b38559c5fb666eb6" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "improvement"."actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "description" jsonb NOT NULL DEFAULT '{}'::jsonb, "correlative" integer NOT NULL, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, CONSTRAINT "PK_actions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "improvement"."findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "criticality_type_id" integer NOT NULL, "instrument_id" integer NOT NULL, "staff_id" integer, "correlative" integer NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer, "is_automatic" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_ae9807d6293c23c13ff8804d09c" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evidence"."instruments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "constituent_type_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_for_accreditation" boolean NOT NULL DEFAULT true, CONSTRAINT "UQ_instruments_code" UNIQUE ("code"), CONSTRAINT "PK_instruments" PRIMARY KEY ("id"))`,
+		);
+		await queryRunner.query(
+			`CREATE TABLE "improvement"."findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "criticality_type_id" integer NOT NULL, "instrument_id" integer NOT NULL, "staff_id" integer, "correlative" integer NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer, "is_automatic" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_findings" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE INDEX "IDX_findings_course_period" ON "improvement"."findings" ("course_id", "academic_period_id")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "improvement"."finding_actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "finding_id" integer NOT NULL, "action_id" integer NOT NULL, "in_plan_required" boolean NOT NULL DEFAULT false, "evidences" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_aa2c153cbc5da86a2819c2c4dae" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "improvement"."finding_actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "finding_id" integer NOT NULL, "action_id" integer NOT NULL, "in_plan_required" boolean NOT NULL DEFAULT false, "evidences" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_finding_actions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "improvement"."plan_actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "plan_id" integer NOT NULL, "finding_action_id" integer NOT NULL, CONSTRAINT "PK_c835bdda7f4948a712944d89e29" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "improvement"."plan_actions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "plan_id" integer NOT NULL, "finding_action_id" integer NOT NULL, CONSTRAINT "PK_plan_actions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "improvement"."finding_outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "finding_id" integer NOT NULL, "outcome_id" integer NOT NULL, CONSTRAINT "PK_a9b1f98202f160179933a5c2ac4" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "improvement"."finding_outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "finding_id" integer NOT NULL, "outcome_id" integer NOT NULL, CONSTRAINT "PK_finding_outcomes" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evidence"."ifcs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_2bfd47d6b5d4eb31f3120596a41" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evidence"."ifcs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_ifcs" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE INDEX "IDX_ifcs_course_period" ON "evidence"."ifcs" ("course_id", "academic_period_id")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."statuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "status_type_id" integer NOT NULL, "staff_id" integer NOT NULL, "comment" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_2fd3770acdb67736f1a3e3d5399" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "ifc"."statuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "status_type_id" integer NOT NULL, "staff_id" integer NOT NULL, "comment" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_statuses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."ifc_findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "finding_id" integer NOT NULL, CONSTRAINT "PK_f0b14dc8a4cfd64381c399dc8f1" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "ifc"."ifc_findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "finding_id" integer NOT NULL, CONSTRAINT "PK_ifc_findings" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', CONSTRAINT "PK_25e7784b69fbdb82b911ca6aa88" PRIMARY KEY ("id"), CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
+			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', CONSTRAINT "PK_notification_configs" PRIMARY KEY ("id"), CONSTRAINT "UQ_notification_configs_school_period_trigger_status" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]', "cc_staff_ids" jsonb NOT NULL DEFAULT '[]', "provider_message_id" character varying(254) NULL, CONSTRAINT "PK_6629ee1c2c51bb27669a0f9f428" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "ifc"."notification_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]', "cc_staff_ids" jsonb NOT NULL DEFAULT '[]', "provider_message_id" character varying(254) NULL, CONSTRAINT "PK_notification_logs" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE INDEX "IDX_notification_logs_ifc_id" ON "ifc"."notification_logs" ("ifc_id")`,
@@ -154,55 +158,55 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE INDEX "IDX_notification_logs_chart_id" ON "ifc"."notification_logs" ("chart_id")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, CONSTRAINT "PK_88157a8406d1bbca75ccac829d1" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, CONSTRAINT "PK_enrolled_students" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."student_section_enrollments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "enrolled_student_id" integer NOT NULL, "course_section_id" integer NOT NULL, CONSTRAINT "PK_3008b2b333530850fa1cc76fcd8" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."student_section_enrollments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "enrolled_student_id" integer NOT NULL, "course_section_id" integer NOT NULL, CONSTRAINT "PK_student_section_enrollments" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evidence"."student_course_outcome_grades" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_section_enrollment_id" integer NOT NULL, "outcome_id" integer NOT NULL, "grade" numeric(12,6) NOT NULL, CONSTRAINT "PK_db1b3337f3dc55d018e04f328c7" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evidence"."student_course_outcome_grades" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_section_enrollment_id" integer NOT NULL, "outcome_id" integer NOT NULL, "grade" numeric(12,6) NOT NULL, CONSTRAINT "PK_student_course_outcome_grades" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."projects" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_d95a87318392465ab663a32cc4f" UNIQUE ("code"), CONSTRAINT "PK_6271df0a7aed1d6c0691ce6ac50" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."projects" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_projects_code" UNIQUE ("code"), CONSTRAINT "PK_projects" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."project_evaluators" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "project_id" integer NOT NULL, "professor_id" integer NOT NULL, "evaluator_type_id" integer NOT NULL, CONSTRAINT "PK_bda50204a8f0b447938f9de058c" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."project_evaluators" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "project_id" integer NOT NULL, "professor_id" integer NOT NULL, "evaluator_type_id" integer NOT NULL, CONSTRAINT "PK_project_evaluators" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."project_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "project_id" integer NOT NULL, "student_section_enrollment_id" integer NOT NULL, CONSTRAINT "PK_4c91cdbc4130ba8bba12d23a28c" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."project_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "project_id" integer NOT NULL, "student_section_enrollment_id" integer NOT NULL, CONSTRAINT "PK_project_students" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evidence"."evaluations" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "project_student_id" integer NOT NULL, "project_evaluator_id" integer NOT NULL, "qualification_status_type_id" integer NOT NULL, "observation" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), CONSTRAINT "PK_f683b433eba0e6dae7e19b29e29" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evidence"."evaluations" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "project_student_id" integer NOT NULL, "project_evaluator_id" integer NOT NULL, "qualification_status_type_id" integer NOT NULL, "observation" jsonb DEFAULT '{}'::jsonb, "register_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), CONSTRAINT "PK_evaluations" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."rubrics" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_type_id" integer NOT NULL, "grade_type_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, CONSTRAINT "PK_3dfcdc7f63f3fa048ebe0293a90" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."rubrics" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_type_id" integer NOT NULL, "grade_type_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, CONSTRAINT "PK_rubrics" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."rubric_question_criterias" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_question_id" integer NOT NULL, "criteria" jsonb NOT NULL DEFAULT '{}'::jsonb, "min_value" numeric(12,6) NOT NULL, "max_value" numeric(12,6) NOT NULL, CONSTRAINT "PK_104ee798bfc899e19859348ea08" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."rubric_question_criterias" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_question_id" integer NOT NULL, "criteria" jsonb NOT NULL DEFAULT '{}'::jsonb, "min_value" numeric(12,6) NOT NULL, "max_value" numeric(12,6) NOT NULL, CONSTRAINT "PK_rubric_question_criterias" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."rubric_scores" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "evaluation_id" integer NOT NULL, "rubric_question_criteria_id" integer NOT NULL, "score" numeric(12,6) NOT NULL, "commentaries" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_35eb0094940cd089113bae42d34" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."rubric_scores" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "evaluation_id" integer NOT NULL, "rubric_question_criteria_id" integer NOT NULL, "score" numeric(12,6) NOT NULL, "commentaries" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "PK_rubric_scores" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "evaluation"."rubric_questions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_id" integer NOT NULL, "outcome_id" integer, "question" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_7b046d188d390f1ff98f0031707" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "evaluation"."rubric_questions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "rubric_id" integer NOT NULL, "outcome_id" integer, "question" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_rubric_questions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "core"."type_groups" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_2e70b216ddac5c1ce8eb9410122" UNIQUE ("code"), CONSTRAINT "PK_73650a04200c679d5b25227ea5f" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "core"."type_groups" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_type_groups_code" UNIQUE ("code"), CONSTRAINT "PK_type_groups" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "core"."types" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "type_group_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_0888743b52d75e0435c1da667d0" UNIQUE ("code"), CONSTRAINT "PK_33b81de5358589c738907c3559b" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "core"."types" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "type_group_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_types_code" UNIQUE ("code"), CONSTRAINT "PK_types" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "core"."parameters" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "value" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_f9bdd410abefd57f573ec1bf9ec" UNIQUE ("code"), CONSTRAINT "PK_6b03a26baa3161f87fa87588859" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "core"."parameters" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "value" jsonb DEFAULT '{}'::jsonb, CONSTRAINT "UQ_parameters_code" UNIQUE ("code"), CONSTRAINT "PK_parameters" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."student_course_grades" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_section_enrollment_id" integer NOT NULL, "grade_type_id" integer NOT NULL, "grade_type_percentage" numeric(12,6) NOT NULL, "grade" numeric(12,6) NOT NULL, CONSTRAINT "PK_1c08f5f803cdc9b99494f342b9a" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."student_course_grades" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_section_enrollment_id" integer NOT NULL, "grade_type_id" integer NOT NULL, "grade_type_percentage" numeric(12,6) NOT NULL, "grade" numeric(12,6) NOT NULL, CONSTRAINT "PK_student_course_grades" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."performance_levels" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "instrument_type_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "code" character varying(50) NOT NULL, "unique_value" numeric(12,6) NOT NULL, "min_score" numeric(12,6) NOT NULL, "max_score" numeric(12,6) NOT NULL, "max_value" numeric(12,6) NOT NULL, CONSTRAINT "UQ_fef6f661903631fdbcea7b26d87" UNIQUE ("code"), CONSTRAINT "PK_ab12d65d08c56d9443953093a71" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."performance_levels" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "instrument_type_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "code" character varying(50) NOT NULL, "unique_value" numeric(12,6) NOT NULL, "min_score" numeric(12,6) NOT NULL, "max_score" numeric(12,6) NOT NULL, "max_value" numeric(12,6) NOT NULL, CONSTRAINT "UQ_performance_levels_code" UNIQUE ("code"), CONSTRAINT "PK_performance_levels" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."course_outcome_mappings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, "outcome_type_id" integer NOT NULL, CONSTRAINT "PK_da935d2cca6b077a7be88e52cd1" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."course_outcome_mappings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, "outcome_type_id" integer NOT NULL, CONSTRAINT "PK_course_outcome_mappings" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "core"."roles" ("id" SERIAL NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "code" character varying(50) NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_roles_code" UNIQUE ("code"), CONSTRAINT "PK_roles" PRIMARY KEY ("id"))`,
@@ -263,6 +267,18 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_professors_staff_id" FOREIGN KEY ("staff_id") REFERENCES "organization"."staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_user_id" FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_upload_type_id" FOREIGN KEY ("upload_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" ADD CONSTRAINT "FK_upload_logs_status_type_id" FOREIGN KEY ("status_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plans" ADD CONSTRAINT "FK_study_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -334,7 +350,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_chart_level_id" FOREIGN KEY ("chart_level_id") REFERENCES "organization"."chart_levels"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -532,6 +548,21 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plans" ADD CONSTRAINT "FK_study_plans_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."courses" ADD CONSTRAINT "FK_courses_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" ADD CONSTRAINT "FK_staff_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_professors_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
 			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
@@ -548,9 +579,6 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "survey"."notification_messages" ADD CONSTRAINT "FK_notification_messages_survey_type_id" FOREIGN KEY ("survey_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "organization"."chart_levels" ADD CONSTRAINT "FK_chart_levels_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "evidence"."instruments" ADD CONSTRAINT "FK_instruments_constituent_type_id" FOREIGN KEY ("constituent_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -579,9 +607,491 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_outcome_type_id" FOREIGN KEY ("outcome_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_study_plans(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period is validated in the service (request-level HTTP error), not here.
+
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS row_number
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE (trim(e->>'studyPlanCode'), lower(trim(e->>'courseCode'))) IN (
+			SELECT trim(d->>'studyPlanCode'), lower(trim(d->>'courseCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'studyPlanCode'), '') IS NOT NULL
+			  AND NULLIF(trim(d->>'courseCode'), '') IS NOT NULL
+			GROUP BY trim(d->>'studyPlanCode'), lower(trim(d->>'courseCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.row_number, 'duplicateRowInFile'::text, NULL::integer;
+	END LOOP;
+
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                AS row_number,
+			NULLIF(trim(e->>'studyPlanCode'), '') AS study_plan_code,
+			NULLIF(trim(e->>'programCode'), '')   AS program_code,
+			NULLIF(trim(e->>'levelTypeCode'), '') AS level_type_code,
+			NULLIF(trim(e->>'courseCode'), '')    AS course_code,
+			COALESCE(e->'courseName', '{}'::jsonb) AS course_name
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.study_plan_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studyPlanCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.program_code IS NULL OR NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.program_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'programNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.course_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'courseCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM jsonb_each_text(r.course_name) AS kv(k, v) WHERE NULLIF(trim(kv.v), '') IS NOT NULL) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'courseNameEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.level_type_code IS NULL OR NOT EXISTS (
+			SELECT 1 FROM core.types t
+			JOIN core.type_groups g ON g.id = t.type_group_id
+			WHERE g.code = 'TG203' AND t.code = r.level_type_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'levelTypeInvalid'::text, NULL::integer;
+		END IF;
+
+		IF r.study_plan_code IS NOT NULL AND r.course_code IS NOT NULL AND EXISTS (
+			SELECT 1
+			FROM academic.study_plan_courses spc
+			JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+			JOIN academic.courses c ON c.id = spc.course_id
+			WHERE spap.academic_period_id = p_academic_period_id
+			  AND sp.code = r.study_plan_code
+			  AND c.code = r.course_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'courseAlreadyInStudyPlan'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T002'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	WITH plan_src AS (
+		SELECT DISTINCT ON (e->>'studyPlanCode')
+			trim(e->>'studyPlanCode')                AS code,
+			COALESCE(e->'studyPlanName','{}'::jsonb) AS name,
+			(SELECT p.id FROM academic.programs p WHERE p.code = trim(e->>'programCode')) AS program_id
+		FROM jsonb_array_elements(p_rows) AS e
+	)
+	INSERT INTO academic.study_plans (program_id, code, name, description, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT s.program_id, s.code, s.name, '{}'::jsonb, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM plan_src s
+	ON CONFLICT (code) DO NOTHING;
+
+	INSERT INTO academic.study_plan_academic_periods (study_plan_id, academic_period_id, extra, is_active, created_at, updated_at)
+	SELECT DISTINCT sp.id, p_academic_period_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
+	WHERE NOT EXISTS (
+		SELECT 1 FROM academic.study_plan_academic_periods x
+		WHERE x.study_plan_id = sp.id AND x.academic_period_id = p_academic_period_id
+	);
+
+	WITH course_src AS (
+		SELECT DISTINCT ON (lower(trim(e->>'courseCode')))
+			trim(e->>'courseCode')                     AS code,
+			COALESCE(e->'courseName','{}'::jsonb)      AS name,
+			COALESCE(e->'learningOutcome','{}'::jsonb) AS learning_outcome
+		FROM jsonb_array_elements(p_rows) AS e
+	)
+	INSERT INTO academic.courses (code, name, description, learning_outcome, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT c.code, c.name, '{}'::jsonb, c.learning_outcome, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM course_src c
+	ON CONFLICT (code) DO NOTHING;
+
+	INSERT INTO academic.study_plan_courses
+		(study_plan_academic_period_id, course_id, is_elective, level_type_id, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT
+		spap.id,
+		c.id,
+		COALESCE((e->>'isElective')::boolean, false),
+		t.id,
+		v_log_id,
+		'{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
+	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
+	JOIN core.type_groups g ON g.code = 'TG203'
+	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'levelTypeCode');
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_study_plans(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	IF EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		JOIN academic.course_sections cs ON cs.study_plan_course_id = spc.id
+		WHERE spc.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedSections';
+	END IF;
+
+	IF EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc.id
+		WHERE spc.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedOutcomes';
+	END IF;
+
+	-- block out-of-order rollback: a NEWER study-plans upload reused rows this upload created.
+	-- courses / study_plans are shared (ON CONFLICT DO NOTHING), so a later upload can hang its
+	-- study_plan_courses off them; deleting them here would orphan that upload. Roll back newer first.
+	IF EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		WHERE spc.upload_log_id IS DISTINCT FROM p_upload_log_id
+		  AND spc.course_id IN (SELECT id FROM academic.courses WHERE upload_log_id = p_upload_log_id)
+	) OR EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+		WHERE spc.upload_log_id IS DISTINCT FROM p_upload_log_id
+		  AND spap.study_plan_id IN (SELECT id FROM academic.study_plans WHERE upload_log_id = p_upload_log_id)
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
+	END IF;
+
+	DELETE FROM academic.study_plan_courses WHERE upload_log_id = p_upload_log_id;
+	DELETE FROM academic.courses WHERE upload_log_id = p_upload_log_id;
+	DELETE FROM academic.study_plan_academic_periods spap
+	WHERE spap.study_plan_id IN (SELECT id FROM academic.study_plans WHERE upload_log_id = p_upload_log_id)
+	  AND NOT EXISTS (SELECT 1 FROM academic.study_plan_courses spc WHERE spc.study_plan_academic_period_id = spap.id);
+	DELETE FROM academic.study_plans WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_staff(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period is validated in the service (request-level HTTP error), not here.
+
+	-- intra-file duplicate email
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE lower(trim(e->>'email')) IN (
+			SELECT lower(trim(d->>'email'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'email'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'email'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateEmailInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- intra-file duplicate professor code
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
+		  AND lower(trim(e->>'professorCode')) IN (
+			SELECT lower(trim(d->>'professorCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'professorCode'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'professorCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateProfessorCodeInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- per-row validation
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                  AS row_number,
+			NULLIF(trim(e->>'email'), '')           AS email,
+			NULLIF(trim(e->>'positionTypeCode'), '') AS position_code
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.email IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'emailEmpty'::text, NULL::integer;
+		ELSIF NOT EXISTS (SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'userNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.position_code IS NULL OR NOT EXISTS (
+			SELECT 1 FROM core.types t
+			JOIN core.type_groups g ON g.id = t.type_group_id
+			WHERE g.code = 'TG901' AND t.code = r.position_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'positionTypeInvalid'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T001'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	-- insert staff for users that do not have one yet
+	INSERT INTO organization.staff
+		(user_id, position_type_id, job_title, job_description, staff_email, staff_phone, upload_log_id,
+		 extra, is_active, created_at, updated_at)
+	SELECT
+		u.id,
+		pt.id,
+		COALESCE(e->'jobTitle', '{}'::jsonb),
+		'{}'::jsonb,
+		u.email,
+		u.phone,
+		v_log_id,
+		'{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN core.type_groups g ON g.code = 'TG901'
+	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
+	WHERE NOT EXISTS (SELECT 1 FROM organization.staff s WHERE s.user_id = u.id);
+
+	-- update staff that already existed (push prior values onto the extra.uploadUndo stack for rollback)
+	UPDATE organization.staff s
+	SET position_type_id = pt.id,
+		job_title = COALESCE(e->'jobTitle', '{}'::jsonb),
+		updated_at = NOW(),
+		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
+			COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
+			jsonb_build_object('logId', v_log_id, 'positionTypeId', s.position_type_id, 'jobTitle', s.job_title))
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN core.type_groups g ON g.code = 'TG901'
+	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
+	WHERE s.user_id = u.id
+	  AND s.upload_log_id IS DISTINCT FROM v_log_id;
+
+	-- insert professors for new codes
+	INSERT INTO academic.professors (staff_id, code, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT s.id, trim(e->>'professorCode'), v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN organization.staff s ON s.user_id = u.id
+	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
+	  AND NOT EXISTS (SELECT 1 FROM academic.professors p WHERE p.code = trim(e->>'professorCode'));
+
+	-- re-point professors whose code already existed (push prior staff_id onto the extra.uploadUndo stack)
+	UPDATE academic.professors p
+	SET staff_id = s.id,
+		updated_at = NOW(),
+		extra = jsonb_set(COALESCE(p.extra, '{}'::jsonb), '{uploadUndo}',
+			COALESCE(p.extra->'uploadUndo', '[]'::jsonb) ||
+			jsonb_build_object('logId', v_log_id, 'staffId', p.staff_id))
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN organization.staff s ON s.user_id = u.id
+	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
+	  AND p.code = trim(e->>'professorCode')
+	  AND p.upload_log_id IS DISTINCT FROM v_log_id;
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_staff(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- block if a professor created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM academic.course_sections cs
+		JOIN academic.professors p ON p.id = cs.professor_id
+		WHERE p.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM evaluation.project_evaluators pe
+		JOIN academic.professors p ON p.id = pe.professor_id
+		WHERE p.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedProfessors';
+	END IF;
+
+	-- block if a staff created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM organization.charts c
+		JOIN organization.staff s ON s.id = c.staff_id
+		WHERE s.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM improvement.findings f
+		JOIN organization.staff s ON s.id = f.staff_id
+		WHERE s.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM ifc.statuses st
+		JOIN organization.staff s ON s.id = st.staff_id
+		WHERE s.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedStaff';
+	END IF;
+
+	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
+	-- Blocked when this upload's id is in a row's uploadUndo stack but is NOT the top element (a later
+	-- upload updated it since), or when this upload INSERTED a row that a later upload has since updated
+	-- (the inserted row carries a non-empty stack). Roll back the newer upload first.
+	IF EXISTS (
+		SELECT 1 FROM organization.staff s
+		WHERE (s.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
+		  AND (s.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM organization.staff s
+		WHERE s.upload_log_id = p_upload_log_id
+		  AND jsonb_array_length(COALESCE(s.extra->'uploadUndo', '[]'::jsonb)) > 0
+	) OR EXISTS (
+		SELECT 1 FROM academic.professors p
+		WHERE (p.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
+		  AND (p.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM academic.professors p
+		WHERE p.upload_log_id = p_upload_log_id
+		  AND jsonb_array_length(COALESCE(p.extra->'uploadUndo', '[]'::jsonb)) > 0
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
+	END IF;
+
+	-- restore re-pointed professors by popping this upload's (top) uploadUndo entry, then drop inserts
+	UPDATE academic.professors p
+	SET staff_id = (p.extra->'uploadUndo' -> -1 ->> 'staffId')::int,
+		extra = CASE
+			WHEN jsonb_array_length(p.extra->'uploadUndo') <= 1 THEN p.extra - 'uploadUndo'
+			ELSE jsonb_set(p.extra, '{uploadUndo}', (p.extra->'uploadUndo') - (-1))
+		END,
+		updated_at = NOW()
+	WHERE (p.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+
+	DELETE FROM academic.professors WHERE upload_log_id = p_upload_log_id;
+
+	-- restore updated staff by popping this upload's (top) uploadUndo entry, then drop inserts
+	UPDATE organization.staff s
+	SET position_type_id = (s.extra->'uploadUndo' -> -1 ->> 'positionTypeId')::int,
+		job_title = s.extra->'uploadUndo' -> -1 -> 'jobTitle',
+		extra = CASE
+			WHEN jsonb_array_length(s.extra->'uploadUndo') <= 1 THEN s.extra - 'uploadUndo'
+			ELSE jsonb_set(s.extra, '{uploadUndo}', (s.extra->'uploadUndo') - (-1))
+		END,
+		updated_at = NOW()
+	WHERE (s.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+
+	DELETE FROM organization.staff WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_staff(integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_staff(jsonb, integer, integer, text)`,
+		);
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_study_plans(integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_study_plans(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(
 			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_permission_type"`,
 		);
@@ -751,7 +1261,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_plans_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_chart_level_id"`,
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_level_type_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_academic_period_id"`,
@@ -819,6 +1329,18 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_study_plans_program_id"`,
 		);
 		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_status_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_upload_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_academic_period_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "audit"."upload_logs" DROP CONSTRAINT "FK_upload_logs_user_id"`,
+		);
+		await queryRunner.query(
 			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_professors_staff_id"`,
 		);
 		await queryRunner.query(
@@ -867,9 +1389,6 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "evidence"."instruments" DROP CONSTRAINT "FK_instruments_constituent_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."chart_levels" DROP CONSTRAINT "FK_chart_levels_level_type_id"`,
-		);
-		await queryRunner.query(
 			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_notification_messages_survey_type_id"`,
 		);
 		await queryRunner.query(
@@ -889,6 +1408,21 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_professors_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."courses" DROP CONSTRAINT "FK_courses_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."study_plans" DROP CONSTRAINT "FK_study_plans_upload_log_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_position_type_id"`,
@@ -941,7 +1475,6 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "improvement"."actions"`);
 		await queryRunner.query(`DROP TABLE "improvement"."plans"`);
 		await queryRunner.query(`DROP TABLE "organization"."charts"`);
-		await queryRunner.query(`DROP TABLE "organization"."chart_levels"`);
 		await queryRunner.query(`DROP TABLE "organization"."schools"`);
 		await queryRunner.query(`DROP TABLE "organization"."faculties"`);
 		await queryRunner.query(`DROP TABLE "survey"."notification_messages"`);
@@ -957,6 +1490,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "academic"."courses"`);
 		await queryRunner.query(`DROP TABLE "academic"."professors"`);
 		await queryRunner.query(`DROP TABLE "organization"."staff"`);
+		await queryRunner.query(`DROP TABLE "audit"."upload_logs"`);
 		await queryRunner.query(`DROP TABLE "organization"."users"`);
 		await queryRunner.query(`DROP TABLE "organization"."campuses"`);
 		await queryRunner.query(`DROP TABLE "accreditation"."outcomes"`);

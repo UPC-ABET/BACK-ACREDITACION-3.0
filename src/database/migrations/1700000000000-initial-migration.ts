@@ -107,10 +107,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."schools" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "faculty_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_schools_code" UNIQUE ("code"), CONSTRAINT "PK_schools" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."chart_levels" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "level" integer NOT NULL, "level_type_id" integer NOT NULL, CONSTRAINT "PK_chart_levels" PRIMARY KEY ("id"))`,
-		);
-		await queryRunner.query(
-			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "chart_level_id" integer NOT NULL, "root_chart_detail_id" integer, "level_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "level_type_id" integer NOT NULL, "root_chart_id" integer, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "improvement"."plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_open" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_plans" PRIMARY KEY ("id"))`,
@@ -353,7 +350,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_chart_level_id" FOREIGN KEY ("chart_level_id") REFERENCES "organization"."chart_levels"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "improvement"."plans" ADD CONSTRAINT "FK_plans_program_id" FOREIGN KEY ("program_id") REFERENCES "academic"."programs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -582,9 +579,6 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "survey"."notification_messages" ADD CONSTRAINT "FK_notification_messages_survey_type_id" FOREIGN KEY ("survey_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "organization"."chart_levels" ADD CONSTRAINT "FK_chart_levels_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "evidence"."instruments" ADD CONSTRAINT "FK_instruments_constituent_type_id" FOREIGN KEY ("constituent_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -1091,9 +1085,13 @@ $fn$;
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_staff(integer)`);
-		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_upload_staff(jsonb, integer, integer, text)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_staff(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_study_plans(integer)`);
-		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_upload_study_plans(jsonb, integer, integer, text)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_study_plans(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(
 			`ALTER TABLE "core"."role_module_permissions" DROP CONSTRAINT "FK_rmp_permission_type"`,
 		);
@@ -1263,7 +1261,7 @@ $fn$;
 			`ALTER TABLE "improvement"."plans" DROP CONSTRAINT "FK_plans_program_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_chart_level_id"`,
+			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_level_type_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_academic_period_id"`,
@@ -1391,9 +1389,6 @@ $fn$;
 			`ALTER TABLE "evidence"."instruments" DROP CONSTRAINT "FK_instruments_constituent_type_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "organization"."chart_levels" DROP CONSTRAINT "FK_chart_levels_level_type_id"`,
-		);
-		await queryRunner.query(
 			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_notification_messages_survey_type_id"`,
 		);
 		await queryRunner.query(
@@ -1480,7 +1475,6 @@ $fn$;
 		await queryRunner.query(`DROP TABLE "improvement"."actions"`);
 		await queryRunner.query(`DROP TABLE "improvement"."plans"`);
 		await queryRunner.query(`DROP TABLE "organization"."charts"`);
-		await queryRunner.query(`DROP TABLE "organization"."chart_levels"`);
 		await queryRunner.query(`DROP TABLE "organization"."schools"`);
 		await queryRunner.query(`DROP TABLE "organization"."faculties"`);
 		await queryRunner.query(`DROP TABLE "survey"."notification_messages"`);

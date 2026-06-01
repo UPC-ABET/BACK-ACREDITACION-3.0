@@ -160,14 +160,14 @@ export class RubricService extends BaseService<RubricRepository> {
 		const raw = await this.dataSource.query(
 			`
 			WITH RECURSIVE school_tree AS (
-				SELECT id, root_chart_detail_id, entity_type_id, entity_code, 0 AS depth
+				SELECT id, root_chart_id, entity_type_id, entity_code, 0 AS depth
 				FROM "organization"."charts"
 				WHERE entity_type_id = (SELECT id FROM "core"."types" WHERE code = $1)
 				  AND entity_code = $2
 				UNION ALL
-				SELECT c.id, c.root_chart_detail_id, c.entity_type_id, c.entity_code, st.depth + 1
+				SELECT c.id, c.root_chart_id, c.entity_type_id, c.entity_code, st.depth + 1
 				FROM "organization"."charts" c
-				INNER JOIN school_tree st ON c.root_chart_detail_id = st.id
+				INNER JOIN school_tree st ON c.root_chart_id = st.id
 				WHERE st.depth < 20
 			)
 			SELECT DISTINCT entity_code AS "programId"
