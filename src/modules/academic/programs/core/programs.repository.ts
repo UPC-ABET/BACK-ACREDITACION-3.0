@@ -56,7 +56,7 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
                    ON  t_prog.id   = ch_prog.entity_type_id
                    AND t_prog.code = '${PROGRAM_TYPE_CODE}'
             INNER JOIN organization.charts ch_sch
-                   ON  ch_sch.id   = ch_prog.root_chart_detail_id
+                   ON  ch_sch.id   = ch_prog.root_chart_id
             INNER JOIN core.types        t_sch
                    ON  t_sch.id    = ch_sch.entity_type_id
                    AND t_sch.code  = '${SCHOOL_TYPE_CODE}'

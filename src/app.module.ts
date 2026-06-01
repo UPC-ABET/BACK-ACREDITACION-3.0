@@ -67,7 +67,6 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
-import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
 
 //IMPROVEMENT MODULES
@@ -80,7 +79,6 @@ import { PlanModule } from './modules/improvement/plans/plans.module';
 
 //ORGANIZATION MODULES
 import { CampusModule } from './modules/organization/campuses/campuses.module';
-import { ChartLevelModule } from './modules/organization/chart-levels/chart-levels.module';
 import { ChartModule } from './modules/organization/charts/charts.module';
 import { FacultyModule } from './modules/organization/faculties/faculties.module';
 import { SchoolModule } from './modules/organization/schools/schools.module';
@@ -96,6 +94,13 @@ import { ScoreModule } from './modules/survey/scores/scores.module';
 import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
 import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
+
+//LOADS MODULES (bulk uploads)
+import { UploadsModule } from './modules/uploads/uploads.module';
+
+//ADMIN MODULES
+import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
+import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 
 @Module({
 	imports: [
@@ -195,7 +200,6 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		PlanActionModule,
 		PlanModule,
 		CampusModule,
-		ChartLevelModule,
 		ChartModule,
 		FacultyModule,
 		SchoolModule,
@@ -211,6 +215,8 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,
+		UploadsModule,
+		ConfigurationModule,
 	],
 	controllers: [AppController],
 	providers: [

@@ -3,7 +3,7 @@ SELECT
 	c.id::int                                          AS "chartId",
 	ac.code                                            AS "courseCode",
 	ac.name                                            AS "courseName",
-	c_program.level_title                              AS "programLabel",
+	c_program.title                              AS "programLabel",
 	u.id::int                                          AS "coordinatorUserId",
 	u.first_name || ' ' || u.last_name                 AS "coordinatorName",
 	CASE WHEN i.id IS NULL THEN NULL ELSE jsonb_build_object(
@@ -21,9 +21,9 @@ JOIN core.types ct_entity            ON ct_entity.id = c.entity_type_id
 JOIN academic.courses ac             ON ac.id = c.entity_code
 JOIN organization.staff st           ON st.id = c.staff_id
 JOIN organization.users u            ON u.id = st.user_id
-JOIN organization.charts c_sub       ON c_sub.id     = c.root_chart_detail_id
-JOIN organization.charts c_area      ON c_area.id    = c_sub.root_chart_detail_id
-JOIN organization.charts c_program   ON c_program.id = c_area.root_chart_detail_id
+JOIN organization.charts c_sub       ON c_sub.id     = c.root_chart_id
+JOIN organization.charts c_area      ON c_area.id    = c_sub.root_chart_id
+JOIN organization.charts c_program   ON c_program.id = c_area.root_chart_id
 LEFT JOIN evidence.ifcs i
 	ON  i.course_id          = ac.id
 	AND i.academic_period_id = $2
@@ -47,8 +47,7 @@ export const HEADER_SQL = `
 WITH RECURSIVE course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct                ON ct.id = cl.level_type_id
+	JOIN core.types ct                ON ct.id = c.level_type_id
 	WHERE ct.code               = $3
 	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
 	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
@@ -58,24 +57,24 @@ WITH RECURSIVE course_chart AS (
 school_check AS (
 	SELECT 1
 	FROM course_chart cc
-	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_detail_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
 	WHERE ct_sch.code = $4
 	  AND c_school.entity_code = $2
 ),
 chain_up AS (
-	SELECT id, root_chart_detail_id, staff_id, 1 AS depth
+	SELECT id, root_chart_id, staff_id, 1 AS depth
 	FROM organization.charts
 	WHERE id = (SELECT id FROM course_chart) AND is_active = true
 
 	UNION ALL
 
-	SELECT c.id, c.root_chart_detail_id, c.staff_id, cu.depth + 1
+	SELECT c.id, c.root_chart_id, c.staff_id, cu.depth + 1
 	FROM organization.charts c
-	JOIN chain_up cu ON c.id = cu.root_chart_detail_id
+	JOIN chain_up cu ON c.id = cu.root_chart_id
 	WHERE c.is_active = true AND cu.depth < 20
 ),
 requester_staff AS (
@@ -92,9 +91,9 @@ SELECT
 	i.extra,
 	i.created_at                                    AS "ifcCreatedAt",
 	ap.code                                         AS "academicPeriodCode",
-	c_program.level_title                           AS "programLabel",
-	c_area.level_title                              AS "areaLabel",
-	c_sub.level_title                               AS "subareaLabel",
+	c_program.title                           AS "programLabel",
+	c_area.title                              AS "areaLabel",
+	c_sub.title                               AS "subareaLabel",
 	ac.code                                         AS "courseCode",
 	ac.name                                         AS "courseName",
 	ac.learning_outcome                             AS "courseLearningOutcome",
@@ -116,9 +115,9 @@ FROM evidence.ifcs i
 JOIN academic.academic_periods ap ON ap.id = i.academic_period_id
 JOIN academic.courses          ac ON ac.id = i.course_id
 JOIN course_chart c_course        ON true
-JOIN organization.charts c_sub    ON c_sub.id     = c_course.root_chart_detail_id
-JOIN organization.charts c_area   ON c_area.id    = c_sub.root_chart_detail_id
-JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+JOIN organization.charts c_sub    ON c_sub.id     = c_course.root_chart_id
+JOIN organization.charts c_area   ON c_area.id    = c_sub.root_chart_id
+JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
 LEFT JOIN organization.staff   coord_st   ON coord_st.id   = c_course.staff_id
 LEFT JOIN organization.users   coord_u    ON coord_u.id    = coord_st.user_id
 LEFT JOIN academic.professors  coord_prof ON coord_prof.staff_id = coord_st.id
@@ -250,8 +249,7 @@ export const TRANSITION_CONTEXT_SQL = `
 WITH course_chart AS (
 	SELECT c.id AS course_chart_id, c.staff_id
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct                ON ct.id = cl.level_type_id
+	JOIN core.types ct                ON ct.id = c.level_type_id
 	WHERE ct.code               = $4
 	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
 	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
@@ -261,8 +259,7 @@ WITH course_chart AS (
 school_check AS (
 	SELECT 1
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct                ON ct.id = cl.level_type_id
+	JOIN core.types ct                ON ct.id = c.level_type_id
 	WHERE ct.code               = $4
 	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
 	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
@@ -270,11 +267,11 @@ school_check AS (
 	  AND EXISTS (
 			SELECT 1
 			FROM organization.charts c_sub
-			JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-			JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-			JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+			JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+			JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+			JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 			JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
-			WHERE c_sub.id           = c.root_chart_detail_id
+			WHERE c_sub.id           = c.root_chart_id
 			  AND ct_sch.code        = $5
 			  AND c_school.entity_code = $2
 	  )
@@ -322,8 +319,7 @@ export const PREFILL_HEADER_SQL = `
 WITH course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct                ON ct.id = cl.level_type_id
+	JOIN core.types ct                ON ct.id = c.level_type_id
 	WHERE c.id                  = $1
 	  AND ct.code               = $4
 	  AND c.academic_period_id  = $2
@@ -333,18 +329,18 @@ WITH course_chart AS (
 school_check AS (
 	SELECT 1
 	FROM course_chart cc
-	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_detail_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
 	WHERE ct_sch.code = $5
 	  AND c_school.entity_code = $3
 )
 SELECT
 	ap.code                                         AS "academicPeriodCode",
-	c_area.level_title                              AS "areaLabel",
-	c_sub.level_title                               AS "subareaLabel",
+	c_area.title                              AS "areaLabel",
+	c_sub.title                               AS "subareaLabel",
 	ac.id::int                                      AS "courseId",
 	ac.name                                         AS "courseName",
 	ac.learning_outcome                             AS "courseLearningOutcome",
@@ -354,8 +350,8 @@ SELECT
 FROM course_chart c_course
 JOIN academic.academic_periods ap   ON ap.id = c_course.academic_period_id
 JOIN academic.courses          ac   ON ac.id = c_course.entity_code
-JOIN organization.charts c_sub      ON c_sub.id  = c_course.root_chart_detail_id
-JOIN organization.charts c_area     ON c_area.id = c_sub.root_chart_detail_id
+JOIN organization.charts c_sub      ON c_sub.id  = c_course.root_chart_id
+JOIN organization.charts c_area     ON c_area.id = c_sub.root_chart_id
 LEFT JOIN organization.staff   coord_st   ON coord_st.id   = c_course.staff_id
 LEFT JOIN organization.users   coord_u    ON coord_u.id    = coord_st.user_id
 LEFT JOIN academic.professors  coord_prof ON coord_prof.staff_id = coord_st.id
@@ -366,8 +362,7 @@ export const CHART_RESOLUTION_SQL = `
 WITH course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct                ON ct.id = cl.level_type_id
+	JOIN core.types ct                ON ct.id = c.level_type_id
 	WHERE c.id                  = $1
 	  AND ct.code               = $4
 	  AND c.academic_period_id  = $2
@@ -377,10 +372,10 @@ WITH course_chart AS (
 school_check AS (
 	SELECT 1
 	FROM course_chart cc
-	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_detail_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
 	WHERE ct_sch.code = $5
 	  AND c_school.entity_code = $3
@@ -391,9 +386,9 @@ SELECT
 	c_program.entity_code::int   AS "programId",
 	rs.id::int                    AS "requesterStaffId"
 FROM course_chart c_course
-JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
-JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
+JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
 LEFT JOIN organization.staff rs    ON rs.user_id = $6
 WHERE EXISTS (SELECT 1 FROM school_check)
 `;
@@ -408,11 +403,11 @@ WITH school_check AS (
 		  AND NOT EXISTS (
 				SELECT 1
 				FROM organization.charts c_sub
-				JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-				JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-				JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+				JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+				JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+				JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 				JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
-				WHERE c_sub.id            = c0.root_chart_detail_id
+				WHERE c_sub.id            = c0.root_chart_id
 				  AND ct_sch.code         = $3
 				  AND c_school.entity_code = $2
 		  )
@@ -421,9 +416,9 @@ WITH school_check AS (
 target_programs AS (
 	SELECT DISTINCT p.code AS code
 	FROM organization.charts c
-	JOIN organization.charts c_sub     ON c_sub.id     = c.root_chart_detail_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+	JOIN organization.charts c_sub     ON c_sub.id     = c.root_chart_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
 	JOIN academic.programs p           ON p.id         = c_program.entity_code
 	WHERE c.id = ANY($1::int[])
 	  AND EXISTS (SELECT 1 FROM school_check)
@@ -443,37 +438,36 @@ WITH school_check AS (
 		  AND NOT EXISTS (
 				SELECT 1
 				FROM organization.charts c_sub
-				JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-				JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-				JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+				JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+				JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+				JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 				JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
-				WHERE c_sub.id            = c0.root_chart_detail_id
+				WHERE c_sub.id            = c0.root_chart_id
 				  AND ct_sch.code         = $5
 				  AND c_school.entity_code = $3
 		  )
 	)
 ),
 target_charts AS (
-	SELECT c.id, c.entity_code AS course_id, c.root_chart_detail_id, c.staff_id, c.level_title
+	SELECT c.id, c.entity_code AS course_id, c.root_chart_id, c.staff_id, c.title
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct                ON ct.id = cl.level_type_id
+	JOIN core.types ct                ON ct.id = c.level_type_id
 	WHERE c.id        = ANY($1::int[])
 	  AND ct.code     = $4
 	  AND c.is_active = true
 )
 SELECT
-	tc.level_title->>$6                                     AS "courseName",
-	c_area.level_title->>$6                                 AS "areaLabel",
-	c_program.level_title->>$6                              AS "programLabel",
+	tc.title->>$6                                     AS "courseName",
+	c_area.title->>$6                                 AS "areaLabel",
+	c_program.title->>$6                              AS "programLabel",
 	coord_u.first_name || ' ' || coord_u.last_name          AS "coordinatorName",
 	coord_u.email                                           AS "coordinatorEmail",
 	coord_prof.code                                         AS "coordinatorCode",
 	ifc_st.code                                             AS "statusCode"
 FROM target_charts tc
-JOIN organization.charts c_sub      ON c_sub.id     = tc.root_chart_detail_id
-JOIN organization.charts c_area     ON c_area.id    = c_sub.root_chart_detail_id
-JOIN organization.charts c_program  ON c_program.id = c_area.root_chart_detail_id
+JOIN organization.charts c_sub      ON c_sub.id     = tc.root_chart_id
+JOIN organization.charts c_area     ON c_area.id    = c_sub.root_chart_id
+JOIN organization.charts c_program  ON c_program.id = c_area.root_chart_id
 LEFT JOIN organization.staff coord_st  ON coord_st.id = tc.staff_id
 LEFT JOIN organization.users coord_u   ON coord_u.id  = coord_st.user_id
 LEFT JOIN academic.professors coord_prof ON coord_prof.staff_id = coord_st.id
@@ -489,17 +483,16 @@ LEFT JOIN LATERAL (
 ) latest_status ON true
 LEFT JOIN core.types ifc_st ON ifc_st.id = latest_status.status_type_id
 WHERE EXISTS (SELECT 1 FROM school_check)
-ORDER BY c_program.level_title->>$6 ASC, c_area.level_title->>$6 ASC, tc.level_title->>$6 ASC
+ORDER BY c_program.title->>$6 ASC, c_area.title->>$6 ASC, tc.title->>$6 ASC
 `;
 
 export const PROGRAM_BY_COURSE_PERIOD_SQL = `
 SELECT c_program.entity_code::int AS "programId"
 FROM organization.charts c_course
-JOIN organization.chart_levels cl  ON cl.id = c_course.chart_level_id
-JOIN core.types ct                 ON ct.id = cl.level_type_id
-JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
-JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
+JOIN core.types ct                 ON ct.id = c_course.level_type_id
+JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
+JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
 WHERE c_course.entity_code        = $1
   AND c_course.academic_period_id = $2
   AND ct.code                     = $3

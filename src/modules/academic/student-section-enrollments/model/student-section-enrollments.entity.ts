@@ -14,6 +14,9 @@ export class StudentSectionEnrollmentEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	courseSectionId: number;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => EnrolledStudentEntity)

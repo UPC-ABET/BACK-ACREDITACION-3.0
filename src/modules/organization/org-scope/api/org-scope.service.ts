@@ -53,8 +53,7 @@ WITH RECURSIVE
 school_root AS (
 	SELECT c.id
 	FROM organization.charts c
-	JOIN organization.chart_levels cl ON cl.id = c.chart_level_id
-	JOIN core.types ct ON ct.id = cl.level_type_id
+	JOIN core.types ct ON ct.id = c.level_type_id
 	WHERE ct.code              = $4
 	  AND c.entity_code        = $2
 	  AND c.academic_period_id = $3
@@ -64,7 +63,7 @@ school_root AS (
 school_subtree AS (
 	SELECT c.id, 0 AS depth FROM organization.charts c JOIN school_root sr ON c.id = sr.id
 	UNION ALL
-	SELECT c.id, st.depth + 1 FROM organization.charts c JOIN school_subtree st ON c.root_chart_detail_id = st.id WHERE st.depth < 20
+	SELECT c.id, st.depth + 1 FROM organization.charts c JOIN school_subtree st ON c.root_chart_id = st.id WHERE st.depth < 20
 ),
 user_anchors AS (
 	SELECT c.id
@@ -82,38 +81,37 @@ anchors AS (
 	WHERE NOT EXISTS (SELECT 1 FROM user_anchors)
 ),
 ancestors AS (
-	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title, 0 AS depth
+	SELECT c.id, c.root_chart_id, c.level_type_id, c.title, 0 AS depth
 	FROM organization.charts c
 	JOIN anchors a ON c.id = a.id
 	UNION ALL
-	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title, anc.depth + 1
+	SELECT c.id, c.root_chart_id, c.level_type_id, c.title, anc.depth + 1
 	FROM organization.charts c
-	JOIN ancestors anc ON c.id = anc.root_chart_detail_id
+	JOIN ancestors anc ON c.id = anc.root_chart_id
 	WHERE anc.depth < 20
 ),
 descendants AS (
-	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title, 0 AS depth
+	SELECT c.id, c.root_chart_id, c.level_type_id, c.title, 0 AS depth
 	FROM organization.charts c
 	JOIN anchors a ON c.id = a.id
 	UNION ALL
-	SELECT c.id, c.root_chart_detail_id, c.chart_level_id, c.level_title, d.depth + 1
+	SELECT c.id, c.root_chart_id, c.level_type_id, c.title, d.depth + 1
 	FROM organization.charts c
-	JOIN descendants d ON c.root_chart_detail_id = d.id
+	JOIN descendants d ON c.root_chart_id = d.id
 	WHERE d.depth < 20
 ),
 scope AS (
-	SELECT DISTINCT id, root_chart_detail_id, chart_level_id, level_title
+	SELECT DISTINCT id, root_chart_id, level_type_id, title
 	FROM (SELECT * FROM ancestors UNION SELECT * FROM descendants) combined
 )
 SELECT
 	s.id::int                                           AS "id",
-	s.root_chart_detail_id::int                         AS "parentId",
-	cl.level                                            AS "levelNum",
+	s.root_chart_id::int                         AS "parentId",
+	(ct.extra->>'level')::int                           AS "levelNum",
 	ct.code                                             AS "typeCode",
-	s.level_title                                       AS "label",
+	s.title                                       AS "label",
 	EXISTS(SELECT 1 FROM anchors a WHERE a.id = s.id)   AS "isAnchor"
 FROM scope s
-JOIN organization.chart_levels cl ON s.chart_level_id = cl.id
-JOIN core.types ct               ON ct.id = cl.level_type_id
+JOIN core.types ct               ON ct.id = s.level_type_id
 ORDER BY "levelNum" ASC, s.id ASC
 `;

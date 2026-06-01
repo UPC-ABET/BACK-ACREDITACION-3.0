@@ -68,7 +68,7 @@ export class ProjectConfigService {
 				SELECT DISTINCT c_child.entity_code AS "programId"
 				FROM organization.charts c_school
 				INNER JOIN organization.charts c_child 
-				ON c_child.root_chart_detail_id = c_school.id
+				ON c_child.root_chart_id = c_school.id
 				WHERE c_school.entity_type_id = (SELECT id FROM core.types WHERE code = $1)
 				AND c_school.entity_code = $2
 				AND c_child.entity_type_id = (SELECT id FROM core.types WHERE code = $3)

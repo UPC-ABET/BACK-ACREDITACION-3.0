@@ -205,10 +205,10 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 			   ON  c_course.entity_code        = f.course_id
 			   AND c_course.academic_period_id = f.academic_period_id
 			   AND c_course.is_active          = true
-			 JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
-			 JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-			 JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-			 JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+			 JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
+			 JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+			 JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+			 JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 			 JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
 			 WHERE f.id              = $1
 			   AND ct_sch.code       = $2
@@ -245,11 +245,11 @@ school_check AS (
 		  AND NOT EXISTS (
 			  SELECT 1
 			  FROM organization.charts c_sub
-			  JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-			  JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-			  JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+			  JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+			  JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+			  JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 			  JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
-			  WHERE c_sub.id            = c0.root_chart_detail_id
+			  WHERE c_sub.id            = c0.root_chart_id
 			    AND ct_sch.code         = $5
 			    AND c_school.entity_code = $3
 		  )
@@ -291,10 +291,10 @@ WITH school_check AS (
 	  ON  c_course.entity_code        = f.course_id
 	  AND c_course.academic_period_id = f.academic_period_id
 	  AND c_course.is_active          = true
-	JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_detail_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_detail_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_detail_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_detail_id
+	JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
+	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
 	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
 	WHERE f.id = $1
 	  AND ct_sch.code = $4

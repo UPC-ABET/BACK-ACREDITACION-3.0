@@ -182,15 +182,15 @@ export class IfcValidation {
 		}
 		const rows = await runner.query(
 			`WITH RECURSIVE chain_up AS (
-				SELECT id, root_chart_detail_id, staff_id
+				SELECT id, root_chart_id, staff_id
 				FROM organization.charts
 				WHERE id = $1 AND is_active = true
 
 				UNION ALL
 
-				SELECT c.id, c.root_chart_detail_id, c.staff_id
+				SELECT c.id, c.root_chart_id, c.staff_id
 				FROM organization.charts c
-				JOIN chain_up cu ON c.id = cu.root_chart_detail_id
+				JOIN chain_up cu ON c.id = cu.root_chart_id
 				WHERE c.is_active = true
 			)
 			SELECT 1 FROM chain_up WHERE staff_id = $2 LIMIT 1`,

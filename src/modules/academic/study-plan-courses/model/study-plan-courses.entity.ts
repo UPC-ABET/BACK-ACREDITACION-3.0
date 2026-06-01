@@ -21,6 +21,9 @@ export class StudyPlanCourseEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	levelTypeId: number;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanAcademicPeriodEntity)

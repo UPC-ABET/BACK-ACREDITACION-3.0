@@ -35,13 +35,6 @@ export const ENTITY_CONFIG: Record<
 		plural: 'campuses',
 	},
 
-	chartLevel: {
-		entity: 'ChartLevelEntity',
-		path: 'organization/chart-levels',
-		singular: 'chartLevel',
-		plural: 'chartLevels',
-	},
-
 	accreditor: {
 		entity: 'AccreditorEntity',
 		path: 'accreditation/accreditors',

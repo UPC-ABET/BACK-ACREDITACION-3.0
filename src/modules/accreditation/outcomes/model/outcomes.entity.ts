@@ -20,6 +20,9 @@ export class OutcomeEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	outcomeDescription: I18nText;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => ProgramCommissionEntity)

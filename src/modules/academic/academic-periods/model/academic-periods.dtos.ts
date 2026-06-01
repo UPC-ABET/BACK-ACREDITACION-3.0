@@ -1,6 +1,13 @@
 import { IsBoolean, IsDate, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+export interface OpenPeriodInput {
+	code: string;
+	startDate: string | Date;
+	endDate: string | Date;
+	modalityTypeId: number;
+}
+
 export class CreateAcademicPeriodDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })
