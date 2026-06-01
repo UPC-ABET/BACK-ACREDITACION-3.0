@@ -62,7 +62,13 @@ export class ChartsUploadService {
 			.map((r) => ({ rowNumber: r.row_number as number, errorCode: r.error_code as string }));
 
 		if (errors.length > 0) {
-			const excel = await this.annotateErrors(workbook, errors, languages.length, labels.errorColumn, messages);
+			const excel = await this.annotateErrors(
+				workbook,
+				errors,
+				languages.length,
+				labels.errorColumn,
+				messages,
+			);
 			return {
 				success: false,
 				uploadLogId: null,
@@ -177,12 +183,25 @@ export class ChartsUploadService {
 			const entityTypeCode = this.cell(row, col++);
 			const entityCode = this.cell(row, col);
 
-			rows.push({ rowNumber, code, parentCode, levelTypeCode, title, email, entityTypeCode, entityCode });
+			rows.push({
+				rowNumber,
+				code,
+				parentCode,
+				levelTypeCode,
+				title,
+				email,
+				entityTypeCode,
+				entityCode,
+			});
 		});
 		return rows;
 	}
 
-	private i18nCells(row: ExcelJS.Row, startCol: number, languages: string[]): Record<string, string> {
+	private i18nCells(
+		row: ExcelJS.Row,
+		startCol: number,
+		languages: string[],
+	): Record<string, string> {
 		const result: Record<string, string> = {};
 		languages.forEach((lang, i) => {
 			result[lang] = this.cell(row, startCol + i);
@@ -203,7 +222,8 @@ export class ChartsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		const errorColumn = SINGLE_COLUMNS_BEFORE_TITLE + languageCount + SINGLE_COLUMNS_AFTER_TITLE + 1;
+		const errorColumn =
+			SINGLE_COLUMNS_BEFORE_TITLE + languageCount + SINGLE_COLUMNS_AFTER_TITLE + 1;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };

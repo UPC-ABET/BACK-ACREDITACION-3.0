@@ -41,7 +41,11 @@ export class ProgramCommissionService extends BaseService<ProgramCommissionRepos
 	}
 
 	async unassociate(id: number) {
-		await ProgramCommissionValidation.validateUnassociate(this.repository, this.outcomeRepository, id);
+		await ProgramCommissionValidation.validateUnassociate(
+			this.repository,
+			this.outcomeRepository,
+			id,
+		);
 		return await super.delete(id);
 	}
 

@@ -9,7 +9,11 @@ export const periodsRoutes = {
 				route: ':id/activate',
 				summary: 'Activar período (desactiva el activo previo de la misma modalidad)',
 			},
-			list: { method: 'GET', route: '', summary: 'Listar períodos académicos (activos e inactivos)' },
+			list: {
+				method: 'GET',
+				route: '',
+				summary: 'Listar períodos académicos (activos e inactivos)',
+			},
 			find: { method: 'GET', route: ':id', summary: 'Obtener período académico por id' },
 		},
 	},

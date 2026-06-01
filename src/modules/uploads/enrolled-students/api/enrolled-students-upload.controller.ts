@@ -18,7 +18,10 @@ import { parseSuccessResponse } from 'src/libs/global.functions';
 
 import { EnrolledStudentsUploadService } from './enrolled-students-upload.service';
 import { enrolledStudentsUploadRoutes } from '../config/enrolled-students-upload.routes';
-import { EnrolledStudentsUploadDto, RollbackUploadDto } from '../model/enrolled-students-upload.dtos';
+import {
+	EnrolledStudentsUploadDto,
+	RollbackUploadDto,
+} from '../model/enrolled-students-upload.dtos';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
 const routes = enrolledStudentsUploadRoutes.enrolled_students_upload;

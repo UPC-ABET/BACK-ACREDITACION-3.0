@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
-import { StudentSectionRow, UploadResult, UploadRowError } from '../model/student-sections-upload.types';
+import {
+	StudentSectionRow,
+	UploadResult,
+	UploadRowError,
+} from '../model/student-sections-upload.types';
 import type { StudentSectionsUploadDto } from '../model/student-sections-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,

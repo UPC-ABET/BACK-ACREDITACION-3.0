@@ -9,7 +9,10 @@ jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService
 import * as ExcelJS from 'exceljs';
 import { OutcomesUploadService } from './outcomes-upload.service';
 
-const uploadLogServiceStub: any = { assertRollbackable: jest.fn(), assertAcademicPeriodExists: jest.fn() };
+const uploadLogServiceStub: any = {
+	assertRollbackable: jest.fn(),
+	assertAcademicPeriodExists: jest.fn(),
+};
 
 const HEADER = ['Outcome', 'Name (ES)', 'Name (EN)', 'Program', 'Commission'];
 

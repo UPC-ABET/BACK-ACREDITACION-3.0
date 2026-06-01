@@ -7,11 +7,19 @@ export class AssociateProgramCommissionDto {
 	programId: number;
 
 	@IsInt()
-	@ApiProperty({ example: 12, required: true, description: 'accreditation.commissions.id of the commission' })
+	@ApiProperty({
+		example: 12,
+		required: true,
+		description: 'accreditation.commissions.id of the commission',
+	})
 	commissionId: number;
 
 	@IsInt()
-	@ApiProperty({ example: 3, required: true, description: 'academic.academic_periods.id of the period' })
+	@ApiProperty({
+		example: 3,
+		required: true,
+		description: 'academic.academic_periods.id of the period',
+	})
 	academicPeriodId: number;
 
 	@IsInt()
@@ -21,6 +29,10 @@ export class AssociateProgramCommissionDto {
 
 export class ListProgramCommissionQueryDto {
 	@IsInt()
-	@ApiProperty({ example: 3, required: true, description: 'academic.academic_periods.id to list associations for' })
+	@ApiProperty({
+		example: 3,
+		required: true,
+		description: 'academic.academic_periods.id to list associations for',
+	})
 	academicPeriodId: number;
 }

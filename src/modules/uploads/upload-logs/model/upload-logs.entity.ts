@@ -1,6 +1,11 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn, TextMediumColumn, DateColumn } from 'src/commons/configs/db.configs';
+import {
+	IntegerFKIDColumn,
+	IntegerColumn,
+	TextMediumColumn,
+	DateColumn,
+} from 'src/commons/configs/db.configs';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';

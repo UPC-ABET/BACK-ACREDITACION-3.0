@@ -1,7 +1,11 @@
 jest.mock('@nestjs/common', () => ({ Injectable: () => () => undefined }), { virtual: true });
-jest.mock('../core/enrolled-students-upload.repository', () => ({ EnrolledStudentsUploadRepository: class {} }), {
-	virtual: true,
-});
+jest.mock(
+	'../core/enrolled-students-upload.repository',
+	() => ({ EnrolledStudentsUploadRepository: class {} }),
+	{
+		virtual: true,
+	},
+);
 jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), {
 	virtual: true,
 });
@@ -9,7 +13,10 @@ jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService
 import * as ExcelJS from 'exceljs';
 import { EnrolledStudentsUploadService } from './enrolled-students-upload.service';
 
-const uploadLogServiceStub: any = { assertRollbackable: jest.fn(), assertAcademicPeriodExists: jest.fn() };
+const uploadLogServiceStub: any = {
+	assertRollbackable: jest.fn(),
+	assertAcademicPeriodExists: jest.fn(),
+};
 
 const HEADER = ['Student', 'Email', 'Program', 'Plan', 'Campus', 'Modality'];
 
@@ -73,7 +80,9 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 		]);
 		const service = new EnrolledStudentsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['STU-001', 'ghost@uni.edu', 'INF', 'MALLA-2024', 'CAMP-1', 'TG103-T001']]);
+		const buffer = await makeXlsx([
+			['STU-001', 'ghost@uni.edu', 'INF', 'MALLA-2024', 'CAMP-1', 'TG103-T001'],
+		]);
 		const result = await service.processUpload(buffer, 'enrolled.xlsx', 1, {
 			academicPeriodId: 1,
 			lang: 'es',

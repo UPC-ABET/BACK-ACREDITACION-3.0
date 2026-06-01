@@ -5,19 +5,27 @@ import { ApiProperty } from '@nestjs/swagger';
 export type { UploadResult } from './study-plans-upload.types';
 
 export class StudyPlansUploadDto {
-	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : Number(value)))
+	@Transform(({ value }) =>
+		value === undefined || value === null || value === '' ? undefined : Number(value),
+	)
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true, description: 'Target academic period of the upload' })
 	academicPeriodId: number;
 
 	@IsOptional()
 	@IsString()
-	@ApiProperty({ example: 'es', required: false, description: 'Language for the error report (es | en)' })
+	@ApiProperty({
+		example: 'es',
+		required: false,
+		description: 'Language for the error report (es | en)',
+	})
 	lang?: string;
 }
 
 export class RollbackUploadDto {
-	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : Number(value)))
+	@Transform(({ value }) =>
+		value === undefined || value === null || value === '' ? undefined : Number(value),
+	)
 	@IsNumber()
 	@ApiProperty({ example: 42, required: true, description: 'audit.upload_logs id to roll back' })
 	uploadLogId: number;

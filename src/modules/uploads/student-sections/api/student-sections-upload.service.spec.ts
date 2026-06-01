@@ -1,7 +1,11 @@
 jest.mock('@nestjs/common', () => ({ Injectable: () => () => undefined }), { virtual: true });
-jest.mock('../core/student-sections-upload.repository', () => ({ StudentSectionsUploadRepository: class {} }), {
-	virtual: true,
-});
+jest.mock(
+	'../core/student-sections-upload.repository',
+	() => ({ StudentSectionsUploadRepository: class {} }),
+	{
+		virtual: true,
+	},
+);
 jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), {
 	virtual: true,
 });
@@ -9,7 +13,10 @@ jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService
 import * as ExcelJS from 'exceljs';
 import { StudentSectionsUploadService } from './student-sections-upload.service';
 
-const uploadLogServiceStub: any = { assertRollbackable: jest.fn(), assertAcademicPeriodExists: jest.fn() };
+const uploadLogServiceStub: any = {
+	assertRollbackable: jest.fn(),
+	assertAcademicPeriodExists: jest.fn(),
+};
 
 const HEADER = ['Section', 'Student'];
 

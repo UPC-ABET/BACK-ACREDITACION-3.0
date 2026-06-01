@@ -4,7 +4,8 @@ import { CreatePeriodDto } from '../../model/periods.dtos';
 
 const cfg = periodsRoutes.periods;
 
-export const SwaggerPeriodsController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerPeriodsController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
 export const SwaggerPeriodsCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreatePeriodDto });

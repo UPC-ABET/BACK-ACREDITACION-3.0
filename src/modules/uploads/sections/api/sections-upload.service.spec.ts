@@ -9,7 +9,10 @@ jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService
 import * as ExcelJS from 'exceljs';
 import { SectionsUploadService } from './sections-upload.service';
 
-const uploadLogServiceStub: any = { assertRollbackable: jest.fn(), assertAcademicPeriodExists: jest.fn() };
+const uploadLogServiceStub: any = {
+	assertRollbackable: jest.fn(),
+	assertAcademicPeriodExists: jest.fn(),
+};
 
 const HEADER = ['Plan', 'Course', 'Campus', 'Professor', 'Modality', 'Section'];
 
@@ -42,7 +45,9 @@ describe('SectionsUploadService — positional parsing', () => {
 		]);
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG204-T001', 'SEC-A']]);
+		const buffer = await makeXlsx([
+			['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG204-T001', 'SEC-A'],
+		]);
 		const result = await service.processUpload(buffer, 'sections.xlsx', 7, {
 			academicPeriodId: 1,
 		} as any);
@@ -71,7 +76,9 @@ describe('SectionsUploadService — positional parsing', () => {
 		]);
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG204-T001', 'SEC-A']]);
+		const buffer = await makeXlsx([
+			['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG204-T001', 'SEC-A'],
+		]);
 		const result = await service.processUpload(buffer, 'sections.xlsx', 1, {
 			academicPeriodId: 1,
 			lang: 'es',

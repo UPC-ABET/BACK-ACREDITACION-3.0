@@ -1,4 +1,6 @@
-jest.mock('../core/upload-logs.repository', () => ({ UploadLogRepository: class {} }), { virtual: true });
+jest.mock('../core/upload-logs.repository', () => ({ UploadLogRepository: class {} }), {
+	virtual: true,
+});
 jest.mock('../model/upload-logs.entity', () => ({ UploadLogEntity: class {} }), { virtual: true });
 
 import { HttpException, HttpStatus } from '@nestjs/common';

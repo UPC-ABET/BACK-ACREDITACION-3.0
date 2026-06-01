@@ -88,7 +88,12 @@ export class ArticulationUploadService {
 		const workbook = new ExcelJS.Workbook();
 
 		const dataSheet = workbook.addWorksheet('Template');
-		const headers = [labels.outcomeCode, labels.studyPlanCode, labels.courseCode, labels.outcomeTypeCode];
+		const headers = [
+			labels.outcomeCode,
+			labels.studyPlanCode,
+			labels.courseCode,
+			labels.outcomeTypeCode,
+		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
 

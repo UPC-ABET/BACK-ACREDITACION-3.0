@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
-import { StudyPlanRow, UploadResult, UploadRowError, parseElective } from '../model/study-plans-upload.types';
+import {
+	StudyPlanRow,
+	UploadResult,
+	UploadRowError,
+	parseElective,
+} from '../model/study-plans-upload.types';
 import type { StudyPlansUploadDto } from '../model/study-plans-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
@@ -178,7 +183,11 @@ export class StudyPlansUploadService {
 		return rows;
 	}
 
-	private i18nCells(row: ExcelJS.Row, startCol: number, languages: string[]): Record<string, string> {
+	private i18nCells(
+		row: ExcelJS.Row,
+		startCol: number,
+		languages: string[],
+	): Record<string, string> {
 		const result: Record<string, string> = {};
 		languages.forEach((lang, i) => {
 			result[lang] = this.cell(row, startCol + i);

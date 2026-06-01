@@ -49,7 +49,13 @@ export class StaffUploadService {
 			.map((r) => ({ rowNumber: r.row_number as number, errorCode: r.error_code as string }));
 
 		if (errors.length > 0) {
-			const excel = await this.annotateErrors(workbook, errors, languages.length, labels.errorColumn, messages);
+			const excel = await this.annotateErrors(
+				workbook,
+				errors,
+				languages.length,
+				labels.errorColumn,
+				messages,
+			);
 			return {
 				success: false,
 				uploadLogId: null,
@@ -152,7 +158,11 @@ export class StaffUploadService {
 		return rows;
 	}
 
-	private i18nCells(row: ExcelJS.Row, startCol: number, languages: string[]): Record<string, string> {
+	private i18nCells(
+		row: ExcelJS.Row,
+		startCol: number,
+		languages: string[],
+	): Record<string, string> {
 		const result: Record<string, string> = {};
 		languages.forEach((lang, i) => {
 			result[lang] = this.cell(row, startCol + i);
