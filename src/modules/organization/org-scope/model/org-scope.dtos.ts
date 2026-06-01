@@ -9,13 +9,6 @@ export class GetScopeDto {
 	periodId: number;
 }
 
-export class GetUserSchoolsDto {
-	@IsInt()
-	@IsPositive()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period ID' })
-	periodId: number;
-}
-
 // %% OTHER DTOS — Response documentation classes (Swagger only)
 export class ScopeOptionDto {
 	@ApiProperty({ example: 1 })

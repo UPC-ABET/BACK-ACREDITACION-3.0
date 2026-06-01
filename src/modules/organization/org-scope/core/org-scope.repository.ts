@@ -34,10 +34,9 @@ export class OrgScopeRepository {
 		]);
 	}
 
-	async findUserSchools(userId: number, periodId: number): Promise<UserSchoolRow[]> {
+	async findUserSchools(userId: number): Promise<UserSchoolRow[]> {
 		return await this.dataSource.query(USER_SCHOOLS_SQL, [
 			userId,
-			periodId,
 			TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
 		]);
 	}
@@ -45,6 +44,20 @@ export class OrgScopeRepository {
 
 const USER_SCHOOLS_SQL = `
 WITH RECURSIVE
+latest_user_period AS (
+	SELECT c.academic_period_id
+	FROM organization.charts c
+	JOIN organization.staff s
+		ON s.id = c.staff_id
+	JOIN academic.academic_periods ap
+		ON ap.id = c.academic_period_id
+	WHERE s.user_id   = $1
+	  AND s.is_active = true
+	  AND c.is_active = true
+	  AND ap.is_active = true
+	ORDER BY ap.start_date DESC, ap.end_date DESC, ap.id DESC
+	LIMIT 1
+),
 user_anchors AS (
 	SELECT DISTINCT
 		c.id,
@@ -55,9 +68,10 @@ user_anchors AS (
 		0 AS depth
 	FROM organization.charts c
 	JOIN organization.staff s ON s.id = c.staff_id
+	JOIN latest_user_period lup
+		ON lup.academic_period_id = c.academic_period_id
 	WHERE s.user_id            = $1
 	  AND s.is_active          = true
-	  AND c.academic_period_id = $2
 	  AND c.is_active          = true
 ),
 ancestors AS (
@@ -79,8 +93,9 @@ ancestors AS (
 		anc.depth + 1
 	FROM organization.charts parent
 	JOIN ancestors anc ON parent.id = anc.root_chart_id
-	WHERE parent.academic_period_id = $2
-	  AND parent.is_active          = true
+	JOIN latest_user_period lup
+		ON lup.academic_period_id = parent.academic_period_id
+	WHERE parent.is_active          = true
 	  AND anc.depth                 < 20
 	  AND NOT parent.id = ANY(anc.path)
 ),
@@ -103,8 +118,9 @@ descendants AS (
 		d.depth + 1
 	FROM organization.charts child
 	JOIN descendants d ON child.root_chart_id = d.id
-	WHERE child.academic_period_id = $2
-	  AND child.is_active          = true
+	JOIN latest_user_period lup
+		ON lup.academic_period_id = child.academic_period_id
+	WHERE child.is_active          = true
 	  AND d.depth                  < 20
 	  AND NOT child.id = ANY(d.path)
 ),
@@ -130,7 +146,7 @@ JOIN organization.schools sc
 	ON sc.id = s.entity_code
 LEFT JOIN organization.faculties f
 	ON f.id = sc.faculty_id
-WHERE level_type.code = $3
+WHERE level_type.code = $2
   AND s.entity_code IS NOT NULL
   AND sc.is_active    = true
 ORDER BY sc.code ASC

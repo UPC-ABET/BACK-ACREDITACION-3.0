@@ -143,9 +143,9 @@ describe('OrgScopeService', () => {
 		];
 		repository.findUserSchools.mockResolvedValueOnce(rows);
 
-		const result = await service.getUserSchools(3, 4);
+		const result = await service.getUserSchools(3);
 
 		expect(result).toBe(rows);
-		expect(repository.findUserSchools).toHaveBeenCalledWith(3, 4);
+		expect(repository.findUserSchools).toHaveBeenCalledWith(3);
 	});
 });

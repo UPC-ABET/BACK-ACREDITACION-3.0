@@ -171,10 +171,9 @@ describe('UserService - login', () => {
 					allowedRoles: authorizationProfile.allowedRoles,
 					permissions: authorizationProfile.permissions,
 				},
-				9,
 			);
 
-			expect(orgScopeService.getUserSchools).toHaveBeenCalledWith(baseUser.id, 9);
+			expect(orgScopeService.getUserSchools).toHaveBeenCalledWith(baseUser.id);
 			expect(result).toEqual({
 				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
 				activeRole: authorizationProfile.activeRole,

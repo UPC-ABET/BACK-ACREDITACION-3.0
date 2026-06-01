@@ -1,6 +1,6 @@
 import { Body, Req } from '@nestjs/common';
 import { OrgScopeService } from './org-scope.service';
-import { GetScopeDto, GetUserSchoolsDto } from '../model/org-scope.dtos';
+import { GetScopeDto } from '../model/org-scope.dtos';
 import {
 	SwaggerOrgScopeController,
 	SwaggerOrgScopeGetScope,
@@ -26,9 +26,9 @@ export class OrgScopeController {
 
 	@SwaggerOrgScopeGetUserSchools()
 	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
-	async getUserSchools(@Body() dto: GetUserSchoolsDto, @Req() req: any) {
+	async getUserSchools(@Req() req: any) {
 		const userId = req.user.userId;
-		const result = await this.service.getUserSchools(userId, dto.periodId);
+		const result = await this.service.getUserSchools(userId);
 		return parseSuccessResponse(result);
 	}
 }

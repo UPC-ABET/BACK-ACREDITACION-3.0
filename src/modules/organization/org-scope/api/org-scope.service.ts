@@ -37,7 +37,7 @@ export class OrgScopeService {
 		return { highestLevel, levels };
 	}
 
-	async getUserSchools(userId: number, periodId: number) {
-		return await this.orgScopeRepository.findUserSchools(userId, periodId);
+	async getUserSchools(userId: number) {
+		return await this.orgScopeRepository.findUserSchools(userId);
 	}
 }

@@ -56,13 +56,13 @@ describe('UserController', () => {
 		);
 	});
 
-	it('passes periodId to getMe', async () => {
+	it('returns getMe profile', async () => {
 		const profile = { user: { id: 8 }, userSchools: [] };
 		service.getMe.mockResolvedValueOnce(profile);
 
-		const response = await controller.getMe({ periodId: 3 }, { user: { userId: 8 } });
+		const response = await controller.getMe({ user: { userId: 8 } });
 
-		expect(service.getMe).toHaveBeenCalledWith({ userId: 8 }, 3);
+		expect(service.getMe).toHaveBeenCalledWith({ userId: 8 });
 		expect(response.data).toBe(profile);
 	});
 });

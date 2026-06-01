@@ -2,14 +2,12 @@
 import {
 	IsBoolean,
 	IsEmail,
-	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
 	Length,
 	MaxLength,
 	MinLength,
-	IsPositive,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -163,13 +161,6 @@ export class LoginUserByCredentialsDto {
 		required: true,
 	})
 	password: string;
-}
-
-export class GetMeDto {
-	@IsInt()
-	@IsPositive()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period ID' })
-	periodId: number;
 }
 
 export class ChangeRoleDto {
