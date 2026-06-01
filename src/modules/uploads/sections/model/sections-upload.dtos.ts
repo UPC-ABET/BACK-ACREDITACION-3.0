@@ -1,28 +1,24 @@
-import { IsNumber, IsOptional } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-// Re-export de los tipos puros (sin deps) para mantener compatibilidad de imports.
-export type { SectionRow, RowValidationResult, UploadResult } from './sections-upload.types';
-export { STUDY_TYPE_TO_MODALITY_CODE, VALID_STUDY_TYPES } from './sections-upload.types';
+export type { UploadResult } from './sections-upload.types';
 
-// Metadatos del request de carga (el archivo viaja como multipart; estos van en el body/query).
 export class SectionsUploadDto {
 	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : Number(value)))
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true, description: 'Periodo académico destino de la carga' })
-	academic_period_id: number;
+	@ApiProperty({ example: 1, required: true, description: 'Academic period the study_plan_course is matched against' })
+	academicPeriodId: number;
 
 	@IsOptional()
-	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : Number(value)))
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'Usuario que ejecuta la carga' })
-	user_id?: number;
+	@IsString()
+	@ApiProperty({ example: 'es', required: false, description: 'Language for the error report (es | en)' })
+	lang?: string;
 }
 
 export class RollbackUploadDto {
 	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : Number(value)))
 	@IsNumber()
-	@ApiProperty({ example: 42, required: true, description: 'id de audit.upload_logs a revertir' })
-	upload_log_id: number;
+	@ApiProperty({ example: 42, required: true, description: 'audit.upload_logs id to roll back' })
+	uploadLogId: number;
 }

@@ -80,7 +80,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "academic"."study_plan_courses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_academic_period_id" integer NOT NULL, "course_id" integer NOT NULL, "is_elective" boolean NOT NULL DEFAULT false, "level_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_study_plan_courses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."course_sections" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_course_id" integer NOT NULL, "campus_id" integer NOT NULL, "professor_id" integer NOT NULL, "section_code" character varying(50) NOT NULL, "schedule" jsonb DEFAULT '{}'::jsonb, "section_modality_type_id" integer NOT NULL, CONSTRAINT "UQ_course_sections_section_code" UNIQUE ("section_code"), CONSTRAINT "PK_course_sections" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."course_sections" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "study_plan_course_id" integer NOT NULL, "campus_id" integer NOT NULL, "professor_id" integer NOT NULL, "section_code" character varying(50) NOT NULL, "schedule" jsonb DEFAULT '{}'::jsonb, "section_modality_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_course_sections_section_code" UNIQUE ("section_code"), CONSTRAINT "PK_course_sections" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "program_id" integer NOT NULL, "graduation_modality_type_id" integer NOT NULL, CONSTRAINT "PK_students" PRIMARY KEY ("id"))`,
@@ -570,6 +570,9 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_outcome_mappings" ADD CONSTRAINT "FK_course_outcome_mappings_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -1698,9 +1701,235 @@ BEGIN
 END;
 $fn$;
 `);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_sections(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period is validated in the service (request-level HTTP error), not here.
+
+	-- intra-file duplicate section code
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE lower(trim(e->>'sectionCode')) IN (
+			SELECT lower(trim(d->>'sectionCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'sectionCode'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'sectionCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateCodeInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- per-row validation
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                      AS row_number,
+			NULLIF(trim(e->>'sectionCode'), '')         AS section_code,
+			NULLIF(trim(e->>'studyPlanCode'), '')       AS study_plan_code,
+			NULLIF(trim(e->>'courseCode'), '')          AS course_code,
+			NULLIF(trim(e->>'campusCode'), '')          AS campus_code,
+			NULLIF(trim(e->>'professorCode'), '')       AS professor_code,
+			NULLIF(trim(e->>'sectionModalityTypeCode'), '') AS modality_code
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.section_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'sectionCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.study_plan_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studyPlanCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.course_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'courseCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		-- the study_plan_course (plan + course + period) must exist
+		IF r.study_plan_code IS NOT NULL AND r.course_code IS NOT NULL AND NOT EXISTS (
+			SELECT 1
+			FROM academic.study_plan_courses spc
+			JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+			JOIN academic.courses c ON c.id = spc.course_id
+			WHERE spap.academic_period_id = p_academic_period_id
+			  AND sp.code = r.study_plan_code
+			  AND c.code = r.course_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studyPlanCourseNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.campus_code IS NULL OR NOT EXISTS (SELECT 1 FROM organization.campuses cam WHERE cam.code = r.campus_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'campusNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.professor_code IS NULL OR NOT EXISTS (SELECT 1 FROM academic.professors pr WHERE pr.code = r.professor_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'professorNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.modality_code IS NULL OR NOT EXISTS (
+			SELECT 1 FROM core.types t
+			JOIN core.type_groups g ON g.id = t.type_group_id
+			WHERE g.code = 'TG204' AND t.code = r.modality_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'sectionModalityInvalid'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T005'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	-- insert sections whose code does not exist yet (schedule left NULL per spec)
+	INSERT INTO academic.course_sections
+		(study_plan_course_id, campus_id, professor_id, section_code, schedule, section_modality_type_id, upload_log_id,
+		 extra, is_active, created_at, updated_at)
+	SELECT
+		spc.id, cam.id, pr.id, trim(e->>'sectionCode'), NULL, t.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
+	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
+	JOIN academic.study_plan_courses spc
+		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
+	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
+	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
+	JOIN core.type_groups g ON g.code = 'TG204'
+	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
+	WHERE NOT EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = trim(e->>'sectionCode'));
+
+	-- update sections whose code already existed (push prior values onto the extra.uploadUndo stack)
+	UPDATE academic.course_sections cs
+	SET study_plan_course_id = spc.id,
+		campus_id = cam.id,
+		professor_id = pr.id,
+		section_modality_type_id = t.id,
+		updated_at = NOW(),
+		extra = jsonb_set(COALESCE(cs.extra, '{}'::jsonb), '{uploadUndo}',
+			COALESCE(cs.extra->'uploadUndo', '[]'::jsonb) ||
+			jsonb_build_object('logId', v_log_id, 'studyPlanCourseId', cs.study_plan_course_id,
+				'campusId', cs.campus_id, 'professorId', cs.professor_id,
+				'sectionModalityTypeId', cs.section_modality_type_id))
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
+	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
+	JOIN academic.study_plan_courses spc
+		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
+	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
+	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
+	JOIN core.type_groups g ON g.code = 'TG204'
+	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
+	WHERE cs.section_code = trim(e->>'sectionCode')
+	  AND cs.upload_log_id IS DISTINCT FROM v_log_id;
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_sections(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- block if a section created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM academic.student_section_enrollments sse
+		JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+		WHERE cs.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM evidence.surveys sv
+		JOIN academic.course_sections cs ON cs.id = sv.course_section_id
+		WHERE cs.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedSectionRefs';
+	END IF;
+
+	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
+	IF EXISTS (
+		SELECT 1 FROM academic.course_sections cs
+		WHERE (cs.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
+		  AND (cs.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM academic.course_sections cs
+		WHERE cs.upload_log_id = p_upload_log_id
+		  AND jsonb_array_length(COALESCE(cs.extra->'uploadUndo', '[]'::jsonb)) > 0
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
+	END IF;
+
+	-- restore updated sections by popping this upload's (top) uploadUndo entry, then drop inserts
+	UPDATE academic.course_sections cs
+	SET study_plan_course_id = (cs.extra->'uploadUndo' -> -1 ->> 'studyPlanCourseId')::int,
+		campus_id = (cs.extra->'uploadUndo' -> -1 ->> 'campusId')::int,
+		professor_id = (cs.extra->'uploadUndo' -> -1 ->> 'professorId')::int,
+		section_modality_type_id = (cs.extra->'uploadUndo' -> -1 ->> 'sectionModalityTypeId')::int,
+		extra = CASE
+			WHEN jsonb_array_length(cs.extra->'uploadUndo') <= 1 THEN cs.extra - 'uploadUndo'
+			ELSE jsonb_set(cs.extra, '{uploadUndo}', (cs.extra->'uploadUndo') - (-1))
+		END,
+		updated_at = NOW()
+	WHERE (cs.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+
+	DELETE FROM academic.course_sections WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_sections(integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_sections(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_articulation(integer)`);
 		await queryRunner.query(
 			`DROP FUNCTION IF EXISTS audit.fn_upload_articulation(jsonb, integer, integer, text)`,
@@ -2040,6 +2269,9 @@ $fn$;
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."course_sections" DROP CONSTRAINT "FK_course_sections_upload_log_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_outcome_mappings" DROP CONSTRAINT "FK_course_outcome_mappings_upload_log_id"`,

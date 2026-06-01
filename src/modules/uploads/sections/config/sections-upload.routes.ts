@@ -1,10 +1,11 @@
 export const sectionsUploadRoutes = {
 	sections_upload: {
 		route: 'uploads/sections',
-		tag: 'Cargas — Secciones',
+		tag: 'Uploads — Sections',
 		operation: {
-			upload: { method: 'POST', route: '/upload', summary: 'Carga masiva de secciones desde Excel' },
-			rollback: { method: 'POST', route: '/rollback', summary: 'Revertir una carga de secciones por upload_log_id' },
+			template: { method: 'GET', route: '/template', summary: 'Download the sections Excel template' },
+			upload: { method: 'POST', route: '/upload', summary: 'Bulk upload course sections from Excel' },
+			rollback: { method: 'POST', route: '/rollback', summary: 'Roll back a sections upload by uploadLogId' },
 		},
 	},
 };

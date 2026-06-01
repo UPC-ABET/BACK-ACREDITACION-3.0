@@ -1,12 +1,17 @@
-// @nestjs/common solo aporta el decorador @Injectable (no-op en runtime de test).
 jest.mock('@nestjs/common', () => ({ Injectable: () => () => undefined }), { virtual: true });
-jest.mock('typeorm', () => ({ DataSource: class {}, EntityManager: class {} }), { virtual: true });
-jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), { virtual: true });
+jest.mock('../core/sections-upload.repository', () => ({ SectionsUploadRepository: class {} }), {
+	virtual: true,
+});
+jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), {
+	virtual: true,
+});
 
 import * as ExcelJS from 'exceljs';
 import { SectionsUploadService } from './sections-upload.service';
 
-const HEADER = ['CodigoCurso', 'Seccion', 'Docente', 'Local', 'TipoEstudio'];
+const uploadLogServiceStub: any = { assertRollbackable: jest.fn(), assertAcademicPeriodExists: jest.fn() };
+
+const HEADER = ['Plan', 'Course', 'Campus', 'Professor', 'Modality', 'Section'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -17,113 +22,89 @@ async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	return Buffer.from(buf);
 }
 
-function makeQueryRunner(queryImpl: (sql: string, params?: any[]) => Promise<any>) {
-	return {
-		connect: jest.fn().mockResolvedValue(undefined),
-		startTransaction: jest.fn().mockResolvedValue(undefined),
-		commitTransaction: jest.fn().mockResolvedValue(undefined),
-		rollbackTransaction: jest.fn().mockResolvedValue(undefined),
-		release: jest.fn().mockResolvedValue(undefined),
-		manager: { query: jest.fn(queryImpl) },
+function makeRepository(uploadFnResult: any[]) {
+	const calls: { uploadArgs?: any[] } = {};
+	const repository: any = {
+		callUploadFunction: jest.fn((...args: any[]) => {
+			calls.uploadArgs = args;
+			return Promise.resolve(uploadFnResult);
+		}),
+		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
+		getSectionModalities: jest.fn().mockResolvedValue([]),
 	};
+	return { repository, calls };
 }
 
-// Router de queries para el camino feliz: devuelve lookups válidos + ids de insert.
-const happyQuery = (sql: string) => {
-	if (sql.includes('FROM academic.courses')) return Promise.resolve([{ id: 10, code: 'CS101' }]);
-	if (sql.includes('FROM organization.campuses')) return Promise.resolve([{ id: 30, code: 'LIMA' }]);
-	if (sql.includes('FROM academic.professors')) return Promise.resolve([{ id: 20, code: 'PROF1' }]);
-	if (sql.includes('FROM academic.study_plan_courses')) return Promise.resolve([{ id: 100, course_id: 10 }]);
-	if (sql.includes('core.types')) return Promise.resolve([{ id: 8, code: 'IN_PERSON' }, { id: 9, code: 'VIRTUAL' }, { id: 11, code: 'HYBRID' }]);
-	if (sql.includes('FROM academic.course_sections')) return Promise.resolve([]); // dedup: nada existente
-	if (sql.includes('INSERT INTO academic.course_sections')) return Promise.resolve([{ id: 500 }]);
-	if (sql.includes('INSERT INTO academic.section_professors')) return Promise.resolve([]);
-	return Promise.resolve([]);
-};
+describe('SectionsUploadService — positional parsing', () => {
+	it('sends structured section rows', async () => {
+		const { repository, calls } = makeRepository([
+			{ row_number: null, error_code: null, upload_log_id: 42 },
+		]);
+		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-describe('SectionsUploadService (orquestación — réplica de USP_SeccionCargaMasiva)', () => {
-	describe('processUpload — camino feliz', () => {
-		it('inserta, registra el log y retorna success', async () => {
-			const qr = makeQueryRunner(happyQuery);
-			const dataSource: any = { createQueryRunner: () => qr };
-			const uploadLogService: any = {
-				start: jest.fn().mockResolvedValue({ id: 42 }),
-				complete: jest.fn().mockResolvedValue(undefined),
-				markRolledBack: jest.fn(),
-			};
-			const service = new SectionsUploadService(dataSource, uploadLogService);
+		const buffer = await makeXlsx([['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG204-T001', 'SEC-A']]);
+		const result = await service.processUpload(buffer, 'sections.xlsx', 7, {
+			academicPeriodId: 1,
+		} as any);
 
-			const buffer = await makeXlsx([['CS101', 'A', 'PROF1', 'LIMA', 'P']]);
-			const result = await service.processUpload(buffer, 'secciones.xlsx', { academic_period_id: 1 } as any);
+		expect(result.success).toBe(true);
+		expect(result.uploadLogId).toBe(42);
 
-			expect(result.success).toBe(true);
-			expect(result.totalRows).toBe(1);
-			expect(result.loadedRows).toBe(1);
-			expect(result.errorRows).toBe(0);
-			expect(result.uploadLogId).toBe(42);
-			expect(result.excelWithErrors).toBeNull();
-
-			expect(uploadLogService.start).toHaveBeenCalledTimes(1);
-			expect(uploadLogService.complete).toHaveBeenCalledTimes(1);
-			expect(qr.startTransaction).toHaveBeenCalledTimes(1);
-			expect(qr.commitTransaction).toHaveBeenCalledTimes(1);
-			expect(qr.rollbackTransaction).not.toHaveBeenCalled();
-			expect(qr.release).toHaveBeenCalledTimes(1);
-
-			const sqls = qr.manager.query.mock.calls.map((c: any[]) => c[0] as string);
-			expect(sqls.some((s) => s.includes('INSERT INTO academic.course_sections'))).toBe(true);
-			expect(sqls.some((s) => s.includes('INSERT INTO academic.section_professors'))).toBe(true);
+		const [rows, academicPeriodId, userId] = calls.uploadArgs!;
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			rowNumber: 2,
+			studyPlanCode: 'MALLA-2024',
+			courseCode: 'CS101',
+			campusCode: 'CAMP-1',
+			professorCode: 'DOC-001',
+			sectionModalityTypeCode: 'TG204-T001',
+			sectionCode: 'SEC-A',
 		});
+		expect(academicPeriodId).toBe(1);
+		expect(userId).toBe(7);
 	});
 
-	describe('processUpload — con errores de fila (ALL-OR-NOTHING)', () => {
-		it('no inserta nada y devuelve el Excel anotado', async () => {
-			// courses vacío → la fila falla (courseNotFound); el resto de lookups no importa.
-			const qr = makeQueryRunner((sql: string) => {
-				if (sql.includes('core.types')) return Promise.resolve([{ id: 8, code: 'IN_PERSON' }]);
-				return Promise.resolve([]); // courses/campuses/professors vacíos
-			});
-			const dataSource: any = { createQueryRunner: () => qr };
-			const uploadLogService: any = { start: jest.fn(), complete: jest.fn(), markRolledBack: jest.fn() };
-			const service = new SectionsUploadService(dataSource, uploadLogService);
+	it('returns annotated excel with localized text when the function reports row errors', async () => {
+		const { repository } = makeRepository([
+			{ row_number: 2, error_code: 'professorNotFound', upload_log_id: null },
+		]);
+		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-			const buffer = await makeXlsx([['NOPE', 'A', 'PROF1', 'LIMA', 'P']]);
-			const result = await service.processUpload(buffer, 'secciones.xlsx', { academic_period_id: 1 } as any);
+		const buffer = await makeXlsx([['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG204-T001', 'SEC-A']]);
+		const result = await service.processUpload(buffer, 'sections.xlsx', 1, {
+			academicPeriodId: 1,
+			lang: 'es',
+		} as any);
 
-			expect(result.success).toBe(false);
-			expect(result.errorRows).toBe(1);
-			expect(result.loadedRows).toBe(0);
-			expect(result.uploadLogId).toBeNull();
-			expect(typeof result.excelWithErrors).toBe('string');
-			expect((result.excelWithErrors as string).length).toBeGreaterThan(0);
-			expect(result.fileName).toBe('ErroresCargaSeccion.xlsx');
-
-			// NO se abrió transacción ni se registró carga ni se insertó.
-			expect(uploadLogService.start).not.toHaveBeenCalled();
-			expect(qr.startTransaction).not.toHaveBeenCalled();
-			const sqls = qr.manager.query.mock.calls.map((c: any[]) => c[0] as string);
-			expect(sqls.some((s) => s.includes('INSERT INTO'))).toBe(false);
-			expect(qr.release).toHaveBeenCalledTimes(1);
-		});
+		expect(result.success).toBe(false);
+		expect(result.errorRows).toBe(1);
+		expect(result.excelWithErrors).toBeTruthy();
 	});
+});
 
-	describe('rollback — réplica de USP_Rollback_Seccion', () => {
-		it('borra section_professors + course_sections por upload_log_id y marca el log', async () => {
-			const qr = makeQueryRunner(() => Promise.resolve([]));
-			const dataSource: any = { createQueryRunner: () => qr };
-			const uploadLogService: any = { markRolledBack: jest.fn().mockResolvedValue(undefined) };
-			const service = new SectionsUploadService(dataSource, uploadLogService);
+describe('SectionsUploadService — template', () => {
+	it('builds a Template sheet and a localized legend sheet with TG204 codes', async () => {
+		const repository: any = {
+			getSectionModalities: jest.fn().mockResolvedValue([
+				{ code: 'TG204-T001', name: 'Sección presencial' },
+				{ code: 'TG204-T002', name: 'Sección virtual' },
+			]),
+		};
+		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-			const result = await service.rollback(42);
+		const { buffer, fileName } = await service.generateTemplate('es');
+		expect(fileName).toBe('PlantillaSecciones.xlsx');
 
-			expect(result.success).toBe(true);
-			const calls = qr.manager.query.mock.calls;
-			expect(calls[0][0]).toContain('DELETE FROM academic.section_professors');
-			expect(calls[0][1]).toEqual([42]);
-			expect(calls[1][0]).toContain('DELETE FROM academic.course_sections');
-			expect(uploadLogService.markRolledBack).toHaveBeenCalledWith(42, qr.manager);
-			expect(qr.commitTransaction).toHaveBeenCalledTimes(1);
-			expect(qr.release).toHaveBeenCalledTimes(1);
-		});
+		const wb = new ExcelJS.Workbook();
+		await wb.xlsx.load(buffer as any);
+		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
+		expect(header).toContain('Código de sección');
+		expect(header).toContain('Código de modalidad de sección');
+
+		const legend = wb.getWorksheet('Modalidades de sección')!;
+		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
+		expect(codes).toContain('TG204-T001');
+		expect(codes).toContain('TG204-T002');
 	});
 });
