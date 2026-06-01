@@ -1,6 +1,6 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { orgScopeRoutes } from '../../config/org-scope.routes';
-import { GetScopeDto } from '../../model/org-scope.dtos';
+import { GetScopeDto, UserSchoolDto } from '../../model/org-scope.dtos';
 
 const cfg = orgScopeRoutes.orgScope;
 
@@ -9,3 +9,9 @@ export const SwaggerOrgScopeController = () =>
 
 export const SwaggerOrgScopeGetScope = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getScope, body: GetScopeDto });
+
+export const SwaggerOrgScopeGetUserSchools = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.getUserSchools,
+		responseType: UserSchoolDto,
+	});

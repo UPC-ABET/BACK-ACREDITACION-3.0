@@ -78,7 +78,7 @@ export class UserController extends BaseController<UserService> {
 		@Body() dto: LoginUserByCredentialsDto,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const result = await this.service.loginByCredentials(dto.schoolCode, dto.email, dto.password);
+		const result = await this.service.loginByCredentials(dto.email, dto.password);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}
@@ -103,7 +103,7 @@ export class UserController extends BaseController<UserService> {
 		@Req() req,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const result = await this.service.loginById(req.user.userId, dto.newRole, req.user.schoolId);
+		const result = await this.service.loginById(req.user.userId, dto.newRole);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}

@@ -1,15 +1,12 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AuthService } from './auth.service';
 import { UserService } from 'src/modules/organization/users/api/users.service';
-import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 
 describe('AuthService — MSAL login', () => {
 	let service: AuthService;
 	let userService: { getUser: jest.Mock; createUserLogin: jest.Mock };
-	let schoolService: { findActiveByCode: jest.Mock };
 	const configService = { get: jest.fn() } as unknown as ConfigService;
 
 	beforeEach(() => {
@@ -17,44 +14,14 @@ describe('AuthService — MSAL login', () => {
 			getUser: jest.fn(),
 			createUserLogin: jest.fn(),
 		};
-		schoolService = {
-			findActiveByCode: jest.fn(),
-		};
 		service = new AuthService(
 			configService,
 			userService as unknown as UserService,
-			schoolService as unknown as SchoolService,
 		);
 	});
 
-	describe('resolveSchoolIdByCode', () => {
-		it('returns the school id when the code matches an active school', async () => {
-			schoolService.findActiveByCode.mockResolvedValueOnce({
-				id: 7,
-				code: 'EISCB',
-				isActive: true,
-			});
-
-			await expect(service.resolveSchoolIdByCode('EISCB')).resolves.toBe(7);
-			expect(schoolService.findActiveByCode).toHaveBeenCalledWith('EISCB');
-		});
-
-		it('throws HttpException(400) when no school matches', async () => {
-			schoolService.findActiveByCode.mockResolvedValueOnce(null);
-
-			await expect(service.resolveSchoolIdByCode('UNKNOWN')).rejects.toMatchObject({
-				constructor: HttpException,
-				status: HttpStatus.BAD_REQUEST,
-				response: {
-					message: 'error.school.notFound',
-					errors: ['error.school.notFound'],
-				},
-			});
-		});
-	});
-
 	describe('loginWithMicrosoftCode', () => {
-		it('forwards the supplied school_id through to createUserLogin', async () => {
+		it('creates a user login from the Microsoft account email', async () => {
 			const fakeUser = { id: 99, email: 'jane.doe@example.com', isAdmin: true };
 			const acquireSpy = jest
 				.spyOn(
@@ -68,11 +35,11 @@ describe('AuthService — MSAL login', () => {
 			userService.getUser.mockResolvedValueOnce(fakeUser);
 			userService.createUserLogin.mockResolvedValueOnce('signed-jwt-token');
 
-			const result = await service.loginWithMicrosoftCode('auth-code', 42);
+			const result = await service.loginWithMicrosoftCode('auth-code');
 
 			expect(acquireSpy).toHaveBeenCalledWith('auth-code');
 			expect(userService.getUser).toHaveBeenCalledWith(null, 'jane.doe@example.com');
-			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null, undefined, 42);
+			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null, undefined);
 			expect(result).toEqual({
 				user: fakeUser,
 				microsoftProfile: { email: 'jane.doe@example.com', name: 'Jane Doe' },

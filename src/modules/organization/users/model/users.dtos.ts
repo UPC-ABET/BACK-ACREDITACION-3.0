@@ -2,7 +2,6 @@
 import {
 	IsBoolean,
 	IsEmail,
-	IsNotEmpty,
 	IsNumber,
 	IsOptional,
 	IsString,
@@ -147,15 +146,6 @@ export class FilterUserDto {
 
 // %% OTHER DTOS
 export class LoginUserByCredentialsDto {
-	@IsString()
-	@IsNotEmpty()
-	@ApiProperty({
-		example: 'schoolCodeExample',
-		required: true,
-		description: 'Código de la escuela seleccionada por el usuario',
-	})
-	schoolCode: string;
-
 	@IsEmail()
 	@MaxLength(254)
 	@ApiProperty({

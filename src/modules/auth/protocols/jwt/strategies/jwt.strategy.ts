@@ -25,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 	}
 
-	async validate(payload: { userId: number; activeRoleId?: number; schoolId: number }) {
+	async validate(payload: { userId: number; activeRoleId?: number }) {
 		try {
 			const profile = await this.userAuthorizationService.buildAuthorizationProfile(
 				Number(payload.userId),
@@ -37,7 +37,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 				activeRole: profile.activeRole,
 				allowedRoles: profile.allowedRoles,
 				permissions: profile.permissions,
-				schoolId: payload.schoolId,
 			};
 		} catch {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);

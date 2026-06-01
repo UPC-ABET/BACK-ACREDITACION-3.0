@@ -39,3 +39,23 @@ export class ScopeResponseDto {
 	@ApiProperty({ example: {}, type: [ScopeLevelDto] })
 	levels: ScopeLevelDto[];
 }
+
+export class UserSchoolDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({ example: 'EISCB' })
+	code: string;
+
+	@ApiProperty({ example: { en: 'School of Software Engineering' } })
+	name: I18nText;
+
+	@ApiProperty({ example: 1 })
+	facultyId: number;
+
+	@ApiProperty({ example: 'FING', nullable: true })
+	facultyCode: string | null;
+
+	@ApiProperty({ example: { en: 'Faculty of Engineering' }, nullable: true })
+	facultyName: I18nText | null;
+}

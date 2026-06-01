@@ -1,40 +1,40 @@
-import { DataSource } from 'typeorm';
 import { OrgScopeService } from './org-scope.service';
-import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { OrgScopeRepository } from '../core/org-scope.repository';
 
 describe('OrgScopeService', () => {
 	let service: OrgScopeService;
-	let dataSource: { query: jest.Mock };
+	let repository: {
+		findScope: jest.Mock;
+		findUserSchools: jest.Mock;
+	};
 
 	beforeEach(() => {
-		dataSource = { query: jest.fn() };
-		service = new OrgScopeService(dataSource as unknown as DataSource);
+		repository = {
+			findScope: jest.fn(),
+			findUserSchools: jest.fn(),
+		};
+		service = new OrgScopeService(repository as unknown as OrgScopeRepository);
 	});
 
 	it('returns empty scope when schoolId is null (user not attached to a school)', async () => {
 		const result = await service.getScope(1, null, 5);
 
 		expect(result).toEqual({ highestLevel: null, levels: [] });
-		expect(dataSource.query).not.toHaveBeenCalled();
+		expect(repository.findScope).not.toHaveBeenCalled();
 	});
 
 	it('returns empty scope when SQL returns no rows', async () => {
-		dataSource.query.mockResolvedValueOnce([]);
+		repository.findScope.mockResolvedValueOnce([]);
 
 		const result = await service.getScope(1, 7, 5);
 
 		expect(result).toEqual({ highestLevel: null, levels: [] });
-		expect(dataSource.query).toHaveBeenCalledTimes(1);
-		expect(dataSource.query.mock.calls[0][1]).toEqual([
-			1,
-			7,
-			5,
-			TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
-		]);
+		expect(repository.findScope).toHaveBeenCalledTimes(1);
+		expect(repository.findScope).toHaveBeenCalledWith(1, 7, 5);
 	});
 
 	it('groups rows by level_num in ascending order and computes highest_level from anchors', async () => {
-		dataSource.query.mockResolvedValueOnce([
+		repository.findScope.mockResolvedValueOnce([
 			{
 				id: 30,
 				parentId: 20,
@@ -86,7 +86,7 @@ describe('OrgScopeService', () => {
 	});
 
 	it('coalesces multiple options per level into the same bucket', async () => {
-		dataSource.query.mockResolvedValueOnce([
+		repository.findScope.mockResolvedValueOnce([
 			{
 				id: 11,
 				parentId: 1,
@@ -113,7 +113,7 @@ describe('OrgScopeService', () => {
 	});
 
 	it('sets highest_level to null when no row is marked is_anchor', async () => {
-		dataSource.query.mockResolvedValueOnce([
+		repository.findScope.mockResolvedValueOnce([
 			{
 				id: 1,
 				parentId: null,
@@ -128,5 +128,24 @@ describe('OrgScopeService', () => {
 
 		expect(result.highestLevel).toBeNull();
 		expect(result.levels).toHaveLength(1);
+	});
+
+	it('returns schools assigned to the user for an academic period', async () => {
+		const rows = [
+			{
+				id: 1,
+				code: 'SCHOOL',
+				name: { en: 'School' },
+				facultyId: 2,
+				facultyCode: 'FAC',
+				facultyName: { en: 'Faculty' },
+			},
+		];
+		repository.findUserSchools.mockResolvedValueOnce(rows);
+
+		const result = await service.getUserSchools(3);
+
+		expect(result).toBe(rows);
+		expect(repository.findUserSchools).toHaveBeenCalledWith(3);
 	});
 });
