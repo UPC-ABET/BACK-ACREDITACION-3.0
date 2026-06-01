@@ -161,7 +161,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_enrolled_students" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."student_section_enrollments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "enrolled_student_id" integer NOT NULL, "course_section_id" integer NOT NULL, CONSTRAINT "PK_student_section_enrollments" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."student_section_enrollments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "enrolled_student_id" integer NOT NULL, "course_section_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_student_section_enrollments" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "evidence"."student_course_outcome_grades" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_section_enrollment_id" integer NOT NULL, "outcome_id" integer NOT NULL, "grade" numeric(12,6) NOT NULL, CONSTRAINT "PK_student_course_outcome_grades" PRIMARY KEY ("id"))`,
@@ -579,6 +579,9 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."enrolled_students" ADD CONSTRAINT "FK_enrolled_students_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_section_enrollments" ADD CONSTRAINT "FK_student_section_enrollments_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -2199,9 +2202,164 @@ BEGIN
 END;
 $fn$;
 `);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_student_sections(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period is validated in the service (request-level HTTP error), not here.
+
+	-- intra-file duplicate (section, student)
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE (lower(trim(e->>'sectionCode')), lower(trim(e->>'studentCode'))) IN (
+			SELECT lower(trim(d->>'sectionCode')), lower(trim(d->>'studentCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'sectionCode'), '') IS NOT NULL
+			  AND NULLIF(trim(d->>'studentCode'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'sectionCode')), lower(trim(d->>'studentCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateRowInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- per-row validation
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int              AS row_number,
+			NULLIF(trim(e->>'sectionCode'), '') AS section_code,
+			NULLIF(trim(e->>'studentCode'), '') AS student_code
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.section_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'sectionCodeEmpty'::text, NULL::integer;
+		ELSIF NOT EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = r.section_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'sectionNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.student_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studentCodeEmpty'::text, NULL::integer;
+		ELSIF NOT EXISTS (SELECT 1 FROM academic.students st WHERE st.code = r.student_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studentNotFound'::text, NULL::integer;
+		END IF;
+
+		-- the student must be enrolled in the SAME study_plan_academic_period as the section
+		IF r.section_code IS NOT NULL AND r.student_code IS NOT NULL
+		   AND EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = r.section_code)
+		   AND EXISTS (SELECT 1 FROM academic.students st WHERE st.code = r.student_code)
+		   AND NOT EXISTS (
+			SELECT 1
+			FROM academic.course_sections cs
+			JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+			JOIN academic.students st ON st.code = r.student_code
+			JOIN academic.enrolled_students es
+				ON es.student_id = st.id AND es.study_plan_academic_period = spc.study_plan_academic_period_id
+			WHERE cs.section_code = r.section_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studyPlanPeriodMismatch'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T010'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	-- insert enrollments that do not exist yet (uniqueness = enrolled_student + course_section)
+	INSERT INTO academic.student_section_enrollments
+		(enrolled_student_id, course_section_id, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT es.id, cs.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.course_sections cs ON cs.section_code = trim(e->>'sectionCode')
+	JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+	JOIN academic.students st ON st.code = trim(e->>'studentCode')
+	JOIN academic.enrolled_students es
+		ON es.student_id = st.id AND es.study_plan_academic_period = spc.study_plan_academic_period_id
+	WHERE NOT EXISTS (
+		SELECT 1 FROM academic.student_section_enrollments sse
+		WHERE sse.enrolled_student_id = es.id AND sse.course_section_id = cs.id
+	);
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_student_sections(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- block if an enrollment created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM evidence.student_course_outcome_grades g
+		JOIN academic.student_section_enrollments sse ON sse.id = g.student_section_enrollment_id
+		WHERE sse.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM evaluation.project_students ps
+		JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+		WHERE sse.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM academic.student_course_grades scg
+		JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
+		WHERE sse.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedSectionEnrollmentRefs';
+	END IF;
+
+	DELETE FROM academic.student_section_enrollments WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_student_sections(integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_student_sections(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_enrolled_students(integer)`);
 		await queryRunner.query(
 			`DROP FUNCTION IF EXISTS audit.fn_upload_enrolled_students(jsonb, integer, integer, text)`,
@@ -2549,6 +2707,9 @@ $fn$;
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."student_section_enrollments" DROP CONSTRAINT "FK_student_section_enrollments_upload_log_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."enrolled_students" DROP CONSTRAINT "FK_enrolled_students_upload_log_id"`,

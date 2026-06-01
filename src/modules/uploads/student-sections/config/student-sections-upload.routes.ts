@@ -1,10 +1,11 @@
 export const studentSectionsUploadRoutes = {
 	student_sections_upload: {
 		route: 'uploads/student-sections',
-		tag: 'Cargas — Alumno×Sección',
+		tag: 'Uploads — Student Section Enrollment',
 		operation: {
-			upload: { method: 'POST', route: '/upload', summary: 'Carga masiva de alumnos por sección desde Excel' },
-			rollback: { method: 'POST', route: '/rollback', summary: 'Revertir una carga de alumno×sección por upload_log_id' },
+			template: { method: 'GET', route: '/template', summary: 'Download the student-section Excel template' },
+			upload: { method: 'POST', route: '/upload', summary: 'Bulk upload student section enrollments from Excel' },
+			rollback: { method: 'POST', route: '/rollback', summary: 'Roll back a student-section upload by uploadLogId' },
 		},
 	},
 };

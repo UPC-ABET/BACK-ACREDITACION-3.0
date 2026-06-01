@@ -5,7 +5,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 import { UploadLogRepository } from '../core/upload-logs.repository';
 import { UploadLogEntity } from '../model/upload-logs.entity';
 import { CreateUploadLogDto } from '../model/upload-logs.dtos';
-import { LEGACY_UPLOAD_TYPE_CODES, ROLLBACK_RAISE_MAP } from '../model/upload-logs.constants';
+import { ROLLBACK_RAISE_MAP } from '../model/upload-logs.constants';
 import { uploadLogsValidationStrings } from '../config/strings/upload-logs.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
@@ -49,7 +49,7 @@ export class UploadLogService extends BaseService<UploadLogRepository> {
 	}
 
 	async start(dto: CreateUploadLogDto, manager?: EntityManager) {
-		const uploadTypeId = await this.resolveTypeId(LEGACY_UPLOAD_TYPE_CODES[dto.upload_type] ?? dto.upload_type);
+		const uploadTypeId = await this.resolveTypeId(dto.upload_type);
 		const statusTypeId = await this.resolveTypeId(TYPE_CODES.UPLOAD_STATUS.COMPLETED);
 		return await this.repository.create(
 			{

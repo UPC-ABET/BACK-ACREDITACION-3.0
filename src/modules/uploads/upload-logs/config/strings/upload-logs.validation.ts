@@ -10,6 +10,7 @@ export const uploadLogsValidationStrings = {
 		rollbackBlockedOutcomeRefs: 'error.uploads.rollbackBlockedOutcomeRefs',
 		rollbackBlockedSectionRefs: 'error.uploads.rollbackBlockedSectionRefs',
 		rollbackBlockedEnrollmentRefs: 'error.uploads.rollbackBlockedEnrollmentRefs',
+		rollbackBlockedSectionEnrollmentRefs: 'error.uploads.rollbackBlockedSectionEnrollmentRefs',
 		rollbackBlockedProfessors: 'error.uploads.rollbackBlockedProfessors',
 		rollbackBlockedStaff: 'error.uploads.rollbackBlockedStaff',
 		rollbackBlockedNewerUpload: 'error.uploads.rollbackBlockedNewerUpload',
