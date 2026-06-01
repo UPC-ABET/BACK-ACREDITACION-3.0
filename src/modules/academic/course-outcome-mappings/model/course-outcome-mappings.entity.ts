@@ -18,6 +18,9 @@ export class CourseOutcomeMappingEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	outcomeTypeId: number;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => OutcomeEntity)
