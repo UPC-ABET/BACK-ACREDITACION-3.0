@@ -11,6 +11,9 @@ import {
 } from './docs/scores.swagger';
 import { ScoreService } from './scores.service';
 import { CreateScoreDto, UpdateScoreDto, FilterScoreDto } from '../model/scores.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+
+const SURVEY_MODULE = 'SURVEY';
 
 @SwaggerScoreController()
 export class ScoreController extends BaseController<ScoreService> {
@@ -19,31 +22,37 @@ export class ScoreController extends BaseController<ScoreService> {
 	}
 
 	@SwaggerScoreCreate()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'POST' })
 	async create(@Body() dto: CreateScoreDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerScoreUpdate()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'PUT' })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateScoreDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerScoreDelete()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'DELETE' })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerScoreGetAll()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'GET' })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerScoreGetById()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'GET' })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerScoreGetByFilters()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'POST' })
 	async getByFilters(@Body() dto: FilterScoreDto) {
 		return await super.getByFilters(dto);
 	}

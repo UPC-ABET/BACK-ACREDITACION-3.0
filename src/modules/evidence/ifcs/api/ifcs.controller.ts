@@ -35,6 +35,9 @@ import {
 	IfcNotifyAllDto,
 } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+
+const IFCS_MODULE = 'IFCS';
 
 @SwaggerIfcController()
 export class IfcController extends BaseController<IfcService> {
@@ -43,73 +46,86 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcPrefill()
+	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
 	async prefill(@Query() query: IfcPrefillQueryDto, @Req() req: any) {
 		const result = await this.service.prefill(query, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcCreate()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async createIfc(@Body() dto: CreateIfcDto, @Req() req: any) {
 		const result = await this.service.createIfc(dto, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcUpdate()
+	@RequirePermission({ module: IFCS_MODULE, action: 'PUT' })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerIfcDelete()
+	@RequirePermission({ module: IFCS_MODULE, action: 'DELETE' })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerIfcGetAll()
+	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerIfcGetByFilters()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async getByFilters(@Body() dto: FilterIfcDto) {
 		return await super.getByFilters(dto);
 	}
 
 	@SwaggerIfcList()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async list(@Body() dto: ListIfcsDto) {
 		return parseSuccessResponse(await this.service.list(dto));
 	}
 
 	@SwaggerIfcGetView()
+	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
 	async getView(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
 		const result = await this.service.getView(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcSubmit()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async submit(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
 		const result = await this.service.submit(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcApprove()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async approve(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
 		const result = await this.service.approve(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcReject()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectIfcDto, @Req() req: any) {
 		const result = await this.service.reject(id, req.user.userId, req.user.schoolId, dto);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcPatch()
+	@RequirePermission({ module: IFCS_MODULE, action: 'PATCH' })
 	async patch(@Param('id', ParseIntPipe) id: number, @Body() dto: IfcContentDto, @Req() req: any) {
 		const result = await this.service.patch(id, dto, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcPdf()
+	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
 	async pdf(
 		@Param('id', ParseIntPipe) id: number,
 		@Query() query: IfcPdfQueryDto,
@@ -127,6 +143,7 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcPdfBulk()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async pdfBulk(
 		@Body() dto: IfcPdfBulkDto,
 		@Req() req: any,
@@ -142,6 +159,7 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcStatusReport()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async statusReport(
 		@Body() dto: IfcStatusReportDto,
 		@Req() req: any,
@@ -157,12 +175,14 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcNotify()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async notify(@Body() dto: IfcNotifyDto, @Req() req: any) {
 		const result = await this.service.notify(dto.chartId, dto.periodId, req.user.userId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcNotifyAll()
+	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async notifyAll(@Body() dto: IfcNotifyAllDto, @Req() req: any) {
 		const result = await this.service.notifyAll(dto.chartIds, dto.periodId, req.user.userId);
 		return parseSuccessResponse(result);

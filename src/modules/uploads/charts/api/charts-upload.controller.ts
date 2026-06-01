@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 
 import { ChartsUploadService } from './charts-upload.service';
 import { chartsUploadRoutes } from '../config/charts-upload.routes';
@@ -22,6 +23,8 @@ import { ChartsUploadDto, RollbackUploadDto } from '../model/charts-upload.dtos'
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
 const routes = chartsUploadRoutes.charts_upload;
+
+const ADMIN_MODULE = 'ADMIN';
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
@@ -31,6 +34,7 @@ export class ChartsUploadController {
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
 	async template(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
 		const { buffer, fileName } = await this.service.generateTemplate(lang);
 		const encoded = encodeURIComponent(fileName);
@@ -59,6 +63,7 @@ export class ChartsUploadController {
 	})
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
+	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: ChartsUploadDto,
@@ -73,6 +78,7 @@ export class ChartsUploadController {
 	@ApiOperation({ summary: routes.operation.rollback.summary })
 	@ApiBody({ type: RollbackUploadDto })
 	@HttpCode(HttpStatus.OK)
+	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
 	async rollback(@Body() dto: RollbackUploadDto) {
 		return parseSuccessResponse(await this.service.rollback(dto.uploadLogId));
 	}

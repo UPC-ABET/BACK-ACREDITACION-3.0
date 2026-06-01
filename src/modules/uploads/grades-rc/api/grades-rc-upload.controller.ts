@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 
 import { GradesRcUploadService } from './grades-rc-upload.service';
 import { gradesRcUploadRoutes } from '../config/grades-rc-upload.routes';
@@ -24,6 +25,8 @@ import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 const routes = gradesRcUploadRoutes.grades_rc_upload;
 
 // SCAFFOLD ONLY — endpoints are wired but the service throws NotImplemented (501) until built.
+const ADMIN_MODULE = 'ADMIN';
+
 @ApiTags(routes.tag)
 @Controller(routes.route)
 export class GradesRcUploadController {
@@ -32,6 +35,7 @@ export class GradesRcUploadController {
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
 	async template(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
 		const { buffer, fileName } = await this.service.generateTemplate(lang);
 		const encoded = encodeURIComponent(fileName);
@@ -60,6 +64,7 @@ export class GradesRcUploadController {
 	})
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
+	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: GradesRcUploadDto,
@@ -74,6 +79,7 @@ export class GradesRcUploadController {
 	@ApiOperation({ summary: routes.operation.rollback.summary })
 	@ApiBody({ type: RollbackUploadDto })
 	@HttpCode(HttpStatus.OK)
+	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
 	async rollback(@Body() dto: RollbackUploadDto) {
 		return parseSuccessResponse(await this.service.rollback(dto.uploadLogId));
 	}

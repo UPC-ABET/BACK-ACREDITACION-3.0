@@ -20,6 +20,9 @@ import {
 	ListIfcFindingsDto,
 	PatchIfcFindingDto,
 } from '../model/ifc-findings.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+
+const IFC_FINDINGS_MODULE = 'IFC_FINDINGS';
 
 @SwaggerIfcFindingController()
 export class IfcFindingController extends BaseController<IfcFindingService> {
@@ -28,22 +31,26 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingCreate()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
 	async create(@Body() dto: CreateIfcFindingDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerIfcFindingUpdate()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'PUT' })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcFindingDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerIfcFindingDelete()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'DELETE' })
 	async deleteCascade(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
 		await this.service.deleteWithCascade(id, req.user.userId, req.user.schoolId);
 		return parseSuccessResponse(null);
 	}
 
 	@SwaggerIfcFindingGetAll()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'GET' })
 	async getAll() {
 		return await super.getAll();
 	}
@@ -51,23 +58,27 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	// Method name differs from the base CRUD's `getById` to avoid an incompatible-override TS error;
 	// the Swagger factory still mounts it at `GET /get-by-id/:id`, replacing the base shape.
 	@SwaggerIfcFindingGetById()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'GET' })
 	async getDetail(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
 		const result = await this.service.getDetail(id, req.user.schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcFindingGetByFilters()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
 	async getByFilters(@Body() dto: FilterIfcFindingDto) {
 		return await super.getByFilters(dto);
 	}
 
 	@SwaggerIfcFindingList()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
 	async list(@Body() dto: ListIfcFindingsDto, @Req() req: any) {
 		const rows = await this.service.list(dto, req.user.schoolId);
 		return parseSuccessResponse(rows);
 	}
 
 	@SwaggerIfcFindingPatch()
+	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'PATCH' })
 	async patch(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: PatchIfcFindingDto,

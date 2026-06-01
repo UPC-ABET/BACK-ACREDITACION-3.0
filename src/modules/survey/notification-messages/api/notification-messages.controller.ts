@@ -15,6 +15,9 @@ import {
 	UpdateNotificationMessageDto,
 	FilterNotificationMessageDto,
 } from '../model/notification-messages.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+
+const SURVEY_MODULE = 'SURVEY';
 
 @SwaggerNotificationMessageController()
 export class NotificationMessageController extends BaseController<NotificationMessageService> {
@@ -23,31 +26,37 @@ export class NotificationMessageController extends BaseController<NotificationMe
 	}
 
 	@SwaggerNotificationMessageCreate()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'POST' })
 	async create(@Body() dto: CreateNotificationMessageDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerNotificationMessageUpdate()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'PUT' })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateNotificationMessageDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerNotificationMessageDelete()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'DELETE' })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerNotificationMessageGetAll()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'GET' })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerNotificationMessageGetById()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'GET' })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerNotificationMessageGetByFilters()
+	@RequirePermission({ module: SURVEY_MODULE, action: 'POST' })
 	async getByFilters(@Body() dto: FilterNotificationMessageDto) {
 		return await super.getByFilters(dto);
 	}
