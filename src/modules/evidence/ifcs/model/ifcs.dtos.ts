@@ -227,21 +227,21 @@ export class IfcHeaderDto {
 	>;
 	@ApiProperty({ example: { key: 'extraValue' }, type: Object }) extra: Record<string, unknown>;
 	@ApiProperty({ example: 'createdAtExample' }) createdAt: string;
-	@ApiProperty({ example: 'academic_period_codeExample' }) academic_period_code: string;
-	@ApiProperty({ example: { es: 'program_labelEs', en: 'program_labelEn' }, type: Object })
-	program_label: I18nText;
-	@ApiProperty({ example: { es: 'area_labelEs', en: 'area_labelEn' }, type: Object })
-	area_label: I18nText;
-	@ApiProperty({ example: { es: 'subarea_labelEs', en: 'subarea_labelEn' }, type: Object })
-	subarea_label: I18nText;
-	@ApiProperty({ example: 'course_codeExample', nullable: true }) course_code: string | null;
+	@ApiProperty({ example: 'academicPeriodCodeExample' }) academicPeriodCode: string;
+	@ApiProperty({ example: { es: 'programLabelEs', en: 'programLabelEn' }, type: Object })
+	programLabel: I18nText;
+	@ApiProperty({ example: { es: 'areaLabelEs', en: 'areaLabelEn' }, type: Object })
+	areaLabel: I18nText;
+	@ApiProperty({ example: { es: 'subareaLabelEs', en: 'subareaLabelEn' }, type: Object })
+	subareaLabel: I18nText;
+	@ApiProperty({ example: 'courseCodeExample', nullable: true }) courseCode: string | null;
 	@ApiProperty({ example: { es: 'courseNameEs', en: 'courseNameEn' }, type: Object })
 	courseName: I18nText;
 	@ApiProperty({
-		example: { es: 'course_learning_outcomeEs', en: 'course_learning_outcomeEn' },
+		example: { es: 'courseLearningOutcomeEs', en: 'courseLearningOutcomeEn' },
 		type: Object,
 	})
-	course_learning_outcome: I18nText;
+	courseLearningOutcome: I18nText;
 	@ApiProperty({ example: {}, type: () => IfcCoordinatorDto }) coordinator: IfcCoordinatorDto;
 	@ApiProperty({ example: {}, type: () => IfcStatusInfoDto, nullable: true })
 	status: IfcStatusInfoDto | null;
@@ -265,16 +265,16 @@ export class IfcOutcomeItemDto {
 }
 
 export class IfcCommissionGroupDto {
-	@ApiProperty({ example: 'commission_codeExample' }) commission_code: string;
-	@ApiProperty({ example: { es: 'commission_nameEs', en: 'commission_nameEn' }, type: Object })
-	commission_name: I18nText;
+	@ApiProperty({ example: 'commissionCodeExample' }) commissionCode: string;
+	@ApiProperty({ example: { es: 'commissionNameEs', en: 'commissionNameEn' }, type: Object })
+	commissionName: I18nText;
 	@ApiProperty({ example: {}, type: [IfcOutcomeItemDto] }) outcomes: IfcOutcomeItemDto[];
 }
 
 export class IfcProgramGroupDto {
-	@ApiProperty({ example: 'program_codeExample' }) program_code: string;
-	@ApiProperty({ example: { es: 'program_nameEs', en: 'program_nameEn' }, type: Object })
-	program_name: I18nText;
+	@ApiProperty({ example: 'programCodeExample' }) programCode: string;
+	@ApiProperty({ example: { es: 'programNameEs', en: 'programNameEn' }, type: Object })
+	programName: I18nText;
 	@ApiProperty({ example: {}, type: [IfcCommissionGroupDto] }) commissions: IfcCommissionGroupDto[];
 }
 

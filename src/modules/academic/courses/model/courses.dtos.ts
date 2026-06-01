@@ -156,7 +156,7 @@ export class FilterCourseEnrolledStudentsDto {
 
 export class CourseEnrolledStudentDto {
 	@ApiProperty({ example: 1 })
-	id: number; // enrolled_student_id
+	id: number;
 
 	@ApiProperty({ example: 1 })
 	studentSectionEnrollmentId: number;

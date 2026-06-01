@@ -182,22 +182,22 @@ export class IfcPrefillResponseDto {
 	@ApiProperty({ example: { es: 'courseNameEs', en: 'courseNameEn' }, type: Object })
 	courseName: I18nText;
 	@ApiProperty({
-		example: { es: 'course_learning_outcomeEs', en: 'course_learning_outcomeEn' },
+		example: { es: 'courseLearningOutcomeEs', en: 'courseLearningOutcomeEn' },
 		type: Object,
 	})
-	course_learning_outcome: I18nText;
-	@ApiProperty({ example: { es: 'area_labelEs', en: 'area_labelEn' }, type: Object })
-	area_label: I18nText;
-	@ApiProperty({ example: { es: 'subarea_labelEs', en: 'subarea_labelEn' }, type: Object })
-	subarea_label: I18nText;
-	@ApiProperty({ example: 'academic_period_codeExample' }) academic_period_code: string;
-	@ApiProperty({ example: 'coordinator_codeExample', nullable: true }) coordinator_code:
+	courseLearningOutcome: I18nText;
+	@ApiProperty({ example: { es: 'areaLabelEs', en: 'areaLabelEn' }, type: Object })
+	areaLabel: I18nText;
+	@ApiProperty({ example: { es: 'subareaLabelEs', en: 'subareaLabelEn' }, type: Object })
+	subareaLabel: I18nText;
+	@ApiProperty({ example: 'academicPeriodCodeExample' }) academicPeriodCode: string;
+	@ApiProperty({ example: 'coordinatorCodeExample', nullable: true }) coordinatorCode:
 		| string
 		| null;
-	@ApiProperty({ example: 'coordinator_nameExample', nullable: true }) coordinator_name:
+	@ApiProperty({ example: 'coordinatorNameExample', nullable: true }) coordinatorName:
 		| string
 		| null;
-	@ApiProperty({ example: 1, nullable: true }) coordinator_user_id: number | null;
+	@ApiProperty({ example: 1, nullable: true }) coordinatorUserId: number | null;
 	@ApiProperty({
 		example: [{ key: 'outcomeCourseResultValue' }],
 		type: 'array',

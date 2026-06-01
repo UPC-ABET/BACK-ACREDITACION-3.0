@@ -454,19 +454,19 @@ describe('IfcService.prefill', () => {
 			.mockResolvedValueOnce([headerRow])
 			.mockResolvedValueOnce([
 				{
-					program_code: 'PR1',
-					program_name: { es: 'Prog 1' },
-					commission_code: 'C1',
-					commission_name: { es: 'Com 1' },
+					programCode: 'PR1',
+					programName: { es: 'Prog 1' },
+					commissionCode: 'C1',
+					commissionName: { es: 'Com 1' },
 					outcomeCode: 'O1',
 					outcomeName: { es: 'OC1' },
 					outcomeDescription: {},
 				},
 				{
-					program_code: 'PR1',
-					program_name: { es: 'Prog 1' },
-					commission_code: 'C1',
-					commission_name: { es: 'Com 1' },
+					programCode: 'PR1',
+					programName: { es: 'Prog 1' },
+					commissionCode: 'C1',
+					commissionName: { es: 'Com 1' },
 					outcomeCode: 'O2',
 					outcomeName: { es: 'OC2' },
 					outcomeDescription: {},

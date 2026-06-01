@@ -124,7 +124,7 @@ export class UpdateProjectDto {
 
 export class EvaluatorInfoDto {
 	@ApiProperty({ example: 1 })
-	id: number; // project_evaluator_id
+	id: number;
 
 	@ApiProperty({ example: 1 })
 	professorId: number;
@@ -144,7 +144,7 @@ export class EvaluatorInfoDto {
 
 export class StudentInfoDto {
 	@ApiProperty({ example: 1 })
-	id: number; // project_student_id
+	id: number;
 
 	@ApiProperty({ example: 1 })
 	studentId: number;
@@ -187,10 +187,10 @@ export class ProjectEvaluatorResponseDto {
 
 export class CriteriaScoreDto {
 	@ApiProperty({ example: 1 })
-	studentId: number; // o project_student_id
+	studentId: number;
 
 	@ApiProperty({ example: 1 })
-	evaluatorId: number; // project_evaluator_id
+	evaluatorId: number;
 
 	@ApiProperty({ example: 1 })
 	score: number;
