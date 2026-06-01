@@ -13,6 +13,9 @@ export class ProfessorEntity extends BaseEntity {
 	@CodeColumn({ nullable: false })
 	code: string;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)

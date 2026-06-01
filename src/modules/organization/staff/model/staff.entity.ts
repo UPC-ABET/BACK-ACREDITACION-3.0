@@ -27,6 +27,9 @@ export class StaffEntity extends BaseEntity {
 	@NameColumn({ nullable: false })
 	staffPhone: string;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => UserEntity)

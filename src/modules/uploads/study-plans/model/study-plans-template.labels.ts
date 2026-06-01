@@ -33,6 +33,27 @@ export const studyPlansTemplateLabels: Record<string, Record<string, string>> = 
 	},
 };
 
+export const studyPlansErrorMessages: Record<string, Record<string, string>> = {
+	es: {
+		studyPlanCodeEmpty: 'El código de malla es obligatorio.',
+		programNotFound: 'La carrera indicada no existe.',
+		courseCodeEmpty: 'El código de curso es obligatorio.',
+		courseNameEmpty: 'El nombre de curso es obligatorio.',
+		levelTypeInvalid: 'El código de nivel no es válido.',
+		courseAlreadyInStudyPlan: 'El curso ya está registrado en la malla para el periodo.',
+		duplicateRowInFile: 'Fila duplicada en el archivo (misma malla y curso).',
+	},
+	en: {
+		studyPlanCodeEmpty: 'Study plan code is required.',
+		programNotFound: 'The specified program does not exist.',
+		courseCodeEmpty: 'Course code is required.',
+		courseNameEmpty: 'Course name is required.',
+		levelTypeInvalid: 'The level code is not valid.',
+		courseAlreadyInStudyPlan: 'The course is already in the study plan for this period.',
+		duplicateRowInFile: 'Duplicate row in the file (same study plan and course).',
+	},
+};
+
 export const languageDisplayNames: Record<string, Record<string, string>> = {
 	es: { es: 'Español', en: 'Inglés' },
 	en: { es: 'Spanish', en: 'English' },

@@ -1,9 +1,21 @@
+import { HttpStatus } from '@nestjs/common';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { uploadLogsValidationStrings } from '../config/strings/upload-logs.validation';
 
-// Legacy string upload_type values used by the not-yet-rebuilt upload services, mapped to the
-// canonical UPLOAD_TYPE core.types codes.
+const E = uploadLogsValidationStrings.error;
+
+// Short codes RAISEd by the PG rollback functions → the frontend i18n key + HTTP status the backend
+// surfaces. (Mirrors the per-row pattern: the DB emits a short code, the backend maps it for the client.)
+export const ROLLBACK_RAISE_MAP: Record<string, { key: string; status: HttpStatus }> = {
+	uploadLogNotFound: { key: E.uploadLogNotFound, status: HttpStatus.NOT_FOUND },
+	rollbackBlockedSections: { key: E.rollbackBlockedSections, status: HttpStatus.CONFLICT },
+	rollbackBlockedOutcomes: { key: E.rollbackBlockedOutcomes, status: HttpStatus.CONFLICT },
+	rollbackBlockedProfessors: { key: E.rollbackBlockedProfessors, status: HttpStatus.CONFLICT },
+	rollbackBlockedStaff: { key: E.rollbackBlockedStaff, status: HttpStatus.CONFLICT },
+	rollbackBlockedNewerUpload: { key: E.rollbackBlockedNewerUpload, status: HttpStatus.CONFLICT },
+};
+
 export const LEGACY_UPLOAD_TYPE_CODES: Record<string, string> = {
-	DOCENTE: TYPE_CODES.UPLOAD_TYPE.STAFF,
 	MALLA_CURRICULAR: TYPE_CODES.UPLOAD_TYPE.STUDY_PLAN,
 	MALLA_COCOS: TYPE_CODES.UPLOAD_TYPE.OUTCOMES,
 	ORGANIGRAMA: TYPE_CODES.UPLOAD_TYPE.ORGANIZATION_CHART,

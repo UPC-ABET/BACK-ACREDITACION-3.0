@@ -56,10 +56,10 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_users" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, CONSTRAINT "UQ_professors_code" UNIQUE ("code"), CONSTRAINT "PK_professors" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_professors_code" UNIQUE ("code"), CONSTRAINT "PK_professors" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "audit"."upload_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "academic_period_id" integer, "upload_type_id" integer NOT NULL, "status_type_id" integer NOT NULL, "source_file" text, "total_rows" integer, "loaded_rows" integer, "error_rows" integer, "rollback_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_upload_logs" PRIMARY KEY ("id"))`,
@@ -560,6 +560,12 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`ALTER TABLE "academic"."study_plan_courses" ADD CONSTRAINT "FK_study_plan_courses_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" ADD CONSTRAINT "FK_staff_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_professors_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
 			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
@@ -624,10 +630,7 @@ DECLARE
 	v_log_id integer;
 	r record;
 BEGIN
-	IF NOT EXISTS (SELECT 1 FROM academic.academic_periods WHERE id = p_academic_period_id) THEN
-		RETURN QUERY SELECT NULL::integer, 'uploads.studyPlans.error.periodNotFound'::text, NULL::integer;
-		RETURN;
-	END IF;
+	-- The academic period is validated in the service (request-level HTTP error), not here.
 
 	FOR r IN
 		SELECT (e->>'rowNumber')::int AS row_number
@@ -642,7 +645,7 @@ BEGIN
 		)
 	LOOP
 		v_has_errors := true;
-		RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.duplicateRowInFile'::text, NULL::integer;
+		RETURN QUERY SELECT r.row_number, 'duplicateRowInFile'::text, NULL::integer;
 	END LOOP;
 
 	FOR r IN
@@ -657,22 +660,22 @@ BEGIN
 	LOOP
 		IF r.study_plan_code IS NULL THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.studyPlanCodeEmpty'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'studyPlanCodeEmpty'::text, NULL::integer;
 		END IF;
 
 		IF r.program_code IS NULL OR NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.program_code) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.programNotFound'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'programNotFound'::text, NULL::integer;
 		END IF;
 
 		IF r.course_code IS NULL THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.courseCodeEmpty'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'courseCodeEmpty'::text, NULL::integer;
 		END IF;
 
 		IF NOT EXISTS (SELECT 1 FROM jsonb_each_text(r.course_name) AS kv(k, v) WHERE NULLIF(trim(kv.v), '') IS NOT NULL) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.courseNameEmpty'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'courseNameEmpty'::text, NULL::integer;
 		END IF;
 
 		IF r.level_type_code IS NULL OR NOT EXISTS (
@@ -681,7 +684,7 @@ BEGIN
 			WHERE g.code = 'TG203' AND t.code = r.level_type_code
 		) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.levelTypeInvalid'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'levelTypeInvalid'::text, NULL::integer;
 		END IF;
 
 		IF r.study_plan_code IS NOT NULL AND r.course_code IS NOT NULL AND EXISTS (
@@ -695,7 +698,7 @@ BEGIN
 			  AND c.code = r.course_code
 		) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'uploads.studyPlans.error.courseAlreadyInStudyPlan'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'courseAlreadyInStudyPlan'::text, NULL::integer;
 		END IF;
 	END LOOP;
 
@@ -775,7 +778,7 @@ LANGUAGE plpgsql
 AS $fn$
 BEGIN
 	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
-		RAISE EXCEPTION 'uploads.common.error.uploadLogNotFound';
+		RAISE EXCEPTION 'uploadLogNotFound';
 	END IF;
 
 	IF EXISTS (
@@ -783,7 +786,7 @@ BEGIN
 		JOIN academic.course_sections cs ON cs.study_plan_course_id = spc.id
 		WHERE spc.upload_log_id = p_upload_log_id
 	) THEN
-		RAISE EXCEPTION 'uploads.common.error.rollbackBlockedSections';
+		RAISE EXCEPTION 'rollbackBlockedSections';
 	END IF;
 
 	IF EXISTS (
@@ -791,7 +794,23 @@ BEGIN
 		JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc.id
 		WHERE spc.upload_log_id = p_upload_log_id
 	) THEN
-		RAISE EXCEPTION 'uploads.common.error.rollbackBlockedOutcomes';
+		RAISE EXCEPTION 'rollbackBlockedOutcomes';
+	END IF;
+
+	-- block out-of-order rollback: a NEWER study-plans upload reused rows this upload created.
+	-- courses / study_plans are shared (ON CONFLICT DO NOTHING), so a later upload can hang its
+	-- study_plan_courses off them; deleting them here would orphan that upload. Roll back newer first.
+	IF EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		WHERE spc.upload_log_id IS DISTINCT FROM p_upload_log_id
+		  AND spc.course_id IN (SELECT id FROM academic.courses WHERE upload_log_id = p_upload_log_id)
+	) OR EXISTS (
+		SELECT 1 FROM academic.study_plan_courses spc
+		JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+		WHERE spc.upload_log_id IS DISTINCT FROM p_upload_log_id
+		  AND spap.study_plan_id IN (SELECT id FROM academic.study_plans WHERE upload_log_id = p_upload_log_id)
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
 	END IF;
 
 	DELETE FROM academic.study_plan_courses WHERE upload_log_id = p_upload_log_id;
@@ -811,9 +830,268 @@ BEGIN
 END;
 $fn$;
 `);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_staff(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period is validated in the service (request-level HTTP error), not here.
+
+	-- intra-file duplicate email
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE lower(trim(e->>'email')) IN (
+			SELECT lower(trim(d->>'email'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'email'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'email'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateEmailInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- intra-file duplicate professor code
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
+		  AND lower(trim(e->>'professorCode')) IN (
+			SELECT lower(trim(d->>'professorCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'professorCode'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'professorCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateProfessorCodeInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- per-row validation
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                  AS row_number,
+			NULLIF(trim(e->>'email'), '')           AS email,
+			NULLIF(trim(e->>'positionTypeCode'), '') AS position_code
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.email IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'emailEmpty'::text, NULL::integer;
+		ELSIF NOT EXISTS (SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'userNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.position_code IS NULL OR NOT EXISTS (
+			SELECT 1 FROM core.types t
+			JOIN core.type_groups g ON g.id = t.type_group_id
+			WHERE g.code = 'TG901' AND t.code = r.position_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'positionTypeInvalid'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T001'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	-- insert staff for users that do not have one yet
+	INSERT INTO organization.staff
+		(user_id, position_type_id, job_title, job_description, staff_email, staff_phone, upload_log_id,
+		 extra, is_active, created_at, updated_at)
+	SELECT
+		u.id,
+		pt.id,
+		COALESCE(e->'jobTitle', '{}'::jsonb),
+		'{}'::jsonb,
+		u.email,
+		u.phone,
+		v_log_id,
+		'{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN core.type_groups g ON g.code = 'TG901'
+	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
+	WHERE NOT EXISTS (SELECT 1 FROM organization.staff s WHERE s.user_id = u.id);
+
+	-- update staff that already existed (push prior values onto the extra.uploadUndo stack for rollback)
+	UPDATE organization.staff s
+	SET position_type_id = pt.id,
+		job_title = COALESCE(e->'jobTitle', '{}'::jsonb),
+		updated_at = NOW(),
+		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
+			COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
+			jsonb_build_object('logId', v_log_id, 'positionTypeId', s.position_type_id, 'jobTitle', s.job_title))
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN core.type_groups g ON g.code = 'TG901'
+	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
+	WHERE s.user_id = u.id
+	  AND s.upload_log_id IS DISTINCT FROM v_log_id;
+
+	-- insert professors for new codes
+	INSERT INTO academic.professors (staff_id, code, upload_log_id, extra, is_active, created_at, updated_at)
+	SELECT s.id, trim(e->>'professorCode'), v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN organization.staff s ON s.user_id = u.id
+	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
+	  AND NOT EXISTS (SELECT 1 FROM academic.professors p WHERE p.code = trim(e->>'professorCode'));
+
+	-- re-point professors whose code already existed (push prior staff_id onto the extra.uploadUndo stack)
+	UPDATE academic.professors p
+	SET staff_id = s.id,
+		updated_at = NOW(),
+		extra = jsonb_set(COALESCE(p.extra, '{}'::jsonb), '{uploadUndo}',
+			COALESCE(p.extra->'uploadUndo', '[]'::jsonb) ||
+			jsonb_build_object('logId', v_log_id, 'staffId', p.staff_id))
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
+	JOIN organization.staff s ON s.user_id = u.id
+	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
+	  AND p.code = trim(e->>'professorCode')
+	  AND p.upload_log_id IS DISTINCT FROM v_log_id;
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_staff(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- block if a professor created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM academic.course_sections cs
+		JOIN academic.professors p ON p.id = cs.professor_id
+		WHERE p.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM evaluation.project_evaluators pe
+		JOIN academic.professors p ON p.id = pe.professor_id
+		WHERE p.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedProfessors';
+	END IF;
+
+	-- block if a staff created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM organization.charts c
+		JOIN organization.staff s ON s.id = c.staff_id
+		WHERE s.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM improvement.findings f
+		JOIN organization.staff s ON s.id = f.staff_id
+		WHERE s.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM ifc.statuses st
+		JOIN organization.staff s ON s.id = st.staff_id
+		WHERE s.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedStaff';
+	END IF;
+
+	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
+	-- Blocked when this upload's id is in a row's uploadUndo stack but is NOT the top element (a later
+	-- upload updated it since), or when this upload INSERTED a row that a later upload has since updated
+	-- (the inserted row carries a non-empty stack). Roll back the newer upload first.
+	IF EXISTS (
+		SELECT 1 FROM organization.staff s
+		WHERE (s.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
+		  AND (s.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM organization.staff s
+		WHERE s.upload_log_id = p_upload_log_id
+		  AND jsonb_array_length(COALESCE(s.extra->'uploadUndo', '[]'::jsonb)) > 0
+	) OR EXISTS (
+		SELECT 1 FROM academic.professors p
+		WHERE (p.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
+		  AND (p.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM academic.professors p
+		WHERE p.upload_log_id = p_upload_log_id
+		  AND jsonb_array_length(COALESCE(p.extra->'uploadUndo', '[]'::jsonb)) > 0
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
+	END IF;
+
+	-- restore re-pointed professors by popping this upload's (top) uploadUndo entry, then drop inserts
+	UPDATE academic.professors p
+	SET staff_id = (p.extra->'uploadUndo' -> -1 ->> 'staffId')::int,
+		extra = CASE
+			WHEN jsonb_array_length(p.extra->'uploadUndo') <= 1 THEN p.extra - 'uploadUndo'
+			ELSE jsonb_set(p.extra, '{uploadUndo}', (p.extra->'uploadUndo') - (-1))
+		END,
+		updated_at = NOW()
+	WHERE (p.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+
+	DELETE FROM academic.professors WHERE upload_log_id = p_upload_log_id;
+
+	-- restore updated staff by popping this upload's (top) uploadUndo entry, then drop inserts
+	UPDATE organization.staff s
+	SET position_type_id = (s.extra->'uploadUndo' -> -1 ->> 'positionTypeId')::int,
+		job_title = s.extra->'uploadUndo' -> -1 -> 'jobTitle',
+		extra = CASE
+			WHEN jsonb_array_length(s.extra->'uploadUndo') <= 1 THEN s.extra - 'uploadUndo'
+			ELSE jsonb_set(s.extra, '{uploadUndo}', (s.extra->'uploadUndo') - (-1))
+		END,
+		updated_at = NOW()
+	WHERE (s.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+
+	DELETE FROM organization.staff WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_staff(integer)`);
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_upload_staff(jsonb, integer, integer, text)`);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_study_plans(integer)`);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_upload_study_plans(jsonb, integer, integer, text)`);
 		await queryRunner.query(
@@ -1135,6 +1413,12 @@ $fn$;
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_professors_upload_log_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "organization"."staff" DROP CONSTRAINT "FK_staff_upload_log_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_upload_log_id"`,

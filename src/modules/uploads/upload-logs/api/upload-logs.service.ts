@@ -1,11 +1,12 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
-import { EntityManager } from 'typeorm';
+import { EntityManager, QueryFailedError } from 'typeorm';
 import type { I18nText } from 'src/shared/types/i18n';
 import { UploadLogRepository } from '../core/upload-logs.repository';
 import { UploadLogEntity } from '../model/upload-logs.entity';
 import { CreateUploadLogDto } from '../model/upload-logs.dtos';
-import { LEGACY_UPLOAD_TYPE_CODES } from '../model/upload-logs.constants';
+import { LEGACY_UPLOAD_TYPE_CODES, ROLLBACK_RAISE_MAP } from '../model/upload-logs.constants';
+import { uploadLogsValidationStrings } from '../config/strings/upload-logs.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export interface ListUploadLogsFilters {
@@ -88,17 +89,40 @@ export class UploadLogService extends BaseService<UploadLogRepository> {
 		return await this.repository.markRolledBack(id, statusTypeId, manager);
 	}
 
+	// Translate a PostgreSQL RAISE from a rollback function (short code, SQLSTATE P0001) into the
+	// matching frontend HTTP error. Any other DB error is rethrown unchanged (→ generic 500).
+	rethrowRollbackError(error: unknown): never {
+		if (error instanceof QueryFailedError) {
+			const driverError = error.driverError as { code?: string; message?: string } | undefined;
+			const raised = driverError?.code === 'P0001' ? driverError.message?.trim() : undefined;
+			const mapped = raised ? ROLLBACK_RAISE_MAP[raised] : undefined;
+			if (mapped) {
+				throw new HttpException({ message: mapped.key, errors: [] }, mapped.status);
+			}
+		}
+		throw error;
+	}
+
+	async assertAcademicPeriodExists(id: number): Promise<void> {
+		if (!(await this.repository.academicPeriodExists(id))) {
+			throw new HttpException(
+				{ message: uploadLogsValidationStrings.error.periodNotFound, errors: [`id=${id}`] },
+				HttpStatus.NOT_FOUND,
+			);
+		}
+	}
+
 	async assertRollbackable(id: number): Promise<void> {
 		const log = await this.repository.findOneById(id, ['statusType']);
 		if (!log) {
 			throw new HttpException(
-				{ message: 'uploads.common.error.uploadLogNotFound', errors: [`id=${id}`] },
+				{ message: uploadLogsValidationStrings.error.uploadLogNotFound, errors: [`id=${id}`] },
 				HttpStatus.NOT_FOUND,
 			);
 		}
 		if (log.statusType?.code === TYPE_CODES.UPLOAD_STATUS.ROLLBACK) {
 			throw new HttpException(
-				{ message: 'uploads.common.error.rollbackAlreadyDone', errors: [`id=${id}`] },
+				{ message: uploadLogsValidationStrings.error.rollbackAlreadyDone, errors: [`id=${id}`] },
 				HttpStatus.CONFLICT,
 			);
 		}
@@ -113,7 +137,7 @@ export class UploadLogService extends BaseService<UploadLogRepository> {
 		const log = await this.repository.findLogById(id);
 		if (!log) {
 			throw new HttpException(
-				{ message: 'uploads.common.error.uploadLogNotFound', errors: [`id=${id}`] },
+				{ message: uploadLogsValidationStrings.error.uploadLogNotFound, errors: [`id=${id}`] },
 				HttpStatus.NOT_FOUND,
 			);
 		}
@@ -144,7 +168,7 @@ export class UploadLogService extends BaseService<UploadLogRepository> {
 		const id = await this.repository.findTypeIdByCode(code);
 		if (id === null) {
 			throw new HttpException(
-				{ message: 'uploads.common.error.typeCodeNotFound', errors: [`code=${code}`] },
+				{ message: uploadLogsValidationStrings.error.typeCodeNotFound, errors: [`code=${code}`] },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

@@ -5,7 +5,7 @@ jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService
 import * as ExcelJS from 'exceljs';
 import { StudyPlansUploadService } from './study-plans-upload.service';
 
-const uploadLogServiceStub: any = { assertRollbackable: jest.fn() };
+const uploadLogServiceStub: any = { assertRollbackable: jest.fn(), assertAcademicPeriodExists: jest.fn() };
 
 // Positional layout for languages = ['es','en']:
 // studyPlanCode | name_es | name_en | programCode | levelTypeCode | courseCode |
@@ -82,7 +82,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 
 	it('returns annotated excel when the function reports row errors', async () => {
 		const { repository } = makeRepository(['es', 'en'], [
-			{ row_number: 2, error_code: 'uploads.studyPlans.error.programNotFound', upload_log_id: null },
+			{ row_number: 2, error_code: 'programNotFound', upload_log_id: null },
 		]);
 		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 

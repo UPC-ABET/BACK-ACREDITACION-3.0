@@ -48,6 +48,17 @@ export class UploadLogRepository extends BaseRepository<UploadLogEntity> {
 		return await this.baseQuery().andWhere('log.id = :id', { id }).getOne();
 	}
 
+	async academicPeriodExists(id: number): Promise<boolean> {
+		const row = await this.dataSource
+			.createQueryBuilder()
+			.select('1', 'one')
+			.from('academic.academic_periods', 'ap')
+			.where('ap.id = :id', { id })
+			.limit(1)
+			.getRawOne<{ one: number }>();
+		return row !== undefined && row !== null;
+	}
+
 	async findTypeIdByCode(code: string): Promise<number | null> {
 		const type = await this.dataSource
 			.createQueryBuilder()
