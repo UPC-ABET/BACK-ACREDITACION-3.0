@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { ProgramCommissionRepository } from '../core/program-commissions.repository';
 import { ProgramCommissionValidation } from '../core/program-commissions.validation';
+import { OutcomeRepository } from 'src/modules/accreditation/outcomes/core/outcomes.repository';
 
 import {
 	CreateProgramCommissionDto,
@@ -14,6 +15,7 @@ export class ProgramCommissionService extends BaseService<ProgramCommissionRepos
 	constructor(
 		protected readonly repository: ProgramCommissionRepository,
 		protected readonly dataSource: DataSource,
+		private readonly outcomeRepository: OutcomeRepository,
 	) {
 		super(repository);
 	}
@@ -31,5 +33,19 @@ export class ProgramCommissionService extends BaseService<ProgramCommissionRepos
 	async delete(id: number, manager?: EntityManager) {
 		await ProgramCommissionValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async associate(dto: CreateProgramCommissionDto) {
+		await ProgramCommissionValidation.validateCreate(this.repository, dto);
+		return await super.create(dto);
+	}
+
+	async unassociate(id: number) {
+		await ProgramCommissionValidation.validateUnassociate(this.repository, this.outcomeRepository, id);
+		return await super.delete(id);
+	}
+
+	async listByPeriod(academicPeriodId: number) {
+		return await super.getByFilters({ academicPeriodId });
 	}
 }

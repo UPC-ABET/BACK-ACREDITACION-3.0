@@ -1,4 +1,5 @@
 export const TYPE_GROUP_CODES = {
+	PROGRAM_MODALITY: 'TG102',
 	IFC_STATUS: 'TG701',
 	CRITICALITY: 'TG801',
 	CHART_LEVEL_TYPE: 'TG902',
@@ -9,6 +10,10 @@ export const TYPE_GROUP_CODES = {
 } as const;
 
 export const TYPE_CODES = {
+	PROGRAM_MODALITY: {
+		REGULAR: 'TG102-T001',
+		EPE: 'TG102-T002',
+	},
 	SURVEY_TYPE: {
 		GRA: 'TG601-T002',
 		LCFC: 'TG601-T004',

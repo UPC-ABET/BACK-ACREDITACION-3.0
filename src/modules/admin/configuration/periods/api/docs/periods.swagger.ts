@@ -9,10 +9,10 @@ export const SwaggerPeriodsController = () => ControllerWithTags({ tag: cfg.tag,
 export const SwaggerPeriodsCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreatePeriodDto });
 
+export const SwaggerPeriodsActivate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.activate, param: { name: 'id', type: Number } });
+
 export const SwaggerPeriodsList = () => HttpMethodWithSwagger(cfg.operation.list);
 
 export const SwaggerPeriodsFind = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.find, param: { name: 'periodId', type: Number } });
-
-export const SwaggerPeriodsClose = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.close, param: { name: 'periodId', type: Number } });
+	HttpMethodWithSwagger({ ...cfg.operation.find, param: { name: 'id', type: Number } });

@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 
-import { PeriodsService } from './api/periods.service';
+import { AcademicPeriodModule } from 'src/modules/academic/academic-periods/academic-periods.module';
 import { PeriodsController } from './api/periods.controller';
 
 @Module({
+	imports: [AcademicPeriodModule],
 	controllers: [PeriodsController],
-	providers: [PeriodsService],
-	exports: [PeriodsService],
 })
 export class PeriodsModule {}

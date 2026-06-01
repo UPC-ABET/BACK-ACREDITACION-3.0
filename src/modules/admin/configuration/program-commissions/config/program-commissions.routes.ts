@@ -1,6 +1,6 @@
 export const programCommissionsRoutes = {
-	program_commissions: {
-		route: 'configuration/periods/:periodId/program-commissions',
+	programCommissions: {
+		route: 'configuration/program-commissions',
 		tag: 'Configuración — Asociación Carrera × Comisión',
 		operation: {
 			associate: {
@@ -11,7 +11,7 @@ export const programCommissionsRoutes = {
 			unassociate: {
 				method: 'DELETE',
 				route: ':id',
-				summary: 'Desasociar carrera-comisión (rollback limpio; falla si hay outcomes)',
+				summary: 'Desasociar carrera-comisión (bloqueado si ya existen outcomes)',
 			},
 			list: {
 				method: 'GET',

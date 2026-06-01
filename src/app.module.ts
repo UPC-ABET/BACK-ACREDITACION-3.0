@@ -67,7 +67,6 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
-import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
 
 //IMPROVEMENT MODULES
@@ -97,9 +96,12 @@ import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
 import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 
-//LOADS MODULES (bulk uploads + Phase-0 configuration)
+//LOADS MODULES (bulk uploads)
 import { UploadsModule } from './modules/uploads/uploads.module';
-import { ConfigurationModule } from './modules/configuration/configuration.module';
+
+//ADMIN MODULES
+import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
+import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 
 @Module({
 	imports: [
