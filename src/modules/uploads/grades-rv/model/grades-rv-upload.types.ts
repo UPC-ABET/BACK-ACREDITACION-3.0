@@ -1,3 +1,11 @@
+export interface GradesRvRow {
+	rowNumber: number;
+	sectionCode: string;
+	studentCode: string;
+	outcomeCode: string;
+	grade: string;
+}
+
 export interface UploadResult {
 	success: boolean;
 	uploadLogId: number | null;
@@ -6,4 +14,9 @@ export interface UploadResult {
 	errorRows: number;
 	excelWithErrors: string | null;
 	fileName: string | null;
+}
+
+export interface UploadRowError {
+	rowNumber: number;
+	errorCode: string;
 }

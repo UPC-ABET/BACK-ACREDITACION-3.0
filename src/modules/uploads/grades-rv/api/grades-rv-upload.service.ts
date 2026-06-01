@@ -1,28 +1,171 @@
-import { Injectable, NotImplementedException } from '@nestjs/common';
-import type { GradesRvUploadDto } from '../model/grades-rv-upload.dtos';
-import type { UploadResult } from '../model/grades-rv-upload.types';
+import { Injectable } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
 
-// SCAFFOLD ONLY — the RV grades upload (TG1101-T007) is not implemented yet.
-// To implement, follow the established pattern (see study-plans / sections / enrolled-students):
-// a thin service that parses the positional xlsx, calls a PG function audit.fn_upload_grades_rv(...)
-// via a repository, and maps returned error codes onto an annotated Excel. Target table:
-// academic.student_course_grades (+ a new upload_log_id column there + a rollback function).
+import { GradesRvRow, UploadResult, UploadRowError } from '../model/grades-rv-upload.types';
+import type { GradesRvUploadDto } from '../model/grades-rv-upload.dtos';
+import {
+	DEFAULT_TEMPLATE_LANGUAGE,
+	gradesRvErrorMessages,
+	gradesRvTemplateLabels,
+} from '../model/grades-rv-template.labels';
+import { GradesRvUploadRepository } from '../core/grades-rv-upload.repository';
+import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
+
 @Injectable()
 export class GradesRvUploadService {
+	constructor(
+		private readonly repository: GradesRvUploadRepository,
+		private readonly uploadLogService: UploadLogService,
+	) {}
+
 	async processUpload(
-		_fileBuffer: Buffer,
-		_fileName: string,
-		_userId: number,
-		_dto: GradesRvUploadDto,
+		fileBuffer: Buffer,
+		fileName: string,
+		userId: number,
+		dto: GradesRvUploadDto,
 	): Promise<UploadResult> {
-		throw new NotImplementedException('grades-rv upload is not implemented yet');
+		await this.uploadLogService.assertAcademicPeriodExists(dto.academicPeriodId);
+
+		const language = this.resolveLanguage(dto.lang);
+		const labels = gradesRvTemplateLabels[language];
+		const messages = gradesRvErrorMessages[language];
+
+		const workbook = new ExcelJS.Workbook();
+		await workbook.xlsx.load(fileBuffer as unknown as ArrayBuffer);
+		const rows = this.parseWorkbook(workbook);
+
+		const result = await this.repository.callUploadFunction(
+			rows,
+			dto.academicPeriodId,
+			userId,
+			fileName,
+		);
+
+		const errors: UploadRowError[] = result
+			.filter((r) => r.error_code !== null)
+			.map((r) => ({ rowNumber: r.row_number as number, errorCode: r.error_code as string }));
+
+		if (errors.length > 0) {
+			const excel = await this.annotateErrors(workbook, errors, labels.errorColumn, messages);
+			return {
+				success: false,
+				uploadLogId: null,
+				totalRows: rows.length,
+				loadedRows: 0,
+				errorRows: errors.length,
+				excelWithErrors: excel,
+				fileName: labels.errorsFileName,
+			};
+		}
+
+		const uploadLogId = result.find((r) => r.upload_log_id !== null)?.upload_log_id ?? null;
+		return {
+			success: true,
+			uploadLogId,
+			totalRows: rows.length,
+			loadedRows: rows.length,
+			errorRows: 0,
+			excelWithErrors: null,
+			fileName: null,
+		};
 	}
 
-	async rollback(_uploadLogId: number): Promise<{ success: boolean }> {
-		throw new NotImplementedException('grades-rv rollback is not implemented yet');
+	async rollback(uploadLogId: number): Promise<{ success: boolean }> {
+		await this.uploadLogService.assertRollbackable(uploadLogId);
+		try {
+			await this.repository.callRollbackFunction(uploadLogId);
+		} catch (err) {
+			this.uploadLogService.rethrowRollbackError(err);
+		}
+		return { success: true };
 	}
 
-	async generateTemplate(_lang: string): Promise<{ buffer: Buffer; fileName: string }> {
-		throw new NotImplementedException('grades-rv template is not implemented yet');
+	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
+		const language = this.resolveLanguage(lang);
+		const labels = gradesRvTemplateLabels[language];
+		const outcomes = await this.repository.getOutcomes(language);
+
+		const workbook = new ExcelJS.Workbook();
+
+		const dataSheet = workbook.addWorksheet('Template');
+		const headers = [labels.sectionCode, labels.studentCode, labels.outcomeCode, labels.grade];
+		dataSheet.addRow(headers);
+		this.styleHeaderRow(dataSheet, headers);
+
+		const legendSheet = workbook.addWorksheet(labels.legendSheet);
+		const legendHeaders = [labels.legendCode, labels.legendName];
+		legendSheet.addRow(legendHeaders);
+		this.styleHeaderRow(legendSheet, legendHeaders);
+		for (const outcome of outcomes) {
+			legendSheet.addRow([outcome.code, outcome.name]);
+		}
+
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		return { buffer, fileName: labels.templateFileName };
+	}
+
+	private styleHeaderRow(sheet: ExcelJS.Worksheet, headers: string[], rowNumber = 1): void {
+		const row = sheet.getRow(rowNumber);
+		row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+		row.eachCell((cell, colNumber) => {
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+			sheet.getColumn(colNumber).width = headers[colNumber - 1].length + 2;
+		});
+	}
+
+	private resolveLanguage(lang?: string): string {
+		return lang && gradesRvTemplateLabels[lang] ? lang : DEFAULT_TEMPLATE_LANGUAGE;
+	}
+
+	// Positional layout (header ignored):
+	// sectionCode | studentCode | outcomeCode | grade
+	private parseWorkbook(workbook: ExcelJS.Workbook): GradesRvRow[] {
+		const worksheet = workbook.worksheets[0];
+		const rows: GradesRvRow[] = [];
+
+		worksheet.eachRow((row, rowNumber) => {
+			if (rowNumber === 1) return;
+			rows.push({
+				rowNumber,
+				sectionCode: this.cell(row, 1),
+				studentCode: this.cell(row, 2),
+				outcomeCode: this.cell(row, 3),
+				grade: this.cell(row, 4),
+			});
+		});
+		return rows;
+	}
+
+	private cell(row: ExcelJS.Row, col: number): string {
+		const value = row.getCell(col).value;
+		return value === null || value === undefined ? '' : String(value).trim();
+	}
+
+	private async annotateErrors(
+		workbook: ExcelJS.Workbook,
+		errors: UploadRowError[],
+		errorColumnHeader: string,
+		messages: Record<string, string>,
+	): Promise<string> {
+		const worksheet = workbook.worksheets[0];
+		// data columns = sectionCode, studentCode, outcomeCode, grade; error column is next.
+		const errorColumn = 5;
+		const headerCell = worksheet.getRow(1).getCell(errorColumn);
+		headerCell.value = errorColumnHeader;
+		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+		headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+		worksheet.getColumn(errorColumn).width = errorColumnHeader.length + 2;
+
+		const byRow = new Map<number, string[]>();
+		for (const e of errors) {
+			const list = byRow.get(e.rowNumber) ?? [];
+			list.push(messages[e.errorCode] ?? e.errorCode);
+			byRow.set(e.rowNumber, list);
+		}
+		for (const [rowNumber, texts] of byRow) {
+			worksheet.getRow(rowNumber).getCell(errorColumn).value = texts.join(' | ');
+		}
+		const buffer = await workbook.xlsx.writeBuffer();
+		return Buffer.from(buffer).toString('base64');
 	}
 }

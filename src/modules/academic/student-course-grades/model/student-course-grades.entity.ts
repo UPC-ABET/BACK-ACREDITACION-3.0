@@ -20,6 +20,9 @@ export class StudentCourseGradeEntity extends BaseEntity {
 	@DecimalColumn({ nullable: false })
 	grade: number;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => StudentSectionEnrollmentEntity)
