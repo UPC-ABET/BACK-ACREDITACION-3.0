@@ -2,13 +2,14 @@
 import {
 	IsBoolean,
 	IsEmail,
-	IsNotEmpty,
+	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
 	Length,
 	MaxLength,
 	MinLength,
+	IsPositive,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -147,15 +148,6 @@ export class FilterUserDto {
 
 // %% OTHER DTOS
 export class LoginUserByCredentialsDto {
-	@IsString()
-	@IsNotEmpty()
-	@ApiProperty({
-		example: 'schoolCodeExample',
-		required: true,
-		description: 'Código de la escuela seleccionada por el usuario',
-	})
-	schoolCode: string;
-
 	@IsEmail()
 	@MaxLength(254)
 	@ApiProperty({
@@ -171,6 +163,13 @@ export class LoginUserByCredentialsDto {
 		required: true,
 	})
 	password: string;
+}
+
+export class GetMeDto {
+	@IsInt()
+	@IsPositive()
+	@ApiProperty({ example: 1, required: true, description: 'Academic period ID' })
+	periodId: number;
 }
 
 export class ChangeRoleDto {

@@ -7,10 +7,10 @@ import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
 import { usersValidationStrings } from '../config/strings/users.validation';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager } from 'typeorm';
-import { SchoolService } from 'src/modules/organization/schools/api/schools.service';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
+import { OrgScopeService } from '../../org-scope/api/org-scope.service';
 
 @Injectable()
 export class UserService extends BaseService<UserRepository> {
@@ -18,21 +18,16 @@ export class UserService extends BaseService<UserRepository> {
 		protected readonly repository: UserRepository,
 		protected readonly dataSource: DataSource,
 		private readonly jwtService: JwtService,
-		private readonly schoolService: SchoolService,
 		private readonly userAuthorizationService: UserAuthorizationService,
+		private readonly orgScopeService: OrgScopeService,
 	) {
 		super(repository);
 	}
 
-	async signJWTWithAuthorization(
-		user: any,
-		authorization: AuthorizationProfile,
-		schoolId: number,
-	): Promise<string> {
+	async signJWTWithAuthorization(user: any, authorization: AuthorizationProfile): Promise<string> {
 		const payload = {
 			userId: user.id,
 			activeRoleId: authorization.activeRole.id,
-			schoolId,
 		};
 
 		return this.jwtService.sign(payload);
@@ -42,7 +37,6 @@ export class UserService extends BaseService<UserRepository> {
 		user: any,
 		passToValidate: string | null,
 		activeRoleId: number | undefined,
-		schoolId: number,
 	): Promise<string> {
 		if (!user) {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
@@ -53,7 +47,7 @@ export class UserService extends BaseService<UserRepository> {
 		}
 
 		const authorization = await this.getAuthorizationProfile(user.id, activeRoleId);
-		return await this.signJWTWithAuthorization(user, authorization, schoolId);
+		return await this.signJWTWithAuthorization(user, authorization);
 	}
 
 	async getUser(userId?: number | null, email?: string | null) {
@@ -78,9 +72,9 @@ export class UserService extends BaseService<UserRepository> {
 		return null;
 	}
 
-	async loginById(userId: number, activeRoleId: number | undefined, schoolId: number) {
+	async loginById(userId: number, activeRoleId: number | undefined) {
 		const user = await this.getUser(userId);
-		const accessToken = await this.createUserLogin(user, null, activeRoleId, schoolId);
+		const accessToken = await this.createUserLogin(user, null, activeRoleId);
 
 		return {
 			user: this.sanitizeUser(user),
@@ -89,27 +83,14 @@ export class UserService extends BaseService<UserRepository> {
 		};
 	}
 
-	async loginByCredentials(
-		schoolCode: string,
-		email: string,
-		password: string,
-		activeRoleId?: number,
-	) {
-		const school = await this.schoolService.findActiveByCode(schoolCode);
-
-		if (!school) {
-			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
-		}
-
+	async loginByCredentials(email: string, password: string, activeRoleId?: number) {
 		const user = await this.repository.findForLogin(email);
-		const accessToken = await this.createUserLogin(user, password, activeRoleId, school.id);
+		const accessToken = await this.createUserLogin(user, password, activeRoleId);
 
 		return {
 			user: this.sanitizeUser(user),
 			accessToken,
 			expiresIn: JWT_EXPIRES_IN_SECONDS,
-			schoolId: school.id,
-			schoolCode: schoolCode,
 		};
 	}
 
@@ -137,24 +118,28 @@ export class UserService extends BaseService<UserRepository> {
 		return profile;
 	}
 
-	async getMe(jwtPayload: {
-		userId: number;
-		activeRole: any;
-		allowedRoles: any[];
-		permissions: any[];
-		schoolId: number;
-	}) {
+	async getMe(
+		jwtPayload: {
+			userId: number;
+			activeRole: any;
+			allowedRoles: any[];
+			permissions: any[];
+		},
+		periodId: number,
+	) {
 		const user = await this.getUser(jwtPayload.userId);
 		if (!user) {
 			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
+
+		const userSchools = await this.orgScopeService.getUserSchools(jwtPayload.userId, periodId);
 
 		return {
 			user: this.sanitizeUser(user),
 			activeRole: jwtPayload.activeRole,
 			allowedRoles: jwtPayload.allowedRoles,
 			permissions: jwtPayload.permissions,
-			schoolId: jwtPayload.schoolId,
+			userSchools,
 		};
 	}
 

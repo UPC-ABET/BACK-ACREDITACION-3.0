@@ -3,12 +3,13 @@ import { UserService } from './users.service';
 
 describe('UserController', () => {
 	let controller: UserController;
-	let service: { loginByCredentials: jest.Mock; loginById: jest.Mock };
+	let service: { loginByCredentials: jest.Mock; loginById: jest.Mock; getMe: jest.Mock };
 
 	beforeEach(() => {
 		service = {
 			loginByCredentials: jest.fn(),
 			loginById: jest.fn(),
+			getMe: jest.fn(),
 		};
 		controller = new UserController(service as unknown as UserService);
 	});
@@ -22,11 +23,11 @@ describe('UserController', () => {
 		service.loginByCredentials.mockResolvedValueOnce(loginResult);
 
 		const response = await controller.loginByCredentials(
-			{ schoolCode: 'EISCB', email: 'admin@upc.edu.pe', password: 'secret' },
+			{ email: 'admin@upc.edu.pe', password: 'secret' },
 			res as never,
 		);
 
-		expect(service.loginByCredentials).toHaveBeenCalledWith('EISCB', 'admin@upc.edu.pe', 'secret');
+		expect(service.loginByCredentials).toHaveBeenCalledWith('admin@upc.edu.pe', 'secret');
 		expect(res.cookie).toHaveBeenCalledWith(
 			'accessToken',
 			'signed-jwt-token',
@@ -45,14 +46,24 @@ describe('UserController', () => {
 		const res = fakeResponse();
 		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, accessToken: 'role-token' });
 
-		await controller.changeRole({ newRole: 2 }, { user: { userId: 8, schoolId: 4 } }, res as never);
+		await controller.changeRole({ newRole: 2 }, { user: { userId: 8 } }, res as never);
 
-		expect(service.loginById).toHaveBeenCalledWith(8, 2, 4);
+		expect(service.loginById).toHaveBeenCalledWith(8, 2);
 		expect(res.cookie).toHaveBeenCalledWith(
 			'accessToken',
 			'role-token',
 			expect.objectContaining({ httpOnly: true, path: '/' }),
 		);
+	});
+
+	it('passes periodId to getMe', async () => {
+		const profile = { user: { id: 8 }, userSchools: [] };
+		service.getMe.mockResolvedValueOnce(profile);
+
+		const response = await controller.getMe({ periodId: 3 }, { user: { userId: 8 } });
+
+		expect(service.getMe).toHaveBeenCalledWith({ userId: 8 }, 3);
+		expect(response.data).toBe(profile);
 	});
 });
 

@@ -12,7 +12,7 @@ export function hashPassword(password: string): Promise<string> {
 /*******************************************************************************************+*/
 
 const ACCESS_TOKEN_COOKIE_NAME = 'accessToken';
-const SCHOOL_COOKIE_NAME = 'school';
+const LEGACY_SCHOOL_COOKIE_NAME = 'school';
 export const MICROSOFT_STATE_COOKIE = 'microsoftOauthState';
 export const MICROSOFT_STATE_COOKIE_MAX_AGE_MS = 10 * 60 * 1000;
 
@@ -23,7 +23,7 @@ const ACCESS_TOKEN_COOKIE_OPTIONS = {
 	path: '/',
 };
 
-const SCHOOL_COOKIE_OPTIONS = {
+const LEGACY_SCHOOL_COOKIE_OPTIONS = {
 	httpOnly: false,
 	secure: true,
 	sameSite: 'lax' as const,
@@ -36,17 +36,11 @@ export function saveAccessCookie(res: Response, data: any) {
 		...ACCESS_TOKEN_COOKIE_OPTIONS,
 		maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
 	});
-	if (data.schoolId !== undefined && data.schoolCode !== undefined) {
-		res.cookie(SCHOOL_COOKIE_NAME, JSON.stringify({ id: data.schoolId, code: data.schoolCode }), {
-			...SCHOOL_COOKIE_OPTIONS,
-			maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
-		});
-	}
 	return true;
 }
 
 export function removeAccessCookie(res: Response) {
 	res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, ACCESS_TOKEN_COOKIE_OPTIONS);
-	res.clearCookie(SCHOOL_COOKIE_NAME, SCHOOL_COOKIE_OPTIONS);
+	res.clearCookie(LEGACY_SCHOOL_COOKIE_NAME, LEGACY_SCHOOL_COOKIE_OPTIONS);
 	return true;
 }

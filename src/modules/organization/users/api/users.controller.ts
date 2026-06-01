@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Req, Res } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query, Req, Res } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { UserService } from './users.service';
 import {
@@ -20,6 +20,7 @@ import {
 	FilterUserDto,
 	LoginUserByCredentialsDto,
 	ChangeRoleDto,
+	GetMeDto,
 } from '../model/users.dtos';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
@@ -78,15 +79,15 @@ export class UserController extends BaseController<UserService> {
 		@Body() dto: LoginUserByCredentialsDto,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const result = await this.service.loginByCredentials(dto.schoolCode, dto.email, dto.password);
+		const result = await this.service.loginByCredentials(dto.email, dto.password);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}
 
 	@SkipPermissions()
 	@SwaggerUserMe()
-	async getMe(@Req() req) {
-		return parseSuccessResponse(await this.service.getMe(req.user));
+	async getMe(@Query() dto: GetMeDto, @Req() req) {
+		return parseSuccessResponse(await this.service.getMe(req.user, dto.periodId));
 	}
 
 	@SkipPermissions()
@@ -103,7 +104,7 @@ export class UserController extends BaseController<UserService> {
 		@Req() req,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const result = await this.service.loginById(req.user.userId, dto.newRole, req.user.schoolId);
+		const result = await this.service.loginById(req.user.userId, dto.newRole);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}

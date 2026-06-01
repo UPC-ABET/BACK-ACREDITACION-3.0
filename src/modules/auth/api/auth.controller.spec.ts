@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'crypto';
 
@@ -6,7 +6,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 type AuthServiceMock = {
-	resolveSchoolIdByCode: jest.Mock;
 	buildMicrosoftLoginUrl: jest.Mock;
 	loginWithMicrosoftCode: jest.Mock;
 };
@@ -32,8 +31,8 @@ function fakeResponse(cookies: Record<string, string> = {}) {
 	return { res, cookieJar };
 }
 
-function signState(csrf: string, schoolId: number): string {
-	const encoded = Buffer.from(JSON.stringify({ csrf, schoolId })).toString('base64url');
+function signState(csrf: string): string {
+	const encoded = Buffer.from(JSON.stringify({ csrf })).toString('base64url');
 	const signature = createHmac('sha256', TEST_JWT_SECRET).update(encoded).digest('base64url');
 	return `${encoded}.${signature}`;
 }
@@ -44,7 +43,6 @@ describe('AuthController — MSAL state packing', () => {
 
 	beforeEach(() => {
 		authService = {
-			resolveSchoolIdByCode: jest.fn(),
 			buildMicrosoftLoginUrl: jest.fn(),
 			loginWithMicrosoftCode: jest.fn(),
 		};
@@ -52,26 +50,14 @@ describe('AuthController — MSAL state packing', () => {
 	});
 
 	describe('GET /microsoft', () => {
-		it('rejects when school_code is missing', async () => {
-			const { res } = fakeResponse();
-
-			await expect(controller.loginWithMicrosoft('', res as never)).rejects.toMatchObject({
-				constructor: HttpException,
-				status: HttpStatus.BAD_REQUEST,
-			});
-			expect(authService.resolveSchoolIdByCode).not.toHaveBeenCalled();
-		});
-
-		it('packs {csrf, school_id} into an HMAC-signed state, sets csrf cookie, and redirects', async () => {
-			authService.resolveSchoolIdByCode.mockResolvedValueOnce(7);
+		it('packs csrf into an HMAC-signed state, sets csrf cookie, and redirects', async () => {
 			authService.buildMicrosoftLoginUrl.mockResolvedValueOnce(
 				'https://login.microsoftonline.com/url?state=...',
 			);
 			const { res, cookieJar } = fakeResponse();
 
-			await controller.loginWithMicrosoft('EISCB', res as never);
+			await controller.loginWithMicrosoft(res as never);
 
-			expect(authService.resolveSchoolIdByCode).toHaveBeenCalledWith('EISCB');
 			expect(authService.buildMicrosoftLoginUrl).toHaveBeenCalledTimes(1);
 
 			const passedState: string = authService.buildMicrosoftLoginUrl.mock.calls[0][0];
@@ -84,7 +70,6 @@ describe('AuthController — MSAL state packing', () => {
 			expect(signature).toBe(expectedSig);
 
 			const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString());
-			expect(parsed).toMatchObject({ schoolId: 7 });
 			expect(typeof parsed.csrf).toBe('string');
 			expect(parsed.csrf.length).toBeGreaterThan(0);
 
@@ -100,7 +85,7 @@ describe('AuthController — MSAL state packing', () => {
 
 	describe('GET /callback/azure-ad', () => {
 		it('throws when CSRF in state does not match the cookie', async () => {
-			const state = signState('expected-csrf', 7);
+			const state = signState('expected-csrf');
 			const { res } = fakeResponse({ microsoftOauthState: 'different-csrf' });
 
 			await expect(
@@ -120,7 +105,7 @@ describe('AuthController — MSAL state packing', () => {
 		});
 
 		it('throws when HMAC signature is tampered', async () => {
-			const state = signState('matching-csrf', 7);
+			const state = signState('matching-csrf');
 			const tampered = state.slice(0, -4) + 'XXXX';
 			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 
@@ -129,28 +114,8 @@ describe('AuthController — MSAL state packing', () => {
 			).rejects.toBeInstanceOf(UnauthorizedException);
 		});
 
-		it('throws when school_id is tampered in the payload', async () => {
-			const originalEncoded = Buffer.from(
-				JSON.stringify({ csrf: 'matching-csrf', schoolId: 7 }),
-			).toString('base64url');
-			const originalSig = createHmac('sha256', TEST_JWT_SECRET)
-				.update(originalEncoded)
-				.digest('base64url');
-
-			const tamperedEncoded = Buffer.from(
-				JSON.stringify({ csrf: 'matching-csrf', schoolId: 999 }),
-			).toString('base64url');
-			const tamperedState = `${tamperedEncoded}.${originalSig}`;
-
-			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
-
-			await expect(
-				controller.microsoftCallback('code-abc', tamperedState, res as never),
-			).rejects.toBeInstanceOf(UnauthorizedException);
-		});
-
-		it('extracts school_id from signed state and forwards it to loginWithMicrosoftCode', async () => {
-			const state = signState('matching-csrf', 7);
+		it('validates signed state and calls loginWithMicrosoftCode', async () => {
+			const state = signState('matching-csrf');
 			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 			authService.loginWithMicrosoftCode.mockResolvedValueOnce({
 				user: { id: 1 },
@@ -160,7 +125,7 @@ describe('AuthController — MSAL state packing', () => {
 
 			const result = await controller.microsoftCallback('code-abc', state, res as never);
 
-			expect(authService.loginWithMicrosoftCode).toHaveBeenCalledWith('code-abc', 7);
+			expect(authService.loginWithMicrosoftCode).toHaveBeenCalledWith('code-abc');
 			expect(res.clearCookie).toHaveBeenCalledWith('microsoftOauthState');
 			expect(result).toMatchObject({
 				code: 200,

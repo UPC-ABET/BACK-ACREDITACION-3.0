@@ -1,14 +1,12 @@
 import {
-	HttpException,
-	HttpStatus,
 	Controller,
 	Get,
-	Query,
 	Res,
 	UnauthorizedException,
+	Query,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiQuery, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
@@ -24,7 +22,6 @@ import { authValidationStrings } from '../config/strings/auth.validation';
 
 interface MicrosoftState {
 	csrf: string;
-	schoolId: number;
 }
 
 @ApiTags('Autenticación')
@@ -41,23 +38,10 @@ export class AuthController {
 
 	@Public()
 	@Get('microsoft')
-	@ApiOperation({ summary: 'Iniciar login con Microsoft Entra ID (requiere schoolCode)' })
-	@ApiQuery({
-		name: 'schoolCode',
-		required: true,
-		description: 'Código de la escuela seleccionada',
-	})
-	async loginWithMicrosoft(@Query('schoolCode') schoolCode: string, @Res() res: Response) {
-		if (!schoolCode) {
-			throw new HttpException(
-				{ message: 'error.school.required', errors: ['error.school.required'] },
-				HttpStatus.BAD_REQUEST,
-			);
-		}
-
-		const schoolId = await this.authService.resolveSchoolIdByCode(schoolCode);
+	@ApiOperation({ summary: 'Iniciar login con Microsoft Entra ID' })
+	async loginWithMicrosoft(@Res() res: Response) {
 		const csrf = randomBytes(24).toString('hex');
-		const state = this.signState({ csrf, schoolId });
+		const state = this.signState({ csrf });
 
 		const loginUrl = await this.authService.buildMicrosoftLoginUrl(state);
 
@@ -83,7 +67,7 @@ export class AuthController {
 		const storedCsrf = res.req?.cookies?.[MICROSOFT_STATE_COOKIE];
 		this.validateCsrf(parsed.csrf, storedCsrf);
 
-		const result = await this.authService.loginWithMicrosoftCode(code, parsed.schoolId);
+		const result = await this.authService.loginWithMicrosoftCode(code);
 
 		res.clearCookie(MICROSOFT_STATE_COOKIE);
 		saveAccessCookie(res, result);
@@ -117,7 +101,7 @@ export class AuthController {
 
 		try {
 			const obj = JSON.parse(Buffer.from(encoded, 'base64url').toString()) as MicrosoftState;
-			if (!obj.csrf || !obj.schoolId) throw new Error();
+			if (!obj.csrf) throw new Error();
 			return obj;
 		} catch {
 			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
