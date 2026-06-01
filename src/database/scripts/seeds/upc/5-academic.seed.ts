@@ -67,14 +67,14 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."students" (user_id, program_id, graduation_modality_type_id)
-		SELECT u.id, p.id, t.id
+		INSERT INTO "academic"."students" (code, user_id, program_id, graduation_modality_type_id)
+		SELECT v.code, u.id, p.id, t.id
 		FROM "organization"."users" u
 		JOIN (
 			VALUES
-				('student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG202-T002'),
-				('student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG202-T002')
-		) AS v(email, program_code, graduation_type_code)
+				('STU-0001', 'student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG202-T002'),
+				('STU-0002', 'student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG202-T002')
+		) AS v(code, email, program_code, graduation_type_code)
 			ON u.email = v.email
 		JOIN "academic"."programs" p
 			ON p.code = v.program_code
