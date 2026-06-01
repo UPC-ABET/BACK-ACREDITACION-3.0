@@ -47,7 +47,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "accreditation"."program_commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "commission_id" integer NOT NULL, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "commission_type_id" integer NOT NULL, CONSTRAINT "PK_program_commissions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_outcomes_outcome_code" UNIQUE ("outcome_code"), CONSTRAINT "PK_outcomes" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "UQ_outcomes_outcome_code" UNIQUE ("outcome_code"), CONSTRAINT "PK_outcomes" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_campuses" PRIMARY KEY ("id"))`,
@@ -564,6 +564,9 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."professors" ADD CONSTRAINT "FK_professors_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."outcomes" ADD CONSTRAINT "FK_outcomes_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."course_sections" ADD CONSTRAINT "FK_course_sections_section_modality_type_id" FOREIGN KEY ("section_modality_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -1281,9 +1284,229 @@ BEGIN
 END;
 $fn$;
 `);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_upload_outcomes(
+	p_rows jsonb,
+	p_academic_period_id integer,
+	p_user_id integer,
+	p_source_file text
+)
+RETURNS TABLE(row_number integer, error_code text, upload_log_id integer)
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+	v_total integer := jsonb_array_length(p_rows);
+	v_has_errors boolean := false;
+	v_log_id integer;
+	r record;
+BEGIN
+	-- The academic period is validated in the service (request-level HTTP error), not here.
+
+	-- intra-file duplicate outcome code
+	FOR r IN
+		SELECT (e->>'rowNumber')::int AS rn
+		FROM jsonb_array_elements(p_rows) AS e
+		WHERE lower(trim(e->>'outcomeCode')) IN (
+			SELECT lower(trim(d->>'outcomeCode'))
+			FROM jsonb_array_elements(p_rows) AS d
+			WHERE NULLIF(trim(d->>'outcomeCode'), '') IS NOT NULL
+			GROUP BY lower(trim(d->>'outcomeCode'))
+			HAVING count(*) > 1
+		)
+	LOOP
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateCodeInFile'::text, NULL::integer;
+	END LOOP;
+
+	-- per-row validation
+	FOR r IN
+		SELECT
+			(e->>'rowNumber')::int                 AS row_number,
+			NULLIF(trim(e->>'outcomeCode'), '')    AS outcome_code,
+			NULLIF(trim(e->>'programCode'), '')    AS program_code,
+			NULLIF(trim(e->>'commissionCode'), '') AS commission_code,
+			COALESCE(e->'outcomeName', '{}'::jsonb) AS outcome_name
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		IF r.outcome_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'outcomeCodeEmpty'::text, NULL::integer;
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM jsonb_each_text(r.outcome_name) AS kv(k, v) WHERE NULLIF(trim(kv.v), '') IS NOT NULL) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'outcomeNameEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.program_code IS NULL OR NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.program_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'programNotFound'::text, NULL::integer;
+		END IF;
+
+		IF r.commission_code IS NULL OR NOT EXISTS (SELECT 1 FROM accreditation.commissions c WHERE c.code = r.commission_code) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'commissionNotFound'::text, NULL::integer;
+		END IF;
+
+		-- the program_commission (program + commission + period) must already exist (catalog)
+		IF r.program_code IS NOT NULL AND r.commission_code IS NOT NULL AND NOT EXISTS (
+			SELECT 1
+			FROM accreditation.program_commissions pc
+			JOIN academic.programs p ON p.id = pc.program_id
+			JOIN accreditation.commissions c ON c.id = pc.commission_id
+			WHERE p.code = r.program_code
+			  AND c.code = r.commission_code
+			  AND pc.academic_period_id = p_academic_period_id
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'programCommissionNotFound'::text, NULL::integer;
+		END IF;
+
+		-- outcome_code is globally unique: an existing one under a different program_commission is a conflict
+		IF r.outcome_code IS NOT NULL AND EXISTS (
+			SELECT 1
+			FROM accreditation.outcomes o
+			JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			JOIN academic.programs p ON p.id = pc.program_id
+			JOIN accreditation.commissions c ON c.id = pc.commission_id
+			WHERE o.outcome_code = r.outcome_code
+			  AND NOT (p.code = r.program_code AND c.code = r.commission_code AND pc.academic_period_id = p_academic_period_id)
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'outcomeCodeConflict'::text, NULL::integer;
+		END IF;
+	END LOOP;
+
+	IF v_has_errors THEN
+		RETURN;
+	END IF;
+
+	INSERT INTO audit.upload_logs
+		(upload_type_id, status_type_id, academic_period_id, user_id, source_file, total_rows, loaded_rows, error_rows,
+		 extra, is_active, created_at, updated_at)
+	VALUES (
+		(SELECT id FROM core.types WHERE code = 'TG1101-T003'),
+		(SELECT id FROM core.types WHERE code = 'TG1102-T001'),
+		p_academic_period_id, p_user_id, p_source_file, v_total, v_total, 0,
+		'{}'::jsonb, true, NOW(), NOW())
+	RETURNING id INTO v_log_id;
+
+	-- insert outcomes whose code does not exist yet
+	INSERT INTO accreditation.outcomes
+		(program_commission_id, outcome_code, outcome_name, outcome_description, upload_log_id,
+		 extra, is_active, created_at, updated_at)
+	SELECT
+		pc.id,
+		trim(e->>'outcomeCode'),
+		COALESCE(e->'outcomeName', '{}'::jsonb),
+		'{}'::jsonb,
+		v_log_id,
+		'{}'::jsonb, true, NOW(), NOW()
+	FROM jsonb_array_elements(p_rows) AS e
+	JOIN academic.programs p ON p.code = trim(e->>'programCode')
+	JOIN accreditation.commissions c ON c.code = trim(e->>'commissionCode')
+	JOIN accreditation.program_commissions pc
+		ON pc.program_id = p.id AND pc.commission_id = c.id AND pc.academic_period_id = p_academic_period_id
+	WHERE NOT EXISTS (SELECT 1 FROM accreditation.outcomes o WHERE o.outcome_code = trim(e->>'outcomeCode'));
+
+	-- update outcomes whose code already existed (push prior name onto the extra.uploadUndo stack)
+	UPDATE accreditation.outcomes o
+	SET outcome_name = COALESCE(e->'outcomeName', '{}'::jsonb),
+		updated_at = NOW(),
+		extra = jsonb_set(COALESCE(o.extra, '{}'::jsonb), '{uploadUndo}',
+			COALESCE(o.extra->'uploadUndo', '[]'::jsonb) ||
+			jsonb_build_object('logId', v_log_id, 'outcomeName', o.outcome_name))
+	FROM jsonb_array_elements(p_rows) AS e
+	WHERE o.outcome_code = trim(e->>'outcomeCode')
+	  AND o.upload_log_id IS DISTINCT FROM v_log_id;
+
+	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
+END;
+$fn$;
+`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_outcomes(p_upload_log_id integer)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- block if an outcome created by this upload is already referenced downstream
+	IF EXISTS (
+		SELECT 1 FROM improvement.finding_outcomes fo
+		JOIN accreditation.outcomes o ON o.id = fo.outcome_id
+		WHERE o.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM survey.scores sc
+		JOIN accreditation.outcomes o ON o.id = sc.outcome_id
+		WHERE o.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM survey.outcome_configs oc
+		JOIN accreditation.outcomes o ON o.id = oc.outcome_id
+		WHERE o.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM evidence.student_course_outcome_grades g
+		JOIN accreditation.outcomes o ON o.id = g.outcome_id
+		WHERE o.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM evaluation.rubric_questions rq
+		JOIN accreditation.outcomes o ON o.id = rq.outcome_id
+		WHERE o.upload_log_id = p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM academic.course_outcome_mappings com
+		JOIN accreditation.outcomes o ON o.id = com.outcome_id
+		WHERE o.upload_log_id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedOutcomeRefs';
+	END IF;
+
+	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
+	IF EXISTS (
+		SELECT 1 FROM accreditation.outcomes o
+		WHERE (o.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
+		  AND (o.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+	) OR EXISTS (
+		SELECT 1 FROM accreditation.outcomes o
+		WHERE o.upload_log_id = p_upload_log_id
+		  AND jsonb_array_length(COALESCE(o.extra->'uploadUndo', '[]'::jsonb)) > 0
+	) THEN
+		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
+	END IF;
+
+	-- restore updated outcomes by popping this upload's (top) uploadUndo entry, then drop inserts
+	UPDATE accreditation.outcomes o
+	SET outcome_name = o.extra->'uploadUndo' -> -1 -> 'outcomeName',
+		extra = CASE
+			WHEN jsonb_array_length(o.extra->'uploadUndo') <= 1 THEN o.extra - 'uploadUndo'
+			ELSE jsonb_set(o.extra, '{uploadUndo}', (o.extra->'uploadUndo') - (-1))
+		END,
+		updated_at = NOW()
+	WHERE (o.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+
+	DELETE FROM accreditation.outcomes WHERE upload_log_id = p_upload_log_id;
+
+	UPDATE audit.upload_logs
+	SET status_type_id = (SELECT id FROM core.types WHERE code = 'TG1102-T002'),
+	    rollback_at = NOW(),
+	    updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+END;
+$fn$;
+`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_outcomes(integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_upload_outcomes(jsonb, integer, integer, text)`,
+		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_charts(integer)`);
 		await queryRunner.query(
 			`DROP FUNCTION IF EXISTS audit.fn_upload_charts(jsonb, integer, integer, text)`,
@@ -1615,6 +1838,9 @@ $fn$;
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."study_plan_courses" DROP CONSTRAINT "FK_study_plan_courses_level_type_id"`,
+		);
+		await queryRunner.query(
+			`ALTER TABLE "accreditation"."outcomes" DROP CONSTRAINT "FK_outcomes_upload_log_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."professors" DROP CONSTRAINT "FK_professors_upload_log_id"`,

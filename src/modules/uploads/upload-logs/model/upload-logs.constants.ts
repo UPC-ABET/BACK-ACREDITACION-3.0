@@ -4,12 +4,11 @@ import { uploadLogsValidationStrings } from '../config/strings/upload-logs.valid
 
 const E = uploadLogsValidationStrings.error;
 
-// Short codes RAISEd by the PG rollback functions → the frontend i18n key + HTTP status the backend
-// surfaces. (Mirrors the per-row pattern: the DB emits a short code, the backend maps it for the client.)
 export const ROLLBACK_RAISE_MAP: Record<string, { key: string; status: HttpStatus }> = {
 	uploadLogNotFound: { key: E.uploadLogNotFound, status: HttpStatus.NOT_FOUND },
 	rollbackBlockedSections: { key: E.rollbackBlockedSections, status: HttpStatus.CONFLICT },
 	rollbackBlockedOutcomes: { key: E.rollbackBlockedOutcomes, status: HttpStatus.CONFLICT },
+	rollbackBlockedOutcomeRefs: { key: E.rollbackBlockedOutcomeRefs, status: HttpStatus.CONFLICT },
 	rollbackBlockedProfessors: { key: E.rollbackBlockedProfessors, status: HttpStatus.CONFLICT },
 	rollbackBlockedStaff: { key: E.rollbackBlockedStaff, status: HttpStatus.CONFLICT },
 	rollbackBlockedNewerUpload: { key: E.rollbackBlockedNewerUpload, status: HttpStatus.CONFLICT },
