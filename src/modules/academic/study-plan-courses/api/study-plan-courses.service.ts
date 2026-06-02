@@ -7,6 +7,7 @@ import {
 	CreateStudyPlanCourseDto,
 	UpdateStudyPlanCourseDto,
 	FilterStudyPlanCourseDto,
+	EnableEvaluationDto,
 } from '../model/study-plan-courses.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
@@ -32,6 +33,11 @@ export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepositor
 	async delete(id: number, manager?: EntityManager) {
 		await StudyPlanCourseValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async enableEvaluation(id: number, dto: EnableEvaluationDto) {
+		await StudyPlanCourseValidation.validateExists(this.repository, id);
+		await this.repository.enableEvaluation(id, dto.isEvaluable);
 	}
 
 	async getByFilters(filters: FilterStudyPlanCourseDto) {

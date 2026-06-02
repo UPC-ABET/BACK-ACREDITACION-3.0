@@ -195,9 +195,9 @@ describe('OrgScopeService', () => {
 		];
 		repository.findUserSchools.mockResolvedValueOnce(rows);
 
-		const result = await service.getUserSchools(3, 'TG102-T001');
+		const result = await service.getUserSchools(3, 'TG102-T001', false);
 
 		expect(result).toBe(rows);
-		expect(repository.findUserSchools).toHaveBeenCalledWith(3, 'TG102-T001');
+		expect(repository.findUserSchools).toHaveBeenCalledWith(3, 'TG102-T001', false);
 	});
 });

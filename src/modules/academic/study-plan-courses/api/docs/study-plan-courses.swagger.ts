@@ -4,6 +4,7 @@ import {
 	CreateStudyPlanCourseDto,
 	UpdateStudyPlanCourseDto,
 	FilterStudyPlanCourseDto,
+	EnableEvaluationDto,
 } from '../../model/study-plan-courses.dtos';
 
 const cfg = studyPlanCoursesRoutes.studyPlanCourses;
@@ -25,3 +26,6 @@ export const SwaggerStudyPlanCourseGetById = () => HttpMethodWithSwagger(cfg.ope
 
 export const SwaggerStudyPlanCourseGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterStudyPlanCourseDto });
+
+export const SwaggerStudyPlanCourseEnableEvaluation = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.enableEvaluation, body: EnableEvaluationDto });

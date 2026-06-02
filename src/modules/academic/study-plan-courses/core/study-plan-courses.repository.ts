@@ -18,6 +18,16 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 		super(repository, dataSource);
 	}
 
+	async enableEvaluation(id: number, isEvaluable: boolean): Promise<void> {
+		await this.dataSource.query(
+			`UPDATE "academic"."study_plan_courses"
+			 SET extra = extra || jsonb_build_object('is_evaluable', $1::boolean),
+			     updated_at = now()
+			 WHERE id = $2`,
+			[isEvaluable, id],
+		);
+	}
+
 	async getByFilters(filters: FilterStudyPlanCourseDto): Promise<StudyPlanCourseEntity[]> {
 		const qb = this.dataSource
 			.createQueryBuilder(StudyPlanCourseEntity, 'spc')
@@ -70,6 +80,12 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 				);
 				qb.setParameter('schoolId', filters.schoolId);
 			}
+		}
+
+		if (filters.isEvaluable !== undefined) {
+			qb.andWhere(`(spc.extra->>'is_evaluable')::boolean = :isEvaluable`, {
+				isEvaluable: filters.isEvaluable,
+			});
 		}
 
 		if (filters.extra && typeof filters.extra === 'object') {
