@@ -56,6 +56,18 @@ export class StudyPlanCourseValidation {
 		}
 	}
 
+	static async validateExists(repo: StudyPlanCourseRepository, id: number) {
+		if (!(await repo.findOneById(id))) {
+			throw new HttpException(
+				{
+					message: studyPlanCoursesValidationStrings.result.enableEvaluationFailed,
+					errors: [studyPlanCoursesValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+	}
+
 	static async validateDelete(repo: StudyPlanCourseRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
 			throw new HttpException(

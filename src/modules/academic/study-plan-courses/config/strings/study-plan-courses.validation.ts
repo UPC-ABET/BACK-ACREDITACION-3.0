@@ -7,5 +7,6 @@ export const studyPlanCoursesValidationStrings = {
 		createFailed: 'error.studyPlanCourse.createFailed',
 		updateFailed: 'error.studyPlanCourse.updateFailed',
 		deleteFailed: 'error.studyPlanCourse.deleteFailed',
+		enableEvaluationFailed: 'error.studyPlanCourse.enableEvaluationFailed',
 	},
 };

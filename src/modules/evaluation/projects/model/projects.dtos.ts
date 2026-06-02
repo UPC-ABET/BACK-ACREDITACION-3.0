@@ -301,13 +301,20 @@ export class ProjectDetailsResponseDto {
 	@ApiProperty({ example: {}, type: [ProjectEvaluatorDetailDto] })
 	evaluators: ProjectEvaluatorDetailDto[];
 
-	@ApiProperty({ example: {} })
+	@ApiProperty({ example: { id: 1, name: { es: 'Curso', en: 'Course' }, description: {}, learningOutcome: {} }, nullable: true })
+	course: {
+		id: number;
+		name: any;
+		description: any;
+		learningOutcome: any;
+	} | null;
+
+	@ApiProperty({ example: {}, nullable: true })
 	rubric: {
 		rubric: any;
-		course: any;
 		outcomes: any[];
 		questions: RubricQuestionDetailsDto[];
-	};
+	} | null;
 }
 
 export class FilterProjectDto {
