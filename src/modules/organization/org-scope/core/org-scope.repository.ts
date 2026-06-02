@@ -34,7 +34,14 @@ export class OrgScopeRepository {
 		]);
 	}
 
-	async findUserSchools(userId: number, modalityCode: string): Promise<UserSchoolRow[]> {
+	async findUserSchools(
+		userId: number,
+		modalityCode: string,
+		isAdmin: boolean,
+	): Promise<UserSchoolRow[]> {
+		if (isAdmin) {
+			return await this.dataSource.query(ALL_SCHOOLS_SQL);
+		}
 		return await this.dataSource.query(USER_SCHOOLS_SQL, [
 			userId,
 			modalityCode,
@@ -106,6 +113,20 @@ SELECT DISTINCT
 FROM ancestors s
 JOIN core.types et_school  ON et_school.id  = s.entity_type_id AND et_school.code = $3
 JOIN organization.schools sc ON sc.id = s.entity_code
+LEFT JOIN organization.faculties f ON f.id = sc.faculty_id
+WHERE sc.is_active = true
+ORDER BY sc.code ASC
+`;
+
+const ALL_SCHOOLS_SQL = `
+SELECT DISTINCT
+	sc.id::int         AS "id",
+	sc.code            AS "code",
+	sc.name            AS "name",
+	sc.faculty_id::int AS "facultyId",
+	f.code             AS "facultyCode",
+	f.name             AS "facultyName"
+FROM organization.schools sc
 LEFT JOIN organization.faculties f ON f.id = sc.faculty_id
 WHERE sc.is_active = true
 ORDER BY sc.code ASC

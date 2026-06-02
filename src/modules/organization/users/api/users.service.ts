@@ -136,7 +136,8 @@ export class UserService extends BaseService<UserRepository> {
 			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
 
-		const userSchools = await this.orgScopeService.getUserSchools(jwtPayload.userId, modalityCode);
+		const isAdmin = jwtPayload.activeRole?.code?.toUpperCase() === 'ADMIN';
+		const userSchools = await this.orgScopeService.getUserSchools(jwtPayload.userId, modalityCode, isAdmin);
 
 		return {
 			user: this.sanitizeUser(user),
