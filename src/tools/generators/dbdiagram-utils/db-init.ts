@@ -1800,7 +1800,7 @@ BEGIN
 		IF r.modality_code IS NULL OR NOT EXISTS (
 			SELECT 1 FROM core.types t
 			JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG204' AND t.code = r.modality_code
+			WHERE g.code = 'TG103' AND t.code = r.modality_code
 		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'sectionModalityInvalid'::text, NULL::integer;
@@ -1836,7 +1836,7 @@ BEGIN
 		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
 	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
 	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
-	JOIN core.type_groups g ON g.code = 'TG204'
+	JOIN core.type_groups g ON g.code = 'TG103'
 	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
 	WHERE NOT EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = trim(e->>'sectionCode'));
 
@@ -1861,7 +1861,7 @@ BEGIN
 		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
 	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
 	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
-	JOIN core.type_groups g ON g.code = 'TG204'
+	JOIN core.type_groups g ON g.code = 'TG103'
 	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
 	WHERE cs.section_code = trim(e->>'sectionCode')
 	  AND cs.upload_log_id IS DISTINCT FROM v_log_id;

@@ -1,5 +1,5 @@
 jest.mock('@nestjs/common', () => ({ Injectable: () => () => undefined }), { virtual: true });
-jest.mock('../core/sections-upload.repository', () => ({ SectionsUploadRepository: class {} }), {
+jest.mock('../core/grades-rc-upload.repository', () => ({ GradesRcUploadRepository: class {} }), {
 	virtual: true,
 });
 jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), {
@@ -7,14 +7,14 @@ jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService
 });
 
 import * as ExcelJS from 'exceljs';
-import { SectionsUploadService } from './sections-upload.service';
+import { GradesRcUploadService } from './grades-rc-upload.service';
 
 const uploadLogServiceStub: any = {
 	assertRollbackable: jest.fn(),
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Plan', 'Course', 'Campus', 'Professor', 'Modality', 'Section'];
+const HEADER = ['Section', 'Student', 'GradeType', 'Percentage', 'Grade'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -33,22 +33,20 @@ function makeRepository(uploadFnResult: any[]) {
 			return Promise.resolve(uploadFnResult);
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
-		getSectionModalities: jest.fn().mockResolvedValue([]),
+		getGradeTypes: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
 }
 
-describe('SectionsUploadService — positional parsing', () => {
-	it('sends structured section rows', async () => {
+describe('GradesRcUploadService — positional parsing', () => {
+	it('sends structured rows', async () => {
 		const { repository, calls } = makeRepository([
 			{ row_number: null, error_code: null, upload_log_id: 42 },
 		]);
-		const service = new SectionsUploadService(repository, uploadLogServiceStub);
+		const service = new GradesRcUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG103-T001', 'SEC-A'],
-		]);
-		const result = await service.processUpload(buffer, 'sections.xlsx', 7, {
+		const buffer = await makeXlsx([['SEC-001', 'STU-001', 'TG205-T002', '40', '15.5']]);
+		const result = await service.processUpload(buffer, 'grades-rc.xlsx', 7, {
 			academicPeriodId: 1,
 		} as any);
 
@@ -59,12 +57,11 @@ describe('SectionsUploadService — positional parsing', () => {
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({
 			rowNumber: 2,
-			studyPlanCode: 'MALLA-2024',
-			courseCode: 'CS101',
-			campusCode: 'CAMP-1',
-			professorCode: 'DOC-001',
-			sectionModalityTypeCode: 'TG103-T001',
-			sectionCode: 'SEC-A',
+			sectionCode: 'SEC-001',
+			studentCode: 'STU-001',
+			gradeTypeCode: 'TG205-T002',
+			gradeTypePercentage: '40',
+			grade: '15.5',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
@@ -72,14 +69,12 @@ describe('SectionsUploadService — positional parsing', () => {
 
 	it('returns annotated excel with localized text when the function reports row errors', async () => {
 		const { repository } = makeRepository([
-			{ row_number: 2, error_code: 'professorNotFound', upload_log_id: null },
+			{ row_number: 2, error_code: 'studentNotFound', upload_log_id: null },
 		]);
-		const service = new SectionsUploadService(repository, uploadLogServiceStub);
+		const service = new GradesRcUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG103-T001', 'SEC-A'],
-		]);
-		const result = await service.processUpload(buffer, 'sections.xlsx', 1, {
+		const buffer = await makeXlsx([['SEC-001', 'GHOST', 'TG205-T002', '40', '15.5']]);
+		const result = await service.processUpload(buffer, 'grades-rc.xlsx', 1, {
 			academicPeriodId: 1,
 			lang: 'es',
 		} as any);
@@ -90,28 +85,28 @@ describe('SectionsUploadService — positional parsing', () => {
 	});
 });
 
-describe('SectionsUploadService — template', () => {
-	it('builds a Template sheet and a localized legend sheet with TG103 codes', async () => {
+describe('GradesRcUploadService — template', () => {
+	it('builds a Template sheet and a localized legend sheet with TG205 codes', async () => {
 		const repository: any = {
-			getSectionModalities: jest.fn().mockResolvedValue([
-				{ code: 'TG103-T001', name: 'Sección presencial' },
-				{ code: 'TG103-T002', name: 'Sección virtual' },
+			getGradeTypes: jest.fn().mockResolvedValue([
+				{ code: 'TG205-T002', name: 'EB' },
+				{ code: 'TG205-T003', name: 'PA' },
 			]),
 		};
-		const service = new SectionsUploadService(repository, uploadLogServiceStub);
+		const service = new GradesRcUploadService(repository, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
-		expect(fileName).toBe('PlantillaSecciones.xlsx');
+		expect(fileName).toBe('PlantillaNotasRC.xlsx');
 
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
 		expect(header).toContain('Código de sección');
-		expect(header).toContain('Código de modalidad de sección');
+		expect(header).toContain('Nota');
 
-		const legend = wb.getWorksheet('Modalidades de sección')!;
+		const legend = wb.getWorksheet('Tipos de nota')!;
 		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('TG103-T001');
-		expect(codes).toContain('TG103-T002');
+		expect(codes).toContain('TG205-T002');
+		expect(codes).toContain('TG205-T003');
 	});
 });

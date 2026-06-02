@@ -24,7 +24,6 @@ import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
 const routes = gradesRvUploadRoutes.grades_rv_upload;
 
-// SCAFFOLD ONLY — endpoints are wired but the service throws NotImplemented (501) until built.
 const ADMIN_MODULE = 'ADMIN';
 
 @ApiTags(routes.tag)
