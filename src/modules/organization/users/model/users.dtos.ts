@@ -2,8 +2,10 @@
 import {
 	IsBoolean,
 	IsEmail,
+	IsInt,
 	IsNumber,
 	IsOptional,
+	IsPositive,
 	IsString,
 	Length,
 	MaxLength,
@@ -167,4 +169,11 @@ export class ChangeRoleDto {
 	@IsNumber()
 	@ApiProperty({ example: 1 })
 	newRole: number;
+}
+
+export class GetMeDto {
+	@IsInt()
+	@IsPositive()
+	@ApiProperty({ example: 1, required: true, description: 'Modality type ID' })
+	modalityId: number;
 }

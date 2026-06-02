@@ -130,7 +130,7 @@ describe('OrgScopeService', () => {
 		expect(result.levels).toHaveLength(1);
 	});
 
-	it('returns schools assigned to the user for an academic period', async () => {
+	it('returns schools assigned to the user for the active academic period by modality', async () => {
 		const rows = [
 			{
 				id: 1,
@@ -143,9 +143,9 @@ describe('OrgScopeService', () => {
 		];
 		repository.findUserSchools.mockResolvedValueOnce(rows);
 
-		const result = await service.getUserSchools(3);
+		const result = await service.getUserSchools(3, 4);
 
 		expect(result).toBe(rows);
-		expect(repository.findUserSchools).toHaveBeenCalledWith(3);
+		expect(repository.findUserSchools).toHaveBeenCalledWith(3, 4);
 	});
 });

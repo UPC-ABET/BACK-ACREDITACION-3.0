@@ -9,6 +9,13 @@ export class GetScopeDto {
 	periodId: number;
 }
 
+export class GetUserSchoolsDto {
+	@IsInt()
+	@IsPositive()
+	@ApiProperty({ example: 1, required: true, description: 'Modality type ID' })
+	modalityId: number;
+}
+
 // %% OTHER DTOS — Response documentation classes (Swagger only)
 export class ScopeOptionDto {
 	@ApiProperty({ example: 1 })

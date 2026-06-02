@@ -34,9 +34,10 @@ export class OrgScopeRepository {
 		]);
 	}
 
-	async findUserSchools(userId: number): Promise<UserSchoolRow[]> {
+	async findUserSchools(userId: number, modalityId: number): Promise<UserSchoolRow[]> {
 		return await this.dataSource.query(USER_SCHOOLS_SQL, [
 			userId,
+			modalityId,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
 	}
@@ -44,10 +45,11 @@ export class OrgScopeRepository {
 
 const USER_SCHOOLS_SQL = `
 WITH RECURSIVE
-latest_period AS (
+active_period AS (
 	SELECT ap.id AS academic_period_id
 	FROM academic.academic_periods ap
 	WHERE ap.is_active = true
+	  AND ap.modality_type_id = $2
 	ORDER BY ap.start_date DESC, ap.end_date DESC, ap.id DESC
 	LIMIT 1
 ),
@@ -62,7 +64,7 @@ user_anchors AS (
 		0 AS depth
 	FROM organization.charts c
 	JOIN organization.staff s ON s.id = c.staff_id
-	JOIN latest_period lp ON lp.academic_period_id = c.academic_period_id
+	JOIN active_period ap ON ap.academic_period_id = c.academic_period_id
 	WHERE s.user_id   = $1
 	  AND s.is_active = true
 	  AND c.is_active = true
@@ -88,7 +90,7 @@ ancestors AS (
 		anc.depth + 1
 	FROM organization.charts parent
 	JOIN ancestors anc ON parent.id = anc.root_chart_id
-	JOIN latest_period lp ON lp.academic_period_id = parent.academic_period_id
+	JOIN active_period ap ON ap.academic_period_id = parent.academic_period_id
 	WHERE parent.is_active = true
 	  AND anc.depth        < 20
 	  AND NOT parent.id = ANY(anc.path)
@@ -101,7 +103,7 @@ SELECT DISTINCT
 	f.code             AS "facultyCode",
 	f.name             AS "facultyName"
 FROM ancestors s
-JOIN core.types et_school  ON et_school.id  = s.entity_type_id AND et_school.code = $2
+JOIN core.types et_school  ON et_school.id  = s.entity_type_id AND et_school.code = $3
 JOIN organization.schools sc ON sc.id = s.entity_code
 LEFT JOIN organization.faculties f ON f.id = sc.faculty_id
 WHERE sc.is_active = true

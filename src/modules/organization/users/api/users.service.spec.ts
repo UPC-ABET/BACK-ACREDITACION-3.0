@@ -150,7 +150,7 @@ describe('UserService - login', () => {
 	});
 
 	describe('getMe', () => {
-		it('returns the current user profile with schools for the selected period', async () => {
+		it('returns the current user profile with schools for the selected modality', async () => {
 			const userSchools = [
 				{
 					id: 1,
@@ -171,9 +171,10 @@ describe('UserService - login', () => {
 					allowedRoles: authorizationProfile.allowedRoles,
 					permissions: authorizationProfile.permissions,
 				},
+				9,
 			);
 
-			expect(orgScopeService.getUserSchools).toHaveBeenCalledWith(baseUser.id);
+			expect(orgScopeService.getUserSchools).toHaveBeenCalledWith(baseUser.id, 9);
 			expect(result).toEqual({
 				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
 				activeRole: authorizationProfile.activeRole,
