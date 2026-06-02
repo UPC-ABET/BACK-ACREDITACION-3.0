@@ -21,6 +21,10 @@ import {
 	PatchIfcFindingDto,
 } from '../model/ifc-findings.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 
 const IFC_FINDINGS_MODULE = 'IFC_FINDINGS';
 
@@ -43,9 +47,14 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingDelete()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'DELETE' })
-	async deleteCascade(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		await this.service.deleteWithCascade(id, req.user.userId, req.user.schoolId);
+	async deleteCascade(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		await this.service.deleteWithCascade(id, req.user.userId, schoolId);
 		return parseSuccessResponse(null);
 	}
 
@@ -55,12 +64,11 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 		return await super.getAll();
 	}
 
-	// Method name differs from the base CRUD's `getById` to avoid an incompatible-override TS error;
-	// the Swagger factory still mounts it at `GET /get-by-id/:id`, replacing the base shape.
 	@SwaggerIfcFindingGetById()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'GET' })
-	async getDetail(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.getDetail(id, req.user.schoolId);
+	async getDetail(@Param('id', ParseIntPipe) id: number, @SchoolId() schoolId: number) {
+		const result = await this.service.getDetail(id, schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -71,20 +79,23 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingList()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
-	async list(@Body() dto: ListIfcFindingsDto, @Req() req: any) {
-		const rows = await this.service.list(dto, req.user.schoolId);
+	async list(@Body() dto: ListIfcFindingsDto, @SchoolId() schoolId: number) {
+		const rows = await this.service.list(dto, schoolId);
 		return parseSuccessResponse(rows);
 	}
 
 	@SwaggerIfcFindingPatch()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'PATCH' })
 	async patch(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: PatchIfcFindingDto,
+		@SchoolId() schoolId: number,
 		@Req() req: any,
 	) {
-		const result = await this.service.patch(id, dto, req.user.userId, req.user.schoolId);
+		const result = await this.service.patch(id, dto, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 }

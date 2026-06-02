@@ -36,6 +36,10 @@ import {
 } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 
 const IFCS_MODULE = 'IFCS';
 
@@ -46,16 +50,18 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcPrefill()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
-	async prefill(@Query() query: IfcPrefillQueryDto, @Req() req: any) {
-		const result = await this.service.prefill(query, req.user.schoolId);
+	async prefill(@Query() query: IfcPrefillQueryDto, @SchoolId() schoolId: number) {
+		const result = await this.service.prefill(query, schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcCreate()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async createIfc(@Body() dto: CreateIfcDto, @Req() req: any) {
-		const result = await this.service.createIfc(dto, req.user.userId, req.user.schoolId);
+	async createIfc(@Body() dto: CreateIfcDto, @SchoolId() schoolId: number, @Req() req: any) {
+		const result = await this.service.createIfc(dto, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -90,45 +96,70 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcGetView()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
-	async getView(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.getView(id, req.user.userId, req.user.schoolId);
+	async getView(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.getView(id, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcSubmit()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async submit(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.submit(id, req.user.userId, req.user.schoolId);
+	async submit(@Param('id', ParseIntPipe) id: number, @SchoolId() schoolId: number, @Req() req: any) {
+		const result = await this.service.submit(id, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcApprove()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async approve(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-		const result = await this.service.approve(id, req.user.userId, req.user.schoolId);
+	async approve(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.approve(id, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcReject()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectIfcDto, @Req() req: any) {
-		const result = await this.service.reject(id, req.user.userId, req.user.schoolId, dto);
+	@ApiSchoolHeader()
+	async reject(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: RejectIfcDto,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.reject(id, req.user.userId, schoolId, dto);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcPatch()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'PATCH' })
-	async patch(@Param('id', ParseIntPipe) id: number, @Body() dto: IfcContentDto, @Req() req: any) {
-		const result = await this.service.patch(id, dto, req.user.userId, req.user.schoolId);
+	async patch(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: IfcContentDto,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.patch(id, dto, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcPdf()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
 	async pdf(
 		@Param('id', ParseIntPipe) id: number,
 		@Query() query: IfcPdfQueryDto,
+		@SchoolId() schoolId: number,
 		@Req() req: any,
 		@Res({ passthrough: false }) res: Response,
 	) {
@@ -136,36 +167,39 @@ export class IfcController extends BaseController<IfcService> {
 		const { pdf, filename } = await this.service.generatePdf(
 			id,
 			req.user.userId,
-			req.user.schoolId,
+			schoolId,
 			lang,
 		);
 		writeBinary(res, pdf, filename, 'application/pdf');
 	}
 
 	@SwaggerIfcPdfBulk()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async pdfBulk(
 		@Body() dto: IfcPdfBulkDto,
+		@SchoolId() schoolId: number,
 		@Req() req: any,
 		@Res({ passthrough: false }) res: Response,
 	) {
 		const { zip, filename } = await this.service.generatePdfBulk(
 			dto.ifcIds,
 			req.user.userId,
-			req.user.schoolId,
+			schoolId,
 			dto.lang,
 		);
 		writeBinary(res, zip, filename, 'application/zip');
 	}
 
 	@SwaggerIfcStatusReport()
+	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async statusReport(
 		@Body() dto: IfcStatusReportDto,
-		@Req() req: any,
+		@SchoolId() schoolId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { xlsx, filename } = await this.service.generateStatusReport(dto, req.user.schoolId);
+		const { xlsx, filename } = await this.service.generateStatusReport(dto, schoolId);
 		writeBinary(
 			res,
 			xlsx,

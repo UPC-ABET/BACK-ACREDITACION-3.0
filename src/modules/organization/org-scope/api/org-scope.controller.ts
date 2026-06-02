@@ -8,6 +8,10 @@ import {
 } from './docs/org-scope.swagger';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 
 const ORGANIZATION_MODULE = 'ORGANIZATION';
 
@@ -16,10 +20,14 @@ export class OrgScopeController {
 	constructor(private readonly service: OrgScopeService) {}
 
 	@SwaggerOrgScopeGetScope()
+	@ApiSchoolHeader(false)
 	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
-	async getScope(@Body() dto: GetScopeDto, @Req() req: any) {
+	async getScope(
+		@Body() dto: GetScopeDto,
+		@SchoolId({ optional: true }) schoolId: number | null,
+		@Req() req: any,
+	) {
 		const userId = req.user.userId;
-		const schoolId = req.user.schoolId;
 		const result = await this.service.getScope(userId, schoolId, dto.periodId);
 		return parseSuccessResponse(result);
 	}

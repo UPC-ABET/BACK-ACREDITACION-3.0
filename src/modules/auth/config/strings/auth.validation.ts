@@ -7,5 +7,6 @@ export const authValidationStrings = {
 		microsoftLoginFailed: 'error.auth.microsoftLoginFailed',
 		microsoftNoEmail: 'error.auth.microsoftNoEmail',
 		missingConfig: 'error.auth.missingConfig',
+		schoolRequired: 'error.auth.schoolRequired',
 	},
 };
