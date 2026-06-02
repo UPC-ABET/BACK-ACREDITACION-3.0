@@ -9,6 +9,15 @@
 - The only Spanish allowed is in i18n seed data values (inside `i18n('Spanish', 'English')` calls) and JSONB display strings stored in the database.
 - No emoji in code or comments.
 
+## Comments
+
+Code should be self-explanatory by default — favour clear names, small functions, and obvious control flow over prose.
+
+- Write comments **only** for complex, high-reasoning code: non-obvious algorithms, tricky invariants, ordering/concurrency concerns, or a "why" the code cannot express on its own (e.g. the upload/rollback PG functions).
+- Do **not** add comments that restate what the code already says, narrate straightforward steps, or label obvious blocks. If a comment is only describing *what* a readable line does, delete it and let the code speak.
+- When a comment is genuinely needed, explain the *why*, not the *what*.
+- If you feel a block needs a comment to be understood, first ask whether better naming or a small extracted function would remove the need.
+
 ## Naming Conventions
 
 | Layer                                                                  | Casing                                                  | Example                                                                               |
@@ -575,6 +584,7 @@ These are acknowledged and intentionally not fixed:
 
 ## Don'ts
 
+- **Don't add comments that restate the code — comment only complex/high-reasoning logic and keep code self-explanatory.**
 - **Don't create barrel/index.ts files.**
 - **Don't use raw `@Column()` — use custom decorators.**
 - **Don't throw exceptions with raw text — use i18n keys.**

@@ -24,7 +24,6 @@ export const SchoolId = createParamDecorator(
 	},
 );
 
-/** Swagger: documents the `X-School-Id` header on endpoints that use `@SchoolId()`. */
 export const ApiSchoolHeader = (required = true) =>
 	ApiHeader({
 		name: 'X-School-Id',

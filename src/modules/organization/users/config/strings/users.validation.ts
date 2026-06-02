@@ -6,6 +6,7 @@ export const usersValidationStrings = {
 		invalidCredentials: 'error.user.invalidCredentials',
 		schoolNotFound: 'error.user.schoolNotFound',
 		noRolesAssigned: 'error.user.noRolesAssigned',
+		noPermissionsAssigned: 'error.user.noPermissionsAssigned',
 		inactiveOrNotFound: 'error.user.inactiveOrNotFound',
 	},
 	result: {

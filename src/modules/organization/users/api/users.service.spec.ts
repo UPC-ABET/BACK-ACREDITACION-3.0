@@ -127,6 +127,17 @@ describe('UserService - login', () => {
 				UnauthorizedException,
 			);
 		});
+
+		it('throws UnauthorizedException when the role has no permissions', async () => {
+			userAuthorizationService.buildAuthorizationProfile.mockResolvedValueOnce({
+				activeRole: authorizationProfile.activeRole,
+				allowedRoles: authorizationProfile.allowedRoles,
+				permissions: [],
+			});
+			await expect(service.createUserLogin(baseUser, null, undefined)).rejects.toBeInstanceOf(
+				UnauthorizedException,
+			);
+		});
 	});
 
 	describe('loginById', () => {

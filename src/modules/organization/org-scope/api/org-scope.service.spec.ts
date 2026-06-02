@@ -33,7 +33,7 @@ describe('OrgScopeService', () => {
 		expect(repository.findScope).toHaveBeenCalledWith(1, 7, 5);
 	});
 
-	it('groups rows by level_num in ascending order and computes highest_level from anchors', async () => {
+	it('drops the school and every level above it, keeping only levels below the school', async () => {
 		repository.findScope.mockResolvedValueOnce([
 			{
 				id: 30,
@@ -71,35 +71,43 @@ describe('OrgScopeService', () => {
 
 		const result = await service.getScope(7, 11, 5);
 
-		expect(result.highestLevel).toBe(2);
-		expect(result.levels.map((l) => l.levelNum)).toEqual([1, 2, 3, 4]);
+		expect(result.highestLevel).toBe(4);
+		expect(result.levels.map((l) => l.levelNum)).toEqual([3, 4]);
 		expect(result.levels[0]).toEqual({
-			levelNum: 1,
-			typeCode: 'TG902-T001',
-			options: [{ id: 10, label: { es: 'Decanato' }, parentId: null }],
+			levelNum: 3,
+			typeCode: 'TG902-T003',
+			options: [{ id: 30, label: { es: 'Programa' }, parentId: null }],
 		});
 		expect(result.levels[1]).toEqual({
-			levelNum: 2,
-			typeCode: 'TG902-T002',
-			options: [{ id: 20, label: { es: 'Escuela' }, parentId: 10 }],
+			levelNum: 4,
+			typeCode: 'TG902-T004',
+			options: [{ id: 40, label: { es: 'Area' }, parentId: 30 }],
 		});
 	});
 
 	it('coalesces multiple options per level into the same bucket', async () => {
 		repository.findScope.mockResolvedValueOnce([
 			{
-				id: 11,
-				parentId: 1,
+				id: 1,
+				parentId: null,
 				levelNum: 2,
 				typeCode: 'TG902-T002',
+				label: { es: 'Escuela' },
+				isAnchor: false,
+			},
+			{
+				id: 11,
+				parentId: 1,
+				levelNum: 3,
+				typeCode: 'TG902-T003',
 				label: { es: 'A' },
 				isAnchor: true,
 			},
 			{
 				id: 12,
 				parentId: 1,
-				levelNum: 2,
-				typeCode: 'TG902-T002',
+				levelNum: 3,
+				typeCode: 'TG902-T003',
 				label: { es: 'B' },
 				isAnchor: false,
 			},
@@ -107,18 +115,27 @@ describe('OrgScopeService', () => {
 
 		const result = await service.getScope(1, 11, 5);
 
-		expect(result.highestLevel).toBe(2);
+		expect(result.highestLevel).toBe(3);
 		expect(result.levels).toHaveLength(1);
 		expect(result.levels[0].options).toHaveLength(2);
+		expect(result.levels[0].options.every((o) => o.parentId === null)).toBe(true);
 	});
 
-	it('sets highest_level to null when no row is marked is_anchor', async () => {
+	it('sets highest_level to null when no row below the school is marked is_anchor', async () => {
 		repository.findScope.mockResolvedValueOnce([
 			{
 				id: 1,
 				parentId: null,
-				levelNum: 1,
-				typeCode: 'TG902-T001',
+				levelNum: 2,
+				typeCode: 'TG902-T002',
+				label: { es: 'Escuela' },
+				isAnchor: false,
+			},
+			{
+				id: 2,
+				parentId: 1,
+				levelNum: 3,
+				typeCode: 'TG902-T003',
 				label: {},
 				isAnchor: false,
 			},
@@ -128,6 +145,7 @@ describe('OrgScopeService', () => {
 
 		expect(result.highestLevel).toBeNull();
 		expect(result.levels).toHaveLength(1);
+		expect(result.levels[0].levelNum).toBe(3);
 	});
 
 	it('returns schools assigned to the user for the active academic period by modality', async () => {

@@ -115,6 +115,10 @@ export class UserService extends BaseService<UserRepository> {
 			throw new UnauthorizedException(usersValidationStrings.error.noRolesAssigned);
 		}
 
+		if (profile.permissions.length === 0) {
+			throw new UnauthorizedException(usersValidationStrings.error.noPermissionsAssigned);
+		}
+
 		return profile;
 	}
 

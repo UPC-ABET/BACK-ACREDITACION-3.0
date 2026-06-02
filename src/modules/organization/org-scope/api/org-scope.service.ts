@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OrgScopeRepository } from '../core/org-scope.repository';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 interface ScopeOption {
 	id: number;
@@ -17,17 +18,26 @@ export class OrgScopeService {
 		}
 
 		const rows = await this.orgScopeRepository.findScope(userId, schoolId, periodId);
-
 		if (rows.length === 0) return { highestLevel: null, levels: [] };
 
+		const schoolLevel = rows.find(
+			(r) => r.typeCode === TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
+		)?.levelNum;
+		const belowSchool =
+			schoolLevel === undefined ? rows : rows.filter((r) => r.levelNum > schoolLevel);
+		if (belowSchool.length === 0) return { highestLevel: null, levels: [] };
+
+		const visibleIds = new Set(belowSchool.map((r) => r.id));
+
 		const byLevel = new Map<number, { typeCode: string; options: ScopeOption[] }>();
-		for (const r of rows) {
+		for (const r of belowSchool) {
 			const entry = byLevel.get(r.levelNum) ?? { typeCode: r.typeCode, options: [] };
-			entry.options.push({ id: r.id, label: r.label, parentId: r.parentId });
+			const parentId = r.parentId !== null && visibleIds.has(r.parentId) ? r.parentId : null;
+			entry.options.push({ id: r.id, label: r.label, parentId });
 			byLevel.set(r.levelNum, entry);
 		}
 
-		const anchorLevels = rows.filter((r) => r.isAnchor).map((r) => r.levelNum);
+		const anchorLevels = belowSchool.filter((r) => r.isAnchor).map((r) => r.levelNum);
 		const highestLevel = anchorLevels.length ? Math.min(...anchorLevels) : null;
 
 		const levels = [...byLevel.entries()]
