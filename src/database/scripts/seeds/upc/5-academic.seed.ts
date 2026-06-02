@@ -72,8 +72,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM "organization"."users" u
 		JOIN (
 			VALUES
-				('STU-0001', 'student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG202-T002'),
-				('STU-0002', 'student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG202-T002')
+				('STU-0001', 'student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
+				('STU-0002', 'student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG103-T002')
 		) AS v(code, email, program_code, graduation_type_code)
 			ON u.email = v.email
 		JOIN "academic"."programs" p
@@ -311,8 +311,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			modality.id
 		FROM (
 			VALUES
-				('SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'SOFT-FP-2026-1-A', 'CAMPUS_MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"09:00-11:00"}'::jsonb, 'TG204-T001'),
-				('SP_SOFT26', 'AP_2026_1', 'Ingenieria de Requisitos', 'SOFT-REQ-2026-1-A', 'CAMPUS_MON', 'prof.maria.garcia@upc.edu.pe', '{"days":["Tuesday"],"time":"14:00-17:00"}'::jsonb, 'TG204-T001')
+				('SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'SOFT-FP-2026-1-A', 'CAMPUS_MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"09:00-11:00"}'::jsonb, 'TG103-T001'),
+				('SP_SOFT26', 'AP_2026_1', 'Ingenieria de Requisitos', 'SOFT-REQ-2026-1-A', 'CAMPUS_MON', 'prof.maria.garcia@upc.edu.pe', '{"days":["Tuesday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001')
 		) AS v(study_plan_code, academic_period_code, course_name, section_code, campus_code, professor_email, schedule, section_modality_type_code)
 		JOIN "academic"."study_plans" sp
 			ON sp.code = v.study_plan_code

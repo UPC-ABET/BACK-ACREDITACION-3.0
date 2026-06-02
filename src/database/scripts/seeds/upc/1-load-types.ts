@@ -21,19 +21,9 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			i18n('Modalidades academicas generales', 'General academic modalities'),
 		],
 		[
-			'TG202',
-			i18n('Modalidad de graduacion', 'Graduation modality'),
-			i18n('Modalidades de egreso del estudiante', 'Student graduation modalities'),
-		],
-		[
 			'TG203',
 			i18n('Nivel academico', 'Academic level'),
 			i18n('Niveles de cursos en el plan de estudios', 'Course levels in the study plan'),
-		],
-		[
-			'TG204',
-			i18n('Modalidad de seccion', 'Section modality'),
-			i18n('Modalidades para secciones academicas', 'Modalities for academic sections'),
 		],
 		[
 			'TG205',
@@ -61,11 +51,6 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			i18n('Tipos de rubricas de evaluacion', 'Evaluation rubric types'),
 		],
 		[
-			'TG402',
-			i18n('Tipo de segmento', 'Segment type'),
-			i18n('Segmentos para rubricas', 'Rubric segments'),
-		],
-		[
 			'TG403',
 			i18n('Tipo de evaluador', 'Evaluator type'),
 			i18n('Roles de evaluadores y participantes', 'Roles of evaluators and participants'),
@@ -78,7 +63,7 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		[
 			'TG501',
 			i18n('Tipo constituyente', 'Constituent type'),
-			i18n('Tipos de instrumentos de evidencia', 'Evidence instrument types'),
+			i18n('Tipos de constituyentes', 'Constituent types'),
 		],
 		['TG601', i18n('Tipo de encuesta', 'Survey type'), i18n('Tipos de encuestas', 'Survey types')],
 		[
@@ -221,20 +206,6 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			'{"mode":"hybrid"}',
 		],
 		[
-			'TG202',
-			'TG202-T001',
-			i18n('Tesis', 'Thesis'),
-			i18n('Graduacion por tesis', 'Graduation by thesis'),
-			'{}',
-		],
-		[
-			'TG202',
-			'TG202-T002',
-			i18n('Proyecto profesional', 'Professional project'),
-			i18n('Graduacion por proyecto profesional', 'Graduation by professional project'),
-			'{}',
-		],
-		[
 			'TG203',
 			'TG203-T001',
 			i18n('Primer ciclo', 'First cycle'),
@@ -305,20 +276,6 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			'{"level":10}',
 		],
 		[
-			'TG204',
-			'TG204-T001',
-			i18n('Seccion presencial', 'In-person section'),
-			i18n('Seccion dictada presencialmente', 'Section delivered in person'),
-			'{}',
-		],
-		[
-			'TG204',
-			'TG204-T002',
-			i18n('Seccion virtual', 'Virtual section'),
-			i18n('Seccion dictada virtualmente', 'Section delivered online'),
-			'{}',
-		],
-		[
 			'TG205',
 			'TG205-T001',
 			i18n('EA', 'EA'),
@@ -368,6 +325,55 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			'{}',
 		],
 		[
+			'TG206',
+			'TG206-T002',
+			i18n('IFC', 'IFC'),
+			i18n('Instrumento tipo IFC', 'IFC-type instrument'),
+			'{}',
+		],
+		[
+			'TG206',
+			'TG206-T003',
+			i18n('RC', 'RC'),
+			i18n('Instrumento tipo RC', 'RC-type instrument'),
+			'{}',
+		],
+		[
+			'TG206',
+			'TG206-T004',
+			i18n('RV', 'RV'),
+			i18n('Instrumento tipo RV', 'RV-type instrument'),
+			'{}',
+		],
+		[
+			'TG206',
+			'TG206-T005',
+			i18n('PPP', 'PPP'),
+			i18n('Instrumento tipo PPP', 'PPP-type instrument'),
+			'{}',
+		],
+		[
+			'TG206',
+			'TG206-T006',
+			i18n('GRA', 'GRA'),
+			i18n('Instrumento tipo GRA', 'GRA-type instrument'),
+			'{}',
+		],
+		[
+			'TG206',
+			'TG206-T007',
+			i18n('LCFC', 'LCFC'),
+			i18n('Instrumento tipo LCFC', 'LCFC-type instrument'),
+			'{}',
+		],
+		[
+			'TG206',
+			'TG206-T008',
+			i18n('ARD', 'ARD'),
+			i18n('Instrumento tipo ARD', 'ARD-type instrument'),
+			'{}',
+		],
+		[
 			'TG301',
 			'TG301-T001',
 			i18n('General', 'General'),
@@ -413,20 +419,6 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 				'Rubrica por curso sin requerimiento de outcomes',
 				'Per-course rubric without outcome requirement',
 			),
-			'{}',
-		],
-		[
-			'TG402',
-			'TG402-T001',
-			i18n('Producto', 'Product'),
-			i18n('Segmento producto final', 'Final-product segment'),
-			'{}',
-		],
-		[
-			'TG402',
-			'TG402-T002',
-			i18n('Proceso', 'Process'),
-			i18n('Segmento proceso de trabajo', 'Work-process segment'),
 			'{}',
 		],
 		[
