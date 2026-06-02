@@ -170,7 +170,8 @@ Table "academic"."course_sections" {
   is_active boolean
   created_at timestamp [null]
   updated_at timestamp [null]
-  study_plan_course_id int
+  course_id int
+  academic_period_id int
   campus_id int
   professor_id int
   section_code varchar
@@ -692,7 +693,8 @@ Ref: "academic"."study_plan_academic_periods"."study_plan_id" > "academic"."stud
 Ref: "academic"."study_plan_academic_periods"."academic_period_id" > "academic"."academic_periods"."id"
 Ref: "academic"."study_plan_courses"."study_plan_academic_period_id" > "academic"."study_plan_academic_periods"."id"
 Ref: "academic"."study_plan_courses"."course_id" > "academic"."courses"."id"
-Ref: "academic"."course_sections"."study_plan_course_id" > "academic"."study_plan_courses"."id"
+Ref: "academic"."course_sections"."course_id" > "academic"."courses"."id"
+Ref: "academic"."course_sections"."academic_period_id" > "academic"."academic_periods"."id"
 Ref: "academic"."course_sections"."campus_id" > "organization"."campuses"."id"
 Ref: "academic"."course_sections"."professor_id" > "academic"."professors"."id"
 Ref: "academic"."students"."user_id" > "organization"."users"."id"

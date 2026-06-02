@@ -3,7 +3,8 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
 import { ProfessorEntity } from 'src/modules/academic/professors/model/professors.entity';
-import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
+import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'course_sections', schema: 'academic' })
@@ -11,7 +12,10 @@ export class CourseSectionEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	studyPlanCourseId: number;
+	courseId: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	academicPeriodId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	campusId: number;
@@ -33,12 +37,16 @@ export class CourseSectionEntity extends BaseEntity {
 
 	// %% RELATIONS
 
-	@ManyToOne(() => StudyPlanCourseEntity)
+	@ManyToOne(() => CourseEntity)
+	@JoinColumn({ name: 'course_id', foreignKeyConstraintName: 'FK_course_sections_course_id' })
+	course: CourseEntity;
+
+	@ManyToOne(() => AcademicPeriodEntity)
 	@JoinColumn({
-		name: 'study_plan_course_id',
-		foreignKeyConstraintName: 'FK_course_sections_study_plan_course_id',
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_course_sections_academic_period_id',
 	})
-	studyPlanCourse: StudyPlanCourseEntity;
+	academicPeriod: AcademicPeriodEntity;
 
 	@ManyToOne(() => CampusEntity)
 	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_course_sections_campus_id' })

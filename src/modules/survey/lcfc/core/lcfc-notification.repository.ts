@@ -73,9 +73,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.students st ON st.id = es.student_id
 			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-			INNER JOIN academic.courses c ON c.id = spc.course_id
-			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			INNER JOIN academic.courses c ON c.id = cs.course_id
+			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)
@@ -127,8 +126,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			INNER JOIN academic.course_sections cs ON cs.id = s.course_section_id
-			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-			INNER JOIN academic.courses c ON c.id = spc.course_id
+			INNER JOIN academic.courses c ON c.id = cs.course_id
 			WHERE s.survey_type_id = $1
 			  AND n.notification_status_type_id = $2
 			  AND s.academic_period_id = $3

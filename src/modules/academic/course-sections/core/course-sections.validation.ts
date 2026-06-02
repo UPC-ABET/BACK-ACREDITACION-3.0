@@ -8,7 +8,8 @@ export class CourseSectionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				studyPlanCourseId: data.studyPlanCourseId,
+				courseId: data.courseId,
+				academicPeriodId: data.academicPeriodId,
 				sectionCode: data.sectionCode,
 			},
 		});
@@ -32,10 +33,11 @@ export class CourseSectionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(courseSectionsValidationStrings.error.notFound);
 
-		if (data.studyPlanCourseId && data.sectionCode) {
+		if (data.courseId && data.academicPeriodId && data.sectionCode) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					studyPlanCourseId: data.studyPlanCourseId,
+					courseId: data.courseId,
+					academicPeriodId: data.academicPeriodId,
 					sectionCode: data.sectionCode,
 				},
 			});

@@ -24,6 +24,7 @@ import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entit
 import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
 import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 
 const UNLIMITED_EVALUATOR_TYPE_CODE = TYPE_CODES.EVALUATOR_TYPE.COM;
@@ -118,9 +119,7 @@ export class ProjectConfigService {
 			INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
 			INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
 			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-			WHERE p.code = $1 AND spap.academic_period_id = $2
+			WHERE p.code = $1 AND cs.academic_period_id = $2
 			LIMIT 1
 			`,
 			[dto.code, academicPeriodId],
@@ -136,9 +135,7 @@ export class ProjectConfigService {
 			INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
 			INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
 			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-			WHERE (p.name->>'es' = $1 OR p.name->>'en' = $2) AND spap.academic_period_id = $3
+			WHERE (p.name->>'es' = $1 OR p.name->>'en' = $2) AND cs.academic_period_id = $3
 			LIMIT 1
 			`,
 			[dto.name?.es, dto.name?.en, academicPeriodId],
@@ -174,7 +171,10 @@ export class ProjectConfigService {
 				});
 			}
 
-			if (enrollment.courseSection?.studyPlanCourseId !== dto.studyPlanCourseId) {
+			if (
+				enrollment.courseSection?.courseId !== studyPlanCourse.courseId ||
+				enrollment.courseSection?.academicPeriodId !== academicPeriodId
+			) {
 				throw new BadRequestException({
 					message: projectsValidationStrings.error.studentNotInCourse,
 					errors: [String(enrollmentId)],
@@ -187,12 +187,10 @@ export class ProjectConfigService {
 				INNER JOIN evaluation.projects p ON p.id = ps.project_id
 				INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
 				INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-				INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-				INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
 				WHERE sse.enrolled_student_id = (
 					SELECT enrolled_student_id FROM academic.student_section_enrollments WHERE id = $1
 				)
-				AND spap.academic_period_id = $2
+				AND cs.academic_period_id = $2
 				AND p.is_active = true
 				LIMIT 1
 				`,
@@ -295,9 +293,7 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('es.student', 'stu')
 			.leftJoinAndSelect('stu.user', 'suser')
 			.leftJoinAndSelect('sse.courseSection', 'cs')
-			.leftJoinAndSelect('cs.studyPlanCourse', 'spc')
-			.leftJoinAndSelect('spc.studyPlanAcademicPeriod', 'spap')
-			.leftJoinAndSelect('spap.academicPeriod', 'ap')
+			.leftJoinAndSelect('cs.academicPeriod', 'ap')
 			.leftJoinAndSelect('p.evaluators', 'pe')
 			.leftJoinAndSelect('pe.professor', 'prof')
 			.leftJoinAndSelect('prof.staff', 'staff')
@@ -310,33 +306,33 @@ export class ProjectConfigService {
 		}
 
 		const studentWithChain = project.students?.find(
-			(s) => s.studentSectionEnrollment?.courseSection?.studyPlanCourseId != null,
+			(s) => s.studentSectionEnrollment?.courseSection?.courseId != null,
 		);
 
-		const studyPlanCourseId =
-			studentWithChain?.studentSectionEnrollment?.courseSection?.studyPlanCourseId;
+		const courseSection = studentWithChain?.studentSectionEnrollment?.courseSection;
+		const courseId = courseSection?.courseId;
+		const sectionAcademicPeriodId = courseSection?.academicPeriodId;
 
-		if (!studyPlanCourseId) {
+		if (!courseId || !sectionAcademicPeriodId) {
 			throw new BadRequestException(projectsValidationStrings.error.noStudentsWithCourse);
 		}
 
-		const academicPeriod =
-			studentWithChain?.studentSectionEnrollment?.courseSection?.studyPlanCourse
-				?.studyPlanAcademicPeriod?.academicPeriod;
+		const academicPeriod = courseSection?.academicPeriod;
 
-		// ── 3. Rúbrica específica: curso + tipo de evaluación + tipo de rúbrica
-		const rubricWhere: any = {
-			studyPlanCourseId: studyPlanCourseId,
-			isActive: true,
-		};
-
-		if (gradeTypeId) rubricWhere.gradeTypeId = gradeTypeId;
-		if (rubricTypeId) rubricWhere.rubricTypeId = rubricTypeId;
-
+		// ── 3. Rúbrica específica: curso + periodo + tipo de evaluación + tipo de rúbrica
 		const rubric = await this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('r')
-			.where('r.study_plan_course_id = :studyPlanCourseId', { studyPlanCourseId })
+			.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.id = r.study_plan_course_id')
+			.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = spc.study_plan_academic_period_id',
+			)
+			.where('spc.course_id = :courseId', { courseId })
+			.andWhere('spap.academic_period_id = :academicPeriodId', {
+				academicPeriodId: sectionAcademicPeriodId,
+			})
 			.andWhere('r.is_active = :isActive', { isActive: true })
 			.andWhere(gradeTypeId ? 'r.grade_type_id = :gradeTypeId' : '1=1', { gradeTypeId })
 			.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
@@ -527,8 +523,8 @@ export class ProjectConfigService {
     INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
     INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
     INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-    INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
+    INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = es.study_plan_academic_period
     INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
     INNER JOIN academic.programs program ON program.id = sp.program_id
     WHERE pe.professor_id = $1 AND pe.is_active = true
@@ -544,14 +540,18 @@ export class ProjectConfigService {
         FROM evaluation.rubrics r
         WHERE r.study_plan_course_id IN (
           SELECT spc2.id
-          FROM evaluation.project_students ps2
-          INNER JOIN academic.student_section_enrollments sse2
-                  ON sse2.id = ps2.student_section_enrollment_id
-          INNER JOIN academic.course_sections cs2
-                  ON cs2.id = sse2.course_section_id
-          INNER JOIN academic.study_plan_courses spc2
-                  ON spc2.id = cs2.study_plan_course_id
-          WHERE ps2.project_id = pe.project_id
+          FROM academic.study_plan_courses spc2
+          INNER JOIN academic.study_plan_academic_periods spap2
+                  ON spap2.id = spc2.study_plan_academic_period_id
+          WHERE (spc2.course_id, spap2.academic_period_id) IN (
+            SELECT cs2.course_id, cs2.academic_period_id
+            FROM evaluation.project_students ps2
+            INNER JOIN academic.student_section_enrollments sse2
+                    ON sse2.id = ps2.student_section_enrollment_id
+            INNER JOIN academic.course_sections cs2
+                    ON cs2.id = sse2.course_section_id
+            WHERE ps2.project_id = pe.project_id
+          )
         )
         AND r.grade_type_id = $${paramIdx}
       )
@@ -561,7 +561,7 @@ export class ProjectConfigService {
 		}
 
 		if (academicPeriodId) {
-			filterSql += ` AND sp_ap.academic_period_id = $${paramIdx}`;
+			filterSql += ` AND cs.academic_period_id = $${paramIdx}`;
 			params.push(academicPeriodId);
 			paramIdx++;
 		}
@@ -623,8 +623,7 @@ export class ProjectConfigService {
     LEFT JOIN academic.students stu                ON stu.id = es.student_id
     LEFT JOIN organization.users su                ON su.id = stu.user_id
     LEFT JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
-    LEFT JOIN academic.study_plan_courses spc      ON spc.id = cs.study_plan_course_id
-    LEFT JOIN academic.courses c                   ON c.id = spc.course_id
+    LEFT JOIN academic.courses c                   ON c.id = cs.course_id
     WHERE p.id = ANY($1::int[])
   `,
 			[projectIds],

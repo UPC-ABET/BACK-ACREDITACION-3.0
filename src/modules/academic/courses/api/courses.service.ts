@@ -48,13 +48,13 @@ export class CourseService extends BaseService<CourseRepository> {
 			.getRepository(StudentSectionEnrollmentEntity)
 			.createQueryBuilder('sse')
 			.innerJoinAndSelect('sse.courseSection', 'cs')
-			.innerJoinAndSelect('cs.studyPlanCourse', 'spc', 'spc.course_id = :courseId', { courseId })
 			.innerJoinAndSelect('sse.enrolledStudent', 'es')
 			.innerJoinAndSelect('es.student', 's')
 			.innerJoinAndSelect('s.user', 'student_user')
 			.innerJoinAndSelect('cs.professor', 'p')
 			.innerJoinAndSelect('p.staff', 'st')
-			.innerJoinAndSelect('st.user', 'prof_user');
+			.innerJoinAndSelect('st.user', 'prof_user')
+			.where('cs.course_id = :courseId', { courseId });
 
 		// Apply filters
 		if (filters?.isActive !== undefined) {
@@ -63,12 +63,9 @@ export class CourseService extends BaseService<CourseRepository> {
 		}
 
 		if (filters?.academicPeriodId !== undefined) {
-			qb.innerJoin(
-				'spc.study_plan_academic_period',
-				'spap',
-				'spap.academic_period_id = :academicPeriodId',
-				{ academicPeriodId: filters.academicPeriodId },
-			);
+			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
+				academicPeriodId: filters.academicPeriodId,
+			});
 		}
 
 		if (filters?.campusId !== undefined) {
@@ -76,7 +73,7 @@ export class CourseService extends BaseService<CourseRepository> {
 		}
 
 		if (filters?.studyPlanAcademicPeriodId !== undefined) {
-			qb.andWhere('spc.study_plan_academic_period_id = :studyPlanAcademicPeriodId', {
+			qb.andWhere('es.study_plan_academic_period = :studyPlanAcademicPeriodId', {
 				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
 			});
 		}

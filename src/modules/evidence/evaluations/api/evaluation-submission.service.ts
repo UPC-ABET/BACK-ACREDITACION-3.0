@@ -24,6 +24,7 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { evaluationsValidationStrings } from '../config/strings/evaluations.validation';
@@ -157,14 +158,26 @@ export class EvaluationSubmissionService {
 		});
 		if (!student?.studentSectionEnrollment) return { rubric: null, studyPlanCourseId: null };
 
-		const studyPlanCourseId = student.studentSectionEnrollment.courseSection?.studyPlanCourseId;
-		if (!studyPlanCourseId) return { rubric: null, studyPlanCourseId: null };
+		const courseSection = student.studentSectionEnrollment.courseSection;
+		const courseId = courseSection?.courseId;
+		const academicPeriodId = courseSection?.academicPeriodId;
+		if (!courseId || !academicPeriodId) return { rubric: null, studyPlanCourseId: null };
 
-		const rubric = await this.rubricRepo.findOne({
-			where: { studyPlanCourseId: studyPlanCourseId },
-			relations: ['questions', 'questions.criterias'],
-		});
-		return { rubric, studyPlanCourseId };
+		const rubric = await this.rubricRepo
+			.createQueryBuilder('r')
+			.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.id = r.study_plan_course_id')
+			.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = spc.study_plan_academic_period_id',
+			)
+			.leftJoinAndSelect('r.questions', 'questions')
+			.leftJoinAndSelect('questions.criterias', 'criterias')
+			.where('spc.course_id = :courseId', { courseId })
+			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.getOne();
+
+		return { rubric: rubric ?? null, studyPlanCourseId: rubric?.studyPlanCourseId ?? null };
 	}
 
 	private async aggregateScoresByOutcome(

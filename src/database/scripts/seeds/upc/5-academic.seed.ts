@@ -333,7 +333,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."course_sections" (
-			study_plan_course_id,
+			course_id,
+			academic_period_id,
 			campus_id,
 			professor_id,
 			section_code,
@@ -341,7 +342,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			section_modality_type_id
 		)
 		SELECT
-			spc.id,
+			course.id,
+			ap.id,
 			campus.id,
 			prof.id,
 			v.section_code,
@@ -370,8 +372,6 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			ON ap.id = spap.academic_period_id AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" course
 			ON course.name->>'es' = v.course_name
-		JOIN "academic"."study_plan_courses" spc
-			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course.id
 		JOIN "organization"."campuses" campus
 			ON campus.code = v.campus_code
 		JOIN "organization"."staff" staff

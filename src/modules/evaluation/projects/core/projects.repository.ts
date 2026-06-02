@@ -11,7 +11,6 @@ import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/
 import { ProfessorEntity } from 'src/modules/academic/professors/model/professors.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
-import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
 
@@ -82,14 +81,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			filters.programId ||
 			filters.schoolId
 		);
-		const needsCourseSection = !!(
-			filters.courseId ||
-			filters.academicPeriodId ||
-			filters.programId ||
-			filters.schoolId
-		);
-		const needsSpc = needsCourseSection;
-		const needsSpap = !!(filters.academicPeriodId || filters.programId || filters.schoolId);
+		const needsCourseSection = !!(filters.courseId || filters.academicPeriodId);
+		const needsEnrolledStudent = !!(filters.studentId || filters.programId || filters.schoolId);
+		const needsSpap = !!(filters.programId || filters.schoolId);
 		const needsSp = !!(filters.programId || filters.schoolId);
 
 		// ── JOIN: Student Section Enrollment ────────────────────────────
@@ -102,10 +96,15 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			);
 		}
 
+		// ── JOIN: Enrolled Student (source of study plan / program) ─────
+
+		if (needsEnrolledStudent) {
+			qb.leftJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
+		}
+
 		// ── Student ───────────────────────────────────────────────────────
 
 		if (filters.studentId) {
-			qb.leftJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
 			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
@@ -115,34 +114,28 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.leftJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
 		}
 
-		// ── JOIN: Study Plan Course ─────────────────────────────────────
-
-		if (needsSpc) {
-			qb.leftJoin(StudyPlanCourseEntity, 'spc', 'spc.id = cs.study_plan_course_id');
-		}
-
 		// ── Course ────────────────────────────────────────────────────────
 
 		if (filters.courseId) {
-			qb.andWhere('spc.course_id = :courseId', { courseId: filters.courseId });
-		}
-
-		// ── JOIN: Study Plan Academic Period ────────────────────────────
-
-		if (needsSpap) {
-			qb.leftJoin(
-				StudyPlanAcademicPeriodEntity,
-				'spap',
-				'spap.id = spc.study_plan_academic_period_id',
-			);
+			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
 		}
 
 		// ── Academic Period ────────────────────────────────────────────
 
 		if (filters.academicPeriodId) {
-			qb.andWhere('spap.academic_period_id = :academicPeriodId', {
+			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
 				academicPeriodId: filters.academicPeriodId,
 			});
+		}
+
+		// ── JOIN: Study Plan Academic Period (from the enrolled student) ─
+
+		if (needsSpap) {
+			qb.leftJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = es.study_plan_academic_period',
+			);
 		}
 
 		// ── Join Study Plan ────────────────────────────────────────────

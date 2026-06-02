@@ -13,7 +13,11 @@ export class CreateCourseSectionDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	studyPlanCourseId: number;
+	courseId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -50,7 +54,12 @@ export class UpdateCourseSectionDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	studyPlanCourseId?: number;
+	courseId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -89,7 +98,11 @@ export class FilterCourseSectionDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	studyPlanCourseId?: number;
+	courseId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
