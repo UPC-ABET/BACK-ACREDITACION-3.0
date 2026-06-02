@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsPositive } from 'class-validator';
+import { IsInt, IsNotEmpty, IsPositive, IsString } from 'class-validator';
 import type { I18nText } from 'src/shared/types/i18n';
 
 export class GetScopeDto {
@@ -10,10 +10,10 @@ export class GetScopeDto {
 }
 
 export class GetUserSchoolsDto {
-	@IsInt()
-	@IsPositive()
-	@ApiProperty({ example: 1, required: true, description: 'Modality type ID' })
-	modalityId: number;
+	@IsString()
+	@IsNotEmpty()
+	@ApiProperty({ example: 'TG102-T001', required: true, description: 'Program modality code' })
+	modalityCode: string;
 }
 
 // %% OTHER DTOS — Response documentation classes (Swagger only)

@@ -28,7 +28,7 @@ export class OrgScopeController {
 	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
 	async getUserSchools(@Body() dto: GetUserSchoolsDto, @Req() req: any) {
 		const userId = req.user.userId;
-		const result = await this.service.getUserSchools(userId, dto.modalityId);
+		const result = await this.service.getUserSchools(userId, dto.modalityCode);
 		return parseSuccessResponse(result);
 	}
 }

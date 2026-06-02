@@ -3,6 +3,7 @@ import {
 	IsBoolean,
 	IsEmail,
 	IsInt,
+	IsNotEmpty,
 	IsNumber,
 	IsOptional,
 	IsPositive,
@@ -172,8 +173,8 @@ export class ChangeRoleDto {
 }
 
 export class GetMeDto {
-	@IsInt()
-	@IsPositive()
-	@ApiProperty({ example: 1, required: true, description: 'Modality type ID' })
-	modalityId: number;
+	@IsString()
+	@IsNotEmpty()
+	@ApiProperty({ example: 'TG102-T001', required: true, description: 'Program modality code' })
+	modalityCode: string;
 }

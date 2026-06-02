@@ -34,10 +34,10 @@ export class OrgScopeRepository {
 		]);
 	}
 
-	async findUserSchools(userId: number, modalityId: number): Promise<UserSchoolRow[]> {
+	async findUserSchools(userId: number, modalityCode: string): Promise<UserSchoolRow[]> {
 		return await this.dataSource.query(USER_SCHOOLS_SQL, [
 			userId,
-			modalityId,
+			modalityCode,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
 	}
@@ -48,8 +48,9 @@ WITH RECURSIVE
 active_period AS (
 	SELECT ap.id AS academic_period_id
 	FROM academic.academic_periods ap
+	JOIN core.types mt ON mt.id = ap.modality_type_id
 	WHERE ap.is_active = true
-	  AND ap.modality_type_id = $2
+	  AND mt.code = $2
 	ORDER BY ap.start_date DESC, ap.end_date DESC, ap.id DESC
 	LIMIT 1
 ),

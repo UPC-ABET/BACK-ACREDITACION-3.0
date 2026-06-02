@@ -87,7 +87,7 @@ export class UserController extends BaseController<UserService> {
 	@SkipPermissions()
 	@SwaggerUserMe()
 	async getMe(@Query() dto: GetMeDto, @Req() req) {
-		return parseSuccessResponse(await this.service.getMe(req.user, dto.modalityId));
+		return parseSuccessResponse(await this.service.getMe(req.user, dto.modalityCode));
 	}
 
 	@SkipPermissions()
