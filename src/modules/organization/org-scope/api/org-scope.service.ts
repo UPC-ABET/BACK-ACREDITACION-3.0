@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { OrgScopeRepository } from '../core/org-scope.repository';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import type { UserSchool } from '../core/user-schools/user-schools.types';
+import {
+	USER_SCHOOLS_REPOSITORY,
+	type UserSchoolsRepository,
+} from '../core/user-schools/user-schools.repository.interface';
+import type { UserSchoolsService } from '../core/user-schools/user-schools.service.interface';
 
 interface ScopeOption {
 	id: number;
@@ -9,8 +15,12 @@ interface ScopeOption {
 }
 
 @Injectable()
-export class OrgScopeService {
-	constructor(private readonly orgScopeRepository: OrgScopeRepository) {}
+export class OrgScopeService implements UserSchoolsService {
+	constructor(
+		private readonly orgScopeRepository: OrgScopeRepository,
+		@Inject(USER_SCHOOLS_REPOSITORY)
+		private readonly userSchoolsRepository: UserSchoolsRepository,
+	) {}
 
 	async getScope(userId: number, schoolId: number | null, periodId: number) {
 		if (schoolId === null || schoolId === undefined) {
@@ -50,7 +60,11 @@ export class OrgScopeService {
 		return { highestLevel, levels };
 	}
 
-	async getUserSchools(userId: number, modalityCode: string, isAdmin: boolean) {
-		return await this.orgScopeRepository.findUserSchools(userId, modalityCode, isAdmin);
+	async getUserSchools(
+		userId: number,
+		modalityCode: string,
+		isAdmin: boolean,
+	): Promise<UserSchool[]> {
+		return await this.userSchoolsRepository.findUserSchools(userId, modalityCode, isAdmin);
 	}
 }
