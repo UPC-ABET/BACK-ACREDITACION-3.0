@@ -17,7 +17,7 @@ const uploadLogServiceStub: any = {
 };
 
 // Positional layout for languages = ['es','en']:
-// studyPlanCode | name_es | name_en | programCode | levelTypeCode | courseCode |
+// studyPlanCode | name_es | name_en | programCode | level | courseCode |
 // courseName_es | courseName_en | learningOutcome_es | learningOutcome_en | elective
 const HEADER = [
 	'Code',
@@ -70,13 +70,13 @@ describe('StudyPlansUploadService — positional parsing', () => {
 				'Malla ES',
 				'Plan EN',
 				'INF',
-				'TG203-T001',
+				'0',
 				'CS101',
 				'Algoritmos',
 				'Algorithms',
 				'Resultado',
 				'Outcome',
-				'X',
+				'SI',
 			],
 		]);
 		const result = await service.processUpload(buffer, 'malla.xlsx', 7, {
@@ -93,7 +93,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 			studyPlanCode: 'MALLA-2024',
 			studyPlanName: { es: 'Malla ES', en: 'Plan EN' },
 			programCode: 'INF',
-			levelTypeCode: 'TG203-T001',
+			level: '0',
 			courseCode: 'CS101',
 			courseName: { es: 'Algoritmos', en: 'Algorithms' },
 			learningOutcome: { es: 'Resultado', en: 'Outcome' },
@@ -111,7 +111,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['M1', 'a', 'b', 'INF', 'TG203-T001', 'C1', 'c', 'd', 'e', 'f', ''],
+			['M1', 'a', 'b', 'INF', '0', 'C1', 'c', 'd', 'e', 'f', 'NO'],
 		]);
 		await service.processUpload(buffer, 'f.xlsx', 1, { academicPeriodId: 1 } as any);
 
@@ -126,7 +126,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['M1', 'a', 'b', 'NOPE', 'TG203-T001', 'C1', 'c', 'd', 'e', 'f', 'X'],
+			['M1', 'a', 'b', 'NOPE', '0', 'C1', 'c', 'd', 'e', 'f', 'SI'],
 		]);
 		const result = await service.processUpload(buffer, 'f.xlsx', 1, { academicPeriodId: 1 } as any);
 
@@ -137,21 +137,14 @@ describe('StudyPlansUploadService — positional parsing', () => {
 });
 
 describe('StudyPlansUploadService — template', () => {
-	function makeTemplateRepository(langs: string[], levels: Array<{ code: string; name: string }>) {
+	function makeTemplateRepository(langs: string[]) {
 		return {
 			getSupportedLanguages: jest.fn().mockResolvedValue(langs),
-			getLevelTypes: jest.fn().mockResolvedValue(levels),
 		} as any;
 	}
 
-	it('builds a Template sheet and a localized Legend sheet with the level codes', async () => {
-		const repository = makeTemplateRepository(
-			['es', 'en'],
-			[
-				{ code: 'TG203-T001', name: 'Primer ciclo' },
-				{ code: 'TG203-T002', name: 'Segundo ciclo' },
-			],
-		);
+	it('builds a single Template sheet with no legend sheet', async () => {
+		const repository = makeTemplateRepository(['es', 'en']);
 		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
@@ -162,16 +155,15 @@ describe('StudyPlansUploadService — template', () => {
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
 		expect(header).toContain('Nombre de curso (Español)');
 		expect(header).toContain('Nombre de curso (Inglés)');
+		expect(header).toContain('Nivel');
 
-		const legend = wb.getWorksheet('Leyenda')!;
-		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('TG203-T001');
-		expect(codes).toContain('TG203-T002');
+		expect(wb.worksheets).toHaveLength(1);
+		expect(wb.getWorksheet('Leyenda')).toBeUndefined();
 	});
 
 	it('falls back to the default language for an unknown lang', async () => {
 		const service = new StudyPlansUploadService(
-			makeTemplateRepository(['es', 'en'], []),
+			makeTemplateRepository(['es', 'en']),
 			uploadLogServiceStub,
 		);
 		const { fileName } = await service.generateTemplate('zz');

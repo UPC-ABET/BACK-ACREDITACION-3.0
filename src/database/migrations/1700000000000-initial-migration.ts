@@ -677,7 +677,7 @@ BEGIN
 			(e->>'rowNumber')::int                AS row_number,
 			NULLIF(trim(e->>'studyPlanCode'), '') AS study_plan_code,
 			NULLIF(trim(e->>'programCode'), '')   AS program_code,
-			NULLIF(trim(e->>'levelTypeCode'), '') AS level_type_code,
+			NULLIF(trim(e->>'level'), '')         AS level,
 			NULLIF(trim(e->>'courseCode'), '')    AS course_code,
 			COALESCE(e->'courseName', '{}'::jsonb) AS course_name
 		FROM jsonb_array_elements(p_rows) AS e
@@ -702,10 +702,10 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'courseNameEmpty'::text, NULL::integer;
 		END IF;
 
-		IF r.level_type_code IS NULL OR NOT EXISTS (
+		IF r.level IS NULL OR r.level !~ '^\d+$' OR NOT EXISTS (
 			SELECT 1 FROM core.types t
 			JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG203' AND t.code = r.level_type_code
+			WHERE g.code = 'TG203' AND (t.extra->>'level')::int = r.level::int
 		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'levelTypeInvalid'::text, NULL::integer;
@@ -788,7 +788,7 @@ BEGIN
 		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
 	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
 	JOIN core.type_groups g ON g.code = 'TG203'
-	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'levelTypeCode');
+	JOIN core.types t ON t.type_group_id = g.id AND (t.extra->>'level')::int = NULLIF(trim(e->>'level'), '')::int;
 
 	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
 END;

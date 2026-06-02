@@ -5,7 +5,7 @@ export interface StudyPlanRow {
 	studyPlanCode: string;
 	studyPlanName: I18nText;
 	programCode: string;
-	levelTypeCode: string;
+	level: string;
 	courseCode: string;
 	courseName: I18nText;
 	learningOutcome: I18nText;
@@ -27,6 +27,8 @@ export interface UploadResult {
 	fileName: string | null;
 }
 
+const ELECTIVE_TRUE_VALUES = new Set(['SI', 'SÍ', 'YES', 'Y', 'TRUE']);
+
 export function parseElective(value: string): boolean {
-	return (value ?? '').trim() !== '';
+	return ELECTIVE_TRUE_VALUES.has((value ?? '').trim().toUpperCase());
 }

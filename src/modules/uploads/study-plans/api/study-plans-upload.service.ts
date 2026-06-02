@@ -99,7 +99,6 @@ export class StudyPlansUploadService {
 		const labels = studyPlansTemplateLabels[language];
 		const displayNames = languageDisplayNames[language];
 		const languages = await this.getLanguages();
-		const levels = await this.repository.getLevelTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
 
@@ -108,7 +107,7 @@ export class StudyPlansUploadService {
 			labels.studyPlanCode,
 			...languages.map((l) => `${labels.studyPlanName} (${displayNames[l] ?? l})`),
 			labels.programCode,
-			labels.levelTypeCode,
+			labels.level,
 			labels.courseCode,
 			...languages.map((l) => `${labels.courseName} (${displayNames[l] ?? l})`),
 			...languages.map((l) => `${labels.learningOutcome} (${displayNames[l] ?? l})`),
@@ -116,14 +115,6 @@ export class StudyPlansUploadService {
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
-
-		const legendSheet = workbook.addWorksheet(labels.legendSheet);
-		const legendHeaders = [labels.legendCode, labels.legendName];
-		legendSheet.addRow(legendHeaders);
-		this.styleHeaderRow(legendSheet, legendHeaders);
-		for (const level of levels) {
-			legendSheet.addRow([level.code, level.name]);
-		}
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
@@ -147,7 +138,7 @@ export class StudyPlansUploadService {
 	}
 
 	// Positional layout (header ignored), L = languages.length:
-	// studyPlanCode | studyPlanName×L | programCode | levelTypeCode | courseCode | courseName×L | learningOutcome×L | elective
+	// studyPlanCode | studyPlanName×L | programCode | level | courseCode | courseName×L | learningOutcome×L | elective
 	private parseWorkbook(workbook: ExcelJS.Workbook, languages: string[]): StudyPlanRow[] {
 		const worksheet = workbook.worksheets[0];
 		const L = languages.length;
@@ -160,7 +151,7 @@ export class StudyPlansUploadService {
 			const studyPlanName = this.i18nCells(row, col, languages);
 			col += L;
 			const programCode = this.cell(row, col++);
-			const levelTypeCode = this.cell(row, col++);
+			const level = this.cell(row, col++);
 			const courseCode = this.cell(row, col++);
 			const courseName = this.i18nCells(row, col, languages);
 			col += L;
@@ -173,7 +164,7 @@ export class StudyPlansUploadService {
 				studyPlanCode,
 				studyPlanName,
 				programCode,
-				levelTypeCode,
+				level,
 				courseCode,
 				courseName,
 				learningOutcome,
