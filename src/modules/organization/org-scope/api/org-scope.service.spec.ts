@@ -85,6 +85,40 @@ describe('OrgScopeService', () => {
 		});
 	});
 
+	it('excludes professor-level nodes from the options', async () => {
+		repository.findScope.mockResolvedValueOnce([
+			{
+				id: 1,
+				parentId: null,
+				levelNum: 2,
+				typeCode: 'TG902-T002',
+				label: { es: 'Escuela' },
+				isAnchor: false,
+			},
+			{
+				id: 2,
+				parentId: 1,
+				levelNum: 6,
+				typeCode: 'TG902-T006',
+				label: { es: 'Curso' },
+				isAnchor: true,
+			},
+			{
+				id: 3,
+				parentId: 2,
+				levelNum: 7,
+				typeCode: 'TG902-T007',
+				label: { es: 'Profesor' },
+				isAnchor: false,
+			},
+		]);
+
+		const result = await service.getScope(1, 11, 5);
+
+		expect(result.levels.map((l) => l.levelNum)).toEqual([6]);
+		expect(result.levels.some((l) => l.typeCode === 'TG902-T007')).toBe(false);
+	});
+
 	it('coalesces multiple options per level into the same bucket', async () => {
 		repository.findScope.mockResolvedValueOnce([
 			{

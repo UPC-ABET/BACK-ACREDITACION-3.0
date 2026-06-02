@@ -23,21 +23,24 @@ export class OrgScopeService {
 		const schoolLevel = rows.find(
 			(r) => r.typeCode === TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
 		)?.levelNum;
-		const belowSchool =
-			schoolLevel === undefined ? rows : rows.filter((r) => r.levelNum > schoolLevel);
-		if (belowSchool.length === 0) return { highestLevel: null, levels: [] };
+		const selectable = rows.filter(
+			(r) =>
+				r.typeCode !== TYPE_CODES.CHART_LEVEL_TYPE.PROFESSOR &&
+				(schoolLevel === undefined || r.levelNum > schoolLevel),
+		);
+		if (selectable.length === 0) return { highestLevel: null, levels: [] };
 
-		const visibleIds = new Set(belowSchool.map((r) => r.id));
+		const visibleIds = new Set(selectable.map((r) => r.id));
 
 		const byLevel = new Map<number, { typeCode: string; options: ScopeOption[] }>();
-		for (const r of belowSchool) {
+		for (const r of selectable) {
 			const entry = byLevel.get(r.levelNum) ?? { typeCode: r.typeCode, options: [] };
 			const parentId = r.parentId !== null && visibleIds.has(r.parentId) ? r.parentId : null;
 			entry.options.push({ id: r.id, label: r.label, parentId });
 			byLevel.set(r.levelNum, entry);
 		}
 
-		const anchorLevels = belowSchool.filter((r) => r.isAnchor).map((r) => r.levelNum);
+		const anchorLevels = selectable.filter((r) => r.isAnchor).map((r) => r.levelNum);
 		const highestLevel = anchorLevels.length ? Math.min(...anchorLevels) : null;
 
 		const levels = [...byLevel.entries()]

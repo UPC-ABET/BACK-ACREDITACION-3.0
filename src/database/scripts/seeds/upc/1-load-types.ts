@@ -675,6 +675,13 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			'{"level":6}',
 		],
 		[
+			'TG902',
+			'TG902-T007',
+			i18n('Profesor', 'Professor'),
+			i18n('Nivel profesor', 'Professor level'),
+			'{"level":7}',
+		],
+		[
 			'TG903',
 			'TG903-T001',
 			i18n('Escuela', 'School'),
