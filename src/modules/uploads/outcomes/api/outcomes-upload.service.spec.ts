@@ -14,7 +14,15 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Outcome', 'Name (ES)', 'Name (EN)', 'Program', 'Commission'];
+const HEADER = [
+	'Outcome',
+	'Name (ES)',
+	'Name (EN)',
+	'Desc (ES)',
+	'Desc (EN)',
+	'Commission',
+	'Program',
+];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -46,7 +54,9 @@ describe('OutcomesUploadService — positional parsing', () => {
 		);
 		const service = new OutcomesUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['SO1', 'Resultado uno', 'Outcome one', 'INF', 'EAC']]);
+		const buffer = await makeXlsx([
+			['SO1', 'Resultado uno', 'Outcome one', 'Descripcion uno', 'Description one', 'EAC', 'INF'],
+		]);
 		const result = await service.processUpload(buffer, 'outcomes.xlsx', 7, {
 			academicPeriodId: 1,
 		} as any);
@@ -60,8 +70,9 @@ describe('OutcomesUploadService — positional parsing', () => {
 			rowNumber: 2,
 			outcomeCode: 'SO1',
 			outcomeName: { es: 'Resultado uno', en: 'Outcome one' },
-			programCode: 'INF',
+			outcomeDescription: { es: 'Descripcion uno', en: 'Description one' },
 			commissionCode: 'EAC',
+			programCode: 'INF',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
@@ -74,7 +85,9 @@ describe('OutcomesUploadService — positional parsing', () => {
 		);
 		const service = new OutcomesUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['SO1', 'Resultado uno', 'Outcome one', 'INF', 'GHOST']]);
+		const buffer = await makeXlsx([
+			['SO1', 'Resultado uno', 'Outcome one', 'Descripcion uno', 'Description one', 'GHOST', 'INF'],
+		]);
 		const result = await service.processUpload(buffer, 'outcomes.xlsx', 1, {
 			academicPeriodId: 1,
 			lang: 'es',
@@ -87,7 +100,7 @@ describe('OutcomesUploadService — positional parsing', () => {
 });
 
 describe('OutcomesUploadService — template', () => {
-	it('builds a Template sheet with localized bilingual name headers', async () => {
+	it('builds a Template sheet with localized bilingual name and description headers', async () => {
 		const repository: any = { getSupportedLanguages: jest.fn().mockResolvedValue(['es', 'en']) };
 		const service = new OutcomesUploadService(repository, uploadLogServiceStub);
 
@@ -97,9 +110,11 @@ describe('OutcomesUploadService — template', () => {
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
-		expect(header).toContain('Nombre del outcome (Español)');
-		expect(header).toContain('Nombre del outcome (Inglés)');
-		expect(header).toContain('Código del programa');
+		expect(header).toContain('Nombre (Español)');
+		expect(header).toContain('Nombre (Inglés)');
+		expect(header).toContain('Descripción (Español)');
+		expect(header).toContain('Descripción (Inglés)');
 		expect(header).toContain('Código de la comisión');
+		expect(header).toContain('Código de la carrera');
 	});
 });

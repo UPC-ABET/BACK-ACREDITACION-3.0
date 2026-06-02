@@ -4,8 +4,9 @@ export interface OutcomeRow {
 	rowNumber: number;
 	outcomeCode: string;
 	outcomeName: I18nText;
-	programCode: string;
+	outcomeDescription: I18nText;
 	commissionCode: string;
+	programCode: string;
 }
 
 export interface UploadRowError {

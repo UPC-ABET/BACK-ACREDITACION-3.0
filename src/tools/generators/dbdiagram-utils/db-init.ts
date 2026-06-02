@@ -47,7 +47,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "accreditation"."program_commissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "commission_id" integer NOT NULL, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "commission_type_id" integer NOT NULL, CONSTRAINT "PK_program_commissions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "UQ_outcomes_outcome_code" UNIQUE ("outcome_code"), CONSTRAINT "PK_outcomes" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "accreditation"."outcomes" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_commission_id" integer NOT NULL, "outcome_code" character varying(50) NOT NULL, "outcome_name" jsonb NOT NULL DEFAULT '{}'::jsonb, "outcome_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "upload_log_id" integer, CONSTRAINT "PK_outcomes" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_campuses" PRIMARY KEY ("id"))`,
@@ -1313,15 +1313,15 @@ DECLARE
 BEGIN
 	-- The academic period is validated in the service (request-level HTTP error), not here.
 
-	-- intra-file duplicate outcome code
+	-- intra-file duplicate outcome (the stored code is commissionCode-programCode-userInput)
 	FOR r IN
 		SELECT (e->>'rowNumber')::int AS rn
 		FROM jsonb_array_elements(p_rows) AS e
-		WHERE lower(trim(e->>'outcomeCode')) IN (
-			SELECT lower(trim(d->>'outcomeCode'))
+		WHERE (lower(trim(e->>'commissionCode')), lower(trim(e->>'programCode')), lower(trim(e->>'outcomeCode'))) IN (
+			SELECT lower(trim(d->>'commissionCode')), lower(trim(d->>'programCode')), lower(trim(d->>'outcomeCode'))
 			FROM jsonb_array_elements(p_rows) AS d
 			WHERE NULLIF(trim(d->>'outcomeCode'), '') IS NOT NULL
-			GROUP BY lower(trim(d->>'outcomeCode'))
+			GROUP BY lower(trim(d->>'commissionCode')), lower(trim(d->>'programCode')), lower(trim(d->>'outcomeCode'))
 			HAVING count(*) > 1
 		)
 	LOOP
@@ -1372,20 +1372,6 @@ BEGIN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'programCommissionNotFound'::text, NULL::integer;
 		END IF;
-
-		-- outcome_code is globally unique: an existing one under a different program_commission is a conflict
-		IF r.outcome_code IS NOT NULL AND EXISTS (
-			SELECT 1
-			FROM accreditation.outcomes o
-			JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
-			JOIN academic.programs p ON p.id = pc.program_id
-			JOIN accreditation.commissions c ON c.id = pc.commission_id
-			WHERE o.outcome_code = r.outcome_code
-			  AND NOT (p.code = r.program_code AND c.code = r.commission_code AND pc.academic_period_id = p_academic_period_id)
-		) THEN
-			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'outcomeCodeConflict'::text, NULL::integer;
-		END IF;
 	END LOOP;
 
 	IF v_has_errors THEN
@@ -1408,9 +1394,9 @@ BEGIN
 		 extra, is_active, created_at, updated_at)
 	SELECT
 		pc.id,
-		trim(e->>'outcomeCode'),
+		trim(e->>'commissionCode') || '-' || trim(e->>'programCode') || '-' || trim(e->>'outcomeCode'),
 		COALESCE(e->'outcomeName', '{}'::jsonb),
-		'{}'::jsonb,
+		COALESCE(e->'outcomeDescription', '{}'::jsonb),
 		v_log_id,
 		'{}'::jsonb, true, NOW(), NOW()
 	FROM jsonb_array_elements(p_rows) AS e
@@ -1418,17 +1404,28 @@ BEGIN
 	JOIN accreditation.commissions c ON c.code = trim(e->>'commissionCode')
 	JOIN accreditation.program_commissions pc
 		ON pc.program_id = p.id AND pc.commission_id = c.id AND pc.academic_period_id = p_academic_period_id
-	WHERE NOT EXISTS (SELECT 1 FROM accreditation.outcomes o WHERE o.outcome_code = trim(e->>'outcomeCode'));
+	WHERE NOT EXISTS (
+		SELECT 1 FROM accreditation.outcomes o
+		WHERE o.program_commission_id = pc.id
+		  AND o.outcome_code = trim(e->>'commissionCode') || '-' || trim(e->>'programCode') || '-' || trim(e->>'outcomeCode')
+	);
 
-	-- update outcomes whose code already existed (push prior name onto the extra.uploadUndo stack)
+	-- update outcomes whose code already existed in this period (push prior name + description onto the extra.uploadUndo stack)
 	UPDATE accreditation.outcomes o
 	SET outcome_name = COALESCE(e->'outcomeName', '{}'::jsonb),
+		outcome_description = COALESCE(e->'outcomeDescription', '{}'::jsonb),
 		updated_at = NOW(),
 		extra = jsonb_set(COALESCE(o.extra, '{}'::jsonb), '{uploadUndo}',
 			COALESCE(o.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'outcomeName', o.outcome_name))
+			jsonb_build_object('logId', v_log_id, 'outcomeName', o.outcome_name,
+				'outcomeDescription', o.outcome_description))
 	FROM jsonb_array_elements(p_rows) AS e
-	WHERE o.outcome_code = trim(e->>'outcomeCode')
+	JOIN academic.programs p ON p.code = trim(e->>'programCode')
+	JOIN accreditation.commissions c ON c.code = trim(e->>'commissionCode')
+	JOIN accreditation.program_commissions pc
+		ON pc.program_id = p.id AND pc.commission_id = c.id AND pc.academic_period_id = p_academic_period_id
+	WHERE o.program_commission_id = pc.id
+	  AND o.outcome_code = trim(e->>'commissionCode') || '-' || trim(e->>'programCode') || '-' || trim(e->>'outcomeCode')
 	  AND o.upload_log_id IS DISTINCT FROM v_log_id;
 
 	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
@@ -1491,6 +1488,7 @@ BEGIN
 	-- restore updated outcomes by popping this upload's (top) uploadUndo entry, then drop inserts
 	UPDATE accreditation.outcomes o
 	SET outcome_name = o.extra->'uploadUndo' -> -1 -> 'outcomeName',
+		outcome_description = COALESCE(o.extra->'uploadUndo' -> -1 -> 'outcomeDescription', o.outcome_description),
 		extra = CASE
 			WHEN jsonb_array_length(o.extra->'uploadUndo') <= 1 THEN o.extra - 'uploadUndo'
 			ELSE jsonb_set(o.extra, '{uploadUndo}', (o.extra->'uploadUndo') - (-1))
@@ -1560,7 +1558,11 @@ BEGIN
 		IF r.outcome_code IS NULL THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'outcomeCodeEmpty'::text, NULL::integer;
-		ELSIF NOT EXISTS (SELECT 1 FROM accreditation.outcomes o WHERE o.outcome_code = r.outcome_code) THEN
+		ELSIF NOT EXISTS (
+			SELECT 1 FROM accreditation.outcomes o
+			JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			WHERE o.outcome_code = r.outcome_code AND pc.academic_period_id = p_academic_period_id
+		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'outcomeNotFound'::text, NULL::integer;
 		END IF;
@@ -1621,6 +1623,7 @@ BEGIN
 		o.id, spc.id, t.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN accreditation.outcomes o ON o.outcome_code = trim(e->>'outcomeCode')
+	JOIN accreditation.program_commissions opc ON opc.id = o.program_commission_id AND opc.academic_period_id = p_academic_period_id
 	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
 	JOIN academic.study_plan_academic_periods spap
 		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
@@ -1643,6 +1646,7 @@ BEGIN
 			jsonb_build_object('logId', v_log_id, 'outcomeTypeId', com.outcome_type_id))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN accreditation.outcomes o ON o.outcome_code = trim(e->>'outcomeCode')
+	JOIN accreditation.program_commissions opc ON opc.id = o.program_commission_id AND opc.academic_period_id = p_academic_period_id
 	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
 	JOIN academic.study_plan_academic_periods spap
 		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id

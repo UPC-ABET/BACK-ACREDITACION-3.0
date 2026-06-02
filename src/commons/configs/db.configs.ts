@@ -98,7 +98,7 @@ export function NameColumn(options?: BaseOptions): PropertyDecorator {
 //CODE
 export function CodeColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
-		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
+		const { withDefault = false, nullable = false, unique = true, ...rest } = options || {};
 		applyColumn(
 			target,
 			propertyKey,
@@ -106,7 +106,7 @@ export function CodeColumn(options?: BaseOptions): PropertyDecorator {
 				type: 'varchar',
 				length: DB_LENGTH_CODE,
 				nullable: false,
-				unique: true,
+				unique,
 			},
 			rest,
 		);

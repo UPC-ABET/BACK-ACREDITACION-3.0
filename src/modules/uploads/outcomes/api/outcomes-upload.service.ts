@@ -100,8 +100,9 @@ export class OutcomesUploadService {
 		const headers = [
 			labels.outcomeCode,
 			...languages.map((l) => `${labels.outcomeName} (${displayNames[l] ?? l})`),
-			labels.programCode,
+			...languages.map((l) => `${labels.outcomeDescription} (${displayNames[l] ?? l})`),
 			labels.commissionCode,
+			labels.programCode,
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
@@ -128,7 +129,7 @@ export class OutcomesUploadService {
 	}
 
 	// Positional layout (header ignored), L = languages.length:
-	// outcomeCode | outcomeName×L | programCode | commissionCode
+	// outcomeCode | outcomeName×L | outcomeDescription×L | commissionCode | programCode
 	private parseWorkbook(workbook: ExcelJS.Workbook, languages: string[]): OutcomeRow[] {
 		const worksheet = workbook.worksheets[0];
 		const L = languages.length;
@@ -140,10 +141,19 @@ export class OutcomesUploadService {
 			const outcomeCode = this.cell(row, col++);
 			const outcomeName = this.i18nCells(row, col, languages);
 			col += L;
-			const programCode = this.cell(row, col++);
-			const commissionCode = this.cell(row, col);
+			const outcomeDescription = this.i18nCells(row, col, languages);
+			col += L;
+			const commissionCode = this.cell(row, col++);
+			const programCode = this.cell(row, col);
 
-			rows.push({ rowNumber, outcomeCode, outcomeName, programCode, commissionCode });
+			rows.push({
+				rowNumber,
+				outcomeCode,
+				outcomeName,
+				outcomeDescription,
+				commissionCode,
+				programCode,
+			});
 		});
 		return rows;
 	}
@@ -173,8 +183,8 @@ export class OutcomesUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = 1 (outcomeCode) + outcomeName×L + 2 (programCode, commissionCode); error column is next.
-		const errorColumn = 3 + languageCount + 1;
+		// data columns = 1 (outcomeCode) + outcomeName×L + outcomeDescription×L + 2 (commissionCode, programCode); error column is next.
+		const errorColumn = 3 + 2 * languageCount + 1;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };

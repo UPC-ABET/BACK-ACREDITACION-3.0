@@ -101,9 +101,8 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		);
 	`);
 
-	// outcome_code has a global UNIQUE constraint, so each outcome is anchored to a single
-	// program_commission (one specific period). When a commission spans multiple periods,
-	// the outcome is still defined once — pin it explicitly by academic_period_code here.
+	// outcome_code is unique per academic period (via program_commission), not global — the same
+	// code may recur in another period. Pin each outcome to a specific period by academic_period_code.
 	const outcomeValues = [
 		[
 			'COM_SOFT_2026',
@@ -212,7 +211,8 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 				AND pc.program_id = program.id
 				AND pc.academic_period_id = period.id
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "accreditation"."outcomes" outcome WHERE outcome.outcome_code = v.outcome_code
+			SELECT 1 FROM "accreditation"."outcomes" outcome
+			WHERE outcome.program_commission_id = pc.id AND outcome.outcome_code = v.outcome_code
 		);
 	`);
 

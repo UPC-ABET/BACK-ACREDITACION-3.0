@@ -11,7 +11,7 @@ export class OutcomeEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	programCommissionId: number;
 
-	@CodeColumn({ nullable: false })
+	@CodeColumn({ nullable: false, unique: false })
 	outcomeCode: string;
 
 	@JsonColumn({ nullable: false })
