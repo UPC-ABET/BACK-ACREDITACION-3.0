@@ -1,10 +1,10 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('ifc status module', async (tenantDataSource) => {
 	const statusValues = [
 		[
 			'Fundamentos de Programacion',
-			'AP_2026_1',
+			'202601',
 			'TG701-T002',
 			'calidad@upc.edu.pe',
 			i18n(
@@ -15,7 +15,7 @@ runTenantSeed('ifc status module', async (tenantDataSource) => {
 		],
 		[
 			'Proyecto Integrador de Software',
-			'AP_2026_2',
+			'202502',
 			'TG701-T001',
 			'calidad@upc.edu.pe',
 			i18n(

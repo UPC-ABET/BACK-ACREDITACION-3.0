@@ -1,4 +1,4 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('evidence module', async (tenantDataSource) => {
 	const instrumentValues = [
@@ -69,7 +69,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 	const ifcValues = [
 		[
 			'Fundamentos de Programacion',
-			'AP_2026_1',
+			'202601',
 			JSON.stringify({
 				summary: {
 					label: { es: 'Resumen IFC', en: 'IFC summary' },
@@ -83,7 +83,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'Proyecto Integrador de Software',
-			'AP_2026_2',
+			'202502',
 			JSON.stringify({
 				summary: {
 					label: { es: 'Resumen IFC', en: 'IFC summary' },
@@ -212,7 +212,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			'TG601-T001',
 			'TG602-T001',
 			'student.luis.ramirez@upc.edu.pe',
-			'AP_2026_1',
+			'202601',
 			'CAMPUS_MON',
 			'PROG_SOFT',
 			'SOFT-FP-2026-1-A',
@@ -223,7 +223,7 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 			'TG601-T001',
 			'TG602-T001',
 			'student.sofia.torres@upc.edu.pe',
-			'AP_2026_1',
+			'202601',
 			'CAMPUS_MON',
 			'PROG_SOFT',
 			'SOFT-FP-2026-1-A',

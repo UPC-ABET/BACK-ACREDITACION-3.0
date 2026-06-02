@@ -1,4 +1,4 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('evaluation module', async (tenantDataSource) => {
 	const projectValues = [
@@ -96,8 +96,8 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 		SELECT rubric_type.id, grade_type.id, spc.id
 		FROM (
 			VALUES
-				('TG401-T002', 'TG205-T006', 'SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion'),
-				('TG401-T001', 'TG205-T003', 'SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software')
+				('TG401-T002', 'TG205-T006', 'SP_SOFT26', '202601', 'Fundamentos de Programacion'),
+				('TG401-T001', 'TG205-T003', 'SP_SOFT26', '202502', 'Proyecto Integrador de Software')
 		) AS v(rubric_type_code, grade_type_code, study_plan_code, academic_period_code, course_name)
 		JOIN "core"."types" rubric_type
 			ON rubric_type.code = v.rubric_type_code
@@ -125,7 +125,7 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 	const rubricQuestionValues = [
 		[
 			'SP_SOFT26',
-			'AP_2026_1',
+			'202601',
 			'Fundamentos de Programacion',
 			'OUT_SOFT_01',
 			i18n(
@@ -135,7 +135,7 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 		],
 		[
 			'SP_SOFT26',
-			'AP_2026_1',
+			'202601',
 			'Fundamentos de Programacion',
 			'OUT_SOFT_04',
 			i18n(
@@ -145,7 +145,7 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 		],
 		[
 			'SP_SOFT26',
-			'AP_2026_2',
+			'202502',
 			'Proyecto Integrador de Software',
 			'OUT_SOFT_03',
 			i18n(
@@ -155,7 +155,7 @@ runTenantSeed('evaluation module', async (tenantDataSource) => {
 		],
 		[
 			'SP_SOFT26',
-			'AP_2026_2',
+			'202502',
 			'Proyecto Integrador de Software',
 			'OUT_SOFT_04',
 			i18n(

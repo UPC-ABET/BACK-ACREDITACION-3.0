@@ -39,7 +39,19 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 				('TG101-T001', 80000004, 'Carla', 'Decano', 'dean.eiscb@upc.edu.pe', '+51999900004', $7, false),
 				('TG101-T001', 80000005, 'Sara', 'Programa', 'prog-coord.eiscb@upc.edu.pe', '+51999900005', $7, false),
 				('TG101-T001', 80000006, 'Bruno', 'Area', 'area-coord.eiscb@upc.edu.pe', '+51999900006', $7, false),
-				('TG101-T001', 80000007, 'Pablo', 'Subarea', 'subarea-coord.eiscb@upc.edu.pe', '+51999900007', $7, false)
+				('TG101-T001', 80000007, 'Pablo', 'Subarea', 'subarea-coord.eiscb@upc.edu.pe', '+51999900007', $7, false),
+				('TG101-T001', 70000007, 'Carlos', 'Mendez Ruiz', 'prof.carlos.mendez@upc.edu.pe', '+51990000007', $7, false),
+				('TG101-T001', 70000008, 'Ana', 'Torres Quispe', 'prof.ana.torres@upc.edu.pe', '+51990000008', $7, false),
+				('TG101-T001', 70000009, 'Jorge', 'Vargas Lima', 'prof.jorge.vargas@upc.edu.pe', '+51990000009', $7, false),
+				('TG101-T001', 70000010, 'Lucia', 'Flores Castro', 'prof.lucia.flores@upc.edu.pe', '+51990000010', $7, false),
+				('TG101-T001', 70000011, 'Pedro', 'Silva Vega', 'student.pedro.silva@upc.edu.pe', '+51990000011', $7, false),
+				('TG101-T001', 70000012, 'Andrea', 'Quispe Rojas', 'student.andrea.quispe@upc.edu.pe', '+51990000012', $7, false),
+				('TG101-T001', 70000013, 'Marco', 'Luna Torres', 'student.marco.luna@upc.edu.pe', '+51990000013', $7, false),
+				('TG101-T001', 70000014, 'Diana', 'Paredes Huanca', 'student.diana.paredes@upc.edu.pe', '+51990000014', $7, false),
+				('TG101-T001', 70000015, 'Roberto', 'Chavez Diaz', 'student.roberto.chavez@upc.edu.pe', '+51990000015', $7, false),
+				('TG101-T001', 70000016, 'Valeria', 'Morales Soto', 'student.valeria.morales@upc.edu.pe', '+51990000016', $7, false),
+				('TG101-T001', 70000017, 'Elena', 'Ramos Vega', 'student.elena.ramos@upc.edu.pe', '+51990000017', $7, false),
+				('TG101-T001', 70000018, 'Alex', 'Medina Cruz', 'student.alex.medina@upc.edu.pe', '+51990000018', $7, false)
 		) AS v(document_type_code, document_code, first_name, last_name, email, phone, password, is_admin)
 		JOIN "core"."types" dt
 			ON dt.code = v.document_type_code
@@ -130,6 +142,30 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			'TG901-T002',
 			i18n('Coordinador de Subarea EISCB', 'EISCB Subarea Coordinator'),
 			i18n('Coordinacion de subarea academica', 'Academic subarea coordination'),
+		],
+		[
+			'prof.carlos.mendez@upc.edu.pe',
+			'TG901-T003',
+			i18n('Profesor tiempo completo', 'Full-time professor'),
+			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
+		],
+		[
+			'prof.ana.torres@upc.edu.pe',
+			'TG901-T003',
+			i18n('Profesora tiempo completo', 'Full-time professor'),
+			i18n('Docente del programa de Administracion de Empresas', 'Professor of the Business Administration program'),
+		],
+		[
+			'prof.jorge.vargas@upc.edu.pe',
+			'TG901-T003',
+			i18n('Profesor tiempo completo', 'Full-time professor'),
+			i18n('Docente del programa de Ciencias de la Computacion', 'Professor of the Computer Science program'),
+		],
+		[
+			'prof.lucia.flores@upc.edu.pe',
+			'TG901-T003',
+			i18n('Profesora tiempo completo', 'Full-time professor'),
+			i18n('Docente del programa de Ciencias de la Computacion', 'Professor of the Computer Science program'),
 		],
 	]
 		.map(

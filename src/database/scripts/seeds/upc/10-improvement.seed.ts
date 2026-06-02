@@ -1,4 +1,4 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('improvement module', async (tenantDataSource) => {
 	const actionValues = [
@@ -9,7 +9,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			2026101,
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			i18n(
@@ -18,7 +18,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			2026102,
 			'PROG_SOFT',
-			'AP_2026_2',
+			'202502',
 		],
 		[
 			i18n(
@@ -27,7 +27,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			2026103,
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			i18n(
@@ -48,13 +48,13 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'202502',
 		],
 		// Previous-action demo: prior-period actions for "Proyecto Integrador de Software".
-		// They live in AP_2026_1 (year 2026, earlier than AP_2026_2) and surface when viewing
-		// or prefilling the IFC for that course in AP_2026_2.
+		// They live in 202601 (year 2026, earlier than 202502) and surface when viewing
+		// or prefilling the IFC for that course in 202502.
 		[
 			i18n('Ajustar rubricas del proyecto integrador.', 'Adjust integrator project rubrics.'),
 			2026801,
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			i18n(
@@ -63,9 +63,9 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			2026802,
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 		],
-		// CS prior actions in AP_2026_1 (year 2026, earlier than 202601). These surface as
+		// CS prior actions in 202601 (year 2026, earlier than 202601). These surface as
 		// previous_actions when viewing the 202601 IFCs (CC101 / CC102) or prefilling CC103.
 		[
 			i18n(
@@ -74,19 +74,19 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			2026901,
 			'CS',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			i18n('Incorporar checkpoints semanales en CC101.', 'Add weekly checkpoints to CC101.'),
 			2026902,
 			'CS',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			i18n('Anadir taller de seguridad SQL en CC102.', 'Add SQL security workshop to CC102.'),
 			2026903,
 			'CS',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			i18n(
@@ -95,7 +95,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			2026904,
 			'CS',
-			'AP_2026_1',
+			'202601',
 		],
 	]
 		.map(([desc, corr, pc, apc]) => `('${desc}'::jsonb, ${corr}, '${pc}', '${apc}')`)
@@ -133,7 +133,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Need identified to reinforce algorithm formulation before implementation.',
 			),
 			'Fundamentos de Programacion',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			'TG801-T001',
@@ -145,7 +145,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Teams require more recorded collaboration evidence during the project.',
 			),
 			'Proyecto Integrador de Software',
-			'AP_2026_2',
+			'202502',
 		],
 		[
 			'TG801-T001',
@@ -171,7 +171,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			'Bases de Datos',
 			'202502',
 		],
-		// Previous-action demo: a finding on "Proyecto Integrador de Software" in AP_2026_1.
+		// Previous-action demo: a finding on "Proyecto Integrador de Software" in 202601.
 		// Its finding_actions wire actions 2026801 / 2026802 into the course's history.
 		[
 			'TG801-T002',
@@ -183,9 +183,9 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Previous finding: integrator project evaluation criteria need adjustments.',
 			),
 			'Proyecto Integrador de Software',
-			'AP_2026_1',
+			'202601',
 		],
-		// Prior CS findings in AP_2026_1 (one per CS course) — feed previous_actions in 202601.
+		// Prior CS findings in 202601 (one per CS course) — feed previous_actions in 202601.
 		[
 			'TG801-T002',
 			'INST_IFC',
@@ -196,7 +196,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Previous finding: algorithmic gaps detected in CC101.',
 			),
 			'Algoritmos y Estructuras de Datos',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			'TG801-T001',
@@ -208,7 +208,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Previous finding: SQL injection vulnerabilities reported in CC102.',
 			),
 			'Bases de Datos',
-			'AP_2026_1',
+			'202601',
 		],
 		[
 			'TG801-T003',
@@ -220,7 +220,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Previous finding: insufficient design-patterns coverage in CC103.',
 			),
 			'Ingenieria de Software',
-			'AP_2026_1',
+			'202601',
 		],
 	]
 		.map(
@@ -315,7 +315,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			true,
 			i18n('Plan piloto ejecutado en dos secciones.', 'Pilot plan executed in two sections.'),
 		],
-		// Previous-action demo: finding 2026801 (Proyecto Integrador @ AP_2026_1) → both prior actions.
+		// Previous-action demo: finding 2026801 (Proyecto Integrador @ 202601) → both prior actions.
 		// First stays PENDING (no evidences); second is IMPLEMENTED with evidence text.
 		[
 			2026801,
@@ -407,7 +407,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 	const planValues = [
 		[
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 			i18n('Plan de mejora de evidencias 2026-1', '2026-1 evidence improvement plan'),
 			i18n(
 				'Plan para cerrar brechas detectadas en evidencias de resultados de aprendizaje.',
@@ -417,7 +417,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		],
 		[
 			'PROG_SOFT',
-			'AP_2026_2',
+			'202502',
 			i18n('Plan de seguimiento capstone 2026-2', '2026-2 capstone tracking plan'),
 			i18n(
 				'Plan para fortalecer seguimiento de equipos en el proyecto integrador.',
@@ -425,11 +425,11 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 			),
 			true,
 		],
-		// CS plan in AP_2026_1 — lets us demonstrate Path A (source='both') for CC101's
+		// CS plan in 202601 — lets us demonstrate Path A (source='both') for CC101's
 		// IFC in 202601: an action reachable via both the plan chain and the action's period.
 		[
 			'CS',
-			'AP_2026_1',
+			'202601',
 			i18n('Plan de mejora CS 2026-1', '2026-1 CS improvement plan'),
 			i18n(
 				'Plan para cerrar brechas algoritmicas detectadas en cursos base de CS.',
@@ -483,7 +483,7 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 				'Incorporate peer reviews into the Software Integrator Project.',
 			),
 		],
-		// Previous-action demo: link one prior action to the AP_2026_1 plan so it surfaces
+		// Previous-action demo: link one prior action to the 202601 plan so it surfaces
 		// via Path A (plan chain) in addition to Path B (direct). Yields source='both'.
 		// The second prior action (2026802) stays plan-less → source='direct'.
 		[
@@ -559,8 +559,8 @@ runTenantSeed('improvement module', async (tenantDataSource) => {
 		SELECT ifc.id, finding.id
 		FROM (
 			VALUES
-				('Fundamentos de Programacion', 'AP_2026_1', 2026001),
-				('Proyecto Integrador de Software', 'AP_2026_2', 2026002),
+				('Fundamentos de Programacion', '202601', 2026001),
+				('Proyecto Integrador de Software', '202502', 2026002),
 				('Algoritmos y Estructuras de Datos', '202502', 2025001),
 				('Bases de Datos', '202502', 2025002)
 		) AS v(course_name, academic_period_code, finding_correlative)

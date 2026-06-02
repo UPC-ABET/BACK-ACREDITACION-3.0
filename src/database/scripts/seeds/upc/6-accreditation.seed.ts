@@ -1,4 +1,4 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('accreditation module', async (tenantDataSource) => {
 	const accreditorValues = [
@@ -79,8 +79,8 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		SELECT commission.id, program.id, period.id, commission_type.id
 		FROM (
 			VALUES
-				('COM_SOFT_2026', 'PROG_SOFT', 'AP_2026_1', 'TG301-T001'),
-				('COM_ADMIN_2026', 'PROG_ADMIN', 'AP_2026_1', 'TG301-T001'),
+				('COM_SOFT_2026', 'PROG_SOFT', '202601', 'TG301-T001'),
+				('COM_ADMIN_2026', 'PROG_ADMIN', '202601', 'TG301-T001'),
 				('COM_CS', 'CS', '202502', 'TG301-T001'),
 				('COM_CS', 'CS', '202601', 'TG301-T001')
 		) AS v(commission_code, program_code, academic_period_code, commission_type_code)
@@ -108,7 +108,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 			'OUT_SOFT_01',
 			i18n('Pensamiento critico', 'Critical thinking'),
 			i18n(
@@ -119,7 +119,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 			'OUT_SOFT_02',
 			i18n('Comunicacion efectiva', 'Effective communication'),
 			i18n(
@@ -130,7 +130,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 			'OUT_SOFT_03',
 			i18n('Trabajo en equipo', 'Teamwork'),
 			i18n(
@@ -141,7 +141,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_SOFT_2026',
 			'PROG_SOFT',
-			'AP_2026_1',
+			'202601',
 			'OUT_SOFT_04',
 			i18n('Solucion tecnica', 'Technical solution'),
 			i18n(
@@ -152,7 +152,7 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		[
 			'COM_ADMIN_2026',
 			'PROG_ADMIN',
-			'AP_2026_1',
+			'202601',
 			'OUT_ADMIN_01',
 			i18n('Gestion organizacional', 'Organizational management'),
 			i18n(
@@ -225,10 +225,10 @@ runTenantSeed('accreditation module', async (tenantDataSource) => {
 		SELECT outcome.id, spc.id, outcome_type.id
 		FROM (
 			VALUES
-				('OUT_SOFT_01', 'SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'TG302-T001'),
-				('OUT_SOFT_02', 'SP_SOFT26', 'AP_2026_1', 'Ingenieria de Requisitos', 'TG302-T001'),
-				('OUT_SOFT_03', 'SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', 'TG302-T001'),
-				('OUT_SOFT_04', 'SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', 'TG302-T001'),
+				('OUT_SOFT_01', 'SP_SOFT26', '202601', 'Fundamentos de Programacion', 'TG302-T001'),
+				('OUT_SOFT_02', 'SP_SOFT26', '202601', 'Ingenieria de Requisitos', 'TG302-T001'),
+				('OUT_SOFT_03', 'SP_SOFT26', '202502', 'Proyecto Integrador de Software', 'TG302-T001'),
+				('OUT_SOFT_04', 'SP_SOFT26', '202502', 'Proyecto Integrador de Software', 'TG302-T001'),
 				('A1', 'SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', 'TG302-T001'),
 				('A2', 'SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', 'TG302-T001'),
 				('A1', 'SP_CS_2502', '202502', 'Bases de Datos', 'TG302-T001'),
