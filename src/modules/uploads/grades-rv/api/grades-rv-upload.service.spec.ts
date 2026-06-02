@@ -33,7 +33,6 @@ function makeRepository(uploadFnResult: any[]) {
 			return Promise.resolve(uploadFnResult);
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
-		getOutcomes: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
 }
@@ -85,14 +84,8 @@ describe('GradesRvUploadService — positional parsing', () => {
 });
 
 describe('GradesRvUploadService — template', () => {
-	it('builds a Template sheet and a localized legend sheet with outcome codes', async () => {
-		const repository: any = {
-			getOutcomes: jest.fn().mockResolvedValue([
-				{ code: 'O-1', name: 'Outcome 1' },
-				{ code: 'O-2', name: 'Outcome 2' },
-			]),
-		};
-		const service = new GradesRvUploadService(repository, uploadLogServiceStub);
+	it('builds a single Template sheet with localized headers and no outcome legend', async () => {
+		const service = new GradesRvUploadService({} as any, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
 		expect(fileName).toBe('PlantillaNotasRV.xlsx');
@@ -103,9 +96,7 @@ describe('GradesRvUploadService — template', () => {
 		expect(header).toContain('Código de sección');
 		expect(header).toContain('Código del outcome');
 
-		const legend = wb.getWorksheet('Outcomes')!;
-		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('O-1');
-		expect(codes).toContain('O-2');
+		expect(wb.worksheets).toHaveLength(1);
+		expect(wb.getWorksheet('Outcomes')).toBeUndefined();
 	});
 });

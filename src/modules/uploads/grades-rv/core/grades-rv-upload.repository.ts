@@ -26,15 +26,4 @@ export class GradesRvUploadRepository {
 	async callRollbackFunction(uploadLogId: number): Promise<void> {
 		await this.dataSource.query('SELECT audit.fn_rollback_grades_rv($1)', [uploadLogId]);
 	}
-
-	async getOutcomes(language: string): Promise<Array<{ code: string; name: string }>> {
-		return await this.dataSource.query(
-			`SELECT o.outcome_code AS code,
-			        COALESCE(o.outcome_name->>$1, o.outcome_name->>'es', o.outcome_code) AS name
-			 FROM accreditation.outcomes o
-			 WHERE o.is_active = true
-			 ORDER BY o.outcome_code`,
-			[language],
-		);
-	}
 }

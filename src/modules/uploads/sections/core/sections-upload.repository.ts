@@ -36,7 +36,7 @@ export class SectionsUploadRepository {
 			 JOIN core.type_groups g ON g.id = t.type_group_id
 			 WHERE g.code = $1 AND t.is_active = true
 			 ORDER BY t.code`,
-			[TYPE_GROUP_CODES.SECTION_MODALITY, language],
+			[TYPE_GROUP_CODES.TEACHING_MODALITY, language],
 		);
 	}
 }

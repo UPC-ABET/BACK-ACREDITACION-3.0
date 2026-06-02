@@ -1806,7 +1806,7 @@ BEGIN
 		IF r.modality_code IS NULL OR NOT EXISTS (
 			SELECT 1 FROM core.types t
 			JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG204' AND t.code = r.modality_code
+			WHERE g.code = 'TG103' AND t.code = r.modality_code
 		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'sectionModalityInvalid'::text, NULL::integer;
@@ -1842,7 +1842,7 @@ BEGIN
 		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
 	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
 	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
-	JOIN core.type_groups g ON g.code = 'TG204'
+	JOIN core.type_groups g ON g.code = 'TG103'
 	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
 	WHERE NOT EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = trim(e->>'sectionCode'));
 
@@ -1867,7 +1867,7 @@ BEGIN
 		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
 	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
 	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
-	JOIN core.type_groups g ON g.code = 'TG204'
+	JOIN core.type_groups g ON g.code = 'TG103'
 	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
 	WHERE cs.section_code = trim(e->>'sectionCode')
 	  AND cs.upload_log_id IS DISTINCT FROM v_log_id;
@@ -2652,6 +2652,21 @@ BEGIN
 		ELSIF NOT EXISTS (SELECT 1 FROM accreditation.outcomes o WHERE o.outcome_code = r.outcome_code) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'outcomeNotFound'::text, NULL::integer;
+		END IF;
+
+		-- the outcome must be mapped to the section's course (course_outcome_mappings on its study_plan_course)
+		IF r.section_code IS NOT NULL AND r.outcome_code IS NOT NULL
+		   AND EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = r.section_code)
+		   AND EXISTS (SELECT 1 FROM accreditation.outcomes o WHERE o.outcome_code = r.outcome_code)
+		   AND NOT EXISTS (
+			SELECT 1
+			FROM academic.course_sections cs
+			JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = cs.study_plan_course_id
+			JOIN accreditation.outcomes o ON o.id = com.outcome_id
+			WHERE cs.section_code = r.section_code AND o.outcome_code = r.outcome_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'outcomeNotInSection'::text, NULL::integer;
 		END IF;
 
 		IF r.grade IS NULL THEN

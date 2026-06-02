@@ -46,7 +46,7 @@ describe('SectionsUploadService — positional parsing', () => {
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG204-T001', 'SEC-A'],
+			['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG103-T001', 'SEC-A'],
 		]);
 		const result = await service.processUpload(buffer, 'sections.xlsx', 7, {
 			academicPeriodId: 1,
@@ -63,7 +63,7 @@ describe('SectionsUploadService — positional parsing', () => {
 			courseCode: 'CS101',
 			campusCode: 'CAMP-1',
 			professorCode: 'DOC-001',
-			sectionModalityTypeCode: 'TG204-T001',
+			sectionModalityTypeCode: 'TG103-T001',
 			sectionCode: 'SEC-A',
 		});
 		expect(academicPeriodId).toBe(1);
@@ -77,7 +77,7 @@ describe('SectionsUploadService — positional parsing', () => {
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG204-T001', 'SEC-A'],
+			['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG103-T001', 'SEC-A'],
 		]);
 		const result = await service.processUpload(buffer, 'sections.xlsx', 1, {
 			academicPeriodId: 1,
@@ -91,11 +91,11 @@ describe('SectionsUploadService — positional parsing', () => {
 });
 
 describe('SectionsUploadService — template', () => {
-	it('builds a Template sheet and a localized legend sheet with TG204 codes', async () => {
+	it('builds a Template sheet and a localized legend sheet with TG103 codes', async () => {
 		const repository: any = {
 			getSectionModalities: jest.fn().mockResolvedValue([
-				{ code: 'TG204-T001', name: 'Sección presencial' },
-				{ code: 'TG204-T002', name: 'Sección virtual' },
+				{ code: 'TG103-T001', name: 'Sección presencial' },
+				{ code: 'TG103-T002', name: 'Sección virtual' },
 			]),
 		};
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
@@ -111,7 +111,7 @@ describe('SectionsUploadService — template', () => {
 
 		const legend = wb.getWorksheet('Modalidades de sección')!;
 		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('TG204-T001');
-		expect(codes).toContain('TG204-T002');
+		expect(codes).toContain('TG103-T001');
+		expect(codes).toContain('TG103-T002');
 	});
 });

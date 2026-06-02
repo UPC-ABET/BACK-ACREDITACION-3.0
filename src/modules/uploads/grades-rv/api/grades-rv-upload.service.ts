@@ -83,7 +83,6 @@ export class GradesRvUploadService {
 	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
 		const language = this.resolveLanguage(lang);
 		const labels = gradesRvTemplateLabels[language];
-		const outcomes = await this.repository.getOutcomes(language);
 
 		const workbook = new ExcelJS.Workbook();
 
@@ -91,14 +90,6 @@ export class GradesRvUploadService {
 		const headers = [labels.sectionCode, labels.studentCode, labels.outcomeCode, labels.grade];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
-
-		const legendSheet = workbook.addWorksheet(labels.legendSheet);
-		const legendHeaders = [labels.legendCode, labels.legendName];
-		legendSheet.addRow(legendHeaders);
-		this.styleHeaderRow(legendSheet, legendHeaders);
-		for (const outcome of outcomes) {
-			legendSheet.addRow([outcome.code, outcome.name]);
-		}
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
