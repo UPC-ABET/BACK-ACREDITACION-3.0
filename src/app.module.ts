@@ -101,6 +101,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 //ADMIN MODULES
 import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
 import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
+import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart-heads.module';
 
 @Module({
 	imports: [
@@ -192,6 +193,7 @@ import { NotificationConfigModule } from './modules/admin/ifc/notification-confi
 		IfcFindingModule,
 		StatusModule,
 		NotificationConfigModule,
+		ChartHeadsModule,
 		NotificationLogModule,
 		ActionModule,
 		FindingActionModule,
