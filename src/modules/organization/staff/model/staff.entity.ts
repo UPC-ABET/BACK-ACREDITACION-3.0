@@ -12,8 +12,14 @@ export class StaffEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: true })
 	userId: number | null;
 
-	@IntegerFKIDColumn({ nullable: false })
-	positionTypeId: number;
+	@IntegerFKIDColumn({ nullable: true })
+	positionTypeId: number | null;
+
+	@NameColumn({ withDefault: true })
+	firstName: string;
+
+	@NameColumn({ withDefault: true })
+	lastName: string;
 
 	@JsonColumn({ nullable: false })
 	jobTitle: I18nText;
@@ -21,11 +27,11 @@ export class StaffEntity extends BaseEntity {
 	@JsonColumn({ nullable: false })
 	jobDescription: I18nText;
 
-	@NameColumn({ nullable: false })
-	staffEmail: string;
+	@NameColumn({ nullable: true })
+	staffEmail: string | null;
 
-	@NameColumn({ nullable: false })
-	staffPhone: string;
+	@NameColumn({ nullable: true })
+	staffPhone: string | null;
 
 	@IntegerFKIDColumn({ nullable: true })
 	uploadLogId: number;

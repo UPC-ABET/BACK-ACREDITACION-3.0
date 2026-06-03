@@ -14,7 +14,7 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Email', 'Position', 'Job (ES)', 'Job (EN)', 'Professor'];
+const HEADER = ['Email', 'Professor', 'Last name', 'First name'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -25,31 +25,26 @@ async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	return Buffer.from(buf);
 }
 
-function makeRepository(langs: string[], uploadFnResult: any[]) {
+function makeRepository(uploadFnResult: any[]) {
 	const calls: { uploadArgs?: any[] } = {};
 	const repository: any = {
-		getSupportedLanguages: jest.fn().mockResolvedValue(langs),
 		callUploadFunction: jest.fn((...args: any[]) => {
 			calls.uploadArgs = args;
 			return Promise.resolve(uploadFnResult);
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
-		getPositionTypes: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
 }
 
 describe('StaffUploadService — positional parsing', () => {
-	it('assembles per-language jobTitle jsonb and sends structured rows', async () => {
-		const { repository, calls } = makeRepository(
-			['es', 'en'],
-			[{ row_number: null, error_code: null, upload_log_id: 42 }],
-		);
+	it('sends structured rows with names and optional email', async () => {
+		const { repository, calls } = makeRepository([
+			{ row_number: null, error_code: null, upload_log_id: 42 },
+		]);
 		const service = new StaffUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['jane@uni.edu', 'TG901-T003', 'Docente', 'Lecturer', 'DOC-001'],
-		]);
+		const buffer = await makeXlsx([['jane@uni.edu', 'DOC-001', 'Doe', 'Jane']]);
 		const result = await service.processUpload(buffer, 'staff.xlsx', 7, {
 			academicPeriodId: 1,
 		} as any);
@@ -62,22 +57,21 @@ describe('StaffUploadService — positional parsing', () => {
 		expect(rows[0]).toMatchObject({
 			rowNumber: 2,
 			email: 'jane@uni.edu',
-			positionTypeCode: 'TG901-T003',
-			jobTitle: { es: 'Docente', en: 'Lecturer' },
 			professorCode: 'DOC-001',
+			lastName: 'Doe',
+			firstName: 'Jane',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
 	});
 
 	it('returns annotated excel with localized text when the function reports row errors', async () => {
-		const { repository } = makeRepository(
-			['es', 'en'],
-			[{ row_number: 2, error_code: 'userNotFound', upload_log_id: null }],
-		);
+		const { repository } = makeRepository([
+			{ row_number: 2, error_code: 'userNotFound', upload_log_id: null },
+		]);
 		const service = new StaffUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['ghost@uni.edu', 'TG901-T003', 'Docente', 'Lecturer', '']]);
+		const buffer = await makeXlsx([['ghost@uni.edu', '', 'Doe', 'Jane']]);
 		const result = await service.processUpload(buffer, 'staff.xlsx', 1, {
 			academicPeriodId: 1,
 			lang: 'es',
@@ -90,38 +84,21 @@ describe('StaffUploadService — positional parsing', () => {
 });
 
 describe('StaffUploadService — template', () => {
-	function makeTemplateRepository(
-		langs: string[],
-		positions: Array<{ code: string; name: string }>,
-	) {
-		return {
-			getSupportedLanguages: jest.fn().mockResolvedValue(langs),
-			getPositionTypes: jest.fn().mockResolvedValue(positions),
-		} as any;
-	}
-
-	it('builds a Template sheet and a localized Legend sheet with the position codes', async () => {
-		const repository = makeTemplateRepository(
-			['es', 'en'],
-			[
-				{ code: 'TG901-T001', name: 'Administrador' },
-				{ code: 'TG901-T003', name: 'Profesor' },
-			],
-		);
+	it('builds a single Template sheet with the localized headers and no legend', async () => {
+		const repository: any = {};
 		const service = new StaffUploadService(repository, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
-		expect(fileName).toBe('PlantillaPersonal.xlsx');
+		expect(fileName).toBe('PlantillaDocentes.xlsx');
 
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
-		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
-		expect(header).toContain('Cargo (Español)');
-		expect(header).toContain('Cargo (Inglés)');
+		expect(wb.worksheets).toHaveLength(1);
 
-		const legend = wb.getWorksheet('Leyenda')!;
-		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('TG901-T001');
-		expect(codes).toContain('TG901-T003');
+		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
+		expect(header).toContain('Correo del usuario');
+		expect(header).toContain('Código de docente');
+		expect(header).toContain('Apellidos');
+		expect(header).toContain('Nombres');
 	});
 });

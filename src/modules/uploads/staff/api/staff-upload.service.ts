@@ -5,11 +5,9 @@ import { StaffRow, UploadResult, UploadRowError } from '../model/staff-upload.ty
 import type { StaffUploadDto } from '../model/staff-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
-	languageDisplayNames,
 	staffErrorMessages,
 	staffTemplateLabels,
 } from '../model/staff-template.labels';
-import { DEFAULT_LANGUAGES } from 'src/modules/core/parameters/constants/parameter-codes';
 import { StaffUploadRepository } from '../core/staff-upload.repository';
 import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
@@ -31,11 +29,10 @@ export class StaffUploadService {
 		const language = this.resolveLanguage(dto.lang);
 		const labels = staffTemplateLabels[language];
 		const messages = staffErrorMessages[language];
-		const languages = await this.getLanguages();
 
 		const workbook = new ExcelJS.Workbook();
 		await workbook.xlsx.load(fileBuffer as unknown as ArrayBuffer);
-		const rows = this.parseWorkbook(workbook, languages);
+		const rows = this.parseWorkbook(workbook);
 
 		const result = await this.repository.callUploadFunction(
 			rows,
@@ -49,13 +46,7 @@ export class StaffUploadService {
 			.map((r) => ({ rowNumber: r.row_number as number, errorCode: r.error_code as string }));
 
 		if (errors.length > 0) {
-			const excel = await this.annotateErrors(
-				workbook,
-				errors,
-				languages.length,
-				labels.errorColumn,
-				messages,
-			);
+			const excel = await this.annotateErrors(workbook, errors, labels.errorColumn, messages);
 			return {
 				success: false,
 				uploadLogId: null,
@@ -92,29 +83,13 @@ export class StaffUploadService {
 	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
 		const language = this.resolveLanguage(lang);
 		const labels = staffTemplateLabels[language];
-		const displayNames = languageDisplayNames[language];
-		const languages = await this.getLanguages();
-		const positions = await this.repository.getPositionTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
 
 		const dataSheet = workbook.addWorksheet('Template');
-		const headers = [
-			labels.email,
-			labels.positionTypeCode,
-			...languages.map((l) => `${labels.jobTitle} (${displayNames[l] ?? l})`),
-			labels.professorCode,
-		];
+		const headers = [labels.email, labels.professorCode, labels.lastName, labels.firstName];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
-
-		const legendSheet = workbook.addWorksheet(labels.legendSheet);
-		const legendHeaders = [labels.legendCode, labels.legendName];
-		legendSheet.addRow(legendHeaders);
-		this.styleHeaderRow(legendSheet, legendHeaders);
-		for (const position of positions) {
-			legendSheet.addRow([position.code, position.name]);
-		}
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
@@ -133,41 +108,23 @@ export class StaffUploadService {
 		return lang && staffTemplateLabels[lang] ? lang : DEFAULT_TEMPLATE_LANGUAGE;
 	}
 
-	private async getLanguages(): Promise<string[]> {
-		return (await this.repository.getSupportedLanguages()) ?? DEFAULT_LANGUAGES;
-	}
-
-	// Positional layout (header ignored), L = languages.length:
-	// email | positionTypeCode | jobTitle×L | professorCode
-	private parseWorkbook(workbook: ExcelJS.Workbook, languages: string[]): StaffRow[] {
+	// Positional layout (header ignored):
+	// email | professorCode | lastName | firstName
+	private parseWorkbook(workbook: ExcelJS.Workbook): StaffRow[] {
 		const worksheet = workbook.worksheets[0];
-		const L = languages.length;
 		const rows: StaffRow[] = [];
 
 		worksheet.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
-			let col = 1;
-			const email = this.cell(row, col++);
-			const positionTypeCode = this.cell(row, col++);
-			const jobTitle = this.i18nCells(row, col, languages);
-			col += L;
-			const professorCode = this.cell(row, col);
-
-			rows.push({ rowNumber, email, positionTypeCode, jobTitle, professorCode });
+			rows.push({
+				rowNumber,
+				email: this.cell(row, 1),
+				professorCode: this.cell(row, 2),
+				lastName: this.cell(row, 3),
+				firstName: this.cell(row, 4),
+			});
 		});
 		return rows;
-	}
-
-	private i18nCells(
-		row: ExcelJS.Row,
-		startCol: number,
-		languages: string[],
-	): Record<string, string> {
-		const result: Record<string, string> = {};
-		languages.forEach((lang, i) => {
-			result[lang] = this.cell(row, startCol + i);
-		});
-		return result;
 	}
 
 	private cell(row: ExcelJS.Row, col: number): string {
@@ -178,13 +135,12 @@ export class StaffUploadService {
 	private async annotateErrors(
 		workbook: ExcelJS.Workbook,
 		errors: UploadRowError[],
-		languageCount: number,
 		errorColumnHeader: string,
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = 2 single (email, positionTypeCode) + jobTitle×L + 1 (professorCode); error column is next.
-		const errorColumn = 3 + languageCount + 1;
+		// data columns = email, professorCode, lastName, firstName; error column is next.
+		const errorColumn = 5;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };

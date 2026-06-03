@@ -56,7 +56,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_users" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer, "position_type_id" integer, "first_name" character varying(255) NOT NULL DEFAULT '', "last_name" character varying(255) NOT NULL DEFAULT '', "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255), "staff_phone" character varying(255), "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_professors_code" UNIQUE ("code"), CONSTRAINT "PK_professors" PRIMARY KEY ("id"))`,
@@ -699,7 +699,7 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'courseNameEmpty'::text, NULL::integer;
 		END IF;
 
-		IF r.level IS NULL OR r.level !~ '^\d+$' OR NOT EXISTS (
+		IF r.level IS NULL OR r.level !~ '^d+$' OR NOT EXISTS (
 			SELECT 1 FROM core.types t
 			JOIN core.type_groups g ON g.id = t.type_group_id
 			WHERE g.code = 'TG203' AND (t.extra->>'level')::int = r.level::int
@@ -858,6 +858,9 @@ DECLARE
 	v_total integer := jsonb_array_length(p_rows);
 	v_has_errors boolean := false;
 	v_log_id integer;
+	v_user_id integer;
+	v_staff_id integer;
+	v_prof_id integer;
 	r record;
 BEGIN
 	-- The academic period is validated in the service (request-level HTTP error), not here.
@@ -900,24 +903,26 @@ BEGIN
 		SELECT
 			(e->>'rowNumber')::int                  AS row_number,
 			NULLIF(trim(e->>'email'), '')           AS email,
-			NULLIF(trim(e->>'positionTypeCode'), '') AS position_code
+			NULLIF(trim(e->>'lastName'), '')        AS last_name,
+			NULLIF(trim(e->>'firstName'), '')       AS first_name
 		FROM jsonb_array_elements(p_rows) AS e
 	LOOP
-		IF r.email IS NULL THEN
-			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'emailEmpty'::text, NULL::integer;
-		ELSIF NOT EXISTS (SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)) THEN
+		-- email is optional; only when present must it resolve to a user.
+		IF r.email IS NOT NULL AND NOT EXISTS (
+			SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)
+		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'userNotFound'::text, NULL::integer;
 		END IF;
 
-		IF r.position_code IS NULL OR NOT EXISTS (
-			SELECT 1 FROM core.types t
-			JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG901' AND t.code = r.position_code
-		) THEN
+		IF r.last_name IS NULL THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'positionTypeInvalid'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'lastNameEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.first_name IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'firstNameEmpty'::text, NULL::integer;
 		END IF;
 	END LOOP;
 
@@ -935,66 +940,70 @@ BEGIN
 		'{}'::jsonb, true, NOW(), NOW())
 	RETURNING id INTO v_log_id;
 
-	-- insert staff for users that do not have one yet
-	INSERT INTO organization.staff
-		(user_id, position_type_id, job_title, job_description, staff_email, staff_phone, upload_log_id,
-		 extra, is_active, created_at, updated_at)
-	SELECT
-		u.id,
-		pt.id,
-		COALESCE(e->'jobTitle', '{}'::jsonb),
-		'{}'::jsonb,
-		u.email,
-		u.phone,
-		v_log_id,
-		'{}'::jsonb, true, NOW(), NOW()
-	FROM jsonb_array_elements(p_rows) AS e
-	JOIN organization.users u
-		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
-	JOIN core.type_groups g ON g.code = 'TG901'
-	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
-	WHERE NOT EXISTS (SELECT 1 FROM organization.staff s WHERE s.user_id = u.id);
+	-- Row-by-row because the staff target depends on the optional email: rows with an email upsert
+	-- the matching user's staff, rows without one always insert a new (user-less) staff. The professor,
+	-- when a code is given, must point at exactly the staff resolved for that same row, which a set-based
+	-- statement cannot key on for the user-less inserts.
+	FOR r IN
+		SELECT
+			NULLIF(trim(e->>'email'), '')         AS email,
+			NULLIF(trim(e->>'professorCode'), '') AS professor_code,
+			trim(e->>'lastName')                  AS last_name,
+			trim(e->>'firstName')                 AS first_name
+		FROM jsonb_array_elements(p_rows) AS e
+	LOOP
+		v_user_id := NULL;
+		v_staff_id := NULL;
 
-	-- update staff that already existed (push prior values onto the extra.uploadUndo stack for rollback)
-	UPDATE organization.staff s
-	SET position_type_id = pt.id,
-		job_title = COALESCE(e->'jobTitle', '{}'::jsonb),
-		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'positionTypeId', s.position_type_id, 'jobTitle', s.job_title))
-	FROM jsonb_array_elements(p_rows) AS e
-	JOIN organization.users u
-		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
-	JOIN core.type_groups g ON g.code = 'TG901'
-	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
-	WHERE s.user_id = u.id
-	  AND s.upload_log_id IS DISTINCT FROM v_log_id;
+		IF r.email IS NOT NULL THEN
+			SELECT u.id INTO v_user_id
+			FROM organization.users u
+			WHERE lower(u.email) = lower(r.email)
+			ORDER BY u.id LIMIT 1;
 
-	-- insert professors for new codes
-	INSERT INTO academic.professors (staff_id, code, upload_log_id, extra, is_active, created_at, updated_at)
-	SELECT s.id, trim(e->>'professorCode'), v_log_id, '{}'::jsonb, true, NOW(), NOW()
-	FROM jsonb_array_elements(p_rows) AS e
-	JOIN organization.users u
-		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
-	JOIN organization.staff s ON s.user_id = u.id
-	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
-	  AND NOT EXISTS (SELECT 1 FROM academic.professors p WHERE p.code = trim(e->>'professorCode'));
+			SELECT s.id INTO v_staff_id
+			FROM organization.staff s
+			WHERE s.user_id = v_user_id
+			ORDER BY s.id LIMIT 1;
+		END IF;
 
-	-- re-point professors whose code already existed (push prior staff_id onto the extra.uploadUndo stack)
-	UPDATE academic.professors p
-	SET staff_id = s.id,
-		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(p.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(p.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'staffId', p.staff_id))
-	FROM jsonb_array_elements(p_rows) AS e
-	JOIN organization.users u
-		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
-	JOIN organization.staff s ON s.user_id = u.id
-	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
-	  AND p.code = trim(e->>'professorCode')
-	  AND p.upload_log_id IS DISTINCT FROM v_log_id;
+		IF v_staff_id IS NULL THEN
+			INSERT INTO organization.staff
+				(user_id, first_name, last_name, upload_log_id, extra, is_active, created_at, updated_at)
+			VALUES (v_user_id, r.first_name, r.last_name, v_log_id, '{}'::jsonb, true, NOW(), NOW())
+			RETURNING id INTO v_staff_id;
+		ELSE
+			UPDATE organization.staff s
+			SET first_name = r.first_name,
+				last_name = r.last_name,
+				updated_at = NOW(),
+				extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
+					COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
+					jsonb_build_object('logId', v_log_id, 'firstName', s.first_name, 'lastName', s.last_name))
+			WHERE s.id = v_staff_id;
+		END IF;
+
+		IF r.professor_code IS NOT NULL THEN
+			SELECT p.id INTO v_prof_id
+			FROM academic.professors p
+			WHERE p.code = r.professor_code
+			LIMIT 1;
+
+			IF v_prof_id IS NULL THEN
+				INSERT INTO academic.professors
+					(staff_id, code, upload_log_id, extra, is_active, created_at, updated_at)
+				VALUES (v_staff_id, r.professor_code, v_log_id, '{}'::jsonb, true, NOW(), NOW());
+			ELSE
+				UPDATE academic.professors p
+				SET staff_id = v_staff_id,
+					updated_at = NOW(),
+					extra = jsonb_set(COALESCE(p.extra, '{}'::jsonb), '{uploadUndo}',
+						COALESCE(p.extra->'uploadUndo', '[]'::jsonb) ||
+						jsonb_build_object('logId', v_log_id, 'staffId', p.staff_id))
+				WHERE p.id = v_prof_id;
+			END IF;
+		END IF;
+	END LOOP;
 
 	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
 END;
@@ -1079,8 +1088,8 @@ BEGIN
 
 	-- restore updated staff by popping this upload's (top) uploadUndo entry, then drop inserts
 	UPDATE organization.staff s
-	SET position_type_id = (s.extra->'uploadUndo' -> -1 ->> 'positionTypeId')::int,
-		job_title = s.extra->'uploadUndo' -> -1 -> 'jobTitle',
+	SET first_name = s.extra->'uploadUndo' -> -1 ->> 'firstName',
+		last_name = s.extra->'uploadUndo' -> -1 ->> 'lastName',
 		extra = CASE
 			WHEN jsonb_array_length(s.extra->'uploadUndo') <= 1 THEN s.extra - 'uploadUndo'
 			ELSE jsonb_set(s.extra, '{uploadUndo}', (s.extra->'uploadUndo') - (-1))

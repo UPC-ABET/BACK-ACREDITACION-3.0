@@ -1,11 +1,9 @@
-import type { I18nText } from 'src/shared/types/i18n';
-
 export interface StaffRow {
 	rowNumber: number;
 	email: string;
-	positionTypeCode: string;
-	jobTitle: I18nText;
 	professorCode: string;
+	lastName: string;
+	firstName: string;
 }
 
 export interface UploadRowError {
