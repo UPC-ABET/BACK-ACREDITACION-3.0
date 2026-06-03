@@ -1,11 +1,12 @@
 export interface EnrolledStudentRow {
 	rowNumber: number;
 	studentCode: string;
-	email: string;
+	lastName: string;
+	firstName: string;
 	programCode: string;
-	studyPlanCode: string;
 	campusCode: string;
 	enrollmentModalityTypeCode: string;
+	email: string;
 }
 
 export interface UploadRowError {

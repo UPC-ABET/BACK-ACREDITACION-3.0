@@ -83,7 +83,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "academic"."course_sections" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "course_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer NOT NULL, "professor_id" integer NOT NULL, "section_code" character varying(50) NOT NULL, "schedule" jsonb DEFAULT '{}'::jsonb, "section_modality_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_course_sections_section_code" UNIQUE ("section_code"), CONSTRAINT "PK_course_sections" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "program_id" integer NOT NULL, "graduation_modality_type_id" integer NOT NULL, "code" character varying(50) NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_students_code" UNIQUE ("code"), CONSTRAINT "PK_students" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer, "program_id" integer NOT NULL, "graduation_modality_type_id" integer NOT NULL, "first_name" character varying(255) NOT NULL DEFAULT '', "last_name" character varying(255) NOT NULL DEFAULT '', "code" character varying(50) NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_students_code" UNIQUE ("code"), CONSTRAINT "PK_students" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "evidence"."surveys" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "survey_type_id" integer NOT NULL, "survey_status_type_id" integer NOT NULL, "student_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "campus_id" integer NOT NULL, "program_id" integer NOT NULL, "information" jsonb DEFAULT '{}'::jsonb, "survey_number" integer, "course_section_id" integer NOT NULL, CONSTRAINT "PK_surveys" PRIMARY KEY ("id"))`,
@@ -1984,11 +1984,17 @@ BEGIN
 		SELECT
 			(e->>'rowNumber')::int                      AS row_number,
 			NULLIF(trim(e->>'studentCode'), '')         AS student_code,
+			NULLIF(trim(e->>'lastName'), '')            AS last_name,
+			NULLIF(trim(e->>'firstName'), '')           AS first_name,
 			NULLIF(trim(e->>'email'), '')               AS email,
 			NULLIF(trim(e->>'programCode'), '')         AS program_code,
-			NULLIF(trim(e->>'studyPlanCode'), '')       AS study_plan_code,
 			NULLIF(trim(e->>'campusCode'), '')          AS campus_code,
-			NULLIF(trim(e->>'enrollmentModalityTypeCode'), '') AS modality_code
+			-- the file carries a single-letter enrollment modality (P/S/V); map it to its TG103 type code.
+			CASE upper(NULLIF(trim(e->>'enrollmentModalityTypeCode'), ''))
+				WHEN 'P' THEN 'TG103-T001'
+				WHEN 'S' THEN 'TG103-T003'
+				WHEN 'V' THEN 'TG103-T002'
+			END                                         AS modality_code
 		FROM jsonb_array_elements(p_rows) AS e
 	LOOP
 		IF r.student_code IS NULL THEN
@@ -1996,27 +2002,34 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'studentCodeEmpty'::text, NULL::integer;
 		END IF;
 
-		IF r.email IS NULL THEN
+		IF r.last_name IS NULL THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'emailEmpty'::text, NULL::integer;
-		ELSIF NOT EXISTS (SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)) THEN
+			RETURN QUERY SELECT r.row_number, 'lastNameEmpty'::text, NULL::integer;
+		END IF;
+
+		IF r.first_name IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'firstNameEmpty'::text, NULL::integer;
+		END IF;
+
+		-- email is optional; only when present must it resolve to a user.
+		IF r.email IS NOT NULL AND NOT EXISTS (
+			SELECT 1 FROM organization.users u WHERE lower(u.email) = lower(r.email)
+		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'userNotFound'::text, NULL::integer;
 		END IF;
 
+		-- the program must exist and own a study plan offered in this academic period (the enrollment links to it)
 		IF r.program_code IS NULL OR NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.program_code) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'programNotFound'::text, NULL::integer;
-		END IF;
-
-		IF r.study_plan_code IS NULL THEN
-			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'studyPlanCodeEmpty'::text, NULL::integer;
 		ELSIF NOT EXISTS (
 			SELECT 1
 			FROM academic.study_plan_academic_periods spap
 			JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
-			WHERE sp.code = r.study_plan_code AND spap.academic_period_id = p_academic_period_id
+			JOIN academic.programs p ON p.id = sp.program_id
+			WHERE p.code = r.program_code AND spap.academic_period_id = p_academic_period_id
 		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'studyPlanPeriodNotFound'::text, NULL::integer;
@@ -2027,11 +2040,7 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'campusNotFound'::text, NULL::integer;
 		END IF;
 
-		IF r.modality_code IS NULL OR NOT EXISTS (
-			SELECT 1 FROM core.types t
-			JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG103' AND t.code = r.modality_code
-		) THEN
+		IF r.modality_code IS NULL THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'enrollmentModalityInvalid'::text, NULL::integer;
 		END IF;
@@ -2051,17 +2060,23 @@ BEGIN
 		'{}'::jsonb, true, NOW(), NOW())
 	RETURNING id INTO v_log_id;
 
-	-- insert students whose code does not exist yet (graduation modality = the enrollment modality per spec)
+	-- insert students whose code does not exist yet (graduation modality = the enrollment modality per spec;
+	-- email is optional, so the user is matched by LEFT JOIN and left NULL when absent)
 	INSERT INTO academic.students
-		(code, user_id, program_id, graduation_modality_type_id, upload_log_id, extra, is_active, created_at, updated_at)
+		(code, user_id, program_id, graduation_modality_type_id, first_name, last_name, upload_log_id, extra, is_active, created_at, updated_at)
 	SELECT
-		trim(e->>'studentCode'), u.id, p.id, tm.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+		trim(e->>'studentCode'), u.id, p.id, tm.id, trim(e->>'firstName'), trim(e->>'lastName'),
+		v_log_id, '{}'::jsonb, true, NOW(), NOW()
 	FROM jsonb_array_elements(p_rows) AS e
-	JOIN organization.users u
-		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
 	JOIN academic.programs p ON p.code = trim(e->>'programCode')
 	JOIN core.type_groups g ON g.code = 'TG103'
-	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
+	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = CASE upper(trim(e->>'enrollmentModalityTypeCode'))
+		WHEN 'P' THEN 'TG103-T001'
+		WHEN 'S' THEN 'TG103-T003'
+		WHEN 'V' THEN 'TG103-T002'
+	END
+	LEFT JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
 	WHERE NOT EXISTS (SELECT 1 FROM academic.students s WHERE s.code = trim(e->>'studentCode'));
 
 	-- update students whose code already existed (push prior values onto the extra.uploadUndo stack)
@@ -2069,58 +2084,91 @@ BEGIN
 	SET user_id = u.id,
 		program_id = p.id,
 		graduation_modality_type_id = tm.id,
+		first_name = trim(e->>'firstName'),
+		last_name = trim(e->>'lastName'),
 		updated_at = NOW(),
 		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
 			COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
 			jsonb_build_object('logId', v_log_id, 'userId', s.user_id, 'programId', s.program_id,
-				'graduationModalityTypeId', s.graduation_modality_type_id))
+				'graduationModalityTypeId', s.graduation_modality_type_id,
+				'firstName', s.first_name, 'lastName', s.last_name))
 	FROM jsonb_array_elements(p_rows) AS e
-	JOIN organization.users u
-		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
 	JOIN academic.programs p ON p.code = trim(e->>'programCode')
 	JOIN core.type_groups g ON g.code = 'TG103'
-	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
+	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = CASE upper(trim(e->>'enrollmentModalityTypeCode'))
+		WHEN 'P' THEN 'TG103-T001'
+		WHEN 'S' THEN 'TG103-T003'
+		WHEN 'V' THEN 'TG103-T002'
+	END
+	LEFT JOIN organization.users u
+		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
 	WHERE s.code = trim(e->>'studentCode')
 	  AND s.upload_log_id IS DISTINCT FROM v_log_id;
 
+	-- The study plan is derived from the program for this period; a scalar subquery picks one
+	-- study_plan_academic_period so a program with several plans cannot multiply the enrollment rows.
 	-- insert enrollments that do not exist yet (uniqueness = student + study_plan_academic_period)
 	INSERT INTO academic.enrolled_students
 		(student_id, study_plan_academic_period, campus_id, enrollement_modality_type_id, upload_log_id,
 		 extra, is_active, created_at, updated_at)
-	SELECT
-		s.id, spap.id, cam.id, tm.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
-	FROM jsonb_array_elements(p_rows) AS e
-	JOIN academic.students s ON s.code = trim(e->>'studentCode')
-	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
-	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
-	JOIN core.type_groups g ON g.code = 'TG103'
-	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
-	WHERE NOT EXISTS (
+	SELECT x.student_id, x.spap_id, x.campus_id, x.modality_id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+	FROM (
+		SELECT
+			s.id AS student_id,
+			cam.id AS campus_id,
+			tm.id AS modality_id,
+			(SELECT spap.id FROM academic.study_plan_academic_periods spap
+			 JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+			 WHERE sp.program_id = p.id AND spap.academic_period_id = p_academic_period_id
+			 ORDER BY spap.id LIMIT 1) AS spap_id
+		FROM jsonb_array_elements(p_rows) AS e
+		JOIN academic.students s ON s.code = trim(e->>'studentCode')
+		JOIN academic.programs p ON p.code = trim(e->>'programCode')
+		JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
+		JOIN core.type_groups g ON g.code = 'TG103'
+		JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = CASE upper(trim(e->>'enrollmentModalityTypeCode'))
+			WHEN 'P' THEN 'TG103-T001'
+			WHEN 'S' THEN 'TG103-T003'
+			WHEN 'V' THEN 'TG103-T002'
+		END
+	) x
+	WHERE x.spap_id IS NOT NULL
+	  AND NOT EXISTS (
 		SELECT 1 FROM academic.enrolled_students es
-		WHERE es.student_id = s.id AND es.study_plan_academic_period = spap.id
+		WHERE es.student_id = x.student_id AND es.study_plan_academic_period = x.spap_id
 	);
 
 	-- update enrollments that already existed (push prior values onto the extra.uploadUndo stack)
 	UPDATE academic.enrolled_students es
-	SET campus_id = cam.id,
-		enrollement_modality_type_id = tm.id,
+	SET campus_id = x.campus_id,
+		enrollement_modality_type_id = x.modality_id,
 		updated_at = NOW(),
 		extra = jsonb_set(COALESCE(es.extra, '{}'::jsonb), '{uploadUndo}',
 			COALESCE(es.extra->'uploadUndo', '[]'::jsonb) ||
 			jsonb_build_object('logId', v_log_id, 'campusId', es.campus_id,
 				'enrollementModalityTypeId', es.enrollement_modality_type_id))
-	FROM jsonb_array_elements(p_rows) AS e
-	JOIN academic.students s ON s.code = trim(e->>'studentCode')
-	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
-	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
-	JOIN core.type_groups g ON g.code = 'TG103'
-	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
-	WHERE es.student_id = s.id
-	  AND es.study_plan_academic_period = spap.id
+	FROM (
+		SELECT
+			s.id AS student_id,
+			cam.id AS campus_id,
+			tm.id AS modality_id,
+			(SELECT spap.id FROM academic.study_plan_academic_periods spap
+			 JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+			 WHERE sp.program_id = p.id AND spap.academic_period_id = p_academic_period_id
+			 ORDER BY spap.id LIMIT 1) AS spap_id
+		FROM jsonb_array_elements(p_rows) AS e
+		JOIN academic.students s ON s.code = trim(e->>'studentCode')
+		JOIN academic.programs p ON p.code = trim(e->>'programCode')
+		JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
+		JOIN core.type_groups g ON g.code = 'TG103'
+		JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = CASE upper(trim(e->>'enrollmentModalityTypeCode'))
+			WHEN 'P' THEN 'TG103-T001'
+			WHEN 'S' THEN 'TG103-T003'
+			WHEN 'V' THEN 'TG103-T002'
+		END
+	) x
+	WHERE es.student_id = x.student_id
+	  AND es.study_plan_academic_period = x.spap_id
 	  AND es.upload_log_id IS DISTINCT FROM v_log_id;
 
 	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
@@ -2195,6 +2243,8 @@ BEGIN
 	SET user_id = (s.extra->'uploadUndo' -> -1 ->> 'userId')::int,
 		program_id = (s.extra->'uploadUndo' -> -1 ->> 'programId')::int,
 		graduation_modality_type_id = (s.extra->'uploadUndo' -> -1 ->> 'graduationModalityTypeId')::int,
+		first_name = s.extra->'uploadUndo' -> -1 ->> 'firstName',
+		last_name = s.extra->'uploadUndo' -> -1 ->> 'lastName',
 		extra = CASE
 			WHEN jsonb_array_length(s.extra->'uploadUndo') <= 1 THEN s.extra - 'uploadUndo'
 			ELSE jsonb_set(s.extra, '{uploadUndo}', (s.extra->'uploadUndo') - (-1))

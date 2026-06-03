@@ -18,7 +18,7 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Student', 'Email', 'Program', 'Plan', 'Campus', 'Modality'];
+const HEADER = ['Student', 'Last name', 'First name', 'Program', 'Campus', 'Modality', 'Email'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -37,20 +37,19 @@ function makeRepository(uploadFnResult: any[]) {
 			return Promise.resolve(uploadFnResult);
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
-		getEnrollmentModalities: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
 }
 
 describe('EnrolledStudentsUploadService — positional parsing', () => {
-	it('sends structured rows', async () => {
+	it('sends structured rows with names and optional email', async () => {
 		const { repository, calls } = makeRepository([
 			{ row_number: null, error_code: null, upload_log_id: 42 },
 		]);
 		const service = new EnrolledStudentsUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['STU-001', 'luis@uni.edu', 'INF', 'MALLA-2024', 'CAMP-1', 'TG103-T001'],
+			['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P', 'luis@uni.edu'],
 		]);
 		const result = await service.processUpload(buffer, 'enrolled.xlsx', 7, {
 			academicPeriodId: 1,
@@ -64,11 +63,12 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 		expect(rows[0]).toMatchObject({
 			rowNumber: 2,
 			studentCode: 'STU-001',
-			email: 'luis@uni.edu',
+			lastName: 'Ramirez',
+			firstName: 'Luis',
 			programCode: 'INF',
-			studyPlanCode: 'MALLA-2024',
 			campusCode: 'CAMP-1',
-			enrollmentModalityTypeCode: 'TG103-T001',
+			enrollmentModalityTypeCode: 'P',
+			email: 'luis@uni.edu',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
@@ -81,7 +81,7 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 		const service = new EnrolledStudentsUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['STU-001', 'ghost@uni.edu', 'INF', 'MALLA-2024', 'CAMP-1', 'TG103-T001'],
+			['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P', 'ghost@uni.edu'],
 		]);
 		const result = await service.processUpload(buffer, 'enrolled.xlsx', 1, {
 			academicPeriodId: 1,
@@ -95,13 +95,8 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 });
 
 describe('EnrolledStudentsUploadService — template', () => {
-	it('builds a Template sheet and a localized legend sheet with TG103 codes', async () => {
-		const repository: any = {
-			getEnrollmentModalities: jest.fn().mockResolvedValue([
-				{ code: 'TG103-T001', name: 'Presencial' },
-				{ code: 'TG103-T002', name: 'Virtual' },
-			]),
-		};
+	it('builds a single Template sheet with the localized headers and no legend', async () => {
+		const repository: any = {};
 		const service = new EnrolledStudentsUploadService(repository, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
@@ -109,13 +104,13 @@ describe('EnrolledStudentsUploadService — template', () => {
 
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
+		expect(wb.worksheets).toHaveLength(1);
+
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
 		expect(header).toContain('Código del alumno');
+		expect(header).toContain('Apellidos');
+		expect(header).toContain('Nombres');
 		expect(header).toContain('Código de modalidad de matrícula');
-
-		const legend = wb.getWorksheet('Modalidades de matrícula')!;
-		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('TG103-T001');
-		expect(codes).toContain('TG103-T002');
+		expect(header).toContain('Correo del usuario');
 	});
 });

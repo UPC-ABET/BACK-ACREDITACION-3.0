@@ -87,29 +87,21 @@ export class EnrolledStudentsUploadService {
 	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
 		const language = this.resolveLanguage(lang);
 		const labels = enrolledStudentsTemplateLabels[language];
-		const modalities = await this.repository.getEnrollmentModalities(language);
 
 		const workbook = new ExcelJS.Workbook();
 
 		const dataSheet = workbook.addWorksheet('Template');
 		const headers = [
 			labels.studentCode,
-			labels.email,
+			labels.lastName,
+			labels.firstName,
 			labels.programCode,
-			labels.studyPlanCode,
 			labels.campusCode,
 			labels.enrollmentModalityTypeCode,
+			labels.email,
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
-
-		const legendSheet = workbook.addWorksheet(labels.legendSheet);
-		const legendHeaders = [labels.legendCode, labels.legendName];
-		legendSheet.addRow(legendHeaders);
-		this.styleHeaderRow(legendSheet, legendHeaders);
-		for (const modality of modalities) {
-			legendSheet.addRow([modality.code, modality.name]);
-		}
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
@@ -129,7 +121,7 @@ export class EnrolledStudentsUploadService {
 	}
 
 	// Positional layout (header ignored):
-	// studentCode | email | programCode | studyPlanCode | campusCode | enrollmentModalityTypeCode
+	// studentCode | lastName | firstName | programCode | campusCode | enrollmentModalityTypeCode | email
 	private parseWorkbook(workbook: ExcelJS.Workbook): EnrolledStudentRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: EnrolledStudentRow[] = [];
@@ -139,11 +131,12 @@ export class EnrolledStudentsUploadService {
 			rows.push({
 				rowNumber,
 				studentCode: this.cell(row, 1),
-				email: this.cell(row, 2),
-				programCode: this.cell(row, 3),
-				studyPlanCode: this.cell(row, 4),
+				lastName: this.cell(row, 2),
+				firstName: this.cell(row, 3),
+				programCode: this.cell(row, 4),
 				campusCode: this.cell(row, 5),
 				enrollmentModalityTypeCode: this.cell(row, 6),
+				email: this.cell(row, 7),
 			});
 		});
 		return rows;
@@ -161,8 +154,8 @@ export class EnrolledStudentsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = studentCode, email, programCode, studyPlanCode, campusCode, enrollmentModalityTypeCode; error column is next.
-		const errorColumn = 7;
+		// data columns = studentCode, lastName, firstName, programCode, campusCode, enrollmentModalityTypeCode, email; error column is next.
+		const errorColumn = 8;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
