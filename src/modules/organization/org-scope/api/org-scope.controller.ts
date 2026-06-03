@@ -1,6 +1,6 @@
 import { Body, Inject, Req } from '@nestjs/common';
 import { OrgScopeService } from './org-scope.service';
-import { GetScopeDto, GetUserSchoolsDto } from '../model/org-scope.dtos';
+import { GetUserSchoolsDto } from '../model/org-scope.dtos';
 import {
 	SwaggerOrgScopeController,
 	SwaggerOrgScopeGetScope,
@@ -12,6 +12,10 @@ import {
 	SchoolId,
 	ApiSchoolHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import {
 	USER_SCHOOLS_SERVICE,
 	type UserSchoolsService,
@@ -29,14 +33,15 @@ export class OrgScopeController {
 
 	@SwaggerOrgScopeGetScope()
 	@ApiSchoolHeader(false)
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
 	async getScope(
-		@Body() dto: GetScopeDto,
 		@SchoolId({ optional: true }) schoolId: number | null,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Req() req: any,
 	) {
 		const userId = req.user.userId;
-		const result = await this.service.getScope(userId, schoolId, dto.periodId);
+		const result = await this.service.getScope(userId, schoolId, academicPeriodId);
 		return parseSuccessResponse(result);
 	}
 

@@ -1286,10 +1286,11 @@ BEGIN
 	  AND child.extra->>'uploadNodeCode' = lower(trim(e->>'code'))
 	  AND NULLIF(trim(e->>'parentCode'), '') IS NOT NULL;
 
-	-- pass 3: top-level rows (no parent in the file) hang under the school's chart node
+	-- pass 3: top-level rows (no parent in the file) hang under the school's chart node.
+	-- Qualify the columns: unqualified upload_log_id collides with the OUT column of the same name.
 	UPDATE organization.charts
 	SET root_chart_id = v_school_chart_id, updated_at = NOW()
-	WHERE upload_log_id = v_log_id AND root_chart_id IS NULL;
+	WHERE charts.upload_log_id = v_log_id AND charts.root_chart_id IS NULL;
 
 	-- drop the temporary wiring code from extra
 	UPDATE organization.charts SET extra = extra - 'uploadNodeCode' WHERE charts.upload_log_id = v_log_id;

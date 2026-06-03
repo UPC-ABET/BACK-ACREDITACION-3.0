@@ -1,13 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsPositive, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 import type { I18nText } from 'src/shared/types/i18n';
-
-export class GetScopeDto {
-	@IsInt()
-	@IsPositive()
-	@ApiProperty({ example: 1, required: true, description: 'ID del período académico' })
-	periodId: number;
-}
 
 export class GetUserSchoolsDto {
 	@IsString()
