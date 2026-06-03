@@ -45,21 +45,6 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 	const schoolValues = [
 		[
 			'FAC_ING',
-			'SCH_SOFT',
-			i18n('Escuela de Ingenieria de Software', 'School of Software Engineering'),
-		],
-		[
-			'FAC_ING',
-			'SCH_SIST',
-			i18n('Escuela de Ingenieria de Sistemas', 'School of Systems Engineering'),
-		],
-		[
-			'FAC_NEG',
-			'SCH_ADMIN',
-			i18n('Escuela de Administracion', 'School of Business Administration'),
-		],
-		[
-			'FAC_ING',
 			'EISCB',
 			i18n('Escuela de Ingenieria de Software', 'School of Software Engineering'),
 		],

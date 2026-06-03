@@ -8,5 +8,7 @@ export const authValidationStrings = {
 		microsoftNoEmail: 'error.auth.microsoftNoEmail',
 		missingConfig: 'error.auth.missingConfig',
 		schoolRequired: 'error.auth.schoolRequired',
+		academicPeriodRequired: 'error.auth.academicPeriodRequired',
+		modalityTypeRequired: 'error.auth.modalityTypeRequired',
 	},
 };
