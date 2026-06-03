@@ -50,9 +50,7 @@ describe('ArticulationUploadService — positional parsing', () => {
 		const service = new ArticulationUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([['SO1', 'MALLA-2024', 'CS101', 'TG302-T001']]);
-		const result = await service.processUpload(buffer, 'articulation.xlsx', 7, {
-			academicPeriodId: 1,
-		} as any);
+		const result = await service.processUpload(buffer, 'articulation.xlsx', 7, 1, {} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
@@ -77,8 +75,7 @@ describe('ArticulationUploadService — positional parsing', () => {
 		const service = new ArticulationUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([['SO1', 'MALLA-2024', 'GHOST', 'TG302-T001']]);
-		const result = await service.processUpload(buffer, 'articulation.xlsx', 1, {
-			academicPeriodId: 1,
+		const result = await service.processUpload(buffer, 'articulation.xlsx', 1, 1, {
 			lang: 'es',
 		} as any);
 

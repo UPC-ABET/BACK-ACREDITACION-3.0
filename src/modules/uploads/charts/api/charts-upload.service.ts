@@ -40,25 +40,26 @@ export class ChartsUploadService {
 		fileName: string,
 		userId: number,
 		schoolId: number,
+		academicPeriodId: number,
 		dto: ChartsUploadDto,
 	): Promise<UploadResult> {
-		await this.uploadLogService.assertAcademicPeriodExists(dto.academicPeriodId);
+		await this.uploadLogService.assertAcademicPeriodExists(academicPeriodId);
 		// The school's chart node (Dean -> School Director configuration) must already exist; the
 		// upload hangs the Program Coordinator subtree under it.
-		if (!(await this.repository.schoolChartExists(schoolId, dto.academicPeriodId))) {
+		if (!(await this.repository.schoolChartExists(schoolId, academicPeriodId))) {
 			throw new HttpException(
 				{
 					message: uploadLogsValidationStrings.error.schoolChartNotConfigured,
-					errors: [`schoolId=${schoolId}`, `academicPeriodId=${dto.academicPeriodId}`],
+					errors: [`schoolId=${schoolId}`, `academicPeriodId=${academicPeriodId}`],
 				},
 				HttpStatus.BAD_REQUEST,
 			);
 		}
-		if (await this.repository.chartsLoadedForSchoolPeriod(schoolId, dto.academicPeriodId)) {
+		if (await this.repository.chartsLoadedForSchoolPeriod(schoolId, academicPeriodId)) {
 			throw new HttpException(
 				{
 					message: uploadLogsValidationStrings.error.chartsAlreadyLoadedForPeriod,
-					errors: [`schoolId=${schoolId}`, `academicPeriodId=${dto.academicPeriodId}`],
+					errors: [`schoolId=${schoolId}`, `academicPeriodId=${academicPeriodId}`],
 				},
 				HttpStatus.CONFLICT,
 			);
@@ -75,7 +76,7 @@ export class ChartsUploadService {
 
 		const result = await this.repository.callUploadFunction(
 			rows,
-			dto.academicPeriodId,
+			academicPeriodId,
 			schoolId,
 			userId,
 			fileName,

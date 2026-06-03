@@ -5,17 +5,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export type { UploadResult } from './sections-upload.types';
 
 export class SectionsUploadDto {
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: true,
-		description: 'Academic period the sections are created under',
-	})
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiProperty({

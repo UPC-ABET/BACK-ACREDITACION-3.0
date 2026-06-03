@@ -42,10 +42,10 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 		return await super.delete(id, manager);
 	}
 
-	async list(dto: ListIfcFindingsDto, schoolId: number) {
+	async list(dto: ListIfcFindingsDto, schoolId: number, academicPeriodId: number) {
 		return await this.dataSource.query(LIST_SQL, [
 			dto.chartIds,
-			dto.periodId,
+			academicPeriodId,
 			schoolId,
 			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,

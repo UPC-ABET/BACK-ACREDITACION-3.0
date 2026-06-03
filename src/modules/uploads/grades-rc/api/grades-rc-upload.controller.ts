@@ -16,6 +16,10 @@ import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/s
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 import { GradesRcUploadService } from './grades-rc-upload.service';
 import { gradesRcUploadRoutes } from '../config/grades-rc-upload.routes';
@@ -55,22 +59,29 @@ export class GradesRcUploadController {
 			type: 'object',
 			properties: {
 				file: { type: 'string', format: 'binary' },
-				academicPeriodId: { type: 'number' },
 				lang: { type: 'string', example: 'es' },
 			},
-			required: ['file', 'academicPeriodId'],
+			required: ['file'],
 		},
 	})
+	@ApiAcademicPeriodHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: GradesRcUploadDto,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
-			await this.service.processUpload(file.buffer, file.originalname, req.user.userId, dto),
+			await this.service.processUpload(
+				file.buffer,
+				file.originalname,
+				req.user.userId,
+				academicPeriodId,
+				dto,
+			),
 		);
 	}
 

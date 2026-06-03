@@ -82,11 +82,6 @@ export class ListIfcFindingsDto {
 	@ArrayNotEmpty()
 	@IsInt({ each: true })
 	chartIds: number[];
-
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@IsPositive()
-	periodId: number;
 }
 
 export class IfcFindingRowDto {

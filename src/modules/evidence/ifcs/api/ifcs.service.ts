@@ -47,8 +47,13 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	// --- Delegated to IfcContentService ---
 
-	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number) {
-		return this.content.createIfc(dto, userId, schoolId);
+	async createIfc(
+		dto: CreateIfcDto,
+		userId: number,
+		schoolId: number,
+		academicPeriodId: number,
+	) {
+		return this.content.createIfc(dto, userId, schoolId, academicPeriodId);
 	}
 
 	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
@@ -71,8 +76,12 @@ export class IfcService extends BaseService<IfcRepository> {
 		return this.report.generatePdfBulk(ifcIds, userId, schoolId, lang);
 	}
 
-	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number) {
-		return this.report.generateStatusReport(dto, schoolId);
+	async generateStatusReport(
+		dto: IfcStatusReportDto,
+		schoolId: number,
+		academicPeriodId: number,
+	) {
+		return this.report.generateStatusReport(dto, schoolId, academicPeriodId);
 	}
 
 	// --- Own methods ---
@@ -87,19 +96,19 @@ export class IfcService extends BaseService<IfcRepository> {
 		return await super.delete(id, manager);
 	}
 
-	async list(dto: ListIfcsDto) {
+	async list(dto: ListIfcsDto, academicPeriodId: number) {
 		return await this.dataSource.query(LIST_SQL, [
 			dto.chartIds,
-			dto.periodId,
+			academicPeriodId,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 		]);
 	}
 
-	async prefill(query: IfcPrefillQueryDto, schoolId: number) {
+	async prefill(query: IfcPrefillQueryDto, schoolId: number, academicPeriodId: number) {
 		const [headerRows, outcomeRows] = await Promise.all([
 			this.dataSource.query(PREFILL_HEADER_SQL, [
 				query.chartId,
-				query.periodId,
+				academicPeriodId,
 				schoolId,
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
@@ -111,7 +120,7 @@ export class IfcService extends BaseService<IfcRepository> {
 		const header = headerRows[0];
 		const previousActions = await this.view.loadPreviousActions(
 			Number(header.courseId),
-			query.periodId,
+			academicPeriodId,
 			null,
 		);
 

@@ -24,13 +24,18 @@ export class IfcContentService {
 		private readonly dispatcher: NotificationDispatcherService,
 	) {}
 
-	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number) {
+	async createIfc(
+		dto: CreateIfcDto,
+		userId: number,
+		schoolId: number,
+		academicPeriodId: number,
+	) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
 			const chartRows = await em.query(CHART_RESOLUTION_SQL, [
 				dto.chartId,
-				dto.periodId,
+				academicPeriodId,
 				schoolId,
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
@@ -57,18 +62,18 @@ export class IfcContentService {
 				op,
 			);
 
-			await IfcValidation.assertNoIfcExists(em, courseId, dto.periodId, op);
+			await IfcValidation.assertNoIfcExists(em, courseId, academicPeriodId, op);
 
 			const ifcInsert = await em.query(
 				`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`,
-				[courseId, dto.periodId, JSON.stringify(dto.information ?? {})],
+				[courseId, academicPeriodId, JSON.stringify(dto.information ?? {})],
 			);
 			const ifcId = Number(ifcInsert[0].id);
 
 			await this.resolveFindingsAndActions(em, {
 				ifcId,
 				courseId,
-				periodId: dto.periodId,
+				periodId: academicPeriodId,
 				programId,
 				requesterStaffId: requesterStaffId!,
 				op,
@@ -80,7 +85,7 @@ export class IfcContentService {
 
 			await this.applyPreviousActionEvidences(em, {
 				courseId,
-				periodId: dto.periodId,
+				periodId: academicPeriodId,
 				excludeIfcId: null,
 				items: dto.previousActions,
 				op,
@@ -94,12 +99,12 @@ export class IfcContentService {
 			return { id: ifcId };
 		});
 
-		if (dto.submit && Number.isFinite(dto.chartId) && Number.isFinite(dto.periodId)) {
+		if (dto.submit && Number.isFinite(dto.chartId) && Number.isFinite(academicPeriodId)) {
 			setImmediate(() => {
 				this.dispatcher
 					.dispatch({
 						chartId: dto.chartId,
-						periodId: dto.periodId,
+						periodId: academicPeriodId,
 						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
 						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
 						notifierUserId: userId,

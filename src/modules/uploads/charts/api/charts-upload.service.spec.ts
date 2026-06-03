@@ -80,9 +80,7 @@ describe('ChartsUploadService — positional parsing', () => {
 			['PC1', '', 'Coordinacion CS', 'CS Coordination', 'pc@uni.edu', 'Carrera', 'CS'],
 			['A1', 'PC1', 'Area Datos', 'Data Area', 'area@uni.edu', 'Area', ''],
 		]);
-		const result = await service.processUpload(buffer, 'chart.xlsx', 7, SCHOOL_ID, {
-			academicPeriodId: 1,
-		} as any);
+		const result = await service.processUpload(buffer, 'chart.xlsx', 7, SCHOOL_ID, 1, {} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
@@ -114,7 +112,7 @@ describe('ChartsUploadService — positional parsing', () => {
 		const service = new ChartsUploadService(repository, uploadLogServiceStub);
 		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'x@uni.edu', 'Carrera', 'CS']]);
 		await expect(
-			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, { academicPeriodId: 1 } as any),
+			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {} as any),
 		).rejects.toThrow();
 	});
 
@@ -124,7 +122,7 @@ describe('ChartsUploadService — positional parsing', () => {
 		const service = new ChartsUploadService(repository, uploadLogServiceStub);
 		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'x@uni.edu', 'Carrera', 'CS']]);
 		await expect(
-			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, { academicPeriodId: 1 } as any),
+			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {} as any),
 		).rejects.toThrow();
 	});
 
@@ -135,8 +133,7 @@ describe('ChartsUploadService — positional parsing', () => {
 		);
 		const service = new ChartsUploadService(repository, uploadLogServiceStub);
 		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'ghost@uni.edu', 'Carrera', 'CS']]);
-		const result = await service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, {
-			academicPeriodId: 1,
+		const result = await service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {
 			lang: 'es',
 		} as any);
 

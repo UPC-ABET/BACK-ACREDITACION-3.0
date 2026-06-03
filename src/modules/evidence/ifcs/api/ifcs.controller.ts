@@ -40,6 +40,10 @@ import {
 	SchoolId,
 	ApiSchoolHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 const IFCS_MODULE = 'IFCS';
 
@@ -51,17 +55,28 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcPrefill()
 	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
-	async prefill(@Query() query: IfcPrefillQueryDto, @SchoolId() schoolId: number) {
-		const result = await this.service.prefill(query, schoolId);
+	async prefill(
+		@Query() query: IfcPrefillQueryDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		const result = await this.service.prefill(query, schoolId, academicPeriodId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcCreate()
 	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async createIfc(@Body() dto: CreateIfcDto, @SchoolId() schoolId: number, @Req() req: any) {
-		const result = await this.service.createIfc(dto, req.user.userId, schoolId);
+	async createIfc(
+		@Body() dto: CreateIfcDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.createIfc(dto, req.user.userId, schoolId, academicPeriodId);
 		return parseSuccessResponse(result);
 	}
 
@@ -90,9 +105,10 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcList()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async list(@Body() dto: ListIfcsDto) {
-		return parseSuccessResponse(await this.service.list(dto));
+	async list(@Body() dto: ListIfcsDto, @AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.service.list(dto, academicPeriodId));
 	}
 
 	@SwaggerIfcGetView()
@@ -193,13 +209,19 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcStatusReport()
 	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
 	async statusReport(
 		@Body() dto: IfcStatusReportDto,
 		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { xlsx, filename } = await this.service.generateStatusReport(dto, schoolId);
+		const { xlsx, filename } = await this.service.generateStatusReport(
+			dto,
+			schoolId,
+			academicPeriodId,
+		);
 		writeBinary(
 			res,
 			xlsx,
@@ -209,16 +231,26 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcNotify()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async notify(@Body() dto: IfcNotifyDto, @Req() req: any) {
-		const result = await this.service.notify(dto.chartId, dto.periodId, req.user.userId);
+	async notify(
+		@Body() dto: IfcNotifyDto,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.notify(dto.chartId, academicPeriodId, req.user.userId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcNotifyAll()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async notifyAll(@Body() dto: IfcNotifyAllDto, @Req() req: any) {
-		const result = await this.service.notifyAll(dto.chartIds, dto.periodId, req.user.userId);
+	async notifyAll(
+		@Body() dto: IfcNotifyAllDto,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.notifyAll(dto.chartIds, academicPeriodId, req.user.userId);
 		return parseSuccessResponse(result);
 	}
 }

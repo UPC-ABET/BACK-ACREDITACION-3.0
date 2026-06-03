@@ -22,9 +22,10 @@ export class StaffUploadService {
 		fileBuffer: Buffer,
 		fileName: string,
 		userId: number,
+		academicPeriodId: number,
 		dto: StaffUploadDto,
 	): Promise<UploadResult> {
-		await this.uploadLogService.assertAcademicPeriodExists(dto.academicPeriodId);
+		await this.uploadLogService.assertAcademicPeriodExists(academicPeriodId);
 
 		const language = this.resolveLanguage(dto.lang);
 		const labels = staffTemplateLabels[language];
@@ -36,7 +37,7 @@ export class StaffUploadService {
 
 		const result = await this.repository.callUploadFunction(
 			rows,
-			dto.academicPeriodId,
+			academicPeriodId,
 			userId,
 			fileName,
 		);

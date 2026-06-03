@@ -5,17 +5,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export type { UploadResult } from './articulation-upload.types';
 
 export class ArticulationUploadDto {
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: true,
-		description: 'Academic period the study_plan_course is matched against',
-	})
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiProperty({

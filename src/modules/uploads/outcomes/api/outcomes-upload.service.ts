@@ -24,9 +24,10 @@ export class OutcomesUploadService {
 		fileBuffer: Buffer,
 		fileName: string,
 		userId: number,
+		academicPeriodId: number,
 		dto: OutcomesUploadDto,
 	): Promise<UploadResult> {
-		await this.uploadLogService.assertAcademicPeriodExists(dto.academicPeriodId);
+		await this.uploadLogService.assertAcademicPeriodExists(academicPeriodId);
 
 		const language = this.resolveLanguage(dto.lang);
 		const labels = outcomesTemplateLabels[language];
@@ -39,7 +40,7 @@ export class OutcomesUploadService {
 
 		const result = await this.repository.callUploadFunction(
 			rows,
-			dto.academicPeriodId,
+			academicPeriodId,
 			userId,
 			fileName,
 		);

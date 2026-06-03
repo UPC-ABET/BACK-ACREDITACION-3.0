@@ -5,13 +5,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export type { UploadResult } from './study-plans-upload.types';
 
 export class StudyPlansUploadDto {
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true, description: 'Target academic period of the upload' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiProperty({

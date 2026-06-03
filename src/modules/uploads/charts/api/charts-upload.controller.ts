@@ -25,6 +25,10 @@ import {
 	SchoolId,
 	ApiSchoolHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 const routes = chartsUploadRoutes.charts_upload;
 
@@ -59,12 +63,12 @@ export class ChartsUploadController {
 			type: 'object',
 			properties: {
 				file: { type: 'string', format: 'binary' },
-				academicPeriodId: { type: 'number' },
 				lang: { type: 'string', example: 'es' },
 			},
-			required: ['file', 'academicPeriodId'],
+			required: ['file'],
 		},
 	})
+	@ApiAcademicPeriodHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
 	@ApiSchoolHeader()
@@ -73,6 +77,7 @@ export class ChartsUploadController {
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: ChartsUploadDto,
 		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
@@ -81,6 +86,7 @@ export class ChartsUploadController {
 				file.originalname,
 				req.user.userId,
 				schoolId,
+				academicPeriodId,
 				dto,
 			),
 		);

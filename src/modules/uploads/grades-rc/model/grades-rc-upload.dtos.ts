@@ -5,17 +5,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export type { UploadResult } from './grades-rc-upload.types';
 
 export class GradesRcUploadDto {
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: true,
-		description: 'Academic period the upload is registered under',
-	})
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiProperty({

@@ -98,11 +98,6 @@ export class ListIfcsDto {
 		description: 'IDs de nodos de chart (todos nivel Coordinador de Curso)',
 	})
 	chartIds: number[];
-
-	@IsInt()
-	@IsPositive()
-	@ApiProperty({ example: 1, required: true, description: 'ID del período académico' })
-	periodId: number;
 }
 
 // --- Request DTO for /reject -------------------------------------------------
@@ -137,12 +132,6 @@ export class IfcStatusReportDto {
 	@Type(() => Number)
 	chartIds: number[];
 
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@IsPositive()
-	@Type(() => Number)
-	periodId: number;
-
 	@ApiProperty({ example: 'es', required: true, enum: ['es', 'en'] })
 	@IsIn(['es', 'en'])
 	lang: 'es' | 'en';
@@ -154,12 +143,6 @@ export class IfcNotifyDto {
 	@IsPositive()
 	@Type(() => Number)
 	chartId: number;
-
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@IsPositive()
-	@Type(() => Number)
-	periodId: number;
 }
 
 export class IfcNotifyAllDto {
@@ -170,12 +153,6 @@ export class IfcNotifyAllDto {
 	@IsInt({ each: true })
 	@Type(() => Number)
 	chartIds: number[];
-
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@IsPositive()
-	@Type(() => Number)
-	periodId: number;
 }
 
 export class NotificationDispatchResultDto {

@@ -25,6 +25,10 @@ import {
 	SchoolId,
 	ApiSchoolHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 const IFC_FINDINGS_MODULE = 'IFC_FINDINGS';
 
@@ -80,9 +84,14 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 
 	@SwaggerIfcFindingList()
 	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
-	async list(@Body() dto: ListIfcFindingsDto, @SchoolId() schoolId: number) {
-		const rows = await this.service.list(dto, schoolId);
+	async list(
+		@Body() dto: ListIfcFindingsDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		const rows = await this.service.list(dto, schoolId, academicPeriodId);
 		return parseSuccessResponse(rows);
 	}
 

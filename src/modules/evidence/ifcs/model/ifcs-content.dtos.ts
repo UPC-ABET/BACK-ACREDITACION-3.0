@@ -160,10 +160,6 @@ export class CreateIfcDto extends IfcContentDto {
 	})
 	@IsInt()
 	chartId: number;
-
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	periodId: number;
 }
 
 export class IfcPrefillQueryDto {
@@ -171,11 +167,6 @@ export class IfcPrefillQueryDto {
 	@IsInt()
 	@Type(() => Number)
 	chartId: number;
-
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@Type(() => Number)
-	periodId: number;
 }
 
 export class IfcPrefillResponseDto {

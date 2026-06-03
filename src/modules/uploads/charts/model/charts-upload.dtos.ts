@@ -5,13 +5,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export type { UploadResult } from './charts-upload.types';
 
 export class ChartsUploadDto {
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period the chart belongs to' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiProperty({

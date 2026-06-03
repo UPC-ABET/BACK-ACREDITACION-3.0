@@ -56,8 +56,8 @@ describe('IfcService.list', () => {
 		];
 		dataSource.query.mockResolvedValueOnce(expected);
 
-		const dto: ListIfcsDto = { chartIds: [310, 311], periodId: 5 };
-		const result = await service.list(dto);
+		const dto: ListIfcsDto = { chartIds: [310, 311] };
+		const result = await service.list(dto, 5);
 
 		expect(result).toBe(expected);
 		expect(dataSource.query).toHaveBeenCalledTimes(1);
@@ -68,7 +68,7 @@ describe('IfcService.list', () => {
 	it('returns whatever the DataSource returns (passthrough)', async () => {
 		dataSource.query.mockResolvedValueOnce([]);
 
-		const result = await service.list({ chartIds: [1], periodId: 1 });
+		const result = await service.list({ chartIds: [1] }, 1);
 
 		expect(result).toEqual([]);
 	});
@@ -416,7 +416,7 @@ describe('IfcService.prefill', () => {
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
-		await service.prefill({ chartId: 310, periodId: 5 }, 9);
+		await service.prefill({ chartId: 310 }, 9, 5);
 
 		expect(dataSource.query).toHaveBeenCalledTimes(3);
 		const [, headerParams] = dataSource.query.mock.calls[0];
@@ -444,7 +444,7 @@ describe('IfcService.prefill', () => {
 	it('returns 404 when the header is empty (chart not in school)', async () => {
 		dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
-		await expect(service.prefill({ chartId: 310, periodId: 5 }, 9)).rejects.toMatchObject({
+		await expect(service.prefill({ chartId: 310 }, 9, 5)).rejects.toMatchObject({
 			status: HttpStatus.NOT_FOUND,
 		});
 	});
@@ -474,7 +474,7 @@ describe('IfcService.prefill', () => {
 			])
 			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
-		const result = await service.prefill({ chartId: 310, periodId: 5 }, 9);
+		const result = await service.prefill({ chartId: 310 }, 9, 5);
 
 		expect(result.outcomeCourseResult).toHaveLength(1);
 		expect(result.outcomeCourseResult[0].commissions[0].outcomes).toHaveLength(2);
@@ -500,7 +500,6 @@ describe('IfcService.createIfc', () => {
 
 	const baseDto = (overrides: Partial<CreateIfcDto> = {}): CreateIfcDto => ({
 		chartId: 310,
-		periodId: 5,
 		submit: false,
 		information: {},
 		findings: [
@@ -518,7 +517,7 @@ describe('IfcService.createIfc', () => {
 	it('rejects 404 when chart is not found in school', async () => {
 		em.query.mockResolvedValueOnce([]); // CHART_RESOLUTION_SQL → empty
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
 			status: HttpStatus.NOT_FOUND,
 		});
 	});
@@ -531,7 +530,7 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // chain check passes
 			.mockResolvedValueOnce([{ '?column?': 1 }]); // assertNoIfcExists finds a row → throws
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
 			status: HttpStatus.CONFLICT,
 		});
 	});
@@ -543,7 +542,7 @@ describe('IfcService.createIfc', () => {
 			]) // chart resolution
 			.mockResolvedValueOnce([]); // chain check returns no rows → 403
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
 			status: HttpStatus.FORBIDDEN,
 		});
 	});
@@ -599,7 +598,7 @@ describe('IfcService.createIfc', () => {
 			],
 		});
 
-		const result = await service.createIfc(dto, 99, 9);
+		const result = await service.createIfc(dto, 99, 9, 5);
 		expect(result).toEqual({ id: 999 });
 
 		const firstInsert = em.query.mock.calls[7];
@@ -639,7 +638,7 @@ describe('IfcService.createIfc', () => {
 				},
 			]);
 
-		await service.createIfc(baseDto({ submit: true }), 99, 9);
+		await service.createIfc(baseDto({ submit: true }), 99, 9, 5);
 
 		const statusInsert = em.query.mock.calls[12];
 		expect(statusInsert[1][1]).toBe(TYPE_CODES.IFC_STATUS.SUBMITTED);
@@ -655,7 +654,7 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ id: 999 }])
 			.mockResolvedValueOnce([]); // resolve IFC instrument id → empty
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toMatchObject({
+		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
 			status: HttpStatus.INTERNAL_SERVER_ERROR,
 		});
 	});
@@ -669,7 +668,7 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([])
 			.mockRejectedValueOnce(new Error('DB explosion'));
 
-		await expect(service.createIfc(baseDto(), 99, 9)).rejects.toThrow('DB explosion');
+		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toThrow('DB explosion');
 		expect(dataSource.transaction).toHaveBeenCalledTimes(1);
 	});
 
@@ -699,7 +698,7 @@ describe('IfcService.createIfc', () => {
 				},
 			]);
 
-		await expect(service.createIfc(baseDto(), 99, 9)).resolves.toEqual({ id: 999 });
+		await expect(service.createIfc(baseDto(), 99, 9, 5)).resolves.toEqual({ id: 999 });
 	});
 
 	it('resolveFindingsAndActions: actions can reference a brand-new finding via tempId', async () => {
@@ -740,7 +739,7 @@ describe('IfcService.createIfc', () => {
 			actions: [{ tempId: 'tA', id: null, description: { es: 'a' }, findingTempId: 'tF' }],
 		});
 
-		await service.createIfc(dto, 99, 9);
+		await service.createIfc(dto, 99, 9, 5);
 
 		const findingActionInsert = em.query.mock.calls[11];
 		expect(findingActionInsert[1][0]).toBe(201);
@@ -749,7 +748,7 @@ describe('IfcService.createIfc', () => {
 
 	it('rejects 400 when findings array is empty', async () => {
 		await expect(
-			service.createIfc(baseDto({ findings: [], actions: [] }), 99, 9),
+			service.createIfc(baseDto({ findings: [], actions: [] }), 99, 9, 5),
 		).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
 		expect(em.query).not.toHaveBeenCalled();
 	});
@@ -766,7 +765,7 @@ describe('IfcService.createIfc', () => {
 			],
 			actions: [],
 		});
-		await expect(service.createIfc(dto, 99, 9)).rejects.toMatchObject({
+		await expect(service.createIfc(dto, 99, 9, 5)).rejects.toMatchObject({
 			status: HttpStatus.BAD_REQUEST,
 		});
 		expect(em.query).not.toHaveBeenCalled();
@@ -962,7 +961,7 @@ describe('IfcService.generateStatusReport', () => {
 		{ code: 'TG701-T005', name: { es: 'Sin Registro', en: 'Unregistered' } },
 	];
 
-	const dto: IfcStatusReportDto = { chartIds: [310, 311], periodId: 5, lang: 'es' };
+	const dto: IfcStatusReportDto = { chartIds: [310, 311], lang: 'es' };
 
 	it('calls STATUS_REPORT_SQL with the six expected positional params and builds <School>_<Program> filename for a single-program scope', async () => {
 		dataSource.query
@@ -970,7 +969,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce(statusTypes) // status type lookup
 			.mockResolvedValueOnce([]); // STATUS_REPORT_SQL → empty rows
 
-		const { xlsx, filename } = await service.generateStatusReport(dto, 9);
+		const { xlsx, filename } = await service.generateStatusReport(dto, 9, 5);
 
 		expect(Buffer.isBuffer(xlsx)).toBe(true);
 		expect(xlsx.length).toBeGreaterThan(0);
@@ -993,7 +992,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce([]);
 
-		const { filename } = await service.generateStatusReport(dto, 9);
+		const { filename } = await service.generateStatusReport(dto, 9, 5);
 		expect(filename).toBe('Reporte_Estado_INST_IFC_EISCB.xlsx');
 	});
 
@@ -1003,7 +1002,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce([]);
 
-		const { filename } = await service.generateStatusReport(dto, 9);
+		const { filename } = await service.generateStatusReport(dto, 9, 5);
 		expect(filename).toBe('Reporte_Estado_INST_IFC_INST_IFC.xlsx');
 	});
 
@@ -1013,7 +1012,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce([]);
 
-		const { filename } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
+		const { filename } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9, 5);
 		expect(filename).toBe('Status_Report_INST_IFC_EISCB_CS.xlsx');
 	});
 
@@ -1044,7 +1043,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce(rows);
 
-		const { xlsx } = await service.generateStatusReport(dto, 9);
+		const { xlsx } = await service.generateStatusReport(dto, 9, 5);
 
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(xlsx);
@@ -1077,7 +1076,7 @@ describe('IfcService.generateStatusReport', () => {
 			.mockResolvedValueOnce(statusTypes)
 			.mockResolvedValueOnce(rows);
 
-		const { xlsx } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9);
+		const { xlsx } = await service.generateStatusReport({ ...dto, lang: 'en' }, 9, 5);
 
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(xlsx);

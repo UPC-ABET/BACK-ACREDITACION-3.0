@@ -45,9 +45,7 @@ describe('StaffUploadService — positional parsing', () => {
 		const service = new StaffUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([['jane@uni.edu', 'DOC-001', 'Doe', 'Jane']]);
-		const result = await service.processUpload(buffer, 'staff.xlsx', 7, {
-			academicPeriodId: 1,
-		} as any);
+		const result = await service.processUpload(buffer, 'staff.xlsx', 7, 1, {} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
@@ -72,8 +70,7 @@ describe('StaffUploadService — positional parsing', () => {
 		const service = new StaffUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([['ghost@uni.edu', '', 'Doe', 'Jane']]);
-		const result = await service.processUpload(buffer, 'staff.xlsx', 1, {
-			academicPeriodId: 1,
+		const result = await service.processUpload(buffer, 'staff.xlsx', 1, 1, {
 			lang: 'es',
 		} as any);
 

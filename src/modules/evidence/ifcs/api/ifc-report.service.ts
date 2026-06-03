@@ -91,7 +91,11 @@ export class IfcReportService {
 		return { zip, filename };
 	}
 
-	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number) {
+	async generateStatusReport(
+		dto: IfcStatusReportDto,
+		schoolId: number,
+		academicPeriodId: number,
+	) {
 		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [
 			dto.chartIds,
 			schoolId,
@@ -118,7 +122,7 @@ export class IfcReportService {
 
 		const rows: StatusReportRow[] = await this.dataSource.query(STATUS_REPORT_SQL, [
 			dto.chartIds,
-			dto.periodId,
+			academicPeriodId,
 			schoolId,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,

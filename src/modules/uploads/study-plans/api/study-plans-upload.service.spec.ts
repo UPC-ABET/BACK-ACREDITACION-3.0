@@ -79,9 +79,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 				'SI',
 			],
 		]);
-		const result = await service.processUpload(buffer, 'malla.xlsx', 7, {
-			academicPeriodId: 1,
-		} as any);
+		const result = await service.processUpload(buffer, 'malla.xlsx', 7, 1, {} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
@@ -113,7 +111,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 		const buffer = await makeXlsx([
 			['M1', 'a', 'b', 'INF', '0', 'C1', 'c', 'd', 'e', 'f', 'NO'],
 		]);
-		await service.processUpload(buffer, 'f.xlsx', 1, { academicPeriodId: 1 } as any);
+		await service.processUpload(buffer, 'f.xlsx', 1, 1, {} as any);
 
 		expect(calls.uploadArgs![0][0].isElective).toBe(false);
 	});
@@ -128,7 +126,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 		const buffer = await makeXlsx([
 			['M1', 'a', 'b', 'NOPE', '0', 'C1', 'c', 'd', 'e', 'f', 'SI'],
 		]);
-		const result = await service.processUpload(buffer, 'f.xlsx', 1, { academicPeriodId: 1 } as any);
+		const result = await service.processUpload(buffer, 'f.xlsx', 1, 1, {} as any);
 
 		expect(result.success).toBe(false);
 		expect(result.errorRows).toBe(1);

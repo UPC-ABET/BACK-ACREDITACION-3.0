@@ -51,9 +51,7 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 		const buffer = await makeXlsx([
 			['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P', 'luis@uni.edu'],
 		]);
-		const result = await service.processUpload(buffer, 'enrolled.xlsx', 7, {
-			academicPeriodId: 1,
-		} as any);
+		const result = await service.processUpload(buffer, 'enrolled.xlsx', 7, 1, {} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
@@ -83,8 +81,7 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 		const buffer = await makeXlsx([
 			['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P', 'ghost@uni.edu'],
 		]);
-		const result = await service.processUpload(buffer, 'enrolled.xlsx', 1, {
-			academicPeriodId: 1,
+		const result = await service.processUpload(buffer, 'enrolled.xlsx', 1, 1, {
 			lang: 'es',
 		} as any);
 

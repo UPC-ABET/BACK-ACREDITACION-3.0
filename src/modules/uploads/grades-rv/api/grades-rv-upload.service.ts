@@ -22,9 +22,10 @@ export class GradesRvUploadService {
 		fileBuffer: Buffer,
 		fileName: string,
 		userId: number,
+		academicPeriodId: number,
 		dto: GradesRvUploadDto,
 	): Promise<UploadResult> {
-		await this.uploadLogService.assertAcademicPeriodExists(dto.academicPeriodId);
+		await this.uploadLogService.assertAcademicPeriodExists(academicPeriodId);
 
 		const language = this.resolveLanguage(dto.lang);
 		const labels = gradesRvTemplateLabels[language];
@@ -36,7 +37,7 @@ export class GradesRvUploadService {
 
 		const result = await this.repository.callUploadFunction(
 			rows,
-			dto.academicPeriodId,
+			academicPeriodId,
 			userId,
 			fileName,
 		);
