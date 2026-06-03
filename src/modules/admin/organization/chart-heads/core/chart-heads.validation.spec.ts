@@ -49,9 +49,9 @@ describe('ChartHeadsValidation', () => {
 					{ schoolId: 3, firstName: 'B', lastName: 'B', title: { es: 'y' } },
 				],
 			});
-			await expect(
-				ChartHeadsValidation.validateConfigure(mockRepo as any, dto),
-			).rejects.toThrow(HttpException);
+			await expect(ChartHeadsValidation.validateConfigure(mockRepo as any, dto)).rejects.toThrow(
+				HttpException,
+			);
 		});
 
 		it('throws when a school does not exist', async () => {

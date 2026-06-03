@@ -147,25 +147,37 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			'prof.carlos.mendez@upc.edu.pe',
 			'TG901-T003',
 			i18n('Profesor tiempo completo', 'Full-time professor'),
-			i18n('Docente del programa de Ingenieria de Software', 'Professor of the Software Engineering program'),
+			i18n(
+				'Docente del programa de Ingenieria de Software',
+				'Professor of the Software Engineering program',
+			),
 		],
 		[
 			'prof.ana.torres@upc.edu.pe',
 			'TG901-T003',
 			i18n('Profesora tiempo completo', 'Full-time professor'),
-			i18n('Docente del programa de Administracion de Empresas', 'Professor of the Business Administration program'),
+			i18n(
+				'Docente del programa de Administracion de Empresas',
+				'Professor of the Business Administration program',
+			),
 		],
 		[
 			'prof.jorge.vargas@upc.edu.pe',
 			'TG901-T003',
 			i18n('Profesor tiempo completo', 'Full-time professor'),
-			i18n('Docente del programa de Ciencias de la Computacion', 'Professor of the Computer Science program'),
+			i18n(
+				'Docente del programa de Ciencias de la Computacion',
+				'Professor of the Computer Science program',
+			),
 		],
 		[
 			'prof.lucia.flores@upc.edu.pe',
 			'TG901-T003',
 			i18n('Profesora tiempo completo', 'Full-time professor'),
-			i18n('Docente del programa de Ciencias de la Computacion', 'Professor of the Computer Science program'),
+			i18n(
+				'Docente del programa de Ciencias de la Computacion',
+				'Professor of the Computer Science program',
+			),
 		],
 	]
 		.map(

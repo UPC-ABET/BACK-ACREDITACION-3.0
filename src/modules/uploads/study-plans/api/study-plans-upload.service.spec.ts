@@ -108,9 +108,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 		);
 		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['M1', 'a', 'b', 'INF', '0', 'C1', 'c', 'd', 'e', 'f', 'NO'],
-		]);
+		const buffer = await makeXlsx([['M1', 'a', 'b', 'INF', '0', 'C1', 'c', 'd', 'e', 'f', 'NO']]);
 		await service.processUpload(buffer, 'f.xlsx', 1, 1, {} as any);
 
 		expect(calls.uploadArgs![0][0].isElective).toBe(false);
@@ -123,9 +121,7 @@ describe('StudyPlansUploadService — positional parsing', () => {
 		);
 		const service = new StudyPlansUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['M1', 'a', 'b', 'NOPE', '0', 'C1', 'c', 'd', 'e', 'f', 'SI'],
-		]);
+		const buffer = await makeXlsx([['M1', 'a', 'b', 'NOPE', '0', 'C1', 'c', 'd', 'e', 'f', 'SI']]);
 		const result = await service.processUpload(buffer, 'f.xlsx', 1, 1, {} as any);
 
 		expect(result.success).toBe(false);

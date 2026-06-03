@@ -137,7 +137,11 @@ export class UserService extends BaseService<UserRepository> {
 		}
 
 		const isAdmin = jwtPayload.activeRole?.code?.toUpperCase() === 'ADMIN';
-		const userSchools = await this.orgScopeService.getUserSchools(jwtPayload.userId, modalityCode, isAdmin);
+		const userSchools = await this.orgScopeService.getUserSchools(
+			jwtPayload.userId,
+			modalityCode,
+			isAdmin,
+		);
 
 		return {
 			user: this.sanitizeUser(user),

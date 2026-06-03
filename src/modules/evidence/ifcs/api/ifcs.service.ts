@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { IfcRepository } from '../core/ifcs.repository';
 import { IfcValidation } from '../core/ifcs.validation';
@@ -16,6 +16,10 @@ import { IfcContentService } from './ifc-content.service';
 import { IfcViewService } from './ifc-view.service';
 import { IfcReportService } from './ifc-report.service';
 import { LIST_SQL, PREFILL_HEADER_SQL, OUTCOME_COURSE_BY_CHART_SQL } from './ifcs.sql';
+import {
+	USER_SCHOOLS_REPOSITORY,
+	type UserSchoolsRepository,
+} from 'src/modules/organization/org-scope/core/user-schools/user-schools.repository.interface';
 
 @Injectable()
 export class IfcService extends BaseService<IfcRepository> {
@@ -27,8 +31,14 @@ export class IfcService extends BaseService<IfcRepository> {
 		private readonly view: IfcViewService,
 		private readonly report: IfcReportService,
 		private readonly dispatcher: NotificationDispatcherService,
+		@Inject(USER_SCHOOLS_REPOSITORY)
+		private readonly schoolsRepository: UserSchoolsRepository,
 	) {
 		super(repository);
+	}
+
+	async userSchools(userId: number, academicPeriodId: number, isAdmin: boolean) {
+		return this.schoolsRepository.findUserSchools(userId, { academicPeriodId }, isAdmin);
 	}
 
 	// --- Delegated to IfcStateMachineService ---
@@ -47,12 +57,7 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	// --- Delegated to IfcContentService ---
 
-	async createIfc(
-		dto: CreateIfcDto,
-		userId: number,
-		schoolId: number,
-		academicPeriodId: number,
-	) {
+	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number, academicPeriodId: number) {
 		return this.content.createIfc(dto, userId, schoolId, academicPeriodId);
 	}
 
@@ -76,11 +81,7 @@ export class IfcService extends BaseService<IfcRepository> {
 		return this.report.generatePdfBulk(ifcIds, userId, schoolId, lang);
 	}
 
-	async generateStatusReport(
-		dto: IfcStatusReportDto,
-		schoolId: number,
-		academicPeriodId: number,
-	) {
+	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number, academicPeriodId: number) {
 		return this.report.generateStatusReport(dto, schoolId, academicPeriodId);
 	}
 

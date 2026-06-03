@@ -10,6 +10,7 @@ import {
 	SwaggerIfcGetAll,
 	SwaggerIfcGetByFilters,
 	SwaggerIfcList,
+	SwaggerIfcSchools,
 	SwaggerIfcGetView,
 	SwaggerIfcSubmit,
 	SwaggerIfcApprove,
@@ -111,6 +112,16 @@ export class IfcController extends BaseController<IfcService> {
 		return parseSuccessResponse(await this.service.list(dto, academicPeriodId));
 	}
 
+	@SwaggerIfcSchools()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
+	async schools(@AcademicPeriodId() academicPeriodId: number, @Req() req: any) {
+		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';
+		return parseSuccessResponse(
+			await this.service.userSchools(req.user.userId, academicPeriodId, isAdmin),
+		);
+	}
+
 	@SwaggerIfcGetView()
 	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
@@ -126,7 +137,11 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcSubmit()
 	@ApiSchoolHeader()
 	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
-	async submit(@Param('id', ParseIntPipe) id: number, @SchoolId() schoolId: number, @Req() req: any) {
+	async submit(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
 		const result = await this.service.submit(id, req.user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
@@ -180,12 +195,7 @@ export class IfcController extends BaseController<IfcService> {
 		@Res({ passthrough: false }) res: Response,
 	) {
 		const lang = (query.lang ?? 'es') as 'es' | 'en';
-		const { pdf, filename } = await this.service.generatePdf(
-			id,
-			req.user.userId,
-			schoolId,
-			lang,
-		);
+		const { pdf, filename } = await this.service.generatePdf(id, req.user.userId, schoolId, lang);
 		writeBinary(res, pdf, filename, 'application/pdf');
 	}
 

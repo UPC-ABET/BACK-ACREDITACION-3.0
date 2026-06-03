@@ -153,7 +153,10 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		[
 			'CRS_GEST_EMP',
 			i18n('Gestion Empresarial', 'Business Management'),
-			i18n('Curso de fundamentos de gestion organizacional', 'Organizational management fundamentals course'),
+			i18n(
+				'Curso de fundamentos de gestion organizacional',
+				'Organizational management fundamentals course',
+			),
 			i18n(
 				'Aplica principios de gestion para dirigir organizaciones de manera eficiente.',
 				'Applies management principles to lead organizations efficiently.',
@@ -162,7 +165,10 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		[
 			'CRS_FINANZAS',
 			i18n('Finanzas Corporativas', 'Corporate Finance'),
-			i18n('Curso de analisis financiero y toma de decisiones', 'Financial analysis and decision-making course'),
+			i18n(
+				'Curso de analisis financiero y toma de decisiones',
+				'Financial analysis and decision-making course',
+			),
 			i18n(
 				'Analiza estados financieros y evalua proyectos de inversion empresarial.',
 				'Analyzes financial statements and evaluates business investment projects.',
@@ -171,7 +177,10 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		[
 			'CRS_MARKETING',
 			i18n('Marketing Estrategico', 'Strategic Marketing'),
-			i18n('Curso de estrategias de mercado y posicionamiento', 'Market strategies and positioning course'),
+			i18n(
+				'Curso de estrategias de mercado y posicionamiento',
+				'Market strategies and positioning course',
+			),
 			i18n(
 				'Disenha estrategias de marketing para posicionar productos y servicios.',
 				'Designs marketing strategies to position products and services.',

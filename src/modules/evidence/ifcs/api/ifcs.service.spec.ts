@@ -28,6 +28,7 @@ function buildServices(dataSource: any) {
 	const view = new IfcViewService(ds);
 	const content = new IfcContentService(ds, stateMachine, dispatcher as any);
 	const report = new IfcReportService(ds, pdfRenderer as any, view);
+	const schoolsRepository = { findUserSchools: jest.fn() };
 	const service = new IfcService(
 		repository,
 		ds,
@@ -36,6 +37,7 @@ function buildServices(dataSource: any) {
 		view,
 		report,
 		dispatcher as any,
+		schoolsRepository as any,
 	);
 	return { service, stateMachine, content, view, report };
 }

@@ -178,6 +178,10 @@ describe('OrgScopeService', () => {
 		const result = await service.getUserSchools(3, 'TG102-T001', false);
 
 		expect(result).toBe(rows);
-		expect(userSchoolsRepository.findUserSchools).toHaveBeenCalledWith(3, 'TG102-T001', false);
+		expect(userSchoolsRepository.findUserSchools).toHaveBeenCalledWith(
+			3,
+			{ modalityCode: 'TG102-T001' },
+			false,
+		);
 	});
 });

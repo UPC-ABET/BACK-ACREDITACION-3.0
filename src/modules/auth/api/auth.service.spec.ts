@@ -14,10 +14,7 @@ describe('AuthService — MSAL login', () => {
 			getUser: jest.fn(),
 			createUserLogin: jest.fn(),
 		};
-		service = new AuthService(
-			configService,
-			userService as unknown as UserService,
-		);
+		service = new AuthService(configService, userService as unknown as UserService);
 	});
 
 	describe('loginWithMicrosoftCode', () => {

@@ -70,6 +70,6 @@ export class OrgScopeService implements UserSchoolsService {
 		modalityCode: string,
 		isAdmin: boolean,
 	): Promise<UserSchool[]> {
-		return await this.userSchoolsRepository.findUserSchools(userId, modalityCode, isAdmin);
+		return await this.userSchoolsRepository.findUserSchools(userId, { modalityCode }, isAdmin);
 	}
 }

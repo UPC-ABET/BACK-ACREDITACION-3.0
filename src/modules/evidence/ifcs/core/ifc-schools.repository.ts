@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
-import type { UserSchool } from './user-schools.types';
-import type { UserSchoolsRepository, UserSchoolsScope } from './user-schools.repository.interface';
+import type { UserSchool } from 'src/modules/organization/org-scope/core/user-schools/user-schools.types';
+import type {
+	UserSchoolsRepository,
+	UserSchoolsScope,
+} from 'src/modules/organization/org-scope/core/user-schools/user-schools.repository.interface';
 
 @Injectable()
-export class OrgScopeUserSchoolsRepository implements UserSchoolsRepository {
+export class IfcSchoolsChartRepository implements UserSchoolsRepository {
 	constructor(private readonly dataSource: DataSource) {}
 
 	async findUserSchools(
@@ -16,25 +20,16 @@ export class OrgScopeUserSchoolsRepository implements UserSchoolsRepository {
 		if (isAdmin) {
 			return await this.dataSource.query(ALL_SCHOOLS_SQL);
 		}
-		return await this.dataSource.query(USER_SCHOOLS_SQL, [
+		return await this.dataSource.query(USER_SCHOOLS_BY_PERIOD_SQL, [
 			userId,
-			scope.modalityCode,
+			scope.academicPeriodId,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
 	}
 }
 
-const USER_SCHOOLS_SQL = `
+const USER_SCHOOLS_BY_PERIOD_SQL = `
 WITH RECURSIVE
-active_period AS (
-	SELECT ap.id AS academic_period_id
-	FROM academic.academic_periods ap
-	JOIN core.types mt ON mt.id = ap.modality_type_id
-	WHERE ap.is_active = true
-	  AND mt.code = $2
-	ORDER BY ap.start_date DESC, ap.end_date DESC, ap.id DESC
-	LIMIT 1
-),
 user_anchors AS (
 	SELECT DISTINCT
 		c.id,
@@ -45,33 +40,22 @@ user_anchors AS (
 		0 AS depth
 	FROM organization.charts c
 	JOIN organization.staff s ON s.id = c.staff_id
-	JOIN active_period ap ON ap.academic_period_id = c.academic_period_id
 	WHERE s.user_id   = $1
 	  AND s.is_active = true
 	  AND c.is_active = true
+	  AND c.academic_period_id = $2
 ),
 ancestors AS (
-	SELECT
-		ua.id,
-		ua.root_chart_id,
-		ua.entity_type_id,
-		ua.entity_code,
-		ua.path,
-		ua.depth
+	SELECT ua.id, ua.root_chart_id, ua.entity_type_id, ua.entity_code, ua.path, ua.depth
 	FROM user_anchors ua
 	UNION ALL
-	SELECT
-		parent.id,
-		parent.root_chart_id,
-		parent.entity_type_id,
-		parent.entity_code,
-		anc.path || parent.id,
-		anc.depth + 1
+	SELECT parent.id, parent.root_chart_id, parent.entity_type_id, parent.entity_code,
+		anc.path || parent.id, anc.depth + 1
 	FROM organization.charts parent
 	JOIN ancestors anc ON parent.id = anc.root_chart_id
-	JOIN active_period ap ON ap.academic_period_id = parent.academic_period_id
-	WHERE parent.is_active = true
-	  AND anc.depth        < 20
+	WHERE parent.is_active          = true
+	  AND parent.academic_period_id = $2
+	  AND anc.depth                 < 20
 	  AND NOT parent.id = ANY(anc.path)
 )
 SELECT DISTINCT

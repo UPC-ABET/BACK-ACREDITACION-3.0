@@ -45,11 +45,7 @@ export class OrgScopeController {
 	async getUserSchools(@Body() dto: GetUserSchoolsDto, @Req() req: any) {
 		const userId = req.user.userId;
 		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';
-		const result = await this.userSchoolsService.getUserSchools(
-			userId,
-			dto.modalityCode,
-			isAdmin,
-		);
+		const result = await this.userSchoolsService.getUserSchools(userId, dto.modalityCode, isAdmin);
 		return parseSuccessResponse(result);
 	}
 }

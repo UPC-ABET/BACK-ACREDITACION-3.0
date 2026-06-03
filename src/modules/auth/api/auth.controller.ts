@@ -1,10 +1,4 @@
-import {
-	Controller,
-	Get,
-	Res,
-	UnauthorizedException,
-	Query,
-} from '@nestjs/common';
+import { Controller, Get, Res, UnauthorizedException, Query } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';

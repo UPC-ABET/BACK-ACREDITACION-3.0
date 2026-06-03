@@ -24,12 +24,7 @@ export class IfcContentService {
 		private readonly dispatcher: NotificationDispatcherService,
 	) {}
 
-	async createIfc(
-		dto: CreateIfcDto,
-		userId: number,
-		schoolId: number,
-		academicPeriodId: number,
-	) {
+	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number, academicPeriodId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
 		const { id: ifcId } = await this.dataSource.transaction(async (em) => {

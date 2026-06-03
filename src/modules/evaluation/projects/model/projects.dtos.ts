@@ -301,7 +301,10 @@ export class ProjectDetailsResponseDto {
 	@ApiProperty({ example: {}, type: [ProjectEvaluatorDetailDto] })
 	evaluators: ProjectEvaluatorDetailDto[];
 
-	@ApiProperty({ example: { id: 1, name: { es: 'Curso', en: 'Course' }, description: {}, learningOutcome: {} }, nullable: true })
+	@ApiProperty({
+		example: { id: 1, name: { es: 'Curso', en: 'Course' }, description: {}, learningOutcome: {} },
+		nullable: true,
+	})
 	course: {
 		id: number;
 		name: any;

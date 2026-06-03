@@ -62,7 +62,11 @@ export class UpdateStudyPlanCourseDto {
 export class EnableEvaluationDto {
 	@IsNotEmpty()
 	@IsBoolean()
-	@ApiProperty({ example: true, required: true, description: 'Habilita o deshabilita la evaluacion del curso (rubricas y proyectos)' })
+	@ApiProperty({
+		example: true,
+		required: true,
+		description: 'Habilita o deshabilita la evaluacion del curso (rubricas y proyectos)',
+	})
 	isEvaluable: boolean;
 }
 
@@ -73,7 +77,12 @@ export class FilterStudyPlanCourseDto {
 
 	@IsOptional()
 	@IsBoolean()
-	@ApiProperty({ example: true, required: false, description: 'Filtra cursos habilitados o deshabilitados para evaluacion (rubricas y proyectos)' })
+	@ApiProperty({
+		example: true,
+		required: false,
+		description:
+			'Filtra cursos habilitados o deshabilitados para evaluacion (rubricas y proyectos)',
+	})
 	isEvaluable?: boolean;
 
 	@IsOptional()

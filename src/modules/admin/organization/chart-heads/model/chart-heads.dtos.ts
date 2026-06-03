@@ -24,7 +24,11 @@ export class ChartDeanDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 12, required: false, description: 'User to associate with the dean staff' })
+	@ApiProperty({
+		example: 12,
+		required: false,
+		description: 'User to associate with the dean staff',
+	})
 	userId?: number;
 
 	@IsObject()
@@ -63,7 +67,11 @@ export class ChartDirectorDto {
 
 export class ConfigureChartHeadsDto {
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period the chart heads belong to' })
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'Academic period the chart heads belong to',
+	})
 	academicPeriodId: number;
 
 	@ValidateNested()

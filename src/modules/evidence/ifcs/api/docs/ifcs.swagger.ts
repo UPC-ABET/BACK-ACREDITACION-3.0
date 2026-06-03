@@ -41,6 +41,8 @@ export const SwaggerIfcGetByFilters = () =>
 export const SwaggerIfcList = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.list, body: ListIfcsDto });
 
+export const SwaggerIfcSchools = () => HttpMethodWithSwagger(cfg.operation.schools);
+
 export const SwaggerIfcGetView = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.getById,

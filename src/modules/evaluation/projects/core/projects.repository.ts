@@ -131,11 +131,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		// ── JOIN: Study Plan Academic Period (from the enrolled student) ─
 
 		if (needsSpap) {
-			qb.leftJoin(
-				StudyPlanAcademicPeriodEntity,
-				'spap',
-				'spap.id = es.study_plan_academic_period',
-			);
+			qb.leftJoin(StudyPlanAcademicPeriodEntity, 'spap', 'spap.id = es.study_plan_academic_period');
 		}
 
 		// ── Join Study Plan ────────────────────────────────────────────

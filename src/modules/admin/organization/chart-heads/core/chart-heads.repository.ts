@@ -55,7 +55,6 @@ export class ChartHeadsRepository {
 		return ids.filter((id) => !foundIds.has(id));
 	}
 
-	// One transaction: upsert the single Dean node, then upsert each School Director node hung under it.
 	async configure(dto: ConfigureChartHeadsDto): Promise<void> {
 		await this.dataSource.transaction(async (manager) => {
 			const deanTypeId = await this.typeIdByCode(manager, TYPE_CODES.ENTITY_TYPE.DEAN);
@@ -124,8 +123,6 @@ export class ChartHeadsRepository {
 		return Number(rows[0].id);
 	}
 
-	// Matches an existing node by (period + entity type [+ entity code for directors]); updates the staff
-	// it points at and the node title, or creates a fresh staff + chart node. Returns the chart node id.
 	private async upsertHead(manager: EntityManager, input: HeadInput): Promise<number> {
 		const charts = manager.getRepository(ChartEntity);
 		const staff = manager.getRepository(StaffEntity);

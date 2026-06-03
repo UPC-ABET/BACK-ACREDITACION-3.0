@@ -25,7 +25,6 @@ export class OrgScopeRepository {
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
 	}
-
 }
 
 // Hierarchy depth comes from the parent chain (root_chart_id), not a level type. The school node

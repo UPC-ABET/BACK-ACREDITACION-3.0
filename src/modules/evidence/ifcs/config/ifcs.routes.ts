@@ -18,6 +18,11 @@ export const ifcsRoutes = {
 			},
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar IFCs' },
 			list: { method: 'POST', route: '/list', summary: 'Listar IFCs por nodos de organigrama' },
+			schools: {
+				method: 'GET',
+				route: '/schools',
+				summary: 'Listar las escuelas del usuario para el periodo academico (header)',
+			},
 			submit: { method: 'POST', route: '/:id/submit', summary: 'Enviar el IFC a revisión' },
 			approve: { method: 'POST', route: '/:id/approve', summary: 'Aprobar el IFC' },
 			reject: {

@@ -64,9 +64,9 @@ describe('UserService - login', () => {
 		it('throws UnauthorizedException when user does not exist', async () => {
 			userRepository.findForLogin.mockResolvedValueOnce(null);
 
-			await expect(
-				service.loginByCredentials(baseUser.email, 'pw'),
-			).rejects.toBeInstanceOf(UnauthorizedException);
+			await expect(service.loginByCredentials(baseUser.email, 'pw')).rejects.toBeInstanceOf(
+				UnauthorizedException,
+			);
 
 			expect(userRepository.findForLogin).toHaveBeenCalledWith(baseUser.email);
 			expect(jwtService.sign).not.toHaveBeenCalled();

@@ -40,7 +40,10 @@ export class ScopeOptionDto {
 }
 
 export class ScopeLevelDto {
-	@ApiProperty({ example: 1, description: 'Depth below the school (1 = direct child of the school)' })
+	@ApiProperty({
+		example: 1,
+		description: 'Depth below the school (1 = direct child of the school)',
+	})
 	levelNum: number;
 
 	@ApiProperty({ example: {}, type: [ScopeOptionDto] })
