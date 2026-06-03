@@ -83,29 +83,19 @@ export class SectionsUploadService {
 	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
 		const language = this.resolveLanguage(lang);
 		const labels = sectionsTemplateLabels[language];
-		const modalities = await this.repository.getSectionModalities(language);
 
 		const workbook = new ExcelJS.Workbook();
 
 		const dataSheet = workbook.addWorksheet('Template');
 		const headers = [
-			labels.studyPlanCode,
 			labels.courseCode,
-			labels.campusCode,
-			labels.professorCode,
-			labels.sectionModalityTypeCode,
 			labels.sectionCode,
+			labels.professorCode,
+			labels.campusCode,
+			labels.sectionModalityTypeCode,
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
-
-		const legendSheet = workbook.addWorksheet(labels.legendSheet);
-		const legendHeaders = [labels.legendCode, labels.legendName];
-		legendSheet.addRow(legendHeaders);
-		this.styleHeaderRow(legendSheet, legendHeaders);
-		for (const modality of modalities) {
-			legendSheet.addRow([modality.code, modality.name]);
-		}
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
@@ -125,7 +115,7 @@ export class SectionsUploadService {
 	}
 
 	// Positional layout (header ignored):
-	// studyPlanCode | courseCode | campusCode | professorCode | sectionModalityTypeCode | sectionCode
+	// courseCode | sectionCode | professorCode | campusCode | sectionModalityTypeCode
 	private parseWorkbook(workbook: ExcelJS.Workbook): SectionRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: SectionRow[] = [];
@@ -134,12 +124,11 @@ export class SectionsUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				studyPlanCode: this.cell(row, 1),
-				courseCode: this.cell(row, 2),
-				campusCode: this.cell(row, 3),
-				professorCode: this.cell(row, 4),
+				courseCode: this.cell(row, 1),
+				sectionCode: this.cell(row, 2),
+				professorCode: this.cell(row, 3),
+				campusCode: this.cell(row, 4),
 				sectionModalityTypeCode: this.cell(row, 5),
-				sectionCode: this.cell(row, 6),
 			});
 		});
 		return rows;
@@ -157,8 +146,8 @@ export class SectionsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = studyPlanCode, courseCode, campusCode, professorCode, sectionModalityTypeCode, sectionCode; error column is next.
-		const errorColumn = 7;
+		// data columns = courseCode, sectionCode, professorCode, campusCode, sectionModalityTypeCode; error column is next.
+		const errorColumn = 6;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };

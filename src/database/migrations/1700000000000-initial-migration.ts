@@ -1769,11 +1769,15 @@ BEGIN
 		SELECT
 			(e->>'rowNumber')::int                      AS row_number,
 			NULLIF(trim(e->>'sectionCode'), '')         AS section_code,
-			NULLIF(trim(e->>'studyPlanCode'), '')       AS study_plan_code,
 			NULLIF(trim(e->>'courseCode'), '')          AS course_code,
 			NULLIF(trim(e->>'campusCode'), '')          AS campus_code,
 			NULLIF(trim(e->>'professorCode'), '')       AS professor_code,
-			NULLIF(trim(e->>'sectionModalityTypeCode'), '') AS modality_code
+			-- the file carries a single-letter teaching modality (P/S/V); map it to its TG103 type code.
+			CASE upper(NULLIF(trim(e->>'sectionModalityTypeCode'), ''))
+				WHEN 'P' THEN 'TG103-T001'
+				WHEN 'S' THEN 'TG103-T003'
+				WHEN 'V' THEN 'TG103-T002'
+			END                                         AS modality_code
 		FROM jsonb_array_elements(p_rows) AS e
 	LOOP
 		IF r.section_code IS NULL THEN
@@ -1781,29 +1785,12 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'sectionCodeEmpty'::text, NULL::integer;
 		END IF;
 
-		IF r.study_plan_code IS NULL THEN
-			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'studyPlanCodeEmpty'::text, NULL::integer;
-		END IF;
-
 		IF r.course_code IS NULL THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'courseCodeEmpty'::text, NULL::integer;
-		END IF;
-
-		-- the study_plan_course (plan + course + period) must exist
-		IF r.study_plan_code IS NOT NULL AND r.course_code IS NOT NULL AND NOT EXISTS (
-			SELECT 1
-			FROM academic.study_plan_courses spc
-			JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-			JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
-			JOIN academic.courses c ON c.id = spc.course_id
-			WHERE spap.academic_period_id = p_academic_period_id
-			  AND sp.code = r.study_plan_code
-			  AND c.code = r.course_code
-		) THEN
+		ELSIF NOT EXISTS (SELECT 1 FROM academic.courses c WHERE c.code = r.course_code) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'studyPlanCourseNotFound'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'courseNotFound'::text, NULL::integer;
 		END IF;
 
 		IF r.campus_code IS NULL OR NOT EXISTS (SELECT 1 FROM organization.campuses cam WHERE cam.code = r.campus_code) THEN
@@ -1816,11 +1803,7 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'professorNotFound'::text, NULL::integer;
 		END IF;
 
-		IF r.modality_code IS NULL OR NOT EXISTS (
-			SELECT 1 FROM core.types t
-			JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG103' AND t.code = r.modality_code
-		) THEN
+		IF r.modality_code IS NULL THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'sectionModalityInvalid'::text, NULL::integer;
 		END IF;
@@ -1845,24 +1828,23 @@ BEGIN
 		(course_id, academic_period_id, campus_id, professor_id, section_code, schedule, section_modality_type_id, upload_log_id,
 		 extra, is_active, created_at, updated_at)
 	SELECT
-		c.id, spap.academic_period_id, cam.id, pr.id, trim(e->>'sectionCode'), NULL, t.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
+		c.id, p_academic_period_id, cam.id, pr.id, trim(e->>'sectionCode'), NULL, t.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
 	FROM jsonb_array_elements(p_rows) AS e
-	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
 	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
-	JOIN academic.study_plan_courses spc
-		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
 	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
 	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
 	JOIN core.type_groups g ON g.code = 'TG103'
-	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
+	JOIN core.types t ON t.type_group_id = g.id AND t.code = CASE upper(trim(e->>'sectionModalityTypeCode'))
+		WHEN 'P' THEN 'TG103-T001'
+		WHEN 'S' THEN 'TG103-T003'
+		WHEN 'V' THEN 'TG103-T002'
+	END
 	WHERE NOT EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = trim(e->>'sectionCode'));
 
 	-- update sections whose code already existed (push prior values onto the extra.uploadUndo stack)
 	UPDATE academic.course_sections cs
 	SET course_id = c.id,
-		academic_period_id = spap.academic_period_id,
+		academic_period_id = p_academic_period_id,
 		campus_id = cam.id,
 		professor_id = pr.id,
 		section_modality_type_id = t.id,
@@ -1874,16 +1856,15 @@ BEGIN
 				'campusId', cs.campus_id, 'professorId', cs.professor_id,
 				'sectionModalityTypeId', cs.section_modality_type_id))
 	FROM jsonb_array_elements(p_rows) AS e
-	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.study_plan_id = sp.id AND spap.academic_period_id = p_academic_period_id
 	JOIN academic.courses c ON c.code = trim(e->>'courseCode')
-	JOIN academic.study_plan_courses spc
-		ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = c.id
 	JOIN organization.campuses cam ON cam.code = trim(e->>'campusCode')
 	JOIN academic.professors pr ON pr.code = trim(e->>'professorCode')
 	JOIN core.type_groups g ON g.code = 'TG103'
-	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
+	JOIN core.types t ON t.type_group_id = g.id AND t.code = CASE upper(trim(e->>'sectionModalityTypeCode'))
+		WHEN 'P' THEN 'TG103-T001'
+		WHEN 'S' THEN 'TG103-T003'
+		WHEN 'V' THEN 'TG103-T002'
+	END
 	WHERE cs.section_code = trim(e->>'sectionCode')
 	  AND cs.upload_log_id IS DISTINCT FROM v_log_id;
 

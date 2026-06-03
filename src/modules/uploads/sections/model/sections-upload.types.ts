@@ -1,11 +1,10 @@
 export interface SectionRow {
 	rowNumber: number;
-	studyPlanCode: string;
 	courseCode: string;
-	campusCode: string;
-	professorCode: string;
-	sectionModalityTypeCode: string;
 	sectionCode: string;
+	professorCode: string;
+	campusCode: string;
+	sectionModalityTypeCode: string;
 }
 
 export interface UploadRowError {

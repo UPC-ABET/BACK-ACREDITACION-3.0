@@ -12,7 +12,7 @@ export class SectionsUploadDto {
 	@ApiProperty({
 		example: 1,
 		required: true,
-		description: 'Academic period the study_plan_course is matched against',
+		description: 'Academic period the sections are created under',
 	})
 	academicPeriodId: number;
 

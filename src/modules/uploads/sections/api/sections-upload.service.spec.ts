@@ -14,7 +14,7 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Plan', 'Course', 'Campus', 'Professor', 'Modality', 'Section'];
+const HEADER = ['Course', 'Section', 'Professor', 'Campus', 'Modality'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -33,7 +33,6 @@ function makeRepository(uploadFnResult: any[]) {
 			return Promise.resolve(uploadFnResult);
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
-		getSectionModalities: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
 }
@@ -45,9 +44,7 @@ describe('SectionsUploadService — positional parsing', () => {
 		]);
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['MALLA-2024', 'CS101', 'CAMP-1', 'DOC-001', 'TG103-T001', 'SEC-A'],
-		]);
+		const buffer = await makeXlsx([['CS101', 'SEC-A', 'DOC-001', 'CAMP-1', 'P']]);
 		const result = await service.processUpload(buffer, 'sections.xlsx', 7, {
 			academicPeriodId: 1,
 		} as any);
@@ -59,12 +56,11 @@ describe('SectionsUploadService — positional parsing', () => {
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({
 			rowNumber: 2,
-			studyPlanCode: 'MALLA-2024',
 			courseCode: 'CS101',
-			campusCode: 'CAMP-1',
-			professorCode: 'DOC-001',
-			sectionModalityTypeCode: 'TG103-T001',
 			sectionCode: 'SEC-A',
+			professorCode: 'DOC-001',
+			campusCode: 'CAMP-1',
+			sectionModalityTypeCode: 'P',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
@@ -76,9 +72,7 @@ describe('SectionsUploadService — positional parsing', () => {
 		]);
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['MALLA-2024', 'CS101', 'CAMP-1', 'GHOST', 'TG103-T001', 'SEC-A'],
-		]);
+		const buffer = await makeXlsx([['CS101', 'SEC-A', 'GHOST', 'CAMP-1', 'P']]);
 		const result = await service.processUpload(buffer, 'sections.xlsx', 1, {
 			academicPeriodId: 1,
 			lang: 'es',
@@ -91,13 +85,8 @@ describe('SectionsUploadService — positional parsing', () => {
 });
 
 describe('SectionsUploadService — template', () => {
-	it('builds a Template sheet and a localized legend sheet with TG103 codes', async () => {
-		const repository: any = {
-			getSectionModalities: jest.fn().mockResolvedValue([
-				{ code: 'TG103-T001', name: 'Sección presencial' },
-				{ code: 'TG103-T002', name: 'Sección virtual' },
-			]),
-		};
+	it('builds a single Template sheet with the localized headers and no legend', async () => {
+		const repository: any = {};
 		const service = new SectionsUploadService(repository, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
@@ -105,13 +94,11 @@ describe('SectionsUploadService — template', () => {
 
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
+		expect(wb.worksheets).toHaveLength(1);
+
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
+		expect(header).toContain('Código del curso');
 		expect(header).toContain('Código de sección');
 		expect(header).toContain('Código de modalidad de sección');
-
-		const legend = wb.getWorksheet('Modalidades de sección')!;
-		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
-		expect(codes).toContain('TG103-T001');
-		expect(codes).toContain('TG103-T002');
 	});
 });
