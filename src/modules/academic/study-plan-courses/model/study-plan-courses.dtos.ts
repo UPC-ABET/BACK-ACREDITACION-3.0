@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateStudyPlanCourseDto {
@@ -59,10 +59,22 @@ export class UpdateStudyPlanCourseDto {
 	levelTypeId?: number;
 }
 
+export class EnableEvaluationDto {
+	@IsNotEmpty()
+	@IsBoolean()
+	@ApiProperty({ example: true, required: true, description: 'Habilita o deshabilita la evaluacion del curso (rubricas y proyectos)' })
+	isEvaluable: boolean;
+}
+
 export class FilterStudyPlanCourseDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({ example: true, required: false, description: 'Filtra cursos habilitados o deshabilitados para evaluacion (rubricas y proyectos)' })
+	isEvaluable?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })

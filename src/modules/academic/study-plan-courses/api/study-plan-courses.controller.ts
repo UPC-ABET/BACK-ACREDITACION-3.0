@@ -8,13 +8,16 @@ import {
 	SwaggerStudyPlanCourseGetAll,
 	SwaggerStudyPlanCourseGetById,
 	SwaggerStudyPlanCourseGetByFilters,
+	SwaggerStudyPlanCourseEnableEvaluation,
 } from './docs/study-plan-courses.swagger';
 import { StudyPlanCourseService } from './study-plan-courses.service';
 import {
 	CreateStudyPlanCourseDto,
 	UpdateStudyPlanCourseDto,
 	FilterStudyPlanCourseDto,
+	EnableEvaluationDto,
 } from '../model/study-plan-courses.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 
 const ACADEMIC_MODULE = 'ACADEMIC';
@@ -59,5 +62,12 @@ export class StudyPlanCourseController extends BaseController<StudyPlanCourseSer
 	@RequirePermission({ module: ACADEMIC_MODULE, action: 'POST' })
 	async getByFilters(@Body() dto: FilterStudyPlanCourseDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerStudyPlanCourseEnableEvaluation()
+	@RequirePermission({ module: ACADEMIC_MODULE, action: 'PATCH' })
+	async enableEvaluation(@Param('id', ParseIntPipe) id: number, @Body() dto: EnableEvaluationDto) {
+		await this.service.enableEvaluation(id, dto);
+		return parseSuccessResponse(null);
 	}
 }

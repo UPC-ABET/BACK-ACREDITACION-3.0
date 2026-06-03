@@ -1,40 +1,48 @@
 import { OrgScopeService } from './org-scope.service';
 import { OrgScopeRepository } from '../core/org-scope.repository';
+import type { UserSchoolsRepository } from '../core/user-schools/user-schools.repository.interface';
 
 describe('OrgScopeService', () => {
 	let service: OrgScopeService;
-	let repository: {
+	let orgScopeRepository: {
 		findScope: jest.Mock;
+	};
+	let userSchoolsRepository: {
 		findUserSchools: jest.Mock;
 	};
 
 	beforeEach(() => {
-		repository = {
+		orgScopeRepository = {
 			findScope: jest.fn(),
+		};
+		userSchoolsRepository = {
 			findUserSchools: jest.fn(),
 		};
-		service = new OrgScopeService(repository as unknown as OrgScopeRepository);
+		service = new OrgScopeService(
+			orgScopeRepository as unknown as OrgScopeRepository,
+			userSchoolsRepository as unknown as UserSchoolsRepository,
+		);
 	});
 
 	it('returns empty scope when schoolId is null (user not attached to a school)', async () => {
 		const result = await service.getScope(1, null, 5);
 
 		expect(result).toEqual({ highestLevel: null, levels: [] });
-		expect(repository.findScope).not.toHaveBeenCalled();
+		expect(orgScopeRepository.findScope).not.toHaveBeenCalled();
 	});
 
 	it('returns empty scope when SQL returns no rows', async () => {
-		repository.findScope.mockResolvedValueOnce([]);
+		orgScopeRepository.findScope.mockResolvedValueOnce([]);
 
 		const result = await service.getScope(1, 7, 5);
 
 		expect(result).toEqual({ highestLevel: null, levels: [] });
-		expect(repository.findScope).toHaveBeenCalledTimes(1);
-		expect(repository.findScope).toHaveBeenCalledWith(1, 7, 5);
+		expect(orgScopeRepository.findScope).toHaveBeenCalledTimes(1);
+		expect(orgScopeRepository.findScope).toHaveBeenCalledWith(1, 7, 5);
 	});
 
 	it('drops the school and every level above it, keeping only levels below the school', async () => {
-		repository.findScope.mockResolvedValueOnce([
+		orgScopeRepository.findScope.mockResolvedValueOnce([
 			{
 				id: 30,
 				parentId: 20,
@@ -86,7 +94,7 @@ describe('OrgScopeService', () => {
 	});
 
 	it('excludes professor-level nodes from the options', async () => {
-		repository.findScope.mockResolvedValueOnce([
+		orgScopeRepository.findScope.mockResolvedValueOnce([
 			{
 				id: 1,
 				parentId: null,
@@ -120,7 +128,7 @@ describe('OrgScopeService', () => {
 	});
 
 	it('coalesces multiple options per level into the same bucket', async () => {
-		repository.findScope.mockResolvedValueOnce([
+		orgScopeRepository.findScope.mockResolvedValueOnce([
 			{
 				id: 1,
 				parentId: null,
@@ -156,7 +164,7 @@ describe('OrgScopeService', () => {
 	});
 
 	it('sets highest_level to null when no row below the school is marked is_anchor', async () => {
-		repository.findScope.mockResolvedValueOnce([
+		orgScopeRepository.findScope.mockResolvedValueOnce([
 			{
 				id: 1,
 				parentId: null,
@@ -193,11 +201,11 @@ describe('OrgScopeService', () => {
 				facultyName: { en: 'Faculty' },
 			},
 		];
-		repository.findUserSchools.mockResolvedValueOnce(rows);
+		userSchoolsRepository.findUserSchools.mockResolvedValueOnce(rows);
 
-		const result = await service.getUserSchools(3, 'TG102-T001');
+		const result = await service.getUserSchools(3, 'TG102-T001', false);
 
 		expect(result).toBe(rows);
-		expect(repository.findUserSchools).toHaveBeenCalledWith(3, 'TG102-T001');
+		expect(userSchoolsRepository.findUserSchools).toHaveBeenCalledWith(3, 'TG102-T001', false);
 	});
 });

@@ -25,6 +25,11 @@ export const studyPlanCoursesRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar cursos de plan de estudio',
 			},
+			enableEvaluation: {
+				method: 'PATCH',
+				route: '/enable-evaluation/:id',
+				summary: 'Habilitar o deshabilitar evaluacion de un curso de plan de estudio',
+			},
 		},
 	},
 };
