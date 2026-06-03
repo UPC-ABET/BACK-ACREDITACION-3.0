@@ -164,7 +164,7 @@ describe('IfcFindingService.patch', () => {
 			em,
 			100,
 			5,
-			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 		);
 		expect(assertIsInCourseChainSpy).toHaveBeenCalledTimes(1);
 		const ctx = assertIsInCourseChainSpy.mock.calls[0][1];

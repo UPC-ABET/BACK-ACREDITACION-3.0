@@ -101,7 +101,7 @@ export class IfcService extends BaseService<IfcRepository> {
 				query.chartId,
 				query.periodId,
 				schoolId,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			]),
 			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chartId]),

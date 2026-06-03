@@ -45,8 +45,8 @@ interface LoadedConfig {
 	id: number;
 	title: I18nText;
 	body: I18nText;
-	toChartLevelTypeIds: number[] | null;
-	ccChartLevelTypeIds: number[] | null;
+	toChartEntityTypeIds: number[] | null;
+	ccChartEntityTypeIds: number[] | null;
 }
 
 interface NotificationVar {
@@ -143,7 +143,7 @@ export class NotificationDispatcherService {
 			WITH RECURSIVE course_chart AS (
 				SELECT c.id, c.staff_id, c.entity_code AS course_id, c.root_chart_id
 				FROM organization.charts c
-				JOIN core.types ct                ON ct.id = c.level_type_id
+				JOIN core.types ct                ON ct.id = c.entity_type_id
 				WHERE c.id        = $1
 				  AND ct.code     = $4
 				  AND c.academic_period_id = $2
@@ -187,7 +187,7 @@ export class NotificationDispatcherService {
 				input.chartId,
 				input.periodId,
 				input.triggerCode,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 				input.ifcStatusCode,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			],
@@ -204,8 +204,8 @@ export class NotificationDispatcherService {
 				nc.id::int                     AS "id",
 				nc.title                       AS "title",
 				nc.body                        AS "body",
-				nc.to_chart_level_type_ids     AS "toChartLevelTypeIds",
-				nc.cc_chart_level_type_ids     AS "ccChartLevelTypeIds"
+				nc.to_chart_entity_type_ids     AS "toChartEntityTypeIds",
+				nc.cc_chart_entity_type_ids     AS "ccChartEntityTypeIds"
 			FROM ifc.notification_configs nc
 			WHERE nc.school_id          = $1
 			  AND nc.academic_period_id = $2
@@ -220,29 +220,29 @@ export class NotificationDispatcherService {
 	}
 
 	private async resolveRecipients(courseChartId: number, config: LoadedConfig) {
-		const toIds = (config.toChartLevelTypeIds ?? []).map((n) => Number(n));
-		const ccIds = (config.ccChartLevelTypeIds ?? []).map((n) => Number(n));
+		const toIds = (config.toChartEntityTypeIds ?? []).map((n) => Number(n));
+		const ccIds = (config.ccChartEntityTypeIds ?? []).map((n) => Number(n));
 		const wanted = [...toIds, ...ccIds];
 		if (wanted.length === 0) return { toEmails: [], ccEmails: [], toStaffIds: [], ccStaffIds: [] };
 
 		const rows = await this.dataSource.query(
 			`
 			WITH RECURSIVE chain_up AS (
-				SELECT c.id, c.root_chart_id, c.level_type_id, c.staff_id, 1 AS depth
+				SELECT c.id, c.root_chart_id, c.entity_type_id, c.staff_id, 1 AS depth
 				FROM organization.charts c
 				WHERE c.id = $1 AND c.is_active = true
 
 				UNION ALL
 
-				SELECT c.id, c.root_chart_id, c.level_type_id, c.staff_id, cu.depth + 1
+				SELECT c.id, c.root_chart_id, c.entity_type_id, c.staff_id, cu.depth + 1
 				FROM organization.charts c
 				JOIN chain_up cu ON c.id = cu.root_chart_id
 				WHERE c.is_active = true AND cu.depth < 20
 			)
-			SELECT cu.level_type_id::int AS "levelTypeId", s.id::int AS "staffId", s.staff_email AS "staffEmail"
+			SELECT cu.entity_type_id::int AS "entityTypeId", s.id::int AS "staffId", s.staff_email AS "staffEmail"
 			FROM chain_up cu
 			JOIN organization.staff s         ON s.id  = cu.staff_id
-			WHERE cu.level_type_id = ANY($2::int[])
+			WHERE cu.entity_type_id = ANY($2::int[])
 			  AND s.staff_email IS NOT NULL
 			`,
 			[courseChartId, wanted],
@@ -254,10 +254,10 @@ export class NotificationDispatcherService {
 		const toPairs: Array<{ email: string; staffId: number }> = [];
 		const ccPairs: Array<{ email: string; staffId: number }> = [];
 		for (const r of rows) {
-			const levelTypeId = Number(r.levelTypeId);
+			const entityTypeId = Number(r.entityTypeId);
 			const pair = { email: r.staffEmail as string, staffId: Number(r.staffId) };
-			if (toSet.has(levelTypeId)) toPairs.push(pair);
-			else if (ccSet.has(levelTypeId)) ccPairs.push(pair);
+			if (toSet.has(entityTypeId)) toPairs.push(pair);
+			else if (ccSet.has(entityTypeId)) ccPairs.push(pair);
 		}
 
 		// De-dupe by email within each list; drop Cc entries already in To.

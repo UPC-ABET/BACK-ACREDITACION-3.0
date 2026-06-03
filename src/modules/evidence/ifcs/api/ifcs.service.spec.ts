@@ -123,7 +123,7 @@ describe('IfcService.getView', () => {
 		expect(headerParams).toEqual([
 			42,
 			9,
-			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			99,
 		]);
@@ -424,7 +424,7 @@ describe('IfcService.prefill', () => {
 			310,
 			5,
 			9,
-			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
 		const [, outcomeParams] = dataSource.query.mock.calls[1];
@@ -981,7 +981,7 @@ describe('IfcService.generateStatusReport', () => {
 			[310, 311],
 			5,
 			9,
-			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			'es',
 		]);

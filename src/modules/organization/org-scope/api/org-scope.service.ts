@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { OrgScopeRepository } from '../core/org-scope.repository';
-import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import type { I18nText } from 'src/shared/types/i18n';
 import type { UserSchool } from '../core/user-schools/user-schools.types';
 import {
 	USER_SCHOOLS_REPOSITORY,
@@ -8,10 +8,16 @@ import {
 } from '../core/user-schools/user-schools.repository.interface';
 import type { UserSchoolsService } from '../core/user-schools/user-schools.service.interface';
 
+interface ScopeTag {
+	code: string;
+	name: I18nText | null;
+}
+
 interface ScopeOption {
 	id: number;
 	label: Record<string, string>;
 	parentId: number | null;
+	tag: ScopeTag | null;
 }
 
 @Injectable()
@@ -30,23 +36,22 @@ export class OrgScopeService implements UserSchoolsService {
 		const rows = await this.orgScopeRepository.findScope(userId, schoolId, periodId);
 		if (rows.length === 0) return { highestLevel: null, levels: [] };
 
-		const schoolLevel = rows.find(
-			(r) => r.typeCode === TYPE_CODES.CHART_LEVEL_TYPE.SCHOOL_DIRECTOR,
-		)?.levelNum;
-		const selectable = rows.filter(
-			(r) =>
-				r.typeCode !== TYPE_CODES.CHART_LEVEL_TYPE.PROFESSOR &&
-				(schoolLevel === undefined || r.levelNum > schoolLevel),
-		);
+		// The school is the anchor at depth 0; expose only the levels below it.
+		const selectable = rows.filter((r) => r.levelNum > 0);
 		if (selectable.length === 0) return { highestLevel: null, levels: [] };
 
 		const visibleIds = new Set(selectable.map((r) => r.id));
 
-		const byLevel = new Map<number, { typeCode: string; options: ScopeOption[] }>();
+		const byLevel = new Map<number, { options: ScopeOption[] }>();
 		for (const r of selectable) {
-			const entry = byLevel.get(r.levelNum) ?? { typeCode: r.typeCode, options: [] };
+			const entry = byLevel.get(r.levelNum) ?? { options: [] };
 			const parentId = r.parentId !== null && visibleIds.has(r.parentId) ? r.parentId : null;
-			entry.options.push({ id: r.id, label: r.label, parentId });
+			entry.options.push({
+				id: r.id,
+				label: r.label,
+				parentId,
+				tag: r.tagCode ? { code: r.tagCode, name: r.tagName } : null,
+			});
 			byLevel.set(r.levelNum, entry);
 		}
 
@@ -55,7 +60,7 @@ export class OrgScopeService implements UserSchoolsService {
 
 		const levels = [...byLevel.entries()]
 			.sort(([a], [b]) => a - b)
-			.map(([levelNum, v]) => ({ levelNum, typeCode: v.typeCode, options: v.options }));
+			.map(([levelNum, v]) => ({ levelNum, options: v.options }));
 
 		return { highestLevel, levels };
 	}

@@ -39,7 +39,6 @@ user_anchors AS (
 	SELECT DISTINCT
 		c.id,
 		c.root_chart_id,
-		c.level_type_id,
 		c.entity_type_id,
 		c.entity_code,
 		ARRAY[c.id] AS path,
@@ -55,7 +54,6 @@ ancestors AS (
 	SELECT
 		ua.id,
 		ua.root_chart_id,
-		ua.level_type_id,
 		ua.entity_type_id,
 		ua.entity_code,
 		ua.path,
@@ -65,7 +63,6 @@ ancestors AS (
 	SELECT
 		parent.id,
 		parent.root_chart_id,
-		parent.level_type_id,
 		parent.entity_type_id,
 		parent.entity_code,
 		anc.path || parent.id,

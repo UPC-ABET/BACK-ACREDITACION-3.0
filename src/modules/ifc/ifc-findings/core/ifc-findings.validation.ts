@@ -95,7 +95,7 @@ export class IfcFindingValidation {
 		const rows = await em.query(
 			`SELECT c.id::int AS "id", c.staff_id::int AS "staffId"
 			 FROM organization.charts c
-			 JOIN core.types ct                ON ct.id = c.level_type_id
+			 JOIN core.types ct                ON ct.id = c.entity_type_id
 			 WHERE c.entity_code        = $1
 			   AND c.academic_period_id = $2
 			   AND ct.code              = $3

@@ -21,6 +21,10 @@ import { ChartsUploadService } from './charts-upload.service';
 import { chartsUploadRoutes } from '../config/charts-upload.routes';
 import { ChartsUploadDto, RollbackUploadDto } from '../model/charts-upload.dtos';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 
 const routes = chartsUploadRoutes.charts_upload;
 
@@ -63,14 +67,22 @@ export class ChartsUploadController {
 	})
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
+	@ApiSchoolHeader()
 	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: ChartsUploadDto,
+		@SchoolId() schoolId: number,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
-			await this.service.processUpload(file.buffer, file.originalname, req.user.userId, dto),
+			await this.service.processUpload(
+				file.buffer,
+				file.originalname,
+				req.user.userId,
+				schoolId,
+				dto,
+			),
 		);
 	}
 

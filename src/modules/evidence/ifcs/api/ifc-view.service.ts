@@ -26,7 +26,7 @@ export class IfcViewService {
 			this.dataSource.query(HEADER_SQL, [
 				id,
 				schoolId,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
 			]),

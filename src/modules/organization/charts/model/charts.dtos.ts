@@ -20,10 +20,6 @@ export class CreateChartDto {
 	@ApiProperty({ example: 1, required: true })
 	academicPeriodId: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	levelTypeId: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
@@ -67,11 +63,6 @@ export class UpdateChartDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	levelTypeId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
 	rootChartId?: number;
 
 	@IsOptional()
@@ -106,10 +97,6 @@ export class FilterChartDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	academicPeriodId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	levelTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

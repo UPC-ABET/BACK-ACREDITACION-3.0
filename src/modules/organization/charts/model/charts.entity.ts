@@ -3,7 +3,6 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
-import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
 @Entity({ name: 'charts', schema: 'organization' })
@@ -15,9 +14,6 @@ export class ChartEntity extends BaseEntity {
 
 	@IntegerFKIDColumn({ nullable: false })
 	academicPeriodId: number;
-
-	@IntegerFKIDColumn({ nullable: false })
-	levelTypeId: number;
 
 	@IntegerColumn({ nullable: true })
 	rootChartId: number | null;
@@ -46,8 +42,4 @@ export class ChartEntity extends BaseEntity {
 		foreignKeyConstraintName: 'FK_charts_academic_period_id',
 	})
 	academicPeriod: AcademicPeriodEntity;
-
-	@ManyToOne(() => TypeEntity)
-	@JoinColumn({ name: 'level_type_id', foreignKeyConstraintName: 'FK_charts_level_type_id' })
-	levelType: TypeEntity;
 }

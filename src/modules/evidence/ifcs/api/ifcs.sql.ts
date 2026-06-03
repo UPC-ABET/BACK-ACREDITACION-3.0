@@ -47,7 +47,7 @@ export const HEADER_SQL = `
 WITH RECURSIVE course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.level_type_id
+	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE ct.code               = $3
 	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
 	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
@@ -249,7 +249,7 @@ export const TRANSITION_CONTEXT_SQL = `
 WITH course_chart AS (
 	SELECT c.id AS course_chart_id, c.staff_id
 	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.level_type_id
+	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE ct.code               = $4
 	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
 	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
@@ -259,7 +259,7 @@ WITH course_chart AS (
 school_check AS (
 	SELECT 1
 	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.level_type_id
+	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE ct.code               = $4
 	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
 	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
@@ -319,7 +319,7 @@ export const PREFILL_HEADER_SQL = `
 WITH course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.level_type_id
+	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE c.id                  = $1
 	  AND ct.code               = $4
 	  AND c.academic_period_id  = $2
@@ -362,7 +362,7 @@ export const CHART_RESOLUTION_SQL = `
 WITH course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.level_type_id
+	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE c.id                  = $1
 	  AND ct.code               = $4
 	  AND c.academic_period_id  = $2
@@ -451,7 +451,7 @@ WITH school_check AS (
 target_charts AS (
 	SELECT c.id, c.entity_code AS course_id, c.root_chart_id, c.staff_id, c.title
 	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.level_type_id
+	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE c.id        = ANY($1::int[])
 	  AND ct.code     = $4
 	  AND c.is_active = true
@@ -489,7 +489,7 @@ ORDER BY c_program.title->>$6 ASC, c_area.title->>$6 ASC, tc.title->>$6 ASC
 export const PROGRAM_BY_COURSE_PERIOD_SQL = `
 SELECT c_program.entity_code::int AS "programId"
 FROM organization.charts c_course
-JOIN core.types ct                 ON ct.id = c_course.level_type_id
+JOIN core.types ct                 ON ct.id = c_course.entity_type_id
 JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
 JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
 JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id

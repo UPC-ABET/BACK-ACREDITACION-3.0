@@ -32,7 +32,7 @@ export class IfcContentService {
 				dto.chartId,
 				dto.periodId,
 				schoolId,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
 			]);
@@ -131,7 +131,7 @@ export class IfcContentService {
 			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
 				courseId,
 				periodId,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 			]);
 			const programId =
 				programRows[0]?.programId === undefined || programRows[0]?.programId === null

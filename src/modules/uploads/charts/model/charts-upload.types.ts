@@ -4,10 +4,9 @@ export interface ChartRow {
 	rowNumber: number;
 	code: string;
 	parentCode: string;
-	levelTypeCode: string;
 	title: I18nText;
 	email: string;
-	entityTypeCode: string;
+	entityType: string;
 	entityCode: string;
 }
 

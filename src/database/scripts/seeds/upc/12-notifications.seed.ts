@@ -11,8 +11,8 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 		{
 			triggerCode: 'TG1002-T001', // MANUAL
 			statusCode: 'TG701-T001', // SAVED
-			toCodes: ['TG902-T006'], // COURSE_COORDINATOR
-			ccCodes: ['TG902-T005', 'TG902-T004'], // SUBAREA, AREA
+			toCodes: ['TG903-T006'], // COURSE
+			ccCodes: ['TG903-T005', 'TG903-T004'], // SUBAREA, AREA
 			title: i18nJson(
 				'Recordatorio: IFC pendiente de envío — {{course_name}}',
 				'Reminder: IFC pending submission — {{course_name}}',
@@ -31,8 +31,8 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 		{
 			triggerCode: 'TG1002-T001', // MANUAL
 			statusCode: 'TG701-T004', // OBSERVED
-			toCodes: ['TG902-T006'],
-			ccCodes: ['TG902-T005', 'TG902-T004'],
+			toCodes: ['TG903-T006'],
+			ccCodes: ['TG903-T005', 'TG903-T004'],
 			title: i18nJson('IFC con observaciones — {{course_name}}', 'IFC observed — {{course_name}}'),
 			body: i18nJson(
 				`<p>Hola {{coordinator_name}},</p>
@@ -50,8 +50,8 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 		{
 			triggerCode: 'TG1002-T001', // MANUAL
 			statusCode: 'TG701-T005', // UNREGISTERED
-			toCodes: ['TG902-T006'],
-			ccCodes: ['TG902-T005', 'TG902-T004'],
+			toCodes: ['TG903-T006'],
+			ccCodes: ['TG903-T005', 'TG903-T004'],
 			title: i18nJson(
 				'IFC sin registrar — {{course_name}}',
 				'IFC not yet registered — {{course_name}}',
@@ -70,8 +70,8 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 		{
 			triggerCode: 'TG1002-T002', // AUTO_STATUS_CHANGE
 			statusCode: 'TG701-T002', // SUBMITTED
-			toCodes: ['TG902-T005'], // SUBAREA_COORDINATOR — the reviewer
-			ccCodes: ['TG902-T004', 'TG902-T003'], // AREA + PROGRAM
+			toCodes: ['TG903-T005'], // SUBAREA — the reviewer
+			ccCodes: ['TG903-T004', 'TG903-T003'], // AREA + PROGRAM
 			title: i18nJson(
 				'Nuevo IFC enviado a revisión — {{course_name}}',
 				'New IFC submitted for review — {{course_name}}',
@@ -109,7 +109,7 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 			`
 			INSERT INTO "ifc"."notification_configs"
 				(school_id, academic_period_id, trigger_type_id, ifc_status_type_id,
-				 title, body, to_chart_level_type_ids, cc_chart_level_type_ids, is_active)
+				 title, body, to_chart_entity_type_ids, cc_chart_entity_type_ids, is_active)
 			SELECT
 				$1::int,
 				$2::int,
@@ -133,8 +133,8 @@ runTenantSeed('ifc notification configs', async (tenantDataSource) => {
 			ON CONFLICT ON CONSTRAINT "UQ_notification_configs_school_period_trigger_status" DO UPDATE
 			SET title                     = EXCLUDED.title,
 				body                      = EXCLUDED.body,
-				to_chart_level_type_ids   = EXCLUDED.to_chart_level_type_ids,
-				cc_chart_level_type_ids   = EXCLUDED.cc_chart_level_type_ids,
+				to_chart_entity_type_ids   = EXCLUDED.to_chart_entity_type_ids,
+				cc_chart_entity_type_ids   = EXCLUDED.cc_chart_entity_type_ids,
 				is_active                 = true,
 				updated_at                = NOW();
 			`,

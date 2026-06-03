@@ -56,7 +56,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_users" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer, "position_type_id" integer NOT NULL, "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255) NOT NULL, "staff_phone" character varying(255) NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."professors" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "code" character varying(50) NOT NULL, "upload_log_id" integer, CONSTRAINT "UQ_professors_code" UNIQUE ("code"), CONSTRAINT "PK_professors" PRIMARY KEY ("id"))`,
@@ -107,7 +107,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."schools" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "faculty_id" integer NOT NULL, "code" character varying(50) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "UQ_schools_code" UNIQUE ("code"), CONSTRAINT "PK_schools" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "level_type_id" integer NOT NULL, "root_chart_id" integer, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, "upload_log_id" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."charts" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "staff_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "root_chart_id" integer, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "entity_type_id" integer, "entity_code" integer, "upload_log_id" integer, CONSTRAINT "PK_charts" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "improvement"."plans" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "program_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "description" jsonb DEFAULT '{}'::jsonb, "is_open" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_plans" PRIMARY KEY ("id"))`,
@@ -146,7 +146,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "ifc"."ifc_findings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NOT NULL, "finding_id" integer NOT NULL, CONSTRAINT "PK_ifc_findings" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', "cc_chart_level_type_ids" jsonb NOT NULL DEFAULT '[]', CONSTRAINT "PK_notification_configs" PRIMARY KEY ("id"), CONSTRAINT "UQ_notification_configs_school_period_trigger_status" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
+			`CREATE TABLE "ifc"."notification_configs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "school_id" integer NOT NULL, "academic_period_id" integer NOT NULL, "trigger_type_id" integer NOT NULL, "ifc_status_type_id" integer NOT NULL, "title" jsonb NOT NULL DEFAULT '{}'::jsonb, "body" jsonb NOT NULL DEFAULT '{}'::jsonb, "to_chart_entity_type_ids" jsonb NOT NULL DEFAULT '[]', "cc_chart_entity_type_ids" jsonb NOT NULL DEFAULT '[]', CONSTRAINT "PK_notification_configs" PRIMARY KEY ("id"), CONSTRAINT "UQ_notification_configs_school_period_trigger_status" UNIQUE ("school_id", "academic_period_id", "trigger_type_id", "ifc_status_type_id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "ifc"."notification_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]', "cc_staff_ids" jsonb NOT NULL DEFAULT '[]', "provider_message_id" character varying(254) NULL, CONSTRAINT "PK_notification_logs" PRIMARY KEY ("id"))`,
@@ -351,9 +351,6 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_academic_period_id" FOREIGN KEY ("academic_period_id") REFERENCES "academic"."academic_periods"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_level_type_id" FOREIGN KEY ("level_type_id") REFERENCES "core"."types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" ADD CONSTRAINT "FK_charts_upload_log_id" FOREIGN KEY ("upload_log_id") REFERENCES "audit"."upload_logs"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -1102,6 +1099,7 @@ $fn$;
 CREATE OR REPLACE FUNCTION audit.fn_upload_charts(
 	p_rows jsonb,
 	p_academic_period_id integer,
+	p_school_id integer,
 	p_user_id integer,
 	p_source_file text
 )
@@ -1112,10 +1110,12 @@ DECLARE
 	v_total integer := jsonb_array_length(p_rows);
 	v_has_errors boolean := false;
 	v_log_id integer;
+	v_school_chart_id integer;
 	r record;
 BEGIN
-	-- The academic period and the "period already has an uploaded chart" guard are checked in the
-	-- service (request-level HTTP errors), not here.
+	-- The academic period, the existing school chart node, and the per-(school, period) "already
+	-- uploaded" guard are checked in the service (request-level HTTP errors), not here. The file
+	-- starts at Program Coordinator; top-level rows are hung under the school's chart node.
 
 	-- intra-file duplicate node code
 	FOR r IN
@@ -1139,24 +1139,21 @@ BEGIN
 			(e->>'rowNumber')::int                 AS row_number,
 			NULLIF(trim(e->>'code'), '')           AS code,
 			NULLIF(trim(e->>'parentCode'), '')     AS parent_code,
-			NULLIF(trim(e->>'levelTypeCode'), '')  AS level_type_code,
 			COALESCE(e->'title', '{}'::jsonb)      AS title,
 			NULLIF(trim(e->>'email'), '')          AS email,
-			NULLIF(trim(e->>'entityTypeCode'), '') AS entity_type_code,
-			NULLIF(trim(e->>'entityCode'), '')     AS entity_code
+			NULLIF(trim(e->>'entityType'), '')     AS entity_type_name,
+			NULLIF(trim(e->>'entityCode'), '')     AS entity_code,
+			(SELECT t.code FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id
+			 WHERE g.code = 'TG903'
+			   AND t.code IN ('TG903-T003', 'TG903-T004', 'TG903-T005', 'TG903-T006')
+			   AND (lower(t.name->>'es') = lower(trim(e->>'entityType'))
+			        OR lower(t.name->>'en') = lower(trim(e->>'entityType')))
+			 LIMIT 1)                              AS resolved_entity_code
 		FROM jsonb_array_elements(p_rows) AS e
 	LOOP
 		IF r.code IS NULL THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'codeEmpty'::text, NULL::integer;
-		END IF;
-
-		IF r.level_type_code IS NULL OR NOT EXISTS (
-			SELECT 1 FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id
-			WHERE g.code = 'TG902' AND t.code = r.level_type_code
-		) THEN
-			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'levelTypeInvalid'::text, NULL::integer;
 		END IF;
 
 		IF NOT EXISTS (SELECT 1 FROM jsonb_each_text(r.title) AS kv(k, v) WHERE NULLIF(trim(kv.v), '') IS NOT NULL) THEN
@@ -1178,24 +1175,23 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'staffNotFound'::text, NULL::integer;
 		END IF;
 
-		IF (r.entity_type_code IS NULL) <> (r.entity_code IS NULL) THEN
-			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'entityIncomplete'::text, NULL::integer;
-		ELSIF r.entity_type_code IS NOT NULL THEN
-			IF NOT EXISTS (
-				SELECT 1 FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id
-				WHERE g.code = 'TG903' AND t.code = r.entity_type_code
-			) THEN
+		-- Entity tag: blank = generic node. Otherwise it must be an uploadable kind matched by its
+		-- localized name (Program/Area/Subarea/Course); School/Dean belong to the prior configuration.
+		-- Program/Course anchor to a real entity (entity_code required); Area/Subarea carry none.
+		IF r.entity_type_name IS NULL THEN
+			IF r.entity_code IS NOT NULL THEN
 				v_has_errors := true;
-				RETURN QUERY SELECT r.row_number, 'entityTypeInvalid'::text, NULL::integer;
-			ELSIF NOT (
-				(r.entity_type_code = 'TG903-T001' AND EXISTS (SELECT 1 FROM organization.schools x WHERE x.code = r.entity_code)) OR
-				(r.entity_type_code = 'TG903-T002' AND EXISTS (SELECT 1 FROM academic.programs x WHERE x.code = r.entity_code)) OR
-				(r.entity_type_code = 'TG903-T003' AND EXISTS (SELECT 1 FROM academic.courses x WHERE x.code = r.entity_code))
-			) THEN
-				v_has_errors := true;
-				RETURN QUERY SELECT r.row_number, 'entityNotFound'::text, NULL::integer;
+				RETURN QUERY SELECT r.row_number, 'entityCodeWithoutType'::text, NULL::integer;
 			END IF;
+		ELSIF r.resolved_entity_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'entityTypeInvalid'::text, NULL::integer;
+		ELSIF r.resolved_entity_code IN ('TG903-T003', 'TG903-T006') AND NOT (
+			(r.resolved_entity_code = 'TG903-T003' AND EXISTS (SELECT 1 FROM academic.programs x WHERE x.code = r.entity_code)) OR
+			(r.resolved_entity_code = 'TG903-T006' AND EXISTS (SELECT 1 FROM academic.courses x WHERE x.code = r.entity_code))
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'entityNotFound'::text, NULL::integer;
 		END IF;
 
 		IF r.parent_code IS NOT NULL AND NOT EXISTS (
@@ -1221,21 +1217,30 @@ BEGIN
 		'{}'::jsonb, true, NOW(), NOW())
 	RETURNING id INTO v_log_id;
 
+	-- the school's chart node (prior configuration) that the top-level uploaded rows hang under
+	v_school_chart_id := (
+		SELECT c.id FROM organization.charts c
+		JOIN core.types et ON et.id = c.entity_type_id
+		WHERE et.code = 'TG903-T002'
+		  AND c.entity_code = p_school_id
+		  AND c.academic_period_id = p_academic_period_id
+		  AND c.is_active = true
+		LIMIT 1
+	);
+
 	-- pass 1: insert every node (root_chart_id NULL), keep the file code in extra for wiring
 	INSERT INTO organization.charts
-		(staff_id, academic_period_id, level_type_id, root_chart_id, title, entity_type_id, entity_code,
+		(staff_id, academic_period_id, root_chart_id, title, entity_type_id, entity_code,
 		 upload_log_id, extra, is_active, created_at, updated_at)
 	SELECT
 		s.id,
 		p_academic_period_id,
-		lt.id,
 		NULL,
 		COALESCE(e->'title', '{}'::jsonb),
 		et.id,
 		CASE
-			WHEN et.code = 'TG903-T001' THEN (SELECT id FROM organization.schools WHERE code = trim(e->>'entityCode'))
-			WHEN et.code = 'TG903-T002' THEN (SELECT id FROM academic.programs WHERE code = trim(e->>'entityCode'))
-			WHEN et.code = 'TG903-T003' THEN (SELECT id FROM academic.courses WHERE code = trim(e->>'entityCode'))
+			WHEN et.code = 'TG903-T003' THEN (SELECT id FROM academic.programs WHERE code = trim(e->>'entityCode'))
+			WHEN et.code = 'TG903-T006' THEN (SELECT id FROM academic.courses WHERE code = trim(e->>'entityCode'))
 			ELSE NULL
 		END,
 		v_log_id,
@@ -1246,10 +1251,14 @@ BEGIN
 		ON s.id = (SELECT ss.id FROM organization.staff ss
 		           JOIN organization.users uu ON uu.id = ss.user_id
 		           WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY ss.id LIMIT 1)
-	JOIN core.type_groups gl ON gl.code = 'TG902'
-	JOIN core.types lt ON lt.type_group_id = gl.id AND lt.code = trim(e->>'levelTypeCode')
-	LEFT JOIN core.type_groups ge ON ge.code = 'TG903'
-	LEFT JOIN core.types et ON et.type_group_id = ge.id AND et.code = NULLIF(trim(e->>'entityTypeCode'), '');
+	LEFT JOIN LATERAL (
+		SELECT t.id, t.code FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id
+		WHERE g.code = 'TG903'
+		  AND t.code IN ('TG903-T003', 'TG903-T004', 'TG903-T005', 'TG903-T006')
+		  AND (lower(t.name->>'es') = lower(trim(e->>'entityType'))
+		       OR lower(t.name->>'en') = lower(trim(e->>'entityType')))
+		LIMIT 1
+	) et ON true;
 
 	-- pass 2: wire root_chart_id by matching parentCode -> the node whose code matches (this upload)
 	UPDATE organization.charts child
@@ -1261,6 +1270,11 @@ BEGIN
 	WHERE child.upload_log_id = v_log_id
 	  AND child.extra->>'uploadNodeCode' = lower(trim(e->>'code'))
 	  AND NULLIF(trim(e->>'parentCode'), '') IS NOT NULL;
+
+	-- pass 3: top-level rows (no parent in the file) hang under the school's chart node
+	UPDATE organization.charts
+	SET root_chart_id = v_school_chart_id, updated_at = NOW()
+	WHERE upload_log_id = v_log_id AND root_chart_id IS NULL;
 
 	-- drop the temporary wiring code from extra
 	UPDATE organization.charts SET extra = extra - 'uploadNodeCode' WHERE charts.upload_log_id = v_log_id;
@@ -2380,7 +2394,7 @@ $fn$;
 		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_charts(integer)`);
 		await queryRunner.query(
-			`DROP FUNCTION IF EXISTS audit.fn_upload_charts(jsonb, integer, integer, text)`,
+			`DROP FUNCTION IF EXISTS audit.fn_upload_charts(jsonb, integer, integer, integer, text)`,
 		);
 		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_rollback_staff(integer)`);
 		await queryRunner.query(
@@ -2560,9 +2574,6 @@ $fn$;
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_upload_log_id"`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_level_type_id"`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "organization"."charts" DROP CONSTRAINT "FK_charts_academic_period_id"`,

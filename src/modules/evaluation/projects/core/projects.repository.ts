@@ -15,8 +15,8 @@ import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-a
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
 
 // Origanization types for school and program
-const SCHOOL_TYPE_CODE = 'TG903-T001';
-const PROGRAM_TYPE_CODE = 'TG903-T002';
+const SCHOOL_TYPE_CODE = 'TG903-T002';
+const PROGRAM_TYPE_CODE = 'TG903-T003';
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(

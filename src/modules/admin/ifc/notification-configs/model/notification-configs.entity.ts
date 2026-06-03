@@ -35,10 +35,10 @@ export class NotificationConfigEntity extends BaseEntity {
 	body: I18nText;
 
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
-	toChartLevelTypeIds: string[];
+	toChartEntityTypeIds: string[];
 
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
-	ccChartLevelTypeIds: string[];
+	ccChartEntityTypeIds: string[];
 
 	// %% RELATIONS
 

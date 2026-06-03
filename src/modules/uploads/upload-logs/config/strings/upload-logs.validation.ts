@@ -2,6 +2,7 @@ export const uploadLogsValidationStrings = {
 	error: {
 		periodNotFound: 'error.uploads.periodNotFound',
 		chartsAlreadyLoadedForPeriod: 'error.uploads.chartsAlreadyLoadedForPeriod',
+		schoolChartNotConfigured: 'error.uploads.schoolChartNotConfigured',
 		uploadLogNotFound: 'error.uploads.uploadLogNotFound',
 		rollbackAlreadyDone: 'error.uploads.rollbackAlreadyDone',
 		typeCodeNotFound: 'error.uploads.typeCodeNotFound',

@@ -8,7 +8,7 @@ jest.mock('@nestjs/common', () => ({
 			super(typeof response === 'string' ? response : JSON.stringify(response));
 		}
 	},
-	HttpStatus: { CONFLICT: 409 },
+	HttpStatus: { CONFLICT: 409, BAD_REQUEST: 400 },
 }));
 jest.mock('../core/charts-upload.repository', () => ({ ChartsUploadRepository: class {} }), {
 	virtual: true,
@@ -20,7 +20,10 @@ jest.mock(
 	'../../upload-logs/config/strings/upload-logs.validation',
 	() => ({
 		uploadLogsValidationStrings: {
-			error: { chartsAlreadyLoadedForPeriod: 'error.uploads.chartsAlreadyLoadedForPeriod' },
+			error: {
+				chartsAlreadyLoadedForPeriod: 'error.uploads.chartsAlreadyLoadedForPeriod',
+				schoolChartNotConfigured: 'error.uploads.schoolChartNotConfigured',
+			},
 		},
 	}),
 	{ virtual: true },
@@ -29,23 +32,16 @@ jest.mock(
 import * as ExcelJS from 'exceljs';
 import { ChartsUploadService } from './charts-upload.service';
 
+const SCHOOL_ID = 9;
+
 const uploadLogServiceStub: any = {
 	assertRollbackable: jest.fn(),
 	assertAcademicPeriodExists: jest.fn(),
 };
 
 // Positional layout for languages = ['es','en']:
-// code | parentCode | levelTypeCode | title_es | title_en | email | entityTypeCode | entityCode
-const HEADER = [
-	'Code',
-	'Parent',
-	'Level',
-	'Title ES',
-	'Title EN',
-	'Email',
-	'EntityType',
-	'EntityCode',
-];
+// code | parentCode | title_es | title_en | email | entityType (name) | entityCode
+const HEADER = ['Code', 'Parent', 'Title ES', 'Title EN', 'Email', 'EntityType', 'EntityCode'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -60,13 +56,13 @@ function makeRepository(langs: string[], uploadFnResult: any[], loaded = false) 
 	const calls: { uploadArgs?: any[] } = {};
 	const repository: any = {
 		getSupportedLanguages: jest.fn().mockResolvedValue(langs),
-		chartsLoadedForPeriod: jest.fn().mockResolvedValue(loaded),
+		schoolChartExists: jest.fn().mockResolvedValue(true),
+		chartsLoadedForSchoolPeriod: jest.fn().mockResolvedValue(loaded),
 		callUploadFunction: jest.fn((...args: any[]) => {
 			calls.uploadArgs = args;
 			return Promise.resolve(uploadFnResult);
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
-		getLevelTypes: jest.fn().mockResolvedValue([]),
 		getEntityTypes: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
@@ -81,44 +77,54 @@ describe('ChartsUploadService — positional parsing', () => {
 		const service = new ChartsUploadService(repository, uploadLogServiceStub);
 
 		const buffer = await makeXlsx([
-			['1', '', 'TG902-T001', 'Decanato', 'Dean', 'dean@uni.edu', '', ''],
-			['2', '1', 'TG902-T002', 'Direccion', 'Direction', 'dir@uni.edu', 'TG903-T001', 'EISCB'],
+			['PC1', '', 'Coordinacion CS', 'CS Coordination', 'pc@uni.edu', 'Carrera', 'CS'],
+			['A1', 'PC1', 'Area Datos', 'Data Area', 'area@uni.edu', 'Area', ''],
 		]);
-		const result = await service.processUpload(buffer, 'chart.xlsx', 7, {
+		const result = await service.processUpload(buffer, 'chart.xlsx', 7, SCHOOL_ID, {
 			academicPeriodId: 1,
 		} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
 
-		const [rows, academicPeriodId, userId] = calls.uploadArgs!;
+		const [rows, academicPeriodId, schoolId, userId] = calls.uploadArgs!;
 		expect(rows).toHaveLength(2);
 		expect(rows[0]).toMatchObject({
 			rowNumber: 2,
-			code: '1',
+			code: 'PC1',
 			parentCode: '',
-			levelTypeCode: 'TG902-T001',
-			title: { es: 'Decanato', en: 'Dean' },
-			email: 'dean@uni.edu',
-			entityTypeCode: '',
-			entityCode: '',
+			title: { es: 'Coordinacion CS', en: 'CS Coordination' },
+			email: 'pc@uni.edu',
+			entityType: 'Carrera',
+			entityCode: 'CS',
 		});
 		expect(rows[1]).toMatchObject({
-			code: '2',
-			parentCode: '1',
-			entityTypeCode: 'TG903-T001',
-			entityCode: 'EISCB',
+			code: 'A1',
+			parentCode: 'PC1',
+			entityType: 'Area',
+			entityCode: '',
 		});
 		expect(academicPeriodId).toBe(1);
+		expect(schoolId).toBe(SCHOOL_ID);
 		expect(userId).toBe(7);
 	});
 
-	it('throws when the period already has an uploaded chart', async () => {
+	it('throws when the school already has an uploaded chart for the period', async () => {
 		const { repository } = makeRepository(['es', 'en'], [], true);
 		const service = new ChartsUploadService(repository, uploadLogServiceStub);
-		const buffer = await makeXlsx([['1', '', 'TG902-T001', 'a', 'b', 'x@uni.edu', '', '']]);
+		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'x@uni.edu', 'Carrera', 'CS']]);
 		await expect(
-			service.processUpload(buffer, 'c.xlsx', 1, { academicPeriodId: 1 } as any),
+			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, { academicPeriodId: 1 } as any),
+		).rejects.toThrow();
+	});
+
+	it('throws when the school chart node is not configured', async () => {
+		const { repository } = makeRepository(['es', 'en'], []);
+		repository.schoolChartExists.mockResolvedValueOnce(false);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub);
+		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'x@uni.edu', 'Carrera', 'CS']]);
+		await expect(
+			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, { academicPeriodId: 1 } as any),
 		).rejects.toThrow();
 	});
 
@@ -128,8 +134,8 @@ describe('ChartsUploadService — positional parsing', () => {
 			[{ row_number: 2, error_code: 'staffNotFound', upload_log_id: null }],
 		);
 		const service = new ChartsUploadService(repository, uploadLogServiceStub);
-		const buffer = await makeXlsx([['1', '', 'TG902-T001', 'a', 'b', 'ghost@uni.edu', '', '']]);
-		const result = await service.processUpload(buffer, 'c.xlsx', 1, {
+		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'ghost@uni.edu', 'Carrera', 'CS']]);
+		const result = await service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, {
 			academicPeriodId: 1,
 			lang: 'es',
 		} as any);
@@ -144,12 +150,16 @@ describe('ChartsUploadService — template', () => {
 	function makeTemplateRepository(langs: string[]) {
 		return {
 			getSupportedLanguages: jest.fn().mockResolvedValue(langs),
-			getLevelTypes: jest.fn().mockResolvedValue([{ code: 'TG902-T001', name: 'Decanato' }]),
-			getEntityTypes: jest.fn().mockResolvedValue([{ code: 'TG903-T001', name: 'Escuela' }]),
+			getEntityTypes: jest.fn().mockResolvedValue([
+				{ code: 'TG903-T003', name: 'Carrera' },
+				{ code: 'TG903-T004', name: 'Area' },
+				{ code: 'TG903-T005', name: 'Subarea' },
+				{ code: 'TG903-T006', name: 'Curso' },
+			]),
 		} as any;
 	}
 
-	it('builds Template + two legend sheets (levels, entity types)', async () => {
+	it('builds a single Template sheet with the entity-type column and no legend sheet', async () => {
 		const service = new ChartsUploadService(
 			makeTemplateRepository(['es', 'en']),
 			uploadLogServiceStub,
@@ -160,16 +170,19 @@ describe('ChartsUploadService — template', () => {
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
-		expect(header).toContain('Título (Español)');
-		expect(header).toContain('Título (Inglés)');
+		expect(header).toContain('Unidad académica (Español)');
+		expect(header).toContain('Tipo de entidad');
 
-		const levelCodes = (wb.getWorksheet('Niveles')!.getColumn(1).values as string[]).filter(
-			Boolean,
-		);
-		expect(levelCodes).toContain('TG902-T001');
-		const entityCodes = (
-			wb.getWorksheet('Tipos de entidad')!.getColumn(1).values as string[]
-		).filter(Boolean);
-		expect(entityCodes).toContain('TG903-T001');
+		expect(wb.worksheets).toHaveLength(1);
+		expect(wb.getWorksheet('Tipos de entidad')).toBeUndefined();
+		expect(wb.getWorksheet('Niveles')).toBeUndefined();
+
+		// the dropdown must sit on the entity-type column (code, parentCode, title×2, email, entityType),
+		// not on the "Correo del responsable" (email) column
+		const sheet = wb.getWorksheet('Template')!;
+		const entityTypeCol = 2 + 2 + 2; // SINGLE_COLUMNS_BEFORE_TITLE + langs(2) + 2
+		const emailCol = entityTypeCol - 1;
+		expect(sheet.getCell(2, entityTypeCol).dataValidation?.type).toBe('list');
+		expect(sheet.getCell(2, emailCol).dataValidation).toBeUndefined();
 	});
 });

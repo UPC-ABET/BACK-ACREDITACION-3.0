@@ -17,6 +17,14 @@ export class GetUserSchoolsDto {
 }
 
 // %% OTHER DTOS — Response documentation classes (Swagger only)
+export class ScopeTagDto {
+	@ApiProperty({ example: 'TG903-T004' })
+	code: string;
+
+	@ApiProperty({ example: { es: 'Área', en: 'Area' }, nullable: true })
+	name: I18nText | null;
+}
+
 export class ScopeOptionDto {
 	@ApiProperty({ example: 1 })
 	id: number;
@@ -26,14 +34,14 @@ export class ScopeOptionDto {
 
 	@ApiProperty({ example: 1, nullable: true })
 	parentId: number | null;
+
+	@ApiProperty({ type: ScopeTagDto, nullable: true })
+	tag: ScopeTagDto | null;
 }
 
 export class ScopeLevelDto {
-	@ApiProperty({ example: 1 })
+	@ApiProperty({ example: 1, description: 'Depth below the school (1 = direct child of the school)' })
 	levelNum: number;
-
-	@ApiProperty({ example: 'typeCodeExample' })
-	typeCode: string;
 
 	@ApiProperty({ example: {}, type: [ScopeOptionDto] })
 	options: ScopeOptionDto[];

@@ -147,7 +147,7 @@ export class IfcStateMachineService {
 			ifcId,
 			schoolId,
 			userId,
-			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		];
 		const rows = em

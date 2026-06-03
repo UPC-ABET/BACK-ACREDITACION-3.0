@@ -10,12 +10,23 @@ import {
 	languageDisplayNames,
 } from '../model/charts-template.labels';
 import { DEFAULT_LANGUAGES } from 'src/modules/core/parameters/constants/parameter-codes';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { uploadLogsValidationStrings } from '../../upload-logs/config/strings/upload-logs.validation';
 import { ChartsUploadRepository } from '../core/charts-upload.repository';
 import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
-const SINGLE_COLUMNS_BEFORE_TITLE = 3; // code, parentCode, levelTypeCode
-const SINGLE_COLUMNS_AFTER_TITLE = 3; // email, entityTypeCode, entityCode
+const SINGLE_COLUMNS_BEFORE_TITLE = 2; // code, parentCode
+const SINGLE_COLUMNS_AFTER_TITLE = 3; // email, entityType, entityCode
+
+// Entity-type tags a chart node may declare in this upload (School/Dean come from the prior
+// configuration, so they are excluded). Blank is allowed for generic intermediate units.
+const UPLOADABLE_ENTITY_TYPE_CODES: string[] = [
+	TYPE_CODES.ENTITY_TYPE.PROGRAM,
+	TYPE_CODES.ENTITY_TYPE.AREA,
+	TYPE_CODES.ENTITY_TYPE.SUBAREA,
+	TYPE_CODES.ENTITY_TYPE.COURSE,
+];
+const TEMPLATE_MAX_ROWS = 1000;
 
 @Injectable()
 export class ChartsUploadService {
@@ -28,14 +39,26 @@ export class ChartsUploadService {
 		fileBuffer: Buffer,
 		fileName: string,
 		userId: number,
+		schoolId: number,
 		dto: ChartsUploadDto,
 	): Promise<UploadResult> {
 		await this.uploadLogService.assertAcademicPeriodExists(dto.academicPeriodId);
-		if (await this.repository.chartsLoadedForPeriod(dto.academicPeriodId)) {
+		// The school's chart node (Dean -> School Director configuration) must already exist; the
+		// upload hangs the Program Coordinator subtree under it.
+		if (!(await this.repository.schoolChartExists(schoolId, dto.academicPeriodId))) {
+			throw new HttpException(
+				{
+					message: uploadLogsValidationStrings.error.schoolChartNotConfigured,
+					errors: [`schoolId=${schoolId}`, `academicPeriodId=${dto.academicPeriodId}`],
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+		if (await this.repository.chartsLoadedForSchoolPeriod(schoolId, dto.academicPeriodId)) {
 			throw new HttpException(
 				{
 					message: uploadLogsValidationStrings.error.chartsAlreadyLoadedForPeriod,
-					errors: [`academicPeriodId=${dto.academicPeriodId}`],
+					errors: [`schoolId=${schoolId}`, `academicPeriodId=${dto.academicPeriodId}`],
 				},
 				HttpStatus.CONFLICT,
 			);
@@ -53,6 +76,7 @@ export class ChartsUploadService {
 		const result = await this.repository.callUploadFunction(
 			rows,
 			dto.academicPeriodId,
+			schoolId,
 			userId,
 			fileName,
 		);
@@ -107,7 +131,6 @@ export class ChartsUploadService {
 		const labels = chartsTemplateLabels[language];
 		const displayNames = languageDisplayNames[language];
 		const languages = await this.getLanguages();
-		const levels = await this.repository.getLevelTypes(language);
 		const entityTypes = await this.repository.getEntityTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
@@ -116,34 +139,40 @@ export class ChartsUploadService {
 		const headers = [
 			labels.code,
 			labels.parentCode,
-			labels.levelTypeCode,
 			...languages.map((l) => `${labels.title} (${displayNames[l] ?? l})`),
 			labels.email,
-			labels.entityTypeCode,
+			labels.entityType,
 			labels.entityCode,
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
 
-		this.addLegendSheet(workbook, labels.levelLegendSheet, labels, levels);
-		this.addLegendSheet(workbook, labels.entityLegendSheet, labels, entityTypes);
+		this.applyEntityTypeDropdown(dataSheet, languages.length, entityTypes);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
 	}
 
-	private addLegendSheet(
-		workbook: ExcelJS.Workbook,
-		sheetName: string,
-		labels: Record<string, string>,
-		entries: Array<{ code: string; name: string }>,
+	// Locks the entity-type column to a dropdown of the uploadable tags (localized names). Blank stays
+	// allowed for generic intermediate units; the chosen name is mapped back to its type on upload.
+	private applyEntityTypeDropdown(
+		sheet: ExcelJS.Worksheet,
+		languageCount: number,
+		entityTypes: Array<{ code: string; name: string }>,
 	): void {
-		const sheet = workbook.addWorksheet(sheetName);
-		const headers = [labels.legendCode, labels.legendName];
-		sheet.addRow(headers);
-		this.styleHeaderRow(sheet, headers);
-		for (const entry of entries) {
-			sheet.addRow([entry.code, entry.name]);
+		const names = entityTypes
+			.filter((t) => UPLOADABLE_ENTITY_TYPE_CODES.includes(t.code))
+			.map((t) => t.name);
+		if (names.length === 0) return;
+		// columns: code, parentCode, title×L, email, entityType, entityCode
+		const column = SINGLE_COLUMNS_BEFORE_TITLE + languageCount + 2;
+		const formula = `"${names.join(',')}"`;
+		for (let row = 2; row <= TEMPLATE_MAX_ROWS; row++) {
+			sheet.getCell(row, column).dataValidation = {
+				type: 'list',
+				allowBlank: true,
+				formulae: [formula],
+			};
 		}
 	}
 
@@ -165,7 +194,7 @@ export class ChartsUploadService {
 	}
 
 	// Positional layout (header ignored), L = languages.length:
-	// code | parentCode | levelTypeCode | title×L | email | entityTypeCode | entityCode
+	// code | parentCode | title×L | email | entityType (localized name) | entityCode
 	private parseWorkbook(workbook: ExcelJS.Workbook, languages: string[]): ChartRow[] {
 		const worksheet = workbook.worksheets[0];
 		const L = languages.length;
@@ -176,21 +205,19 @@ export class ChartsUploadService {
 			let col = 1;
 			const code = this.cell(row, col++);
 			const parentCode = this.cell(row, col++);
-			const levelTypeCode = this.cell(row, col++);
 			const title = this.i18nCells(row, col, languages);
 			col += L;
 			const email = this.cell(row, col++);
-			const entityTypeCode = this.cell(row, col++);
+			const entityType = this.cell(row, col++);
 			const entityCode = this.cell(row, col);
 
 			rows.push({
 				rowNumber,
 				code,
 				parentCode,
-				levelTypeCode,
 				title,
 				email,
-				entityTypeCode,
+				entityType,
 				entityCode,
 			});
 		});

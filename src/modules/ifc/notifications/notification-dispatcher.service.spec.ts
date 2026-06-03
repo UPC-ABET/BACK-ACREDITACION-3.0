@@ -23,8 +23,8 @@ const configRow = (overrides: Partial<Record<string, any>> = {}) => ({
 	id: 7,
 	title: { es: 'Hola {{course_name}}', en: 'Hi {{course_name}}' },
 	body: { es: '<p>{{coordinator_name}}</p>', en: '<p>{{coordinator_name}}</p>' },
-	toChartLevelTypeIds: [19],
-	ccChartLevelTypeIds: [18],
+	toChartEntityTypeIds: [19],
+	ccChartEntityTypeIds: [18],
 	...overrides,
 });
 
@@ -96,7 +96,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 		dataSource.query
 			.mockResolvedValueOnce([ctxRow()]) // ctx
 			.mockResolvedValueOnce([configRow()]) // config
-			.mockResolvedValueOnce([{ levelTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }]) // recipients
+			.mockResolvedValueOnce([{ entityTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }]) // recipients
 			.mockResolvedValueOnce([{ value: [] }]) // parameter vars (empty list)
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]); // lookupStatusCode
 		(mailService.sendRawEmail as jest.Mock).mockRejectedValueOnce(new BadGatewayException('boom'));
@@ -113,9 +113,9 @@ describe('NotificationDispatcherService.dispatch', () => {
 			.mockResolvedValueOnce([ctxRow()])
 			.mockResolvedValueOnce([configRow()])
 			.mockResolvedValueOnce([
-				{ levelTypeId: 19, staffId: 1, staffEmail: 'shared@x.com' },
-				{ levelTypeId: 18, staffId: 1, staffEmail: 'shared@x.com' },
-				{ levelTypeId: 18, staffId: 2, staffEmail: 'cc-only@x.com' },
+				{ entityTypeId: 19, staffId: 1, staffEmail: 'shared@x.com' },
+				{ entityTypeId: 18, staffId: 1, staffEmail: 'shared@x.com' },
+				{ entityTypeId: 18, staffId: 2, staffEmail: 'cc-only@x.com' },
 			])
 			.mockResolvedValueOnce([{ value: [] }])
 			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]);
@@ -144,7 +144,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 					body: { es: '<p>{{course_name}}</p>', en: '<p>{{course_name}}</p>' },
 				}),
 			])
-			.mockResolvedValueOnce([{ levelTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }])
+			.mockResolvedValueOnce([{ entityTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }])
 			.mockResolvedValueOnce([
 				{
 					value: [

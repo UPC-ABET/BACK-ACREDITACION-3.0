@@ -295,7 +295,6 @@ Table "organization"."charts" {
   updated_at timestamp [null]
   staff_id int
   academic_period_id int
-  chart_level_id int
   root_chart_id int [null]
   title json
   entity_type_id int [null]
@@ -435,8 +434,8 @@ Table "ifc"."notification_configs" {
   ifc_status_type_id int
   title json
   body json
-  to_chart_level_type_ids json
-  cc_chart_level_type_ids json
+  to_chart_entity_type_ids json
+  cc_chart_entity_type_ids json
 }
 
 Table "ifc"."notification_logs" {
@@ -712,7 +711,6 @@ Ref: "survey"."notification_messages"."program_id" > "academic"."programs"."id"
 Ref: "organization"."schools"."faculty_id" > "organization"."faculties"."id"
 Ref: "organization"."charts"."staff_id" > "organization"."staff"."id"
 Ref: "organization"."charts"."academic_period_id" > "academic"."academic_periods"."id"
-Ref: "organization"."charts"."chart_level_id" > "organization"."chart_levels"."id"
 Ref: "improvement"."plans"."program_id" > "academic"."programs"."id"
 Ref: "improvement"."plans"."academic_period_id" > "academic"."academic_periods"."id"
 Ref: "improvement"."actions"."program_id" > "academic"."programs"."id"

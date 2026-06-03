@@ -59,7 +59,7 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				em,
 				finding.courseId,
 				finding.academicPeriodId,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 			);
 
 			const staffRows = await em.query(
@@ -109,7 +109,7 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				id, //                                                  $1 finding_id
 				schoolId, //                                            $2 school_id
 				IFCS_PARAMETER_KEYS.FINDING_PREFIX, //                  $3 'PARAMETER_FINDING_PREFIX'
-				TYPE_CODES.ENTITY_TYPE.SCHOOL, //                       $4 'TG903-T001'
+				TYPE_CODES.ENTITY_TYPE.SCHOOL, //                       $4 'TG903-T002'
 			]),
 			this.dataSource.query(FINDING_ACTIONS_SQL, [
 				id, //                                                  $1 finding_id
@@ -162,7 +162,7 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				em,
 				finding.courseId,
 				finding.academicPeriodId,
-				TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
 			);
 
 			const staffRows = await em.query(

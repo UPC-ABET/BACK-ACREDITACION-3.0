@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { PARAMETER_CODES } from 'src/modules/core/parameters/constants/parameter-codes';
-import { TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
+import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export interface UploadFnRow {
 	row_number: number | null;
@@ -17,12 +17,13 @@ export class ChartsUploadRepository {
 	async callUploadFunction(
 		rows: unknown[],
 		academicPeriodId: number,
+		schoolId: number,
 		userId: number,
 		sourceFile: string,
 	): Promise<UploadFnRow[]> {
 		return await this.dataSource.query(
-			'SELECT * FROM audit.fn_upload_charts($1::jsonb, $2, $3, $4)',
-			[JSON.stringify(rows), academicPeriodId, userId, sourceFile],
+			'SELECT * FROM audit.fn_upload_charts($1::jsonb, $2, $3, $4, $5)',
+			[JSON.stringify(rows), academicPeriodId, schoolId, userId, sourceFile],
 		);
 	}
 
@@ -30,11 +31,31 @@ export class ChartsUploadRepository {
 		await this.dataSource.query('SELECT audit.fn_rollback_charts($1)', [uploadLogId]);
 	}
 
-	async chartsLoadedForPeriod(academicPeriodId: number): Promise<boolean> {
+	// The school's chart node (Dean -> School Director prior configuration) must exist; the upload
+	// hangs the Program Coordinator subtree under it.
+	async schoolChartExists(schoolId: number, academicPeriodId: number): Promise<boolean> {
 		const rows: Array<{ one: number }> = await this.dataSource.query(
-			`SELECT 1 AS one FROM organization.charts
-			 WHERE academic_period_id = $1 AND upload_log_id IS NOT NULL LIMIT 1`,
-			[academicPeriodId],
+			`SELECT 1 AS one FROM organization.charts c
+			 JOIN core.types et ON et.id = c.entity_type_id
+			 WHERE et.code = $3 AND c.entity_code = $1 AND c.academic_period_id = $2 AND c.is_active = true
+			 LIMIT 1`,
+			[schoolId, academicPeriodId, TYPE_CODES.ENTITY_TYPE.SCHOOL],
+		);
+		return rows.length > 0;
+	}
+
+	async chartsLoadedForSchoolPeriod(schoolId: number, academicPeriodId: number): Promise<boolean> {
+		const rows: Array<{ one: number }> = await this.dataSource.query(
+			`SELECT 1 AS one
+			 FROM organization.charts child
+			 JOIN organization.charts school ON school.id = child.root_chart_id
+			 JOIN core.types et ON et.id = school.entity_type_id
+			 WHERE child.upload_log_id IS NOT NULL
+			   AND child.academic_period_id = $2
+			   AND et.code = $3
+			   AND school.entity_code = $1
+			 LIMIT 1`,
+			[schoolId, academicPeriodId, TYPE_CODES.ENTITY_TYPE.SCHOOL],
 		);
 		return rows.length > 0;
 	}
@@ -46,10 +67,6 @@ export class ChartsUploadRepository {
 		);
 		const value = rows[0]?.value;
 		return Array.isArray(value) && value.length > 0 ? (value as string[]) : null;
-	}
-
-	async getLevelTypes(language: string): Promise<Array<{ code: string; name: string }>> {
-		return await this.typesByGroup(TYPE_GROUP_CODES.CHART_LEVEL_TYPE, language);
 	}
 
 	async getEntityTypes(language: string): Promise<Array<{ code: string; name: string }>> {

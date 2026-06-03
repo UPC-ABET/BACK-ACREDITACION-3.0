@@ -120,7 +120,7 @@ export class IfcReportService {
 			dto.chartIds,
 			dto.periodId,
 			schoolId,
-			TYPE_CODES.CHART_LEVEL_TYPE.COURSE_COORDINATOR,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			dto.lang,
 		]);

@@ -6,8 +6,8 @@ import { FilterProgramDto } from '../model/programs.dtos';
 import { StudyPlanEntity } from '../../study-plans/model/study-plans.entity';
 import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods/model/study-plan-academic-periods.entity';
 
-const SCHOOL_TYPE_CODE = 'TG903-T001';
-const PROGRAM_TYPE_CODE = 'TG903-T002';
+const SCHOOL_TYPE_CODE = 'TG903-T002';
+const PROGRAM_TYPE_CODE = 'TG903-T003';
 
 export class ProgramRepository extends BaseRepository<ProgramEntity> {
 	constructor(

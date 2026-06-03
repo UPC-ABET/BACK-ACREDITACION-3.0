@@ -9,8 +9,8 @@ import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 export class StaffEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
-	@IntegerFKIDColumn({ nullable: false })
-	userId: number;
+	@IntegerFKIDColumn({ nullable: true })
+	userId: number | null;
 
 	@IntegerFKIDColumn({ nullable: false })
 	positionTypeId: number;

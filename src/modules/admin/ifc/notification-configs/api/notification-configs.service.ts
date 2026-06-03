@@ -45,8 +45,8 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 				nc.ifc_status_type_id::int       AS "ifcStatusTypeId",
 				nc.title                         AS "title",
 				nc.body                          AS "body",
-				nc.to_chart_level_type_ids       AS "toChartLevelTypeIds",
-				nc.cc_chart_level_type_ids       AS "ccChartLevelTypeIds",
+				nc.to_chart_entity_type_ids       AS "toChartEntityTypeIds",
+				nc.cc_chart_entity_type_ids       AS "ccChartEntityTypeIds",
 				nc.is_active                     AS "isActive",
 				ct_trigger.code                  AS "triggerCode",
 				ct_trigger.name                  AS "triggerName",
@@ -69,13 +69,13 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 			`
 			INSERT INTO ifc.notification_configs
 				(school_id, academic_period_id, trigger_type_id, ifc_status_type_id,
-				 title, body, to_chart_level_type_ids, cc_chart_level_type_ids, is_active)
+				 title, body, to_chart_entity_type_ids, cc_chart_entity_type_ids, is_active)
 			VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8::jsonb, $9)
 			ON CONFLICT ON CONSTRAINT "UQ_4689ce4c54254910a1e7ab56b1c" DO UPDATE
 			SET title                     = EXCLUDED.title,
 				body                      = EXCLUDED.body,
-				to_chart_level_type_ids   = EXCLUDED.to_chart_level_type_ids,
-				cc_chart_level_type_ids   = EXCLUDED.cc_chart_level_type_ids,
+				to_chart_entity_type_ids   = EXCLUDED.to_chart_entity_type_ids,
+				cc_chart_entity_type_ids   = EXCLUDED.cc_chart_entity_type_ids,
 				is_active                 = EXCLUDED.is_active,
 				updated_at                = NOW()
 			RETURNING id::int                       AS "id",
@@ -84,8 +84,8 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 					  trigger_type_id::int          AS "triggerTypeId",
 					  ifc_status_type_id::int       AS "ifcStatusTypeId",
 					  title, body,
-					  to_chart_level_type_ids       AS "toChartLevelTypeIds",
-					  cc_chart_level_type_ids       AS "ccChartLevelTypeIds",
+					  to_chart_entity_type_ids       AS "toChartEntityTypeIds",
+					  cc_chart_entity_type_ids       AS "ccChartEntityTypeIds",
 					  is_active                     AS "isActive"
 			`,
 			[
@@ -95,8 +95,8 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 				dto.ifcStatusTypeId,
 				JSON.stringify(dto.title),
 				JSON.stringify(dto.body),
-				JSON.stringify(dto.toChartLevelTypeIds ?? []),
-				JSON.stringify(dto.ccChartLevelTypeIds ?? []),
+				JSON.stringify(dto.toChartEntityTypeIds ?? []),
+				JSON.stringify(dto.ccChartEntityTypeIds ?? []),
 				dto.isActive ?? true,
 			],
 		);

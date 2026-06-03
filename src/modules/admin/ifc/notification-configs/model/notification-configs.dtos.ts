@@ -45,11 +45,11 @@ export class CreateNotificationConfigDto {
 	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
 	body: I18nText;
 
-	@ApiProperty({ example: { key: 'toChartLevelTypeIdsValue' }, required: true })
-	toChartLevelTypeIds: any;
+	@ApiProperty({ example: { key: 'toChartEntityTypeIdsValue' }, required: true })
+	toChartEntityTypeIds: any;
 
-	@ApiProperty({ example: { key: 'ccChartLevelTypeIdsValue' }, required: true })
-	ccChartLevelTypeIds: any;
+	@ApiProperty({ example: { key: 'ccChartEntityTypeIdsValue' }, required: true })
+	ccChartEntityTypeIds: any;
 }
 
 export class UpdateNotificationConfigDto {
@@ -93,12 +93,12 @@ export class UpdateNotificationConfigDto {
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'toChartLevelTypeIdsValue' }, required: false })
-	toChartLevelTypeIds?: any;
+	@ApiProperty({ example: { key: 'toChartEntityTypeIdsValue' }, required: false })
+	toChartEntityTypeIds?: any;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'ccChartLevelTypeIdsValue' }, required: false })
-	ccChartLevelTypeIds?: any;
+	@ApiProperty({ example: { key: 'ccChartEntityTypeIdsValue' }, required: false })
+	ccChartEntityTypeIds?: any;
 }
 
 export class FilterNotificationConfigDto {
@@ -135,12 +135,12 @@ export class FilterNotificationConfigDto {
 	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'toChartLevelTypeIdsValue' }, required: false })
-	toChartLevelTypeIds?: any;
+	@ApiProperty({ example: { key: 'toChartEntityTypeIdsValue' }, required: false })
+	toChartEntityTypeIds?: any;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'ccChartLevelTypeIdsValue' }, required: false })
-	ccChartLevelTypeIds?: any;
+	@ApiProperty({ example: { key: 'ccChartEntityTypeIdsValue' }, required: false })
+	ccChartEntityTypeIds?: any;
 }
 
 // %% OTHER DTOS
@@ -189,18 +189,18 @@ export class UpsertNotificationConfigDto {
 	@ApiProperty({
 		example: [1, 2, 3],
 		required: false,
-		description: 'array of core.types.id from TG902 (chart level types)',
+		description: 'array of core.types.id from TG903 (chart entity types)',
 	})
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
-	toChartLevelTypeIds?: number[];
+	toChartEntityTypeIds?: number[];
 
 	@ApiProperty({ example: [1, 2, 3], required: false })
 	@IsOptional()
 	@IsArray()
 	@IsInt({ each: true })
-	ccChartLevelTypeIds?: number[];
+	ccChartEntityTypeIds?: number[];
 
 	@ApiProperty({ example: true, required: false })
 	@IsOptional()
@@ -230,7 +230,7 @@ export class NotificationConfigViewDto {
 	statusName: I18nText;
 	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, type: Object }) title: I18nText;
 	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, type: Object }) body: I18nText;
-	@ApiProperty({ example: [1, 2, 3] }) toChartLevelTypeIds: number[];
-	@ApiProperty({ example: [1, 2, 3] }) ccChartLevelTypeIds: number[];
+	@ApiProperty({ example: [1, 2, 3] }) toChartEntityTypeIds: number[];
+	@ApiProperty({ example: [1, 2, 3] }) ccChartEntityTypeIds: number[];
 	@ApiProperty({ example: true }) isActive: boolean;
 }
