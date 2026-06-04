@@ -18,7 +18,7 @@ export class PortfolioRepository extends BaseRepository<PortfolioProjectEntity> 
 		const result = await this.portfolioRepo
 			.createQueryBuilder('p')
 			.select('p.code', 'code')
-			.where('p.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.where('p.academicPeriodId = :academicPeriodId', { academicPeriodId })
 			.orderBy('p.id', 'DESC')
 			.limit(1)
 			.getRawOne<{ code: string }>();
