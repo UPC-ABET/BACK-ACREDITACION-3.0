@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
 
@@ -15,11 +15,6 @@ export class CreateTypeDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	typeGroupId: number;
-
-	@IsString()
-	@Length(1, 50)
-	@ApiProperty({ example: 'codeExample', required: true })
-	code: string;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
@@ -45,12 +40,6 @@ export class UpdateTypeDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	typeGroupId?: number;
-
-	@IsOptional()
-	@IsString()
-	@Length(1, 50)
-	@ApiProperty({ example: 'codeExample', required: false })
-	code?: string;
 
 	@IsOptional()
 	@IsObject()
