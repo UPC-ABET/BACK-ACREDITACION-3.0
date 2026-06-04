@@ -50,6 +50,7 @@
 		"generate:db": "bash src/tools/generate-db.sh"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1061.0",
 		"@azure/msal-node": "^5.2.1",
 		"@nestjs/axios": "^4.0.1",
 		"@nestjs/cache-manager": "^3.1.2",
