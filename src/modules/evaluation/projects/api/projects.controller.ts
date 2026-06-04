@@ -21,8 +21,7 @@ import {
 	ProjectDetailsResponseDto,
 } from '../model/projects.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const EVALUATION_MODULE = 'EVALUATION';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerProjectController()
 export class ProjectController extends BaseController<ProjectService> {
@@ -34,7 +33,7 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@Post('create-full')
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async createProjectFull(@Body() dto: CreateProjectDto) {
 		return parseSuccessResponse(
 			await this.projectConfigService.createProject(dto),
@@ -47,7 +46,7 @@ export class ProjectController extends BaseController<ProjectService> {
 	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
 	@ApiQuery({ name: 'schoolId', required: false, type: Number })
 	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectsByProfessor(
 		@Param('professorId', ParseIntPipe) professorId: number,
 		@Query('academicPeriodId') academicPeriodId?: string,
@@ -71,7 +70,7 @@ export class ProjectController extends BaseController<ProjectService> {
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
 	@ApiQuery({ name: 'isEvaluationMode', required: false, type: Boolean })
 	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectWithDetails(
 		@Param('projectId', ParseIntPipe) projectId: number,
 		@Query('isEvaluationMode') isEvaluationMode?: string,
@@ -90,37 +89,37 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@SwaggerProjectCreate()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateProjectDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerProjectUpdate()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'PATCH' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.PATCH })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProjectDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerProjectDelete()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerProjectGetAll()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerProjectGetById()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerProjectGetByFilters()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterProjectDto) {
 		return await super.getByFilters(dto);
 	}

@@ -29,8 +29,7 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
-
-const IFC_FINDINGS_MODULE = 'IFC_FINDINGS';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerIfcFindingController()
 export class IfcFindingController extends BaseController<IfcFindingService> {
@@ -39,20 +38,20 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingCreate()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateIfcFindingDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerIfcFindingUpdate()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcFindingDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerIfcFindingDelete()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.DELETE })
 	async deleteCascade(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
@@ -63,21 +62,21 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	}
 
 	@SwaggerIfcFindingGetAll()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerIfcFindingGetById()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.GET })
 	async getDetail(@Param('id', ParseIntPipe) id: number, @SchoolId() schoolId: number) {
 		const result = await this.service.getDetail(id, schoolId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcFindingGetByFilters()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterIfcFindingDto) {
 		return await super.getByFilters(dto);
 	}
@@ -85,7 +84,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	@SwaggerIfcFindingList()
 	@ApiSchoolHeader()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.POST })
 	async list(
 		@Body() dto: ListIfcFindingsDto,
 		@SchoolId() schoolId: number,
@@ -97,7 +96,7 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 
 	@SwaggerIfcFindingPatch()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFC_FINDINGS_MODULE, action: 'PATCH' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFC_FINDINGS, action: PERMISSION_ACTIONS.PATCH })
 	async patch(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: PatchIfcFindingDto,

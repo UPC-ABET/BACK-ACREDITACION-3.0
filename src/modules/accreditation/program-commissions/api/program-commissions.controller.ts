@@ -9,8 +9,7 @@ import {
 import { ProgramCommissionService } from './program-commissions.service';
 import { FilterProgramCommissionDto } from '../model/program-commissions.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const ACCREDITATION_MODULE = 'ACCREDITATION';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerProgramCommissionController()
 export class ProgramCommissionController extends BaseController<ProgramCommissionService> {
@@ -19,19 +18,19 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 	}
 
 	@SwaggerProgramCommissionGetAll()
-	@RequirePermission({ module: ACCREDITATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerProgramCommissionGetById()
-	@RequirePermission({ module: ACCREDITATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerProgramCommissionGetByFilters()
-	@RequirePermission({ module: ACCREDITATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterProgramCommissionDto) {
 		return await super.getByFilters(dto);
 	}

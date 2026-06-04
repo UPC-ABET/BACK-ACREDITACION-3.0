@@ -26,8 +26,7 @@ import {
 	SchoolId,
 	ApiSchoolHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
-
-const ADMIN_MODULE = 'ADMIN';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerNotificationConfigController()
 export class NotificationConfigController extends BaseController<NotificationConfigService> {
@@ -36,44 +35,44 @@ export class NotificationConfigController extends BaseController<NotificationCon
 	}
 
 	@SwaggerNotificationConfigCreate()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateNotificationConfigDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerNotificationConfigUpdate()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateNotificationConfigDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerNotificationConfigDelete()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerNotificationConfigGetAll()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerNotificationConfigGetById()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerNotificationConfigGetByFilters()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterNotificationConfigDto) {
 		return await super.getByFilters(dto);
 	}
 
 	@SwaggerNotificationConfigsByPeriod()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async byPeriod(@Query() q: NotificationConfigsByPeriodQueryDto, @SchoolId() schoolId: number) {
 		const rows = await this.service.byPeriod(schoolId, q.periodId);
 		return parseSuccessResponse(rows);
@@ -81,7 +80,7 @@ export class NotificationConfigController extends BaseController<NotificationCon
 
 	@SwaggerNotificationConfigsUpsert()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async upsert(@Body() dto: UpsertNotificationConfigDto, @SchoolId() schoolId: number) {
 		const row = await this.service.upsert(schoolId, dto);
 		return parseSuccessResponse(row);
@@ -89,7 +88,7 @@ export class NotificationConfigController extends BaseController<NotificationCon
 
 	@SwaggerNotificationConfigsSoftDelete()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.DELETE })
 	async softDelete(@Param('id', ParseIntPipe) id: number, @SchoolId() schoolId: number) {
 		await this.service.softDelete(schoolId, id);
 		return parseSuccessResponse(null);

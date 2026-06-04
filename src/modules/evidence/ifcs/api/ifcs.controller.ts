@@ -45,8 +45,7 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
-
-const IFCS_MODULE = 'IFCS';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerIfcController()
 export class IfcController extends BaseController<IfcService> {
@@ -57,7 +56,7 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcPrefill()
 	@ApiSchoolHeader()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async prefill(
 		@Query() query: IfcPrefillQueryDto,
 		@SchoolId() schoolId: number,
@@ -70,7 +69,7 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcCreate()
 	@ApiSchoolHeader()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async createIfc(
 		@Body() dto: CreateIfcDto,
 		@SchoolId() schoolId: number,
@@ -82,39 +81,39 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcUpdate()
-	@RequirePermission({ module: IFCS_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerIfcDelete()
-	@RequirePermission({ module: IFCS_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerIfcGetAll()
-	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerIfcGetByFilters()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterIfcDto) {
 		return await super.getByFilters(dto);
 	}
 
 	@SwaggerIfcList()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async list(@Body() dto: ListIfcsDto, @AcademicPeriodId() academicPeriodId: number) {
 		return parseSuccessResponse(await this.service.list(dto, academicPeriodId));
 	}
 
 	@SwaggerIfcSchools()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async schools(@AcademicPeriodId() academicPeriodId: number, @Req() req: any) {
 		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';
 		return parseSuccessResponse(
@@ -124,7 +123,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcGetView()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async getView(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
@@ -136,7 +135,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcSubmit()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async submit(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
@@ -148,7 +147,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcApprove()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async approve(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
@@ -159,7 +158,7 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcReject()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	@ApiSchoolHeader()
 	async reject(
 		@Param('id', ParseIntPipe) id: number,
@@ -173,7 +172,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcPatch()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'PATCH' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.PATCH })
 	async patch(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: IfcContentDto,
@@ -186,7 +185,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcPdf()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async pdf(
 		@Param('id', ParseIntPipe) id: number,
 		@Query() query: IfcPdfQueryDto,
@@ -201,7 +200,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcPdfBulk()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async pdfBulk(
 		@Body() dto: IfcPdfBulkDto,
 		@SchoolId() schoolId: number,
@@ -220,7 +219,7 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcStatusReport()
 	@ApiSchoolHeader()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async statusReport(
 		@Body() dto: IfcStatusReportDto,
 		@SchoolId() schoolId: number,
@@ -242,7 +241,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcNotify()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async notify(
 		@Body() dto: IfcNotifyDto,
 		@AcademicPeriodId() academicPeriodId: number,
@@ -254,7 +253,7 @@ export class IfcController extends BaseController<IfcService> {
 
 	@SwaggerIfcNotifyAll()
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: IFCS_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async notifyAll(
 		@Body() dto: IfcNotifyAllDto,
 		@AcademicPeriodId() academicPeriodId: number,

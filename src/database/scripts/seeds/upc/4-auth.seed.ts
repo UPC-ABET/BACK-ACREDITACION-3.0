@@ -13,8 +13,7 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			last_name,
 			email,
 			phone,
-			password,
-			is_admin
+			password
 		)
 		SELECT
 			dt.id,
@@ -23,36 +22,35 @@ runTenantSeed('organization users and staff', async (tenantDataSource) => {
 			v.last_name,
 			v.email,
 			v.phone,
-			v.password,
-			v.is_admin
+			v.password
 		FROM (
 			VALUES
-				('TG101-T001', 70000001, 'Administrador', 'General', 'admin@upc.edu.pe', '+51990000001', $1, true),
-				('TG101-T001', 70000002, 'Claudia', 'Calidad', 'calidad@upc.edu.pe', '+51990000002', $2, true),
-				('TG101-T001', 70000003, 'Juan', 'Perez Rodriguez', 'prof.juan.perez@upc.edu.pe', '+51990000003', $3, false),
-				('TG101-T001', 70000004, 'Maria', 'Garcia Torres', 'prof.maria.garcia@upc.edu.pe', '+51990000004', $4, false),
-				('TG101-T001', 70000005, 'Luis', 'Ramirez Vega', 'student.luis.ramirez@upc.edu.pe', '+51990000005', $5, false),
-				('TG101-T001', 70000006, 'Sofia', 'Torres Rojas', 'student.sofia.torres@upc.edu.pe', '+51990000006', $6, false),
-				('TG101-T001', 80000001, 'Ana', 'Admin', 'admin.eiscb@upc.edu.pe', '+51999900001', $7, true),
-				('TG101-T001', 80000002, 'Diego', 'Director', 'director.eiscb@upc.edu.pe', '+51999900002', $7, false),
-				('TG101-T001', 80000003, 'Camila', 'Coord', 'coord.eiscb@upc.edu.pe', '+51999900003', $7, false),
-				('TG101-T001', 80000004, 'Carla', 'Decano', 'dean.eiscb@upc.edu.pe', '+51999900004', $7, false),
-				('TG101-T001', 80000005, 'Sara', 'Programa', 'prog-coord.eiscb@upc.edu.pe', '+51999900005', $7, false),
-				('TG101-T001', 80000006, 'Bruno', 'Area', 'area-coord.eiscb@upc.edu.pe', '+51999900006', $7, false),
-				('TG101-T001', 80000007, 'Pablo', 'Subarea', 'subarea-coord.eiscb@upc.edu.pe', '+51999900007', $7, false),
-				('TG101-T001', 70000007, 'Carlos', 'Mendez Ruiz', 'prof.carlos.mendez@upc.edu.pe', '+51990000007', $7, false),
-				('TG101-T001', 70000008, 'Ana', 'Torres Quispe', 'prof.ana.torres@upc.edu.pe', '+51990000008', $7, false),
-				('TG101-T001', 70000009, 'Jorge', 'Vargas Lima', 'prof.jorge.vargas@upc.edu.pe', '+51990000009', $7, false),
-				('TG101-T001', 70000010, 'Lucia', 'Flores Castro', 'prof.lucia.flores@upc.edu.pe', '+51990000010', $7, false),
-				('TG101-T001', 70000011, 'Pedro', 'Silva Vega', 'student.pedro.silva@upc.edu.pe', '+51990000011', $7, false),
-				('TG101-T001', 70000012, 'Andrea', 'Quispe Rojas', 'student.andrea.quispe@upc.edu.pe', '+51990000012', $7, false),
-				('TG101-T001', 70000013, 'Marco', 'Luna Torres', 'student.marco.luna@upc.edu.pe', '+51990000013', $7, false),
-				('TG101-T001', 70000014, 'Diana', 'Paredes Huanca', 'student.diana.paredes@upc.edu.pe', '+51990000014', $7, false),
-				('TG101-T001', 70000015, 'Roberto', 'Chavez Diaz', 'student.roberto.chavez@upc.edu.pe', '+51990000015', $7, false),
-				('TG101-T001', 70000016, 'Valeria', 'Morales Soto', 'student.valeria.morales@upc.edu.pe', '+51990000016', $7, false),
-				('TG101-T001', 70000017, 'Elena', 'Ramos Vega', 'student.elena.ramos@upc.edu.pe', '+51990000017', $7, false),
-				('TG101-T001', 70000018, 'Alex', 'Medina Cruz', 'student.alex.medina@upc.edu.pe', '+51990000018', $7, false)
-		) AS v(document_type_code, document_code, first_name, last_name, email, phone, password, is_admin)
+				('TG101-T001', 70000001, 'Administrador', 'General', 'admin@upc.edu.pe', '+51990000001', $1),
+				('TG101-T001', 70000002, 'Claudia', 'Calidad', 'calidad@upc.edu.pe', '+51990000002', $2),
+				('TG101-T001', 70000003, 'Juan', 'Perez Rodriguez', 'prof.juan.perez@upc.edu.pe', '+51990000003', $3),
+				('TG101-T001', 70000004, 'Maria', 'Garcia Torres', 'prof.maria.garcia@upc.edu.pe', '+51990000004', $4),
+				('TG101-T001', 70000005, 'Luis', 'Ramirez Vega', 'student.luis.ramirez@upc.edu.pe', '+51990000005', $5),
+				('TG101-T001', 70000006, 'Sofia', 'Torres Rojas', 'student.sofia.torres@upc.edu.pe', '+51990000006', $6),
+				('TG101-T001', 80000001, 'Ana', 'Admin', 'admin.eiscb@upc.edu.pe', '+51999900001', $7),
+				('TG101-T001', 80000002, 'Diego', 'Director', 'director.eiscb@upc.edu.pe', '+51999900002', $7),
+				('TG101-T001', 80000003, 'Camila', 'Coord', 'coord.eiscb@upc.edu.pe', '+51999900003', $7),
+				('TG101-T001', 80000004, 'Carla', 'Decano', 'dean.eiscb@upc.edu.pe', '+51999900004', $7),
+				('TG101-T001', 80000005, 'Sara', 'Programa', 'prog-coord.eiscb@upc.edu.pe', '+51999900005', $7),
+				('TG101-T001', 80000006, 'Bruno', 'Area', 'area-coord.eiscb@upc.edu.pe', '+51999900006', $7),
+				('TG101-T001', 80000007, 'Pablo', 'Subarea', 'subarea-coord.eiscb@upc.edu.pe', '+51999900007', $7),
+				('TG101-T001', 70000007, 'Carlos', 'Mendez Ruiz', 'prof.carlos.mendez@upc.edu.pe', '+51990000007', $7),
+				('TG101-T001', 70000008, 'Ana', 'Torres Quispe', 'prof.ana.torres@upc.edu.pe', '+51990000008', $7),
+				('TG101-T001', 70000009, 'Jorge', 'Vargas Lima', 'prof.jorge.vargas@upc.edu.pe', '+51990000009', $7),
+				('TG101-T001', 70000010, 'Lucia', 'Flores Castro', 'prof.lucia.flores@upc.edu.pe', '+51990000010', $7),
+				('TG101-T001', 70000011, 'Pedro', 'Silva Vega', 'student.pedro.silva@upc.edu.pe', '+51990000011', $7),
+				('TG101-T001', 70000012, 'Andrea', 'Quispe Rojas', 'student.andrea.quispe@upc.edu.pe', '+51990000012', $7),
+				('TG101-T001', 70000013, 'Marco', 'Luna Torres', 'student.marco.luna@upc.edu.pe', '+51990000013', $7),
+				('TG101-T001', 70000014, 'Diana', 'Paredes Huanca', 'student.diana.paredes@upc.edu.pe', '+51990000014', $7),
+				('TG101-T001', 70000015, 'Roberto', 'Chavez Diaz', 'student.roberto.chavez@upc.edu.pe', '+51990000015', $7),
+				('TG101-T001', 70000016, 'Valeria', 'Morales Soto', 'student.valeria.morales@upc.edu.pe', '+51990000016', $7),
+				('TG101-T001', 70000017, 'Elena', 'Ramos Vega', 'student.elena.ramos@upc.edu.pe', '+51990000017', $7),
+				('TG101-T001', 70000018, 'Alex', 'Medina Cruz', 'student.alex.medina@upc.edu.pe', '+51990000018', $7)
+		) AS v(document_type_code, document_code, first_name, last_name, email, phone, password)
 		JOIN "core"."types" dt
 			ON dt.code = v.document_type_code
 		WHERE NOT EXISTS (

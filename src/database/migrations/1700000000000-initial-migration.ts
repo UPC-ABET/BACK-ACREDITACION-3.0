@@ -53,7 +53,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "organization"."campuses" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "code" character varying(255) NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, CONSTRAINT "PK_campuses" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer NOT NULL, "document_code" integer NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "is_admin" boolean DEFAULT false, CONSTRAINT "PK_users" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "organization"."users" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "document_type_id" integer, "document_code" integer, "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "email" character varying(254) NOT NULL, "phone" character varying(255), "password" character varying(255) NOT NULL, CONSTRAINT "PK_users" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "organization"."staff" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "user_id" integer, "position_type_id" integer, "first_name" character varying(255) NOT NULL DEFAULT '', "last_name" character varying(255) NOT NULL DEFAULT '', "job_title" jsonb NOT NULL DEFAULT '{}'::jsonb, "job_description" jsonb NOT NULL DEFAULT '{}'::jsonb, "staff_email" character varying(255), "staff_phone" character varying(255), "upload_log_id" integer, CONSTRAINT "PK_staff" PRIMARY KEY ("id"))`,
@@ -209,7 +209,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE TABLE "academic"."course_outcome_mappings" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "outcome_id" integer NOT NULL, "study_plan_course_id" integer NOT NULL, "outcome_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_course_outcome_mappings" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "core"."roles" ("id" SERIAL NOT NULL, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "code" character varying(50) NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_roles_code" UNIQUE ("code"), CONSTRAINT "PK_roles" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "core"."roles" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "name" jsonb NOT NULL DEFAULT '{}'::jsonb, "code" character varying(50) NOT NULL, "description" jsonb DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_roles_code" UNIQUE ("code"), CONSTRAINT "PK_roles" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(`
 			DO $$
@@ -220,7 +220,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			END $$;
 		`);
 		await queryRunner.query(
-			`CREATE TABLE "core"."user_roles" ("id" SERIAL NOT NULL, "user_id" integer NOT NULL, "role_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_user_roles_user_role" UNIQUE ("user_id", "role_id"), CONSTRAINT "PK_user_roles" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "core"."user_roles" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "user_id" integer NOT NULL, "role_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_user_roles_user_role" UNIQUE ("user_id", "role_id"), CONSTRAINT "PK_user_roles" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(`
 			DO $$
@@ -234,7 +234,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE INDEX "IDX_user_roles_user_active" ON "core"."user_roles" ("user_id", "is_active")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "core"."role_module_permissions" ("id" SERIAL NOT NULL, "role_id" integer NOT NULL, "module_type_id" integer NOT NULL, "permission_type_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_role_module_permission" UNIQUE ("role_id", "module_type_id", "permission_type_id"), CONSTRAINT "PK_role_module_permissions" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "core"."role_module_permissions" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "role_id" integer NOT NULL, "module_type_id" integer NOT NULL, "permission_type_id" integer NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "uq_role_module_permission" UNIQUE ("role_id", "module_type_id", "permission_type_id"), CONSTRAINT "PK_role_module_permissions" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(`
 			DO $$
@@ -699,7 +699,7 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'courseNameEmpty'::text, NULL::integer;
 		END IF;
 
-		IF r.level IS NULL OR r.level !~ '^d+$' OR NOT EXISTS (
+		IF r.level IS NULL OR r.level !~ '^\\d+$' OR NOT EXISTS (
 			SELECT 1 FROM core.types t
 			JOIN core.type_groups g ON g.id = t.type_group_id
 			WHERE g.code = 'TG203' AND (t.extra->>'level')::int = r.level::int

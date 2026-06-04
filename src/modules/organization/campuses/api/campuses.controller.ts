@@ -12,8 +12,7 @@ import {
 import { CampusService } from './campuses.service';
 import { CreateCampusDto, UpdateCampusDto, FilterCampusDto } from '../model/campuses.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const ORGANIZATION_MODULE = 'ORGANIZATION';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerCampusController()
 export class CampusController extends BaseController<CampusService> {
@@ -22,37 +21,37 @@ export class CampusController extends BaseController<CampusService> {
 	}
 
 	@SwaggerCampusCreate()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateCampusDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerCampusUpdate()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCampusDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerCampusDelete()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerCampusGetAll()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerCampusGetById()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerCampusGetByFilters()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterCampusDto) {
 		return await super.getByFilters(dto);
 	}

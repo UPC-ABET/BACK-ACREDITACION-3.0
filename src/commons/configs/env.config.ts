@@ -34,6 +34,10 @@ const envSchema = z
 
 		COOKIE_SECRET: z.string().min(32, 'COOKIE_SECRET must be at least 32 characters').optional(),
 
+		DEFAULT_USER_PASSWORD: z
+			.string()
+			.min(8, 'DEFAULT_USER_PASSWORD must be at least 8 characters'),
+
 		ID_DIRECTORY_TENANT: z.string().optional(),
 		ID_APPLICATION_CLIENT: z.string().optional(),
 		MICROSOFT_SECRET: z.string().optional(),

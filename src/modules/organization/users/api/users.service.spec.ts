@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 
 jest.mock('bcryptjs', () => ({
@@ -33,7 +34,6 @@ describe('UserService - login', () => {
 		id: 42,
 		email: 'juan.perez@example.com',
 		password: 'hashed-password',
-		isAdmin: true,
 	};
 
 	beforeEach(() => {
@@ -50,6 +50,9 @@ describe('UserService - login', () => {
 		orgScopeService = {
 			getUserSchools: jest.fn(),
 		};
+		const configService = {
+			getOrThrow: jest.fn().mockReturnValue('ABET2020'),
+		};
 
 		service = new UserService(
 			userRepository as unknown as UserRepository,
@@ -57,6 +60,7 @@ describe('UserService - login', () => {
 			jwtService as unknown as JwtService,
 			userAuthorizationService as unknown as UserAuthorizationService,
 			orgScopeService as unknown as OrgScopeService,
+			configService as unknown as ConfigService,
 		);
 	});
 
@@ -79,7 +83,7 @@ describe('UserService - login', () => {
 			const result = await service.loginByCredentials(baseUser.email, 'plain-password');
 
 			expect(result).toEqual({
-				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
+				user: { id: baseUser.id, email: baseUser.email },
 				accessToken: 'signed-jwt-token',
 				expiresIn: JWT_EXPIRES_IN_SECONDS,
 			});
@@ -147,7 +151,7 @@ describe('UserService - login', () => {
 			const result = await service.loginById(baseUser.id, 2);
 
 			expect(result).toEqual({
-				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
+				user: { id: baseUser.id, email: baseUser.email },
 				accessToken: 'signed-jwt-token',
 				expiresIn: JWT_EXPIRES_IN_SECONDS,
 			});
@@ -187,7 +191,7 @@ describe('UserService - login', () => {
 
 			expect(orgScopeService.getUserSchools).toHaveBeenCalledWith(baseUser.id, 'TG102-T001', false);
 			expect(result).toEqual({
-				user: { id: baseUser.id, email: baseUser.email, isAdmin: baseUser.isAdmin },
+				user: { id: baseUser.id, email: baseUser.email },
 				activeRole: authorizationProfile.activeRole,
 				allowedRoles: authorizationProfile.allowedRoles,
 				permissions: authorizationProfile.permissions,

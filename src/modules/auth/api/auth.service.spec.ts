@@ -19,7 +19,7 @@ describe('AuthService — MSAL login', () => {
 
 	describe('loginWithMicrosoftCode', () => {
 		it('creates a user login from the Microsoft account email', async () => {
-			const fakeUser = { id: 99, email: 'jane.doe@example.com', isAdmin: true };
+			const fakeUser = { id: 99, email: 'jane.doe@example.com' };
 			const acquireSpy = jest
 				.spyOn(
 					service as unknown as { acquireMicrosoftTokenByCode: jest.Mock },

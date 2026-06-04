@@ -102,6 +102,9 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
 import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart-heads.module';
+import { RoleModule } from './modules/admin/iam/roles/roles.module';
+import { UserRoleModule } from './modules/admin/iam/user-roles/user-roles.module';
+import { RoleModulePermissionModule } from './modules/admin/iam/role-module-permissions/role-module-permissions.module';
 
 @Module({
 	imports: [
@@ -219,6 +222,9 @@ import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart
 		ProjectModule,
 		UploadsModule,
 		ConfigurationModule,
+		RoleModule,
+		UserRoleModule,
+		RoleModulePermissionModule,
 	],
 	controllers: [AppController],
 	providers: [

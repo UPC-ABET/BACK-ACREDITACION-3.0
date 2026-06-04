@@ -24,13 +24,15 @@ export class CreateUserDto {
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	documentTypeId: number;
+	@ApiProperty({ example: 1, required: false })
+	documentTypeId?: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	documentCode: number;
+	@ApiProperty({ example: 1, required: false })
+	documentCode?: number;
 
 	@IsString()
 	@Length(1, 1000)
@@ -47,14 +49,11 @@ export class CreateUserDto {
 	@ApiProperty({ example: 'user@example.com', required: true })
 	email: string;
 
+	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: '+51 999 999 999', required: true })
-	phone: string;
-
-	@IsBoolean()
-	@ApiProperty({ example: true, required: true })
-	isAdmin: boolean;
+	@ApiProperty({ example: '+51 999 999 999', required: false })
+	phone?: string;
 }
 
 export class UpdateUserDto {
@@ -100,11 +99,6 @@ export class UpdateUserDto {
 	@Length(1, 1000)
 	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
-
-	@IsOptional()
-	@IsBoolean()
-	@ApiProperty({ example: true, required: false })
-	isAdmin?: boolean;
 }
 
 export class FilterUserDto {
@@ -141,10 +135,6 @@ export class FilterUserDto {
 	@IsOptional()
 	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
-
-	@IsOptional()
-	@ApiProperty({ example: true, required: false })
-	isAdmin?: boolean;
 }
 
 // %% OTHER DTOS

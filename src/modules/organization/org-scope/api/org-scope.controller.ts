@@ -20,8 +20,7 @@ import {
 	USER_SCHOOLS_SERVICE,
 	type UserSchoolsService,
 } from '../core/user-schools/user-schools.service.interface';
-
-const ORGANIZATION_MODULE = 'ORGANIZATION';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerOrgScopeController()
 export class OrgScopeController {
@@ -34,7 +33,7 @@ export class OrgScopeController {
 	@SwaggerOrgScopeGetScope()
 	@ApiSchoolHeader(false)
 	@ApiAcademicPeriodHeader()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async getScope(
 		@SchoolId({ optional: true }) schoolId: number | null,
 		@AcademicPeriodId() academicPeriodId: number,
@@ -46,7 +45,7 @@ export class OrgScopeController {
 	}
 
 	@SwaggerOrgScopeGetUserSchools()
-	@RequirePermission({ module: ORGANIZATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async getUserSchools(@Body() dto: GetUserSchoolsDto, @Req() req: any) {
 		const userId = req.user.userId;
 		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';

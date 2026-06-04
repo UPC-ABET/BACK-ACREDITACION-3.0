@@ -12,8 +12,7 @@ import {
 import { SurveyService } from './surveys.service';
 import { CreateSurveyDto, UpdateSurveyDto, FilterSurveyDto } from '../model/surveys.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const EVIDENCE_MODULE = 'EVIDENCE';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerSurveyController()
 export class SurveyController extends BaseController<SurveyService> {
@@ -22,37 +21,37 @@ export class SurveyController extends BaseController<SurveyService> {
 	}
 
 	@SwaggerSurveyCreate()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateSurveyDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerSurveyUpdate()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSurveyDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerSurveyDelete()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerSurveyGetAll()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerSurveyGetById()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerSurveyGetByFilters()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterSurveyDto) {
 		return await super.getByFilters(dto);
 	}

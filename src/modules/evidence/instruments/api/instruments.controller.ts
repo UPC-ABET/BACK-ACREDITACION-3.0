@@ -16,8 +16,7 @@ import {
 	FilterInstrumentDto,
 } from '../model/instruments.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const EVIDENCE_MODULE = 'EVIDENCE';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerInstrumentController()
 export class InstrumentController extends BaseController<InstrumentService> {
@@ -26,37 +25,37 @@ export class InstrumentController extends BaseController<InstrumentService> {
 	}
 
 	@SwaggerInstrumentCreate()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateInstrumentDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerInstrumentUpdate()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInstrumentDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerInstrumentDelete()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerInstrumentGetAll()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerInstrumentGetById()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerInstrumentGetByFilters()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterInstrumentDto) {
 		return await super.getByFilters(dto);
 	}

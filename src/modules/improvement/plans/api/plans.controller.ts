@@ -12,8 +12,7 @@ import {
 import { PlanService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto, FilterPlanDto } from '../model/plans.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const IMPROVEMENT_MODULE = 'IMPROVEMENT';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerPlanController()
 export class PlanController extends BaseController<PlanService> {
@@ -22,37 +21,37 @@ export class PlanController extends BaseController<PlanService> {
 	}
 
 	@SwaggerPlanCreate()
-	@RequirePermission({ module: IMPROVEMENT_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreatePlanDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerPlanUpdate()
-	@RequirePermission({ module: IMPROVEMENT_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePlanDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerPlanDelete()
-	@RequirePermission({ module: IMPROVEMENT_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerPlanGetAll()
-	@RequirePermission({ module: IMPROVEMENT_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerPlanGetById()
-	@RequirePermission({ module: IMPROVEMENT_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerPlanGetByFilters()
-	@RequirePermission({ module: IMPROVEMENT_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterPlanDto) {
 		return await super.getByFilters(dto);
 	}

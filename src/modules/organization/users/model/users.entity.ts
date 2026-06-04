@@ -7,7 +7,6 @@ import {
 	PasswordColumn,
 	IntegerFKIDColumn,
 	IntegerColumn,
-	BooleanColumn,
 } from 'src/commons/configs/db.configs';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
@@ -15,10 +14,10 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 export class UserEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
-	@IntegerFKIDColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: true })
 	documentTypeId: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerColumn({ nullable: true })
 	documentCode: number;
 
 	@NameColumn({ nullable: false })
@@ -30,15 +29,12 @@ export class UserEntity extends BaseEntity {
 	@EmailColumn({ nullable: false })
 	email: string;
 
-	@NameColumn()
+	@NameColumn({ nullable: true })
 	phone: string;
 
 	@Exclude()
 	@PasswordColumn({ nullable: false })
 	password: string;
-
-	@BooleanColumn()
-	isAdmin: boolean;
 
 	// %% RELATIONS
 

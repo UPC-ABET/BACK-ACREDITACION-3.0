@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
 import * as bcrypt from 'bcryptjs';
+import { hashPassword } from 'src/libs/secure.functions';
 import { UserValidation } from '../core/users.validation';
 import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
 import { usersValidationStrings } from '../config/strings/users.validation';
@@ -20,6 +22,7 @@ export class UserService extends BaseService<UserRepository> {
 		private readonly jwtService: JwtService,
 		private readonly userAuthorizationService: UserAuthorizationService,
 		private readonly orgScopeService: OrgScopeService,
+		private readonly configService: ConfigService,
 	) {
 		super(repository);
 	}
@@ -164,7 +167,10 @@ export class UserService extends BaseService<UserRepository> {
 
 	async create(dto: CreateUserDto, manager?: EntityManager) {
 		await UserValidation.validateCreate(this.repository, dto);
-		return await super.create(dto, manager);
+		const password = await hashPassword(
+			this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'),
+		);
+		return await super.create({ ...dto, password }, manager);
 	}
 
 	async update(id: number, dto: UpdateUserDto, manager?: EntityManager) {

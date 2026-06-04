@@ -29,10 +29,9 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 const routes = chartsUploadRoutes.charts_upload;
-
-const ADMIN_MODULE = 'ADMIN';
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
@@ -42,7 +41,7 @@ export class ChartsUploadController {
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async template(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
 		const { buffer, fileName } = await this.service.generateTemplate(lang);
 		const encoded = encodeURIComponent(fileName);
@@ -72,7 +71,7 @@ export class ChartsUploadController {
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
 	@ApiSchoolHeader()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: ChartsUploadDto,
@@ -96,7 +95,7 @@ export class ChartsUploadController {
 	@ApiOperation({ summary: routes.operation.rollback.summary })
 	@ApiBody({ type: RollbackUploadDto })
 	@HttpCode(HttpStatus.OK)
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async rollback(@Body() dto: RollbackUploadDto) {
 		return parseSuccessResponse(await this.service.rollback(dto.uploadLogId));
 	}

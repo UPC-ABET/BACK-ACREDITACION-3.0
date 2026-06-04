@@ -16,8 +16,7 @@ import {
 	FilterOutcomeConfigDto,
 } from '../model/outcome-configs.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const SURVEY_MODULE = 'SURVEY';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerOutcomeConfigController()
 export class OutcomeConfigController extends BaseController<OutcomeConfigService> {
@@ -26,37 +25,37 @@ export class OutcomeConfigController extends BaseController<OutcomeConfigService
 	}
 
 	@SwaggerOutcomeConfigCreate()
-	@RequirePermission({ module: SURVEY_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateOutcomeConfigDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerOutcomeConfigUpdate()
-	@RequirePermission({ module: SURVEY_MODULE, action: 'PUT' })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.PUT })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOutcomeConfigDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerOutcomeConfigDelete()
-	@RequirePermission({ module: SURVEY_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerOutcomeConfigGetAll()
-	@RequirePermission({ module: SURVEY_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerOutcomeConfigGetById()
-	@RequirePermission({ module: SURVEY_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerOutcomeConfigGetByFilters()
-	@RequirePermission({ module: SURVEY_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterOutcomeConfigDto) {
 		return await super.getByFilters(dto);
 	}

@@ -25,10 +25,9 @@ import { GradesRcUploadService } from './grades-rc-upload.service';
 import { gradesRcUploadRoutes } from '../config/grades-rc-upload.routes';
 import { GradesRcUploadDto, RollbackUploadDto } from '../model/grades-rc-upload.dtos';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 const routes = gradesRcUploadRoutes.grades_rc_upload;
-
-const ADMIN_MODULE = 'ADMIN';
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
@@ -38,7 +37,7 @@ export class GradesRcUploadController {
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async template(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
 		const { buffer, fileName } = await this.service.generateTemplate(lang);
 		const encoded = encodeURIComponent(fileName);
@@ -67,7 +66,7 @@ export class GradesRcUploadController {
 	@ApiAcademicPeriodHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: GradesRcUploadDto,
@@ -89,7 +88,7 @@ export class GradesRcUploadController {
 	@ApiOperation({ summary: routes.operation.rollback.summary })
 	@ApiBody({ type: RollbackUploadDto })
 	@HttpCode(HttpStatus.OK)
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async rollback(@Body() dto: RollbackUploadDto) {
 		return parseSuccessResponse(await this.service.rollback(dto.uploadLogId));
 	}

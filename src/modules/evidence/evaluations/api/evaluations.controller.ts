@@ -21,8 +21,7 @@ import {
 } from '../model/evaluations.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const EVIDENCE_MODULE = 'EVIDENCE';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerEvaluationController()
 export class EvaluationController extends BaseController<EvaluationService> {
@@ -34,37 +33,37 @@ export class EvaluationController extends BaseController<EvaluationService> {
 	}
 
 	@Post('submit')
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async submitEvaluation(@Body() dto: SubmitEvaluationDto) {
 		return parseSuccessResponse(await this.submissionService.submitEvaluation(dto));
 	}
 
 	@Patch('observation')
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'PATCH' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.PATCH })
 	async saveObservation(@Body() dto: SaveObservationDto) {
 		return parseSuccessResponse(await this.submissionService.saveObservation(dto));
 	}
 
 	@Post('finalize')
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async finalizeProject(@Body() dto: FinalizeProjectDto) {
 		return parseSuccessResponse(await this.submissionService.finalizeProject(dto));
 	}
 
 	@Get('student/:studentId')
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getStudentEvaluations(@Param('studentId', ParseIntPipe) studentId: number) {
 		return parseSuccessResponse(await this.submissionService.getStudentEvaluations(studentId));
 	}
 
 	@Get('evaluator/:evaluatorId')
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getEvaluatorEvaluations(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
 		return parseSuccessResponse(await this.submissionService.getEvaluatorEvaluations(evaluatorId));
 	}
 
 	@Get('evaluation/:evaluationId')
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getEvaluationWithScores(@Param('evaluationId', ParseIntPipe) evaluationId: number) {
 		return parseSuccessResponse(await this.submissionService.getEvaluationById(evaluationId));
 	}
@@ -73,37 +72,37 @@ export class EvaluationController extends BaseController<EvaluationService> {
 	// Exportar el resultado del proyecto (Cruza outcomes, rúbricas y promedios) y cruce con performance_levels.
 
 	@SwaggerEvaluationCreate()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateEvaluationDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerEvaluationUpdate()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'PATCH' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.PATCH })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateEvaluationDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerEvaluationDelete()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerEvaluationGetAll()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerEvaluationGetById()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerEvaluationGetByFilters()
-	@RequirePermission({ module: EVIDENCE_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterEvaluationDto) {
 		return await super.getByFilters(dto);
 	}

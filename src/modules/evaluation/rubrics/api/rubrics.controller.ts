@@ -15,8 +15,7 @@ import { RubricService } from './rubrics.service';
 import { RubricConfigService } from './rubric-config.service';
 import { CreateRubricDto, UpdateRubricDto, FilterRubricDto } from '../model/rubrics.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-
-const EVALUATION_MODULE = 'EVALUATION';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerRubricController()
 export class RubricController extends BaseController<RubricService> {
@@ -28,19 +27,19 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@Post('create-full')
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async createRubricFull(@Body() dto: CreateRubricDto) {
 		return await this.rubricConfigService.createRubric(dto);
 	}
 
 	@Get('course/:courseId')
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getRubricByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
 		return await this.rubricConfigService.getRubricByCourse(courseId);
 	}
 
 	@Get('rubric/:rubricId')
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getRubricWithDetails(@Param('rubricId', ParseIntPipe) rubricId: number) {
 		return await this.rubricConfigService.getRubricById(rubricId);
 	}
@@ -49,19 +48,19 @@ export class RubricController extends BaseController<RubricService> {
 	// Esto reemplazará el Excel masivo anterior según el plan de migración.
 
 	@SwaggerRubricCreate()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateRubricDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerRubricUpdate()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'PATCH' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.PATCH })
 	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRubricDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerRubricDelete()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'DELETE' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.DELETE })
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await this.service.delete(id);
 	}
@@ -81,7 +80,7 @@ export class RubricController extends BaseController<RubricService> {
 		description: 'ID del período académico',
 	})
 	@ApiQuery({ name: 'courseId', required: false, type: Number, description: 'ID del curso' })
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
 		@Query('schoolId', new ParseIntPipe({ optional: true })) schoolId?: number,
 		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
@@ -94,13 +93,13 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetById()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerRubricGetByFilters()
-	@RequirePermission({ module: EVALUATION_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterRubricDto) {
 		return await super.getByFilters(dto);
 	}

@@ -28,10 +28,9 @@ import {
 	RollbackUploadDto,
 } from '../model/enrolled-students-upload.dtos';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 const routes = enrolledStudentsUploadRoutes.enrolled_students_upload;
-
-const ADMIN_MODULE = 'ADMIN';
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
@@ -41,7 +40,7 @@ export class EnrolledStudentsUploadController {
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async template(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
 		const { buffer, fileName } = await this.service.generateTemplate(lang);
 		const encoded = encodeURIComponent(fileName);
@@ -70,7 +69,7 @@ export class EnrolledStudentsUploadController {
 	@ApiAcademicPeriodHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async upload(
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: EnrolledStudentsUploadDto,
@@ -92,7 +91,7 @@ export class EnrolledStudentsUploadController {
 	@ApiOperation({ summary: routes.operation.rollback.summary })
 	@ApiBody({ type: RollbackUploadDto })
 	@HttpCode(HttpStatus.OK)
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async rollback(@Body() dto: RollbackUploadDto) {
 		return parseSuccessResponse(await this.service.rollback(dto.uploadLogId));
 	}

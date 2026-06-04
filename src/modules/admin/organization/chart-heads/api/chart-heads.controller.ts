@@ -9,21 +9,20 @@ import {
 } from './docs/chart-heads.swagger';
 import { ChartHeadsService } from './chart-heads.service';
 import { ConfigureChartHeadsDto } from '../model/chart-heads.dtos';
-
-const ADMIN_MODULE = 'ADMIN';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerChartHeadsController()
 export class ChartHeadsController {
 	constructor(private readonly service: ChartHeadsService) {}
 
 	@SwaggerChartHeadsConfigure()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'POST' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async configure(@Body() dto: ConfigureChartHeadsDto) {
 		return parseSuccessResponse(await this.service.configure(dto));
 	}
 
 	@SwaggerChartHeadsGetByPeriod()
-	@RequirePermission({ module: ADMIN_MODULE, action: 'GET' })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async getByPeriod(@Param('academicPeriodId', ParseIntPipe) academicPeriodId: number) {
 		return parseSuccessResponse(await this.service.getConfiguration(academicPeriodId));
 	}
