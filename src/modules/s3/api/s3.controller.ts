@@ -1,26 +1,15 @@
-import {
-	BadRequestException,
-	Body,
-	Controller,
-	HttpCode,
-	HttpStatus,
-	Post,
-	Query,
-	UploadedFile,
-	UseInterceptors,
-} from '@nestjs/common';
+import { BadRequestException, Body, HttpCode, HttpStatus, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import { S3Service } from './s3.service';
+import { SwaggerS3Controller, SwaggerS3GetSize, SwaggerS3Upload } from './docs/s3.swagger';
 
-@ApiTags('s3')
-@Controller('s3')
+@SwaggerS3Controller()
 export class S3Controller {
 	constructor(private readonly s3Service: S3Service) {}
 
-	@Post('upload')
-	@ApiOperation({ summary: 'Sube un archivo a S3 (multipart para >5MiB, PUT simple para el resto)' })
-	@ApiQuery({ name: 'key', required: true, description: 'Ruta/nombre del objeto en S3 (ej: EISC/2025-1/proyecto123/doc.pdf)' })
+	@SwaggerS3Upload()
+	@ApiQuery({ name: 'key', required: true, description: 'Object path/key in S3 (e.g. EISC/2025-1/project123/doc.pdf)' })
 	@ApiConsumes('multipart/form-data')
 	@ApiBody({
 		schema: {
@@ -29,26 +18,19 @@ export class S3Controller {
 		},
 	})
 	@UseInterceptors(FileInterceptor('file'))
-	async upload(
-		@Query('key') key: string,
-		@UploadedFile() file: any,
-	): Promise<string> {
-		if (!key) throw new BadRequestException('El parámetro "key" es requerido.');
-
-		if (!file) {
-			throw new BadRequestException('No se encontró ningún archivo en el form-data.');
-		}
+	async upload(@Query('key') key: string, @UploadedFile() file: any): Promise<string> {
+		if (!key) throw new BadRequestException('The "key" query parameter is required.');
+		if (!file) throw new BadRequestException('No file was found in the form-data.');
 
 		await this.s3Service.uploadBuffer(key, file.buffer as Buffer);
-		return `Se subió correctamente: ${key}`;
+		return `Uploaded successfully: ${key}`;
 	}
 
-	@Post('size-total')
+	@SwaggerS3GetSize()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Calcula el tamaño total de uno o más prefijos en S3' })
-	async getTotalSize(@Body() prefixes: string[]) {
+	async getSize(@Body() prefixes: string[]) {
 		if (!Array.isArray(prefixes) || prefixes.length === 0) {
-			throw new BadRequestException('Se debe proporcionar al menos un prefijo.');
+			throw new BadRequestException('At least one prefix must be provided.');
 		}
 		return this.s3Service.getSize(prefixes);
 	}
