@@ -3,12 +3,7 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
 import { PortfolioProjectEntity } from './portfolio-project.entity';
-
-export enum ProjectApplicationStatus {
-	PENDING = 'PENDING',
-	ACCEPTED = 'ACCEPTED',
-	REJECTED = 'REJECTED',
-}
+import { ProjectApplicationStatus } from '../enums/project-application-status.enum';
 
 @Entity({ name: 'project_applications', schema: 'portfolio' })
 export class PortfolioProjectApplicationEntity extends BaseEntity {

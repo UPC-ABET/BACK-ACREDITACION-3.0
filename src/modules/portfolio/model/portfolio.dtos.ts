@@ -8,6 +8,7 @@ import {
 	Min,
 	MaxLength,
 	IsPositive,
+	ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -25,14 +26,6 @@ export class PageDto {
 	@IsInt()
 	@IsPositive()
 	pageSize: number;
-}
-
-export class PaginatorDto<T> {
-	@ApiProperty({ type: PageDto })
-	@Type(() => PageDto)
-	page: PageDto;
-
-	body: T;
 }
 
 export class PaginationResultDto<T> {
@@ -107,11 +100,6 @@ export class CreatePortfolioProjectDto {
 // ── Update ────────────────────────────────────────────────────────────────────
 
 export class UpdatePortfolioProjectDto {
-	@ApiProperty()
-	@IsInt()
-	@IsPositive()
-	id: number;
-
 	@ApiPropertyOptional({ maxLength: 255 })
 	@IsOptional()
 	@IsString()
@@ -211,11 +199,6 @@ export class UpdatePortfolioProjectDto {
 // ── Update Manager ────────────────────────────────────────────────────────────
 
 export class UpdatePortfolioManagerDto {
-	@ApiProperty()
-	@IsInt()
-	@IsPositive()
-	id: number;
-
 	@ApiProperty()
 	@IsString()
 	@MaxLength(255)
@@ -325,10 +308,12 @@ export class FilterPortfolioProjectDto {
 
 export class GetAllPortfolioDto {
 	@ApiProperty({ type: PageDto })
+	@ValidateNested()
 	@Type(() => PageDto)
 	page: PageDto;
 
 	@ApiProperty({ type: FilterPortfolioProjectDto })
+	@ValidateNested()
 	@Type(() => FilterPortfolioProjectDto)
 	body: FilterPortfolioProjectDto;
 }
