@@ -44,6 +44,11 @@ const envSchema = z
 
 		SURVEY_BASE_URL: z.string().url().optional(),
 
+		AWS_ACCESS_KEY_ID: z.string().optional(),
+		AWS_SECRET_ACCESS_KEY: z.string().optional(),
+		AWS_REGION: z.string().optional(),
+		AWS_BUCKET_NAME: z.string().optional(),
+
 		SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
 		SMTP_PORT: z.string().regex(/^\d+$/, 'SMTP_PORT must be a number'),
 		SMTP_USER: z.string().min(1, 'SMTP_USER is required'),
