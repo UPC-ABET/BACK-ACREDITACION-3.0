@@ -11,7 +11,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 
-const MIN_PART_SIZE = 5 * 1024 * 1024; // 5 MiB — mínimo requerido por S3 para partes intermedias
+const MIN_PART_SIZE = 5 * 1024 * 1024; // 5 MiB — minimum size required by S3 for intermediate parts
 
 @Injectable()
 export class S3Service {
@@ -40,7 +40,7 @@ export class S3Service {
 					ContentType: contentType,
 				}),
 			);
-			this.logger.log(`PUT simple completado: ${key} (${buffer.length} bytes)`);
+			this.logger.log(`Simple PUT completed: ${key} (${buffer.length} bytes)`);
 			return;
 		}
 
@@ -61,7 +61,7 @@ export class S3Service {
 					ContentType: contentType,
 				}),
 			);
-			this.logger.log(`PUT simple completado: ${key} (${body.length} bytes)`);
+			this.logger.log(`Simple PUT completed: ${key} (${body.length} bytes)`);
 			return;
 		}
 
@@ -130,11 +130,11 @@ export class S3Service {
 				}),
 			);
 
-			this.logger.log(`Multipart upload completado: ${key} (${buffer.length} bytes)`);
+			this.logger.log(`Multipart upload completed: ${key} (${buffer.length} bytes)`);
 		} catch (error) {
 			await this.s3
 				.send(new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: key, UploadId }))
-				.catch((e) => this.logger.error('Error abortando multipart upload:', e));
+				.catch((e) => this.logger.error('Failed to abort multipart upload:', e));
 			throw error;
 		}
 	}
@@ -187,11 +187,11 @@ export class S3Service {
 				}),
 			);
 
-			this.logger.log(`Multipart stream upload completado: ${key}`);
+			this.logger.log(`Multipart stream upload completed: ${key}`);
 		} catch (error) {
 			await this.s3
 				.send(new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: key, UploadId }))
-				.catch((e) => this.logger.error('Error abortando multipart upload:', e));
+				.catch((e) => this.logger.error('Failed to abort multipart upload:', e));
 			throw error;
 		}
 	}
