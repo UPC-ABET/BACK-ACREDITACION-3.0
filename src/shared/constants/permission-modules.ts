@@ -22,6 +22,7 @@ export const PERMISSION_MODULES = {
 	RUBRICS: 'RUBRICS',
 	TESTS: 'TESTS',
 	LOADS: 'LOADS',
+	PORTFOLIO: 'PORTFOLIO',
 } as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[keyof typeof PERMISSION_MODULES];
