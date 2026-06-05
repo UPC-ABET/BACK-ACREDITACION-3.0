@@ -58,7 +58,8 @@ runSeed('auth roles and permissions', async (tenantDataSource) => {
 				('TG2001', '{"route":"/organization","module":"ORGANIZATION"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T012', '{"en":"Organization","es":"Organizacion"}'::jsonb),
 				('TG2001', '{"route":"/survey","module":"SURVEY"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T013', '{"en":"Survey","es":"Encuestas"}'::jsonb),
 				('TG2001', '{"route":"/core","module":"CORE"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T014', '{"en":"Core","es":"Nucleo"}'::jsonb),
-				('TG2001', '{"route":"/rubrics","module":"RUBRICS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T015', '{"en":"Rubrics","es":"Rubricas"}'::jsonb)
+				('TG2001', '{"route":"/rubrics","module":"RUBRICS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T015', '{"en":"Rubrics","es":"Rubricas"}'::jsonb),
+				('TG2001', '{"route":"/portfolio","module":"PORTFOLIO"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T016', '{"en":"Portfolio","es":"Portafolio"}'::jsonb)
 		) AS v(type_group_code, extra, is_active, created_at, code, name)
 		JOIN "core"."type_groups" tg ON tg.code = v.type_group_code
 		ON CONFLICT (code) DO UPDATE
