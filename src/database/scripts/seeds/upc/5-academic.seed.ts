@@ -8,7 +8,11 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		JOIN (
 			VALUES
 				('TG102-T001', '202502', '2025-08-15', '2025-12-15'),
-				('TG102-T001', '202601', '2026-09-01', '2026-12-20')
+				('TG102-T001', '202601', '2026-09-01', '2026-12-20'),
+				-- 202602: a second 2026 period (year 2026, starts after 202601). This lets the
+				-- previous_actions "via_action" path surface 202601's actions when viewing/
+				-- prefilling a 202602 IFC (previous period within the same academic year).
+				('TG102-T001', '202602', '2026-12-21', '2027-04-15')
 		) AS v(modality_type_code, code, start_date, end_date)
 			ON t.code = v.modality_type_code
 		WHERE NOT EXISTS (
@@ -264,7 +268,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 				('SP_SOFT26', '202502'),
 				('SP_ADM26', '202601'),
 				('SP_CS_2502', '202502'),
-				('SP_CS_2502', '202601')
+				('SP_CS_2502', '202601'),
+				('SP_CS_2502', '202602')
 		) AS v(study_plan_code, academic_period_code)
 			ON sp.code = v.study_plan_code
 		JOIN "academic"."academic_periods" ap
@@ -301,6 +306,11 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
 				('SP_CS_2502', '202601', 'Bases de Datos', false, 'TG203-T002'),
 				('SP_CS_2502', '202601', 'Ingenieria de Software', false, 'TG203-T003'),
+				-- Same three CS courses in 202602 (the "current" period for the previous_actions
+				-- demo): viewing/prefilling these surfaces 202601's actions as previous actions.
+				('SP_CS_2502', '202602', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
+				('SP_CS_2502', '202602', 'Bases de Datos', false, 'TG203-T002'),
+				('SP_CS_2502', '202602', 'Ingenieria de Software', false, 'TG203-T003'),
 				('SP_ADM26', '202601', 'Gestion Empresarial', false, 'TG203-T001'),
 				('SP_ADM26', '202601', 'Finanzas Corporativas', false, 'TG203-T002'),
 				('SP_ADM26', '202601', 'Marketing Estrategico', false, 'TG203-T003')
@@ -369,6 +379,10 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-1-A', 'CAMPUS_MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
 				('SP_CS_2502', '202601', 'Bases de Datos', 'CS-DB-2026-1-A', 'CAMPUS_MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
 				('SP_CS_2502', '202601', 'Ingenieria de Software', 'CS-SE-2026-1-A', 'CAMPUS_MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				-- CS sections in 202602 (current period for the previous_actions demo).
+				('SP_CS_2502', '202602', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-2-A', 'CAMPUS_MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202602', 'Bases de Datos', 'CS-DB-2026-2-A', 'CAMPUS_MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202602', 'Ingenieria de Software', 'CS-SE-2026-2-A', 'CAMPUS_MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
 				('SP_ADM26', '202601', 'Gestion Empresarial', 'ADM-GEST-2026-1-A', 'CAMPUS_MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"11:00-13:00"}'::jsonb, 'TG103-T001'),
 				('SP_ADM26', '202601', 'Finanzas Corporativas', 'ADM-FIN-2026-1-A', 'CAMPUS_MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"15:00-17:00"}'::jsonb, 'TG103-T001'),
 				('SP_ADM26', '202601', 'Marketing Estrategico', 'ADM-MKT-2026-1-A', 'CAMPUS_MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Friday"],"time":"10:00-13:00"}'::jsonb, 'TG103-T001')
@@ -743,4 +757,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 
 	await seedEiscbChartTree('202502');
 	await seedEiscbChartTree('202601');
+	// 202602 chart tree — required so the IFC HEADER_SQL resolves the course chain for
+	// the CS courses' 202602 IFCs (and for prefill of CC103, which has no 202602 IFC).
+	await seedEiscbChartTree('202602');
 });

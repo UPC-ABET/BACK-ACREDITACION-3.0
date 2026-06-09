@@ -503,6 +503,14 @@ LIMIT 1
 // $1 = course_id, $2 = active_period_id, $3 = exclude_ifc_id (nullable),
 // $4 = action prefix parameter key, $5 = PENDING type code, $6 = IMPLEMENTED type code,
 // $7 = finding prefix parameter key.
+//
+// "Previous actions" surface through two paths, both scoped to the active period's
+// academic year (academic_periods.year = EXTRACT(YEAR FROM start_date)):
+//   - via_plan:   actions belonging to a plan FOR this year. A plan can be created in
+//                 an earlier period yet target the current year, so we match only on the
+//                 plan's year (no start_date < active filter).
+//   - via_action: actions registered against the course in PREVIOUS periods of this same
+//                 year (year = active AND start_date < active).
 export const PREVIOUS_ACTIONS_SQL = `
 WITH active AS (
 	SELECT year, start_date FROM academic.academic_periods WHERE id = $2
@@ -518,7 +526,6 @@ via_plan AS (
 	CROSS JOIN active
 	WHERE f.course_id        = $1
 	  AND plan_ap.year       = active.year
-	  AND plan_ap.start_date < active.start_date
 ),
 via_action AS (
 	SELECT DISTINCT fa.id AS finding_action_id, a.id AS action_id

@@ -71,6 +71,29 @@ runTenantSeed('ifc status module', async (tenantDataSource) => {
 			),
 			'2026-10-02 11:00:00',
 		],
+		// 202602 IFCs (year 2026) — these are where previous_actions (from 202601) show up.
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202602',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n(
+				'IFC guardado por el coordinador para el periodo 2026-2.',
+				'IFC saved by the coordinator for the 2026-2 period.',
+			),
+			'2027-01-10 09:00:00',
+		],
+		[
+			'Bases de Datos',
+			'202602',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n(
+				'Borrador inicial del IFC para el periodo 2026-2.',
+				'Initial IFC draft for the 2026-2 period.',
+			),
+			'2027-01-12 10:00:00',
+		],
 	]
 		.map(
 			([courseName, periodCode, stCode, email, comment, regAt]) =>

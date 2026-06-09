@@ -182,6 +182,53 @@ runTenantSeed('evidence module', async (tenantDataSource) => {
 				},
 			}),
 		],
+		// 202602 (year 2026): CC101 and CC102 get IFCs. Their previous_actions surface the
+		// 202601 CS actions (via_action = previous period this year; via_plan = the 2026 CS
+		// plan). CC103 intentionally stays IFC-less in 202602 to exercise prefill.
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202602',
+			JSON.stringify({
+				infrastructure: {
+					label: { es: 'Infraestructura', en: 'Infrastructure' },
+					value: {
+						es: 'Laboratorio con estaciones de trabajo y pizarra digital.',
+						en: 'Lab with workstations and a digital whiteboard.',
+					},
+					order: 1,
+				},
+				methodology: {
+					label: { es: 'Metodologia', en: 'Methodology' },
+					value: {
+						es: 'Retos algoritmicos semanales con revision entre pares.',
+						en: 'Weekly algorithmic challenges with peer review.',
+					},
+					order: 2,
+				},
+			}),
+		],
+		[
+			'Bases de Datos',
+			'202602',
+			JSON.stringify({
+				infrastructure: {
+					label: { es: 'Infraestructura', en: 'Infrastructure' },
+					value: {
+						es: 'Entorno cloud con instancias gestionadas de PostgreSQL.',
+						en: 'Cloud environment with managed PostgreSQL instances.',
+					},
+					order: 1,
+				},
+				methodology: {
+					label: { es: 'Metodologia', en: 'Methodology' },
+					value: {
+						es: 'Laboratorios guiados sobre datasets institucionales.',
+						en: 'Guided labs on institutional datasets.',
+					},
+					order: 2,
+				},
+			}),
+		],
 	]
 		.map(
 			([courseName, periodCode, info]) =>
