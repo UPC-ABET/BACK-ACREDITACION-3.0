@@ -652,7 +652,7 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			'TG903',
 			'TG903-T003',
 			i18n('Carrera', 'Program'),
-			i18n('Programa / Carrera', 'Program'),
+			i18n('Carrera', 'Program'),
 			'{}',
 		],
 		['TG903', 'TG903-T004', i18n('Area', 'Area'), i18n('Area academica', 'Academic area'), '{}'],
