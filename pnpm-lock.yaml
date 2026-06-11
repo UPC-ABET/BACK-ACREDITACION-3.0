@@ -7183,8 +7183,6 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-      - supports-color
-
   prelude-ls@1.2.1: {}
 
   prettier@3.8.3: {}
