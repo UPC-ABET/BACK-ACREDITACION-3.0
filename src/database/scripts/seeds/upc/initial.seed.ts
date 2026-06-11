@@ -11,14 +11,14 @@ import { loadOrganization } from './3-organization.seed';
  *   - core type-group + type catalog (1-load-types)
  *   - core institutional parameters (2-core)
  *   - organization: campuses, faculties, schools (3-organization)
- *   - academic: the production program (carrera) catalog
+ *   - academic: the production program (carrera) catalog + active academic periods
  *   - accreditation: the production accreditor and commission catalog
  *   - auth: the four roles, the full permission/module type catalog, and the ADMIN
  *           role granted every module x permission
  *
- * Intentionally excluded (demo/fixture data, not PROD): demo users & staff, academic
- * periods, program<->commission links, granting ADMIN to every user, and resetting
- * passwords. Operational data arrives later via the bulk upload process.
+ * Intentionally excluded (demo/fixture data, not PROD): demo users & staff,
+ * program<->commission links, granting ADMIN to every user, and resetting passwords.
+ * Operational data arrives later via the bulk upload process.
  *
  * Run:  npm run seed:initial <schema>
  */
@@ -163,6 +163,40 @@ async function loadPrograms(tenantDataSource: DataSource) {
 	`);
 }
 
+async function loadAcademicPeriods(tenantDataSource: DataSource) {
+	const REGULAR = 'TG102-T001';
+	const EPE = 'TG102-T002';
+
+	// start/end default to the institutional academic window from 2-core
+	// (PARAMETER_ACADEMIC_START_DATE / _END_DATE) for 2026. The `year` column is a
+	// STORED generated value derived from start_date.
+	const periodRows: Array<[string, string, string, string]> = [
+		[REGULAR, '202610', '2026-03-18', '2026-07-20'],
+		[EPE, '202615', '2026-03-18', '2026-07-20'],
+	];
+
+	const periodValues = periodRows
+		.map(
+			([modality, code, startDate, endDate]) =>
+				`('${modality}', '${code}', '${startDate}', '${endDate}')`,
+		)
+		.join(',\n\t\t\t');
+
+	await tenantDataSource.query(`
+		INSERT INTO "academic"."academic_periods" (modality_type_id, code, start_date, end_date)
+		SELECT t.id, v.code, v.start_date::timestamptz, v.end_date::timestamptz
+		FROM "core"."types" t
+		JOIN (
+			VALUES
+				${periodValues}
+		) AS v(modality_type_code, code, start_date, end_date)
+			ON t.code = v.modality_type_code
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "academic"."academic_periods" ap WHERE ap.code = v.code
+		);
+	`);
+}
+
 async function loadAccreditation(tenantDataSource: DataSource) {
 	const accreditorRows: Array<[string, string]> = [
 		[
@@ -228,6 +262,7 @@ runTenantSeed('initial PROD baseline', async (tenantDataSource) => {
 	await loadCoreParameters(tenantDataSource);
 	await loadOrganization(tenantDataSource);
 	await loadPrograms(tenantDataSource);
+	await loadAcademicPeriods(tenantDataSource);
 	await loadAccreditation(tenantDataSource);
 	await loadAuthRolesAndPermissions(tenantDataSource);
 });
