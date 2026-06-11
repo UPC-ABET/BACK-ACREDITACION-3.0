@@ -35,6 +35,7 @@ import {
 } from '../model/gra.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
+import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 
 @SwaggerGraController()
 export class GraController {
@@ -107,19 +108,19 @@ export class GraController {
 	}
 
 	@SwaggerGraTokenValidate()
-	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	@Public()
 	async tokenValidate(@Param('token') token: string) {
 		return parseSuccessResponse(await this.graService.validateToken(token));
 	}
 
 	@SwaggerGraSurveyGetByToken()
-	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	@Public()
 	async surveyGetByToken(@Body() dto: GetSurveyByTokenDto) {
 		return parseSuccessResponse(await this.graService.getSurveyByToken(dto));
 	}
 
 	@SwaggerGraSurveyComplete()
-	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	@Public()
 	async surveyComplete(@Body() dto: CompleteGraSurveyDto) {
 		return parseSuccessResponse(await this.graService.completeSurvey(dto));
 	}
