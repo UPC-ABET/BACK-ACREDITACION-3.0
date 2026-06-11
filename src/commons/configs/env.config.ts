@@ -46,11 +46,13 @@ const envSchema = z
 
 		SURVEY_BASE_URL: z.string().url().optional(),
 
-		SMTP_HOST: z.string().optional(),
-		SMTP_PORT: z.string().regex(/^\d+$/, 'SMTP_PORT must be a number').optional(),
-		SMTP_USER: z.string().optional(),
-		SMTP_PASS: z.string().optional(),
-		SMTP_FROM: z.string().optional(),
+		SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
+		SMTP_PORT: z.string().regex(/^\d+$/, 'SMTP_PORT must be a number'),
+		SMTP_USER: z.string().min(1, 'SMTP_USER is required'),
+		SMTP_PASS: z.string().min(1, 'SMTP_PASS is required'),
+		SMTP_FROM: z.string().email('SMTP_FROM must be a valid email'),
+		SMTP_SECURE: z.enum(['true', 'false']).optional(),
+		SMTP_REQUIRE_TLS: z.enum(['true', 'false']).optional(),
 
 		PUPPETEER_EXECUTABLE_PATH: z.string().optional(),
 	})
