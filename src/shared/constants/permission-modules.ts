@@ -21,6 +21,7 @@ export const PERMISSION_MODULES = {
 	IFC_FINDINGS: 'IFC_FINDINGS',
 	RUBRICS: 'RUBRICS',
 	TESTS: 'TESTS',
+	LOADS: 'LOADS',
 } as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[keyof typeof PERMISSION_MODULES];
