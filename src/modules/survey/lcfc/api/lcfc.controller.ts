@@ -24,6 +24,7 @@ import {
 } from '../model/lcfc.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
+import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 
 @SwaggerLcfcController()
 export class LcfcController {
@@ -60,19 +61,19 @@ export class LcfcController {
 	}
 
 	@SwaggerLcfcTokenValidate()
-	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	@Public()
 	async tokenValidate(@Param('token') token: string) {
 		return parseSuccessResponse(await this.lcfcService.validateToken(token));
 	}
 
 	@SwaggerLcfcSurveyGetByToken()
-	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	@Public()
 	async surveyGetByToken(@Body() dto: GetLcfcSurveyByTokenDto) {
 		return parseSuccessResponse(await this.lcfcService.getSurveyByToken(dto));
 	}
 
 	@SwaggerLcfcSurveyComplete()
-	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	@Public()
 	async surveyComplete(@Body() dto: CompleteLcfcSurveyDto) {
 		return parseSuccessResponse(await this.lcfcService.completeSurvey(dto));
 	}
