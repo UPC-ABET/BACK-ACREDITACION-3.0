@@ -12,9 +12,9 @@ on:
         default: "migration:run"
         options:
           - "migration:run"
-          - "migrate:all"
           - "migration:revert"
           - "seed:initial"
+          - "seed:all"
 
 env:
   IMAGE: ghcr.io/upc-abet/back-acreditacion-3.0
@@ -58,9 +58,10 @@ jobs:
             set -e
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             docker pull ghcr.io/upc-abet/back-acreditacion-3.0:migrator
+            CMD="${{ inputs.command }}"
             docker run --rm \
               --env-file /var/www/apps/sys_acc_back/.env \
               --add-host host.docker.internal:host-gateway \
               ghcr.io/upc-abet/back-acreditacion-3.0:migrator \
-              pnpm ${{ inputs.command }}
+              pnpm $CMD
             docker logout ghcr.io

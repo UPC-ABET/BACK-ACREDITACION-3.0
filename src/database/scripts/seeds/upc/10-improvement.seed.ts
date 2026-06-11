@@ -1,6 +1,6 @@
-﻿import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('improvement module', async (tenantDataSource) => {
+runSeed('improvement module', async (tenantDataSource) => {
 	const actionValues = [
 		[
 			i18n(
