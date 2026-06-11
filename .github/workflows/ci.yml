@@ -33,7 +33,7 @@ jobs:
         run: pnpm lint
 
       - name: Test
-        run: pnpm test -- --passWithNoTests --ci
+        run: pnpm exec jest --ci --passWithNoTests
 
       - name: Build
         run: pnpm build
