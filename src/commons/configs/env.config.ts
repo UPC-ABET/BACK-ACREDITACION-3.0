@@ -44,10 +44,6 @@ const envSchema = z
 		MICROSOFT_BASE_URL: z.string().url().optional(),
 		URL_REDIRECT: z.string().url().optional(),
 
-		POSTMARK_API_KEY: z.string().min(1, 'POSTMARK_API_KEY is required'),
-		POSTMARK_FROM_EMAIL: z.string().min(1, 'POSTMARK_FROM_EMAIL is required'),
-		POSTMARK_MESSAGE_STREAM: z.string().optional(),
-
 		SURVEY_BASE_URL: z.string().url().optional(),
 
 		SMTP_HOST: z.string().optional(),
