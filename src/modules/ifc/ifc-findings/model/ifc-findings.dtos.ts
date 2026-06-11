@@ -7,7 +7,6 @@ import {
 	IsNumber,
 	IsObject,
 	IsOptional,
-	IsPositive,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';

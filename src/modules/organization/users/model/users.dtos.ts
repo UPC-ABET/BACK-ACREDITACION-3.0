@@ -2,11 +2,9 @@
 import {
 	IsBoolean,
 	IsEmail,
-	IsInt,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
-	IsPositive,
 	IsString,
 	Length,
 	MaxLength,

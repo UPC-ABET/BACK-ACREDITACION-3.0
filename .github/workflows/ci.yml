@@ -1,0 +1,39 @@
+name: CI
+
+# Runs on PRs and pushes to develop, AND is callable by the deploy
+# workflow (workflow_call) so deploy only proceeds when CI is green.
+on:
+  pull_request:
+  push:
+    branches: [develop]
+  workflow_call:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test -- --passWithNoTests --ci
+
+      - name: Build
+        run: pnpm build

@@ -1,6 +1,7 @@
+import { DataSource } from 'typeorm';
 import { runTenantSeed, i18n } from '../seed-runner';
 
-runTenantSeed('core module', async (tenantDataSource) => {
+export async function loadCoreParameters(tenantDataSource: DataSource) {
 	const baseParams: Array<[string, string, string, string]> = [
 		[
 			'PARAMETER_ACADEMIC_START_DATE',
@@ -103,4 +104,8 @@ runTenantSeed('core module', async (tenantDataSource) => {
 		) AS v(code, name, description, value)
 		WHERE NOT EXISTS (SELECT 1 FROM "core"."parameters" p WHERE p.code = v.code);
 	`);
-});
+}
+
+if (require.main === module) {
+	runTenantSeed('core module', loadCoreParameters);
+}

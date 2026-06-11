@@ -1,11 +1,28 @@
+import { DataSource } from 'typeorm';
 import { runTenantSeed, i18n } from '../seed-runner';
-import { hashPassword } from 'src/libs/secure.functions';
+import { loadTypes } from './1-load-types';
+import { loadCoreParameters } from './2-core.seed';
+import { loadOrganization } from './3-organization.seed';
 
-// Initial baseline auth: create all roles, the full module/permission type catalog,
-// grant ADMIN every module x permission, assign ADMIN to every user, and reset every
-// user's password to "ABET2020" (folds in the behaviour of the local reset-admin helper).
-runTenantSeed('initial auth roles and permissions', async (tenantDataSource) => {
-	// 1. Roles (all four).
+/*
+ * initial — single, self-contained PROD baseline seed.
+ *
+ * Seeds only the structural data needed to stand up a production tenant:
+ *   - core type-group + type catalog (1-load-types)
+ *   - core institutional parameters (2-core)
+ *   - organization: campuses, faculties, schools (3-organization)
+ *   - academic: the production program (carrera) catalog
+ *   - accreditation: the production accreditor and commission catalog
+ *   - auth: the four roles, the full permission/module type catalog, and the ADMIN
+ *           role granted every module x permission
+ *
+ * Intentionally excluded (demo/fixture data, not PROD): demo users & staff, academic
+ * periods, program<->commission links, granting ADMIN to every user, and resetting
+ * passwords. Operational data arrives later via the bulk upload process.
+ *
+ * Run:  npm run seed:initial <schema>
+ */
+async function loadAuthRolesAndPermissions(tenantDataSource: DataSource) {
 	await tenantDataSource.query(`
 		INSERT INTO "core"."roles" (id, name, code, description, is_active, created_at, updated_at)
 		VALUES
@@ -25,7 +42,6 @@ runTenantSeed('initial auth roles and permissions', async (tenantDataSource) => 
 		`SELECT setval(pg_get_serial_sequence('"core"."roles"', 'id'), GREATEST((SELECT MAX(id) FROM "core"."roles"), 1), true)`,
 	);
 
-	// 2. Permission (TG2000) and module (TG2001) type groups.
 	await tenantDataSource.query(`
 		INSERT INTO "core"."type_groups" (extra, is_active, created_at, updated_at, code, name, description)
 		VALUES
@@ -40,7 +56,6 @@ runTenantSeed('initial auth roles and permissions', async (tenantDataSource) => 
 			updated_at = now();
 	`);
 
-	// 3. Permission + module types (full catalog, including the LOADS module).
 	await tenantDataSource.query(`
 		INSERT INTO "core"."types" (extra, is_active, created_at, updated_at, type_group_id, code, name, description)
 		SELECT v.extra, v.is_active, v.created_at::timestamptz, NULL, tg.id, v.code, v.name, NULL
@@ -79,7 +94,6 @@ runTenantSeed('initial auth roles and permissions', async (tenantDataSource) => 
 			updated_at = now();
 	`);
 
-	// 4. ADMIN gets every module x permission.
 	await tenantDataSource.query(`
 		INSERT INTO "core"."role_module_permissions" (role_id, module_type_id, permission_type_id, is_active)
 		SELECT r.id, mt.id, pt.id, true
@@ -92,22 +106,128 @@ runTenantSeed('initial auth roles and permissions', async (tenantDataSource) => 
 		ON CONFLICT (role_id, module_type_id, permission_type_id) DO UPDATE
 		SET is_active = true, updated_at = now();
 	`);
+}
 
-	// 5. Assign ADMIN to every user.
+async function loadPrograms(tenantDataSource: DataSource) {
+	const REGULAR = 'TG102-T001';
+	const EPE = 'TG102-T002';
+	const bachelor = i18n('Bachiller', 'Bachelor');
+
+	const programRows: Array<[string, string, string]> = [
+		[REGULAR, 'IGE', i18n('Ingenieria Gestion Empresarial', 'Business Management Engineering')],
+		[REGULAR, 'IGM', i18n('Ingenieria Gestion Minera', 'Mining Management Engineering')],
+		[REGULAR, 'IA', i18n('Ingenieria Ambiental', 'Environmental Engineering')],
+		[REGULAR, 'BIO', i18n('Ingenieria Biomedica', 'Biomedical Engineering')],
+		[
+			REGULAR,
+			'SI',
+			i18n('Ingenieria de Sistemas de Informacion', 'Information Systems Engineering'),
+		],
+		[EPE, 'IS', i18n('Ingenieria de Sistemas', 'Systems Engineering')],
+		[REGULAR, 'CB', i18n('Ingenieria de Ciberseguridad', 'Cybersecurity Engineering')],
+		[REGULAR, 'CC', i18n('Ciencias de la Computacion', 'Computer Science')],
+		[REGULAR, 'SW', i18n('Ingenieria de Software', 'Software Engineering')],
+		[
+			REGULAR,
+			'IIA',
+			i18n('Ingenieria Inteligencia Artificial', 'Artificial Intelligence Engineering'),
+		],
+		[REGULAR, 'ELE', i18n('Ingenieria Electronica', 'Electronics Engineering')],
+		[REGULAR, 'MEC', i18n('Ingenieria Mecatronica', 'Mechatronics Engineering')],
+		[EPE, 'RED', i18n('Redes', 'Networks')],
+		[REGULAR, 'INDAC', i18n('Ingenieria Industrial', 'Industrial Engineering')],
+		[EPE, 'INDFC', i18n('Ingenieria Industrial', 'Industrial Engineering')],
+		[REGULAR, 'CIVAC', i18n('Ingenieria Civil', 'Civil Engineering')],
+		[EPE, 'CIVFC', i18n('Ingenieria Civil', 'Civil Engineering')],
+	];
+
+	const programValues = programRows
+		.map(
+			([modality, code, name]) =>
+				`('${modality}', '${code}', '${name}'::jsonb, '${bachelor}'::jsonb)`,
+		)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
-		INSERT INTO "core"."user_roles" (user_id, role_id, is_active)
-		SELECT u.id, r.id, true
-		FROM "organization"."users" u
-		CROSS JOIN "core"."roles" r
-		WHERE r.code = 'ADMIN'
-		ON CONFLICT (user_id, role_id) DO UPDATE
-		SET is_active = true, updated_at = now();
+		INSERT INTO "academic"."programs" (modality_type_id, code, name, degree)
+		SELECT t.id, v.code, v.name, v.degree
+		FROM "core"."types" t
+		JOIN (
+			VALUES
+				${programValues}
+		) AS v(modality_type_code, code, name, degree)
+			ON t.code = v.modality_type_code
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "academic"."programs" p WHERE p.code = v.code
+		);
+	`);
+}
+
+async function loadAccreditation(tenantDataSource: DataSource) {
+	const accreditorRows: Array<[string, string]> = [
+		[
+			'ABET',
+			i18n(
+				'Junta de Acreditacion para Ingenieria y Tecnologia',
+				'Accreditation Board for Engineering and Technology',
+			),
+		],
+		[
+			'WASC',
+			i18n(
+				'Asociacion Occidental de Escuelas y Universidades',
+				'Western Association of Schools and Colleges',
+			),
+		],
+	];
+
+	const accreditorValues = accreditorRows
+		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
+	await tenantDataSource.query(`
+		INSERT INTO "accreditation"."accreditors" (code, name)
+		SELECT v.code, v.name
+		FROM (
+			VALUES
+				${accreditorValues}
+		) AS v(code, name)
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "accreditation"."accreditors" a WHERE a.code = v.code
+		);
 	`);
 
-	// 6. Reset every user's password to "ABET2020".
-	const password = await hashPassword('ABET2020');
-	await tenantDataSource.query(
-		`UPDATE "organization"."users" SET password = $1, updated_at = now()`,
-		[password],
-	);
+	const commissionRows: Array<[string, string, string]> = [
+		['ABET', 'EAC', i18n('EAC', 'EAC')],
+		['ABET', 'CAC', i18n('CAC', 'CAC')],
+		['ABET', 'ICT', i18n('ICT', 'ICT')],
+		['WASC', 'WASC', i18n('WASC', 'WASC')],
+	];
+
+	const commissionValues = commissionRows
+		.map(([accreditorCode, code, name]) => `('${accreditorCode}', '${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
+	await tenantDataSource.query(`
+		INSERT INTO "accreditation"."commissions" (accreditor_id, code, name)
+		SELECT accreditor.id, v.code, v.name
+		FROM "accreditation"."accreditors" accreditor
+		JOIN (
+			VALUES
+				${commissionValues}
+		) AS v(accreditor_code, code, name)
+			ON accreditor.code = v.accreditor_code
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "accreditation"."commissions" c WHERE c.code = v.code
+		);
+	`);
+}
+
+runTenantSeed('initial PROD baseline', async (tenantDataSource) => {
+	await loadTypes(tenantDataSource);
+	await loadCoreParameters(tenantDataSource);
+	await loadOrganization(tenantDataSource);
+	await loadPrograms(tenantDataSource);
+	await loadAccreditation(tenantDataSource);
+	await loadAuthRolesAndPermissions(tenantDataSource);
 });

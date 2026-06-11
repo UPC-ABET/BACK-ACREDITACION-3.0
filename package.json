@@ -25,7 +25,7 @@
 		"migrate:tenant": "ts-node -r tsconfig-paths/register src/database/scripts/migrate-tenant.ts",
 		"migrate:all": "ts-node -r tsconfig-paths/register src/database/scripts/migrate-all-tenants.ts",
 		"seed:tenant": "ts-node -r tsconfig-paths/register src/database/scripts/seed-all-tenants.ts",
-		"seed:initial": "ts-node -r tsconfig-paths/register src/database/scripts/seed-initial.ts",
+		"seed:initial": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/initial.seed.ts",
 		"seed:types": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/1-load-types.ts",
 		"seed:core": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/2-core.seed.ts",
 		"seed:organization": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/3-organization.seed.ts",

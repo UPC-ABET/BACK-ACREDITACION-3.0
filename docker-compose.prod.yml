@@ -1,0 +1,23 @@
+# ABET Backend — production compose (image pulled from GHCR).
+# Runtime secrets come from the server-side .env next to this file.
+# Postgres runs on the HOST (see startup-abet script), reached via host-gateway.
+
+services:
+  sys_acc_back:
+    image: ghcr.io/upc-abet/back-acreditacion-3.0:latest
+    container_name: sys_acc_back
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      # Exposed only on localhost; Nginx reverse-proxies to it.
+      - "127.0.0.1:7777:7777"
+    extra_hosts:
+      # Lets the container reach the host's PostgreSQL via host.docker.internal
+      - "host.docker.internal:host-gateway"
+    networks:
+      - sys_acc_web
+
+networks:
+  sys_acc_web:
+    external: true

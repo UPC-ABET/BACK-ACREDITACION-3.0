@@ -1,6 +1,7 @@
+import { DataSource } from 'typeorm';
 import { runTenantSeed, i18n } from '../seed-runner';
 
-runTenantSeed('core type catalogs', async (tenantDataSource) => {
+export async function loadTypes(tenantDataSource: DataSource) {
 	const typeGroupRows: Array<[string, string, string]> = [
 		[
 			'TG101',
@@ -648,13 +649,7 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 			i18n('Escuela / Facultad', 'School / Faculty'),
 			'{}',
 		],
-		[
-			'TG903',
-			'TG903-T003',
-			i18n('Carrera', 'Program'),
-			i18n('Carrera', 'Program'),
-			'{}',
-		],
+		['TG903', 'TG903-T003', i18n('Carrera', 'Program'), i18n('Carrera', 'Program'), '{}'],
 		['TG903', 'TG903-T004', i18n('Area', 'Area'), i18n('Area academica', 'Academic area'), '{}'],
 		[
 			'TG903',
@@ -845,4 +840,8 @@ runTenantSeed('core type catalogs', async (tenantDataSource) => {
 		) AS v(code, patch)
 		WHERE t.code = v.code;
 	`);
-});
+}
+
+if (require.main === module) {
+	runTenantSeed('core type catalogs', loadTypes);
+}

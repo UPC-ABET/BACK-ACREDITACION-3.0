@@ -693,7 +693,7 @@ BEGIN
 			RETURN QUERY SELECT r.row_number, 'courseNameEmpty'::text, NULL::integer;
 		END IF;
 
-		IF r.level IS NULL OR r.level !~ '^\d+$' OR NOT EXISTS (
+		IF r.level IS NULL OR r.level !~ '^\\d+$' OR NOT EXISTS (
 			SELECT 1 FROM core.types t
 			JOIN core.type_groups g ON g.id = t.type_group_id
 			WHERE g.code = 'TG203' AND (t.extra->>'level')::int = r.level::int
