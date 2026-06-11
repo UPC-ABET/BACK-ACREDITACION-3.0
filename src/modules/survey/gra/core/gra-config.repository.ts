@@ -26,18 +26,18 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
-			.where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+			.where(`oc.extra->>'surveyType' = :type`, { type: GRA_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
+			qb.andWhere(`(oc.extra->>'programId')::int = :programId`, { programId: filters.programId });
 		}
 		if (filters?.academicPeriodId !== undefined) {
-			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+			qb.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
 				periodId: filters.academicPeriodId,
 			});
 		}
 		if (filters?.commissionId !== undefined) {
-			qb.andWhere(`(oc.extra->>'commission_id')::int = :commissionId`, {
+			qb.andWhere(`(oc.extra->>'commissionId')::int = :commissionId`, {
 				commissionId: filters.commissionId,
 			});
 		}
@@ -45,7 +45,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			qb.andWhere('oc.is_active = :isActive', { isActive: filters.isActive });
 		}
 		if (filters?.isVisible !== undefined) {
-			qb.andWhere(`(oc.extra->>'is_visible')::boolean = :isVisible`, {
+			qb.andWhere(`(oc.extra->>'isVisible')::boolean = :isVisible`, {
 				isVisible: filters.isVisible,
 			});
 		}
@@ -60,7 +60,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
 			.where('oc.id = :id', { id })
-			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE })
+			.andWhere(`oc.extra->>'surveyType' = :type`, { type: GRA_SURVEY_TYPE })
 			.getOne();
 	}
 
@@ -72,13 +72,13 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.where('oc.outcome_id = :outcomeId', { outcomeId })
-			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+			.andWhere(`oc.extra->>'surveyType' = :type`, { type: GRA_SURVEY_TYPE });
 
 		if (programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
+			qb.andWhere(`(oc.extra->>'programId')::int = :programId`, { programId: programId });
 		}
 		if (academicPeriodId !== undefined) {
-			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+			qb.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
 				periodId: academicPeriodId,
 			});
 		}
@@ -101,7 +101,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return await this.dataSource.query(
 			`SELECT
 				pc.id         AS "programCommissionId",
-				pc.commission_id AS "commissionId",
+				pc.commissionId AS "commissionId",
 				c.name        AS "commissionName",
 				o.id          AS "outcomeId",
 				o.outcome_code AS "outcomeCode",
@@ -113,7 +113,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			WHERE pc.program_id = $1
 			  AND pc.academic_period_id = $2
 			  AND o.is_active = true
-			ORDER BY pc.commission_id, o.outcome_code`,
+			ORDER BY pc.commissionId, o.outcome_code`,
 			[programId, academicPeriodId],
 		);
 	}
