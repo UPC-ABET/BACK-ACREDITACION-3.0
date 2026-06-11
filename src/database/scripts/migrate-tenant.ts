@@ -4,11 +4,16 @@ async function run() {
 	const tenant = process.argv[2];
 
 	if (!tenant) {
-		console.error('Debe indicar el schema');
+		console.error('Schema required: npm run migrate:tenant <schema>');
 		process.exit(1);
 	}
 
-	console.log(`Migrando schema: ${tenant}`);
+	if (!process.env.DB_HOST || !process.env.DB_NAME) {
+		console.error('Missing required env vars: DB_HOST, DB_NAME');
+		process.exit(1);
+	}
+
+	console.log(`Migrating schema: ${tenant}`);
 
 	const tenantDataSource = baseDataSource.setOptions({
 		entities: ['src/**/*.entity.ts'],
@@ -19,14 +24,13 @@ async function run() {
 	await tenantDataSource.initialize();
 
 	await tenantDataSource.query(`CREATE SCHEMA IF NOT EXISTS "${tenant}"`);
-	// 2️⃣ Forzar el search_path REAL
 	await tenantDataSource.query(`SET search_path TO "${tenant}"`);
 
 	await tenantDataSource.runMigrations();
 
 	await tenantDataSource.destroy();
 
-	console.log('Migración completada.');
+	console.log('Migration completed.');
 }
 
 void run();

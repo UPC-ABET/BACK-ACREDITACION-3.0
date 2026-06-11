@@ -6,21 +6,21 @@ import { IfcEntity } from 'src/modules/evidence/ifcs/model/ifcs.entity';
 
 @Entity({ name: 'ifc_findings', schema: 'ifc' })
 export class IfcFindingEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	ifc_id: number;
+	ifcId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	finding_id: number;
+	findingId: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
-	@JoinColumn({ name: 'ifc_id' })
+	@JoinColumn({ name: 'ifc_id', foreignKeyConstraintName: 'FK_ifc_findings_ifc_id' })
 	ifc: IfcEntity;
 
 	@ManyToOne(() => FindingEntity)
-	@JoinColumn({ name: 'finding_id' })
+	@JoinColumn({ name: 'finding_id', foreignKeyConstraintName: 'FK_ifc_findings_finding_id' })
 	finding: FindingEntity;
 }

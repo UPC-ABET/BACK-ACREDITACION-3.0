@@ -1,5 +1,5 @@
 export const performanceLevelsRoutes = {
-	performance_levels: {
+	performanceLevels: {
 		route: 'performance-levels',
 		tag: 'Niveles de desempeño',
 		operation: {
@@ -8,7 +8,11 @@ export const performanceLevelsRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar nivel de desempeño' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar niveles de desempeño' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener nivel de desempeño' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar niveles de desempeño' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar niveles de desempeño',
+			},
 		},
 	},
 };

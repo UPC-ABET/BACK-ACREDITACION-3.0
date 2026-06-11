@@ -27,6 +27,38 @@ export class AcademicPeriodValidation {
 		}
 	}
 
+	static async validateOpen(
+		repo: AcademicPeriodRepository,
+		data: any,
+		validModalityTypeIds: Array<number>,
+	) {
+		if (!validModalityTypeIds.includes(data.modalityTypeId)) {
+			throw new HttpException(
+				{
+					message: academicPeriodsValidationStrings.result.createFailed,
+					errors: [academicPeriodsValidationStrings.error.modalityInvalid],
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
+		await this.validateCreate(repo, data);
+	}
+
+	static async validateActivate(repo: AcademicPeriodRepository, id: number) {
+		const entity = await repo.findOneById(id);
+		if (!entity) {
+			throw new HttpException(
+				{
+					message: academicPeriodsValidationStrings.result.activateFailed,
+					errors: [academicPeriodsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+		return entity;
+	}
+
 	static async validateUpdate(repo: AcademicPeriodRepository, id: number, data: any) {
 		const errors: Array<string> = [];
 

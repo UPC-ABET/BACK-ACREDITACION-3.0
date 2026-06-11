@@ -1,33 +1,97 @@
-import { runTenantSeed } from '../seed-runner';
+import { DataSource } from 'typeorm';
+import { runTenantSeed, i18n } from '../seed-runner';
 
-runTenantSeed('organization base module', async (tenantDataSource) => {
+export async function loadOrganization(tenantDataSource: DataSource) {
+	const campusValues = [
+		['MON', i18n('Campus Monterrico', 'Monterrico Campus')],
+		['SI', i18n('Campus San Isidro', 'San Isidro Campus')],
+		['VILLA', i18n('Campus Villa', 'Villa Campus')],
+		['SM', i18n('Campus San Miguel', 'San Miguel Campus')],
+	]
+		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."campuses" (code, name)
 		SELECT v.code, v.name
 		FROM (
 			VALUES
-				('CAMPUS_MON', 'Campus Monterrico'),
-				('CAMPUS_SI', 'Campus San Isidro'),
-				('CAMPUS_VILLA', 'Campus Villa')
+				${campusValues}
 		) AS v(code, name)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."campuses" c WHERE c.code = v.code
 		);
 	`);
 
+	const facultyValues = [
+		['ING', i18n('Facultad de Ingenieria', 'Faculty of Engineering')],
+		['NEG', i18n('Facultad de Negocios', 'Faculty of Business')],
+		['COM', i18n('Facultad de Comunicaciones', 'Faculty of Communications')],
+	]
+		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."faculties" (code, name)
 		SELECT v.code, v.name
 		FROM (
 			VALUES
-				('FAC_ING', 'Facultad de Ingenieria'),
-				('FAC_NEG', 'Facultad de Negocios'),
-				('FAC_COM', 'Facultad de Comunicaciones')
+				${facultyValues}
 		) AS v(code, name)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."faculties" f WHERE f.code = v.code
 		);
 	`);
+
+	const schoolValues = [
+		[
+			'ING',
+			'EISCB',
+			i18n(
+				'Escuela de Ingenieria de Sistemas y Ciberseguridad',
+				'School of Systems and Cybersecurity Engineering',
+			),
+		],
+		[
+			'ING',
+			'EISCC',
+			i18n(
+				'Escuela de Ingenieria de Software y Ciencias de la Computacion',
+				'School of Software Engineering and Computer Science',
+			),
+		],
+		[
+			'ING',
+			'ESCEL',
+			i18n(
+				'Escuela de Ingenieria Electronica, Mecatronica y Redes',
+				'School of Electronics, Mechatronics and Networks Engineering',
+			),
+		],
+		[
+			'ING',
+			'INGAMB',
+			i18n('Escuela de Ingenieria Ambiental', 'School of Environmental Engineering'),
+		],
+		['ING', 'INGBIO', i18n('Escuela de Ingenieria Biomedica', 'School of Biomedical Engineering')],
+		['ING', 'INGCIV', i18n('Escuela de Ingenieria Civil', 'School of Civil Engineering')],
+		[
+			'ING',
+			'INGGMI',
+			i18n('Escuela de Ingenieria de Gestion Minera', 'School of Mining Management Engineering'),
+		],
+		[
+			'ING',
+			'INGGEM',
+			i18n(
+				'Escuela de Ingenieria de Gestion Empresarial',
+				'School of Business Management Engineering',
+			),
+		],
+		['ING', 'INGIND', i18n('Escuela de Ingenieria Industrial', 'School of Industrial Engineering')],
+	]
+		.map(([facultyCode, code, name]) => `('${facultyCode}', '${code}', '${name}'::jsonb)`)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "organization"."schools" (faculty_id, code, name)
@@ -35,31 +99,15 @@ runTenantSeed('organization base module', async (tenantDataSource) => {
 		FROM "organization"."faculties" f
 		JOIN (
 			VALUES
-				('FAC_ING', 'SCH_SOFT', 'Escuela de Ingenieria de Software'),
-				('FAC_ING', 'SCH_SIST', 'Escuela de Ingenieria de Sistemas'),
-				('FAC_NEG', 'SCH_ADMIN', 'Escuela de Administracion')
+				${schoolValues}
 		) AS v(faculty_code, code, name)
 			ON f.code = v.faculty_code
 		WHERE NOT EXISTS (
 			SELECT 1 FROM "organization"."schools" s WHERE s.code = v.code
 		);
 	`);
+}
 
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."chart_levels" (level, level_type_id)
-		SELECT v.level, t.id
-		FROM "core"."types" t
-		JOIN (
-			VALUES
-				(1, 'TG902-T001'),
-				(2, 'TG902-T002'),
-				(3, 'TG902-T003')
-		) AS v(level, level_type_code)
-			ON t.code = v.level_type_code
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM "organization"."chart_levels" cl
-			WHERE cl.level = v.level AND cl.level_type_id = t.id
-		);
-	`);
-});
+if (require.main === module) {
+	runTenantSeed('organization base module', loadOrganization);
+}

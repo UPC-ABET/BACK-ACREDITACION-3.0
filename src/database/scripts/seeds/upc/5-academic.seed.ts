@@ -1,14 +1,18 @@
-import { runTenantSeed } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('academic module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."academic_periods" (modality_type_Id, code, start_date, end_date)
+		INSERT INTO "academic"."academic_periods" ("modality_type_id", code, start_date, end_date)
 		SELECT t.id, v.code, v.start_date::timestamptz, v.end_date::timestamptz
 		FROM "core"."types" t
 		JOIN (
 			VALUES
-				('TG103-T001', 'AP_2026_1', '2026-03-18', '2026-07-20'),
-				('TG103-T001', 'AP_2026_2', '2026-08-17', '2026-12-18')
+				('TG102-T001', '202502', '2025-08-15', '2025-12-15'),
+				('TG102-T001', '202601', '2026-09-01', '2026-12-20'),
+				-- 202602: a second 2026 period (year 2026, starts after 202601). This lets the
+				-- previous_actions "via_action" path surface 202601's actions when viewing/
+				-- prefilling a 202602 IFC (previous period within the same academic year).
+				('TG102-T001', '202602', '2026-12-21', '2027-04-15')
 		) AS v(modality_type_code, code, start_date, end_date)
 			ON t.code = v.modality_type_code
 		WHERE NOT EXISTS (
@@ -16,15 +20,45 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const programValues = [
+		[
+			'TG102-T001',
+			'PROG_SOFT',
+			i18n('Ingenieria de Software', 'Software Engineering'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+		[
+			'TG102-T001',
+			'PROG_SIST',
+			i18n('Ingenieria de Sistemas', 'Systems Engineering'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+		[
+			'TG102-T001',
+			'PROG_ADMIN',
+			i18n('Administracion de Empresas', 'Business Administration'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+		[
+			'TG102-T001',
+			'CS',
+			i18n('Ciencias de la Computacion', 'Computer Science'),
+			i18n('Bachiller', 'Bachelor'),
+		],
+	]
+		.map(
+			([modality, code, name, degree]) =>
+				`('${modality}', '${code}', '${name}'::jsonb, '${degree}'::jsonb)`,
+		)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."programs" (modality_type_id, code, name, degree)
 		SELECT t.id, v.code, v.name, v.degree
 		FROM "core"."types" t
 		JOIN (
 			VALUES
-				('TG103-T001', 'PROG_SOFT', 'Ingenieria de Software', 'Bachiller'),
-				('TG103-T001', 'PROG_SIST', 'Ingenieria de Sistemas', 'Bachiller'),
-				('TG103-T002', 'PROG_ADMIN', 'Administracion de Empresas', 'Bachiller')
+				${programValues}
 		) AS v(modality_type_code, code, name, degree)
 			ON t.code = v.modality_type_code
 		WHERE NOT EXISTS (
@@ -33,14 +67,22 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."students" (user_id, program_id, graduation_modality_type_id)
-		SELECT u.id, p.id, t.id
+		INSERT INTO "academic"."students" (code, user_id, program_id, graduation_modality_type_id)
+		SELECT v.code, u.id, p.id, t.id
 		FROM "organization"."users" u
 		JOIN (
 			VALUES
-				('student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG202-T002'),
-				('student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG202-T002')
-		) AS v(email, program_code, graduation_type_code)
+				('STU-0001', 'student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
+				('STU-0002', 'student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
+				('STU-0003', 'student.pedro.silva@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
+				('STU-0004', 'student.andrea.quispe@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
+				('STU-0005', 'student.marco.luna@upc.edu.pe', 'CS', 'TG103-T002'),
+				('STU-0006', 'student.diana.paredes@upc.edu.pe', 'CS', 'TG103-T002'),
+				('STU-0007', 'student.roberto.chavez@upc.edu.pe', 'PROG_ADMIN', 'TG103-T002'),
+				('STU-0008', 'student.valeria.morales@upc.edu.pe', 'PROG_ADMIN', 'TG103-T002'),
+				('STU-0009', 'student.elena.ramos@upc.edu.pe', 'CS', 'TG103-T002'),
+				('STU-0010', 'student.alex.medina@upc.edu.pe', 'CS', 'TG103-T002')
+		) AS v(code, email, program_code, graduation_type_code)
 			ON u.email = v.email
 		JOIN "academic"."programs" p
 			ON p.code = v.program_code
@@ -51,19 +93,156 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const courseValues = [
+		[
+			'CRS_FUND_PROG',
+			i18n('Fundamentos de Programacion', 'Fundamentals of Programming'),
+			i18n(
+				'Curso introductorio de programacion estructurada',
+				'Introductory structured programming course',
+			),
+			i18n(
+				'Construye soluciones basicas usando algoritmos y estructuras de control.',
+				'Builds basic solutions using algorithms and control structures.',
+			),
+		],
+		[
+			'CRS_REQ_ENG',
+			i18n('Ingenieria de Requisitos', 'Requirements Engineering'),
+			i18n(
+				'Curso de analisis y especificacion de requisitos',
+				'Course on requirements analysis and specification',
+			),
+			i18n(
+				'Elicita, documenta y valida requisitos de software con stakeholders.',
+				'Elicits, documents and validates software requirements with stakeholders.',
+			),
+		],
+		[
+			'CRS_INT_PROJ',
+			i18n('Proyecto Integrador de Software', 'Software Integrator Project'),
+			i18n('Curso integrador basado en proyecto', 'Project-based capstone course'),
+			i18n(
+				'Integra competencias tecnicas, comunicacionales y de trabajo en equipo.',
+				'Integrates technical, communication and teamwork competencies.',
+			),
+		],
+		[
+			'CC101',
+			i18n('Algoritmos y Estructuras de Datos', 'Algorithms and Data Structures'),
+			i18n('Curso base de algoritmica', 'Core algorithmics course'),
+			i18n(
+				'Disena algoritmos eficientes y estructuras de datos basicas.',
+				'Designs efficient algorithms and basic data structures.',
+			),
+		],
+		[
+			'CC102',
+			i18n('Bases de Datos', 'Databases'),
+			i18n('Curso de modelado y consulta de datos', 'Data modeling and querying course'),
+			i18n(
+				'Modela y consulta bases de datos relacionales.',
+				'Models and queries relational databases.',
+			),
+		],
+		[
+			'CC103',
+			i18n('Ingenieria de Software', 'Software Engineering'),
+			i18n('Curso de ciclo de vida de software', 'Software lifecycle course'),
+			i18n(
+				'Aplica procesos y practicas del ciclo de vida del software.',
+				'Applies software lifecycle processes and practices.',
+			),
+		],
+		[
+			'CRS_GEST_EMP',
+			i18n('Gestion Empresarial', 'Business Management'),
+			i18n(
+				'Curso de fundamentos de gestion organizacional',
+				'Organizational management fundamentals course',
+			),
+			i18n(
+				'Aplica principios de gestion para dirigir organizaciones de manera eficiente.',
+				'Applies management principles to lead organizations efficiently.',
+			),
+		],
+		[
+			'CRS_FINANZAS',
+			i18n('Finanzas Corporativas', 'Corporate Finance'),
+			i18n(
+				'Curso de analisis financiero y toma de decisiones',
+				'Financial analysis and decision-making course',
+			),
+			i18n(
+				'Analiza estados financieros y evalua proyectos de inversion empresarial.',
+				'Analyzes financial statements and evaluates business investment projects.',
+			),
+		],
+		[
+			'CRS_MARKETING',
+			i18n('Marketing Estrategico', 'Strategic Marketing'),
+			i18n(
+				'Curso de estrategias de mercado y posicionamiento',
+				'Market strategies and positioning course',
+			),
+			i18n(
+				'Disenha estrategias de marketing para posicionar productos y servicios.',
+				'Designs marketing strategies to position products and services.',
+			),
+		],
+	]
+		.map(
+			([code, name, description, lo]) =>
+				`('${code}', '${name}'::jsonb, '${description}'::jsonb, '${lo}'::jsonb)`,
+		)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."courses" (name, description, learning_outcome)
-		SELECT v.name, v.description, v.learning_outcome
+		INSERT INTO "academic"."courses" (code, name, description, learning_outcome)
+		SELECT v.code, v.name, v.description, v.learning_outcome
 		FROM (
 			VALUES
-				('Fundamentos de Programacion', 'Curso introductorio de programacion estructurada', 'Construye soluciones basicas usando algoritmos y estructuras de control.'),
-				('Ingenieria de Requisitos', 'Curso de analisis y especificacion de requisitos', 'Elicita, documenta y valida requisitos de software con stakeholders.'),
-				('Proyecto Integrador de Software', 'Curso integrador basado en proyecto', 'Integra competencias tecnicas, comunicacionales y de trabajo en equipo.')
-		) AS v(name, description, learning_outcome)
+				${courseValues}
+		) AS v(code, name, description, learning_outcome)
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "academic"."courses" c WHERE c.name = v.name
+			SELECT 1 FROM "academic"."courses" c WHERE c.code = v.code
 		);
 	`);
+
+	const studyPlanValues = [
+		[
+			'PROG_SOFT',
+			'SP_SOFT26',
+			i18n('Plan 2026 Ingenieria de Software', '2026 Software Engineering Plan'),
+			i18n(
+				'Plan de estudios base para el programa de Ingenieria de Software',
+				'Base study plan for the Software Engineering program',
+			),
+		],
+		[
+			'PROG_ADMIN',
+			'SP_ADM26',
+			i18n('Plan 2026 Administracion', '2026 Business Administration Plan'),
+			i18n(
+				'Plan de estudios base para Administracion de Empresas',
+				'Base study plan for Business Administration',
+			),
+		],
+		[
+			'CS',
+			'SP_CS_2502',
+			i18n('Plan CS 2025-2', '2025-2 CS Plan'),
+			i18n(
+				'Plan de estudios para Ciencias de la Computacion (periodo 202502)',
+				'Computer Science study plan (period 202502)',
+			),
+		],
+	]
+		.map(
+			([programCode, code, name, description]) =>
+				`('${programCode}', '${code}', '${name}'::jsonb, '${description}'::jsonb)`,
+		)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."study_plans" (program_id, code, name, description)
@@ -71,8 +250,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM "academic"."programs" p
 		JOIN (
 			VALUES
-				('PROG_SOFT', 'SP_SOFT26', 'Plan 2026 Ingenieria de Software', 'Plan de estudios base para el programa de Ingenieria de Software'),
-				('PROG_ADMIN', 'SP_ADM26', 'Plan 2026 Administracion', 'Plan de estudios base para Administracion de Empresas')
+				${studyPlanValues}
 		) AS v(program_code, code, name, description)
 			ON p.code = v.program_code
 		WHERE NOT EXISTS (
@@ -86,9 +264,12 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		FROM "academic"."study_plans" sp
 		JOIN (
 			VALUES
-				('SP_SOFT26', 'AP_2026_1'),
-				('SP_SOFT26', 'AP_2026_2'),
-				('SP_ADM26', 'AP_2026_1')
+				('SP_SOFT26', '202601'),
+				('SP_SOFT26', '202502'),
+				('SP_ADM26', '202601'),
+				('SP_CS_2502', '202502'),
+				('SP_CS_2502', '202601'),
+				('SP_CS_2502', '202602')
 		) AS v(study_plan_code, academic_period_code)
 			ON sp.code = v.study_plan_code
 		JOIN "academic"."academic_periods" ap
@@ -115,13 +296,28 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			ON ap.id = spap.academic_period_id
 		JOIN (
 			VALUES
-				('SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', false, 'TG203-T001'),
-				('SP_SOFT26', 'AP_2026_1', 'Ingenieria de Requisitos', false, 'TG203-T002'),
-				('SP_SOFT26', 'AP_2026_2', 'Proyecto Integrador de Software', false, 'TG203-T003')
+				('SP_SOFT26', '202601', 'Fundamentos de Programacion', false, 'TG203-T001'),
+				('SP_SOFT26', '202601', 'Ingenieria de Requisitos', false, 'TG203-T002'),
+				('SP_SOFT26', '202502', 'Proyecto Integrador de Software', false, 'TG203-T003'),
+				('SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
+				('SP_CS_2502', '202502', 'Bases de Datos', false, 'TG203-T002'),
+				('SP_CS_2502', '202502', 'Ingenieria de Software', false, 'TG203-T003'),
+				-- Same three CS courses in 202601 so prefill/view IFC works there too.
+				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
+				('SP_CS_2502', '202601', 'Bases de Datos', false, 'TG203-T002'),
+				('SP_CS_2502', '202601', 'Ingenieria de Software', false, 'TG203-T003'),
+				-- Same three CS courses in 202602 (the "current" period for the previous_actions
+				-- demo): viewing/prefilling these surfaces 202601's actions as previous actions.
+				('SP_CS_2502', '202602', 'Algoritmos y Estructuras de Datos', false, 'TG203-T001'),
+				('SP_CS_2502', '202602', 'Bases de Datos', false, 'TG203-T002'),
+				('SP_CS_2502', '202602', 'Ingenieria de Software', false, 'TG203-T003'),
+				('SP_ADM26', '202601', 'Gestion Empresarial', false, 'TG203-T001'),
+				('SP_ADM26', '202601', 'Finanzas Corporativas', false, 'TG203-T002'),
+				('SP_ADM26', '202601', 'Marketing Estrategico', false, 'TG203-T003')
 		) AS v(study_plan_code, academic_period_code, course_name, is_elective, level_type_code)
 			ON sp.code = v.study_plan_code AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" c
-			ON c.name = v.course_name
+			ON c.name->>'es' = v.course_name
 		JOIN "core"."types" t
 			ON t.code = v.level_type_code
 		WHERE NOT EXISTS (
@@ -131,19 +327,33 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
+	const professorRows: Array<[string, string]> = [
+		['prof.juan.perez@upc.edu.pe', 'PROF-001'],
+		['prof.maria.garcia@upc.edu.pe', 'PROF-002'],
+		['coord.eiscb@upc.edu.pe', 'PROF-003'],
+		['prof.carlos.mendez@upc.edu.pe', 'PROF-004'],
+		['prof.ana.torres@upc.edu.pe', 'PROF-005'],
+		['prof.jorge.vargas@upc.edu.pe', 'PROF-006'],
+		['prof.lucia.flores@upc.edu.pe', 'PROF-007'],
+	];
+	const professorValues = professorRows
+		.map(([email, code]) => `('${email}', '${code}')`)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."professors" (staff_id)
-		SELECT s.id
-		FROM "organization"."staff" s
-		WHERE s.staff_email IN ('prof.juan.perez@upc.edu.pe', 'prof.maria.garcia@upc.edu.pe')
-			AND NOT EXISTS (
-				SELECT 1 FROM "academic"."professors" p WHERE p.staff_id = s.id
-			);
+		INSERT INTO "academic"."professors" (staff_id, code)
+		SELECT s.id, v.code
+		FROM (VALUES ${professorValues}) AS v(staff_email, code)
+		JOIN "organization"."staff" s ON s.staff_email = v.staff_email
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "academic"."professors" p WHERE p.staff_id = s.id
+		);
 	`);
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."course_sections" (
-			study_plan_course_id,
+			course_id,
+			academic_period_id,
 			campus_id,
 			professor_id,
 			section_code,
@@ -151,7 +361,8 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			section_modality_type_id
 		)
 		SELECT
-			spc.id,
+			course.id,
+			ap.id,
 			campus.id,
 			prof.id,
 			v.section_code,
@@ -159,8 +370,22 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			modality.id
 		FROM (
 			VALUES
-				('SP_SOFT26', 'AP_2026_1', 'Fundamentos de Programacion', 'SOFT-FP-2026-1-A', 'CAMPUS_MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"09:00-11:00"}'::jsonb, 'TG204-T001'),
-				('SP_SOFT26', 'AP_2026_1', 'Ingenieria de Requisitos', 'SOFT-REQ-2026-1-A', 'CAMPUS_MON', 'prof.maria.garcia@upc.edu.pe', '{"days":["Tuesday"],"time":"14:00-17:00"}'::jsonb, 'TG204-T001')
+				('SP_SOFT26', '202601', 'Fundamentos de Programacion', 'SOFT-FP-2026-1-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"09:00-11:00"}'::jsonb, 'TG103-T001'),
+				('SP_SOFT26', '202601', 'Ingenieria de Requisitos', 'SOFT-REQ-2026-1-A', 'MON', 'prof.maria.garcia@upc.edu.pe', '{"days":["Tuesday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_SOFT26', '202502', 'Proyecto Integrador de Software', 'SOFT-INT-2026-2-A', 'MON', 'prof.carlos.mendez@upc.edu.pe', '{"days":["Thursday","Friday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2025-2-A', 'MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202502', 'Bases de Datos', 'CS-DB-2025-2-A', 'MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202502', 'Ingenieria de Software', 'CS-SE-2025-2-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-1-A', 'MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202601', 'Bases de Datos', 'CS-DB-2026-1-A', 'MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202601', 'Ingenieria de Software', 'CS-SE-2026-1-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				-- CS sections in 202602 (current period for the previous_actions demo).
+				('SP_CS_2502', '202602', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-2-A', 'MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202602', 'Bases de Datos', 'CS-DB-2026-2-A', 'MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202602', 'Ingenieria de Software', 'CS-SE-2026-2-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_ADM26', '202601', 'Gestion Empresarial', 'ADM-GEST-2026-1-A', 'MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"11:00-13:00"}'::jsonb, 'TG103-T001'),
+				('SP_ADM26', '202601', 'Finanzas Corporativas', 'ADM-FIN-2026-1-A', 'MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"15:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_ADM26', '202601', 'Marketing Estrategico', 'ADM-MKT-2026-1-A', 'MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Friday"],"time":"10:00-13:00"}'::jsonb, 'TG103-T001')
 		) AS v(study_plan_code, academic_period_code, course_name, section_code, campus_code, professor_email, schedule, section_modality_type_code)
 		JOIN "academic"."study_plans" sp
 			ON sp.code = v.study_plan_code
@@ -169,9 +394,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		JOIN "academic"."academic_periods" ap
 			ON ap.id = spap.academic_period_id AND ap.code = v.academic_period_code
 		JOIN "academic"."courses" course
-			ON course.name = v.course_name
-		JOIN "academic"."study_plan_courses" spc
-			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course.id
+			ON course.name->>'es' = v.course_name
 		JOIN "organization"."campuses" campus
 			ON campus.code = v.campus_code
 		JOIN "organization"."staff" staff
@@ -195,8 +418,16 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		SELECT st.id, spap.id, campus.id, modality.id
 		FROM (
 			VALUES
-				('student.luis.ramirez@upc.edu.pe', 'SP_SOFT26', 'AP_2026_1', 'CAMPUS_MON', 'TG103-T001'),
-				('student.sofia.torres@upc.edu.pe', 'SP_SOFT26', 'AP_2026_1', 'CAMPUS_MON', 'TG103-T001')
+				('student.luis.ramirez@upc.edu.pe', 'SP_SOFT26', '202601', 'MON', 'TG103-T001'),
+				('student.sofia.torres@upc.edu.pe', 'SP_SOFT26', '202601', 'MON', 'TG103-T001'),
+				('student.pedro.silva@upc.edu.pe', 'SP_SOFT26', '202502', 'MON', 'TG103-T001'),
+				('student.andrea.quispe@upc.edu.pe', 'SP_SOFT26', '202502', 'MON', 'TG103-T001'),
+				('student.marco.luna@upc.edu.pe', 'SP_CS_2502', '202502', 'MON', 'TG103-T001'),
+				('student.diana.paredes@upc.edu.pe', 'SP_CS_2502', '202502', 'MON', 'TG103-T001'),
+				('student.elena.ramos@upc.edu.pe', 'SP_CS_2502', '202601', 'MON', 'TG103-T001'),
+				('student.alex.medina@upc.edu.pe', 'SP_CS_2502', '202601', 'MON', 'TG103-T001'),
+				('student.roberto.chavez@upc.edu.pe', 'SP_ADM26', '202601', 'MON', 'TG103-T001'),
+				('student.valeria.morales@upc.edu.pe', 'SP_ADM26', '202601', 'MON', 'TG103-T001')
 		) AS v(email, study_plan_code, academic_period_code, campus_code, modality_type_code)
 		JOIN "organization"."users" u
 			ON u.email = v.email
@@ -229,7 +460,27 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 				('student.luis.ramirez@upc.edu.pe', 'SOFT-FP-2026-1-A'),
 				('student.luis.ramirez@upc.edu.pe', 'SOFT-REQ-2026-1-A'),
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A'),
-				('student.sofia.torres@upc.edu.pe', 'SOFT-REQ-2026-1-A')
+				('student.sofia.torres@upc.edu.pe', 'SOFT-REQ-2026-1-A'),
+				('student.pedro.silva@upc.edu.pe', 'SOFT-INT-2026-2-A'),
+				('student.andrea.quispe@upc.edu.pe', 'SOFT-INT-2026-2-A'),
+				('student.marco.luna@upc.edu.pe', 'CS-ALG-2025-2-A'),
+				('student.marco.luna@upc.edu.pe', 'CS-DB-2025-2-A'),
+				('student.marco.luna@upc.edu.pe', 'CS-SE-2025-2-A'),
+				('student.diana.paredes@upc.edu.pe', 'CS-ALG-2025-2-A'),
+				('student.diana.paredes@upc.edu.pe', 'CS-DB-2025-2-A'),
+				('student.diana.paredes@upc.edu.pe', 'CS-SE-2025-2-A'),
+				('student.elena.ramos@upc.edu.pe', 'CS-ALG-2026-1-A'),
+				('student.elena.ramos@upc.edu.pe', 'CS-DB-2026-1-A'),
+				('student.elena.ramos@upc.edu.pe', 'CS-SE-2026-1-A'),
+				('student.alex.medina@upc.edu.pe', 'CS-ALG-2026-1-A'),
+				('student.alex.medina@upc.edu.pe', 'CS-DB-2026-1-A'),
+				('student.alex.medina@upc.edu.pe', 'CS-SE-2026-1-A'),
+				('student.roberto.chavez@upc.edu.pe', 'ADM-GEST-2026-1-A'),
+				('student.roberto.chavez@upc.edu.pe', 'ADM-FIN-2026-1-A'),
+				('student.roberto.chavez@upc.edu.pe', 'ADM-MKT-2026-1-A'),
+				('student.valeria.morales@upc.edu.pe', 'ADM-GEST-2026-1-A'),
+				('student.valeria.morales@upc.edu.pe', 'ADM-FIN-2026-1-A'),
+				('student.valeria.morales@upc.edu.pe', 'ADM-MKT-2026-1-A')
 		) AS v(email, section_code)
 		JOIN "organization"."users" u
 			ON u.email = v.email
@@ -245,6 +496,18 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			WHERE sse.enrolled_student_id = es.id AND sse.course_section_id = cs.id
 		);
 	`);
+
+	const performanceLevelValues = [
+		['202601', 'PL_EXCELLENT', i18n('Excelente', 'Excellent'), 4.0, 17.0, 20.0, 20.0],
+		['202601', 'PL_EXPECTED', i18n('Esperado', 'Expected'), 3.0, 14.0, 16.999999, 20.0],
+		['202601', 'PL_DEVELOPING', i18n('En desarrollo', 'Developing'), 2.0, 11.0, 13.999999, 20.0],
+		['202601', 'PL_STARTING', i18n('Inicial', 'Starting'), 1.0, 0.0, 10.999999, 20.0],
+	]
+		.map(
+			([period, code, name, uv, min, max, maxv]) =>
+				`('${period}', '${code}', '${name}'::jsonb, ${(uv as number).toFixed(6)}, ${(min as number).toFixed(6)}, ${(max as number).toFixed(6)}, ${(maxv as number).toFixed(6)})`,
+		)
+		.join(',\n\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."performance_levels" (
@@ -263,10 +526,7 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 			ON instrument_type.code = 'TG206-T001'
 		JOIN (
 			VALUES
-				('AP_2026_1', 'PL_EXCELLENT', 'Excelente', 4.000000, 17.000000, 20.000000, 20.000000),
-				('AP_2026_1', 'PL_EXPECTED', 'Esperado', 3.000000, 14.000000, 16.999999, 20.000000),
-				('AP_2026_1', 'PL_DEVELOPING', 'En desarrollo', 2.000000, 11.000000, 13.999999, 20.000000),
-				('AP_2026_1', 'PL_STARTING', 'Inicial', 1.000000, 0.000000, 10.999999, 20.000000)
+				${performanceLevelValues}
 		) AS v(academic_period_code, code, name, unique_value, min_score, max_score, max_value)
 			ON ap.code = v.academic_period_code
 		WHERE NOT EXISTS (
@@ -308,32 +568,196 @@ runTenantSeed('academic module', async (tenantDataSource) => {
 		);
 	`);
 
-	await tenantDataSource.query(`
-		INSERT INTO "organization"."charts" (
-			staff_id,
-			academic_period_id,
-			chart_level_id,
-			root_chart_detail_id,
-			level_title,
-			entity_type_id,
-			entity_code
-		)
-		SELECT staff.id, ap.id, cl.id, v.root_chart_detail_id, v.level_title, entity_type.id, v.entity_code
-		FROM (
-			VALUES
-				('calidad@upc.edu.pe', 'AP_2026_1', 1, 0, 'Direccion de Calidad Academica', 'TG903-T002', 'CHART_QUAL_2026'),
-				('prof.juan.perez@upc.edu.pe', 'AP_2026_1', 3, 1, 'Coordinacion de Ingenieria de Software', 'TG903-T001', 'CHART_SOFT_2026')
-		) AS v(staff_email, academic_period_code, chart_level_number, root_chart_detail_id, level_title, entity_type_code, entity_code)
-		JOIN "organization"."staff" staff
-			ON staff.staff_email = v.staff_email
-		JOIN "academic"."academic_periods" ap
-			ON ap.code = v.academic_period_code
-		JOIN "organization"."chart_levels" cl
-			ON cl.level = v.chart_level_number
-		JOIN "core"."types" entity_type
-			ON entity_type.code = v.entity_type_code
-		WHERE NOT EXISTS (
-			SELECT 1 FROM "organization"."charts" chart WHERE chart.entity_code = v.entity_code
-		);
-	`);
+	// EISCB 6-level chart tree, parameterized by academic period code.
+	// Chained inserts: each child's root_chart_id resolves to the parent row via subquery.
+	const seedEiscbChartTree = async (periodCode: string) => {
+		// Dean (tag = Dean, no entity), root node.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id,
+				root_chart_id, title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id, NULL,
+				'${i18n('Decanato EISCB', "EISCB Dean's Office")}'::jsonb,
+				entity_type.id, NULL
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'dean.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T001'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				JOIN "organization"."staff" cs ON cs.id = c.staff_id
+				JOIN "organization"."users" cu ON cu.id = cs.user_id
+				WHERE c.academic_period_id = ap.id AND lower(cu.email) = 'dean.eiscb@upc.edu.pe'
+			);
+		`);
+
+		// School Director (entity = School EISCB), parent = Dean.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id,
+				root_chart_id, title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."staff" ps ON ps.id = c.staff_id
+					JOIN "organization"."users" pu ON pu.id = ps.user_id
+					WHERE c.academic_period_id = ap.id AND lower(pu.email) = 'dean.eiscb@upc.edu.pe'
+					LIMIT 1
+				),
+				'${i18n('Direccion EISCB', 'EISCB School Direction')}'::jsonb,
+				entity_type.id,
+				(SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'director.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T002'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				WHERE c.academic_period_id = ap.id
+				  AND c.entity_type_id     = entity_type.id
+				  AND c.entity_code        = (SELECT id FROM "organization"."schools" WHERE code = 'EISCB')
+			);
+		`);
+
+		// Program Coordinator (entity = Program CS), parent = School Director.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id,
+				root_chart_id, title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."staff" ps ON ps.id = c.staff_id
+					JOIN "organization"."users" pu ON pu.id = ps.user_id
+					WHERE c.academic_period_id = ap.id AND lower(pu.email) = 'director.eiscb@upc.edu.pe'
+					LIMIT 1
+				),
+				'${i18n('Coordinacion de Programa CS', 'CS Program Coordination')}'::jsonb,
+				entity_type.id,
+				(SELECT id FROM "academic"."programs" WHERE code = 'CS')
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'prog-coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T003'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				WHERE c.academic_period_id = ap.id
+				  AND c.entity_type_id     = entity_type.id
+				  AND c.entity_code        = (SELECT id FROM "academic"."programs" WHERE code = 'CS')
+			);
+		`);
+
+		// Area Coordinator (tag = Area, no entity), parent = Program Coordinator.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id,
+				root_chart_id, title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."staff" ps ON ps.id = c.staff_id
+					JOIN "organization"."users" pu ON pu.id = ps.user_id
+					WHERE c.academic_period_id = ap.id AND lower(pu.email) = 'prog-coord.eiscb@upc.edu.pe'
+					LIMIT 1
+				),
+				'${i18n('Coordinacion de Area CS', 'CS Area Coordination')}'::jsonb,
+				entity_type.id, NULL
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'area-coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T004'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				JOIN "organization"."staff" cs ON cs.id = c.staff_id
+				JOIN "organization"."users" cu ON cu.id = cs.user_id
+				WHERE c.academic_period_id = ap.id AND lower(cu.email) = 'area-coord.eiscb@upc.edu.pe'
+			);
+		`);
+
+		// Subarea Coordinator (tag = Subarea, no entity), parent = Area Coordinator.
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id,
+				root_chart_id, title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."staff" ps ON ps.id = c.staff_id
+					JOIN "organization"."users" pu ON pu.id = ps.user_id
+					WHERE c.academic_period_id = ap.id AND lower(pu.email) = 'area-coord.eiscb@upc.edu.pe'
+					LIMIT 1
+				),
+				'${i18n('Coordinacion de Subarea CS', 'CS Subarea Coordination')}'::jsonb,
+				entity_type.id, NULL
+			FROM "organization"."staff" staff
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'subarea-coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T005'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				JOIN "organization"."staff" cs ON cs.id = c.staff_id
+				JOIN "organization"."users" cu ON cu.id = cs.user_id
+				WHERE c.academic_period_id = ap.id AND lower(cu.email) = 'subarea-coord.eiscb@upc.edu.pe'
+			);
+		`);
+
+		// Level 6 — Course Coordinators (CC101, CC102, CC103), all share level-5 parent.
+		const courseChartValues = [
+			['CC101', i18n('Coordinacion de Curso CC101', 'CC101 Course Coordination')],
+			['CC102', i18n('Coordinacion de Curso CC102', 'CC102 Course Coordination')],
+			['CC103', i18n('Coordinacion de Curso CC103', 'CC103 Course Coordination')],
+		]
+			.map(([code, title]) => `('${code}', '${title}'::jsonb)`)
+			.join(',\n\t\t\t\t');
+
+		await tenantDataSource.query(`
+			INSERT INTO "organization"."charts" (
+				staff_id, academic_period_id,
+				root_chart_id, title, entity_type_id, entity_code
+			)
+			SELECT
+				staff.id, ap.id,
+				(
+					SELECT c.id FROM "organization"."charts" c
+					JOIN "organization"."staff" ps ON ps.id = c.staff_id
+					JOIN "organization"."users" pu ON pu.id = ps.user_id
+					WHERE c.academic_period_id = ap.id AND lower(pu.email) = 'subarea-coord.eiscb@upc.edu.pe'
+					LIMIT 1
+				),
+				v.title,
+				entity_type.id,
+				(SELECT id FROM "academic"."courses" WHERE code = v.course_code)
+			FROM (
+				VALUES
+					${courseChartValues}
+			) AS v(course_code, title)
+			JOIN "organization"."staff" staff
+				ON staff.id IS NOT NULL
+			JOIN "organization"."users" u           ON u.id = staff.user_id AND u.email = 'coord.eiscb@upc.edu.pe'
+			JOIN "academic"."academic_periods" ap   ON ap.code = '${periodCode}'
+			JOIN "core"."types" entity_type         ON entity_type.code = 'TG903-T006'
+			WHERE NOT EXISTS (
+				SELECT 1 FROM "organization"."charts" c
+				WHERE c.academic_period_id = ap.id
+				  AND c.entity_type_id     = entity_type.id
+				  AND c.entity_code        = (SELECT id FROM "academic"."courses" WHERE code = v.course_code)
+			);
+		`);
+	};
+
+	await seedEiscbChartTree('202502');
+	await seedEiscbChartTree('202601');
+	// 202602 chart tree — required so the IFC HEADER_SQL resolves the course chain for
+	// the CS courses' 202602 IFCs (and for prefill of CC103, which has no 202602 IFC).
+	await seedEiscbChartTree('202602');
 });

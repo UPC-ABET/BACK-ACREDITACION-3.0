@@ -1,27 +1,38 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextFullColumn, IntegerFKIDColumn, IntegerColumn, DateColumn } from 'src/commons/configs/db.configs';
+import { TextFullColumn, IntegerFKIDColumn, DateColumn } from 'src/commons/configs/db.configs';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'notifications', schema: 'survey' })
 export class NotificationEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_id: number;
+	surveyId: number;
 
-	@IntegerColumn({ nullable: false })
-	notification_status_type_id: number;
+	@IntegerFKIDColumn({ nullable: false })
+	notificationStatusTypeId: number;
 
 	@TextFullColumn({ nullable: false })
 	token: string;
 
 	@DateColumn({ nullable: false })
-	max_register_date: string;
+	sentDate: string;
 
-	// %% RELACIONES
+	@DateColumn({ nullable: false })
+	maxRegisterDate: string;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => SurveyEntity)
-	@JoinColumn({ name: 'survey_id' })
+	@JoinColumn({ name: 'survey_id', foreignKeyConstraintName: 'FK_notifications_survey_id' })
 	survey: SurveyEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'notification_status_type_id',
+		foreignKeyConstraintName: 'FK_notifications_notification_status_type_id',
+	})
+	notificationStatusType: TypeEntity;
 }

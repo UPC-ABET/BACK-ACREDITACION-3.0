@@ -1,32 +1,33 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerFKIDColumn, DecimalColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, DecimalColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 
 @Entity({ name: 'scores', schema: 'survey' })
 export class ScoreEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	survey_id: number;
+	surveyId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
 	@DecimalColumn({ nullable: false })
 	score: number;
 
-	@TextLargeColumn({ nullable: true })
-	commentaries: string;
+	@JsonColumn({ nullable: true })
+	commentaries: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => SurveyEntity)
-	@JoinColumn({ name: 'survey_id' })
+	@JoinColumn({ name: 'survey_id', foreignKeyConstraintName: 'FK_scores_survey_id' })
 	survey: SurveyEntity;
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_scores_outcome_id' })
 	outcome: OutcomeEntity;
 }

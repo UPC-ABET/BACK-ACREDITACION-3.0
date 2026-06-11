@@ -1,78 +1,202 @@
-import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateCourseDto extends BaseDto {
+export class CreateCourseDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: true })
-	name: string;
+	@Length(1, 50)
+	@ApiProperty({ example: 'codeExample', required: true })
+	code: string;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: true })
-	description: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
+	name: I18nText;
 
-	@IsString()
-	@ApiProperty({ example: 'learning_outcome_example', required: true })
-	learning_outcome: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: true })
+	description: I18nText;
+
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'learningOutcomeEs', en: 'learningOutcomeEn' },
+		required: true,
+	})
+	learningOutcome: I18nText;
 }
 
-export class UpdateCourseDto extends BaseDto {
+export class UpdateCourseDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@Length(1, 50)
+	@ApiProperty({ example: 'codeExample', required: false })
+	code?: string;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@ApiProperty({ example: 'learning_outcome_example', required: false })
-	learning_outcome?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'learningOutcomeEs', en: 'learningOutcomeEn' },
+		required: false,
+	})
+	learningOutcome?: I18nText;
 }
 
-export class FilterCourseDto extends BaseDto {
+export class FilterCourseDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@ApiProperty({ example: 'codeExample', required: false })
+	code?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'learning_outcome_example', required: false })
-	learning_outcome?: string;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
+
+	@IsOptional()
+	@ApiProperty({
+		example: { es: 'learningOutcomeEs', en: 'learningOutcomeEn' },
+		required: false,
+	})
+	learningOutcome?: I18nText;
+
+	// Filters by related entities
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
+	programId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
+	schoolId?: number;
+}
+
+// ── DTOs for Enrolled Students Endpoint ────────────────────────────────────
+
+export class FilterCourseEnrolledStudentsDto {
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: true,
+		required: false,
+		description: 'Filtrar por estado activo de la matrícula',
+	})
+	isActive?: boolean;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'ID del período académico',
+	})
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'ID del campus',
+	})
+	campusId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'ID del período académico del plan de estudios',
+	})
+	studyPlanAcademicPeriodId?: number;
+}
+
+export class CourseEnrolledStudentDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({ example: 1 })
+	studentSectionEnrollmentId: number;
+
+	@ApiProperty({ example: 1 })
+	studentId: number;
+
+	@ApiProperty({ example: 'firstNameExample' })
+	firstName: string;
+
+	@ApiProperty({ example: 'lastNameExample' })
+	lastName: string;
+
+	@ApiProperty({ example: 'user@example.com' })
+	email: string;
+
+	@ApiProperty({ example: 'studentCodeExample' })
+	studentCode: string;
+
+	@ApiProperty({ example: 1 })
+	courseSectionId: number;
+
+	@ApiProperty({ example: 'sectionCodeExample' })
+	sectionCode: string;
+
+	@ApiProperty({ example: 1 })
+	professorId: number;
+
+	@ApiProperty({ example: 'professorFirstNameExample' })
+	professorFirstName: string;
+
+	@ApiProperty({ example: 'professorLastNameExample' })
+	professorLastName: string;
+
+	@ApiProperty({ example: 1 })
+	campusId: number;
+
+	@ApiProperty({ example: '2024-01-01T00:00:00Z' })
+	enrollmentDate: Date;
+
+	@ApiProperty({ example: true })
+	isActive: boolean;
 }

@@ -1,37 +1,51 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { CommissionEntity } from 'src/modules/accreditation/commissions/model/commissions.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'program_commissions', schema: 'accreditation' })
 export class ProgramCommissionEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	commission_id: number;
+	commissionId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
-	@IntegerColumn({ nullable: false })
-	commission_type_id: number;
+	@IntegerFKIDColumn({ nullable: false })
+	commissionTypeId: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => CommissionEntity)
-	@JoinColumn({ name: 'commission_id' })
+	@JoinColumn({
+		name: 'commission_id',
+		foreignKeyConstraintName: 'FK_program_commissions_commission_id',
+	})
 	commission: CommissionEntity;
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_program_commissions_program_id' })
 	program: ProgramEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
-	academic_period: AcademicPeriodEntity;
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_program_commissions_academic_period_id',
+	})
+	academicPeriod: AcademicPeriodEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'commission_type_id',
+		foreignKeyConstraintName: 'FK_program_commissions_commission_type_id',
+	})
+	commissionType: TypeEntity;
 }

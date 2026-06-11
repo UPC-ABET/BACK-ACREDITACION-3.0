@@ -1,24 +1,25 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { AccreditorEntity } from 'src/modules/accreditation/accreditors/model/accreditors.entity';
 
 @Entity({ name: 'commissions', schema: 'accreditation' })
 export class CommissionEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	accreditor_id: number;
+	accreditorId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => AccreditorEntity)
-	@JoinColumn({ name: 'accreditor_id' })
+	@JoinColumn({ name: 'accreditor_id', foreignKeyConstraintName: 'FK_commissions_accreditor_id' })
 	accreditor: AccreditorEntity;
 }

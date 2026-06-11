@@ -1,78 +1,101 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateProgramDto extends BaseDto {
+export class CreateProgramDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	modality_type_id: number;
+	modalityTypeId: number;
 
 	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: true })
-	name: string;
+	@Length(1, 50)
+	@ApiProperty({ example: 'codeExample', required: true })
+	code: string;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'degree_example', required: true })
-	degree: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
+	name: I18nText;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'degreeEs', en: 'degreeEn' }, required: true })
+	degree: I18nText;
 }
 
-export class UpdateProgramDto extends BaseDto {
+export class UpdateProgramDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_id?: number;
+	modalityTypeId?: number;
 
 	@IsOptional()
 	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@Length(1, 50)
+	@ApiProperty({ example: 'codeExample', required: false })
+	code?: string;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'degree_example', required: false })
-	degree?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
+	name?: I18nText;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'degreeEs', en: 'degreeEn' }, required: false })
+	degree?: I18nText;
 }
 
-export class FilterProgramDto extends BaseDto {
+export class FilterProgramDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	modality_type_id?: number;
+	modalityTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@ApiProperty({ example: 'codeExample', required: false })
+	code?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'degree_example', required: false })
-	degree?: string;
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
+	name?: I18nText;
+
+	@IsOptional()
+	@ApiProperty({ example: { es: 'degreeEs', en: 'degreeEn' }, required: false })
+	degree?: I18nText;
+
+	// Filters by related entities
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
+	schoolId?: number;
 }

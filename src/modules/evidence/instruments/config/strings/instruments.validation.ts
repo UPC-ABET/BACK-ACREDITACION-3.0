@@ -1,11 +1,11 @@
 export const instrumentsValidationStrings = {
 	error: {
-		codeExists: 'error.code.exists',
-		notFound: 'error.notFound',
+		codeExists: 'error.instrument.codeExists',
+		notFound: 'error.instrument.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.instrument.createFailed',
+		updateFailed: 'error.instrument.updateFailed',
+		deleteFailed: 'error.instrument.deleteFailed',
 	},
 };

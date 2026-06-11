@@ -1,9 +1,9 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { RubricQuestionCriteriaEntity } from '../model/rubric-question-criterias.entity';
 
-export class RubricQuestionCriteriaRepository extends BaseRepostitory {
+export class RubricQuestionCriteriaRepository extends BaseRepository<RubricQuestionCriteriaEntity> {
 	constructor(
 		@InjectRepository(RubricQuestionCriteriaEntity)
 		repository: Repository<RubricQuestionCriteriaEntity>,

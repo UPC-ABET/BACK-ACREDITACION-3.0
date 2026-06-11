@@ -1,64 +1,54 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateRubricScoreDto extends BaseDto {
+export class CreateRubricScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	evaluation_id: number;
+	evaluationId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_outcome_criteria_id: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	rubric_question_criteria_id: number;
+	rubricQuestionCriteriaId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	score: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
+	commentaries?: I18nText;
 }
 
-export class UpdateRubricScoreDto extends BaseDto {
+export class UpdateRubricScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	evaluation_id?: number;
+	evaluationId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_outcome_criteria_id?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	rubric_question_criteria_id?: number;
+	rubricQuestionCriteriaId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -66,38 +56,33 @@ export class UpdateRubricScoreDto extends BaseDto {
 	score?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
+	commentaries?: I18nText;
 }
 
-export class FilterRubricScoreDto extends BaseDto {
+export class FilterRubricScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	evaluation_id?: number;
+	evaluationId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rubric_outcome_criteria_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	rubric_question_criteria_id?: number;
+	rubricQuestionCriteriaId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	score?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
+	commentaries?: I18nText;
 }

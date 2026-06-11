@@ -8,8 +8,8 @@ export class StudentValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				user_id: data.user_id,
-				program_id: data.program_id,
+				userId: data.userId,
+				programId: data.programId,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class StudentValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studentsValidationStrings.error.notFound);
 
-		if (data.user_id && data.program_id) {
+		if (data.userId && data.programId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					user_id: data.user_id,
-					program_id: data.program_id,
+					userId: data.userId,
+					programId: data.programId,
 				},
 			});
 

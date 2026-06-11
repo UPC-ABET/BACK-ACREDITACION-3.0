@@ -1,5 +1,5 @@
 export const studentCourseGradesRoutes = {
-	student_course_grades: {
+	studentCourseGrades: {
 		route: 'student-course-grades',
 		tag: 'Notas de curso por estudiante',
 		operation: {

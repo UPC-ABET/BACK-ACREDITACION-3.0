@@ -1,35 +1,41 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextMediumColumn, IntegerFKIDColumn, IntegerColumn, DateColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, DateColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { IfcEntity } from 'src/modules/evidence/ifcs/model/ifcs.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'statuses', schema: 'ifc' })
 export class StatusEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	ifc_id: number;
-
-	@IntegerColumn({ nullable: false })
-	status_type_id: number;
+	ifcId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	staff_id: number;
+	statusTypeId: number;
 
-	@TextMediumColumn({ nullable: true })
-	commentary: string;
+	@IntegerFKIDColumn({ nullable: false })
+	staffId: number;
+
+	@JsonColumn({ nullable: true })
+	comment: I18nText;
 
 	@DateColumn({ nullable: false })
-	register_at: Date;
+	registerAt: Date;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => IfcEntity)
-	@JoinColumn({ name: 'ifc_id' })
+	@JoinColumn({ name: 'ifc_id', foreignKeyConstraintName: 'FK_statuses_ifc_id' })
 	ifc: IfcEntity;
 
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'status_type_id', foreignKeyConstraintName: 'FK_statuses_status_type_id' })
+	statusType: TypeEntity;
+
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_statuses_staff_id' })
 	staff: StaffEntity;
 }

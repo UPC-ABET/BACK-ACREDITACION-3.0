@@ -2,15 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { CourseRepository } from '../core/courses.repository';
 import { CourseValidation } from '../core/courses.validation';
-
-import { CreateCourseDto, UpdateCourseDto } from '../model/courses.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import {
+	CreateCourseDto,
+	FilterCourseDto,
+	UpdateCourseDto,
+	FilterCourseEnrolledStudentsDto,
+	CourseEnrolledStudentDto,
+} from '../model/courses.dtos';
+import { EntityManager, DataSource } from 'typeorm';
+import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 
 @Injectable()
 export class CourseService extends BaseService<CourseRepository> {
 	constructor(
 		protected readonly repository: CourseRepository,
-		protected readonly dataSource: DataSource,
+		private readonly dataSource: DataSource,
 	) {
 		super(repository);
 	}
@@ -28,5 +34,71 @@ export class CourseService extends BaseService<CourseRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await CourseValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getByFilters(filters: FilterCourseDto) {
+		return await this.repository.getByFilters(filters);
+	}
+
+	async getEnrolledStudentsByCourseId(
+		courseId: number,
+		filters?: FilterCourseEnrolledStudentsDto,
+	): Promise<CourseEnrolledStudentDto[]> {
+		const qb = this.dataSource
+			.getRepository(StudentSectionEnrollmentEntity)
+			.createQueryBuilder('sse')
+			.innerJoinAndSelect('sse.courseSection', 'cs')
+			.innerJoinAndSelect('sse.enrolledStudent', 'es')
+			.innerJoinAndSelect('es.student', 's')
+			.innerJoinAndSelect('s.user', 'student_user')
+			.innerJoinAndSelect('cs.professor', 'p')
+			.innerJoinAndSelect('p.staff', 'st')
+			.innerJoinAndSelect('st.user', 'prof_user')
+			.where('cs.course_id = :courseId', { courseId });
+
+		// Apply filters
+		if (filters?.isActive !== undefined) {
+			qb.andWhere('sse.is_active = :sseIsActive', { sseIsActive: filters.isActive });
+			qb.andWhere('es.is_active = :esIsActive', { esIsActive: filters.isActive });
+		}
+
+		if (filters?.academicPeriodId !== undefined) {
+			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
+				academicPeriodId: filters.academicPeriodId,
+			});
+		}
+
+		if (filters?.campusId !== undefined) {
+			qb.andWhere('cs.campus_id = :campusId', { campusId: filters.campusId });
+		}
+
+		if (filters?.studyPlanAcademicPeriodId !== undefined) {
+			qb.andWhere('es.study_plan_academic_period = :studyPlanAcademicPeriodId', {
+				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
+			});
+		}
+
+		const results = await qb.getMany();
+
+		return results.map(
+			(item) =>
+				({
+					id: item.enrolledStudentId,
+					studentSectionEnrollmentId: item.id,
+					studentId: item.enrolledStudent.studentId,
+					firstName: item.enrolledStudent.student.user.firstName,
+					lastName: item.enrolledStudent.student.user.lastName,
+					email: item.enrolledStudent.student.user.email,
+					studentCode: `EST-${item.enrolledStudent.student.user.documentCode}`,
+					courseSectionId: item.courseSectionId,
+					sectionCode: item.courseSection.sectionCode,
+					professorId: item.courseSection.professorId,
+					professorFirstName: item.courseSection.professor.staff.user.firstName,
+					professorLastName: item.courseSection.professor.staff.user.lastName,
+					campusId: item.courseSection.campusId,
+					enrollmentDate: item.createdAt,
+					isActive: item.isActive,
+				}) as CourseEnrolledStudentDto,
+		);
 	}
 }

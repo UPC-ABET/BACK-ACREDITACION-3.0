@@ -6,17 +6,24 @@ const ROOT = path.resolve('src/modules');
 
 const EXCLUDED_TARGETS: string[] = [];
 
-/* ---------------- UTILIDADES ---------------- */
+/* ---------------- UTILITIES ---------------- */
 
-function toSnakeCaseFromEntity(entityName: string): string {
-	return entityName
-		.replace('Entity', '')
-		.replace(/([a-z])([A-Z])/g, '$1_$2')
-		.toLowerCase();
+function toCamelCaseFromEntity(entityName: string): string {
+	const base = entityName.replace('Entity', '');
+	return base.charAt(0).toLowerCase() + base.slice(1);
+}
+
+function camelToSnake(name: string): string {
+	return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
 }
 
 function extractEntityName(content: string): string | null {
 	const match = content.match(/export class (\w+Entity)/);
+	return match ? match[1] : null;
+}
+
+function extractTableName(content: string): string | null {
+	const match = content.match(/@Entity\s*\(\s*\{\s*name:\s*['"`]([^'"`]+)['"`]/);
 	return match ? match[1] : null;
 }
 
@@ -53,14 +60,15 @@ function extractDbDecorators(content: string): string[] {
 	return [...found];
 }
 
-/* ---------------- RESOLVER CONFIG ---------------- */
+/* ---------------- RESOLVE CONFIG ---------------- */
 
-function resolveConfigFromColumn(column: string) {
-	const clean = column.trim().toLowerCase();
+/**
+ * `property` here is a camelCase TS identifier (e.g. `studyPlanCourseId` stripped to
+ * `studyPlanCourse`). `ENTITY_CONFIG` is keyed by the same camelCase shape.
+ */
+function resolveConfigFromProperty(property: string) {
+	const base = property.replace(/Id$/, '');
 
-	const base = clean.replace(/_id$/, '');
-
-	// 🔥 match directo primero
 	if (ENTITY_CONFIG[base]) {
 		return {
 			config: ENTITY_CONFIG[base],
@@ -68,11 +76,13 @@ function resolveConfigFromColumn(column: string) {
 		};
 	}
 
-	// 🔥 fallback inteligente
-	const parts = base.split('_');
+	// Fallback: try shorter suffixes — e.g. `instrumentTypeId` falls back to `type`
+	// when no `instrumentType` config exists.
+	const tokens = base.match(/[A-Z]?[a-z0-9]+/g) || [];
 
-	for (let i = 0; i < parts.length; i++) {
-		const candidate = parts.slice(i).join('_');
+	for (let i = 1; i < tokens.length; i++) {
+		const tail = tokens.slice(i);
+		const candidate = tail[0].charAt(0).toLowerCase() + tail[0].slice(1) + tail.slice(1).join('');
 
 		if (ENTITY_CONFIG[candidate]) {
 			return {
@@ -82,15 +92,19 @@ function resolveConfigFromColumn(column: string) {
 		}
 	}
 
-	console.warn(`❌ ENTITY_CONFIG not found for column: ${column}`);
+	console.warn(`ENTITY_CONFIG not found for property: ${property}`);
 
 	return null;
 }
 
-/* ---------------- PARSEO ---------------- */
+/* ---------------- PARSING ---------------- */
 
 interface FieldRelation {
-	column: string;
+	/** TS property name on the FK column, e.g. `studyPlanCourseId`. */
+	fkProperty: string;
+	/** DB column name derived from `fkProperty`, e.g. `study_plan_course_id`. */
+	dbColumn: string;
+	/** Relation property name (TS, camelCase) — `fkProperty` with `Id` stripped. */
 	property: string;
 	entityClass: string;
 	relationType: 'many-to-one' | 'one-to-one' | 'one-to-many';
@@ -112,16 +126,17 @@ function parseFields(content: string): FieldRelation[] {
 		if (!lines[i].includes('@IntegerFKIDColumn')) continue;
 
 		const nextLine = lines[i + 1] || '';
-		const match = nextLine.match(/(\w+)_id/);
+		// Match the FK property declaration `someThingId: number;`.
+		const match = nextLine.match(/\b([a-z][a-zA-Z0-9]*Id)\b/);
 
 		if (!match) continue;
 
-		const column = match[0];
+		const fkProperty = match[1];
 
-		if (seen.has(column)) continue;
-		seen.add(column);
+		if (seen.has(fkProperty)) continue;
+		seen.add(fkProperty);
 
-		const resolved = resolveConfigFromColumn(column);
+		const resolved = resolveConfigFromProperty(fkProperty);
 		if (!resolved) continue;
 
 		const prevLine = lines[i - 1] || '';
@@ -137,7 +152,8 @@ function parseFields(content: string): FieldRelation[] {
 		if (isOneToMany) relationType = 'one-to-many';
 
 		fields.push({
-			column,
+			fkProperty,
+			dbColumn: camelToSnake(fkProperty),
 			property: resolved.property,
 			entityClass: resolved.config.entity,
 			relationType,
@@ -149,7 +165,7 @@ function parseFields(content: string): FieldRelation[] {
 	return fields;
 }
 
-/* ---------------- INVERSAS ---------------- */
+/* ---------------- INVERSE RELATIONS ---------------- */
 
 interface InverseMap {
 	[target: string]: {
@@ -162,7 +178,6 @@ interface InverseMap {
 
 function buildInverseMap(entityName: string, fields: FieldRelation[], map: InverseMap) {
 	fields.forEach((f) => {
-		// 🔥 SOLO si hay comentario
 		if (!f.hasRelationComment) return;
 
 		if (EXCLUDED_TARGETS.includes(f.config.entity)) return;
@@ -192,7 +207,6 @@ function generateInverseRelations(entityName: string, inverseMap: InverseMap) {
 		const sourceConfig = Object.values(ENTITY_CONFIG).find((c) => c.entity === sourceClass);
 		if (!sourceConfig) return;
 
-		// 🔥 ONE TO MANY
 		if (e.relationType === 'one-to-many') {
 			relations += `
 	@OneToMany(() => ${sourceClass}, (x) => x.${e.property})
@@ -200,7 +214,6 @@ function generateInverseRelations(entityName: string, inverseMap: InverseMap) {
 `;
 		}
 
-		// 🔥 ONE TO ONE
 		if (e.relationType === 'one-to-one') {
 			relations += `
 	@OneToOne(() => ${sourceClass}, (x) => x.${e.property})
@@ -214,23 +227,24 @@ function generateInverseRelations(entityName: string, inverseMap: InverseMap) {
 
 /* ---------------- OWN RELATIONS ---------------- */
 
-function generateOwnRelations(entityName: string, fields: FieldRelation[]) {
+function generateOwnRelations(entityName: string, tableName: string, fields: FieldRelation[]) {
 	let relations = '';
+	const ownerProperty = toCamelCaseFromEntity(entityName);
 
 	fields.forEach((f) => {
+		const fkName = `FK_${tableName}_${f.dbColumn}`;
 		if (f.relationType === 'one-to-one') {
 			relations += `
-	@OneToOne(() => ${f.config.entity}, (x) => x.${toSnakeCaseFromEntity(entityName)})
-	@JoinColumn({ name: '${f.column}' })
+	@OneToOne(() => ${f.config.entity}, (x) => x.${ownerProperty})
+	@JoinColumn({ name: '${f.dbColumn}', foreignKeyConstraintName: '${fkName}' })
 	${f.property}: ${f.config.entity};
 `;
 			return;
 		}
 
-		// 🔥 DEFAULT SIEMPRE ManyToOne
 		relations += `
 	@ManyToOne(() => ${f.config.entity})
-	@JoinColumn({ name: '${f.column}' })
+	@JoinColumn({ name: '${f.dbColumn}', foreignKeyConstraintName: '${fkName}' })
 	${f.property}: ${f.config.entity};
 `;
 	});
@@ -245,10 +259,21 @@ function buildImportPath(configPath: string) {
 	return `src/modules/${configPath}/model/${module}.entity`;
 }
 
-function injectImports(content: string, fields: FieldRelation[], entityName: string, inverseMap: InverseMap) {
+function injectImports(
+	content: string,
+	fields: FieldRelation[],
+	entityName: string,
+	inverseMap: InverseMap,
+) {
 	const lines = content.split('\n');
 
 	const body = lines.filter((l) => !l.startsWith('import'));
+
+	const preservedTypeImports = lines.filter((l) => l.startsWith('import type '));
+
+	const extraEntityDecorators = lines.filter(
+		(l) => l.startsWith('@Unique(') || l.startsWith('@Index('),
+	);
 
 	const entitySet = new Set<string>();
 
@@ -267,13 +292,17 @@ function injectImports(content: string, fields: FieldRelation[], entityName: str
 
 	const imports: string[] = [];
 
-	imports.push(`import { Entity, ManyToOne, OneToOne, OneToMany, JoinColumn } from 'typeorm';`);
+	imports.push(
+		`import { Entity, ManyToOne, OneToOne, OneToMany, JoinColumn${extraEntityDecorators.some((l) => l.startsWith('@Unique(')) ? ', Unique' : ''}${extraEntityDecorators.some((l) => l.startsWith('@Index(')) ? ', Index' : ''} } from 'typeorm';`,
+	);
 	imports.push(`import { BaseEntity } from 'src/commons/base.entity';`);
 
 	const dbDecorators = extractDbDecorators(content);
 	if (dbDecorators.length) {
 		imports.push(`import { ${dbDecorators.join(', ')} } from 'src/commons/configs/db.configs';`);
 	}
+
+	preservedTypeImports.forEach((l) => imports.push(l));
 
 	[...entitySet].sort().forEach((entity) => {
 		const config = Object.values(ENTITY_CONFIG).find((c) => c.entity === entity);
@@ -285,24 +314,21 @@ function injectImports(content: string, fields: FieldRelation[], entityName: str
 	return `${imports.join('\n')}\n\n${body.join('\n')}`;
 }
 
-/* ---------------- REEMPLAZO ---------------- */
+/* ---------------- REPLACE BLOCK ---------------- */
 
 function replaceRelationsBlock(content: string, relations: string) {
-	const marker = '// %% RELACIONES';
+	const marker = '// %% RELATIONS';
 
 	const startIndex = content.indexOf(marker);
 	if (startIndex === -1) return content;
 
-	// 🔥 encontrar el inicio del bloque
 	const before = content.substring(0, startIndex + marker.length);
 
-	// 🔥 desde ahí buscamos la última llave de la clase
 	const afterMarker = content.substring(startIndex);
 
 	const closingIndex = afterMarker.lastIndexOf('}');
 	if (closingIndex === -1) return content;
 
-	// 🔥 reconstrucción limpia
 	return `${before}\n${relations}\n}`;
 }
 
@@ -332,17 +358,23 @@ function run() {
 		const entityName = extractEntityName(content);
 		if (!entityName) return;
 
+		const tableName = extractTableName(content);
+		if (!tableName) {
+			console.warn(`No @Entity({ name }) declaration found in ${filePath}; skipping.`);
+			return;
+		}
+
 		const fields = parseFields(content);
 
-		parsed.push({ filePath, entityName, fields });
+		parsed.push({ filePath, entityName, tableName, fields });
 
 		buildInverseMap(entityName, fields, inverseMap);
 	});
 
-	parsed.forEach(({ filePath, entityName, fields }) => {
+	parsed.forEach(({ filePath, entityName, tableName, fields }) => {
 		let content = fs.readFileSync(filePath, 'utf-8');
 
-		const own = generateOwnRelations(entityName, fields);
+		const own = generateOwnRelations(entityName, tableName, fields);
 		const inverse = generateInverseRelations(entityName, inverseMap);
 
 		const finalRelations = own + '\n' + inverse;
@@ -352,7 +384,7 @@ function run() {
 
 		fs.writeFileSync(filePath, content);
 
-		console.log(`✅ ${filePath}`);
+		console.log(`Done: ${filePath}`);
 	});
 }
 

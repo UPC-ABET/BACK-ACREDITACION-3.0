@@ -1,18 +1,24 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
 @Entity({ name: 'professors', schema: 'academic' })
 export class ProfessorEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	staff_id: number;
+	staffId: number;
 
-	// %% RELACIONES
+	@CodeColumn({ nullable: false })
+	code: string;
+
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_professors_staff_id' })
 	staff: StaffEntity;
 }

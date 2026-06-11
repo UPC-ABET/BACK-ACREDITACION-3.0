@@ -1,13 +1,13 @@
 export const studentCourseGradesValidationStrings = {
 	error: {
-		gradeExists: 'error.grade.exists',
-		invalidPercentage: 'error.invalid.percentage',
-		invalidGrade: 'error.invalid.grade',
-		notFound: 'error.notFound',
+		gradeExists: 'error.studentCourseGrade.gradeExists',
+		invalidPercentage: 'error.studentCourseGrade.invalidPercentage',
+		invalidGrade: 'error.studentCourseGrade.invalidGrade',
+		notFound: 'error.studentCourseGrade.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.studentCourseGrade.createFailed',
+		updateFailed: 'error.studentCourseGrade.updateFailed',
+		deleteFailed: 'error.studentCourseGrade.deleteFailed',
 	},
 };

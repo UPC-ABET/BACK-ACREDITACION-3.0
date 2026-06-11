@@ -1,12 +1,12 @@
 export const staffValidationStrings = {
 	error: {
-		userExists: 'error.user.exists',
-		staffEmailExists: 'error.staff.email.exists',
-		notFound: 'error.notFound',
+		userExists: 'error.staff.userExists',
+		staffEmailExists: 'error.staff.emailExists',
+		notFound: 'error.staff.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.staff.createFailed',
+		updateFailed: 'error.staff.updateFailed',
+		deleteFailed: 'error.staff.deleteFailed',
 	},
 };

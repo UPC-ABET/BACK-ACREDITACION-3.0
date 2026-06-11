@@ -1,29 +1,49 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, NameColumn } from 'src/commons/configs/db.configs';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 
 @Entity({ name: 'students', schema: 'academic' })
 export class StudentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
+
+	@IntegerFKIDColumn({ nullable: true })
+	userId: number | null;
 
 	@IntegerFKIDColumn({ nullable: false })
-	user_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	graduationModalityTypeId: number;
 
-	@IntegerColumn({ nullable: false })
-	graduation_modality_type_id: number;
+	@NameColumn({ withDefault: true })
+	firstName: string;
 
-	// %% RELACIONES
+	@NameColumn({ withDefault: true })
+	lastName: string;
+
+	@CodeColumn({ nullable: false })
+	code: string;
+
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => UserEntity)
-	@JoinColumn({ name: 'user_id' })
+	@JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_students_user_id' })
 	user: UserEntity;
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_students_program_id' })
 	program: ProgramEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'graduation_modality_type_id',
+		foreignKeyConstraintName: 'FK_students_graduation_modality_type_id',
+	})
+	graduationModalityType: TypeEntity;
 }

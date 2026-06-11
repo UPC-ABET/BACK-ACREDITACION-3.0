@@ -9,11 +9,11 @@ export class BaseEntity {
 	extra?: any;
 
 	@BooleanColumn({ nullable: false, withDefault: true, default: true })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@DateColumn()
-	created_at: Date;
+	createdAt: Date;
 
 	@DateColumn({ withDefault: false })
-	updated_at: Date;
+	updatedAt: Date;
 }

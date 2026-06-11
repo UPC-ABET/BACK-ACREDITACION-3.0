@@ -1,11 +1,11 @@
 export const courseOutcomeMappingsValidationStrings = {
 	error: {
-		mappingExists: 'error.mapping.exists',
-		notFound: 'error.notFound',
+		mappingExists: 'error.courseOutcomeMapping.mappingExists',
+		notFound: 'error.courseOutcomeMapping.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.courseOutcomeMapping.createFailed',
+		updateFailed: 'error.courseOutcomeMapping.updateFailed',
+		deleteFailed: 'error.courseOutcomeMapping.deleteFailed',
 	},
 };

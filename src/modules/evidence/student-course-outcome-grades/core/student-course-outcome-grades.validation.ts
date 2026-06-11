@@ -8,8 +8,8 @@ export class StudentCourseOutcomeGradeValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				student_section_enrollment_id: data.student_section_enrollment_id,
-				outcome_id: data.outcome_id,
+				studentSectionEnrollmentId: data.studentSectionEnrollmentId,
+				outcomeId: data.outcomeId,
 			},
 		});
 
@@ -36,13 +36,13 @@ export class StudentCourseOutcomeGradeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studentCourseOutcomeGradesValidationStrings.error.notFound);
 
-		const enrollmentId = data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
-		const outcomeId = data.outcome_id ?? entity?.outcome_id;
+		const enrollmentId = data.studentSectionEnrollmentId ?? entity?.studentSectionEnrollmentId;
+		const outcomeId = data.outcomeId ?? entity?.outcomeId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				student_section_enrollment_id: enrollmentId,
-				outcome_id: outcomeId,
+				studentSectionEnrollmentId: enrollmentId,
+				outcomeId: outcomeId,
 			},
 		});
 

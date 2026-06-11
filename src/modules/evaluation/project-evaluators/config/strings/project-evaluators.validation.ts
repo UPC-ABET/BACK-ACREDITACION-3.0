@@ -1,11 +1,11 @@
 export const projectEvaluatorsValidationStrings = {
 	error: {
-		projectEvaluatorExists: 'error.project.evaluator.exists',
-		notFound: 'error.notFound',
+		projectEvaluatorExists: 'error.projectEvaluator.projectEvaluatorExists',
+		notFound: 'error.projectEvaluator.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.projectEvaluator.createFailed',
+		updateFailed: 'error.projectEvaluator.updateFailed',
+		deleteFailed: 'error.projectEvaluator.deleteFailed',
 	},
 };

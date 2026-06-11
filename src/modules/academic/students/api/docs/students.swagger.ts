@@ -4,11 +4,14 @@ import { CreateStudentDto, UpdateStudentDto, FilterStudentDto } from '../../mode
 
 const cfg = studentsRoutes.students;
 
-export const SwaggerStudentController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerStudentController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerStudentCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateStudentDto });
+export const SwaggerStudentCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateStudentDto });
 
-export const SwaggerStudentUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateStudentDto });
+export const SwaggerStudentUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateStudentDto });
 
 export const SwaggerStudentDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +19,5 @@ export const SwaggerStudentGetAll = () => HttpMethodWithSwagger(cfg.operation.ge
 
 export const SwaggerStudentGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerStudentGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterStudentDto });
+export const SwaggerStudentGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterStudentDto });

@@ -8,14 +8,13 @@ export class PerformanceLevelValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				name: data.name,
-				evaluation_type: data.evaluation_type,
+				code: data.code,
 			},
 		});
 
 		if (exists) errors.push(performanceLevelsValidationStrings.error.nameExists);
 
-		if (data.min_score > data.max_score) {
+		if (data.minScore > data.maxScore) {
 			errors.push(performanceLevelsValidationStrings.error.invalidScoreRange);
 		}
 
@@ -36,12 +35,9 @@ export class PerformanceLevelValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(performanceLevelsValidationStrings.error.notFound);
 
-		if (data.name && data.evaluation_type) {
+		if (data.code) {
 			const exists = await repo.findOneByCondition({
-				where: {
-					name: data.name,
-					evaluation_type: data.evaluation_type,
-				},
+				where: { code: data.code },
 			});
 
 			if (exists && exists.id !== id) {
@@ -49,8 +45,8 @@ export class PerformanceLevelValidation {
 			}
 		}
 
-		const minScore = data.min_score ?? entity?.min_score;
-		const maxScore = data.max_score ?? entity?.max_score;
+		const minScore = data.minScore ?? entity?.minScore;
+		const maxScore = data.maxScore ?? entity?.maxScore;
 
 		if (minScore > maxScore) {
 			errors.push(performanceLevelsValidationStrings.error.invalidScoreRange);

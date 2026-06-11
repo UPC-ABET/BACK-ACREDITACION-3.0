@@ -1,35 +1,39 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, TextMediumColumn, IntegerFKIDColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, BooleanColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
 @Entity({ name: 'plans', schema: 'improvement' })
 export class PlanEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: true })
+	description: I18nText;
 
 	@BooleanColumn({ nullable: false, default: false })
-	is_open: boolean;
+	isOpen: boolean;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_plans_program_id' })
 	program: ProgramEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
-	academic_period: AcademicPeriodEntity;
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_plans_academic_period_id',
+	})
+	academicPeriod: AcademicPeriodEntity;
 }

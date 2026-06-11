@@ -1,19 +1,26 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, TextMediumColumn, TextFullColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'courses', schema: 'academic' })
 export class CourseEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@CodeColumn({ nullable: false })
+	code: string;
 
-	@TextMediumColumn({ nullable: false })
-	description: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextFullColumn({ nullable: false })
-	learning_outcome: string;
+	@JsonColumn({ nullable: false })
+	description: I18nText;
 
-	// %% RELACIONES
+	@JsonColumn({ nullable: false })
+	learningOutcome: I18nText;
+
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 }

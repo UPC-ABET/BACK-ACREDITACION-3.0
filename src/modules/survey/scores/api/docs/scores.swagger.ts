@@ -6,9 +6,11 @@ const cfg = scoresRoutes.scores;
 
 export const SwaggerScoreController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerScoreCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateScoreDto });
+export const SwaggerScoreCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateScoreDto });
 
-export const SwaggerScoreUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateScoreDto });
+export const SwaggerScoreUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateScoreDto });
 
 export const SwaggerScoreDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +18,5 @@ export const SwaggerScoreGetAll = () => HttpMethodWithSwagger(cfg.operation.getA
 
 export const SwaggerScoreGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerScoreGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterScoreDto });
+export const SwaggerScoreGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterScoreDto });

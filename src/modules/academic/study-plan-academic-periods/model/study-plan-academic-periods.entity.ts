@@ -6,21 +6,27 @@ import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-pl
 
 @Entity({ name: 'study_plan_academic_periods', schema: 'academic' })
 export class StudyPlanAcademicPeriodEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_id: number;
+	studyPlanId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StudyPlanEntity)
-	@JoinColumn({ name: 'study_plan_id' })
-	study_plan: StudyPlanEntity;
+	@JoinColumn({
+		name: 'study_plan_id',
+		foreignKeyConstraintName: 'FK_study_plan_academic_periods_study_plan_id',
+	})
+	studyPlan: StudyPlanEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
-	academic_period: AcademicPeriodEntity;
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_study_plan_academic_periods_academic_period_id',
+	})
+	academicPeriod: AcademicPeriodEntity;
 }

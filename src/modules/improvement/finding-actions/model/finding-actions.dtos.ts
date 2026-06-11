@@ -1,85 +1,101 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateFindingActionDto extends BaseDto {
+export class CreateFindingActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	finding_id: number;
+	findingId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	action_id: number;
+	actionId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	in_plan_required: boolean;
+	inPlanRequired: boolean;
 
-	@ApiProperty({ example: { key: 'evidences_value' }, required: true })
-	evidences: any;
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
+		required: false,
+		nullable: true,
+	})
+	evidences?: I18nText | null;
 }
 
-export class UpdateFindingActionDto extends BaseDto {
+export class UpdateFindingActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	action_id?: number;
+	actionId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	in_plan_required?: boolean;
+	inPlanRequired?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'evidences_value' }, required: false })
-	evidences?: any;
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
+		required: false,
+		nullable: true,
+	})
+	evidences?: I18nText | null;
 }
 
-export class FilterFindingActionDto extends BaseDto {
+export class FilterFindingActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	finding_id?: number;
+	findingId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	action_id?: number;
+	actionId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	in_plan_required?: boolean;
+	inPlanRequired?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'evidences_value' }, required: false })
-	evidences?: any;
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'evidencesEs', en: 'evidencesEn' },
+		required: false,
+		nullable: true,
+	})
+	evidences?: I18nText | null;
 }

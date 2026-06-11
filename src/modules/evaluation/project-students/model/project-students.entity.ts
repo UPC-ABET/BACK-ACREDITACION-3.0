@@ -1,29 +1,29 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { ProjectEntity } from 'src/modules/evaluation/projects/model/projects.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 
 @Entity({ name: 'project_students', schema: 'evaluation' })
 export class ProjectStudentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	project_id: number;
+	projectId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
-	@IntegerColumn({ nullable: false })
-	evaluator_type_id: number;
-
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => ProjectEntity)
-	@JoinColumn({ name: 'project_id' })
+	@JoinColumn({ name: 'project_id', foreignKeyConstraintName: 'FK_project_students_project_id' })
 	project: ProjectEntity;
 
 	@ManyToOne(() => StudentSectionEnrollmentEntity)
-	@JoinColumn({ name: 'student_section_enrollment_id' })
-	student_section_enrollment: StudentSectionEnrollmentEntity;
+	@JoinColumn({
+		name: 'student_section_enrollment_id',
+		foreignKeyConstraintName: 'FK_project_students_student_section_enrollment_id',
+	})
+	studentSectionEnrollment: StudentSectionEnrollmentEntity;
 }

@@ -1,25 +1,31 @@
-import { Entity } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { TextLargeColumn, IntegerColumn, DecimalColumn } from 'src/commons/configs/db.configs';
+import { DecimalColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
+import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 
 @Entity({ name: 'rubric_question_criterias', schema: 'evaluation' })
 export class RubricQuestionCriteriaEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
-	@IntegerColumn({ nullable: false })
-	rubric_question_id: number;
+	@IntegerFKIDColumn({ nullable: false })
+	rubricQuestionId: number;
 
-	@IntegerColumn({ nullable: false })
-	rubric_scale_id: number;
-
-	@TextLargeColumn({ nullable: false })
-	criteria: string;
+	@JsonColumn({ nullable: false })
+	criteria: I18nText;
 
 	@DecimalColumn({ nullable: false })
-	min_value: number;
+	minValue: number;
 
 	@DecimalColumn({ nullable: false })
-	max_value: number;
+	maxValue: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
+
+	@ManyToOne(() => RubricQuestionEntity, (q) => q.criterias)
+	@JoinColumn({
+		name: 'rubric_question_id',
+		foreignKeyConstraintName: 'FK_rubric_question_criterias_rubric_question_id',
+	})
+	question: RubricQuestionEntity;
 }

@@ -1,102 +1,87 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateRubricQuestionCriteriaDto extends BaseDto {
+export class CreateRubricQuestionCriteriaDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_question_id: number;
+	rubricQuestionId: number;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'criteriaEs', en: 'criteriaEn' }, required: true })
+	criteria: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	rubric_scale_id: number;
-
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'criteria_example', required: true })
-	criteria: string;
+	minValue: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	min_value: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	max_value: number;
+	maxValue: number;
 }
 
-export class UpdateRubricQuestionCriteriaDto extends BaseDto {
+export class UpdateRubricQuestionCriteriaDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_question_id?: number;
+	rubricQuestionId?: number;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'criteriaEs', en: 'criteriaEn' }, required: false })
+	criteria?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	rubric_scale_id?: number;
-
-	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'criteria_example', required: false })
-	criteria?: string;
+	minValue?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	min_value?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }
 
-export class FilterRubricQuestionCriteriaDto extends BaseDto {
+export class FilterRubricQuestionCriteriaDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rubric_question_id?: number;
+	rubricQuestionId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: { es: 'criteriaEs', en: 'criteriaEn' }, required: false })
+	criteria?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	rubric_scale_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 'criteria_example', required: false })
-	criteria?: string;
+	minValue?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	min_value?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }

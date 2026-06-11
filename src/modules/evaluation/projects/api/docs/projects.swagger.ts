@@ -4,11 +4,14 @@ import { CreateProjectDto, UpdateProjectDto, FilterProjectDto } from '../../mode
 
 const cfg = projectsRoutes.projects;
 
-export const SwaggerProjectController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerProjectController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerProjectCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateProjectDto });
+export const SwaggerProjectCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateProjectDto });
 
-export const SwaggerProjectUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateProjectDto });
+export const SwaggerProjectUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateProjectDto });
 
 export const SwaggerProjectDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +19,5 @@ export const SwaggerProjectGetAll = () => HttpMethodWithSwagger(cfg.operation.ge
 
 export const SwaggerProjectGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerProjectGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterProjectDto });
+export const SwaggerProjectGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterProjectDto });

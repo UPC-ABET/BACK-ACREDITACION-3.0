@@ -8,15 +8,14 @@ export class RubricQuestionCriteriaValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				rubric_question_id: data.rubric_question_id,
-				rubric_scale_id: data.rubric_scale_id,
+				rubricQuestionId: data.rubricQuestionId,
 				criteria: data.criteria,
 			},
 		});
 
 		if (exists) errors.push(rubricQuestionCriteriasValidationStrings.error.criteriaExists);
 
-		if (data.min_value > data.max_value) {
+		if (data.minValue > data.maxValue) {
 			errors.push(rubricQuestionCriteriasValidationStrings.error.invalidRange);
 		}
 
@@ -37,11 +36,10 @@ export class RubricQuestionCriteriaValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricQuestionCriteriasValidationStrings.error.notFound);
 
-		if (data.rubric_question_id && data.rubric_scale_id && data.criteria) {
+		if (data.rubricQuestionId && data.criteria) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					rubric_question_id: data.rubric_question_id,
-					rubric_scale_id: data.rubric_scale_id,
+					rubricQuestionId: data.rubricQuestionId,
 					criteria: data.criteria,
 				},
 			});
@@ -51,8 +49,8 @@ export class RubricQuestionCriteriaValidation {
 			}
 		}
 
-		const minValue = data.min_value ?? entity?.min_value;
-		const maxValue = data.max_value ?? entity?.max_value;
+		const minValue = data.minValue ?? entity?.minValue;
+		const maxValue = data.maxValue ?? entity?.maxValue;
 
 		if (minValue > maxValue) {
 			errors.push(rubricQuestionCriteriasValidationStrings.error.invalidRange);

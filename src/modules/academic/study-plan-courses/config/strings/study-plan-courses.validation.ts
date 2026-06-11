@@ -1,11 +1,12 @@
 export const studyPlanCoursesValidationStrings = {
 	error: {
-		studyPlanCourseExists: 'error.study.plan.course.exists',
-		notFound: 'error.notFound',
+		studyPlanCourseExists: 'error.studyPlanCourse.studyPlanCourseExists',
+		notFound: 'error.studyPlanCourse.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.studyPlanCourse.createFailed',
+		updateFailed: 'error.studyPlanCourse.updateFailed',
+		deleteFailed: 'error.studyPlanCourse.deleteFailed',
+		enableEvaluationFailed: 'error.studyPlanCourse.enableEvaluationFailed',
 	},
 };

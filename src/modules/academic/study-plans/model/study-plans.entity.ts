@@ -1,27 +1,31 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
 @Entity({ name: 'study_plans', schema: 'academic' })
 export class StudyPlanEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	program_id: number;
+	programId: number;
 
 	@CodeColumn({ nullable: false, length: 10 })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: false })
-	description: string;
+	@JsonColumn({ nullable: false })
+	description: I18nText;
 
-	// %% RELACIONES
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => ProgramEntity)
-	@JoinColumn({ name: 'program_id' })
+	@JoinColumn({ name: 'program_id', foreignKeyConstraintName: 'FK_study_plans_program_id' })
 	program: ProgramEntity;
 }

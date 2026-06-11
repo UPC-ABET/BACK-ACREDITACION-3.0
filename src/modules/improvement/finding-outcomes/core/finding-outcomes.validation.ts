@@ -8,8 +8,8 @@ export class FindingOutcomeValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				finding_id: data.finding_id,
-				outcome_id: data.outcome_id,
+				findingId: data.findingId,
+				outcomeId: data.outcomeId,
 			},
 		});
 
@@ -32,13 +32,13 @@ export class FindingOutcomeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(findingOutcomesValidationStrings.error.notFound);
 
-		const findingId = data.finding_id ?? entity?.finding_id;
-		const outcomeId = data.outcome_id ?? entity?.outcome_id;
+		const findingId = data.findingId ?? entity?.findingId;
+		const outcomeId = data.outcomeId ?? entity?.outcomeId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				finding_id: findingId,
-				outcome_id: outcomeId,
+				findingId: findingId,
+				outcomeId: outcomeId,
 			},
 		});
 

@@ -1,9 +1,9 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BaseRepostitory } from 'src/commons/base.repository';
+import { BaseRepository } from 'src/commons/base.repository';
 import { EnrolledStudentEntity } from '../model/enrolled-students.entity';
 
-export class EnrolledStudentRepository extends BaseRepostitory {
+export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEntity> {
 	constructor(
 		@InjectRepository(EnrolledStudentEntity)
 		repository: Repository<EnrolledStudentEntity>,

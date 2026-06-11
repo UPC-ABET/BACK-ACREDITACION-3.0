@@ -1,8 +1,26 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, Post, ParseIntPipe } from '@nestjs/common';
+import { ApiOkResponse } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerCourseController, SwaggerCourseCreate, SwaggerCourseUpdate, SwaggerCourseDelete, SwaggerCourseGetAll, SwaggerCourseGetById, SwaggerCourseGetByFilters } from './docs/courses.swagger';
+import {
+	SwaggerCourseController,
+	SwaggerCourseCreate,
+	SwaggerCourseUpdate,
+	SwaggerCourseDelete,
+	SwaggerCourseGetAll,
+	SwaggerCourseGetById,
+	SwaggerCourseGetByFilters,
+} from './docs/courses.swagger';
 import { CourseService } from './courses.service';
-import { CreateCourseDto, UpdateCourseDto, FilterCourseDto } from '../model/courses.dtos';
+import {
+	CreateCourseDto,
+	UpdateCourseDto,
+	FilterCourseDto,
+	FilterCourseEnrolledStudentsDto,
+	CourseEnrolledStudentDto,
+} from '../model/courses.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerCourseController()
 export class CourseController extends BaseController<CourseService> {
@@ -11,32 +29,50 @@ export class CourseController extends BaseController<CourseService> {
 	}
 
 	@SwaggerCourseCreate()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateCourseDto) {
 		return await super.create(dto);
 	}
 
 	@SwaggerCourseUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateCourseDto) {
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.PUT })
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCourseDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerCourseDelete()
-	async delete(@Param('id') id: number) {
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.DELETE })
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerCourseGetAll()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerCourseGetById()
-	async getById(@Param('id') id: number) {
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerCourseGetByFilters()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterCourseDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@Post(':courseId/enrolled-students')
+	@ApiOkResponse({ type: [CourseEnrolledStudentDto] })
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
+	async getEnrolledStudents(
+		@Param('courseId', ParseIntPipe) courseId: number,
+		@Body() filters?: FilterCourseEnrolledStudentsDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.getEnrolledStudentsByCourseId(courseId, filters),
+		);
 	}
 }

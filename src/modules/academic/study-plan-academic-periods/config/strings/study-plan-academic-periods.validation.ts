@@ -1,11 +1,11 @@
 export const studyPlanAcademicPeriodsValidationStrings = {
 	error: {
-		studyPlanAcademicPeriodExists: 'error.study.plan.academic.period.exists',
-		notFound: 'error.notFound',
+		studyPlanAcademicPeriodExists: 'error.studyPlanAcademicPeriod.studyPlanAcademicPeriodExists',
+		notFound: 'error.studyPlanAcademicPeriod.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.studyPlanAcademicPeriod.createFailed',
+		updateFailed: 'error.studyPlanAcademicPeriod.updateFailed',
+		deleteFailed: 'error.studyPlanAcademicPeriod.deleteFailed',
 	},
 };

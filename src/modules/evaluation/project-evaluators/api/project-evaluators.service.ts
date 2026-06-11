@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { ProjectEvaluatorRepository } from '../core/project-evaluators.repository';
 import { ProjectEvaluatorValidation } from '../core/project-evaluators.validation';
 
-import { CreateProjectEvaluatorDto, UpdateProjectEvaluatorDto } from '../model/project-evaluators.dtos';
+import {
+	CreateProjectEvaluatorDto,
+	UpdateProjectEvaluatorDto,
+} from '../model/project-evaluators.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

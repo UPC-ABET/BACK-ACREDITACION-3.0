@@ -8,9 +8,9 @@ export class ProjectEvaluatorValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				project_id: data.project_id,
-				professor_id: data.professor_id,
-				evaluator_type_id: data.evaluator_type_id,
+				projectId: data.projectId,
+				professorId: data.professorId,
+				evaluatorTypeId: data.evaluatorTypeId,
 			},
 		});
 
@@ -33,15 +33,15 @@ export class ProjectEvaluatorValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(projectEvaluatorsValidationStrings.error.notFound);
 
-		const projectId = data.project_id ?? entity?.project_id;
-		const professorId = data.professor_id ?? entity?.professor_id;
-		const evaluatorTypeId = data.evaluator_type_id ?? entity?.evaluator_type_id;
+		const projectId = data.projectId ?? entity?.projectId;
+		const professorId = data.professorId ?? entity?.professorId;
+		const evaluatorTypeId = data.evaluatorTypeId ?? entity?.evaluatorTypeId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				project_id: projectId,
-				professor_id: professorId,
-				evaluator_type_id: evaluatorTypeId,
+				projectId: projectId,
+				professorId: professorId,
+				evaluatorTypeId: evaluatorTypeId,
 			},
 		});
 

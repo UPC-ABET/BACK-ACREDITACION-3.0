@@ -1,13 +1,15 @@
-import { FindOneOptions } from 'typeorm';
+import { DeepPartial, FindManyOptions, FindOneOptions } from 'typeorm';
 
-export interface IBaseRepository {
-	save(data: any): Promise<any>;
-	create(data: any): Promise<any>;
-	update(id: any, newEntity: any): Promise<any>;
-	remove(data: any): Promise<any>;
+import { BaseEntity } from './base.entity';
 
-	findAll(relations?: string[]): Promise<any[]>;
-	findByCondition(options: FindOneOptions, relations?: string[]): Promise<any[]>;
-	findOneById(id: any, relations?: string[]): Promise<any>;
-	findOneByCondition(options: FindOneOptions, relations?: string[]): Promise<any>;
+export interface IBaseRepository<E extends BaseEntity = BaseEntity> {
+	save(data: DeepPartial<E>): Promise<E>;
+	create(data: DeepPartial<E>): Promise<E>;
+	update(id: number, newEntity: DeepPartial<E>): Promise<E | null>;
+	remove(id: number): Promise<E>;
+
+	findAll(options?: FindManyOptions<E>): Promise<E[]>;
+	findByCondition(options: FindManyOptions<E>, relations?: string[]): Promise<E[]>;
+	findOneById(id: number, relations?: string[]): Promise<E | null>;
+	findOneByCondition(options: FindOneOptions<E>, relations?: string[]): Promise<E | null>;
 }

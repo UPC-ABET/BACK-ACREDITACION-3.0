@@ -1,31 +1,49 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { Request } from 'express';
+import { getRequiredJwtSecret } from '../jwt.config';
+import { UserAuthorizationService } from 'src/modules/organization/users/api/user-authorization.service';
+import { usersValidationStrings } from 'src/modules/organization/users/config/strings/users.validation';
+
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-	constructor() {
+	constructor(
+		configService: ConfigService,
+		private readonly userAuthorizationService: UserAuthorizationService,
+	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
-				(request) => {
-					if (request?.cookies?.access_token) {
-						return request.cookies.access_token;
-					}
-					return null;
-				},
 				ExtractJwt.fromAuthHeaderAsBearerToken(),
+				cookieExtractor,
 			]),
 			ignoreExpiration: false,
-			secretOrKey: process.env.JWT_SECRET,
+			secretOrKey: getRequiredJwtSecret(configService),
 		});
 	}
 
-	async validate(payload: any) {
-		return {
-			userId: payload.userId,
-			user: payload.user,
-			activeRole: payload.activeRole,
-			allowedRoles: payload.allowedRoles,
-		};
+	async validate(payload: { userId: number; activeRoleId?: number }) {
+		try {
+			const profile = await this.userAuthorizationService.buildAuthorizationProfile(
+				Number(payload.userId),
+				payload.activeRoleId,
+			);
+
+			return {
+				userId: payload.userId,
+				activeRole: profile.activeRole,
+				allowedRoles: profile.allowedRoles,
+				permissions: profile.permissions,
+			};
+		} catch {
+			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
+		}
 	}
+}
+
+function cookieExtractor(request: Request): string | null {
+	return request?.cookies?.[ACCESS_TOKEN_COOKIE_NAME] ?? null;
 }

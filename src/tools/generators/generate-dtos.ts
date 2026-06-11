@@ -6,9 +6,10 @@ import { globSync } from 'glob';
 
 const [domain, moduleName] = process.argv.slice(2);
 
-// 🔥 MODO 1: SOLO UNO
 if (domain && moduleName) {
-	const entityPath = path.resolve(`src/modules/${domain}/${moduleName}/model/${moduleName}.entity.ts`);
+	const entityPath = path.resolve(
+		`src/modules/${domain}/${moduleName}/model/${moduleName}.entity.ts`,
+	);
 
 	const parsed = parseEntity(entityPath);
 
@@ -22,8 +23,7 @@ if (domain && moduleName) {
 	process.exit(0);
 }
 
-// 🔥 MODO 2: MASIVO
-console.log('🚀 Generando DTOs para TODO el proyecto...\n');
+console.log('Generating DTOs for entire project...\n');
 
 const files = globSync('src/modules/**/model/*.entity.ts');
 
@@ -44,11 +44,10 @@ for (const file of files) {
 			fields: parsed.fields,
 		});
 	} catch (err) {
-		console.error(`❌ Error en ${file} - ${err}`);
+		console.error(`Error in ${file} - ${err}`);
 	}
 }
 
-// 🔥 LIMPIEZA CORRECTA
 project.getSourceFiles().forEach((sf) => sf.delete());
 
-console.log('\n✅ Proceso completado');
+console.log('\nDone.');

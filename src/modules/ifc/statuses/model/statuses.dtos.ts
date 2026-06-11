@@ -1,103 +1,101 @@
-import { IsBoolean, IsDate, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsDate, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateStatusDto extends BaseDto {
+export class CreateStatusDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	ifc_id: number;
+	ifcId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	status_type_id: number;
+	statusTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	staff_id: number;
+	staffId: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'commentary_example', required: false })
-	commentary?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentEs', en: 'commentEn' }, required: false })
+	comment?: I18nText;
 
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: true })
-	register_at: Date;
+	registerAt: Date;
 }
 
-export class UpdateStatusDto extends BaseDto {
+export class UpdateStatusDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	status_type_id?: number;
+	statusTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'commentary_example', required: false })
-	commentary?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentEs', en: 'commentEn' }, required: false })
+	comment?: I18nText;
 
 	@IsOptional()
 	@IsDate()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 }
 
-export class FilterStatusDto extends BaseDto {
+export class FilterStatusDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	ifc_id?: number;
+	ifcId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	status_type_id?: number;
+	statusTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'commentary_example', required: false })
-	commentary?: string;
+	@ApiProperty({ example: { es: 'commentEs', en: 'commentEn' }, required: false })
+	comment?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: '2024-01-01T00:00:00Z', required: false })
-	register_at?: Date;
+	registerAt?: Date;
 }

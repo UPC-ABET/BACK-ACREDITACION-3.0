@@ -1,16 +1,17 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn } from 'src/commons/configs/db.configs';
+import { NameColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'campuses', schema: 'organization' })
 export class CampusEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@NameColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 }

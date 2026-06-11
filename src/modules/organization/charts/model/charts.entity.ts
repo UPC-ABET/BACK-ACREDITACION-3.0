@@ -1,46 +1,45 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, TextMediumColumn, IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, IntegerColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
-import { ChartLevelEntity } from 'src/modules/organization/chart-levels/model/chart-levels.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 
 @Entity({ name: 'charts', schema: 'organization' })
 export class ChartEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	staff_id: number;
+	staffId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	academic_period_id: number;
+	academicPeriodId: number;
 
-	@IntegerFKIDColumn({ nullable: false })
-	chart_level_id: number;
+	@IntegerColumn({ nullable: true })
+	rootChartId: number | null;
 
-	@IntegerColumn({ nullable: false })
-	root_chart_detail_id: number;
+	@JsonColumn({ nullable: false })
+	title: I18nText;
 
-	@TextMediumColumn({ nullable: false })
-	level_title: string;
+	@IntegerColumn({ nullable: true })
+	entityTypeId: number | null;
 
-	@IntegerColumn({ nullable: false })
-	entity_type_id: number;
+	@IntegerColumn({ nullable: true })
+	entityCode: number | null;
 
-	@CodeColumn({ nullable: false })
-	entity_code: string;
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => StaffEntity)
-	@JoinColumn({ name: 'staff_id' })
+	@JoinColumn({ name: 'staff_id', foreignKeyConstraintName: 'FK_charts_staff_id' })
 	staff: StaffEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)
-	@JoinColumn({ name: 'academic_period_id' })
-	academic_period: AcademicPeriodEntity;
-
-	@ManyToOne(() => ChartLevelEntity)
-	@JoinColumn({ name: 'chart_level_id' })
-	chart_level: ChartLevelEntity;
+	@JoinColumn({
+		name: 'academic_period_id',
+		foreignKeyConstraintName: 'FK_charts_academic_period_id',
+	})
+	academicPeriod: AcademicPeriodEntity;
 }

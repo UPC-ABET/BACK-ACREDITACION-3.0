@@ -1,12 +1,12 @@
 export const rubricQuestionCriteriasValidationStrings = {
 	error: {
-		criteriaExists: 'error.criteria.exists',
-		invalidRange: 'error.invalid.range',
-		notFound: 'error.notFound',
+		criteriaExists: 'error.rubricQuestionCriteria.criteriaExists',
+		invalidRange: 'error.rubricQuestionCriteria.invalidRange',
+		notFound: 'error.rubricQuestionCriteria.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.rubricQuestionCriteria.createFailed',
+		updateFailed: 'error.rubricQuestionCriteria.updateFailed',
+		deleteFailed: 'error.rubricQuestionCriteria.deleteFailed',
 	},
 };
