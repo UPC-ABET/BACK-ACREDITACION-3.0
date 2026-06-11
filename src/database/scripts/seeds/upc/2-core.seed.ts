@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 
 export async function loadCoreParameters(tenantDataSource: DataSource) {
 	const baseParams: Array<[string, string, string, string]> = [
@@ -107,5 +107,5 @@ export async function loadCoreParameters(tenantDataSource: DataSource) {
 }
 
 if (require.main === module) {
-	runTenantSeed('core module', loadCoreParameters);
+	runSeed('core module', loadCoreParameters);
 }

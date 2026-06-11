@@ -1,8 +1,8 @@
-import { runTenantSeed } from '../seed-runner';
+import { runSeed } from '../seed-runner';
 
 const i18nJson = (es: string, en?: string) => JSON.stringify({ es, en: en ?? es });
 
-runTenantSeed('ifc notification configs', async (tenantDataSource) => {
+runSeed('ifc notification configs', async (tenantDataSource) => {
 	const SCHOOL_CODE = 'EISCB';
 	const ACADEMIC_PERIOD_CODE = '202502';
 

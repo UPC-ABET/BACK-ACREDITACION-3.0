@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 import { hashPassword } from 'src/libs/secure.functions';
 import { loadTypes } from './1-load-types';
 import { loadCoreParameters } from './2-core.seed';
@@ -8,7 +8,7 @@ import { loadOrganization } from './3-organization.seed';
 /*
  * initial — single, self-contained PROD baseline seed.
  *
- * Seeds only the structural data needed to stand up a production tenant:
+ * Seeds only the structural data needed to stand up production:
  *   - core type-group + type catalog (1-load-types)
  *   - core institutional parameters (2-core)
  *   - organization: campuses, faculties, schools (3-organization)
@@ -22,7 +22,7 @@ import { loadOrganization } from './3-organization.seed';
  * program<->commission links, and the COORDINATOR/USER/PROFESSOR roles. Operational
  * data and additional roles arrive later via the IAM admin UI and bulk upload process.
  *
- * Run:  npm run seed:initial <schema>
+ * Run:  npm run seed:initial
  */
 async function loadAuthRolesAndPermissions(tenantDataSource: DataSource) {
 	await tenantDataSource.query(`
@@ -106,8 +106,12 @@ async function loadAuthRolesAndPermissions(tenantDataSource: DataSource) {
 		SET is_active = true, updated_at = now();
 	`);
 
-	// Bootstrap admin user. Password "ABET2020" — rotate after first login.
-	const adminPassword = await hashPassword('ABET2020');
+	// Bootstrap admin user. Password from DEFAULT_USER_PASSWORD — rotate after first login.
+	const defaultPassword = process.env.DEFAULT_USER_PASSWORD;
+	if (!defaultPassword) {
+		throw new Error('DEFAULT_USER_PASSWORD is required to seed the bootstrap admin user');
+	}
+	const adminPassword = await hashPassword(defaultPassword);
 	await tenantDataSource.query(
 		`
 		INSERT INTO "organization"."users" (
@@ -284,7 +288,7 @@ async function loadAccreditation(tenantDataSource: DataSource) {
 	`);
 }
 
-runTenantSeed('initial PROD baseline', async (tenantDataSource) => {
+runSeed('initial PROD baseline', async (tenantDataSource) => {
 	await loadTypes(tenantDataSource);
 	await loadCoreParameters(tenantDataSource);
 	await loadOrganization(tenantDataSource);

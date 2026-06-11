@@ -1,6 +1,6 @@
-﻿import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('accreditation module', async (tenantDataSource) => {
+runSeed('accreditation module', async (tenantDataSource) => {
 	const accreditorValues = [
 		[
 			'ACC_SINEACE',

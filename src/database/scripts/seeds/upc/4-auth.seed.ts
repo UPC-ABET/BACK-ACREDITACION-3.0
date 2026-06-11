@@ -1,7 +1,7 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 import { hashPassword } from 'src/libs/secure.functions';
 
-runTenantSeed('organization users and staff', async (tenantDataSource) => {
+runSeed('organization users and staff', async (tenantDataSource) => {
 	const mockPassword = await hashPassword('Password123!');
 
 	await tenantDataSource.query(

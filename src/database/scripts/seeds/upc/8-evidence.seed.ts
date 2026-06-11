@@ -1,6 +1,6 @@
-﻿import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('evidence module', async (tenantDataSource) => {
+runSeed('evidence module', async (tenantDataSource) => {
 	const instrumentValues = [
 		[
 			'TG501-T001',

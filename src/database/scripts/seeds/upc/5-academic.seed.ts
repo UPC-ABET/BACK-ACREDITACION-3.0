@@ -1,6 +1,6 @@
-﻿import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('academic module', async (tenantDataSource) => {
+runSeed('academic module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."academic_periods" ("modality_type_id", code, start_date, end_date)
 		SELECT t.id, v.code, v.start_date::timestamptz, v.end_date::timestamptz

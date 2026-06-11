@@ -1,6 +1,6 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('auth roles and permissions', async (tenantDataSource) => {
+runSeed('auth roles and permissions', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "core"."roles" (id, name, code, description, is_active, created_at, updated_at)
 		VALUES

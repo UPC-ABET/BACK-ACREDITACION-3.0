@@ -2,17 +2,9 @@
 
 set -e
 
-# ================================
-# VALIDATE PARAMETER
-# ================================
-if [ -z "$1" ]; then
-  echo "Tenant required. Usage: ./generate-db.sh <tenant>"
-  exit 1
-fi
+SEEDS_DIR=src/database/scripts/seeds/upc
 
-TENANT=$1
-
-echo "Starting full DB setup for tenant: $TENANT"
+echo "Starting full DB setup"
 
 # ================================
 # STEP 0: GENERATE ENTITIES
@@ -29,8 +21,8 @@ rm -rf src/database/migrations/*
 # ================================
 # DROP SCHEMA
 # ================================
-echo "Dropping schema..."
-npx ts-node src/database/scripts/seeds/$TENANT/0-drop-schema.ts $TENANT
+echo "Dropping schemas..."
+npx ts-node $SEEDS_DIR/0-drop-schema.ts
 
 # ================================
 # GENERATE MIGRATION
@@ -62,13 +54,13 @@ npm run create:dbdiagram
 # RUN MIGRATION
 # ================================
 echo "Running migrations..."
-npm run migrate:tenant $TENANT
+npm run migration:run
 
 # ================================
 # SEEDS
 # ================================
 echo "Running seeds..."
 
-npx ts-node src/database/scripts/seeds/$TENANT/1-load-types.ts $TENANT
+npx ts-node $SEEDS_DIR/1-load-types.ts
 
-echo "Done. All steps completed for tenant: $TENANT"
+echo "Done. All steps completed."
