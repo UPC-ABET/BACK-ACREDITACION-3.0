@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { runTenantSeed, i18n } from '../seed-runner';
+import { hashPassword } from 'src/libs/secure.functions';
 import { loadTypes } from './1-load-types';
 import { loadCoreParameters } from './2-core.seed';
 import { loadOrganization } from './3-organization.seed';
@@ -13,12 +14,13 @@ import { loadOrganization } from './3-organization.seed';
  *   - organization: campuses, faculties, schools (3-organization)
  *   - academic: the production program (carrera) catalog + active academic periods
  *   - accreditation: the production accreditor and commission catalog
- *   - auth: the four roles, the full permission/module type catalog, and the ADMIN
- *           role granted every module x permission
+ *   - auth: the ADMIN role, the full permission/module type catalog, the ADMIN role
+ *           granted every module x permission, and a single bootstrap admin user
+ *           (admin@upc.edu.pe) attached to ADMIN
  *
  * Intentionally excluded (demo/fixture data, not PROD): demo users & staff,
- * program<->commission links, granting ADMIN to every user, and resetting passwords.
- * Operational data arrives later via the bulk upload process.
+ * program<->commission links, and the COORDINATOR/USER/PROFESSOR roles. Operational
+ * data and additional roles arrive later via the IAM admin UI and bulk upload process.
  *
  * Run:  npm run seed:initial <schema>
  */
@@ -26,10 +28,7 @@ async function loadAuthRolesAndPermissions(tenantDataSource: DataSource) {
 	await tenantDataSource.query(`
 		INSERT INTO "core"."roles" (id, name, code, description, is_active, created_at, updated_at)
 		VALUES
-			(1, '${i18n('Administrador', 'Admin')}'::jsonb, 'ADMIN', '${i18n('Acceso completo', 'Full access')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL),
-			(2, '${i18n('Coordinador', 'Coordinator')}'::jsonb, 'COORDINATOR', '${i18n('Acceso de coordinador', 'Coordinator access')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL),
-			(3, '${i18n('Usuario', 'User')}'::jsonb, 'USER', '${i18n('Usuario regular', 'Regular user')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL),
-			(4, '${i18n('Docente', 'Professor')}'::jsonb, 'PROFESSOR', '${i18n('Acceso de docente', 'Professor access')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL)
+			(1, '${i18n('Administrador', 'Admin')}'::jsonb, 'ADMIN', '${i18n('Acceso completo', 'Full access')}'::jsonb, true, '2026-05-23 00:11:25.260914+00', NULL)
 		ON CONFLICT (code) DO UPDATE
 		SET
 			name = EXCLUDED.name,
@@ -104,6 +103,34 @@ async function loadAuthRolesAndPermissions(tenantDataSource: DataSource) {
 		AND mt.code LIKE 'TG2001-%'
 		AND pt.code LIKE 'TG2000-%'
 		ON CONFLICT (role_id, module_type_id, permission_type_id) DO UPDATE
+		SET is_active = true, updated_at = now();
+	`);
+
+	// Bootstrap admin user. Password "ABET2020" — rotate after first login.
+	const adminPassword = await hashPassword('ABET2020');
+	await tenantDataSource.query(
+		`
+		INSERT INTO "organization"."users" (
+			document_type_id, document_code, first_name, last_name, email, phone, password
+		)
+		SELECT dt.id, 70000001, 'Administrador', 'General', 'admin@upc.edu.pe', '+51990000001', $1
+		FROM "core"."types" dt
+		WHERE dt.code = 'TG101-T001'
+		AND NOT EXISTS (
+			SELECT 1 FROM "organization"."users" u WHERE u.email = 'admin@upc.edu.pe'
+		);
+	`,
+		[adminPassword],
+	);
+
+	await tenantDataSource.query(`
+		INSERT INTO "core"."user_roles" (user_id, role_id, is_active)
+		SELECT u.id, r.id, true
+		FROM "organization"."users" u
+		CROSS JOIN "core"."roles" r
+		WHERE u.email = 'admin@upc.edu.pe'
+		AND r.code = 'ADMIN'
+		ON CONFLICT (user_id, role_id) DO UPDATE
 		SET is_active = true, updated_at = now();
 	`);
 }
