@@ -11,7 +11,7 @@
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@11
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
@@ -21,7 +21,7 @@ RUN pnpm install --frozen-lockfile
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@11
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm run build
@@ -61,7 +61,7 @@ FROM node:24-bookworm-slim AS migrator
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@11
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Default command; the workflow overrides it (migration:run, migrate:all, ...).
