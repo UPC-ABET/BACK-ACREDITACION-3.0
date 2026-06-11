@@ -1,22 +1,125 @@
-import { runTenantSeed } from '../seed-runner';
+﻿import { runTenantSeed, i18n } from '../seed-runner';
 
 runTenantSeed('ifc status module', async (tenantDataSource) => {
+	const statusValues = [
+		[
+			'Fundamentos de Programacion',
+			'202601',
+			'TG701-T002',
+			'calidad@upc.edu.pe',
+			i18n(
+				'IFC enviado a revision para el periodo 2026-1.',
+				'IFC submitted for review for the 2026-1 period.',
+			),
+			'2026-06-15 09:00:00',
+		],
+		[
+			'Proyecto Integrador de Software',
+			'202502',
+			'TG701-T001',
+			'calidad@upc.edu.pe',
+			i18n(
+				'IFC guardado pendiente de envio para el proyecto integrador.',
+				'IFC saved pending submission for the integrator project.',
+			),
+			'2026-06-16 09:00:00',
+		],
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202502',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n('IFC guardado por el coordinador.', 'IFC saved by the coordinator.'),
+			'2025-09-01 09:00:00',
+		],
+		[
+			'Bases de Datos',
+			'202502',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n('Borrador inicial del IFC.', 'Initial draft of the IFC.'),
+			'2025-09-02 09:00:00',
+		],
+		[
+			'Bases de Datos',
+			'202502',
+			'TG701-T002',
+			'coord.eiscb@upc.edu.pe',
+			i18n('IFC enviado para revision.', 'IFC submitted for review.'),
+			'2025-09-05 14:30:00',
+		],
+		// 202601 IFCs (year 2026 — exercises the previous_actions feature).
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202601',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n(
+				'IFC guardado por el coordinador para el periodo 2026-1.',
+				'IFC saved by the coordinator for the 2026-1 period.',
+			),
+			'2026-09-15 09:00:00',
+		],
+		[
+			'Bases de Datos',
+			'202601',
+			'TG701-T002',
+			'coord.eiscb@upc.edu.pe',
+			i18n(
+				'IFC enviado a revision para el periodo 2026-1.',
+				'IFC submitted for review for the 2026-1 period.',
+			),
+			'2026-10-02 11:00:00',
+		],
+		// 202602 IFCs (year 2026) — these are where previous_actions (from 202601) show up.
+		[
+			'Algoritmos y Estructuras de Datos',
+			'202602',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n(
+				'IFC guardado por el coordinador para el periodo 2026-2.',
+				'IFC saved by the coordinator for the 2026-2 period.',
+			),
+			'2027-01-10 09:00:00',
+		],
+		[
+			'Bases de Datos',
+			'202602',
+			'TG701-T001',
+			'coord.eiscb@upc.edu.pe',
+			i18n(
+				'Borrador inicial del IFC para el periodo 2026-2.',
+				'Initial IFC draft for the 2026-2 period.',
+			),
+			'2027-01-12 10:00:00',
+		],
+	]
+		.map(
+			([courseName, periodCode, stCode, email, comment, regAt]) =>
+				`('${courseName}', '${periodCode}', '${stCode}', '${email}', '${comment}'::jsonb, '${regAt}')`,
+		)
+		.join(',\n\t\t\t');
+
 	await tenantDataSource.query(`
 		INSERT INTO "ifc"."statuses" (
 			ifc_id,
 			status_type_id,
 			staff_id,
-			commentary,
+			comment,
 			register_at
 		)
-		SELECT ifc.id, status_type.id, staff.id, v.commentary, v.register_at::timestamptz
+		SELECT ifc.id, status_type.id, staff.id, v.comment, v.register_at::timestamptz
 		FROM (
 			VALUES
-				('IFC para medir pensamiento critico y solucion tecnica en Fundamentos de Programacion.', 'TG701-T002', 'calidad@upc.edu.pe', 'Indicador medido y analizado para el periodo 2026-1.', '2026-06-15 09:00:00'),
-				('IFC para medir colaboracion y solucion tecnica en Proyecto Integrador.', 'TG701-T001', 'calidad@upc.edu.pe', 'Indicador planificado para medicion al cierre del proyecto integrador.', '2026-06-16 09:00:00')
-		) AS v(ifc_information, status_type_code, staff_email, commentary, register_at)
+				${statusValues}
+		) AS v(course_name, academic_period_code, status_type_code, staff_email, comment, register_at)
+		JOIN "academic"."courses" course
+			ON course.name->>'es' = v.course_name
+		JOIN "academic"."academic_periods" period
+			ON period.code = v.academic_period_code
 		JOIN "evidence"."ifcs" ifc
-			ON ifc.information = v.ifc_information
+			ON ifc.course_id = course.id AND ifc.academic_period_id = period.id
 		JOIN "core"."types" status_type
 			ON status_type.code = v.status_type_code
 		JOIN "organization"."staff" staff

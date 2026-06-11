@@ -29,4 +29,8 @@ export class OutcomeService extends BaseService<OutcomeRepository> {
 		await OutcomeValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
 	}
+
+	async getById(id: number) {
+		return await this.repository.findByIdWithCommission(id);
+	}
 }

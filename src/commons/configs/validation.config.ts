@@ -27,7 +27,8 @@ export class ValidationConfig {
 	 * ========================= */
 	static readonly FK_REQUIRED = (entity: string) => `El ID de ${entity} es obligatorio`;
 
-	static readonly FK_NOT_FOUND = (entity: string) => `No existe el registro relacionado en ${entity}`;
+	static readonly FK_NOT_FOUND = (entity: string) =>
+		`No existe el registro relacionado en ${entity}`;
 
 	/* =========================
 	 * TRANSACCIONAL

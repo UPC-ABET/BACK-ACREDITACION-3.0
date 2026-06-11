@@ -1,167 +1,168 @@
-import { IsBoolean, IsEmail, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+// no-override — hand-curated validators (@IsEmail, etc.); generator skips this file.
+import {
+	IsBoolean,
+	IsEmail,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Length,
+	MaxLength,
+	MinLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateUserDto extends BaseDto {
+export class CreateUserDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
+	@IsOptional()
 	@IsNumber()
-	@Length(1, 50)
-	@ApiProperty({ example: 1, required: true })
-	document_type_id: number;
+	@ApiProperty({ example: 1, required: false })
+	documentTypeId?: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	document_code: number;
+	@ApiProperty({ example: 1, required: false })
+	documentCode?: number;
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'first_name_example', required: true })
-	first_name: string;
+	@ApiProperty({ example: 'firstNameExample', required: true })
+	firstName: string;
 
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'last_name_example', required: true })
-	last_name: string;
+	@ApiProperty({ example: 'lastNameExample', required: true })
+	lastName: string;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'email_example', required: true })
+	@IsEmail()
+	@MaxLength(254)
+	@ApiProperty({ example: 'user@example.com', required: true })
 	email: string;
 
+	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'phone_example', required: true })
-	phone: string;
-
-	@IsBoolean()
-	@ApiProperty({ example: true, required: true })
-	is_admin: boolean;
+	@ApiProperty({ example: '+51 999 999 999', required: false })
+	phone?: string;
 }
 
-export class UpdateUserDto extends BaseDto {
+export class UpdateUserDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
-
-	@IsOptional()
-	@IsNumber()
-	@Length(1, 50)
-	@ApiProperty({ example: 1, required: false })
-	document_type_id?: number;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	document_code?: number;
+	documentTypeId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	documentCode?: number;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'first_name_example', required: false })
-	first_name?: string;
+	@ApiProperty({ example: 'firstNameExample', required: false })
+	firstName?: string;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'last_name_example', required: false })
-	last_name?: string;
+	@ApiProperty({ example: 'lastNameExample', required: false })
+	lastName?: string;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'email_example', required: false })
+	@IsEmail()
+	@MaxLength(254)
+	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
 	@IsOptional()
 	@IsString()
 	@Length(1, 1000)
-	@ApiProperty({ example: 'phone_example', required: false })
+	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
-
-	@IsOptional()
-	@IsBoolean()
-	@ApiProperty({ example: true, required: false })
-	is_admin?: boolean;
 }
 
-export class FilterUserDto extends BaseDto {
+export class FilterUserDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	document_type_id?: number;
+	documentTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	document_code?: number;
+	documentCode?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'first_name_example', required: false })
-	first_name?: string;
+	@ApiProperty({ example: 'firstNameExample', required: false })
+	firstName?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'last_name_example', required: false })
-	last_name?: string;
+	@ApiProperty({ example: 'lastNameExample', required: false })
+	lastName?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'email_example', required: false })
+	@IsEmail()
+	@MaxLength(254)
+	@ApiProperty({ example: 'user@example.com', required: false })
 	email?: string;
 
 	@IsOptional()
-	@ApiProperty({ example: 'phone_example', required: false })
+	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
-
-	@IsOptional()
-	@ApiProperty({ example: true, required: false })
-	is_admin?: boolean;
 }
 
-// %% OTHERS DTO
+// %% OTHER DTOS
 export class LoginUserByCredentialsDto {
 	@IsEmail()
+	@MaxLength(254)
 	@ApiProperty({
-		example: 'juan.perez@example.com',
+		example: 'user@example.com',
 		required: true,
 	})
 	email: string;
 
 	@IsString()
+	@MinLength(8)
 	@ApiProperty({
-		example: 'password123',
+		example: 'passwordExample',
 		required: true,
 	})
 	password: string;
 }
 
 export class ChangeRoleDto {
-	@IsString()
-	@ApiProperty({})
-	newRole: RoleCode;
+	@IsNumber()
+	@ApiProperty({ example: 1 })
+	newRole: number;
 }
 
-// %% OTHERS CONSTANTS
-export const ROLE_CODES = {
-	ADMIN: 'ADMIN',
-	PROFESSOR: 'PROFESSOR',
-} as const;
-
-export type RoleCode = (typeof ROLE_CODES)[keyof typeof ROLE_CODES];
+export class GetMeDto {
+	@IsString()
+	@IsNotEmpty()
+	@ApiProperty({ example: 'TG102-T001', required: true, description: 'Program modality code' })
+	modalityCode: string;
+}

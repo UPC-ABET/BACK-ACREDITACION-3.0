@@ -9,6 +9,11 @@ export const typesRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar tipos' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener tipo' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar tipos' },
+			byGroupCode: {
+				method: 'GET',
+				route: '/by-group-code/:code',
+				summary: 'Listar tipos activos pertenecientes a un grupo, por código del grupo',
+			},
 		},
 	},
 };

@@ -1,74 +1,73 @@
 import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateProjectEvaluatorDto extends BaseDto {
+export class CreateProjectEvaluatorDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	project_id: number;
+	projectId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	professor_id: number;
+	professorId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	evaluator_type_id: number;
+	evaluatorTypeId: number;
 }
 
-export class UpdateProjectEvaluatorDto extends BaseDto {
+export class UpdateProjectEvaluatorDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	project_id?: number;
+	projectId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	professorId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	evaluator_type_id?: number;
+	evaluatorTypeId?: number;
 }
 
-export class FilterProjectEvaluatorDto extends BaseDto {
+export class FilterProjectEvaluatorDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	project_id?: number;
+	projectId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	professorId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	evaluator_type_id?: number;
+	evaluatorTypeId?: number;
 }

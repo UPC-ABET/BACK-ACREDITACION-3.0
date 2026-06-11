@@ -1,5 +1,5 @@
 export const courseOutcomeMappingsRoutes = {
-	course_outcome_mappings: {
+	courseOutcomeMappings: {
 		route: 'course-outcome-mappings',
 		tag: 'Mapeos de outcomes por curso',
 		operation: {
@@ -8,7 +8,11 @@ export const courseOutcomeMappingsRoutes = {
 			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Eliminar mapeo de outcome' },
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar mapeos de outcomes' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener mapeo de outcome' },
-			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar mapeos de outcomes' },
+			getByFilters: {
+				method: 'POST',
+				route: '/get-by-filters',
+				summary: 'Buscar mapeos de outcomes',
+			},
 		},
 	},
 };

@@ -4,11 +4,14 @@ import { CreateOutcomeDto, UpdateOutcomeDto, FilterOutcomeDto } from '../../mode
 
 const cfg = outcomesRoutes.outcomes;
 
-export const SwaggerOutcomeController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerOutcomeController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerOutcomeCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateOutcomeDto });
+export const SwaggerOutcomeCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateOutcomeDto });
 
-export const SwaggerOutcomeUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateOutcomeDto });
+export const SwaggerOutcomeUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateOutcomeDto });
 
 export const SwaggerOutcomeDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +19,5 @@ export const SwaggerOutcomeGetAll = () => HttpMethodWithSwagger(cfg.operation.ge
 
 export const SwaggerOutcomeGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerOutcomeGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterOutcomeDto });
+export const SwaggerOutcomeGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterOutcomeDto });

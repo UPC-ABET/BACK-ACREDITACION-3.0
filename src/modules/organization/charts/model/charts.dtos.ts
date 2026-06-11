@@ -1,115 +1,116 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateChartDto extends BaseDto {
+export class CreateChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	staff_id: number;
+	staffId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	chart_level_id: number;
+	@ApiProperty({ example: 1, required: false })
+	rootChartId?: number;
 
+	@IsObject()
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
+	title: I18nText;
+
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	root_chart_detail_id: number;
+	@ApiProperty({ example: 1, required: false })
+	entityTypeId?: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'level_title_example', required: true })
-	level_title: string;
-
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	entity_type_id: number;
+	@ApiProperty({ example: 1, required: false })
+	entityCode?: number;
 }
 
-export class UpdateChartDto extends BaseDto {
+export class UpdateChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	chart_level_id?: number;
+	rootChartId?: number;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	root_chart_detail_id?: number;
-
-	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'level_title_example', required: false })
-	level_title?: string;
+	entityTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	entity_type_id?: number;
+	entityCode?: number;
 }
 
-export class FilterChartDto extends BaseDto {
+export class FilterChartDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	chart_level_id?: number;
+	rootChartId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	root_chart_detail_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 'level_title_example', required: false })
-	level_title?: string;
+	entityTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	entity_type_id?: number;
+	entityCode?: number;
 }

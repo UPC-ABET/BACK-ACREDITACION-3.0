@@ -1,139 +1,132 @@
-import { EntityManager, FindOneOptions, IsNull, DataSource, Repository, QueryRunner } from 'typeorm';
+import {
+	DataSource,
+	DeepPartial,
+	EntityManager,
+	FindManyOptions,
+	FindOneOptions,
+	FindOperator,
+	FindOptionsWhere,
+	IsNull,
+	Repository,
+} from 'typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { IBaseRepository } from './ibase.repository';
+import { BaseEntity } from './base.entity';
+import { sharedStrings } from '../shared/strings/shared.strings';
 
-export abstract class BaseRepostitory implements IBaseRepository {
-	protected entity: any;
+export abstract class BaseRepository<
+	E extends BaseEntity = BaseEntity,
+> implements IBaseRepository<E> {
+	protected readonly repository: Repository<E>;
 
 	constructor(
-		entity: any,
+		repository: Repository<E>,
 		protected readonly dataSource: DataSource,
 	) {
-		this.entity = entity;
+		this.repository = repository;
 	}
 
-	protected async getRepository(manager?: EntityManager): Promise<{ repository: Repository<any>; queryRunner: QueryRunner }> {
-		const queryRunner = this.dataSource.createQueryRunner();
-		await queryRunner.connect();
-		const repository = manager ? manager.getRepository(this.entity.target) : queryRunner.manager.getRepository(this.entity.target);
-		return { repository, queryRunner };
+	public getJsonbColumnNames(): string[] {
+		return this.repository.metadata.columns
+			.filter((column) => String(column.type) === 'jsonb' || String(column.type) === 'json')
+			.map((column) => column.propertyName);
 	}
 
-	public async save(data: any, manager?: EntityManager): Promise<any> {
-		const { repository, queryRunner } = await this.getRepository(manager);
-		try {
-			return await repository.save(data);
-		} finally {
-			await queryRunner.release();
+	public async save(data: DeepPartial<E>, manager?: EntityManager): Promise<E> {
+		return await this.resolveRepository(manager).save(data);
+	}
+
+	public async create(data: DeepPartial<E>, manager?: EntityManager): Promise<E> {
+		const repository = this.resolveRepository(manager);
+		const entity = repository.create(data);
+		return await repository.save(entity);
+	}
+
+	public async update(id: number, partial: DeepPartial<E>, manager?: EntityManager) {
+		const repository = this.resolveRepository(manager);
+
+		const result = await repository.update(id, partial as Parameters<Repository<E>['update']>[1]);
+		if (result.affected === 0) {
+			throw new NotFoundException(sharedStrings.error.notFound);
 		}
+
+		return await repository.findOne({ where: { id } as FindOptionsWhere<E> });
 	}
 
-	public async create(data: any, manager?: EntityManager): Promise<any> {
-		const { repository, queryRunner } = await this.getRepository(manager);
-		try {
-			const entity = repository.create(data);
-			return await repository.save(entity);
-		} finally {
-			await queryRunner.release();
+	public async remove(id: number, manager?: EntityManager) {
+		const repository = this.resolveRepository(manager);
+		const entity = await repository.findOne({ where: { id } as FindOptionsWhere<E> });
+
+		if (!entity) {
+			throw new NotFoundException(sharedStrings.error.notFound);
 		}
+
+		return await repository.remove(entity);
 	}
 
-	public async update(id: number, newEntity: any, manager?: EntityManager) {
-		const { repository, queryRunner } = await this.getRepository(manager);
-
-		try {
-			const entity = await repository.findOne({ where: { id } });
-
-			if (!entity) {
-				throw new Error(`No se encontró la entidad con ID: ${id}`);
-			}
-
-			Object.assign(entity, newEntity);
-
-			return await repository.save(entity);
-		} finally {
-			await queryRunner.release();
-		}
+	public async findAll(options: FindManyOptions<E> = {}) {
+		return await this.repository.find(this.normalizeFindManyOptions(options));
 	}
 
-	public async remove(id: any, manager?: EntityManager) {
-		const { repository, queryRunner } = await this.getRepository(manager);
-
-		try {
-			const entity = await repository.findOne({ where: { id } });
-			return await repository.remove(entity);
-		} finally {
-			await queryRunner.release();
-		}
+	public async findByCondition(options: FindManyOptions<E>, relations?: string[]) {
+		return await this.repository.find(this.normalizeFindManyOptions(options, relations));
 	}
 
-	public async findAll(relations?: string[]) {
-		const { repository, queryRunner } = await this.getRepository();
-
-		try {
-			const allRelations = repository.metadata.relations.map((r) => r.propertyName);
-
-			return await repository.find({
-				relations: relations?.length ? relations : allRelations,
-			});
-		} finally {
-			await queryRunner.release();
-		}
+	public async findOneById(id: number, relations?: string[]) {
+		return await this.repository.findOne(
+			this.normalizeFindOneOptions({ where: { id } as FindOptionsWhere<E> }, relations),
+		);
 	}
 
-	public async findByCondition(options: FindOneOptions, relations?: string[]) {
-		const { repository, queryRunner } = await this.getRepository();
-
-		try {
-			if (relations?.length) {
-				options.relations = relations;
-			} else {
-				options.relations = repository.metadata.relations.map((r) => r.propertyName);
-			}
-
-			if (options?.where) {
-				options.where = this.transformNullToIsNull(options.where);
-			}
-
-			return await repository.find(options);
-		} finally {
-			await queryRunner.release();
-		}
+	public async findOneByCondition(options: FindOneOptions<E>, relations?: string[]) {
+		return await this.repository.findOne(this.normalizeFindOneOptions(options, relations));
 	}
 
-	public async findOneById(id: any, relations?: string[]) {
-		const { repository, queryRunner } = await this.getRepository();
-
-		try {
-			return await repository.findOne({
-				where: { id },
-				relations: relations?.length ? relations : repository.metadata.relations.map((r) => r.propertyName),
-			});
-		} finally {
-			await queryRunner.release();
-		}
+	private resolveRepository(manager?: EntityManager): Repository<E> {
+		return manager ? manager.getRepository(this.repository.target) : this.repository;
 	}
 
-	public async findOneByCondition(options: FindOneOptions) {
-		const { repository, queryRunner } = await this.getRepository();
+	private normalizeFindManyOptions(
+		options: FindManyOptions<E> = {},
+		relations?: string[],
+	): FindManyOptions<E> {
+		const normalized = { ...options };
 
-		try {
-			if (!options.relations) {
-				options.relations = repository.metadata.relations.map((r) => r.propertyName);
-			}
-
-			if (options?.where) {
-				options.where = this.transformNullToIsNull(options.where);
-			}
-
-			return await repository.findOne(options);
-		} finally {
-			await queryRunner.release();
+		if (relations?.length) {
+			normalized.relations = relations;
 		}
+
+		if (normalized.where) {
+			normalized.where = this.transformNullToIsNull(normalized.where);
+		}
+
+		return normalized;
+	}
+
+	private normalizeFindOneOptions(
+		options: FindOneOptions<E>,
+		relations?: string[],
+	): FindOneOptions<E> {
+		const normalized = { ...options };
+
+		if (relations?.length) {
+			normalized.relations = relations;
+		}
+
+		if (normalized.where) {
+			normalized.where = this.transformNullToIsNull(normalized.where);
+		}
+
+		return normalized;
 	}
 
 	public transformNullToIsNull(obj: any): any {
 		if (Array.isArray(obj)) {
 			return obj.map(this.transformNullToIsNull.bind(this));
+		}
+
+		if (obj instanceof FindOperator) {
+			return obj;
 		}
 
 		if (obj !== null && typeof obj === 'object') {
@@ -142,7 +135,9 @@ export abstract class BaseRepostitory implements IBaseRepository {
 			for (const key in obj) {
 				const value = obj[key];
 
-				if (value === null) {
+				if (value instanceof FindOperator) {
+					newObj[key] = value;
+				} else if (value === null) {
 					newObj[key] = IsNull();
 				} else {
 					newObj[key] = this.transformNullToIsNull(value);

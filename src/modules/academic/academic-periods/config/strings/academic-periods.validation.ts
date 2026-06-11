@@ -1,12 +1,14 @@
 export const academicPeriodsValidationStrings = {
 	error: {
-		codeExists: 'error.code.exists',
-		invalidDateRange: 'error.invalid.date.range',
-		notFound: 'error.notFound',
+		codeExists: 'error.academicPeriod.codeExists',
+		invalidDateRange: 'error.academicPeriod.invalidDateRange',
+		notFound: 'error.academicPeriod.notFound',
+		modalityInvalid: 'error.academicPeriod.modalityInvalid',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.academicPeriod.createFailed',
+		updateFailed: 'error.academicPeriod.updateFailed',
+		deleteFailed: 'error.academicPeriod.deleteFailed',
+		activateFailed: 'error.academicPeriod.activateFailed',
 	},
 };

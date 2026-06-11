@@ -1,55 +1,54 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateScoreDto extends BaseDto {
+export class CreateScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_id: number;
+	surveyId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	outcome_id: number;
+	outcomeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	score: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
+	commentaries?: I18nText;
 }
 
-export class UpdateScoreDto extends BaseDto {
+export class UpdateScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_id?: number;
+	surveyId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -57,34 +56,33 @@ export class UpdateScoreDto extends BaseDto {
 	score?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
+	commentaries?: I18nText;
 }
 
-export class FilterScoreDto extends BaseDto {
+export class FilterScoreDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_id?: number;
+	surveyId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	outcome_id?: number;
+	outcomeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	score?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'commentaries_example', required: false })
-	commentaries?: string;
+	@ApiProperty({ example: { es: 'commentariesEs', en: 'commentariesEn' }, required: false })
+	commentaries?: I18nText;
 }

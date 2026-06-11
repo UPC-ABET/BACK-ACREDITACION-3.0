@@ -1,12 +1,12 @@
 export const performanceLevelsValidationStrings = {
 	error: {
-		nameExists: 'error.name.exists',
-		invalidScoreRange: 'error.invalid.score.range',
-		notFound: 'error.notFound',
+		nameExists: 'error.performanceLevel.nameExists',
+		invalidScoreRange: 'error.performanceLevel.invalidScoreRange',
+		notFound: 'error.performanceLevel.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.performanceLevel.createFailed',
+		updateFailed: 'error.performanceLevel.updateFailed',
+		deleteFailed: 'error.performanceLevel.deleteFailed',
 	},
 };

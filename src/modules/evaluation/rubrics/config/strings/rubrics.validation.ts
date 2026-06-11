@@ -1,12 +1,18 @@
 export const rubricsValidationStrings = {
 	error: {
-		rubricExists: 'error.rubric.exists',
-		invalidMaxScore: 'error.invalid.max.score',
-		notFound: 'error.notFound',
+		rubricExists: 'error.rubric.rubricExists',
+		invalidMaxScore: 'error.rubric.invalidMaxScore',
+		notFound: 'error.rubric.notFound',
+		activeRubricExistsForPeriod: 'error.rubric.activeRubricExistsForPeriod',
+		activeRubricExists: 'error.rubric.activeRubricExists',
+		invalidOutcomeMapping: 'error.rubric.invalidOutcomeMapping',
+		capstoneRequiresOutcome: 'error.rubric.capstoneRequiresOutcome',
+		studyPlanCourseNotFound: 'error.rubric.studyPlanCourseNotFound',
+		noRubricForCourse: 'error.rubric.noRubricForCourse',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.rubric.createFailed',
+		updateFailed: 'error.rubric.updateFailed',
+		deleteFailed: 'error.rubric.deleteFailed',
 	},
 };

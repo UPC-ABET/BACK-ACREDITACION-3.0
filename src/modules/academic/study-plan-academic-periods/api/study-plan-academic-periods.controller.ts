@@ -1,16 +1,15 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudyPlanAcademicPeriodController,
-	SwaggerStudyPlanAcademicPeriodCreate,
-	SwaggerStudyPlanAcademicPeriodUpdate,
-	SwaggerStudyPlanAcademicPeriodDelete,
 	SwaggerStudyPlanAcademicPeriodGetAll,
 	SwaggerStudyPlanAcademicPeriodGetById,
 	SwaggerStudyPlanAcademicPeriodGetByFilters,
 } from './docs/study-plan-academic-periods.swagger';
 import { StudyPlanAcademicPeriodService } from './study-plan-academic-periods.service';
-import { CreateStudyPlanAcademicPeriodDto, UpdateStudyPlanAcademicPeriodDto, FilterStudyPlanAcademicPeriodDto } from '../model/study-plan-academic-periods.dtos';
+import { FilterStudyPlanAcademicPeriodDto } from '../model/study-plan-academic-periods.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerStudyPlanAcademicPeriodController()
 export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanAcademicPeriodService> {
@@ -18,32 +17,20 @@ export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanA
 		super(service);
 	}
 
-	@SwaggerStudyPlanAcademicPeriodCreate()
-	async create(@Body() dto: CreateStudyPlanAcademicPeriodDto) {
-		return await super.create(dto);
-	}
-
-	@SwaggerStudyPlanAcademicPeriodUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateStudyPlanAcademicPeriodDto) {
-		return await super.update(id, dto);
-	}
-
-	@SwaggerStudyPlanAcademicPeriodDelete()
-	async delete(@Param('id') id: number) {
-		return await super.delete(id);
-	}
-
 	@SwaggerStudyPlanAcademicPeriodGetAll()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerStudyPlanAcademicPeriodGetById()
-	async getById(@Param('id') id: number) {
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerStudyPlanAcademicPeriodGetByFilters()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterStudyPlanAcademicPeriodDto) {
 		return await super.getByFilters(dto);
 	}

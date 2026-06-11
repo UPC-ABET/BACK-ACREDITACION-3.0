@@ -1,11 +1,11 @@
 export const projectStudentsValidationStrings = {
 	error: {
-		projectStudentExists: 'error.project.student.exists',
-		notFound: 'error.notFound',
+		projectStudentExists: 'error.projectStudent.projectStudentExists',
+		notFound: 'error.projectStudent.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.projectStudent.createFailed',
+		updateFailed: 'error.projectStudent.updateFailed',
+		deleteFailed: 'error.projectStudent.deleteFailed',
 	},
 };

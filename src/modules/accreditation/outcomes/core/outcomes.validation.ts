@@ -8,8 +8,8 @@ export class OutcomeValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				program_commission_id: data.program_commission_id,
-				outcome_code: data.outcome_code,
+				programCommissionId: data.programCommissionId,
+				outcomeCode: data.outcomeCode,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class OutcomeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(outcomesValidationStrings.error.notFound);
 
-		if (data.program_commission_id && data.outcome_code) {
+		if (data.programCommissionId && data.outcomeCode) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					program_commission_id: data.program_commission_id,
-					outcome_code: data.outcome_code,
+					programCommissionId: data.programCommissionId,
+					outcomeCode: data.outcomeCode,
 				},
 			});
 

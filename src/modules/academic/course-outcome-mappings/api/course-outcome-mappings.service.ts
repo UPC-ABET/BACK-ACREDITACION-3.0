@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { CourseOutcomeMappingRepository } from '../core/course-outcome-mappings.repository';
 import { CourseOutcomeMappingValidation } from '../core/course-outcome-mappings.validation';
 
-import { CreateCourseOutcomeMappingDto, UpdateCourseOutcomeMappingDto } from '../model/course-outcome-mappings.dtos';
+import {
+	CreateCourseOutcomeMappingDto,
+	UpdateCourseOutcomeMappingDto,
+} from '../model/course-outcome-mappings.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

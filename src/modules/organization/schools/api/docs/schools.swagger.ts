@@ -6,9 +6,11 @@ const cfg = schoolsRoutes.schools;
 
 export const SwaggerSchoolController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerSchoolCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateSchoolDto });
+export const SwaggerSchoolCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateSchoolDto });
 
-export const SwaggerSchoolUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateSchoolDto });
+export const SwaggerSchoolUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateSchoolDto });
 
 export const SwaggerSchoolDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +18,5 @@ export const SwaggerSchoolGetAll = () => HttpMethodWithSwagger(cfg.operation.get
 
 export const SwaggerSchoolGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerSchoolGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterSchoolDto });
+export const SwaggerSchoolGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterSchoolDto });

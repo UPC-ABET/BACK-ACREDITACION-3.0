@@ -8,7 +8,12 @@ export const usersRoutes = {
 		getAll: { method: 'GET', route: '/get-all', summary: 'Listar usuarios' },
 		getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener usuario' },
 		getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar usuarios' },
-		loginByCredentials: { method: 'POST', route: '/login-by-credentials', summary: 'Login de usuario por credenciales' },
+		loginByCredentials: {
+			method: 'POST',
+			route: '/login-by-credentials',
+			summary: 'Login de usuario por credenciales',
+		},
+		me: { method: 'GET', route: '/me', summary: 'Get current user profile' },
 		logout: { method: 'POST', route: '/logout', summary: 'Cerrar Sesión Usuario' },
 		changeRole: { method: 'POST', route: '/change-role', summary: 'Cambiar rol activo de usuario' },
 	},

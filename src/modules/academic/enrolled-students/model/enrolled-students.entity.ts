@@ -1,32 +1,43 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'enrolled_students', schema: 'academic' })
 export class EnrolledStudentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_id: number;
+	studentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	study_plan_academic_period: number;
+	studyPlanAcademicPeriod: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	campus_id: number;
+	campusId: number;
 
-	@IntegerColumn({ nullable: false })
-	enrollement_modality_type_id: number;
+	@IntegerFKIDColumn({ nullable: false })
+	enrollementModalityTypeId: number;
 
-	// %% RELACIONES
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => StudentEntity)
-	@JoinColumn({ name: 'student_id' })
+	@JoinColumn({ name: 'student_id', foreignKeyConstraintName: 'FK_enrolled_students_student_id' })
 	student: StudentEntity;
 
 	@ManyToOne(() => CampusEntity)
-	@JoinColumn({ name: 'campus_id' })
+	@JoinColumn({ name: 'campus_id', foreignKeyConstraintName: 'FK_enrolled_students_campus_id' })
 	campus: CampusEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'enrollement_modality_type_id',
+		foreignKeyConstraintName: 'FK_enrolled_students_enrollement_modality_type_id',
+	})
+	enrollementModalityType: TypeEntity;
 }

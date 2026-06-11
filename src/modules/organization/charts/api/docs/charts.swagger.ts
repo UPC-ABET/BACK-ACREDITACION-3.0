@@ -6,9 +6,11 @@ const cfg = chartsRoutes.charts;
 
 export const SwaggerChartController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerChartCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateChartDto });
+export const SwaggerChartCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateChartDto });
 
-export const SwaggerChartUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateChartDto });
+export const SwaggerChartUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateChartDto });
 
 export const SwaggerChartDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +18,5 @@ export const SwaggerChartGetAll = () => HttpMethodWithSwagger(cfg.operation.getA
 
 export const SwaggerChartGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerChartGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterChartDto });
+export const SwaggerChartGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterChartDto });

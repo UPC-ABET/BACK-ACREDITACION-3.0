@@ -6,21 +6,30 @@ import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/mo
 
 @Entity({ name: 'student_section_enrollments', schema: 'academic' })
 export class StudentSectionEnrollmentEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	enrolled_student_id: number;
+	enrolledStudentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	course_section_id: number;
+	courseSectionId: number;
 
-	// %% RELACIONES
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => EnrolledStudentEntity)
-	@JoinColumn({ name: 'enrolled_student_id' })
-	enrolled_student: EnrolledStudentEntity;
+	@JoinColumn({
+		name: 'enrolled_student_id',
+		foreignKeyConstraintName: 'FK_student_section_enrollments_enrolled_student_id',
+	})
+	enrolledStudent: EnrolledStudentEntity;
 
 	@ManyToOne(() => CourseSectionEntity)
-	@JoinColumn({ name: 'course_section_id' })
-	course_section: CourseSectionEntity;
+	@JoinColumn({
+		name: 'course_section_id',
+		foreignKeyConstraintName: 'FK_student_section_enrollments_course_section_id',
+	})
+	courseSection: CourseSectionEntity;
 }

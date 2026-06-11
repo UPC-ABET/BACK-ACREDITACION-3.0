@@ -1,58 +1,57 @@
 import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateStudentCourseGradeDto extends BaseDto {
+export class CreateStudentCourseGradeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	grade_type_id: number;
+	gradeTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	grade_type_percentage: number;
+	gradeTypePercentage: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	grade: number;
 }
 
-export class UpdateStudentCourseGradeDto extends BaseDto {
+export class UpdateStudentCourseGradeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	grade_type_id?: number;
+	gradeTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	grade_type_percentage?: number;
+	gradeTypePercentage?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -60,26 +59,26 @@ export class UpdateStudentCourseGradeDto extends BaseDto {
 	grade?: number;
 }
 
-export class FilterStudentCourseGradeDto extends BaseDto {
+export class FilterStudentCourseGradeDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	student_section_enrollment_id?: number;
+	studentSectionEnrollmentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	grade_type_id?: number;
+	gradeTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	grade_type_percentage?: number;
+	gradeTypePercentage?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

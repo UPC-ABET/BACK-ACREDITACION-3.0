@@ -8,7 +8,7 @@ export class CommissionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				accreditor_id: data.accreditor_id,
+				accreditorId: data.accreditorId,
 				code: data.code,
 			},
 		});
@@ -32,10 +32,10 @@ export class CommissionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(commissionsValidationStrings.error.notFound);
 
-		if (data.accreditor_id && data.code) {
+		if (data.accreditorId && data.code) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					accreditor_id: data.accreditor_id,
+					accreditorId: data.accreditorId,
 					code: data.code,
 				},
 			});

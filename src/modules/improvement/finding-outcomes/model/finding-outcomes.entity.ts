@@ -6,21 +6,21 @@ import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes
 
 @Entity({ name: 'finding_outcomes', schema: 'improvement' })
 export class FindingOutcomeEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	finding_id: number;
+	findingId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => FindingEntity)
-	@JoinColumn({ name: 'finding_id' })
+	@JoinColumn({ name: 'finding_id', foreignKeyConstraintName: 'FK_finding_outcomes_finding_id' })
 	finding: FindingEntity;
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_finding_outcomes_outcome_id' })
 	outcome: OutcomeEntity;
 }

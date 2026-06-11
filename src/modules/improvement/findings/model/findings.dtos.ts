@@ -1,81 +1,80 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateFindingDto extends BaseDto {
+export class CreateFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	criticality_type_id: number;
+	criticalityTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	instrument_id: number;
+	instrumentId: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	correlative: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_course_id: number;
+	courseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	campus_id: number;
+	academicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	campusId: number;
 
 	@IsBoolean()
 	@ApiProperty({ example: true, required: true })
-	is_automatic: boolean;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	finding_status_type_id: number;
+	isAutomatic: boolean;
 }
 
-export class UpdateFindingDto extends BaseDto {
+export class UpdateFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	criticality_type_id?: number;
+	criticalityTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	instrument_id?: number;
+	instrumentId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -83,74 +82,73 @@ export class UpdateFindingDto extends BaseDto {
 	correlative?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	campusId?: number;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_automatic?: boolean;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	finding_status_type_id?: number;
+	isAutomatic?: boolean;
 }
 
-export class FilterFindingDto extends BaseDto {
+export class FilterFindingDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	criticality_type_id?: number;
+	criticalityTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	instrument_id?: number;
+	instrumentId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	staff_id?: number;
+	staffId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	correlative?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	campusId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_automatic?: boolean;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	finding_status_type_id?: number;
+	isAutomatic?: boolean;
 }

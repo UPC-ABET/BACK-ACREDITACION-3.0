@@ -15,6 +15,12 @@ export class SchoolService extends BaseService<SchoolRepository> {
 		super(repository);
 	}
 
+	async findActiveByCode(code: string) {
+		return await this.baseRepository.findOneByCondition({
+			where: { code, isActive: true },
+		});
+	}
+
 	async create(dto: CreateSchoolDto, manager?: EntityManager) {
 		await SchoolValidation.validateCreate(this.repository, dto);
 		return await super.create(dto, manager);

@@ -1,11 +1,11 @@
 export const plansValidationStrings = {
 	error: {
-		planExists: 'error.plan.exists',
-		notFound: 'error.notFound',
+		planExists: 'error.plan.planExists',
+		notFound: 'error.plan.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.plan.createFailed',
+		updateFailed: 'error.plan.updateFailed',
+		deleteFailed: 'error.plan.deleteFailed',
 	},
 };

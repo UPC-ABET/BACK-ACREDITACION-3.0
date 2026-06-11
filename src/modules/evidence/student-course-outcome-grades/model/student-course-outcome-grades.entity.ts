@@ -6,24 +6,33 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 
 @Entity({ name: 'student_course_outcome_grades', schema: 'evidence' })
 export class StudentCourseOutcomeGradeEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	student_section_enrollment_id: number;
+	studentSectionEnrollmentId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
 	@DecimalColumn({ nullable: false })
 	grade: number;
 
-	// %% RELACIONES
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number;
+
+	// %% RELATIONS
 
 	@ManyToOne(() => StudentSectionEnrollmentEntity)
-	@JoinColumn({ name: 'student_section_enrollment_id' })
-	student_section_enrollment: StudentSectionEnrollmentEntity;
+	@JoinColumn({
+		name: 'student_section_enrollment_id',
+		foreignKeyConstraintName: 'FK_student_course_outcome_grades_student_section_enrollment_id',
+	})
+	studentSectionEnrollment: StudentSectionEnrollmentEntity;
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({
+		name: 'outcome_id',
+		foreignKeyConstraintName: 'FK_student_course_outcome_grades_outcome_id',
+	})
 	outcome: OutcomeEntity;
 }

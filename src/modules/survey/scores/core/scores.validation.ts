@@ -8,8 +8,8 @@ export class ScoreValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				survey_id: data.survey_id,
-				outcome_id: data.outcome_id,
+				surveyId: data.surveyId,
+				outcomeId: data.outcomeId,
 			},
 		});
 
@@ -36,13 +36,13 @@ export class ScoreValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(scoresValidationStrings.error.notFound);
 
-		const surveyId = data.survey_id ?? entity?.survey_id;
-		const outcomeId = data.outcome_id ?? entity?.outcome_id;
+		const surveyId = data.surveyId ?? entity?.surveyId;
+		const outcomeId = data.outcomeId ?? entity?.outcomeId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				survey_id: surveyId,
-				outcome_id: outcomeId,
+				surveyId: surveyId,
+				outcomeId: outcomeId,
 			},
 		});
 

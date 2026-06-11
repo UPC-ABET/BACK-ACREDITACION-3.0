@@ -2,16 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { ProjectRepository } from '../core/projects.repository';
 import { ProjectValidation } from '../core/projects.validation';
-
-import { CreateProjectDto, UpdateProjectDto } from '../model/projects.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { CreateProjectDto, FilterProjectDto, UpdateProjectDto } from '../model/projects.dtos';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProjectService extends BaseService<ProjectRepository> {
-	constructor(
-		protected readonly repository: ProjectRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ProjectRepository) {
 		super(repository);
 	}
 
@@ -28,5 +24,9 @@ export class ProjectService extends BaseService<ProjectRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await ProjectValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getByFilters(filters: FilterProjectDto) {
+		return await this.repository.getByFilters(filters);
 	}
 }

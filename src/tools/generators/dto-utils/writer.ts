@@ -6,12 +6,17 @@ import { validateDtos } from './validator';
 /* ---------------- HELPERS ---------------- */
 
 function isRelationField(f: any) {
-	return f.decorators?.includes('ManyToOne') || f.decorators?.includes('OneToMany') || f.decorators?.includes('OneToOne') || f.decorators?.includes('ManyToMany');
+	return (
+		f.decorators?.includes('ManyToOne') ||
+		f.decorators?.includes('OneToMany') ||
+		f.decorators?.includes('OneToOne') ||
+		f.decorators?.includes('ManyToMany')
+	);
 }
 
 function isDuplicateRelation(fields: any[], f: any) {
-	if (!f.name || f.name.endsWith('_id')) return false;
-	return fields.some((x) => x.name === `${f.name}_id`);
+	if (!f.name || f.name.endsWith('Id')) return false;
+	return fields.some((x) => x.name === `${f.name}Id`);
 }
 
 function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {
@@ -22,21 +27,22 @@ function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {
 	return true;
 }
 
-/* ---------------- GENERADOR BLOQUES ---------------- */
+/* ---------------- DTO BLOCK BUILDERS ---------------- */
 
 function buildCreateDto(entity: string, fields: any[]) {
 	return `
-export class Create${entity}Dto extends BaseDto {
+export class Create${entity}Dto {
 ${fields
 	.map((f: any) => {
-		const validator = mapValidator(f.type);
+		const validator = mapValidator(f.type, f.decorators || [], f.name);
 		const length = mapLength(f.decorators || []);
 		const example = mapExample(f.type, f.name, f.decorators || []);
+		const needsLength = length && !f.decorators?.includes('EmailColumn');
 
 		return `
 	${f.isOptional ? '@IsOptional()' : ''}
 	${validator}
-	${length ? `@Length(1, ${length})` : ''}
+	${needsLength ? `@Length(1, ${length})` : ''}
 	@ApiProperty({ example: ${example}, required: ${!f.isOptional} })
 	${f.name}${f.isOptional ? '?' : ''}: ${f.type};
 	`;
@@ -48,17 +54,18 @@ ${fields
 
 function buildUpdateDto(entity: string, fields: any[]) {
 	return `
-export class Update${entity}Dto extends BaseDto {
+export class Update${entity}Dto {
 ${fields
 	.map((f: any) => {
-		const validator = mapValidator(f.type);
+		const validator = mapValidator(f.type, f.decorators || [], f.name);
 		const length = mapLength(f.decorators || []);
 		const example = mapExample(f.type, f.name, f.decorators || []);
+		const needsLength = length && !f.decorators?.includes('EmailColumn');
 
 		return `
 	@IsOptional()
 	${validator}
-	${length ? `@Length(1, ${length})` : ''}
+	${needsLength ? `@Length(1, ${length})` : ''}
 	@ApiProperty({ example: ${example}, required: false })
 	${f.name}?: ${f.type};
 	`;
@@ -70,7 +77,7 @@ ${fields
 
 function buildFilterDto(entity: string, fields: any[]) {
 	return `
-export class Filter${entity}Dto extends BaseDto {
+export class Filter${entity}Dto {
 ${fields
 	.map((f: any) => {
 		const example = mapExample(f.type, f.name, f.decorators || []);
@@ -86,7 +93,7 @@ ${fields
 `;
 }
 
-/* ---------------- REEMPLAZO ---------------- */
+/* ---------------- REPLACE ---------------- */
 
 function replaceOrAppend(content: string, className: string, newBlock: string) {
 	const regex = new RegExp(`export class ${className}[\\s\\S]*?\\n}`, 'm');
@@ -98,7 +105,9 @@ function replaceOrAppend(content: string, className: string, newBlock: string) {
 	return content + '\n\n' + newBlock;
 }
 
-/* ---------------- IMPORTS (MERGE INTELIGENTE) ---------------- */
+/* ---------------- IMPORTS (SMART MERGE) ---------------- */
+
+const TYPE_ONLY_SOURCES = new Set(['src/shared/types/i18n']);
 
 function extractExistingImports(content: string) {
 	const lines = content.split('\n');
@@ -108,7 +117,7 @@ function extractExistingImports(content: string) {
 	for (const line of lines) {
 		if (!line.startsWith('import')) continue;
 
-		const match = line.match(/import\s+{([^}]+)}\s+from\s+'([^']+)'/);
+		const match = line.match(/import\s+(?:type\s+)?{([^}]+)}\s+from\s+'([^']+)'/);
 		if (!match) continue;
 
 		const names = match[1].split(',').map((x) => x.trim());
@@ -137,11 +146,13 @@ function buildRequiredImports(content: string) {
 	if (content.includes('@IsBoolean')) add('class-validator', 'IsBoolean');
 	if (content.includes('@IsOptional')) add('class-validator', 'IsOptional');
 	if (content.includes('@IsDate')) add('class-validator', 'IsDate');
+	if (content.includes('@IsObject')) add('class-validator', 'IsObject');
+	if (content.includes('@IsEmail')) add('class-validator', 'IsEmail');
 	if (content.includes('@Length')) add('class-validator', 'Length');
 
 	if (content.includes('@ApiProperty')) add('@nestjs/swagger', 'ApiProperty');
 
-	if (content.includes('extends BaseDto')) add('src/commons/base.dtos', 'BaseDto');
+	if (/[:\s]I18nText\b/.test(content)) add('src/shared/types/i18n', 'I18nText');
 
 	return imports;
 }
@@ -166,7 +177,8 @@ function mergeImports(content: string) {
 		}
 
 		if (names.size) {
-			finalImports.push(`import { ${[...names].sort().join(', ')} } from '${source}';`);
+			const kw = TYPE_ONLY_SOURCES.has(source) ? 'import type' : 'import';
+			finalImports.push(`${kw} { ${[...names].sort().join(', ')} } from '${source}';`);
 		}
 	});
 
@@ -181,13 +193,15 @@ function mergeImports(content: string) {
 /* ---------------- MAIN ---------------- */
 
 export function writeDtos({ domain, moduleName, entityName, fields }: any) {
-	const outputPath = path.resolve(`src/modules/${domain}/${moduleName}/model/${moduleName}.dtos.ts`);
+	const outputPath = path.resolve(
+		`src/modules/${domain}/${moduleName}/model/${moduleName}.dtos.ts`,
+	);
 
 	const entity = entityName.replace('Entity', '');
 
-	const EXCLUDE_CREATE = ['id', 'created_at', 'updated_at'];
-	const EXCLUDE_UPDATE = ['id', 'created_at', 'updated_at'];
-	const EXCLUDE_FILTER = ['created_at', 'updated_at'];
+	const EXCLUDE_CREATE = ['id', 'createdAt', 'updatedAt'];
+	const EXCLUDE_UPDATE = ['id', 'createdAt', 'updatedAt'];
+	const EXCLUDE_FILTER = ['createdAt', 'updatedAt'];
 
 	const createFields = fields.filter((f: any) => shouldIncludeField(fields, f, EXCLUDE_CREATE));
 	const updateFields = fields.filter((f: any) => shouldIncludeField(fields, f, EXCLUDE_UPDATE));
@@ -197,13 +211,13 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 	const updateDto = buildUpdateDto(entity, updateFields);
 	const filterDto = buildFilterDto(entity, filterFields);
 
-	let content = '';
+	let content: string;
 
 	if (fs.existsSync(outputPath)) {
 		content = fs.readFileSync(outputPath, 'utf-8');
 
 		if (content.includes('no-override')) {
-			console.warn(`🚫 ${entity} DTO protegido`);
+			console.warn(`Protected: ${entity} DTO (no-override)`);
 			return;
 		}
 
@@ -222,5 +236,5 @@ export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 
 	fs.writeFileSync(outputPath, content);
 
-	console.log(`✅ DTO actualizado: ${entity}`);
+	console.log(`Done: ${entity} DTO`);
 }

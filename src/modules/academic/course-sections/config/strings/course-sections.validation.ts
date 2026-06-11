@@ -1,11 +1,11 @@
 export const courseSectionsValidationStrings = {
 	error: {
-		sectionExists: 'error.section.exists',
-		notFound: 'error.notFound',
+		sectionExists: 'error.courseSection.sectionExists',
+		notFound: 'error.courseSection.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.courseSection.createFailed',
+		updateFailed: 'error.courseSection.updateFailed',
+		deleteFailed: 'error.courseSection.deleteFailed',
 	},
 };

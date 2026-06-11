@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ProgramCommissionRepository } from './program-commissions.repository';
+import { OutcomeRepository } from 'src/modules/accreditation/outcomes/core/outcomes.repository';
 import { programCommissionsValidationStrings } from '../config/strings/program-commissions.validation';
 
 export class ProgramCommissionValidation {
@@ -8,9 +9,9 @@ export class ProgramCommissionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				commission_id: data.commission_id,
-				program_id: data.program_id,
-				academic_period_id: data.academic_period_id,
+				commissionId: data.commissionId,
+				programId: data.programId,
+				academicPeriodId: data.academicPeriodId,
 			},
 		});
 
@@ -33,12 +34,12 @@ export class ProgramCommissionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(programCommissionsValidationStrings.error.notFound);
 
-		if (data.commission_id && data.program_id && data.academic_period_id) {
+		if (data.commissionId && data.programId && data.academicPeriodId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					commission_id: data.commission_id,
-					program_id: data.program_id,
-					academic_period_id: data.academic_period_id,
+					commissionId: data.commissionId,
+					programId: data.programId,
+					academicPeriodId: data.academicPeriodId,
 				},
 			});
 
@@ -65,6 +66,33 @@ export class ProgramCommissionValidation {
 					message: programCommissionsValidationStrings.result.deleteFailed,
 				},
 				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateUnassociate(
+		repo: ProgramCommissionRepository,
+		outcomeRepo: OutcomeRepository,
+		id: number,
+	) {
+		const errors: Array<string> = [];
+
+		if (!(await repo.findOneById(id))) {
+			errors.push(programCommissionsValidationStrings.error.notFound);
+		} else {
+			const outcome = await outcomeRepo.findOneByCondition({
+				where: { programCommissionId: id },
+			});
+			if (outcome) errors.push(programCommissionsValidationStrings.error.hasOutcomes);
+		}
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{
+					message: programCommissionsValidationStrings.result.unassociateFailed,
+					errors,
+				},
+				HttpStatus.CONFLICT,
 			);
 		}
 	}

@@ -1,128 +1,141 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreatePerformanceLevelDto extends BaseDto {
+export class CreatePerformanceLevelDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	instrument_type_id: number;
+	instrumentTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
+	name: I18nText;
 
 	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: true })
-	name: string;
+	@Length(1, 50)
+	@ApiProperty({ example: 'codeExample', required: true })
+	code: string;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	unique_value: number;
+	uniqueValue: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	min_score: number;
+	minScore: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	max_score: number;
+	maxScore: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	max_value: number;
+	maxValue: number;
 }
 
-export class UpdatePerformanceLevelDto extends BaseDto {
+export class UpdatePerformanceLevelDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	instrument_type_id?: number;
+	instrumentTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
 	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@Length(1, 50)
+	@ApiProperty({ example: 'codeExample', required: false })
+	code?: string;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	unique_value?: number;
+	uniqueValue?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	min_score?: number;
+	minScore?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	max_score?: number;
+	maxScore?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	maxValue?: number;
 }
 
-export class FilterPerformanceLevelDto extends BaseDto {
+export class FilterPerformanceLevelDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	instrument_type_id?: number;
+	instrumentTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'name_example', required: false })
-	name?: string;
+	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	unique_value?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	min_score?: number;
+	@ApiProperty({ example: 'codeExample', required: false })
+	code?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	max_score?: number;
+	uniqueValue?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	max_value?: number;
+	minScore?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	maxScore?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	maxValue?: number;
 }

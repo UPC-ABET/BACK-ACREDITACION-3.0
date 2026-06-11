@@ -1,75 +1,74 @@
 #!/bin/bash
 
-set -e  # 🔥 Detiene todo si algo falla
+set -e
 
 # ================================
-# VALIDAR PARÁMETRO
+# VALIDATE PARAMETER
 # ================================
 if [ -z "$1" ]; then
-  echo "❌ Debes indicar el tenant"
-  echo "👉 Uso: ./setup.sh upc"
+  echo "Tenant required. Usage: ./generate-db.sh <tenant>"
   exit 1
 fi
 
 TENANT=$1
 
-echo "🚀 Iniciando proceso completo para tenant: $TENANT"
+echo "Starting full DB setup for tenant: $TENANT"
 
 # ================================
-# STEP 0: GENERAR ENTIDADES
+# STEP 0: GENERATE ENTITIES
 # ================================
-echo "🏗️ Generando entidades..."
+echo "Generating entities..."
 npm run create:entity-full
 
 # ================================
-# LIMPIAR MIGRACIONES
+# CLEAN MIGRATIONS
 # ================================
-echo "🧹 Limpiando carpeta de migraciones..."
+echo "Cleaning migrations folder..."
 rm -rf src/database/migrations/*
 
 # ================================
 # DROP SCHEMA
 # ================================
-echo "🗑️ Eliminando schema..."
+echo "Dropping schema..."
 npx ts-node src/database/scripts/seeds/$TENANT/0-drop-schema.ts $TENANT
 
 # ================================
-# GENERAR MIGRACIÓN
+# GENERATE MIGRATION
 # ================================
-echo "🛠️ Generando migración..."
-npm run migration:generate -- src/database/migrations/Init 
+echo "Generating migration..."
+npm run migration:generate -- src/database/migrations/Init
 
 # ================================
-# COPIAR INIT → DBDIAGRAM
+# COPY INIT -> DBDIAGRAM
 # ================================
-echo "📄 Copiando Init a db-init.ts..."
+echo "Copying Init to db-init.ts..."
 
 INIT_FILE=$(ls src/database/migrations/*Init*.ts | head -n 1)
 
 if [ -z "$INIT_FILE" ]; then
-  echo "❌ No se encontró archivo Init en migrations"
+  echo "Init file not found in migrations"
   exit 1
 fi
 
 cp "$INIT_FILE" src/tools/generators/dbdiagram-utils/db-init.ts
 
 # ================================
-# GENERAR DB DIAGRAM
+# GENERATE DB DIAGRAM
 # ================================
-echo "🧩 Generando dbdiagram..."
+echo "Generating dbdiagram..."
 npm run create:dbdiagram
 
 # ================================
-# EJECUTAR MIGRACIÓN
+# RUN MIGRATION
 # ================================
-echo "📦 Ejecutando migraciones..."
+echo "Running migrations..."
 npm run migrate:tenant $TENANT
 
 # ================================
 # SEEDS
 # ================================
-echo "🌱 Ejecutando seeds..."
+echo "Running seeds..."
 
 npx ts-node src/database/scripts/seeds/$TENANT/1-load-types.ts $TENANT
 
-echo "✅ Proceso completado correctamente para tenant: $TENANT"
+echo "Done. All steps completed for tenant: $TENANT"

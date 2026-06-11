@@ -1,27 +1,28 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, TextMediumColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { TypeGroupEntity } from 'src/modules/core/type-groups/model/type-groups.entity';
 
 @Entity({ name: 'types', schema: 'core' })
 export class TypeEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	type_group_id: string;
+	typeGroupId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@TextMediumColumn({ nullable: true })
-	description: string;
+	@JsonColumn({ nullable: true })
+	description: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => TypeGroupEntity)
-	@JoinColumn({ name: 'type_group_id' })
-	type_group: TypeGroupEntity;
+	@JoinColumn({ name: 'type_group_id', foreignKeyConstraintName: 'FK_types_type_group_id' })
+	typeGroup: TypeGroupEntity;
 }

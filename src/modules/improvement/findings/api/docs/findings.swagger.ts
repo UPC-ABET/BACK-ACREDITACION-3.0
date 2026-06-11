@@ -4,11 +4,14 @@ import { CreateFindingDto, UpdateFindingDto, FilterFindingDto } from '../../mode
 
 const cfg = findingsRoutes.findings;
 
-export const SwaggerFindingController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
+export const SwaggerFindingController = () =>
+	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerFindingCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateFindingDto });
+export const SwaggerFindingCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateFindingDto });
 
-export const SwaggerFindingUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateFindingDto });
+export const SwaggerFindingUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateFindingDto });
 
 export const SwaggerFindingDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +19,5 @@ export const SwaggerFindingGetAll = () => HttpMethodWithSwagger(cfg.operation.ge
 
 export const SwaggerFindingGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerFindingGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterFindingDto });
+export const SwaggerFindingGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterFindingDto });

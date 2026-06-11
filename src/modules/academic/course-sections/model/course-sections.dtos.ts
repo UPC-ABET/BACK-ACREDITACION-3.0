@@ -1,99 +1,126 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateCourseSectionDto extends BaseDto {
+export class CreateCourseSectionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_course_id: number;
+	courseId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	campus_id: number;
+	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	professor_id: number;
+	campusId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	professorId: number;
+
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'sectionCodeExample', required: true })
+	sectionCode: string;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
+	@ApiProperty({ example: { key: 'scheduleValue' }, required: false })
 	schedule?: any;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	section_modality_type_id: number;
+	sectionModalityTypeId: number;
 }
 
-export class UpdateCourseSectionDto extends BaseDto {
+export class UpdateCourseSectionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	campusId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	professorId?: number;
+
+	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'sectionCodeExample', required: false })
+	sectionCode?: string;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'scheduleValue' }, required: false })
 	schedule?: any;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	section_modality_type_id?: number;
+	sectionModalityTypeId?: number;
 }
 
-export class FilterCourseSectionDto extends BaseDto {
+export class FilterCourseSectionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_course_id?: number;
+	courseId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	campus_id?: number;
+	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	professor_id?: number;
+	campusId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'schedule_value' }, required: false })
+	@ApiProperty({ example: 1, required: false })
+	professorId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 'sectionCodeExample', required: false })
+	sectionCode?: string;
+
+	@IsOptional()
+	@ApiProperty({ example: { key: 'scheduleValue' }, required: false })
 	schedule?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	section_modality_type_id?: number;
+	sectionModalityTypeId?: number;
 }

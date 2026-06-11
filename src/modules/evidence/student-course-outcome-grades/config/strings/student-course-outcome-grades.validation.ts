@@ -1,12 +1,12 @@
 export const studentCourseOutcomeGradesValidationStrings = {
 	error: {
-		gradeExists: 'error.grade.exists',
-		invalidGrade: 'error.invalid.grade',
-		notFound: 'error.notFound',
+		gradeExists: 'error.studentCourseOutcomeGrade.gradeExists',
+		invalidGrade: 'error.studentCourseOutcomeGrade.invalidGrade',
+		notFound: 'error.studentCourseOutcomeGrade.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.studentCourseOutcomeGrade.createFailed',
+		updateFailed: 'error.studentCourseOutcomeGrade.updateFailed',
+		deleteFailed: 'error.studentCourseOutcomeGrade.deleteFailed',
 	},
 };

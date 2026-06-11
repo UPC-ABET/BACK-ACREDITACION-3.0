@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { RubricQuestionRepository } from './rubric-questions.repository';
 import { rubricQuestionsValidationStrings } from '../config/strings/rubric-questions.validation';
+import { IsNull } from 'typeorm';
 
 export class RubricQuestionValidation {
 	static async validateCreate(repo: RubricQuestionRepository, data: any) {
@@ -8,8 +9,8 @@ export class RubricQuestionValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				rubric_id: data.rubric_id,
-				outcome_id: data.outcome_id,
+				rubricId: data.rubricId,
+				outcomeId: data.outcomeId ?? IsNull(),
 				question: data.question,
 			},
 		});
@@ -33,14 +34,14 @@ export class RubricQuestionValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricQuestionsValidationStrings.error.notFound);
 
-		const rubricId = data.rubric_id ?? entity?.rubric_id;
-		const outcomeId = data.outcome_id ?? entity?.outcome_id;
+		const rubricId = data.rubricId ?? entity?.rubricId;
+		const outcomeId = data.outcomeId ?? entity?.outcomeId ?? IsNull();
 		const question = data.question ?? entity?.question;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				rubric_id: rubricId,
-				outcome_id: outcomeId,
+				rubricId: rubricId,
+				outcomeId: outcomeId,
 				question,
 			},
 		});

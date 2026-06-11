@@ -1,11 +1,11 @@
 export const studyPlansValidationStrings = {
 	error: {
-		codeExists: 'error.code.exists',
-		notFound: 'error.notFound',
+		codeExists: 'error.studyPlan.codeExists',
+		notFound: 'error.studyPlan.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.studyPlan.createFailed',
+		updateFailed: 'error.studyPlan.updateFailed',
+		deleteFailed: 'error.studyPlan.deleteFailed',
 	},
 };

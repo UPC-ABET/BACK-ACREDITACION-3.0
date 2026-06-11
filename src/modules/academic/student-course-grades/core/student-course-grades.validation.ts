@@ -8,14 +8,14 @@ export class StudentCourseGradeValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				student_section_enrollment_id: data.student_section_enrollment_id,
-				grade_type_id: data.grade_type_id,
+				studentSectionEnrollmentId: data.studentSectionEnrollmentId,
+				gradeTypeId: data.gradeTypeId,
 			},
 		});
 
 		if (exists) errors.push(studentCourseGradesValidationStrings.error.gradeExists);
 
-		if (data.grade_type_percentage < 0) {
+		if (data.gradeTypePercentage < 0) {
 			errors.push(studentCourseGradesValidationStrings.error.invalidPercentage);
 		}
 
@@ -40,13 +40,13 @@ export class StudentCourseGradeValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(studentCourseGradesValidationStrings.error.notFound);
 
-		const enrollmentId = data.student_section_enrollment_id ?? entity?.student_section_enrollment_id;
-		const gradeTypeId = data.grade_type_id ?? entity?.grade_type_id;
+		const enrollmentId = data.studentSectionEnrollmentId ?? entity?.studentSectionEnrollmentId;
+		const gradeTypeId = data.gradeTypeId ?? entity?.gradeTypeId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				student_section_enrollment_id: enrollmentId,
-				grade_type_id: gradeTypeId,
+				studentSectionEnrollmentId: enrollmentId,
+				gradeTypeId: gradeTypeId,
 			},
 		});
 
@@ -54,7 +54,7 @@ export class StudentCourseGradeValidation {
 			errors.push(studentCourseGradesValidationStrings.error.gradeExists);
 		}
 
-		const gradeTypePercentage = data.grade_type_percentage ?? entity?.grade_type_percentage;
+		const gradeTypePercentage = data.gradeTypePercentage ?? entity?.gradeTypePercentage;
 		if (gradeTypePercentage < 0) {
 			errors.push(studentCourseGradesValidationStrings.error.invalidPercentage);
 		}

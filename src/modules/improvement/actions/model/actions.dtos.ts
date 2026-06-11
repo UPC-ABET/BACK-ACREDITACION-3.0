@@ -1,21 +1,20 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateActionDto extends BaseDto {
+export class CreateActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: true })
-	description: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: true })
+	description: I18nText;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -23,32 +22,27 @@ export class CreateActionDto extends BaseDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	action_status_type_id: number;
+	programId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_id: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 }
 
-export class UpdateActionDto extends BaseDto {
+export class UpdateActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@IsNumber()
@@ -58,31 +52,26 @@ export class UpdateActionDto extends BaseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	action_status_type_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 }
 
-export class FilterActionDto extends BaseDto {
+export class FilterActionDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 'description_example', required: false })
-	description?: string;
+	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
+	description?: I18nText;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
@@ -90,13 +79,9 @@ export class FilterActionDto extends BaseDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	action_status_type_id?: number;
+	programId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 }

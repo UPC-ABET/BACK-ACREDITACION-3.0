@@ -1,34 +1,44 @@
-import { Entity } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, PasswordColumn, TextMediumColumn, IntegerColumn, BooleanColumn } from 'src/commons/configs/db.configs';
+import {
+	EmailColumn,
+	NameColumn,
+	PasswordColumn,
+	IntegerFKIDColumn,
+	IntegerColumn,
+} from 'src/commons/configs/db.configs';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'users', schema: 'organization' })
 export class UserEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
-	@CodeColumn({ nullable: false })
-	document_type_id: number;
+	@IntegerFKIDColumn({ nullable: true })
+	documentTypeId: number;
 
-	@IntegerColumn({ nullable: false })
-	document_code: number;
-
-	@NameColumn({ nullable: false })
-	first_name: string;
+	@IntegerColumn({ nullable: true })
+	documentCode: number;
 
 	@NameColumn({ nullable: false })
-	last_name: string;
+	firstName: string;
 
-	@TextMediumColumn({ nullable: false })
+	@NameColumn({ nullable: false })
+	lastName: string;
+
+	@EmailColumn({ nullable: false })
 	email: string;
 
-	@NameColumn()
+	@NameColumn({ nullable: true })
 	phone: string;
 
+	@Exclude()
 	@PasswordColumn({ nullable: false })
 	password: string;
 
-	@BooleanColumn()
-	is_admin: boolean;
+	// %% RELATIONS
 
-	// %% RELACIONES
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({ name: 'document_type_id', foreignKeyConstraintName: 'FK_users_document_type_id' })
+	documentType: TypeEntity;
 }

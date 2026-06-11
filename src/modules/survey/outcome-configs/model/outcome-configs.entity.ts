@@ -1,24 +1,25 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, TextLargeColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 
 @Entity({ name: 'outcome_configs', schema: 'survey' })
 export class OutcomeConfigEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
 	@IntegerFKIDColumn({ nullable: false })
-	outcome_id: number;
+	outcomeId: number;
 
-	@NameColumn({ nullable: false })
-	user_outcome_name: string;
+	@JsonColumn({ nullable: false })
+	userOutcomeName: I18nText;
 
-	@TextLargeColumn({ nullable: true })
-	user_outcome_description: string;
+	@JsonColumn({ nullable: true })
+	userOutcomeDescription: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
 
 	@ManyToOne(() => OutcomeEntity)
-	@JoinColumn({ name: 'outcome_id' })
+	@JoinColumn({ name: 'outcome_id', foreignKeyConstraintName: 'FK_outcome_configs_outcome_id' })
 	outcome: OutcomeEntity;
 }

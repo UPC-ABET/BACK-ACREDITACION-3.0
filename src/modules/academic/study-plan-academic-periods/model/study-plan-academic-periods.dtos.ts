@@ -1,61 +1,60 @@
 import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
 
-export class CreateStudyPlanAcademicPeriodDto extends BaseDto {
+export class CreateStudyPlanAcademicPeriodDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	study_plan_id: number;
+	studyPlanId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academic_period_id: number;
+	academicPeriodId: number;
 }
 
-export class UpdateStudyPlanAcademicPeriodDto extends BaseDto {
+export class UpdateStudyPlanAcademicPeriodDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_id?: number;
+	studyPlanId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 }
 
-export class FilterStudyPlanAcademicPeriodDto extends BaseDto {
+export class FilterStudyPlanAcademicPeriodDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	study_plan_id?: number;
+	studyPlanId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academic_period_id?: number;
+	academicPeriodId?: number;
 }

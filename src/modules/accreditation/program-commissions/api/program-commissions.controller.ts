@@ -1,16 +1,15 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProgramCommissionController,
-	SwaggerProgramCommissionCreate,
-	SwaggerProgramCommissionUpdate,
-	SwaggerProgramCommissionDelete,
 	SwaggerProgramCommissionGetAll,
 	SwaggerProgramCommissionGetById,
 	SwaggerProgramCommissionGetByFilters,
 } from './docs/program-commissions.swagger';
 import { ProgramCommissionService } from './program-commissions.service';
-import { CreateProgramCommissionDto, UpdateProgramCommissionDto, FilterProgramCommissionDto } from '../model/program-commissions.dtos';
+import { FilterProgramCommissionDto } from '../model/program-commissions.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerProgramCommissionController()
 export class ProgramCommissionController extends BaseController<ProgramCommissionService> {
@@ -18,32 +17,20 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 		super(service);
 	}
 
-	@SwaggerProgramCommissionCreate()
-	async create(@Body() dto: CreateProgramCommissionDto) {
-		return await super.create(dto);
-	}
-
-	@SwaggerProgramCommissionUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateProgramCommissionDto) {
-		return await super.update(id, dto);
-	}
-
-	@SwaggerProgramCommissionDelete()
-	async delete(@Param('id') id: number) {
-		return await super.delete(id);
-	}
-
 	@SwaggerProgramCommissionGetAll()
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
 	@SwaggerProgramCommissionGetById()
-	async getById(@Param('id') id: number) {
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.GET })
+	async getById(@Param('id', ParseIntPipe) id: number) {
 		return await super.getById(id);
 	}
 
 	@SwaggerProgramCommissionGetByFilters()
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterProgramCommissionDto) {
 		return await super.getByFilters(dto);
 	}

@@ -8,8 +8,8 @@ export class CourseOutcomeMappingValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				outcome_id: data.outcome_id,
-				study_plan_course_id: data.study_plan_course_id,
+				outcomeId: data.outcomeId,
+				studyPlanCourseId: data.studyPlanCourseId,
 			},
 		});
 
@@ -32,11 +32,11 @@ export class CourseOutcomeMappingValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(courseOutcomeMappingsValidationStrings.error.notFound);
 
-		if (data.outcome_id && data.study_plan_course_id) {
+		if (data.outcomeId && data.studyPlanCourseId) {
 			const exists = await repo.findOneByCondition({
 				where: {
-					outcome_id: data.outcome_id,
-					study_plan_course_id: data.study_plan_course_id,
+					outcomeId: data.outcomeId,
+					studyPlanCourseId: data.studyPlanCourseId,
 				},
 			});
 

@@ -1,11 +1,11 @@
 export const notificationMessagesValidationStrings = {
 	error: {
-		notificationMessageExists: 'error.notification.message.exists',
-		notFound: 'error.notFound',
+		notificationMessageExists: 'error.notificationMessage.notificationMessageExists',
+		notFound: 'error.notificationMessage.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.notificationMessage.createFailed',
+		updateFailed: 'error.notificationMessage.updateFailed',
+		deleteFailed: 'error.notificationMessage.deleteFailed',
 	},
 };

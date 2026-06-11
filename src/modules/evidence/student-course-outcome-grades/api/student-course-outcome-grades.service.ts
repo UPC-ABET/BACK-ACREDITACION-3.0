@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { StudentCourseOutcomeGradeRepository } from '../core/student-course-outcome-grades.repository';
 import { StudentCourseOutcomeGradeValidation } from '../core/student-course-outcome-grades.validation';
 
-import { CreateStudentCourseOutcomeGradeDto, UpdateStudentCourseOutcomeGradeDto } from '../model/student-course-outcome-grades.dtos';
+import {
+	CreateStudentCourseOutcomeGradeDto,
+	UpdateStudentCourseOutcomeGradeDto,
+} from '../model/student-course-outcome-grades.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

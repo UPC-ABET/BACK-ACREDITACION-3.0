@@ -1,12 +1,12 @@
 export const rubricScoresValidationStrings = {
 	error: {
-		scoreExists: 'error.score.exists',
-		invalidScore: 'error.invalid.score',
-		notFound: 'error.notFound',
+		scoreExists: 'error.rubricScore.scoreExists',
+		invalidScore: 'error.rubricScore.invalidScore',
+		notFound: 'error.rubricScore.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.rubricScore.createFailed',
+		updateFailed: 'error.rubricScore.updateFailed',
+		deleteFailed: 'error.rubricScore.deleteFailed',
 	},
 };

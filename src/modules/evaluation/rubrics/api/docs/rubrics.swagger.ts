@@ -6,9 +6,11 @@ const cfg = rubricsRoutes.rubrics;
 
 export const SwaggerRubricController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerRubricCreate = () => HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateRubricDto });
+export const SwaggerRubricCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.create, body: CreateRubricDto });
 
-export const SwaggerRubricUpdate = () => HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateRubricDto });
+export const SwaggerRubricUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateRubricDto });
 
 export const SwaggerRubricDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
@@ -16,4 +18,5 @@ export const SwaggerRubricGetAll = () => HttpMethodWithSwagger(cfg.operation.get
 
 export const SwaggerRubricGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerRubricGetByFilters = () => HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterRubricDto });
+export const SwaggerRubricGetByFilters = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterRubricDto });

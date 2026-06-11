@@ -1,0 +1,19 @@
+export const uploadLogsValidationStrings = {
+	error: {
+		periodNotFound: 'error.uploads.periodNotFound',
+		chartsAlreadyLoadedForPeriod: 'error.uploads.chartsAlreadyLoadedForPeriod',
+		schoolChartNotConfigured: 'error.uploads.schoolChartNotConfigured',
+		uploadLogNotFound: 'error.uploads.uploadLogNotFound',
+		rollbackAlreadyDone: 'error.uploads.rollbackAlreadyDone',
+		typeCodeNotFound: 'error.uploads.typeCodeNotFound',
+		rollbackBlockedSections: 'error.uploads.rollbackBlockedSections',
+		rollbackBlockedOutcomes: 'error.uploads.rollbackBlockedOutcomes',
+		rollbackBlockedOutcomeRefs: 'error.uploads.rollbackBlockedOutcomeRefs',
+		rollbackBlockedSectionRefs: 'error.uploads.rollbackBlockedSectionRefs',
+		rollbackBlockedEnrollmentRefs: 'error.uploads.rollbackBlockedEnrollmentRefs',
+		rollbackBlockedSectionEnrollmentRefs: 'error.uploads.rollbackBlockedSectionEnrollmentRefs',
+		rollbackBlockedProfessors: 'error.uploads.rollbackBlockedProfessors',
+		rollbackBlockedStaff: 'error.uploads.rollbackBlockedStaff',
+		rollbackBlockedNewerUpload: 'error.uploads.rollbackBlockedNewerUpload',
+	},
+} as const;

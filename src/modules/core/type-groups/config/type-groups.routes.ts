@@ -1,5 +1,5 @@
 export const typeGroupsRoutes = {
-	type_groups: {
+	typeGroups: {
 		route: 'type-groups',
 		tag: 'Grupos de tipos',
 		operation: {

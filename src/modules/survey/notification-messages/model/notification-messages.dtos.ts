@@ -1,102 +1,98 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseDto } from 'src/commons/base.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
-export class CreateNotificationMessageDto extends BaseDto {
+export class CreateNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	survey_type_id: number;
+	surveyTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	program_id: number;
+	programId: number;
 
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'title_example', required: true })
-	title: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
+	title: I18nText;
 
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'body_example', required: true })
-	body: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
+	body: I18nText;
 
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: true })
-	cc_receivers: any;
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: true })
+	ccReceivers: any;
 }
 
-export class UpdateNotificationMessageDto extends BaseDto {
+export class UpdateNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 1000)
-	@ApiProperty({ example: 'title_example', required: false })
-	title?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
-	@IsString()
-	@Length(1, 5000)
-	@ApiProperty({ example: 'body_example', required: false })
-	body?: string;
+	@IsObject()
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
+	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
-	cc_receivers?: any;
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
+	ccReceivers?: any;
 }
 
-export class FilterNotificationMessageDto extends BaseDto {
+export class FilterNotificationMessageDto {
 	@IsOptional()
-	@ApiProperty({ example: { key: 'extra_value' }, required: false })
+	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
 	@IsOptional()
 	@ApiProperty({ example: true, required: false })
-	is_active?: boolean;
+	isActive?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	survey_type_id?: number;
+	surveyTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	program_id?: number;
+	programId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'title_example', required: false })
-	title?: string;
+	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
+	title?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: 'body_example', required: false })
-	body?: string;
+	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
+	body?: I18nText;
 
 	@IsOptional()
-	@ApiProperty({ example: { key: 'cc_receivers_value' }, required: false })
-	cc_receivers?: any;
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
+	ccReceivers?: any;
 }

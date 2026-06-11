@@ -1,8 +1,7 @@
 // @ts-nocheck
 import eslint from '@eslint/js';
 import globals from 'globals';
-import tsParser from '@typescript-eslint/parser';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tseslint from 'typescript-eslint';
 import unusedImports from 'eslint-plugin-unused-imports';
 
 export default [
@@ -15,17 +14,18 @@ export default [
 	{
 		files: ['**/*.ts'],
 		languageOptions: {
-			parser: tsParser,
+			parser: tseslint.parser,
 			parserOptions: {
 				project: './tsconfig.json',
 			},
 			globals: {
 				...globals.node,
 				...globals.jest,
+				Express: 'readonly',
 			},
 		},
 		plugins: {
-			'@typescript-eslint': tsPlugin,
+			'@typescript-eslint': tseslint.plugin,
 			'unused-imports': unusedImports,
 		},
 		rules: {

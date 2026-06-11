@@ -1,8 +1,51 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query, Req, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { BaseController } from 'src/commons/base.controller';
-import { SwaggerIfcController, SwaggerIfcCreate, SwaggerIfcUpdate, SwaggerIfcDelete, SwaggerIfcGetAll, SwaggerIfcGetById, SwaggerIfcGetByFilters } from './docs/ifcs.swagger';
+import { parseSuccessResponse } from 'src/libs/global.functions';
+import {
+	SwaggerIfcController,
+	SwaggerIfcCreate,
+	SwaggerIfcUpdate,
+	SwaggerIfcDelete,
+	SwaggerIfcGetAll,
+	SwaggerIfcGetByFilters,
+	SwaggerIfcList,
+	SwaggerIfcSchools,
+	SwaggerIfcGetView,
+	SwaggerIfcSubmit,
+	SwaggerIfcApprove,
+	SwaggerIfcReject,
+	SwaggerIfcPatch,
+	SwaggerIfcPrefill,
+	SwaggerIfcPdf,
+	SwaggerIfcPdfBulk,
+	SwaggerIfcStatusReport,
+	SwaggerIfcNotify,
+	SwaggerIfcNotifyAll,
+} from './docs/ifcs.swagger';
 import { IfcService } from './ifcs.service';
-import { CreateIfcDto, UpdateIfcDto, FilterIfcDto } from '../model/ifcs.dtos';
+import {
+	UpdateIfcDto,
+	FilterIfcDto,
+	ListIfcsDto,
+	RejectIfcDto,
+	IfcPdfQueryDto,
+	IfcPdfBulkDto,
+	IfcStatusReportDto,
+	IfcNotifyDto,
+	IfcNotifyAllDto,
+} from '../model/ifcs.dtos';
+import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerIfcController()
 export class IfcController extends BaseController<IfcService> {
@@ -10,33 +53,224 @@ export class IfcController extends BaseController<IfcService> {
 		super(service);
 	}
 
+	@SwaggerIfcPrefill()
+	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
+	async prefill(
+		@Query() query: IfcPrefillQueryDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		const result = await this.service.prefill(query, schoolId, academicPeriodId);
+		return parseSuccessResponse(result);
+	}
+
 	@SwaggerIfcCreate()
-	async create(@Body() dto: CreateIfcDto) {
-		return await super.create(dto);
+	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async createIfc(
+		@Body() dto: CreateIfcDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.createIfc(dto, req.user.userId, schoolId, academicPeriodId);
+		return parseSuccessResponse(result);
 	}
 
 	@SwaggerIfcUpdate()
-	async update(@Param('id') id: number, @Body() dto: UpdateIfcDto) {
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.PUT })
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIfcDto) {
 		return await super.update(id, dto);
 	}
 
 	@SwaggerIfcDelete()
-	async delete(@Param('id') id: number) {
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.DELETE })
+	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
 
 	@SwaggerIfcGetAll()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async getAll() {
 		return await super.getAll();
 	}
 
-	@SwaggerIfcGetById()
-	async getById(@Param('id') id: number) {
-		return await super.getById(id);
-	}
-
 	@SwaggerIfcGetByFilters()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterIfcDto) {
 		return await super.getByFilters(dto);
 	}
+
+	@SwaggerIfcList()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async list(@Body() dto: ListIfcsDto, @AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.service.list(dto, academicPeriodId));
+	}
+
+	@SwaggerIfcSchools()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
+	async schools(@AcademicPeriodId() academicPeriodId: number, @Req() req: any) {
+		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';
+		return parseSuccessResponse(
+			await this.service.userSchools(req.user.userId, academicPeriodId, isAdmin),
+		);
+	}
+
+	@SwaggerIfcGetView()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
+	async getView(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.getView(id, req.user.userId, schoolId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcSubmit()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async submit(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.submit(id, req.user.userId, schoolId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcApprove()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async approve(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.approve(id, req.user.userId, schoolId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcReject()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	@ApiSchoolHeader()
+	async reject(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: RejectIfcDto,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.reject(id, req.user.userId, schoolId, dto);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcPatch()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.PATCH })
+	async patch(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: IfcContentDto,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.patch(id, dto, req.user.userId, schoolId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcPdf()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
+	async pdf(
+		@Param('id', ParseIntPipe) id: number,
+		@Query() query: IfcPdfQueryDto,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		const lang = (query.lang ?? 'es') as 'es' | 'en';
+		const { pdf, filename } = await this.service.generatePdf(id, req.user.userId, schoolId, lang);
+		writeBinary(res, pdf, filename, 'application/pdf');
+	}
+
+	@SwaggerIfcPdfBulk()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async pdfBulk(
+		@Body() dto: IfcPdfBulkDto,
+		@SchoolId() schoolId: number,
+		@Req() req: any,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		const { zip, filename } = await this.service.generatePdfBulk(
+			dto.ifcIds,
+			req.user.userId,
+			schoolId,
+			dto.lang,
+		);
+		writeBinary(res, zip, filename, 'application/zip');
+	}
+
+	@SwaggerIfcStatusReport()
+	@ApiSchoolHeader()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async statusReport(
+		@Body() dto: IfcStatusReportDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		const { xlsx, filename } = await this.service.generateStatusReport(
+			dto,
+			schoolId,
+			academicPeriodId,
+		);
+		writeBinary(
+			res,
+			xlsx,
+			filename,
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		);
+	}
+
+	@SwaggerIfcNotify()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async notify(
+		@Body() dto: IfcNotifyDto,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.notify(dto.chartId, academicPeriodId, req.user.userId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcNotifyAll()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
+	async notifyAll(
+		@Body() dto: IfcNotifyAllDto,
+		@AcademicPeriodId() academicPeriodId: number,
+		@Req() req: any,
+	) {
+		const result = await this.service.notifyAll(dto.chartIds, academicPeriodId, req.user.userId);
+		return parseSuccessResponse(result);
+	}
+}
+
+function writeBinary(res: Response, body: Buffer, filename: string, contentType: string) {
+	const encoded = encodeURIComponent(filename);
+	res.setHeader('Content-Type', contentType);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename="${filename}"; filename*=UTF-8''${encoded}`,
+	);
+	res.setHeader('Content-Length', body.length.toString());
+	res.end(body);
 }

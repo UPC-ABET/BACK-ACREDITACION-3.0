@@ -3,7 +3,10 @@ import { BaseService } from 'src/commons/base.service';
 import { EnrolledStudentRepository } from '../core/enrolled-students.repository';
 import { EnrolledStudentValidation } from '../core/enrolled-students.validation';
 
-import { CreateEnrolledStudentDto, UpdateEnrolledStudentDto } from '../model/enrolled-students.dtos';
+import {
+	CreateEnrolledStudentDto,
+	UpdateEnrolledStudentDto,
+} from '../model/enrolled-students.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
 @Injectable()

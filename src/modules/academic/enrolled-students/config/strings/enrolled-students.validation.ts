@@ -1,11 +1,11 @@
 export const enrolledStudentsValidationStrings = {
 	error: {
-		enrolledStudentExists: 'error.enrolled.student.exists',
-		notFound: 'error.notFound',
+		enrolledStudentExists: 'error.enrolledStudent.enrolledStudentExists',
+		notFound: 'error.enrolledStudent.notFound',
 	},
 	result: {
-		createFailed: 'error.created.failed',
-		updateFailed: 'error.update.failed',
-		deleteFailed: 'error.delete.failed',
+		createFailed: 'error.enrolledStudent.createFailed',
+		updateFailed: 'error.enrolledStudent.updateFailed',
+		deleteFailed: 'error.enrolledStudent.deleteFailed',
 	},
 };

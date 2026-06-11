@@ -1,22 +1,31 @@
-import { Entity } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { NameColumn, CodeColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
+import type { I18nText } from 'src/shared/types/i18n';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'programs', schema: 'academic' })
 export class ProgramEntity extends BaseEntity {
-	// %% ATRIBUTOS
+	// %% ATTRIBUTES
 
-	@IntegerColumn({ nullable: false })
-	modality_type_id: number;
+	@IntegerFKIDColumn({ nullable: false })
+	modalityTypeId: number;
 
 	@CodeColumn({ nullable: false })
 	code: string;
 
-	@NameColumn({ nullable: false })
-	name: string;
+	@JsonColumn({ nullable: false })
+	name: I18nText;
 
-	@NameColumn({ nullable: false })
-	degree: string;
+	@JsonColumn({ nullable: false })
+	degree: I18nText;
 
-	// %% RELACIONES
+	// %% RELATIONS
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'modality_type_id',
+		foreignKeyConstraintName: 'FK_programs_modality_type_id',
+	})
+	modalityType: TypeEntity;
 }

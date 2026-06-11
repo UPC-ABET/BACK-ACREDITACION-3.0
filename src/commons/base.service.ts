@@ -1,38 +1,63 @@
 import { Injectable } from '@nestjs/common';
-import { BaseRepostitory } from './base.repository';
-import { BaseDto } from './base.dtos';
-import { DataSource, EntityManager, FindOneOptions, QueryRunner } from 'typeorm';
+import { BaseRepository } from './base.repository';
+import { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
+import { camelizeKeys } from '../libs/case.functions';
 
 @Injectable()
-export class BaseService<T extends BaseRepostitory> {
-	constructor(protected readonly baseRepository: T) {}
+export class BaseService<R extends BaseRepository<any> = BaseRepository> {
+	constructor(protected readonly baseRepository: R) {}
 
-	async getQueryRunnerWithTenant(dataSource: DataSource): Promise<QueryRunner> {
-		const queryRunner = dataSource.createQueryRunner();
-		await queryRunner.connect();
-		return queryRunner;
-	}
-
-	async create(createDto: BaseDto, manager?: EntityManager): Promise<T> {
+	async create(createDto: Record<string, any>, manager?: EntityManager) {
 		return this.baseRepository.create(createDto, manager);
 	}
-	async update(id: any, updateDto: BaseDto, manager?: EntityManager) {
+	async update(id: number, updateDto: Record<string, any>, manager?: EntityManager) {
 		return await this.baseRepository.update(id, updateDto, manager);
 	}
-	async delete(id: any, manager?: EntityManager) {
+	async delete(id: number, manager?: EntityManager) {
 		return await this.baseRepository.remove(id, manager);
 	}
 
-	async getAll(options?: FindOneOptions<any>): Promise<T[]> {
-		return await this.baseRepository.findAll();
+	async getAll(options?: FindManyOptions) {
+		return this.normalizeJsonbColumns(await this.baseRepository.findAll(options));
 	}
-	async getById(id: any, options?: FindOneOptions<any>) {
-		return await this.baseRepository.findOneById(id, options?.relations as string[]);
+	async getById(id: number, options?: FindOneOptions) {
+		return this.normalizeJsonbColumns(
+			await this.baseRepository.findOneById(id, options?.relations as string[]),
+		);
 	}
-	async getByCode(code: any, options?: FindOneOptions<any>) {
-		return await this.baseRepository.findOneByCondition({ where: { code }, ...options });
+	async getByCode(code: string, options?: FindOneOptions) {
+		return this.normalizeJsonbColumns(
+			await this.baseRepository.findOneByCondition({
+				...options,
+				where: { code },
+			} as any),
+		);
 	}
-	async getByFilters(filters: any, options?: FindOneOptions<any>) {
-		return await this.baseRepository.findByCondition({ where: filters, ...options });
+	async getByFilters(filters: Record<string, any>, options?: FindOneOptions) {
+		return this.normalizeJsonbColumns(
+			await this.baseRepository.findByCondition({
+				...options,
+				where: filters,
+			} as any),
+		);
+	}
+
+	protected normalizeJsonbColumns<T>(result: T): T {
+		if (result === null || result === undefined) return result;
+
+		const jsonbColumns = this.baseRepository.getJsonbColumnNames();
+		if (jsonbColumns.length === 0) return result;
+
+		const apply = (entity: any) => {
+			if (entity === null || typeof entity !== 'object') return entity;
+			for (const column of jsonbColumns) {
+				if (entity[column] !== null && entity[column] !== undefined) {
+					entity[column] = camelizeKeys(entity[column]);
+				}
+			}
+			return entity;
+		};
+
+		return (Array.isArray(result) ? result.map(apply) : apply(result)) as T;
 	}
 }
