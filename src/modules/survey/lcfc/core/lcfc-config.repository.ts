@@ -23,13 +23,13 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}): Promise<OutcomeConfigEntity[]> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
-			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
+			.where(`oc.extra->>'surveyType' = :type`, { type: LCFC_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
+			qb.andWhere(`(oc.extra->>'programId')::int = :programId`, { programId: filters.programId });
 		}
 		if (filters?.academicPeriodId !== undefined) {
-			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+			qb.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
 				periodId: filters.academicPeriodId,
 			});
 		}
@@ -47,9 +47,9 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	): Promise<OutcomeConfigEntity | null> {
 		return await this.repository
 			.createQueryBuilder('oc')
-			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE })
-			.andWhere(`(oc.extra->>'course_section_id')::int = :csId`, { csId: courseSectionId })
-			.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+			.where(`oc.extra->>'surveyType' = :type`, { type: LCFC_SURVEY_TYPE })
+			.andWhere(`(oc.extra->>'courseSectionId')::int = :csId`, { csId: courseSectionId })
+			.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
 				periodId: academicPeriodId,
 			})
 			.getOne();
@@ -90,19 +90,18 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				cs.section_code AS "sectionCode",
 				cs.campus_id    AS "campusId"
 			FROM academic.course_sections cs
-			INNER JOIN academic.courses c ON c.id = cs.course_id
-			WHERE cs.academic_period_id = $1
+			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
+			INNER JOIN academic.courses c ON c.id = spc.course_id
+			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+			WHERE spap.academic_period_id = $1
 		`;
 		const params: any[] = [academicPeriodId];
 
 		if (programId) {
 			query += ` AND EXISTS (
 				SELECT 1
-				FROM academic.study_plan_courses spc
-				INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
-				WHERE spc.course_id = cs.course_id
-				  AND spap.academic_period_id = cs.academic_period_id
+				FROM academic.study_plans sp
+				WHERE sp.id = spap.study_plan_id
 				  AND sp.program_id = $${params.length + 1}
 			)`;
 			params.push(programId);
