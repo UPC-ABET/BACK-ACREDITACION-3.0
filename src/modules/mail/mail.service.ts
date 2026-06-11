@@ -5,7 +5,7 @@ import {
 	Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ServerClient } from 'postmark';
+import { createTransport, type Transporter } from 'nodemailer';
 
 type SendRawEmailData = {
 	to: string;
@@ -17,71 +17,56 @@ type SendRawEmailData = {
 @Injectable()
 export class MailService {
 	private readonly logger = new Logger(MailService.name);
-	private readonly client: ServerClient;
+	private readonly transporter: Transporter | null;
+	private readonly from: string;
 
 	constructor(private readonly configService: ConfigService) {
-		this.client = new ServerClient(this.getRequiredConfig('POSTMARK_API_KEY'));
+		const host = this.configService.get<string>('SMTP_HOST');
+		const port = Number(this.configService.get<string>('SMTP_PORT') ?? '587');
+		const user = this.configService.get<string>('SMTP_USER');
+		const pass = this.configService.get<string>('SMTP_PASS');
+		this.from = this.configService.get<string>('SMTP_FROM') ?? user ?? '';
+
+		if (host) {
+			this.transporter = createTransport({
+				host,
+				port,
+				secure: port === 465, // 465 = implicit TLS; 587/25 use STARTTLS
+				auth: user && pass ? { user, pass } : undefined,
+			});
+		} else {
+			this.transporter = null;
+			this.logger.warn(
+				'SMTP_HOST not set — email sending is disabled until SMTP is configured.',
+			);
+		}
 	}
 
 	async sendRawEmail(data: SendRawEmailData): Promise<{ messageId: string }> {
-		const from = this.getRequiredConfig('POSTMARK_FROM_EMAIL');
-		const messageStream = this.configService.get<string>('POSTMARK_MESSAGE_STREAM') ?? 'outbound';
+		if (!this.transporter) {
+			throw new InternalServerErrorException('SMTP no está configurado (falta SMTP_HOST).');
+		}
+		if (!this.from) {
+			throw new InternalServerErrorException('Falta configurar SMTP_FROM (o SMTP_USER).');
+		}
 
 		try {
-			const response = await this.client.sendEmail({
-				From: from,
-				To: data.to,
-				Cc: data.cc?.length ? data.cc.join(',') : undefined,
-				Subject: data.subject,
-				HtmlBody: data.html,
-				MessageStream: messageStream,
+			const info = await this.transporter.sendMail({
+				from: this.from,
+				to: data.to,
+				cc: data.cc?.length ? data.cc : undefined,
+				subject: data.subject,
+				html: data.html,
 			});
-			this.logger.log(`Postmark sendRawEmail OK MessageID=${response.MessageID} To=${response.To}`);
-			return { messageId: response.MessageID };
+			this.logger.log(`SMTP sendRawEmail OK messageId=${info.messageId} To=${data.to}`);
+			return { messageId: String(info.messageId) };
 		} catch (error) {
-			const details = this.getPostmarkErrorDetails(error);
-			this.logger.error(`Postmark sendRawEmail rejected. To=${data.to}. ${details}`);
+			const details = error instanceof Error ? error.message : 'Error desconocido de SMTP';
+			this.logger.error(`SMTP sendRawEmail rejected. To=${data.to}. ${details}`);
 			throw new BadGatewayException({
 				message: 'No se pudo enviar la notificación',
 				details: process.env.NODE_ENV === 'production' ? undefined : details,
 			});
 		}
-	}
-
-	private getPostmarkErrorDetails(error: unknown) {
-		if (error && typeof error === 'object') {
-			const postmarkError = error as {
-				name?: string;
-				message?: string;
-				code?: number;
-				statusCode?: number;
-			};
-			const raw = [
-				postmarkError.name,
-				postmarkError.message,
-				postmarkError.code ? `code=${postmarkError.code}` : null,
-				postmarkError.statusCode ? `status=${postmarkError.statusCode}` : null,
-			]
-				.filter(Boolean)
-				.join(' | ');
-
-			const apiKey = this.configService.get<string>('POSTMARK_API_KEY') ?? '';
-			if (apiKey && raw.includes(apiKey)) {
-				return raw.replaceAll(apiKey, '[REDACTED]');
-			}
-			return raw;
-		}
-
-		return 'Error desconocido de Postmark';
-	}
-
-	private getRequiredConfig(key: string) {
-		const value = this.configService.get<string>(key);
-
-		if (!value) {
-			throw new InternalServerErrorException(`Falta configurar ${key}`);
-		}
-
-		return value;
 	}
 }
