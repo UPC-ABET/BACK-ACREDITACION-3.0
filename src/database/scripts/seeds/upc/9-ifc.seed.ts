@@ -1,6 +1,6 @@
-﻿import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('ifc status module', async (tenantDataSource) => {
+runSeed('ifc status module', async (tenantDataSource) => {
 	const statusValues = [
 		[
 			'Fundamentos de Programacion',

@@ -4,20 +4,19 @@ import * as path from 'path';
 
 dotenv.config();
 
+/*
+ * seed-all — full demo dataset. Runs every module seed (1..13) in order against the
+ * single UPC database. For the minimal production baseline use `npm run seed:initial`.
+ *
+ * Run:  npm run seed:all
+ */
 async function run() {
-	const tenant = process.argv[2];
-
-	if (!tenant) {
-		console.error('Schema required: npm run seed:tenant <schema>');
-		process.exit(1);
-	}
-
 	if (!process.env.DB_HOST || !process.env.DB_NAME) {
 		console.error('Missing required env vars: DB_HOST, DB_NAME');
 		process.exit(1);
 	}
 
-	console.log(`\nSeeding tenant: ${tenant}\n`);
+	console.log('\nSeeding full demo dataset\n');
 	console.log('='.repeat(70));
 
 	const seedFiles = [
@@ -47,7 +46,7 @@ async function run() {
 		console.log('-'.repeat(70));
 
 		try {
-			execSync(`ts-node --transpile-only -r tsconfig-paths/register "${seedPath}" ${tenant}`, {
+			execSync(`ts-node --transpile-only -r tsconfig-paths/register "${seedPath}"`, {
 				stdio: 'inherit',
 				cwd: path.join(__dirname, '../../..'),
 			});
@@ -75,7 +74,7 @@ async function run() {
 		});
 		process.exit(1);
 	} else {
-		console.log(`\nAll seeds completed for ${tenant}.`);
+		console.log(`\nAll seeds completed.`);
 		process.exit(0);
 	}
 }

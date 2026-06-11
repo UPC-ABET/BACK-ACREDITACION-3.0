@@ -1,6 +1,6 @@
-﻿import { runTenantSeed, i18n } from '../seed-runner';
+﻿import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('evaluation module', async (tenantDataSource) => {
+runSeed('evaluation module', async (tenantDataSource) => {
 	const projectValues = [
 		[
 			'PROJ_SOFT_FP_2026',

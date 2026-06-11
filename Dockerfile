@@ -64,5 +64,5 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 RUN npm install -g pnpm@11
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Default command; the workflow overrides it (migration:run, migrate:all, ...).
+# Default command; the workflow overrides it (migration:run, migration:revert, seed:initial, ...).
 CMD ["pnpm", "migration:run"]

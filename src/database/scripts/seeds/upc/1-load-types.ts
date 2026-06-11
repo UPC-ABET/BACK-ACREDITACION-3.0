@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 
 export async function loadTypes(tenantDataSource: DataSource) {
 	const typeGroupRows: Array<[string, string, string]> = [
@@ -843,5 +843,5 @@ export async function loadTypes(tenantDataSource: DataSource) {
 }
 
 if (require.main === module) {
-	runTenantSeed('core type catalogs', loadTypes);
+	runSeed('core type catalogs', loadTypes);
 }

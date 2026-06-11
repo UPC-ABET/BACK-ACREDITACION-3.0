@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 
 export async function loadOrganization(tenantDataSource: DataSource) {
 	const campusValues = [
@@ -109,5 +109,5 @@ export async function loadOrganization(tenantDataSource: DataSource) {
 }
 
 if (require.main === module) {
-	runTenantSeed('organization base module', loadOrganization);
+	runSeed('organization base module', loadOrganization);
 }

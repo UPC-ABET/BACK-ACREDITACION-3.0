@@ -1,6 +1,6 @@
-import { runTenantSeed, i18n } from '../seed-runner';
+import { runSeed, i18n } from '../seed-runner';
 
-runTenantSeed('survey module', async (tenantDataSource) => {
+runSeed('survey module', async (tenantDataSource) => {
 	const outcomeConfigValues = [
 		[
 			'OUT_SOFT_01',

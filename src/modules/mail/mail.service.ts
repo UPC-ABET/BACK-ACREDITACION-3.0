@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter } from 'nodemailer';
+import { mailValidationStrings } from './config/strings/mail.validation';
 
 type SendRawEmailData = {
 	to: string;
@@ -17,37 +18,33 @@ type SendRawEmailData = {
 @Injectable()
 export class MailService {
 	private readonly logger = new Logger(MailService.name);
-	private readonly transporter: Transporter | null;
+	private readonly transporter: Transporter;
 	private readonly from: string;
+	private readonly exposeSmtpErrors: boolean;
 
 	constructor(private readonly configService: ConfigService) {
-		const host = this.configService.get<string>('SMTP_HOST');
-		const port = Number(this.configService.get<string>('SMTP_PORT') ?? '587');
-		const user = this.configService.get<string>('SMTP_USER');
-		const pass = this.configService.get<string>('SMTP_PASS');
-		this.from = this.configService.get<string>('SMTP_FROM') ?? user ?? '';
+		const host = this.configService.getOrThrow<string>('SMTP_HOST');
+		const port = Number(this.configService.getOrThrow<string>('SMTP_PORT'));
+		const user = this.configService.getOrThrow<string>('SMTP_USER');
+		const pass = this.configService.getOrThrow<string>('SMTP_PASS');
+		const secure = this.getBooleanConfig('SMTP_SECURE', port === 465);
+		const requireTls = this.getBooleanConfig('SMTP_REQUIRE_TLS', true);
 
-		if (host) {
-			this.transporter = createTransport({
-				host,
-				port,
-				secure: port === 465, // 465 = implicit TLS; 587/25 use STARTTLS
-				auth: user && pass ? { user, pass } : undefined,
-			});
-		} else {
-			this.transporter = null;
-			this.logger.warn(
-				'SMTP_HOST not set — email sending is disabled until SMTP is configured.',
-			);
-		}
+		this.from = this.configService.get<string>('SMTP_FROM') ?? user;
+		this.exposeSmtpErrors = this.configService.get<string>('NODE_ENV') !== 'production';
+
+		this.transporter = createTransport({
+			host,
+			port,
+			secure,
+			requireTLS: requireTls,
+			auth: { user, pass },
+		});
 	}
 
 	async sendRawEmail(data: SendRawEmailData): Promise<{ messageId: string }> {
-		if (!this.transporter) {
-			throw new InternalServerErrorException('SMTP no está configurado (falta SMTP_HOST).');
-		}
 		if (!this.from) {
-			throw new InternalServerErrorException('Falta configurar SMTP_FROM (o SMTP_USER).');
+			throw new InternalServerErrorException(mailValidationStrings.error.missingConfig);
 		}
 
 		try {
@@ -59,14 +56,20 @@ export class MailService {
 				html: data.html,
 			});
 			this.logger.log(`SMTP sendRawEmail OK messageId=${info.messageId} To=${data.to}`);
-			return { messageId: String(info.messageId) };
+			return { messageId: String(info.messageId ?? '') };
 		} catch (error) {
-			const details = error instanceof Error ? error.message : 'Error desconocido de SMTP';
+			const details = error instanceof Error ? error.message : 'Unknown SMTP error';
 			this.logger.error(`SMTP sendRawEmail rejected. To=${data.to}. ${details}`);
 			throw new BadGatewayException({
-				message: 'No se pudo enviar la notificación',
-				details: process.env.NODE_ENV === 'production' ? undefined : details,
+				message: mailValidationStrings.error.sendFailed,
+				details: this.exposeSmtpErrors ? details : undefined,
 			});
 		}
+	}
+
+	private getBooleanConfig(key: string, fallback: boolean) {
+		const value = this.configService.get<string>(key);
+		if (value === undefined) return fallback;
+		return value.toLowerCase() === 'true';
 	}
 }
