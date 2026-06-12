@@ -4,6 +4,9 @@ import {
 	CreateCourseOutcomeMappingDto,
 	UpdateCourseOutcomeMappingDto,
 	FilterCourseOutcomeMappingDto,
+	FilterCourseOutcomeMappingMaintenanceDto,
+	CourseOutcomeMappingViewDto,
+	BulkSaveCourseOutcomeMappingDto,
 } from '../../model/course-outcome-mappings.dtos';
 
 const cfg = courseOutcomeMappingsRoutes.courseOutcomeMappings;
@@ -26,3 +29,18 @@ export const SwaggerCourseOutcomeMappingGetById = () =>
 
 export const SwaggerCourseOutcomeMappingGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterCourseOutcomeMappingDto });
+
+export const SwaggerCourseOutcomeMappingMaintenanceGetByFilters = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceGetByFilters,
+		body: FilterCourseOutcomeMappingMaintenanceDto,
+	});
+
+export const SwaggerCourseOutcomeMappingMaintenanceView = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceView, body: CourseOutcomeMappingViewDto });
+
+export const SwaggerCourseOutcomeMappingMaintenanceBulkSave = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceBulkSave,
+		body: BulkSaveCourseOutcomeMappingDto,
+	});

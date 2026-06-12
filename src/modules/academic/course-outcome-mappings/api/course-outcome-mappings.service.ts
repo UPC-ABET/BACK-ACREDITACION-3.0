@@ -6,8 +6,12 @@ import { CourseOutcomeMappingValidation } from '../core/course-outcome-mappings.
 import {
 	CreateCourseOutcomeMappingDto,
 	UpdateCourseOutcomeMappingDto,
+	FilterCourseOutcomeMappingMaintenanceDto,
+	BulkSaveCourseOutcomeMappingDto,
 } from '../model/course-outcome-mappings.dtos';
 import { DataSource, EntityManager } from 'typeorm';
+import { HttpException, HttpStatus } from '@nestjs/common';
+import { courseOutcomeMappingsValidationStrings } from '../config/strings/course-outcome-mappings.validation';
 
 @Injectable()
 export class CourseOutcomeMappingService extends BaseService<CourseOutcomeMappingRepository> {
@@ -31,5 +35,26 @@ export class CourseOutcomeMappingService extends BaseService<CourseOutcomeMappin
 	async delete(id: number, manager?: EntityManager) {
 		await CourseOutcomeMappingValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getMaintenanceFilters(filters: FilterCourseOutcomeMappingMaintenanceDto) {
+		return await this.repository.getMaintenanceFilters(filters);
+	}
+
+	async getMaintenanceView(programCommissionId: number) {
+		const view = await this.repository.getMaintenanceView(programCommissionId);
+		if (!view) {
+			throw new HttpException(
+				{ message: courseOutcomeMappingsValidationStrings.error.programCommissionNotFound },
+				HttpStatus.NOT_FOUND,
+			);
+		}
+		return view;
+	}
+
+	async bulkSaveMaintenance(dto: BulkSaveCourseOutcomeMappingDto) {
+		await CourseOutcomeMappingValidation.validateBulkSave(this.repository, dto);
+		await this.repository.bulkSaveMaintenance(dto.programCommissionId, dto.courses);
+		return { programCommissionId: dto.programCommissionId };
 	}
 }

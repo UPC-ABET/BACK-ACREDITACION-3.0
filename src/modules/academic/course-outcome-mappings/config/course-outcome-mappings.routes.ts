@@ -13,6 +13,21 @@ export const courseOutcomeMappingsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar mapeos de outcomes',
 			},
+			maintenanceGetByFilters: {
+				method: 'POST',
+				route: '/maintenance/get-by-filters',
+				summary: 'Listar carrera-comisiones para mantenimiento de mapeo de outcomes',
+			},
+			maintenanceView: {
+				method: 'POST',
+				route: '/maintenance/view',
+				summary: 'Obtener cursos del plan y outcomes para una carrera-comision',
+			},
+			maintenanceBulkSave: {
+				method: 'PUT',
+				route: '/maintenance/bulk-save',
+				summary: 'Guardar el mapeo de outcomes por curso de una carrera-comision',
+			},
 		},
 	},
 };
