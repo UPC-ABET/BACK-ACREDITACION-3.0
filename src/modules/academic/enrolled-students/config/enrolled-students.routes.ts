@@ -25,6 +25,23 @@ export const enrolledStudentsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar estudiantes matriculados',
 			},
+			maintenanceList: {
+				method: 'GET',
+				route: '/maintenance',
+				summary: 'Listar matrículas (mantenimiento) por período académico',
+			},
+			maintenanceUpdate: {
+				method: 'PUT',
+				route: '/maintenance/:id',
+				summary: 'Actualizar matrícula (mantenimiento)',
+				params: [{ name: 'id', description: 'ID de la matrícula', type: Number }],
+			},
+			maintenanceDelete: {
+				method: 'DELETE',
+				route: '/maintenance/:id',
+				summary: 'Eliminar matrícula (mantenimiento)',
+				params: [{ name: 'id', description: 'ID de la matrícula', type: Number }],
+			},
 		},
 	},
 };

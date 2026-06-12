@@ -1,6 +1,17 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { EnrolledStudentRepository } from './enrolled-students.repository';
+import {
+	EnrolledStudentRepository,
+	EnrolledStudentDeleteBlockerCounts,
+} from './enrolled-students.repository';
 import { enrolledStudentsValidationStrings } from '../config/strings/enrolled-students.validation';
+import { UpdateEnrolledStudentMaintenanceDto } from '../model/enrolled-students.dtos';
+
+const DELETE_BLOCKER_KEYS: Array<[keyof EnrolledStudentDeleteBlockerCounts, string]> = [
+	[
+		'studentSectionEnrollments',
+		enrolledStudentsValidationStrings.error.usedInStudentSectionEnrollments,
+	],
+];
 
 export class EnrolledStudentValidation {
 	static async validateCreate(repo: EnrolledStudentRepository, data: any) {
@@ -63,6 +74,60 @@ export class EnrolledStudentValidation {
 					message: enrolledStudentsValidationStrings.result.deleteFailed,
 				},
 				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceUpdate(
+		repo: EnrolledStudentRepository,
+		id: number,
+		data: UpdateEnrolledStudentMaintenanceDto,
+	) {
+		const entity = await repo.findByIdWithRelations(id);
+		if (!entity) {
+			throw new HttpException(
+				{
+					message: enrolledStudentsValidationStrings.result.updateFailed,
+					errors: [enrolledStudentsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		if (data.studentCode !== undefined && data.studentCode !== entity.student.code) {
+			if (await repo.isStudentCodeTaken(data.studentCode, entity.studentId)) {
+				throw new HttpException(
+					{
+						message: enrolledStudentsValidationStrings.result.updateFailed,
+						errors: [enrolledStudentsValidationStrings.error.codeExists],
+					},
+					HttpStatus.BAD_REQUEST,
+				);
+			}
+		}
+	}
+
+	static async validateMaintenanceDelete(repo: EnrolledStudentRepository, id: number) {
+		if (!(await repo.findOneById(id))) {
+			throw new HttpException(
+				{
+					message: enrolledStudentsValidationStrings.result.deleteFailed,
+					errors: [enrolledStudentsValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		const counts = await repo.findDeleteBlockerCounts(id);
+		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
+
+		if (blockers.length > 0) {
+			throw new HttpException(
+				{
+					message: enrolledStudentsValidationStrings.error.inUse,
+					errors: blockers,
+				},
+				HttpStatus.CONFLICT,
 			);
 		}
 	}

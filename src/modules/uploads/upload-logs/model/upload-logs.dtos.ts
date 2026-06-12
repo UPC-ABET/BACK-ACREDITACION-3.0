@@ -1,5 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
@@ -52,11 +51,6 @@ export class ListUploadLogsQueryDto extends PaginationQueryDto {
 	@IsString()
 	@ApiPropertyOptional({ example: 'COMPLETED' })
 	statusCode?: string;
-
-	@Type(() => Number)
-	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period id (from header)' })
-	academicPeriodId: number;
 }
 
 export class UpdateUploadLogDto {

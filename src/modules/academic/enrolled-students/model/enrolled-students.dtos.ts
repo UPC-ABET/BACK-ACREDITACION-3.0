@@ -1,8 +1,10 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Entity({ name: 'enrolled_students', schema: 'academic' })
 export class EnrolledStudentEntity extends BaseEntity {
@@ -105,4 +107,59 @@ export class FilterEnrolledStudentDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	enrollementModalityTypeId?: number;
+}
+
+export class EnrolledStudentMaintenanceQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'searchExample',
+		description: 'Search by student code, first name or last name',
+	})
+	search?: string;
+}
+
+export class UpdateEnrolledStudentMaintenanceDto {
+	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiPropertyOptional({ example: 'STU-0001' })
+	studentCode?: string;
+
+	@IsOptional()
+	@IsString()
+	@Length(1, 255)
+	@ApiPropertyOptional({ example: 'John' })
+	firstName?: string;
+
+	@IsOptional()
+	@IsString()
+	@Length(1, 255)
+	@ApiPropertyOptional({ example: 'Doe' })
+	lastName?: string;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1, description: 'Program (carrera) id' })
+	programId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	campusId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1, description: 'Enrollment modality type id' })
+	enrollementModalityTypeId?: number;
+}
+
+export interface EnrolledStudentMaintenanceItem {
+	id: number;
+	studentCode: string;
+	firstName: string;
+	lastName: string;
+	campusName: I18nText;
+	programName: I18nText;
+	modalityTypeName: I18nText;
 }

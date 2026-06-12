@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerEnrolledStudentController,
@@ -8,14 +8,24 @@ import {
 	SwaggerEnrolledStudentGetAll,
 	SwaggerEnrolledStudentGetById,
 	SwaggerEnrolledStudentGetByFilters,
+	SwaggerEnrolledStudentMaintenanceList,
+	SwaggerEnrolledStudentMaintenanceUpdate,
+	SwaggerEnrolledStudentMaintenanceDelete,
 } from './docs/enrolled-students.swagger';
 import { EnrolledStudentService } from './enrolled-students.service';
 import {
 	CreateEnrolledStudentDto,
 	UpdateEnrolledStudentDto,
 	FilterEnrolledStudentDto,
+	EnrolledStudentMaintenanceQueryDto,
+	UpdateEnrolledStudentMaintenanceDto,
 } from '../model/enrolled-students.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerEnrolledStudentController()
@@ -58,5 +68,30 @@ export class EnrolledStudentController extends BaseController<EnrolledStudentSer
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterEnrolledStudentDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerEnrolledStudentMaintenanceList()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async maintenanceList(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Query() query: EnrolledStudentMaintenanceQueryDto,
+	) {
+		return parseSuccessResponse(await this.service.getMaintenanceList(academicPeriodId, query));
+	}
+
+	@SwaggerEnrolledStudentMaintenanceUpdate()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.PUT })
+	async maintenanceUpdate(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateEnrolledStudentMaintenanceDto,
+	) {
+		return parseSuccessResponse(await this.service.updateMaintenance(id, dto));
+	}
+
+	@SwaggerEnrolledStudentMaintenanceDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.DELETE })
+	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.service.deleteMaintenance(id));
 	}
 }

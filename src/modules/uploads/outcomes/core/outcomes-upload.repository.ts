@@ -19,10 +19,25 @@ export class OutcomesUploadRepository {
 		userId: number,
 		sourceFile: string,
 	): Promise<UploadFnRow[]> {
+		const modalityErrors = await this.findProgramModalityMismatches(rows, academicPeriodId);
+		if (modalityErrors.length > 0) return modalityErrors;
+
 		return await this.dataSource.query(
 			'SELECT * FROM audit.fn_upload_outcomes($1::jsonb, $2, $3, $4)',
 			[JSON.stringify(rows), academicPeriodId, userId, sourceFile],
 		);
+	}
+
+	private async findProgramModalityMismatches(
+		rows: unknown[],
+		academicPeriodId: number,
+	): Promise<UploadFnRow[]> {
+		const mismatches: Array<{ row_number: number; error_code: string }> =
+			await this.dataSource.query(
+				'SELECT * FROM audit.fn_validate_program_modality($1::jsonb, $2)',
+				[JSON.stringify(rows), academicPeriodId],
+			);
+		return mismatches.map((r) => ({ ...r, upload_log_id: null }));
 	}
 
 	async callRollbackFunction(uploadLogId: number): Promise<void> {

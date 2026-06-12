@@ -121,12 +121,15 @@ export class UploadLogService extends BaseService<UploadLogRepository> {
 		}
 	}
 
-	async listLogs(query: ListUploadLogsQueryDto): Promise<PaginatedResult<UploadLogItem>> {
+	async listLogs(
+		query: ListUploadLogsQueryDto,
+		academicPeriodId: number,
+	): Promise<PaginatedResult<UploadLogItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
 		const [logs, total] = await this.repository.findLogs({
 			uploadTypeCode: query.uploadTypeCode,
 			statusCode: query.statusCode,
-			academicPeriodId: query.academicPeriodId,
+			academicPeriodId,
 			skip,
 			take,
 		});
