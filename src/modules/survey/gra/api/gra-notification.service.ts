@@ -167,6 +167,7 @@ export class GraNotificationService {
 		// Fetch email template for GRA survey type
 		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
 			TYPE_CODES.SURVEY_TYPE.GRA,
+			dto.lang ?? 'es',
 		);
 
 		const surveyBaseUrl =
@@ -180,11 +181,11 @@ export class GraNotificationService {
 				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.GRA}?token=${student.token}`;
 
 				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
-					NombreAlumno: student.studentName,
-					CodigoAlumno: student.studentCode,
-					NombreCarrera: student.programName,
-					LinkEncuesta: surveyUrl,
-					Token: student.token,
+					student_name: student.studentName,
+					student_code: student.studentCode,
+					program_name: student.programName,
+					survey_link: surveyUrl,
+					token: student.token,
 				});
 
 				await this.mailService.sendRawEmail({

@@ -429,8 +429,14 @@ export const ENTITY_CONFIG: Record<
 
 	notificationLog: {
 		entity: 'NotificationLogEntity',
-		path: 'ifc/notification-log',
+		path: 'core/notification-logs',
 		singular: 'notificationLog',
 		plural: 'notificationLogs',
+	},
+	emailTemplate: {
+		entity: 'EmailTemplateEntity',
+		path: 'core/email-templates',
+		singular: 'emailTemplate',
+		plural: 'emailTemplates',
 	},
 };

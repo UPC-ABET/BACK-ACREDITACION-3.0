@@ -123,6 +123,11 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			i18n('Estado de carga', 'Upload status'),
 			i18n('Estados de una carga masiva', 'Bulk upload states'),
 		],
+		[
+			'TG1004',
+			i18n('Categoria de plantilla de correo', 'Email template category'),
+			i18n('Categorias para agrupar plantillas de correo', 'Categories to group email templates'),
+		],
 	];
 
 	const typeGroupValues = typeGroupRows
@@ -708,8 +713,8 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		[
 			'TG1101',
 			'TG1101-T001',
-			i18n('Personal', 'Staff'),
-			i18n('Carga de personal', 'Staff upload'),
+			i18n('Docente', 'Staff'),
+			i18n('Carga de docentes', 'Staff upload'),
 			'{}',
 		],
 		[
@@ -787,6 +792,27 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'TG1102-T002',
 			i18n('Revertido', 'Rollback'),
 			i18n('Carga revertida', 'Upload rolled back'),
+			'{}',
+		],
+		[
+			'TG1004',
+			'TG1004-T001',
+			i18n('Usuario', 'User'),
+			i18n('Plantillas de correo de usuario', 'User email templates'),
+			'{}',
+		],
+		[
+			'TG1004',
+			'TG1004-T002',
+			i18n('IFC', 'IFC'),
+			i18n('Plantillas de correo de IFC', 'IFC email templates'),
+			'{}',
+		],
+		[
+			'TG1004',
+			'TG1004-T003',
+			i18n('Encuesta', 'Survey'),
+			i18n('Plantillas de correo de encuesta', 'Survey email templates'),
 			'{}',
 		],
 	];

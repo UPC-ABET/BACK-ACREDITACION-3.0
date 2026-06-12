@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { MailService } from 'src/modules/mail/mail.service';
-import { NotificationLogService } from 'src/modules/ifc/notification-log/api/notification-log.service';
+import { NotificationLogService } from 'src/modules/core/notification-logs/api/notification-logs.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFCS_PARAMETER_KEYS } from 'src/modules/evidence/ifcs/api/ifcs.constants';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -43,7 +43,8 @@ interface ResolvedContext {
 
 interface LoadedConfig {
 	id: number;
-	title: I18nText;
+	emailTemplateId: number | null;
+	subject: I18nText;
 	body: I18nText;
 	toChartEntityTypeIds: number[] | null;
 	ccChartEntityTypeIds: number[] | null;
@@ -107,7 +108,7 @@ export class NotificationDispatcherService {
 		const subs = await this.buildSubstitutions(ctx, input.notifierUserId, notificationVars);
 		const lang: 'es' | 'en' = 'es';
 
-		const subject = applySubstitutions(config.title[lang] ?? config.title.es ?? '', subs);
+		const subject = applySubstitutions(config.subject[lang] ?? config.subject.es ?? '', subs);
 		const html = applySubstitutions(config.body[lang] ?? config.body.es ?? '', subs);
 
 		try {
@@ -118,7 +119,16 @@ export class NotificationDispatcherService {
 				html,
 			});
 
-			await this.writeLog(ctx, config, toStaffIds, ccStaffIds, input.notifierUserId, messageId);
+			await this.writeLog(
+				ctx,
+				config,
+				toEmails,
+				ccEmails,
+				toStaffIds,
+				ccStaffIds,
+				input.notifierUserId,
+				messageId,
+			);
 
 			this.logger.log(
 				`dispatch.sent chartId=${chartId} periodId=${periodId} ifcId=${ctx.ifcId} recipients=${toEmails.length} cc=${ccEmails.length}`,
@@ -202,11 +212,13 @@ export class NotificationDispatcherService {
 			`
 			SELECT
 				nc.id::int                     AS "id",
-				nc.title                       AS "title",
-				nc.body                        AS "body",
+				nc.email_template_id::int      AS "emailTemplateId",
+				et.subject                     AS "subject",
+				et.body                        AS "body",
 				nc.to_chart_entity_type_ids     AS "toChartEntityTypeIds",
 				nc.cc_chart_entity_type_ids     AS "ccChartEntityTypeIds"
 			FROM ifc.notification_configs nc
+			JOIN core.email_templates et ON et.id = nc.email_template_id
 			WHERE nc.school_id          = $1
 			  AND nc.academic_period_id = $2
 			  AND nc.trigger_type_id    = $3
@@ -411,20 +423,40 @@ export class NotificationDispatcherService {
 	private async writeLog(
 		ctx: ResolvedContext,
 		config: LoadedConfig,
+		toEmails: string[],
+		ccEmails: string[],
 		toStaffIds: number[],
 		ccStaffIds: number[],
 		notifierUserId: number | null,
 		messageId: string,
 	) {
+		const categoryTypeId = await this.lookupTypeIdByCode(TYPE_CODES.EMAIL_TEMPLATE_CATEGORY.IFC);
+		if (categoryTypeId === null) return;
+
 		await this.notificationLogService.create({
-			ifcId: ctx.ifcId,
-			chartId: ctx.courseChartId,
-			notificationConfigId: config.id,
-			notifierUserId: notifierUserId,
-			toStaffIds: toStaffIds,
-			ccStaffIds: ccStaffIds,
+			categoryTypeId,
+			emailTemplateId: config.emailTemplateId,
+			notifierUserId,
+			toEmails,
+			ccEmails,
+			toStaffIds,
+			ccStaffIds,
 			providerMessageId: messageId,
+			status: 'sent',
+			context: {
+				ifcId: ctx.ifcId,
+				chartId: ctx.courseChartId,
+				notificationConfigId: config.id,
+			},
 		});
+	}
+
+	private async lookupTypeIdByCode(code: string): Promise<number | null> {
+		const rows =
+			(await this.dataSource.query(`SELECT id::int AS id FROM core.types WHERE code = $1 LIMIT 1`, [
+				code,
+			])) ?? [];
+		return rows[0]?.id ?? null;
 	}
 }
 

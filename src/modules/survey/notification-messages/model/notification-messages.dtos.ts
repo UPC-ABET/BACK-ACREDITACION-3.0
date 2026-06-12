@@ -21,11 +21,18 @@ export class CreateNotificationMessageDto {
 	programId: number;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
-	title: I18nText;
+	@ApiProperty({ example: { es: 'Plantilla encuesta', en: 'Survey template' }, required: true })
+	name: I18nText;
 
 	@IsObject()
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
+	@ApiProperty({ example: { es: 'Asunto', en: 'Subject' }, required: true })
+	subject: I18nText;
+
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'Hola {{student_name}}', en: 'Hi {{student_name}}' },
+		required: true,
+	})
 	body: I18nText;
 
 	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: true })
@@ -54,12 +61,20 @@ export class UpdateNotificationMessageDto {
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
-	title?: I18nText;
+	@ApiProperty({ example: { es: 'Plantilla encuesta', en: 'Survey template' }, required: false })
+	name?: I18nText;
 
 	@IsOptional()
 	@IsObject()
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
+	@ApiProperty({ example: { es: 'Asunto', en: 'Subject' }, required: false })
+	subject?: I18nText;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'Hola {{student_name}}', en: 'Hi {{student_name}}' },
+		required: false,
+	})
 	body?: I18nText;
 
 	@IsOptional()
@@ -85,12 +100,8 @@ export class FilterNotificationMessageDto {
 	programId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
-	title?: I18nText;
-
-	@IsOptional()
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
-	body?: I18nText;
+	@ApiProperty({ example: 1, required: false })
+	emailTemplateId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
