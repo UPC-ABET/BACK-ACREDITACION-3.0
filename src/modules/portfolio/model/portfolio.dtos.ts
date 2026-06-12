@@ -283,7 +283,9 @@ export class FilterPortfolioProjectDto {
 	@IsPositive()
 	modalityTypeId?: number;
 
-	@ApiPropertyOptional({ description: 'true = projects without students (with applicants), false = with students' })
+	@ApiPropertyOptional({
+		description: 'true = projects without students (with applicants), false = with students',
+	})
 	@IsOptional()
 	@IsBoolean()
 	assignment?: boolean;

@@ -15,7 +15,12 @@ export class PortfolioProjectApplicationEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	studentId: number;
 
-	@Column({ type: 'varchar', length: 20, nullable: false, default: ProjectApplicationStatus.PENDING })
+	@Column({
+		type: 'varchar',
+		length: 20,
+		nullable: false,
+		default: ProjectApplicationStatus.PENDING,
+	})
 	status: ProjectApplicationStatus;
 
 	// %% RELATIONS
