@@ -89,15 +89,12 @@ export class CourseOutcomeMappingRepository extends BaseRepository<CourseOutcome
 	}
 
 	async getMaintenanceFilters(
+		academicPeriodId: number,
 		filters: FilterCourseOutcomeMappingMaintenanceDto,
 	): Promise<ProgramCommissionRow[]> {
-		const conditions = ['pc.is_active = true'];
-		const params: number[] = [];
+		const params: number[] = [academicPeriodId];
+		const conditions = ['pc.is_active = true', `ap.id = $${params.length}`];
 
-		if (filters.academicPeriodId !== undefined) {
-			params.push(filters.academicPeriodId);
-			conditions.push(`ap.id = $${params.length}`);
-		}
 		if (filters.accreditorId !== undefined) {
 			params.push(filters.accreditorId);
 			conditions.push(`acc.id = $${params.length}`);

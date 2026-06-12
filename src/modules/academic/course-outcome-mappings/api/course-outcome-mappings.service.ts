@@ -37,8 +37,11 @@ export class CourseOutcomeMappingService extends BaseService<CourseOutcomeMappin
 		return await super.delete(id, manager);
 	}
 
-	async getMaintenanceFilters(filters: FilterCourseOutcomeMappingMaintenanceDto) {
-		return await this.repository.getMaintenanceFilters(filters);
+	async getMaintenanceFilters(
+		academicPeriodId: number,
+		filters: FilterCourseOutcomeMappingMaintenanceDto,
+	) {
+		return await this.repository.getMaintenanceFilters(academicPeriodId, filters);
 	}
 
 	async getMaintenanceView(programCommissionId: number) {

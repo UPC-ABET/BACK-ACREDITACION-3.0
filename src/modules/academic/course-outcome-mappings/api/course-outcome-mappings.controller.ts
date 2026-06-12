@@ -22,6 +22,10 @@ import {
 	BulkSaveCourseOutcomeMappingDto,
 } from '../model/course-outcome-mappings.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerCourseOutcomeMappingController()
@@ -67,9 +71,13 @@ export class CourseOutcomeMappingController extends BaseController<CourseOutcome
 	}
 
 	@SwaggerCourseOutcomeMappingMaintenanceGetByFilters()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
-	async maintenanceGetByFilters(@Body() dto: FilterCourseOutcomeMappingMaintenanceDto) {
-		return await this.service.getMaintenanceFilters(dto);
+	async maintenanceGetByFilters(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Body() dto: FilterCourseOutcomeMappingMaintenanceDto,
+	) {
+		return await this.service.getMaintenanceFilters(academicPeriodId, dto);
 	}
 
 	@SwaggerCourseOutcomeMappingMaintenanceView()

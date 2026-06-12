@@ -77,11 +77,6 @@ export class FilterCourseOutcomeMappingMaintenanceDto {
 	@IsOptional()
 	@IsInt()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsInt()
-	@ApiProperty({ example: 1, required: false })
 	accreditorId?: number;
 
 	@IsOptional()

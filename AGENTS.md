@@ -399,6 +399,28 @@ req.user = {
 
 JWT is extracted from `Authorization: Bearer <token>` header OR `access_token` httpOnly cookie.
 
+## Scope Headers (School / Modality / Academic Period)
+
+The frontend always sends the active **school**, **modality**, and **academic period** as request
+headers. These three values are the global scope of the app — **always read them from the header,
+never from the request body, query string, or route params**, unless a task explicitly says to take
+a given one from the query (e.g. a comparison screen that spans periods).
+
+Read them only through the dedicated param decorators (each pairs a value decorator with a Swagger
+header decorator — apply both):
+
+| Scope           | Header              | Param decorator       | Swagger decorator           |
+| --------------- | ------------------- | --------------------- | --------------------------- |
+| School          | `X-School-Id`       | `@SchoolId()`         | `@ApiSchoolHeader()`        |
+| Modality        | `X-Modality-Type-Id`| `@ModalityTypeId()`   | `@ApiModalityTypeHeader()`  |
+| Academic period | `X-Academic-Period-Id` | `@AcademicPeriodId()` | `@ApiAcademicPeriodHeader()` |
+
+All live in `src/modules/auth/protocols/jwt/decorators/`. Pass `{ optional: true }` to the value
+decorator (and `false` to the Swagger one) when the scope is genuinely optional; otherwise a missing
+header throws a `400`. Do **not** add `schoolId` / `modalityTypeId` / `academicPeriodId` fields to a
+Filter/Create/Update DTO to carry scope — the controller injects them from the header and passes them
+to the service explicitly.
+
 ## Cookie Constants
 
 Defined in `src/libs/secure.functions.ts`:
