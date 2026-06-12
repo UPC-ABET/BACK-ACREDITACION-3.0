@@ -54,7 +54,12 @@ export class OutcomeService extends BaseService<OutcomeRepository> {
 			take,
 		);
 
-		return toPaginated(outcomes.map((outcome) => this.toMaintenanceItem(outcome)), total, page, pageSize);
+		return toPaginated(
+			outcomes.map((outcome) => this.toMaintenanceItem(outcome)),
+			total,
+			page,
+			pageSize,
+		);
 	}
 
 	async updateMaintenance(id: number, dto: UpdateOutcomeMaintenanceDto) {

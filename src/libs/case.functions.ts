@@ -11,7 +11,6 @@
 
 const SNAKE_SEGMENT = /_+([a-z0-9])/g;
 
-/** Convert a single snake_case key to camelCase. Already-camelCase keys are returned unchanged. */
 export function snakeToCamel(key: string): string {
 	return key.replace(SNAKE_SEGMENT, (_match, char: string) => char.toUpperCase());
 }

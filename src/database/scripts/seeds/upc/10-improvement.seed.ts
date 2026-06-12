@@ -354,7 +354,6 @@ runSeed('improvement module', async (tenantDataSource) => {
 			false,
 			null,
 		],
-		// CC102 → 1 action IMPLEMENTED.
 		[
 			2026902,
 			i18n('Anadir taller de seguridad SQL en CC102.', 'Add SQL security workshop to CC102.'),

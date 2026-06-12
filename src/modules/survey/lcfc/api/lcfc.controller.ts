@@ -29,8 +29,6 @@ import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/per
 export class LcfcController {
 	constructor(private readonly lcfcService: LcfcService) {}
 
-	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
-
 	@SwaggerLcfcConfigGenerate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async configGenerate(@Body() dto: GenerateLcfcConfigDto) {
@@ -55,23 +53,17 @@ export class LcfcController {
 		return parseSuccessResponse(await this.lcfcService.updateConfigStatus(dto));
 	}
 
-	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────
-
 	@SwaggerLcfcNotificationSend()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async notificationSend(@Body() dto: SendLcfcNotificationDto) {
 		return parseSuccessResponse(await this.lcfcService.sendNotifications(dto));
 	}
 
-	// ── TOKEN ENDPOINTS ───────────────────────────────────────────────
-
 	@SwaggerLcfcTokenValidate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async tokenValidate(@Param('token') token: string) {
 		return parseSuccessResponse(await this.lcfcService.validateToken(token));
 	}
-
-	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerLcfcSurveyGetByToken()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
@@ -84,8 +76,6 @@ export class LcfcController {
 	async surveyComplete(@Body() dto: CompleteLcfcSurveyDto) {
 		return parseSuccessResponse(await this.lcfcService.completeSurvey(dto));
 	}
-
-	// ── DASHBOARD ENDPOINTS ───────────────────────────────────────────
 
 	@SwaggerLcfcDashboard()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })

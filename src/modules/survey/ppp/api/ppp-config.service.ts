@@ -113,7 +113,6 @@ export class PppConfigService {
 			replicatedConfigs++;
 		}
 
-		// Copy performance levels from the previous period to the new one
 		const pppTypeId = await this.configRepo.findSurveyTypeIdByCode(PPP_SURVEY_TYPE);
 		let replicatedLevels = 0;
 		if (pppTypeId) {

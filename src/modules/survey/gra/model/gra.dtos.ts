@@ -11,10 +11,6 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
-// ─────────────────────────────────────────────
-// GRA CONFIG DTOs
-// ─────────────────────────────────────────────
-
 export class CreateGraConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID of the linked academic outcome' })
@@ -153,10 +149,6 @@ export class FilterGraConfigDto {
 	isVisible?: boolean;
 }
 
-// ─────────────────────────────────────────────
-// GRA REPLICATE DTO
-// ─────────────────────────────────────────────
-
 export class ReplicateGraConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Source academic period ID (to copy from)' })
@@ -176,10 +168,6 @@ export class ReplicateGraConfigDto {
 	programId?: number;
 }
 
-// ─────────────────────────────────────────────
-// GRA OUTCOMES LISTING DTO
-// ─────────────────────────────────────────────
-
 export class ListGraSurveyOutcomesDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
@@ -189,10 +177,6 @@ export class ListGraSurveyOutcomesDto {
 	@ApiProperty({ example: 1, description: 'Academic period ID' })
 	academicPeriodId: number;
 }
-
-// ─────────────────────────────────────────────
-// GRA NOTIFICATION DTOs (student management)
-// ─────────────────────────────────────────────
 
 export class SaveGraNotificationDto {
 	@IsNumber()
@@ -245,10 +229,6 @@ export class ListStudentsGraDto {
 	studentCode?: string;
 }
 
-// ─────────────────────────────────────────────
-// GRA EMAIL DTOs
-// ─────────────────────────────────────────────
-
 export class SendGraEmailDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Academic period ID' })
@@ -281,10 +261,6 @@ export class SendGraEmailDto {
 	})
 	lang?: 'es' | 'en';
 }
-
-// ─────────────────────────────────────────────
-// GRA TOKEN / SURVEY DTOs
-// ─────────────────────────────────────────────
 
 export class GetSurveyByTokenDto {
 	@IsString()
@@ -344,10 +320,6 @@ export class CompleteGraSurveyDto {
 	})
 	scores: GraScoreItemDto[];
 }
-
-// ─────────────────────────────────────────────
-// GRA DASHBOARD DTO
-// ─────────────────────────────────────────────
 
 export class DashboardGraDto {
 	@IsOptional()

@@ -11,7 +11,9 @@ export class UseModalityHeaderForUploadValidation1790000000000 implements Migrat
 	name = 'UseModalityHeaderForUploadValidation1790000000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_validate_program_modality(jsonb, integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_validate_program_modality(jsonb, integer)`,
+		);
 		await queryRunner.query(`
 CREATE FUNCTION audit.fn_validate_program_modality(
 	p_rows jsonb,
@@ -30,7 +32,9 @@ $fn$;
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(`DROP FUNCTION IF EXISTS audit.fn_validate_program_modality(jsonb, integer)`);
+		await queryRunner.query(
+			`DROP FUNCTION IF EXISTS audit.fn_validate_program_modality(jsonb, integer)`,
+		);
 		await queryRunner.query(`
 CREATE FUNCTION audit.fn_validate_program_modality(
 	p_rows jsonb,

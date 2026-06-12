@@ -96,8 +96,6 @@ export class FilterCourseDto {
 	})
 	learningOutcome?: I18nText;
 
-	// Filters by related entities
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
@@ -119,8 +117,6 @@ export interface CourseLookupItem {
 	code: string;
 	name: I18nText;
 }
-
-// ── DTOs for Enrolled Students Endpoint ────────────────────────────────────
 
 export class FilterCourseEnrolledStudentsDto {
 	@IsOptional()

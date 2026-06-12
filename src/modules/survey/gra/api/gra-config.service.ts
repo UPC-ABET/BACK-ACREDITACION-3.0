@@ -114,7 +114,6 @@ export class GraConfigService {
 			replicatedConfigs++;
 		}
 
-		// Look up the survey_type_id for the GRA type to copy performance levels
 		const graTypeId = await this.configRepo.findSurveyTypeIdByCode(GRA_SURVEY_TYPE);
 		let replicatedLevels = 0;
 		if (graTypeId) {
@@ -139,7 +138,6 @@ export class GraConfigService {
 			dto.academicPeriodId,
 		);
 
-		// Group by commissionId
 		const grouped: Record<number, { commissionId: number; commissionName: any; outcomes: any[] }> =
 			{};
 		for (const row of rows) {

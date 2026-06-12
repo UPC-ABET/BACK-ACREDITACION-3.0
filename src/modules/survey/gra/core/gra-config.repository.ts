@@ -94,7 +94,6 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return result?.[0]?.id ?? null;
 	}
 
-	/** Retorna outcomes agrupados por comisión para un programa y período (usado en selector de UI) */
 	async findOutcomesGroupedByCommission(
 		programId: number,
 		academicPeriodId: number,

@@ -21,7 +21,6 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 	async getByFilters(filters: FilterProgramDto): Promise<ProgramEntity[]> {
 		const qb = this.dataSource.createQueryBuilder(ProgramEntity, 'prog');
 
-		// ── Direct Filters ─────────────────────────────────────────────────
 		if (filters.code) qb.andWhere('prog.code = :code', { code: filters.code });
 		if (filters.isActive !== undefined)
 			qb.andWhere('prog.is_active = :isActive', { isActive: filters.isActive });
@@ -30,11 +29,9 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 				modalityTypeId: filters.modalityTypeId,
 			});
 
-		// ── Flags ────────────────────────────────────────────────────────────
 		const needsSp = !!(filters.academicPeriodId || filters.schoolId);
 		const needsSpap = !!filters.academicPeriodId;
 
-		// ── JOINs ────────────────────────────────────────────────────────────
 		if (needsSp) {
 			qb.leftJoin(StudyPlanEntity, 'sp', 'sp.program_id = prog.id');
 		}
@@ -45,8 +42,6 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 			});
 		}
 
-		// ── School ──────────────────────────────────────────────────────────
-		// ── School ──────────────────────────────────────────────────────────
 		if (filters.schoolId) {
 			qb.andWhere(
 				`prog.id IN (

@@ -49,7 +49,6 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Finds an existing LCFC survey for a student in a specific course section */
 	async findExistingLcfcSurvey(
 		lcfcSurveyTypeId: number,
 		studentId: number,
@@ -63,7 +62,6 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 			.getOne();
 	}
 
-	/** Gets outcomes mapped to a course section via course_outcome_mappings */
 	async getOutcomesForCourseSection(
 		courseSectionId: number,
 	): Promise<{ outcomeId: number; name: string; code: string; description: string | null }[]> {
@@ -84,7 +82,6 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows ?? [];
 	}
 
-	/** Dashboard: counts LCFC surveys by status, grouped by course */
 	async getDashboardData(
 		lcfcSurveyTypeId: number,
 		activeStatusId: number,

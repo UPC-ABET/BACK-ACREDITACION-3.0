@@ -377,7 +377,6 @@ export class EvaluationSubmissionService {
 		const isFinal = await this.isFinalEvaluation(rubric.gradeTypeId);
 		const isCapstoneFinal = isCapstone && isFinal;
 
-		// Mapa criteriaId → questionId construido desde la rúbrica
 		const criteriaToQuestion = new Map<number, number>();
 		for (const question of rubric.questions ?? []) {
 			for (const criteria of question.criterias ?? []) {
@@ -413,7 +412,6 @@ export class EvaluationSubmissionService {
 				}
 			}
 
-			// Validación de rango / performance levels
 			const validPerfLevelValues = isCapstoneFinal
 				? await this.getValidPerformanceLevelValues(rubric)
 				: null;

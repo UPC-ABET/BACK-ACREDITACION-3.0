@@ -7,7 +7,10 @@ import { studentSectionEnrollmentsValidationStrings } from '../config/strings/st
 import { UpdateStudentSectionEnrollmentMaintenanceDto } from '../model/student-section-enrollments.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof StudentSectionEnrollmentDeleteBlockerCounts, string]> = [
-	['studentCourseGrades', studentSectionEnrollmentsValidationStrings.error.usedInStudentCourseGrades],
+	[
+		'studentCourseGrades',
+		studentSectionEnrollmentsValidationStrings.error.usedInStudentCourseGrades,
+	],
 	['projectStudents', studentSectionEnrollmentsValidationStrings.error.usedInProjectStudents],
 	[
 		'studentCourseOutcomeGrades',

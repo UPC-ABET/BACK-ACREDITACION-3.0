@@ -15,7 +15,6 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		super(repository, dataSource);
 	}
 
-	/** Busca una notificación GRA por token */
 	async findByToken(token: string): Promise<NotificationEntity | null> {
 		return await this.repository
 			.createQueryBuilder('n')
@@ -33,7 +32,6 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			.getOne();
 	}
 
-	/** Busca todas las notificaciones GRA para un período y programa */
 	async findGraPending(
 		graSurveyTypeId: number,
 		scheduledStatusId: number,
@@ -81,7 +79,6 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		return await this.dataSource.query(query, params);
 	}
 
-	/** Lista estudiantes con estado de notificación GRA */
 	async listStudentsGra(
 		graSurveyTypeId: number,
 		filters: {
@@ -150,7 +147,6 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		return await this.dataSource.query(query, params);
 	}
 
-	/** Actualiza el estado y fecha de envío de una notificación */
 	async markAsSent(notificationId: number, sentStatusId: number): Promise<void> {
 		await this.dataSource.query(
 			`UPDATE survey.notifications
@@ -160,7 +156,6 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		);
 	}
 
-	/** Finds a notification by token with full details for validation and survey rendering */
 	async findByTokenWithDetails(token: string): Promise<GraTokenData | null> {
 		const rows = await this.dataSource.query(
 			`SELECT
@@ -186,7 +181,6 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		return rows?.[0] ?? null;
 	}
 
-	/** Verifica si ya existe una notificación GRA para un estudiante en un período */
 	async existsForStudent(surveyId: number): Promise<boolean> {
 		const count = await this.repository.count({ where: { surveyId: surveyId } });
 		return count > 0;

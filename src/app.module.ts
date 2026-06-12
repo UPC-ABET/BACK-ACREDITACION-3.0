@@ -9,9 +9,6 @@ import { AppService } from './app.service';
 import { EncryptModule } from './libs/encrypt.module';
 import { validateEnv } from './commons/configs/env.config';
 
-/* =========================
- * AUTH
- * ========================= */
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
@@ -21,7 +18,6 @@ import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strateg
 import { JWT_EXPIRES_IN, getRequiredJwtSecret } from './modules/auth/protocols/jwt/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
 
-// ACADEMIC MODULES
 import { AcademicPeriodModule } from './modules/academic/academic-periods/academic-periods.module';
 import { CourseOutcomeMappingModule } from './modules/academic/course-outcome-mappings/course-outcome-mappings.module';
 import { CourseSectionModule } from './modules/academic/course-sections/course-sections.module';
@@ -37,19 +33,16 @@ import { StudyPlanAcademicPeriodModule } from './modules/academic/study-plan-aca
 import { StudyPlanCourseModule } from './modules/academic/study-plan-courses/study-plan-courses.module';
 import { StudyPlanModule } from './modules/academic/study-plans/study-plans.module';
 
-//ACCREDITATION MODULES
 import { AccreditorModule } from './modules/accreditation/accreditors/accreditors.module';
 import { CommissionModule } from './modules/accreditation/commissions/commissions.module';
 import { OutcomeModule } from './modules/accreditation/outcomes/outcomes.module';
 import { ProgramCommissionModule } from './modules/accreditation/program-commissions/program-commissions.module';
 
-//CORE MODULES
 import { ParameterModule } from './modules/core/parameters/parameters.module';
 import { EmailTemplateModule } from './modules/core/email-templates/email-templates.module';
 import { TypeGroupModule } from './modules/core/type-groups/type-groups.module';
 import { TypeModule } from './modules/core/types/types.module';
 
-//EVALUATION MODULES
 import { ProjectEvaluatorModule } from './modules/evaluation/project-evaluators/project-evaluators.module';
 import { ProjectStudentModule } from './modules/evaluation/project-students/project-students.module';
 import { ProjectModule } from './modules/evaluation/projects/projects.module';
@@ -58,19 +51,16 @@ import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubr
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
 import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
 
-//EVIDENCE MODULES
 import { EvaluationModule } from './modules/evidence/evaluations/evaluations.module';
 import { IfcModule } from './modules/evidence/ifcs/ifcs.module';
 import { InstrumentModule } from './modules/evidence/instruments/instruments.module';
 import { StudentCourseOutcomeGradeModule } from './modules/evidence/student-course-outcome-grades/student-course-outcome-grades.module';
 import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 
-//IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
 import { NotificationLogModule } from './modules/core/notification-logs/notification-logs.module';
 
-//IMPROVEMENT MODULES
 import { ActionModule } from './modules/improvement/actions/actions.module';
 import { FindingActionModule } from './modules/improvement/finding-actions/finding-actions.module';
 import { FindingOutcomeModule } from './modules/improvement/finding-outcomes/finding-outcomes.module';
@@ -78,7 +68,6 @@ import { FindingModule } from './modules/improvement/findings/findings.module';
 import { PlanActionModule } from './modules/improvement/plan-actions/plan-actions.module';
 import { PlanModule } from './modules/improvement/plans/plans.module';
 
-//ORGANIZATION MODULES
 import { CampusModule } from './modules/organization/campuses/campuses.module';
 import { ChartModule } from './modules/organization/charts/charts.module';
 import { FacultyModule } from './modules/organization/faculties/faculties.module';
@@ -87,7 +76,6 @@ import { StaffModule } from './modules/organization/staff/staff.module';
 import { UserModule } from './modules/organization/users/users.module';
 import { OrgScopeModule } from './modules/organization/org-scope/org-scope.module';
 
-//SURVEY MODULES
 import { NotificationMessageModule } from './modules/survey/notification-messages/notification-messages.module';
 import { NotificationModule } from './modules/survey/notifications/notifications.module';
 import { OutcomeConfigModule } from './modules/survey/outcome-configs/outcome-configs.module';
@@ -96,10 +84,8 @@ import { PppModule } from './modules/survey/ppp/ppp.module';
 import { GraModule } from './modules/survey/gra/gra.module';
 import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 
-//LOADS MODULES (bulk uploads)
 import { UploadsModule } from './modules/uploads/uploads.module';
 
-//ADMIN MODULES
 import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
 import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart-heads.module';
@@ -109,7 +95,6 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 
 @Module({
 	imports: [
-		/* CONFIG */
 		ConfigModule.forRoot({
 			isGlobal: true,
 			validate: validateEnv,
@@ -136,7 +121,6 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 			},
 		}),
 
-		/* DATABASE */
 		TypeOrmModule.forRootAsync({
 			useFactory: async (configService: ConfigService): Promise<TypeOrmModuleOptions> => ({
 				type: configService.get<string>('DB_TYPE') as any,
@@ -161,7 +145,6 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 			inject: [ConfigService],
 		}),
 
-		/* MODULES */
 		UserModule,
 		AcademicPeriodModule,
 		CourseOutcomeMappingModule,

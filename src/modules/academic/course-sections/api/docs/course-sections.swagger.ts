@@ -29,7 +29,10 @@ export const SwaggerCourseSectionGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterCourseSectionDto });
 
 export const SwaggerCourseSectionMaintenanceList = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: CourseSectionMaintenanceQueryDto });
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceList,
+		query: CourseSectionMaintenanceQueryDto,
+	});
 
 export const SwaggerCourseSectionMaintenanceUpdate = () =>
 	HttpMethodWithSwagger({

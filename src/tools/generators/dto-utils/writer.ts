@@ -3,8 +3,6 @@ import path from 'path';
 import { mapValidator, mapLength, mapExample } from './mapper';
 import { validateDtos } from './validator';
 
-/* ---------------- HELPERS ---------------- */
-
 function isRelationField(f: any) {
 	return (
 		f.decorators?.includes('ManyToOne') ||
@@ -26,8 +24,6 @@ function shouldIncludeField(fields: any[], f: any, excludeList: string[]) {
 	if (f.type === 'never') return false;
 	return true;
 }
-
-/* ---------------- DTO BLOCK BUILDERS ---------------- */
 
 function buildCreateDto(entity: string, fields: any[]) {
 	return `
@@ -93,8 +89,6 @@ ${fields
 `;
 }
 
-/* ---------------- REPLACE ---------------- */
-
 function replaceOrAppend(content: string, className: string, newBlock: string) {
 	const regex = new RegExp(`export class ${className}[\\s\\S]*?\\n}`, 'm');
 
@@ -104,8 +98,6 @@ function replaceOrAppend(content: string, className: string, newBlock: string) {
 
 	return content + '\n\n' + newBlock;
 }
-
-/* ---------------- IMPORTS (SMART MERGE) ---------------- */
 
 const TYPE_ONLY_SOURCES = new Set(['src/shared/types/i18n']);
 
@@ -189,8 +181,6 @@ function mergeImports(content: string) {
 
 	return `${finalImports.join('\n')}\n\n${body.trim()}\n`;
 }
-
-/* ---------------- MAIN ---------------- */
 
 export function writeDtos({ domain, moduleName, entityName, fields }: any) {
 	const outputPath = path.resolve(

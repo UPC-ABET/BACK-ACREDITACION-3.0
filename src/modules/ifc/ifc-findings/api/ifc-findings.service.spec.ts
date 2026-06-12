@@ -135,7 +135,6 @@ describe('IfcFindingService.patch', () => {
 	const dto = { description: { es: 'Nueva', en: 'New' } };
 
 	it('happy path: runs the UPDATE inside a single transaction and returns { id }', async () => {
-		// em.query call order: staff lookup → school check → UPDATE
 		em.query
 			.mockResolvedValueOnce([{ id: 11 }]) // staff lookup
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // school check
@@ -183,7 +182,6 @@ describe('IfcFindingService.patch', () => {
 		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({
 			status: HttpStatus.NOT_FOUND,
 		});
-		// UPDATE must not run
 		expect(
 			em.query.mock.calls.find((c) => /UPDATE improvement\.findings/.test(c[0])),
 		).toBeUndefined();

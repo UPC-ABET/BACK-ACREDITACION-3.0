@@ -69,7 +69,6 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
-	/** Gets all course sections for an academic period, filtered by program and/or campus */
 	async getCourseSectionsForPeriod(
 		academicPeriodId: number,
 		programId?: number,

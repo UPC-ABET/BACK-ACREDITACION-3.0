@@ -40,8 +40,6 @@ import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/per
 export class GraController {
 	constructor(private readonly graService: GraService) {}
 
-	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
-
 	@SwaggerGraConfigCreate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async configCreate(@Body() dto: CreateGraConfigDto) {
@@ -84,8 +82,6 @@ export class GraController {
 		return parseSuccessResponse(await this.graService.replicateConfig(dto));
 	}
 
-	// ── NOTIFICATION ENDPOINTS ────────────────────────────────────────
-
 	@SwaggerGraNotificationSave()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async notificationSave(@Body() dto: SaveGraNotificationDto) {
@@ -104,23 +100,17 @@ export class GraController {
 		return parseSuccessResponse(await this.graService.deleteNotification(id));
 	}
 
-	// ── EMAIL ENDPOINTS ───────────────────────────────────────────────
-
 	@SwaggerGraEmailSend()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async emailSend(@Body() dto: SendGraEmailDto) {
 		return parseSuccessResponse(await this.graService.sendEmails(dto));
 	}
 
-	// ── TOKEN ENDPOINTS ───────────────────────────────────────────────
-
 	@SwaggerGraTokenValidate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async tokenValidate(@Param('token') token: string) {
 		return parseSuccessResponse(await this.graService.validateToken(token));
 	}
-
-	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerGraSurveyGetByToken()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
@@ -134,15 +124,11 @@ export class GraController {
 		return parseSuccessResponse(await this.graService.completeSurvey(dto));
 	}
 
-	// ── OUTCOMES ENDPOINTS ────────────────────────────────────────────
-
 	@SwaggerGraOutcomesList()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async outcomesList(@Body() dto: ListGraSurveyOutcomesDto) {
 		return parseSuccessResponse(await this.graService.listOutcomesForSurvey(dto));
 	}
-
-	// ── DASHBOARD ENDPOINTS ───────────────────────────────────────────
 
 	@SwaggerGraDashboard()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })

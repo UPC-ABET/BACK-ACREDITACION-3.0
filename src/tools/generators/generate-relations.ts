@@ -6,8 +6,6 @@ const ROOT = path.resolve('src/modules');
 
 const EXCLUDED_TARGETS: string[] = [];
 
-/* ---------------- UTILITIES ---------------- */
-
 function toCamelCaseFromEntity(entityName: string): string {
 	const base = entityName.replace('Entity', '');
 	return base.charAt(0).toLowerCase() + base.slice(1);
@@ -26,8 +24,6 @@ function extractTableName(content: string): string | null {
 	const match = content.match(/@Entity\s*\(\s*\{\s*name:\s*['"`]([^'"`]+)['"`]/);
 	return match ? match[1] : null;
 }
-
-/* ---------------- DB DECORATORS ---------------- */
 
 const DB_DECORATORS = [
 	'EmailColumn',
@@ -59,8 +55,6 @@ function extractDbDecorators(content: string): string[] {
 
 	return [...found];
 }
-
-/* ---------------- RESOLVE CONFIG ---------------- */
 
 /**
  * `property` here is a camelCase TS identifier (e.g. `studyPlanCourseId` stripped to
@@ -96,8 +90,6 @@ function resolveConfigFromProperty(property: string) {
 
 	return null;
 }
-
-/* ---------------- PARSING ---------------- */
 
 interface FieldRelation {
 	/** TS property name on the FK column, e.g. `studyPlanCourseId`. */
@@ -165,8 +157,6 @@ function parseFields(content: string): FieldRelation[] {
 	return fields;
 }
 
-/* ---------------- INVERSE RELATIONS ---------------- */
-
 interface InverseMap {
 	[target: string]: {
 		sourceEntity: string;
@@ -225,8 +215,6 @@ function generateInverseRelations(entityName: string, inverseMap: InverseMap) {
 	return relations;
 }
 
-/* ---------------- OWN RELATIONS ---------------- */
-
 function generateOwnRelations(entityName: string, tableName: string, fields: FieldRelation[]) {
 	let relations = '';
 	const ownerProperty = toCamelCaseFromEntity(entityName);
@@ -251,8 +239,6 @@ function generateOwnRelations(entityName: string, tableName: string, fields: Fie
 
 	return relations;
 }
-
-/* ---------------- IMPORTS ---------------- */
 
 function buildImportPath(configPath: string) {
 	const module = configPath.split('/').pop();
@@ -314,8 +300,6 @@ function injectImports(
 	return `${imports.join('\n')}\n\n${body.join('\n')}`;
 }
 
-/* ---------------- REPLACE BLOCK ---------------- */
-
 function replaceRelationsBlock(content: string, relations: string) {
 	const marker = '// %% RELATIONS';
 
@@ -332,8 +316,6 @@ function replaceRelationsBlock(content: string, relations: string) {
 	return `${before}\n${relations}\n}`;
 }
 
-/* ---------------- WALK ---------------- */
-
 function walk(dir: string, files: string[] = []) {
 	fs.readdirSync(dir).forEach((file) => {
 		const full = path.join(dir, file);
@@ -344,8 +326,6 @@ function walk(dir: string, files: string[] = []) {
 
 	return files;
 }
-
-/* ---------------- MAIN ---------------- */
 
 function run() {
 	const files = walk(ROOT);

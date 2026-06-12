@@ -106,7 +106,6 @@ export class PppSurveyService {
 	async uploadExcel(dto: UploadPppExcelDto) {
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
-		// Get active PPP configs to know which outcomes to score
 		const configs = await this.configRepo.findAllPpp({
 			programId: dto.programId,
 			academicPeriodId: dto.academicPeriodId,
@@ -119,7 +118,6 @@ export class PppSurveyService {
 			);
 		}
 
-		// Parse Excel from base64
 		let workbook: XLSX.WorkBook;
 		try {
 			const buffer = Buffer.from(dto.fileBase64, 'base64');
@@ -148,7 +146,6 @@ export class PppSurveyService {
 			const row = rows[i];
 			const rowNum = i + 2; // +2 because row 1 is headers
 
-			// Map Excel columns (normalize header names)
 			const normalizedRow = {
 				studentCode: String(
 					row['Codigo Alumno'] ??
@@ -184,7 +181,6 @@ export class PppSurveyService {
 				continue;
 			}
 
-			// Look up student by code
 			const student = await this.surveyRepo.findStudentByCode(normalizedRow.studentCode);
 			if (!student) {
 				results.failed++;

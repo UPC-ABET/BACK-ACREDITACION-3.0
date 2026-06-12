@@ -51,9 +51,6 @@ export class RubricConfigService {
 		return type?.id ?? null;
 	}
 
-	/**
-	 * Determina si una rúbrica es de tipo WASC (PA) según su grade_type_id
-	 */
 	private async isWascRubric(gradeTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
 		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
@@ -108,7 +105,6 @@ export class RubricConfigService {
 	 * 4. Tras crear, recalcula la nota máxima total (R-RUB-014)
 	 */
 	async createRubric(dto: CreateRubricDto): Promise<RubricEntity> {
-		// Verificar que no exista ya una rúbrica activa para el mismo curso + grade_type + periodo académico
 		const conflictingRubric = (
 			await this.dataSource.query(
 				`
@@ -133,7 +129,6 @@ export class RubricConfigService {
 			throw new BadRequestException(rubricsValidationStrings.error.activeRubricExistsForPeriod);
 		}
 
-		// Verificar si ya existe una rúbrica activa para el mismo study_plan_course + grade_type
 		const existingRubric = await this.rubricRepo.findOne({
 			where: {
 				studyPlanCourseId: dto.studyPlanCourseId,
@@ -232,9 +227,6 @@ export class RubricConfigService {
 		return savedRubric;
 	}
 
-	/**
-	 * Obtiene una rúbrica completa por curso, incluyendo todas sus preguntas y criterios
-	 */
 	async getRubricByCourse(courseId: number): Promise<RubricEntity> {
 		const rubric = await this.rubricRepo.findOne({
 			where: { studyPlanCourseId: courseId },
@@ -248,9 +240,6 @@ export class RubricConfigService {
 		return rubric;
 	}
 
-	/**
-	 * Obtiene una rúbrica por ID con toda su estructura
-	 */
 	async getRubricById(id: number): Promise<RubricEntity> {
 		const rubric = await this.rubricRepo.findOne({
 			where: { id },
@@ -272,7 +261,6 @@ export class RubricConfigService {
 	 * - questions: array de preguntas con criterias
 	 */
 	async getRubricWithContextData(id: number): Promise<any> {
-		// 1. Obtener rúbrica con relaciones directas
 		const rubric = await this.rubricRepo.findOne({
 			where: { id },
 			relations: [
@@ -302,7 +290,6 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
-		// 2. Obtener comisiones directamente desde los program_commission_id de los outcomes
 		const commissionIds = [
 			...new Set(
 				(rubric.questions || [])
@@ -319,7 +306,6 @@ export class RubricConfigService {
 			});
 		}
 
-		// 3. Normalizar datos: crear arrays sin anidamiento profundo
 		const outcomeToQuestions = new Map<number, number[]>();
 		const commissionToOutcomes = new Map<number, number[]>();
 
@@ -369,7 +355,6 @@ export class RubricConfigService {
 			}
 		});
 
-		// 4. Construir respuesta normalizada
 		return {
 			rubric: {
 				id: rubric.id,

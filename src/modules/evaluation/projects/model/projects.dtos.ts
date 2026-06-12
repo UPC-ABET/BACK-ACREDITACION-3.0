@@ -321,7 +321,6 @@ export class ProjectDetailsResponseDto {
 }
 
 export class FilterProjectDto {
-	// ── Filtros propios del proyecto ──────────────────────────────────────
 	@IsOptional()
 	@IsString()
 	@ApiProperty({ example: 'codeExample', required: false })
@@ -344,7 +343,6 @@ export class FilterProjectDto {
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
 
-	// ── Filtros contextuales ──────────────────────────────────────────────
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
@@ -377,7 +375,6 @@ export class FilterProjectDto {
 	})
 	courseId?: number;
 
-	// ── Filtros por personas ──────────────────────────────────────────────
 	@IsOptional()
 	@ApiProperty({
 		example: 1,

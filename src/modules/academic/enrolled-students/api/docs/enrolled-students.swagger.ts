@@ -29,7 +29,10 @@ export const SwaggerEnrolledStudentGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterEnrolledStudentDto });
 
 export const SwaggerEnrolledStudentMaintenanceList = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: EnrolledStudentMaintenanceQueryDto });
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceList,
+		query: EnrolledStudentMaintenanceQueryDto,
+	});
 
 export const SwaggerEnrolledStudentMaintenanceUpdate = () =>
 	HttpMethodWithSwagger({

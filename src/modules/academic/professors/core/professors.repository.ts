@@ -84,9 +84,7 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 
 	async updateMaintenance(id: number, dto: UpdateProfessorMaintenanceDto): Promise<void> {
 		await this.dataSource.transaction(async (manager) => {
-			const professor = await manager
-				.getRepository(ProfessorEntity)
-				.findOne({ where: { id } });
+			const professor = await manager.getRepository(ProfessorEntity).findOne({ where: { id } });
 			if (!professor) return;
 
 			if (dto.code !== undefined) {
@@ -104,9 +102,7 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 
 	async deleteWithStaff(id: number): Promise<void> {
 		await this.dataSource.transaction(async (manager) => {
-			const professor = await manager
-				.getRepository(ProfessorEntity)
-				.findOne({ where: { id } });
+			const professor = await manager.getRepository(ProfessorEntity).findOne({ where: { id } });
 			if (!professor) return;
 
 			await manager.getRepository(ProfessorEntity).delete(id);

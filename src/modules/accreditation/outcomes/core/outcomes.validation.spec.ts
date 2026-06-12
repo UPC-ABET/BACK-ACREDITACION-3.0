@@ -120,7 +120,11 @@ describe('OutcomeValidation', () => {
 
 		it('throws 409 naming the exact blocking relations', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
-			mockRepo.findDeleteBlockerCounts.mockResolvedValue({ ...noBlockers, scores: 2, rubricQuestions: 1 });
+			mockRepo.findDeleteBlockerCounts.mockResolvedValue({
+				...noBlockers,
+				scores: 2,
+				rubricQuestions: 1,
+			});
 
 			let caught: HttpException | undefined;
 			try {

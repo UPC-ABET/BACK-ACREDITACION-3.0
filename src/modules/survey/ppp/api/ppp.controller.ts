@@ -36,8 +36,6 @@ import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/per
 export class PppController {
 	constructor(private readonly pppService: PppService) {}
 
-	// ── CONFIG ENDPOINTS ──────────────────────────────────────────────
-
 	@SwaggerPppConfigCreate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async configCreate(@Body() dto: CreatePppConfigDto) {
@@ -79,8 +77,6 @@ export class PppController {
 	async configReplicate(@Body() dto: ReplicatePppConfigDto) {
 		return parseSuccessResponse(await this.pppService.replicateConfig(dto));
 	}
-
-	// ── SURVEY ENDPOINTS ──────────────────────────────────────────────
 
 	@SwaggerPppSurveyCreate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })

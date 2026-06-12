@@ -6,7 +6,6 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 	const SCHOOL_CODE = 'EISCB';
 	const ACADEMIC_PERIOD_CODE = '202502';
 
-	// Each row: trigger code, status code, to chart-level codes, cc chart-level codes, title (i18n), body (i18n)
 	const rows = [
 		{
 			triggerCode: 'TG1002-T001', // MANUAL

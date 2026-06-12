@@ -41,8 +41,6 @@ export class IfcService extends BaseService<IfcRepository> {
 		return this.schoolsRepository.findUserSchools(userId, { academicPeriodId }, isAdmin);
 	}
 
-	// --- Delegated to IfcStateMachineService ---
-
 	async submit(ifcId: number, userId: number, schoolId: number) {
 		return this.stateMachine.submit(ifcId, userId, schoolId);
 	}
@@ -55,8 +53,6 @@ export class IfcService extends BaseService<IfcRepository> {
 		return this.stateMachine.reject(ifcId, userId, schoolId, dto);
 	}
 
-	// --- Delegated to IfcContentService ---
-
 	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number, academicPeriodId: number) {
 		return this.content.createIfc(dto, userId, schoolId, academicPeriodId);
 	}
@@ -65,13 +61,9 @@ export class IfcService extends BaseService<IfcRepository> {
 		return this.content.patch(id, dto, userId, schoolId);
 	}
 
-	// --- Delegated to IfcViewService ---
-
 	async getView(id: number, userId: number, schoolId: number) {
 		return this.view.getView(id, userId, schoolId);
 	}
-
-	// --- Delegated to IfcReportService ---
 
 	async generatePdf(ifcId: number, userId: number, schoolId: number, lang: 'es' | 'en') {
 		return this.report.generatePdf(ifcId, userId, schoolId, lang);
@@ -84,8 +76,6 @@ export class IfcService extends BaseService<IfcRepository> {
 	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number, academicPeriodId: number) {
 		return this.report.generateStatusReport(dto, schoolId, academicPeriodId);
 	}
-
-	// --- Own methods ---
 
 	async update(id: number, dto: UpdateIfcDto, manager?: EntityManager) {
 		await IfcValidation.validateUpdate(this.repository, id, dto);

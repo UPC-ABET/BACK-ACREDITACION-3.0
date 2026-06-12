@@ -11,10 +11,6 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
-// ─────────────────────────────────────────────
-// LCFC CONFIG DTOs
-// ─────────────────────────────────────────────
-
 export class GenerateLcfcConfigDto {
 	@IsNumber()
 	@ApiProperty({
@@ -79,10 +75,6 @@ export class UpdateLcfcConfigStatusDto {
 	updates: LcfcConfigStatusItemDto[];
 }
 
-// ─────────────────────────────────────────────
-// LCFC NOTIFICATION DTOs
-// ─────────────────────────────────────────────
-
 export class SendLcfcNotificationDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Academic period ID' })
@@ -134,10 +126,6 @@ export class SendLcfcNotificationDto {
 	})
 	lang?: 'es' | 'en';
 }
-
-// ─────────────────────────────────────────────
-// LCFC TOKEN / SURVEY DTOs
-// ─────────────────────────────────────────────
 
 export class GetLcfcSurveyByTokenDto {
 	@IsString()
@@ -197,10 +185,6 @@ export class CompleteLcfcSurveyDto {
 	})
 	scores: LcfcScoreItemDto[];
 }
-
-// ─────────────────────────────────────────────
-// LCFC DASHBOARD DTO
-// ─────────────────────────────────────────────
 
 export class DashboardLcfcDto {
 	@IsOptional()

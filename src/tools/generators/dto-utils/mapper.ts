@@ -32,7 +32,6 @@ export function mapTypeFromDecorator(decorators: string[], name: string, tsType?
 		return 'any';
 	}
 
-	// FK fallback
 	if (name.endsWith('Id')) return 'number';
 
 	return 'never';

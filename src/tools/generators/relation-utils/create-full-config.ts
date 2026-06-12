@@ -4,8 +4,6 @@ import * as path from 'path';
 const ROOT = path.resolve('src/modules');
 const OUTPUT = path.resolve('src/tools/generators/relation-utils/config.ts');
 
-/* ---------------- WALK ---------------- */
-
 function walk(dir: string, files: string[] = []) {
 	fs.readdirSync(dir).forEach((file) => {
 		const full = path.join(dir, file);
@@ -19,8 +17,6 @@ function walk(dir: string, files: string[] = []) {
 	return files;
 }
 
-/* ---------------- EXTRACT ---------------- */
-
 function extractEntityName(content: string): string | null {
 	const match = content.match(/export class (\w+Entity)/);
 	return match ? match[1] : null;
@@ -30,8 +26,6 @@ function extractTableName(content: string): string | null {
 	const match = content.match(/@Entity\s*\(\s*\{\s*name:\s*['"`](.+?)['"`]\s*\}\s*\)/);
 	return match ? match[1] : null;
 }
-
-/* ---------------- NORMALIZE ---------------- */
 
 function snakeToCamel(name: string): string {
 	return name.replace(/[_-]([a-z0-9])/g, (_, c) => c.toUpperCase());
@@ -51,8 +45,6 @@ function extractModulePath(fullPath: string): string {
 	const match = fullPath.match(/src\/modules\/(.+)\/model/);
 	return match ? match[1] : '';
 }
-
-/* ---------------- MAIN ---------------- */
 
 function run() {
 	const files = walk(ROOT);

@@ -32,7 +32,10 @@ export const SwaggerStudyPlanMaintenanceList = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: StudyPlanMaintenanceQueryDto });
 
 export const SwaggerStudyPlanMaintenanceUpdate = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.maintenanceUpdate, body: UpdateStudyPlanMaintenanceDto });
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceUpdate,
+		body: UpdateStudyPlanMaintenanceDto,
+	});
 
 export const SwaggerStudyPlanMaintenanceDelete = () =>
 	HttpMethodWithSwagger(cfg.operation.maintenanceDelete);

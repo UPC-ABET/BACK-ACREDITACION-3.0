@@ -79,14 +79,18 @@ describe('CourseSectionValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(existing);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
-				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 1, { sectionCode: 'S2' }),
+				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
+					sectionCode: 'S2',
+				}),
 			).resolves.toBeUndefined();
 		});
 
 		it('throws when the entity is not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
-				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 999, { sectionCode: 'S2' }),
+				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 999, {
+					sectionCode: 'S2',
+				}),
 			).rejects.toThrow(HttpException);
 		});
 
@@ -94,7 +98,9 @@ describe('CourseSectionValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(existing);
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
 			await expect(
-				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 1, { sectionCode: 'S2' }),
+				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
+					sectionCode: 'S2',
+				}),
 			).rejects.toThrow(HttpException);
 		});
 	});

@@ -29,12 +29,6 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 
 const UNLIMITED_EVALUATOR_TYPE_CODE = TYPE_CODES.EVALUATOR_TYPE.COM;
 
-/**
- * ProjectConfigService
- *
- * Servicio especializado para la configuración completa de proyectos.
- * Maneja la creación transaccional de proyectos con sus estudiantes y evaluadores asignados.
- */
 @Injectable()
 export class ProjectConfigService {
 	constructor(
@@ -90,7 +84,6 @@ export class ProjectConfigService {
 	 * - evaluadores sin duplicados de profesor+tipo, con límites por tipo
 	 */
 	async createProject(dto: CreateProjectDto): Promise<ProjectEntity> {
-		// ── 1. Validar study_plan_course ──────────────────────────────────────
 		const studyPlanCourse = await this.studyPlanCourseRepo.findOne({
 			where: { id: dto.studyPlanCourseId },
 			relations: ['studyPlanAcademicPeriod'],
@@ -112,7 +105,6 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.noAcademicPeriod);
 		}
 
-		// ── 2. Unicidad de código en el mismo periodo ─────────────────────────
 		const duplicateCode = await this.dataSource.query(
 			`
 			SELECT p.id FROM evaluation.projects p
@@ -128,7 +120,6 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.duplicateCode);
 		}
 
-		// ── 3. Unicidad de nombre en el mismo periodo ─────────────────────────
 		const duplicateName = await this.dataSource.query(
 			`
 			SELECT p.id FROM evaluation.projects p
@@ -144,7 +135,6 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.duplicateName);
 		}
 
-		// ── 4. Validar alumnos ────────────────────────────────────────────────
 		if (!dto.studentSectionEnrollmentIds?.length) {
 			throw new BadRequestException(projectsValidationStrings.error.noStudents);
 		}
@@ -204,7 +194,6 @@ export class ProjectConfigService {
 			}
 		}
 
-		// ── 5. Validar evaluadores ────────────────────────────────────────────
 		if (!dto.evaluators?.length) {
 			throw new BadRequestException(projectsValidationStrings.error.noEvaluators);
 		}
@@ -237,7 +226,6 @@ export class ProjectConfigService {
 			}
 		}
 
-		// ── 6. Crear en transacción ───────────────────────────────────────────
 		return await this.dataSource.transaction(async (manager) => {
 			const project = manager.create(ProjectEntity, {
 				code: dto.code,
@@ -272,9 +260,6 @@ export class ProjectConfigService {
 		});
 	}
 
-	/**
-	 * Obtiene un proyecto con sus detalles, incluyendo estudiantes, rúbrica, y scores
-	 */
 	async getProjectWithDetails(
 		projectId: number,
 		isEvaluationMode: boolean,
@@ -284,7 +269,6 @@ export class ProjectConfigService {
 		const gradeTypeId = gradeTypeCode
 			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
 			: undefined;
-		// ── 1. Proyecto con cadena de enrollment ─────────────────────────────
 		const project = await this.projectRepo
 			.createQueryBuilder('p')
 			.leftJoinAndSelect('p.students', 's')
@@ -319,7 +303,6 @@ export class ProjectConfigService {
 
 		const academicPeriod = courseSection?.academicPeriod;
 
-		// ── Course (independiente de la rúbrica) ─────────────────────────────
 		const [courseRow] = await this.dataSource.query(
 			`SELECT id, name, description, learning_outcome AS "learningOutcome"
 			 FROM "academic"."courses" WHERE id = $1`,
@@ -334,7 +317,6 @@ export class ProjectConfigService {
 				}
 			: null;
 
-		// ── 3. Rúbrica específica: curso + periodo + tipo de evaluación + tipo de rúbrica
 		const rubric = await this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('r')
@@ -353,7 +335,6 @@ export class ProjectConfigService {
 			.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
 			.getOne();
 
-		// ── 5. Score máximo y evaluaciones (solo si hay rúbrica activa)
 		let totalMaxScore = 0;
 		let evaluations: EvaluationEntity[] = [];
 		let rubricContext: any = null;
@@ -386,7 +367,6 @@ export class ProjectConfigService {
 			}
 		}
 
-		// ── 7. Estudiantes con nota total
 		const studentDtos = (project.students || []).map((s) => {
 			const user = s.studentSectionEnrollment?.enrolledStudent?.student?.user;
 			const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
@@ -425,7 +405,6 @@ export class ProjectConfigService {
 			};
 		});
 
-		// ── 8. Preguntas + criterios con scores inyectados
 		const questions = (rubricContext?.questions || []).map((q: any) => ({
 			id: q.id,
 			text: q.text,
@@ -458,7 +437,6 @@ export class ProjectConfigService {
 			}),
 		}));
 
-		// ── 9. Mapear evaluadores con info del docente y tipo
 		const evaluatorTypeIds = [...new Set((project.evaluators || []).map((e) => e.evaluatorTypeId))];
 		const evaluatorTypesMap = new Map<number, any>();
 
@@ -482,7 +460,6 @@ export class ProjectConfigService {
 			};
 		});
 
-		// ── 10. Response
 		return {
 			project: {
 				id: project.id,
@@ -508,10 +485,6 @@ export class ProjectConfigService {
 		};
 	}
 
-	/**
-	 * Obtiene un proyecto con todos sus estudiantes y evaluadores
-	 */
-
 	async getProjectsByProfessor(
 		professorId: number,
 		academicPeriodId?: number,
@@ -521,7 +494,6 @@ export class ProjectConfigService {
 		const gradeTypeId = gradeTypeCode
 			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
 			: undefined;
-		// ── QUERY 1 ───────────────────────────────────────────────────────────
 		let filterSql = `
     SELECT DISTINCT pe.project_id AS "projectId"
     FROM evaluation.project_evaluators pe
@@ -587,7 +559,7 @@ export class ProjectConfigService {
 		const projectIds = rows.map((r) => r.projectId);
 		if (projectIds.length === 0) return [];
 
-		// ── QUERY 2: todo en SQL nativo para evitar el producto cartesiano ────
+		// Todo en SQL nativo para evitar el producto cartesiano
 		const raw = (await this.dataSource.query(
 			`
     SELECT
@@ -634,7 +606,6 @@ export class ProjectConfigService {
 			[projectIds],
 		)) as any[];
 
-		// ── Agrupar filas por project_id ──────────────────────────────────────
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
 
 		for (const row of raw) {
@@ -656,7 +627,6 @@ export class ProjectConfigService {
 
 			const project = projectMap.get(row.projectId)!;
 
-			// Evaluadores (deduplicar por evalId)
 			if (row.evalId && !(project.evaluators as any[]).find((e: any) => e.id === row.evalId)) {
 				(project.evaluators as any[]).push({
 					id: row.evalId,
@@ -668,7 +638,6 @@ export class ProjectConfigService {
 				});
 			}
 
-			// Estudiantes (deduplicar por studentPsId)
 			if (
 				row.studentPsId &&
 				!(project.students as any[]).find((s: any) => s.id === row.studentPsId)

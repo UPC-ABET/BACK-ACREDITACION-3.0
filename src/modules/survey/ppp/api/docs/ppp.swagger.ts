@@ -15,8 +15,6 @@ import {
 const cfg = pppRoutes;
 
 export const SwaggerPppController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.root });
-
-// ── CONFIG ──
 export const SwaggerPppConfigCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.create, body: CreatePppConfigDto });
 export const SwaggerPppConfigGetAll = () => HttpMethodWithSwagger(cfg.config.getAll);
@@ -40,8 +38,6 @@ export const SwaggerPppConfigDelete = () =>
 	});
 export const SwaggerPppConfigReplicate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.replicate, body: ReplicatePppConfigDto });
-
-// ── SURVEY ──
 export const SwaggerPppSurveyCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.create, body: CreatePppSurveyDto });
 export const SwaggerPppSurveyGetAll = () => HttpMethodWithSwagger(cfg.survey.getAll);

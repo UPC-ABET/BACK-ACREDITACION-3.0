@@ -41,8 +41,6 @@ export class GraNotificationService {
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
-	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
-
 	private async getTypeIds() {
 		const [graSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
 			await Promise.all([
@@ -74,12 +72,9 @@ export class GraNotificationService {
 		};
 	}
 
-	// ─── Add student to GRA survey list ─────────────────────────────────────────
-
 	async saveNotification(dto: SaveGraNotificationDto) {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
-		// Find existing GRA survey for this student + period + program
 		let survey = await this.surveyRepo.findExistingGraSurvey(
 			graSurveyTypeId,
 			dto.studentId,
@@ -89,7 +84,6 @@ export class GraNotificationService {
 
 		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
 
-		// Create GRA survey if it does not exist
 		if (!survey) {
 			survey = (await this.surveyRepo.create({
 				surveyTypeId: graSurveyTypeId,
@@ -104,7 +98,6 @@ export class GraNotificationService {
 
 		const resolvedSurvey = survey;
 
-		// Check if a notification already exists for this survey
 		const alreadyNotified = await this.notifRepo.existsForStudent(resolvedSurvey.id);
 		if (alreadyNotified) {
 			throw new BadRequestException(graValidationStrings.error.studentAlreadyNotified);
@@ -128,8 +121,6 @@ export class GraNotificationService {
 		};
 	}
 
-	// ─── List students with notification status ──────────────────────────────────
-
 	async listStudents(dto: ListStudentsGraDto) {
 		const { graSurveyTypeId } = await this.getTypeIds();
 		return await this.notifRepo.listStudentsGra(graSurveyTypeId, {
@@ -139,8 +130,6 @@ export class GraNotificationService {
 			studentCode: dto.studentCode,
 		});
 	}
-
-	// ─── Remove student from GRA survey list ────────────────────────────────────
 
 	async deleteNotification(id: number) {
 		const notif = await this.notifRepo.findOneById(id);
@@ -152,8 +141,6 @@ export class GraNotificationService {
 		return { deleted: true, notificationId: id };
 	}
 
-	// ─── Send emails to pending students ────────────────────────────────────────
-
 	async sendEmails(dto: SendGraEmailDto) {
 		const { graSurveyTypeId, scheduledStatusId, sentStatusId } = await this.getTypeIds();
 
@@ -164,7 +151,6 @@ export class GraNotificationService {
 
 		GraValidation.validateSendEmailRequest(pending.length);
 
-		// Fetch email template for GRA survey type
 		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
 			TYPE_CODES.SURVEY_TYPE.GRA,
 			dto.lang ?? 'es',
@@ -205,8 +191,6 @@ export class GraNotificationService {
 		return results;
 	}
 
-	// ─── Validate token (no auth required) ──────────────────────────────────────
-
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		GraValidation.validateToken(tokenData);
@@ -223,8 +207,6 @@ export class GraNotificationService {
 			maxRegisterDate: tokenData.maxRegisterDate,
 		};
 	}
-
-	// ─── Get GRA survey form by token (outcomes to rate) ────────────────────────
 
 	async getSurveyByToken(dto: GetSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
@@ -260,8 +242,6 @@ export class GraNotificationService {
 			outcomes,
 		};
 	}
-
-	// ─── Complete GRA survey ─────────────────────────────────────────────────────
 
 	async completeSurvey(dto: CompleteGraSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
@@ -327,8 +307,6 @@ export class GraNotificationService {
 			});
 		}
 	}
-
-	// ─── GRA Dashboard ───────────────────────────────────────────────────────────
 
 	async getDashboard(dto: DashboardGraDto) {
 		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();

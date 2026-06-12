@@ -57,8 +57,6 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 				'eval_type_enrich.code',
 			]);
 
-		// ── Filters ─────────────────────────────────────────────
-
 		if (filters.code) {
 			qb.andWhere('project.code = :code', { code: filters.code });
 		}
@@ -66,13 +64,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('project.is_active = :isActive', { isActive: filters.isActive });
 		}
 
-		// ── Evaluador ────────────────────────────────────────────────────
-
 		if (filters.professorId) {
 			qb.andWhere('pe.professor_id = :professorId', { professorId: filters.professorId });
 		}
-
-		// ── Flags to build JOINs only when needed ──────────
 
 		const needsEnrollment = !!(
 			filters.studentId ||
@@ -86,8 +80,6 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const needsSpap = !!(filters.programId || filters.schoolId);
 		const needsSp = !!(filters.programId || filters.schoolId);
 
-		// ── JOIN: Student Section Enrollment ────────────────────────────
-
 		if (needsEnrollment) {
 			qb.leftJoin(
 				StudentSectionEnrollmentEntity,
@@ -96,31 +88,21 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			);
 		}
 
-		// ── JOIN: Enrolled Student (source of study plan / program) ─────
-
 		if (needsEnrolledStudent) {
 			qb.leftJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
 		}
-
-		// ── Student ───────────────────────────────────────────────────────
 
 		if (filters.studentId) {
 			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
-		// ── JOIN: Course Section ────────────────────────────────────────
-
 		if (needsCourseSection) {
 			qb.leftJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
 		}
 
-		// ── Course ────────────────────────────────────────────────────────
-
 		if (filters.courseId) {
 			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
 		}
-
-		// ── Academic Period ────────────────────────────────────────────
 
 		if (filters.academicPeriodId) {
 			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
@@ -128,25 +110,18 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			});
 		}
 
-		// ── JOIN: Study Plan Academic Period (from the enrolled student) ─
-
 		if (needsSpap) {
 			qb.leftJoin(StudyPlanAcademicPeriodEntity, 'spap', 'spap.id = es.study_plan_academic_period');
 		}
-
-		// ── Join Study Plan ────────────────────────────────────────────
 
 		if (needsSp) {
 			qb.leftJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 		}
 
-		// ── Program ─────────────────────────────────────────────
-
 		if (filters.programId) {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 		}
 
-		// ── School ──────────────────────────────────────────────────────
 		if (filters.schoolId) {
 			qb.andWhere(
 				`sp.program_id IN (

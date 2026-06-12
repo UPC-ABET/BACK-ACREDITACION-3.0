@@ -60,7 +60,6 @@ export class AddEmailTemplatesAndNotificationLogs1760000000000 implements Migrat
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		// survey.notification_messages: restore title/body, drop FK.
 		await queryRunner.query(
 			`ALTER TABLE "survey"."notification_messages" DROP CONSTRAINT "FK_notification_messages_email_template_id"`,
 		);
@@ -74,7 +73,6 @@ export class AddEmailTemplatesAndNotificationLogs1760000000000 implements Migrat
 			`ALTER TABLE "survey"."notification_messages" ADD "body" jsonb NOT NULL DEFAULT '{}'::jsonb`,
 		);
 
-		// ifc.notification_configs: restore title/body, drop FK.
 		await queryRunner.query(
 			`ALTER TABLE "ifc"."notification_configs" DROP CONSTRAINT "FK_notification_configs_email_template_id"`,
 		);
@@ -88,7 +86,6 @@ export class AddEmailTemplatesAndNotificationLogs1760000000000 implements Migrat
 			`ALTER TABLE "ifc"."notification_configs" ADD "body" jsonb NOT NULL DEFAULT '{}'::jsonb`,
 		);
 
-		// Recreate the IFC-specific notification log.
 		await queryRunner.query(
 			`CREATE TABLE "ifc"."notification_logs" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "ifc_id" integer NULL, "chart_id" integer NOT NULL, "notification_config_id" integer NOT NULL, "notifier_user_id" integer NULL, "to_staff_ids" jsonb NOT NULL DEFAULT '[]', "cc_staff_ids" jsonb NOT NULL DEFAULT '[]', "provider_message_id" character varying(254) NULL, CONSTRAINT "PK_notification_logs" PRIMARY KEY ("id"))`,
 		);

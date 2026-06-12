@@ -10,11 +10,7 @@ if (!inputFile) {
 
 const content = fs.readFileSync(inputFile, 'utf-8');
 
-/* ---------------- CONFIG ---------------- */
-
 const EXCLUDED_TARGET_TABLES = ['types'];
-
-/* ---------------- PARSE CREATE TABLE ---------------- */
 
 const tableRegex = /CREATE TABLE "([^"]+)"\."([^"]+)" \(([\s\S]*?)\);/g;
 
@@ -71,8 +67,6 @@ while ((match = tableRegex.exec(content))) {
 	tables.push({ schema, name, columns });
 }
 
-/* ---------------- PARSE FOREIGN KEYS ---------------- */
-
 const fkRegex =
 	/ALTER TABLE "([^"]+)"\."([^"]+)" ADD CONSTRAINT "[^"]+" FOREIGN KEY \("([^"]+)"\) REFERENCES "([^"]+)"\."([^"]+)"\("([^"]+)"\)/g;
 
@@ -101,8 +95,6 @@ while ((match = fkRegex.exec(content))) {
 	);
 }
 
-/* ---------------- BUILD DBML ---------------- */
-
 let output = '';
 
 for (const table of tables) {
@@ -117,13 +109,9 @@ for (const table of tables) {
 
 output += relations.join('\n');
 
-/* ---------------- SAVE ---------------- */
-
 fs.writeFileSync(outputFile, output);
 
 console.log(`DBML generated: ${outputFile}`);
-
-/* ---------------- HELPERS ---------------- */
 
 function mapType(type: string): string {
 	type = type.toLowerCase();

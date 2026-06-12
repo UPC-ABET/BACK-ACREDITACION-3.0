@@ -1,4 +1,12 @@
-import { IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import {
+	IsBoolean,
+	IsInt,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsString,
+	Length,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';

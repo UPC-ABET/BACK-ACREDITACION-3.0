@@ -100,8 +100,6 @@ export class ListIfcsDto {
 	chartIds: number[];
 }
 
-// --- Request DTO for /reject -------------------------------------------------
-
 export class IfcPdfQueryDto {
 	@ApiProperty({ example: 'es', required: false, enum: ['es', 'en'] })
 	@IsOptional()
@@ -177,8 +175,6 @@ export class RejectIfcDto {
 	@IsObject()
 	comment: I18nText;
 }
-
-// --- Response DTOs (Swagger documentation only) ------------------------------
 
 export class IfcCoordinatorDto {
 	@ApiProperty({ example: 1 }) userId: number | null;

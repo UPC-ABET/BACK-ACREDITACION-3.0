@@ -8,9 +8,6 @@ export function hashPassword(password: string): Promise<string> {
 	return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-/*******************************************************************************************+*/
-/*******************************************************************************************+*/
-
 const ACCESS_TOKEN_COOKIE_NAME = 'accessToken';
 const LEGACY_SCHOOL_COOKIE_NAME = 'school';
 export const MICROSOFT_STATE_COOKIE = 'microsoftOauthState';

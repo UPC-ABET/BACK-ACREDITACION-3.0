@@ -70,7 +70,6 @@ export class CourseService extends BaseService<CourseRepository> {
 			.innerJoinAndSelect('st.user', 'prof_user')
 			.where('cs.course_id = :courseId', { courseId });
 
-		// Apply filters
 		if (filters?.isActive !== undefined) {
 			qb.andWhere('sse.is_active = :sseIsActive', { sseIsActive: filters.isActive });
 			qb.andWhere('es.is_active = :esIsActive', { esIsActive: filters.isActive });

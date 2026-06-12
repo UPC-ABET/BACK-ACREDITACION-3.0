@@ -28,13 +28,9 @@ export class RubricService extends BaseService<RubricRepository> {
 		super(repository);
 	}
 
-	// ── Helpers ───────────────────────────────────────────────────────────
-
 	private normalizeI18n(value: I18nText | string): I18nText {
 		return typeof value === 'string' ? { en: value, es: value } : value;
 	}
-
-	// ── Sincronización de criterias ───────────────────────────────────────
 
 	private async syncCriterias(
 		questionId: number,
@@ -52,7 +48,6 @@ export class RubricService extends BaseService<RubricRepository> {
 			await criteriaRepo.delete(toDelete.map((c) => c.id));
 		}
 
-		// Actualizar las que tienen id
 		const toUpdate = criterias.filter((c) => c.id);
 		for (const c of toUpdate) {
 			await criteriaRepo.update(c.id as number, {
@@ -62,7 +57,6 @@ export class RubricService extends BaseService<RubricRepository> {
 			});
 		}
 
-		// Insertar las nuevas (sin id)
 		const toInsert = criterias.filter((c) => !c.id);
 		if (toInsert.length > 0) {
 			await criteriaRepo.save(
@@ -75,8 +69,6 @@ export class RubricService extends BaseService<RubricRepository> {
 			);
 		}
 	}
-
-	// ── Sincronización de questions ───────────────────────────────────────
 
 	private async syncQuestions(
 		rubricId: number,
@@ -97,7 +89,6 @@ export class RubricService extends BaseService<RubricRepository> {
 			await questionRepo.delete(deletedIds);
 		}
 
-		// Actualizar las que tienen id
 		const toUpdate = questions.filter((q) => q.id);
 		for (const q of toUpdate) {
 			const { criterias, id, ...questionData } = q;
@@ -110,7 +101,6 @@ export class RubricService extends BaseService<RubricRepository> {
 			}
 		}
 
-		// Insertar las nuevas (sin id)
 		const toInsert = questions.filter((q) => !q.id);
 		for (const q of toInsert) {
 			const { criterias, ...questionData } = q;
@@ -132,8 +122,6 @@ export class RubricService extends BaseService<RubricRepository> {
 			}
 		}
 	}
-
-	// ── isRubricUsed ──────────────────────────────────────────────────────
 
 	private async isRubricUsed(rubricId: number): Promise<boolean> {
 		const questions = await this.dataSource.getRepository(RubricQuestionEntity).find({
@@ -180,7 +168,6 @@ export class RubricService extends BaseService<RubricRepository> {
 
 		return raw.map((row: { programId: number }) => row.programId);
 	}
-	// ── CRUD ──────────────────────────────────────────────────────────────
 
 	async create(dto: CreateRubricDto, manager?: EntityManager) {
 		await RubricValidation.validateCreate(this.repository, dto);

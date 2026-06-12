@@ -17,8 +17,6 @@ import {
 const cfg = graRoutes;
 
 export const SwaggerGraController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.root });
-
-// ── CONFIG ──
 export const SwaggerGraConfigCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.create, body: CreateGraConfigDto });
 export const SwaggerGraConfigGetAll = () => HttpMethodWithSwagger(cfg.config.getAll);
@@ -42,8 +40,6 @@ export const SwaggerGraConfigDelete = () =>
 	});
 export const SwaggerGraConfigReplicate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.replicate, body: ReplicateGraConfigDto });
-
-// ── NOTIFICATION ──
 export const SwaggerGraNotificationSave = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.save, body: SaveGraNotificationDto });
 export const SwaggerGraNotificationListStudents = () =>
@@ -53,28 +49,18 @@ export const SwaggerGraNotificationDelete = () =>
 		...cfg.notification.delete,
 		params: [{ name: 'id', description: 'ID de la notificación GRA', type: Number }],
 	});
-
-// ── EMAIL ──
 export const SwaggerGraEmailSend = () =>
 	HttpMethodWithSwagger({ ...cfg.email.send, body: SendGraEmailDto });
-
-// ── TOKEN ──
 export const SwaggerGraTokenValidate = () =>
 	HttpMethodWithSwagger({
 		...cfg.token.validate,
 		params: [{ name: 'token', description: 'Token UUID de la encuesta GRA', type: String }],
 	});
-
-// ── SURVEY ──
 export const SwaggerGraSurveyGetByToken = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.getByToken, body: GetSurveyByTokenDto });
 export const SwaggerGraSurveyComplete = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.complete, body: CompleteGraSurveyDto });
-
-// ── OUTCOMES ──
 export const SwaggerGraOutcomesList = () =>
 	HttpMethodWithSwagger({ ...cfg.outcomes.list, body: ListGraSurveyOutcomesDto });
-
-// ── DASHBOARD ──
 export const SwaggerGraDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.get, body: DashboardGraDto });

@@ -37,8 +37,6 @@ export class LcfcNotificationService {
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
-	// ─── Helpers: resolve type IDs from core.types ──────────────────────────────
-
 	private async getTypeIds() {
 		const [lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
 			await Promise.all([
@@ -70,13 +68,9 @@ export class LcfcNotificationService {
 		};
 	}
 
-	// ─── Send notifications: creates surveys + notifications + sends emails ─────
-
 	async sendNotifications(dto: SendLcfcNotificationDto) {
 		const { lcfcSurveyTypeId, activeStatusId, scheduledStatusId, sentStatusId } =
 			await this.getTypeIds();
-
-		// 1. Load active LCFC configs for the period
 		const activeConfigs = await this.configRepo.findAllLcfc({
 			academicPeriodId: dto.academicPeriodId,
 			programId: dto.programId,
@@ -86,8 +80,6 @@ export class LcfcNotificationService {
 		if (activeConfigs.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noActiveCourses);
 		}
-
-		// 2. Collect active course_section_ids, applying optional filters
 		let courseSectionIds = activeConfigs
 			.map((c) => c.extra?.courseSectionId)
 			.filter((id): id is number => typeof id === 'number');
@@ -108,15 +100,11 @@ export class LcfcNotificationService {
 		if (courseSectionIds.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noMatchingSections);
 		}
-
-		// 3. Get enrolled students for all relevant course sections
 		const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(courseSectionIds);
 
 		if (enrolledStudents.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
-
-		// 4. Create surveys + notifications in a transaction for new student-course pairs
 		const maxRegisterDate = dto.maxRegisterDate ?? null;
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
@@ -210,8 +198,6 @@ export class LcfcNotificationService {
 				description: (err as Error).message,
 			});
 		}
-
-		// 5. Send emails to all pending notifications
 		const surveyBaseUrl =
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
@@ -261,8 +247,6 @@ export class LcfcNotificationService {
 		};
 	}
 
-	// ─── Token validation ────────────────────────────────────────────────────────
-
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		LcfcValidation.validateToken(tokenData);
@@ -280,8 +264,6 @@ export class LcfcNotificationService {
 			maxRegisterDate: tokenData.maxRegisterDate,
 		};
 	}
-
-	// ─── Get survey form by token (outcomes to rate) ─────────────────────────────
 
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
@@ -306,8 +288,6 @@ export class LcfcNotificationService {
 			outcomes: outcomeList,
 		};
 	}
-
-	// ─── Complete survey with scores ─────────────────────────────────────────────
 
 	async completeSurvey(dto: CompleteLcfcSurveyDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
@@ -364,8 +344,6 @@ export class LcfcNotificationService {
 			});
 		}
 	}
-
-	// ─── Dashboard ───────────────────────────────────────────────────────────────
 
 	async getDashboard(dto: DashboardLcfcDto) {
 		const { lcfcSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();

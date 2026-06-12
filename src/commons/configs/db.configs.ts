@@ -1,6 +1,5 @@
 import { Column, Index, ColumnOptions } from 'typeorm';
 
-// %%LENGTHS (centralizados)
 export const DB_LENGTH_EMAIL = 254;
 export const DB_LENGTH_NAME = 255;
 export const DB_LENGTH_CODE = 50;
@@ -24,7 +23,6 @@ export const DB_DEFAULT_BOOLEAN = false;
 export const DB_DEFAULT_DATE = () => 'CURRENT_TIMESTAMP';
 export const DB_DEFAULT_JSON = () => "'{}'";
 
-// %%BASE TYPES
 type BaseOptions = Partial<ColumnOptions> & {
 	unique?: boolean;
 	indexed?: boolean;
@@ -58,8 +56,7 @@ function applyColumn(
 		Index(name, { unique })(target, propertyKey);
 	}
 }
-// %%COLUMN DECORATORS
-//EMAIL
+
 export function EmailColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -77,7 +74,6 @@ export function EmailColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//NAME
 export function NameColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -95,7 +91,6 @@ export function NameColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//CODE
 export function CodeColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = true, ...rest } = options || {};
@@ -112,7 +107,6 @@ export function CodeColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//PASSWORD
 export function PasswordColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -130,7 +124,6 @@ export function PasswordColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//PHONE
 export function PhoneColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
@@ -148,7 +141,6 @@ export function PhoneColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//TEXT (varchar controlado - recomendado)
 export function TextShortColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
@@ -216,7 +208,6 @@ export function TextFullColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//INTEGER
 export function IntegerFKIDColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = false, unique = false, ...rest } = options || {};
@@ -255,7 +246,6 @@ const numericTransformer = {
 		v !== null && v !== undefined ? parseFloat(v as string) : null,
 };
 
-//DECIMAL
 export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
@@ -275,7 +265,6 @@ export function DecimalColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//BOOLEAN ---> DEFAULT TRUE
 export function BooleanColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
@@ -292,7 +281,6 @@ export function BooleanColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//DATE (timestamp) ---> DEFAULT TRUE
 export function DateColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
@@ -309,7 +297,6 @@ export function DateColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
-//JSON (PostgreSQL) ---> DEFAULT TRUE
 export function JsonColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};

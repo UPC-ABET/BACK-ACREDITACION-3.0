@@ -15,7 +15,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		super(repository, dataSource);
 	}
 
-	/** Finds notification by token with full details for validation and survey rendering */
 	async findByTokenWithDetails(token: string): Promise<LcfcTokenData | null> {
 		const rows = await this.dataSource.query(
 			`SELECT
@@ -43,7 +42,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		return rows?.[0] ?? null;
 	}
 
-	/** Gets all students enrolled in the given course sections with their info */
 	async getEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<
 		{
 			studentId: number;
@@ -84,7 +82,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		return rows ?? [];
 	}
 
-	/** Gets pending notifications for LCFC surveys in a period */
 	async findLcfcPending(
 		lcfcSurveyTypeId: number,
 		scheduledStatusId: number,
@@ -149,7 +146,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		return await this.dataSource.query(query, params);
 	}
 
-	/** Marks a notification as sent by survey_id */
 	async markAsSentBySurveyId(surveyId: number, sentStatusId: number): Promise<void> {
 		await this.dataSource.query(
 			`UPDATE survey.notifications
@@ -159,7 +155,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		);
 	}
 
-	/** Checks if a notification already exists for a survey */
 	async existsForSurvey(surveyId: number): Promise<boolean> {
 		const count = await this.repository.count({ where: { surveyId: surveyId } });
 		return count > 0;

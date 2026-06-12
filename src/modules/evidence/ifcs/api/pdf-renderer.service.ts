@@ -35,7 +35,7 @@ function loadLogoDataUri(): string {
 				return `data:image/png;base64,${buf.toString('base64')}`;
 			}
 		} catch {
-			// continue
+			/* try next candidate */
 		}
 	}
 	return '';

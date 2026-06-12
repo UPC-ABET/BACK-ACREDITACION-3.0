@@ -11,10 +11,6 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
-// ─────────────────────────────────────────────
-// PPP CONFIG DTOs
-// ─────────────────────────────────────────────
-
 export class CreatePppConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'ID del outcome académico vinculado' })
@@ -159,10 +155,6 @@ export class ReplicatePppConfigDto {
 	})
 	programId?: number;
 }
-
-// ─────────────────────────────────────────────
-// PPP SURVEY DTOs
-// ─────────────────────────────────────────────
 
 export class PppScoreItemDto {
 	@IsNumber()

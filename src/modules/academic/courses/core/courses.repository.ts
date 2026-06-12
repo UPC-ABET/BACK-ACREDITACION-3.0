@@ -22,17 +22,14 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 	async getByFilters(filters: FilterCourseDto): Promise<CourseEntity[]> {
 		const qb = this.dataSource.createQueryBuilder(CourseEntity, 'c');
 
-		// ── Direct Filters ─────────────────────────────────────────────────
 		if (filters.code) qb.andWhere('c.code = :code', { code: filters.code });
 		if (filters.isActive !== undefined)
 			qb.andWhere('c.is_active = :isActive', { isActive: filters.isActive });
 
-		// ── Flags ────────────────────────────────────────────────────────────
 		const needsSpc = !!(filters.academicPeriodId || filters.programId || filters.schoolId);
 		const needsSpap = needsSpc;
 		const needsSp = !!(filters.programId || filters.schoolId);
 
-		// ── JOINs ────────────────────────────────────────────────────────────
 		if (needsSpc) {
 			qb.leftJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = c.id');
 			qb.leftJoin(
@@ -56,7 +53,6 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 		}
 
-		// ── School ──────────────────────────────────────────────────────────
 		if (filters.schoolId) {
 			qb.andWhere(
 				`sp.program_id IN (
@@ -90,10 +86,9 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 		if (search?.trim()) {
 			const term = `%${search.trim()}%`;
-			qb.where(
-				`(c.code ILIKE :term OR c.name->>'es' ILIKE :term OR c.name->>'en' ILIKE :term)`,
-				{ term },
-			);
+			qb.where(`(c.code ILIKE :term OR c.name->>'es' ILIKE :term OR c.name->>'en' ILIKE :term)`, {
+				term,
+			});
 		}
 
 		return await qb.orderBy('c.code', 'ASC').skip(skip).take(take).getManyAndCount();

@@ -20,10 +20,7 @@ export class UploadLogController {
 	@ApiOperation({ summary: 'List upload history (audit.upload_logs) with optional filters' })
 	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
-	async list(
-		@Query() query: ListUploadLogsQueryDto,
-		@AcademicPeriodId() academicPeriodId: number,
-	) {
+	async list(@Query() query: ListUploadLogsQueryDto, @AcademicPeriodId() academicPeriodId: number) {
 		return parseSuccessResponse(await this.service.listLogs(query, academicPeriodId));
 	}
 

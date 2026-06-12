@@ -13,11 +13,7 @@ import {
 } from '../model/professors.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { ProfessorEntity } from '../model/professors.entity';
-import {
-	PaginatedResult,
-	resolvePagination,
-	toPaginated,
-} from 'src/commons/pagination.dtos';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class ProfessorService extends BaseService<ProfessorRepository> {
@@ -52,7 +48,6 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 			.leftJoinAndSelect('professor.staff', 'staff')
 			.leftJoinAndSelect('staff.user', 'user');
 
-		// Apply exact match filters (staff_id, is_active, extra)
 		if (otherFilters.staffId !== undefined) {
 			qb.andWhere('professor.staff_id = :staffId', { staffId: otherFilters.staffId });
 		}
@@ -88,11 +83,7 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 		query: ProfessorMaintenanceQueryDto,
 	): Promise<PaginatedResult<ProfessorMaintenanceItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
-		const [professors, total] = await this.repository.findMaintenancePage(
-			query.search,
-			skip,
-			take,
-		);
+		const [professors, total] = await this.repository.findMaintenancePage(query.search, skip, take);
 
 		const items = professors.map((professor) => ({
 			id: professor.id,
