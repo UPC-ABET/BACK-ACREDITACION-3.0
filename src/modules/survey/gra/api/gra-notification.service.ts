@@ -57,8 +57,8 @@ export class GraNotificationService {
 		if (!graSurveyTypeId) missing.push(TYPE_CODES.SURVEY_TYPE.GRA);
 		if (!activeStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.ACTIVE);
 		if (!closedStatusId) missing.push(TYPE_CODES.SURVEY_STATUS.CLOSED);
-		if (!scheduledStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SCHEDULED);
-		if (!sentStatusId) missing.push(TYPE_CODES.NOTIFICATION_STATUS.SENT);
+		if (!scheduledStatusId) missing.push(TYPE_CODES.SURVEY_NOTIFICATION_STATUS.SCHEDULED);
+		if (!sentStatusId) missing.push(TYPE_CODES.SURVEY_NOTIFICATION_STATUS.SENT);
 
 		if (missing.length) {
 			this.logger.error(`Missing type seeds: ${missing.join(', ')}`);

@@ -433,6 +433,9 @@ export class NotificationDispatcherService {
 		const categoryTypeId = await this.lookupTypeIdByCode(TYPE_CODES.EMAIL_TEMPLATE_CATEGORY.IFC);
 		if (categoryTypeId === null) return;
 
+		const statusTypeId = await this.lookupTypeIdByCode(TYPE_CODES.NOTIFICATION_LOG_STATUS.SENT);
+		if (statusTypeId === null) return;
+
 		await this.notificationLogService.create({
 			categoryTypeId,
 			emailTemplateId: config.emailTemplateId,
@@ -442,7 +445,7 @@ export class NotificationDispatcherService {
 			toStaffIds,
 			ccStaffIds,
 			providerMessageId: messageId,
-			status: 'sent',
+			statusTypeId,
 			context: {
 				ifcId: ctx.ifcId,
 				chartId: ctx.courseChartId,

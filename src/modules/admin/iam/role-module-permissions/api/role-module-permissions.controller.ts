@@ -32,10 +32,7 @@ export class RoleModulePermissionController extends BaseController<RoleModulePer
 
 	@SwaggerRoleModulePermissionUpdate()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.PUT })
-	async update(
-		@Param('id', ParseIntPipe) id: number,
-		@Body() dto: UpdateRoleModulePermissionDto,
-	) {
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoleModulePermissionDto) {
 		return await super.update(id, dto);
 	}
 

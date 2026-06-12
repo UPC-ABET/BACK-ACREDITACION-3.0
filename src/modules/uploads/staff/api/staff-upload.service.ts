@@ -88,7 +88,7 @@ export class StaffUploadService {
 		const workbook = new ExcelJS.Workbook();
 
 		const dataSheet = workbook.addWorksheet('Template');
-		const headers = [labels.email, labels.professorCode, labels.lastName, labels.firstName];
+		const headers = [labels.professorCode, labels.lastName, labels.firstName];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
 
@@ -110,7 +110,7 @@ export class StaffUploadService {
 	}
 
 	// Positional layout (header ignored):
-	// email | professorCode | lastName | firstName
+	// professorCode | lastName | firstName
 	private parseWorkbook(workbook: ExcelJS.Workbook): StaffRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: StaffRow[] = [];
@@ -119,10 +119,9 @@ export class StaffUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				email: this.cell(row, 1),
-				professorCode: this.cell(row, 2),
-				lastName: this.cell(row, 3),
-				firstName: this.cell(row, 4),
+				professorCode: this.cell(row, 1),
+				lastName: this.cell(row, 2),
+				firstName: this.cell(row, 3),
 			});
 		});
 		return rows;
@@ -140,8 +139,8 @@ export class StaffUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = email, professorCode, lastName, firstName; error column is next.
-		const errorColumn = 5;
+		// data columns = professorCode, lastName, firstName; error column is next.
+		const errorColumn = 4;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };

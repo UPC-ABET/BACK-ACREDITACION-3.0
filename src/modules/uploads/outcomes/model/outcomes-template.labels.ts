@@ -25,6 +25,8 @@ export const outcomesErrorMessages: Record<string, Record<string, string>> = {
 	es: {
 		duplicateCodeInFile: 'Código de outcome duplicado en el archivo.',
 		outcomeCodeEmpty: 'El código del outcome es obligatorio.',
+		outcomeCodeTooLong:
+			'El código del outcome (comisión-carrera-outcome) supera el largo máximo permitido (50 caracteres).',
 		outcomeNameEmpty: 'El nombre del outcome es obligatorio.',
 		programNotFound: 'No existe un programa con ese código.',
 		commissionNotFound: 'No existe una comisión con ese código.',
@@ -34,6 +36,8 @@ export const outcomesErrorMessages: Record<string, Record<string, string>> = {
 	en: {
 		duplicateCodeInFile: 'Duplicate outcome code in the file.',
 		outcomeCodeEmpty: 'Outcome code is required.',
+		outcomeCodeTooLong:
+			'The outcome code (commission-program-outcome) exceeds the maximum allowed length (50 characters).',
 		outcomeNameEmpty: 'Outcome name is required.',
 		programNotFound: 'No program exists with that code.',
 		commissionNotFound: 'No commission exists with that code.',

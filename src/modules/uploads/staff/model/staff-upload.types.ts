@@ -1,6 +1,5 @@
 export interface StaffRow {
 	rowNumber: number;
-	email: string;
 	professorCode: string;
 	lastName: string;
 	firstName: string;

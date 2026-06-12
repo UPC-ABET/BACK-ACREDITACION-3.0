@@ -7,8 +7,7 @@ const cfg = orgScopeRoutes.orgScope;
 export const SwaggerOrgScopeController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
-export const SwaggerOrgScopeGetScope = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.getScope });
+export const SwaggerOrgScopeGetScope = () => HttpMethodWithSwagger({ ...cfg.operation.getScope });
 
 export const SwaggerOrgScopeGetUserSchools = () =>
 	HttpMethodWithSwagger({

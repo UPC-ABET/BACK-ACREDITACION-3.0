@@ -17,11 +17,9 @@ export const SwaggerRoleModulePermissionCreate = () =>
 export const SwaggerRoleModulePermissionUpdate = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.update, body: UpdateRoleModulePermissionDto });
 
-export const SwaggerRoleModulePermissionDelete = () =>
-	HttpMethodWithSwagger(cfg.operation.delete);
+export const SwaggerRoleModulePermissionDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
-export const SwaggerRoleModulePermissionGetAll = () =>
-	HttpMethodWithSwagger(cfg.operation.getAll);
+export const SwaggerRoleModulePermissionGetAll = () => HttpMethodWithSwagger(cfg.operation.getAll);
 
 export const SwaggerRoleModulePermissionGetById = () =>
 	HttpMethodWithSwagger(cfg.operation.getById);
