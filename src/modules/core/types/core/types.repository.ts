@@ -49,7 +49,7 @@ export class TypeRepository extends BaseRepository<TypeEntity> {
 			 FROM core.types t
 			 JOIN core.type_groups g ON g.id = t.type_group_id
 			 WHERE g.code = $1 AND t.is_active = true
-			 ORDER BY t.code`,
+			 ORDER BY NULLIF(t.extra->>'order', '')::int NULLS LAST, t.code`,
 			[groupCode],
 		);
 	}
