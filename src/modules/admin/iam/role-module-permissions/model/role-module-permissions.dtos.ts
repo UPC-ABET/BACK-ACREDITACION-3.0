@@ -20,7 +20,11 @@ export class CreateRoleModulePermissionDto {
 	moduleTypeId: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true, description: 'Type id of a permission (group TG2000)' })
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'Type id of a permission (group TG2000)',
+	})
 	permissionTypeId: number;
 }
 

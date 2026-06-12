@@ -5,7 +5,6 @@ import {
 	JsonColumn,
 	NameColumn,
 	TextFullColumn,
-	TextShortColumn,
 } from 'src/commons/configs/db.configs';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { EmailTemplateEntity } from 'src/modules/core/email-templates/model/email-templates.entity';
@@ -30,6 +29,9 @@ export class NotificationLogEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: true })
 	notifierUserId: number | null;
 
+	@IntegerFKIDColumn({ nullable: false })
+	statusTypeId: number;
+
 	@JsonColumn({ nullable: false, default: () => "'[]'" })
 	toEmails: string[];
 
@@ -45,9 +47,6 @@ export class NotificationLogEntity extends BaseEntity {
 	@NameColumn({ nullable: true })
 	providerMessageId: string | null;
 
-	@TextShortColumn({ nullable: true })
-	status: string | null;
-
 	@TextFullColumn({ nullable: true })
 	errorMessage: string | null;
 
@@ -62,6 +61,13 @@ export class NotificationLogEntity extends BaseEntity {
 		foreignKeyConstraintName: 'FK_notification_logs_category_type_id',
 	})
 	categoryType: TypeEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'status_type_id',
+		foreignKeyConstraintName: 'FK_notification_logs_status_type_id',
+	})
+	statusType: TypeEntity;
 
 	@ManyToOne(() => EmailTemplateEntity)
 	@JoinColumn({

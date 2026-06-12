@@ -28,9 +28,7 @@ describe('RoleValidation', () => {
 	describe('validateUpdate', () => {
 		it('passes when role exists and code unchanged', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
-			await expect(
-				RoleValidation.validateUpdate(mockRepo as any, 1, {}),
-			).resolves.toBeUndefined();
+			await expect(RoleValidation.validateUpdate(mockRepo as any, 1, {})).resolves.toBeUndefined();
 		});
 
 		it('throws when role not found', async () => {

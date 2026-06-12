@@ -52,6 +52,15 @@ export class CreateUserDto {
 	@Length(1, 1000)
 	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'organization.staff id to link to this user (e.g. a teacher created on load)',
+	})
+	staffId?: number | null;
 }
 
 export class UpdateUserDto {
@@ -97,6 +106,17 @@ export class UpdateUserDto {
 	@Length(1, 1000)
 	@ApiProperty({ example: '+51 999 999 999', required: false })
 	phone?: string;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		nullable: true,
+		description:
+			'organization.staff id to link to this user; null unlinks the currently linked staff',
+	})
+	staffId?: number | null;
 }
 
 export class FilterUserDto {

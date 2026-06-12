@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
@@ -8,7 +8,7 @@ import { UserValidation } from '../core/users.validation';
 import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
 import { usersValidationStrings } from '../config/strings/users.validation';
 import { JwtService } from '@nestjs/jwt';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
@@ -179,9 +179,42 @@ export class UserService extends BaseService<UserRepository> {
 		const password = await hashPassword(
 			this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'),
 		);
-		const created = await super.create({ ...dto, password }, manager);
+		const { staffId, ...userData } = dto;
+		const created = await super.create({ ...userData, password }, manager);
+		await this.linkStaffToUser(created.id, staffId, manager);
 		await this.sendWelcomeEmail(dto);
 		return created;
+	}
+
+	// Tri-state: undefined leaves the link untouched, null unlinks, a value relinks (1:1, so any
+	// staff previously bound to this user is released first).
+	private async linkStaffToUser(
+		userId: number,
+		staffId: number | null | undefined,
+		manager?: EntityManager,
+	) {
+		if (staffId === undefined) return;
+
+		const m = manager ?? this.dataSource.manager;
+		await m.query(
+			`UPDATE organization.staff SET user_id = NULL, updated_at = NOW() WHERE user_id = $1`,
+			[userId],
+		);
+
+		if (staffId === null) return;
+
+		const found: Array<{ id: number }> = await m.query(
+			`SELECT id FROM organization.staff WHERE id = $1 LIMIT 1`,
+			[staffId],
+		);
+		if (found.length === 0) {
+			throw new NotFoundException(usersValidationStrings.error.staffNotFound);
+		}
+
+		await m.query(`UPDATE organization.staff SET user_id = $1, updated_at = NOW() WHERE id = $2`, [
+			userId,
+			staffId,
+		]);
 	}
 
 	// Best-effort welcome email; a mail failure (or missing template) must never fail
@@ -215,7 +248,61 @@ export class UserService extends BaseService<UserRepository> {
 
 	async update(id: number, dto: UpdateUserDto, manager?: EntityManager) {
 		await UserValidation.validateUpdate(this.repository, id, dto);
-		return await super.update(id, dto, manager);
+		const { staffId, ...userData } = dto;
+		const updated = await super.update(id, userData, manager);
+		await this.linkStaffToUser(id, staffId, manager);
+		return updated;
+	}
+
+	async getAll(options?: FindManyOptions) {
+		return await this.attachLinkedTeachers(await super.getAll(options));
+	}
+
+	async getById(id: number, options?: FindOneOptions) {
+		const user = await super.getById(id, options);
+		return user ? (await this.attachLinkedTeachers([user]))[0] : user;
+	}
+
+	async getByFilters(filters: Record<string, any>, options?: FindOneOptions) {
+		return await this.attachLinkedTeachers(await super.getByFilters(filters, options));
+	}
+
+	private async attachLinkedTeachers<T>(users: T): Promise<T> {
+		const list = (Array.isArray(users) ? users : []) as Array<Record<string, any>>;
+		if (list.length === 0) return users;
+
+		const rows: Array<{
+			user_id: number;
+			staff_id: number;
+			code: string | null;
+			first_name: string;
+			last_name: string;
+		}> = await this.dataSource.query(
+			`SELECT s.user_id, s.id AS staff_id, p.code, s.first_name, s.last_name
+			 FROM organization.staff s
+			 LEFT JOIN academic.professors p ON p.staff_id = s.id
+			 WHERE s.user_id = ANY($1)`,
+			[list.map((u) => u.id)],
+		);
+
+		const byUser = new Map<number, Record<string, unknown>>();
+		for (const r of rows) {
+			if (!byUser.has(r.user_id)) {
+				byUser.set(r.user_id, {
+					staffId: r.staff_id,
+					code: r.code,
+					firstName: r.first_name,
+					lastName: r.last_name,
+				});
+			}
+		}
+
+		for (const user of list) {
+			const teacher = byUser.get(user.id) ?? null;
+			user.staffId = teacher ? (teacher.staffId as number) : null;
+			user.linkedTeacher = teacher;
+		}
+		return users;
 	}
 
 	async delete(id: number, manager?: EntityManager) {

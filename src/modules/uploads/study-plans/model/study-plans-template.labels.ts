@@ -30,8 +30,10 @@ export const studyPlansTemplateLabels: Record<string, Record<string, string>> = 
 export const studyPlansErrorMessages: Record<string, Record<string, string>> = {
 	es: {
 		studyPlanCodeEmpty: 'El código de malla es obligatorio.',
+		studyPlanCodeTooLong: 'El código de malla supera el largo máximo permitido (20 caracteres).',
 		programNotFound: 'La carrera indicada no existe.',
 		courseCodeEmpty: 'El código de curso es obligatorio.',
+		courseCodeTooLong: 'El código de curso supera el largo máximo permitido (50 caracteres).',
 		courseNameEmpty: 'El nombre de curso es obligatorio.',
 		levelTypeInvalid: 'El nivel indicado no es válido.',
 		courseAlreadyInStudyPlan: 'El curso ya está registrado en la malla para el periodo.',
@@ -39,8 +41,10 @@ export const studyPlansErrorMessages: Record<string, Record<string, string>> = {
 	},
 	en: {
 		studyPlanCodeEmpty: 'Study plan code is required.',
+		studyPlanCodeTooLong: 'Study plan code exceeds the maximum allowed length (20 characters).',
 		programNotFound: 'The specified program does not exist.',
 		courseCodeEmpty: 'Course code is required.',
+		courseCodeTooLong: 'Course code exceeds the maximum allowed length (50 characters).',
 		courseNameEmpty: 'Course name is required.',
 		levelTypeInvalid: 'The level is not valid.',
 		courseAlreadyInStudyPlan: 'The course is already in the study plan for this period.',

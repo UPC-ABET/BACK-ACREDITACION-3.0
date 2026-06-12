@@ -61,9 +61,18 @@ export class FilterProfessorDto {
 	@ApiProperty({
 		example: 'searchExample',
 		required: false,
-		description: 'Search by professor name (first_name or last_name from user)',
+		description: 'Search by professor code or staff first_name / last_name',
 	})
 	search?: string;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: true,
+		required: false,
+		description: 'When true, only professors whose staff has no linked user account',
+	})
+	unassigned?: boolean;
 
 	@IsOptional()
 	@ApiProperty({ example: 'codeExample', required: false })

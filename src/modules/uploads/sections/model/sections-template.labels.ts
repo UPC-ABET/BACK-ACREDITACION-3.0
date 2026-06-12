@@ -25,6 +25,7 @@ export const sectionsErrorMessages: Record<string, Record<string, string>> = {
 	es: {
 		duplicateCodeInFile: 'Código de sección duplicado en el archivo.',
 		sectionCodeEmpty: 'El código de sección es obligatorio.',
+		sectionCodeTooLong: 'El código de sección supera el largo máximo permitido (50 caracteres).',
 		courseCodeEmpty: 'El código del curso es obligatorio.',
 		courseNotFound: 'No existe un curso con ese código.',
 		campusNotFound: 'No existe un campus con ese código.',
@@ -34,6 +35,7 @@ export const sectionsErrorMessages: Record<string, Record<string, string>> = {
 	en: {
 		duplicateCodeInFile: 'Duplicate section code in the file.',
 		sectionCodeEmpty: 'Section code is required.',
+		sectionCodeTooLong: 'Section code exceeds the maximum allowed length (50 characters).',
 		courseCodeEmpty: 'Course code is required.',
 		courseNotFound: 'No course exists with that code.',
 		campusNotFound: 'No campus exists with that code.',

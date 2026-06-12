@@ -57,12 +57,16 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 			qb.andWhere('professor.extra = :extra', { extra: otherFilters.extra });
 		}
 
-		// Apply search filter (name search across first_name and last_name)
+		if (otherFilters.unassigned === true) {
+			qb.andWhere('staff.user_id IS NULL');
+		}
+
 		if (search && search.trim()) {
 			const searchTerm = `%${search.trim()}%`;
-			qb.andWhere('(user.first_name ILIKE :searchTerm OR user.last_name ILIKE :searchTerm)', {
-				searchTerm,
-			});
+			qb.andWhere(
+				'(professor.code ILIKE :searchTerm OR staff.first_name ILIKE :searchTerm OR staff.last_name ILIKE :searchTerm)',
+				{ searchTerm },
+			);
 		}
 
 		return await qb.getMany();

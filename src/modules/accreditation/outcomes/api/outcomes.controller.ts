@@ -34,7 +34,10 @@ export class OutcomeController extends BaseController<OutcomeService> {
 	}
 
 	@SwaggerOutcomeDelete()
-	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.DELETE })
+	@RequirePermission({
+		module: PERMISSION_MODULES.ACCREDITATION,
+		action: PERMISSION_ACTIONS.DELETE,
+	})
 	async delete(@Param('id', ParseIntPipe) id: number) {
 		return await super.delete(id);
 	}
