@@ -3,27 +3,10 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import type { I18nText } from 'src/shared/types/i18n';
 import { CourseOutcomeMappingEntity } from '../model/course-outcome-mappings.entity';
-import {
-	BulkSaveCourseDto,
-	FilterCourseOutcomeMappingMaintenanceDto,
-} from '../model/course-outcome-mappings.dtos';
+import { BulkSaveCourseDto } from '../model/course-outcome-mappings.dtos';
 
 const OUTCOME_TYPE_GROUP_CODE = 'TG302';
 const FORMATION_TYPE_CODE = 'TG302-T003';
-
-export interface ProgramCommissionRow {
-	programCommissionId: number;
-	accreditorId: number;
-	accreditorCode: string;
-	accreditorName: I18nText;
-	commissionId: number;
-	commissionCode: string;
-	commissionName: I18nText;
-	programId: number;
-	programName: I18nText;
-	academicPeriodId: number;
-	academicPeriodCode: string;
-}
 
 export interface ProgramCommissionScope {
 	programId: number;
@@ -86,50 +69,6 @@ export class CourseOutcomeMappingRepository extends BaseRepository<CourseOutcome
 		dataSource: DataSource,
 	) {
 		super(repository, dataSource);
-	}
-
-	async getMaintenanceFilters(
-		academicPeriodId: number,
-		filters: FilterCourseOutcomeMappingMaintenanceDto,
-	): Promise<ProgramCommissionRow[]> {
-		const params: number[] = [academicPeriodId];
-		const conditions = ['pc.is_active = true', `ap.id = $${params.length}`];
-
-		if (filters.accreditorId !== undefined) {
-			params.push(filters.accreditorId);
-			conditions.push(`acc.id = $${params.length}`);
-		}
-		if (filters.commissionId !== undefined) {
-			params.push(filters.commissionId);
-			conditions.push(`com.id = $${params.length}`);
-		}
-		if (filters.programId !== undefined) {
-			params.push(filters.programId);
-			conditions.push(`prog.id = $${params.length}`);
-		}
-
-		return await this.dataSource.query(
-			`SELECT
-				pc.id      AS "programCommissionId",
-				acc.id     AS "accreditorId",
-				acc.code   AS "accreditorCode",
-				acc.name   AS "accreditorName",
-				com.id     AS "commissionId",
-				com.code   AS "commissionCode",
-				com.name   AS "commissionName",
-				prog.id    AS "programId",
-				prog.name  AS "programName",
-				ap.id      AS "academicPeriodId",
-				ap.code    AS "academicPeriodCode"
-			FROM accreditation.program_commissions pc
-			INNER JOIN accreditation.commissions     com  ON com.id  = pc.commission_id
-			INNER JOIN accreditation.accreditors     acc  ON acc.id  = com.accreditor_id
-			INNER JOIN academic.programs             prog ON prog.id = pc.program_id
-			INNER JOIN academic.academic_periods     ap   ON ap.id   = pc.academic_period_id
-			WHERE ${conditions.join(' AND ')}
-			ORDER BY acc.code, com.code, prog.code`,
-			params,
-		);
 	}
 
 	async getProgramCommissionScope(

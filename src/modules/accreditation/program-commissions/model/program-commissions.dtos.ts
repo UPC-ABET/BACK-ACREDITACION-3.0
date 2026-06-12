@@ -1,4 +1,5 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateProgramCommissionDto {
@@ -83,4 +84,37 @@ export class FilterProgramCommissionDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	commissionTypeId?: number;
+}
+
+export class CommissionOptionsQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiProperty({ example: 1, required: false })
+	accreditorId?: number;
+}
+
+export class ProgramOptionsQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiProperty({ example: 1, required: false })
+	commissionId?: number;
+}
+
+export class FilterProgramCommissionDetailedDto {
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 1, required: false })
+	accreditorId?: number;
+
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 1, required: false })
+	commissionId?: number;
+
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 1, required: false })
+	programId?: number;
 }

@@ -73,23 +73,6 @@ export class FilterCourseOutcomeMappingDto {
 	outcomeTypeId?: number;
 }
 
-export class FilterCourseOutcomeMappingMaintenanceDto {
-	@IsOptional()
-	@IsInt()
-	@ApiProperty({ example: 1, required: false })
-	accreditorId?: number;
-
-	@IsOptional()
-	@IsInt()
-	@ApiProperty({ example: 1, required: false })
-	commissionId?: number;
-
-	@IsOptional()
-	@IsInt()
-	@ApiProperty({ example: 1, required: false })
-	programId?: number;
-}
-
 export class CourseOutcomeMappingViewDto {
 	@IsInt()
 	@ApiProperty({ example: 1, required: true })

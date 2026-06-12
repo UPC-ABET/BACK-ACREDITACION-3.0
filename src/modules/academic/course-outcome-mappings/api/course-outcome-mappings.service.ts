@@ -6,7 +6,6 @@ import { CourseOutcomeMappingValidation } from '../core/course-outcome-mappings.
 import {
 	CreateCourseOutcomeMappingDto,
 	UpdateCourseOutcomeMappingDto,
-	FilterCourseOutcomeMappingMaintenanceDto,
 	BulkSaveCourseOutcomeMappingDto,
 } from '../model/course-outcome-mappings.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -35,13 +34,6 @@ export class CourseOutcomeMappingService extends BaseService<CourseOutcomeMappin
 	async delete(id: number, manager?: EntityManager) {
 		await CourseOutcomeMappingValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
-	}
-
-	async getMaintenanceFilters(
-		academicPeriodId: number,
-		filters: FilterCourseOutcomeMappingMaintenanceDto,
-	) {
-		return await this.repository.getMaintenanceFilters(academicPeriodId, filters);
 	}
 
 	async getMaintenanceView(programCommissionId: number) {

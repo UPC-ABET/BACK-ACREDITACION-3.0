@@ -7,6 +7,7 @@ import { OutcomeRepository } from 'src/modules/accreditation/outcomes/core/outco
 import {
 	CreateProgramCommissionDto,
 	UpdateProgramCommissionDto,
+	FilterProgramCommissionDetailedDto,
 } from '../model/program-commissions.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
@@ -51,5 +52,20 @@ export class ProgramCommissionService extends BaseService<ProgramCommissionRepos
 
 	async listByPeriod(academicPeriodId: number) {
 		return await super.getByFilters({ academicPeriodId });
+	}
+
+	async getCommissionOptions(academicPeriodId: number, accreditorId?: number) {
+		return await this.repository.getCommissionOptions(academicPeriodId, accreditorId);
+	}
+
+	async getProgramOptions(academicPeriodId: number, commissionId?: number) {
+		return await this.repository.getProgramOptions(academicPeriodId, commissionId);
+	}
+
+	async getDetailedByFilters(
+		academicPeriodId: number,
+		filters: FilterProgramCommissionDetailedDto,
+	) {
+		return await this.repository.getDetailedByFilters(academicPeriodId, filters);
 	}
 }
