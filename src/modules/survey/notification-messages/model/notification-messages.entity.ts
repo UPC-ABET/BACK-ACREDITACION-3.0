@@ -1,9 +1,9 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
-import type { I18nText } from 'src/shared/types/i18n';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { EmailTemplateEntity } from 'src/modules/core/email-templates/model/email-templates.entity';
 
 @Entity({ name: 'notification_messages', schema: 'survey' })
 export class NotificationMessageEntity extends BaseEntity {
@@ -15,11 +15,8 @@ export class NotificationMessageEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	programId: number;
 
-	@JsonColumn({ nullable: false })
-	title: I18nText;
-
-	@JsonColumn({ nullable: false })
-	body: I18nText;
+	@IntegerFKIDColumn({ nullable: false })
+	emailTemplateId: number;
 
 	@JsonColumn()
 	ccReceivers: unknown;
@@ -39,4 +36,11 @@ export class NotificationMessageEntity extends BaseEntity {
 		foreignKeyConstraintName: 'FK_notification_messages_program_id',
 	})
 	program: ProgramEntity;
+
+	@ManyToOne(() => EmailTemplateEntity)
+	@JoinColumn({
+		name: 'email_template_id',
+		foreignKeyConstraintName: 'FK_notification_messages_email_template_id',
+	})
+	emailTemplate: EmailTemplateEntity;
 }

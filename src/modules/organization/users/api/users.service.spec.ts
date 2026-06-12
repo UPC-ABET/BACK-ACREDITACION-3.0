@@ -14,6 +14,8 @@ import { UserRepository } from '../core/users.repository';
 import { UserAuthorizationService } from './user-authorization.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 import { OrgScopeService } from '../../org-scope/api/org-scope.service';
+import { MailService } from 'src/modules/mail/mail.service';
+import { EmailTemplateService } from 'src/modules/core/email-templates/api/email-templates.service';
 
 describe('UserService - login', () => {
 	let service: UserService;
@@ -52,6 +54,13 @@ describe('UserService - login', () => {
 		};
 		const configService = {
 			getOrThrow: jest.fn().mockReturnValue('ABET2020'),
+			get: jest.fn().mockReturnValue('https://app.example.com'),
+		};
+		const mailService = {
+			sendRawEmail: jest.fn().mockResolvedValue({ messageId: 'msg-1' }),
+		};
+		const emailTemplateService = {
+			findByCode: jest.fn().mockResolvedValue(null),
 		};
 
 		service = new UserService(
@@ -61,6 +70,8 @@ describe('UserService - login', () => {
 			userAuthorizationService as unknown as UserAuthorizationService,
 			orgScopeService as unknown as OrgScopeService,
 			configService as unknown as ConfigService,
+			mailService as unknown as MailService,
+			emailTemplateService as unknown as EmailTemplateService,
 		);
 	});
 

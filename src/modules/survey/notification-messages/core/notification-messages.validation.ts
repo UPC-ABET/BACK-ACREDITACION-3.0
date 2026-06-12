@@ -10,7 +10,6 @@ export class NotificationMessageValidation {
 			where: {
 				surveyTypeId: data.surveyTypeId,
 				programId: data.programId,
-				title: data.title,
 			},
 		});
 
@@ -35,13 +34,11 @@ export class NotificationMessageValidation {
 
 		const surveyTypeId = data.surveyTypeId ?? entity?.surveyTypeId;
 		const programId = data.programId ?? entity?.programId;
-		const title = data.title ?? entity?.title;
 
 		const exists = await repo.findOneByCondition({
 			where: {
 				surveyTypeId: surveyTypeId,
 				programId: programId,
-				title,
 			},
 		});
 

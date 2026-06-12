@@ -269,6 +269,7 @@ type BaseOptions = Partial<ColumnOptions> & {
 - **`autoLoadEntities: true`** — entities are registered via `TypeOrmModule.forFeature()` in each module.
 - Migration CLI config: `src/database/typeorm.config.ts` (uses glob for entities since it runs outside NestJS).
 - Generate migrations: `npx typeorm migration:generate src/database/migrations/<Name> -d src/database/typeorm.config.ts`
+- **The database is now in production. ALWAYS add a new, forward-only migration for every schema change (new column, table, index, constraint, type, etc.) — never edit the initial `1700000000000-initial-migration.ts` or any already-applied migration in place.** Editing an applied migration will not run against the production DB (its row already exists in the `migrations` table) and will desync environments. Every new migration must implement both `up()` and a correct `down()`.
 - Naming: indexes `IDX_<table>_<columns>`, FKs `FK_<table>_<column>`, unique constraints `UQ_<table>_<columns>`, primary keys `PK_<table>` — **always uppercase prefix, always human-readable** (never the auto-generated hash form like `PK_4689ce4c54254910a1e7ab56b1c`).
 - Seeds use the `i18n(es, en)` helper for JSONB display strings: `'${i18n('Spanish', 'English')}'::jsonb`.
 - Seeds use `hashPassword()` from `src/libs/secure.functions.ts` for demo passwords.

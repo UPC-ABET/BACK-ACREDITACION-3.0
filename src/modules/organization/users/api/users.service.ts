@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
@@ -13,9 +13,16 @@ import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types
 import { UserAuthorizationService } from './user-authorization.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
 import { OrgScopeService } from '../../org-scope/api/org-scope.service';
+import { MailService } from 'src/modules/mail/mail.service';
+import { EmailTemplateService } from 'src/modules/core/email-templates/api/email-templates.service';
+import type { I18nText } from 'src/shared/types/i18n';
+
+const USER_WELCOME_TEMPLATE_CODE = 'USER_WELCOME';
 
 @Injectable()
 export class UserService extends BaseService<UserRepository> {
+	private readonly logger = new Logger(UserService.name);
+
 	constructor(
 		protected readonly repository: UserRepository,
 		protected readonly dataSource: DataSource,
@@ -23,6 +30,8 @@ export class UserService extends BaseService<UserRepository> {
 		private readonly userAuthorizationService: UserAuthorizationService,
 		private readonly orgScopeService: OrgScopeService,
 		private readonly configService: ConfigService,
+		private readonly mailService: MailService,
+		private readonly emailTemplateService: EmailTemplateService,
 	) {
 		super(repository);
 	}
@@ -170,7 +179,38 @@ export class UserService extends BaseService<UserRepository> {
 		const password = await hashPassword(
 			this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'),
 		);
-		return await super.create({ ...dto, password }, manager);
+		const created = await super.create({ ...dto, password }, manager);
+		await this.sendWelcomeEmail(dto);
+		return created;
+	}
+
+	// Best-effort welcome email; a mail failure (or missing template) must never fail
+	// user creation. Renders {{first_name}} / {{app_link}} on the USER_WELCOME template.
+	private async sendWelcomeEmail(dto: CreateUserDto) {
+		try {
+			const template = await this.emailTemplateService.findByCode(USER_WELCOME_TEMPLATE_CODE);
+			if (!template) {
+				this.logger.warn(
+					`${USER_WELCOME_TEMPLATE_CODE} email template not found; skipping welcome email for ${dto.email}`,
+				);
+				return;
+			}
+
+			const subs: Record<string, string> = {
+				'{{first_name}}': dto.firstName ?? '',
+				'{{last_name}}': dto.lastName ?? '',
+				'{{app_link}}': this.configService.get<string>('APP_FRONTEND_URL') ?? '',
+			};
+
+			const subject = applyTemplateSubstitutions(pickLocale(template.subject), subs);
+			const html = applyTemplateSubstitutions(pickLocale(template.body), subs);
+
+			await this.mailService.sendRawEmail({ to: dto.email, subject, html });
+		} catch (error) {
+			this.logger.error(
+				`Welcome email failed for ${dto.email}: ${error instanceof Error ? error.message : 'unknown error'}`,
+			);
+		}
 	}
 
 	async update(id: number, dto: UpdateUserDto, manager?: EntityManager) {
@@ -182,4 +222,18 @@ export class UserService extends BaseService<UserRepository> {
 		await UserValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
 	}
+}
+
+function pickLocale(text: I18nText | string | null | undefined, lang: 'es' | 'en' = 'es'): string {
+	if (text == null) return '';
+	if (typeof text === 'string') return text;
+	return (text[lang] as string) ?? (text.es as string) ?? (text.en as string) ?? '';
+}
+
+function applyTemplateSubstitutions(template: string, subs: Record<string, string>): string {
+	let result = template;
+	for (const [key, value] of Object.entries(subs)) {
+		result = result.replaceAll(key, value ?? '');
+	}
+	return result;
 }
