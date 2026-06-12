@@ -3,10 +3,10 @@ import { runSeed, i18n } from '../seed-runner';
 
 export async function loadOrganization(tenantDataSource: DataSource) {
 	const campusValues = [
-		['MON', i18n('Campus Monterrico', 'Monterrico Campus')],
+		['MO', i18n('Campus Monterrico', 'Monterrico Campus')],
 		['SI', i18n('Campus San Isidro', 'San Isidro Campus')],
-		['VILLA', i18n('Campus Villa', 'Villa Campus')],
-		['SM', i18n('Campus San Miguel', 'San Miguel Campus')],
+		['VI', i18n('Campus Villa', 'Villa Campus')],
+		['CS', i18n('Campus San Miguel', 'San Miguel Campus')],
 	]
 		.map(([code, name]) => `('${code}', '${name}'::jsonb)`)
 		.join(',\n\t\t\t');
