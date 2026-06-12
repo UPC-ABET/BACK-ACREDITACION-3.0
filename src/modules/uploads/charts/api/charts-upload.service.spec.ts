@@ -156,7 +156,7 @@ describe('ChartsUploadService — template', () => {
 		} as any;
 	}
 
-	it('builds a single Template sheet with the entity-type column and no legend sheet', async () => {
+	it('builds a Template sheet plus an entity-type legend with the entity-code rule', async () => {
 		const service = new ChartsUploadService(
 			makeTemplateRepository(['es', 'en']),
 			uploadLogServiceStub,
@@ -167,12 +167,29 @@ describe('ChartsUploadService — template', () => {
 		const wb = new ExcelJS.Workbook();
 		await wb.xlsx.load(buffer as any);
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
+		// first column header is now "Id" (positional parsing, so the rename is cosmetic)
+		expect(header[1]).toBe('Id');
 		expect(header).toContain('Unidad académica (Español)');
 		expect(header).toContain('Tipo de entidad');
 
-		expect(wb.worksheets).toHaveLength(1);
-		expect(wb.getWorksheet('Tipos de entidad')).toBeUndefined();
-		expect(wb.getWorksheet('Niveles')).toBeUndefined();
+		// data sheet + legend sheet
+		expect(wb.worksheets).toHaveLength(2);
+		const legend = wb.getWorksheet('Tipos de entidad')!;
+		expect(legend).toBeDefined();
+		const legendHeader = legend.getRow(1).values as string[];
+		expect(legendHeader[1]).toBe('Tipo de entidad');
+		expect(legendHeader[2]).toBe('¿Requiere código de entidad?');
+
+		// Carrera/Curso require the entity code; Area/Subarea do not
+		const usageByType = new Map<string, string>();
+		legend.eachRow((row, rowNumber) => {
+			if (rowNumber === 1) return;
+			usageByType.set(String(row.getCell(1).value), String(row.getCell(2).value));
+		});
+		expect(usageByType.get('Carrera')).toBe('Sí');
+		expect(usageByType.get('Curso')).toBe('Sí');
+		expect(usageByType.get('Area')).toBe('No');
+		expect(usageByType.get('Subarea')).toBe('No');
 
 		// the dropdown must sit on the entity-type column (code, parentCode, title×2, email, entityType),
 		// not on the "Correo del responsable" (email) column
