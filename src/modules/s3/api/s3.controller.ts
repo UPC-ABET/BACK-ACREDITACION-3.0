@@ -1,4 +1,12 @@
-import { BadRequestException, Body, HttpCode, HttpStatus, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	HttpCode,
+	HttpStatus,
+	Query,
+	UploadedFile,
+	UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import { S3Service } from './s3.service';
@@ -9,7 +17,11 @@ export class S3Controller {
 	constructor(private readonly s3Service: S3Service) {}
 
 	@SwaggerS3Upload()
-	@ApiQuery({ name: 'key', required: true, description: 'Object path/key in S3 (e.g. EISC/2025-1/project123/doc.pdf)' })
+	@ApiQuery({
+		name: 'key',
+		required: true,
+		description: 'Object path/key in S3 (e.g. EISC/2025-1/project123/doc.pdf)',
+	})
 	@ApiConsumes('multipart/form-data')
 	@ApiBody({
 		schema: {

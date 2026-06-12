@@ -1,4 +1,12 @@
-import { Body, Param, ParseIntPipe, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+	Body,
+	Param,
+	ParseIntPipe,
+	Query,
+	Res,
+	UploadedFile,
+	UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';

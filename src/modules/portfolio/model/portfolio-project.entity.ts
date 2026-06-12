@@ -83,11 +83,17 @@ export class PortfolioProjectEntity extends BaseEntity {
 	// %% RELATIONS
 
 	@ManyToOne(() => StudentEntity, { nullable: true })
-	@JoinColumn({ name: 'student_one_id', foreignKeyConstraintName: 'FK_portfolio_projects_student_one_id' })
+	@JoinColumn({
+		name: 'student_one_id',
+		foreignKeyConstraintName: 'FK_portfolio_projects_student_one_id',
+	})
 	studentOne?: StudentEntity;
 
 	@ManyToOne(() => StudentEntity, { nullable: true })
-	@JoinColumn({ name: 'student_two_id', foreignKeyConstraintName: 'FK_portfolio_projects_student_two_id' })
+	@JoinColumn({
+		name: 'student_two_id',
+		foreignKeyConstraintName: 'FK_portfolio_projects_student_two_id',
+	})
 	studentTwo?: StudentEntity;
 
 	@ManyToOne(() => AcademicPeriodEntity)

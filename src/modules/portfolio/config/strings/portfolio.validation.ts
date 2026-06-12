@@ -1,14 +1,12 @@
 export const portfolioValidationStrings = {
 	error: {
-		companyRequired:
-			'Company identifier is required: provide either companyId or companyCode.',
+		companyRequired: 'Company identifier is required: provide either companyId or companyCode.',
 		projectNotFound: 'Portfolio project not found.',
 		studentOneNotFound: 'Student 1 not found.',
 		studentTwoNotFound: 'Student 2 not found.',
 		coauthorNotFound: 'Co-author professor not found.',
 		consultantNotFound: 'Consultant professor not found.',
-		hasApplications:
-			'Project cannot be deleted because it has active student applications.',
+		hasApplications: 'Project cannot be deleted because it has active student applications.',
 		studentNotAssigned: 'The student is not assigned to this project.',
 		applicationExists: 'The student already has an application for this project.',
 		periodNotFound: 'Academic period not found.',
@@ -21,7 +19,6 @@ export const portfolioValidationStrings = {
 		createFailed: 'Failed to create portfolio project.',
 		updateFailed: 'Failed to update portfolio project.',
 		deleteFailed: 'Failed to delete portfolio project.',
-		projectAutoDeleted:
-			'Project was automatically deleted after all students were unassigned.',
+		projectAutoDeleted: 'Project was automatically deleted after all students were unassigned.',
 	},
 };

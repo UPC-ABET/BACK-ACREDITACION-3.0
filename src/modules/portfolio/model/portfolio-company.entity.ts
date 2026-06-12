@@ -1,6 +1,11 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { BooleanColumn, CodeColumn, IntegerFKIDColumn, NameColumn } from 'src/commons/configs/db.configs';
+import {
+	BooleanColumn,
+	CodeColumn,
+	IntegerFKIDColumn,
+	NameColumn,
+} from 'src/commons/configs/db.configs';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 

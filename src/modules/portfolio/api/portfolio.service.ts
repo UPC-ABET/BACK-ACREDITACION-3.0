@@ -1,4 +1,10 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	HttpException,
+	HttpStatus,
+	Injectable,
+	NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -218,10 +224,9 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		}
 
 		if (filters.teacherCode) {
-			qb.andWhere(
-				'(coauthorStaff.code = :teacherCode OR consultantStaff.code = :teacherCode)',
-				{ teacherCode: filters.teacherCode },
-			);
+			qb.andWhere('(coauthorStaff.code = :teacherCode OR consultantStaff.code = :teacherCode)', {
+				teacherCode: filters.teacherCode,
+			});
 		}
 
 		const totalCount = await qb.getCount();
@@ -247,9 +252,7 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		professorId: number,
 		modalityTypeId?: number,
 	): Promise<{ coauthorTotal: number; consultantTotal: number }> {
-		const baseQb = this.dataSource
-			.getRepository(PortfolioProjectEntity)
-			.createQueryBuilder('p');
+		const baseQb = this.dataSource.getRepository(PortfolioProjectEntity).createQueryBuilder('p');
 
 		if (modalityTypeId) {
 			baseQb.andWhere('p.modalityTypeId = :modalityTypeId', { modalityTypeId });
@@ -406,8 +409,7 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			const prof = await this.professorRepo.findOne({
 				where: { id: dto.consultantProfessorId },
 			});
-			if (!prof)
-				throw new BadRequestException(portfolioValidationStrings.error.consultantNotFound);
+			if (!prof) throw new BadRequestException(portfolioValidationStrings.error.consultantNotFound);
 		}
 
 		await this.repository.update(id, {
@@ -463,8 +465,7 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			const prof = await this.professorRepo.findOne({
 				where: { id: dto.consultantProfessorId },
 			});
-			if (!prof)
-				throw new BadRequestException(portfolioValidationStrings.error.consultantNotFound);
+			if (!prof) throw new BadRequestException(portfolioValidationStrings.error.consultantNotFound);
 		}
 
 		await this.repository.update(id, {
@@ -1004,8 +1005,7 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		if (!project) throw new NotFoundException(portfolioValidationStrings.error.projectNotFound);
 
 		const student = await this.studentRepo.findOne({ where: { id: studentId } });
-		if (!student)
-			throw new NotFoundException(portfolioValidationStrings.error.studentOneNotFound);
+		if (!student) throw new NotFoundException(portfolioValidationStrings.error.studentOneNotFound);
 
 		const existing = await this.applicationRepository.findOneByCondition({
 			where: { projectId, studentId },

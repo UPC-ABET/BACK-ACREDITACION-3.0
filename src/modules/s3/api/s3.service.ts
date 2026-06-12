@@ -30,7 +30,11 @@ export class S3Service {
 		this.bucket = config.getOrThrow<string>('AWS_BUCKET_NAME');
 	}
 
-	async uploadBuffer(key: string, buffer: Buffer, contentType = 'application/octet-stream'): Promise<void> {
+	async uploadBuffer(
+		key: string,
+		buffer: Buffer,
+		contentType = 'application/octet-stream',
+	): Promise<void> {
 		if (buffer.length < MIN_PART_SIZE) {
 			await this.s3.send(
 				new PutObjectCommand({
@@ -47,7 +51,11 @@ export class S3Service {
 		await this.multipartUploadFromBuffer(key, buffer, contentType);
 	}
 
-	async uploadStream(key: string, stream: Readable, contentType = 'application/octet-stream'): Promise<void> {
+	async uploadStream(
+		key: string,
+		stream: Readable,
+		contentType = 'application/octet-stream',
+	): Promise<void> {
 		const firstChunk = await this.readChunk(stream, MIN_PART_SIZE);
 
 		if (firstChunk.length < MIN_PART_SIZE) {
@@ -68,7 +76,9 @@ export class S3Service {
 		await this.multipartUploadFromStream(key, firstChunk, stream, contentType);
 	}
 
-	async getSize(prefixes: string[]): Promise<{ totalSizeInBytes: number; totalSizeInMB: number; isLargerThan1GB: boolean }> {
+	async getSize(
+		prefixes: string[],
+	): Promise<{ totalSizeInBytes: number; totalSizeInMB: number; isLargerThan1GB: boolean }> {
 		let totalSize = 0;
 
 		for (const prefix of prefixes) {
@@ -98,7 +108,11 @@ export class S3Service {
 
 	// ── Private helpers ───────────────────────────────────────────────────────
 
-	private async multipartUploadFromBuffer(key: string, buffer: Buffer, contentType: string): Promise<void> {
+	private async multipartUploadFromBuffer(
+		key: string,
+		buffer: Buffer,
+		contentType: string,
+	): Promise<void> {
 		const { UploadId } = await this.s3.send(
 			new CreateMultipartUploadCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }),
 		);
