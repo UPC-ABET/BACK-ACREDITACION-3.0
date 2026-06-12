@@ -57,7 +57,7 @@ describe('OutcomesUploadService — positional parsing', () => {
 		const buffer = await makeXlsx([
 			['SO1', 'Resultado uno', 'Outcome one', 'Descripcion uno', 'Description one', 'EAC', 'INF'],
 		]);
-		const result = await service.processUpload(buffer, 'outcomes.xlsx', 7, 1, {} as any);
+		const result = await service.processUpload(buffer, 'outcomes.xlsx', 7, 1, 2, {} as any);
 
 		expect(result.success).toBe(true);
 		expect(result.uploadLogId).toBe(42);
@@ -86,7 +86,7 @@ describe('OutcomesUploadService — positional parsing', () => {
 		const buffer = await makeXlsx([
 			['SO1', 'Resultado uno', 'Outcome one', 'Descripcion uno', 'Description one', 'GHOST', 'INF'],
 		]);
-		const result = await service.processUpload(buffer, 'outcomes.xlsx', 1, 1, {
+		const result = await service.processUpload(buffer, 'outcomes.xlsx', 1, 1, 2, {
 			lang: 'es',
 		} as any);
 

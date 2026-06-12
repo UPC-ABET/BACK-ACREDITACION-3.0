@@ -21,3 +21,5 @@ export const SwaggerProgramGetById = () => HttpMethodWithSwagger(cfg.operation.g
 
 export const SwaggerProgramGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterProgramDto });
+
+export const SwaggerProgramByModality = () => HttpMethodWithSwagger(cfg.operation.byModality);

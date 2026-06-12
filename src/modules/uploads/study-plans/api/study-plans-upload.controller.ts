@@ -20,6 +20,10 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
+import {
+	ModalityTypeId,
+	ApiModalityTypeHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/modality-type-id.decorator';
 
 import { StudyPlansUploadService } from './study-plans-upload.service';
 import { studyPlansUploadRoutes } from '../config/study-plans-upload.routes';
@@ -64,6 +68,7 @@ export class StudyPlansUploadController {
 		},
 	})
 	@ApiAcademicPeriodHeader()
+	@ApiModalityTypeHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
@@ -71,6 +76,7 @@ export class StudyPlansUploadController {
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: StudyPlansUploadDto,
 		@AcademicPeriodId() academicPeriodId: number,
+		@ModalityTypeId() modalityTypeId: number,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
@@ -79,6 +85,7 @@ export class StudyPlansUploadController {
 				file.originalname,
 				req.user.userId,
 				academicPeriodId,
+				modalityTypeId,
 				dto,
 			),
 		);

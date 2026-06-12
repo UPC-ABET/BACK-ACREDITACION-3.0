@@ -9,6 +9,11 @@ export const programsRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar carreras' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener carrera' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar carreras' },
+			byModality: {
+				method: 'GET',
+				route: '/by-modality',
+				summary: 'Listar carreras de la modalidad del período académico (header)',
+			},
 		},
 	},
 };

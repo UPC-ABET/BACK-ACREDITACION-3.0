@@ -43,4 +43,10 @@ export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepositor
 	async getByFilters(filters: FilterStudyPlanCourseDto) {
 		return await this.repository.getByFilters(filters);
 	}
+
+	async deleteMaintenance(id: number) {
+		await StudyPlanCourseValidation.validateMaintenanceDelete(this.repository, id);
+		await this.repository.remove(id);
+		return { id };
+	}
 }

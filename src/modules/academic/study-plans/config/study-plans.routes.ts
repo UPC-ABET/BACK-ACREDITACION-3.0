@@ -13,6 +13,29 @@ export const studyPlansRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar planes de estudio',
 			},
+			maintenanceList: {
+				method: 'GET',
+				route: '/maintenance',
+				summary: 'Listar planes de estudio (mantenimiento) con paginación',
+			},
+			maintenanceUpdate: {
+				method: 'PUT',
+				route: '/maintenance/:id',
+				summary: 'Actualizar plan de estudio (mantenimiento)',
+				params: [{ name: 'id', description: 'ID del plan de estudio', type: Number }],
+			},
+			maintenanceDelete: {
+				method: 'DELETE',
+				route: '/maintenance/:id',
+				summary: 'Eliminar plan de estudio (mantenimiento)',
+				params: [{ name: 'id', description: 'ID del plan de estudio', type: Number }],
+			},
+			coursesView: {
+				method: 'GET',
+				route: '/maintenance/:id/courses',
+				summary: 'Ver cursos del plan de estudio por nivel y electivos (período del header)',
+				params: [{ name: 'id', description: 'ID del plan de estudio', type: Number }],
+			},
 		},
 	},
 };

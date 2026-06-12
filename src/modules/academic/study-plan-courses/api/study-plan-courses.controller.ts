@@ -9,6 +9,7 @@ import {
 	SwaggerStudyPlanCourseGetById,
 	SwaggerStudyPlanCourseGetByFilters,
 	SwaggerStudyPlanCourseEnableEvaluation,
+	SwaggerStudyPlanCourseMaintenanceDelete,
 } from './docs/study-plan-courses.swagger';
 import { StudyPlanCourseService } from './study-plan-courses.service';
 import {
@@ -68,5 +69,11 @@ export class StudyPlanCourseController extends BaseController<StudyPlanCourseSer
 	async enableEvaluation(@Param('id', ParseIntPipe) id: number, @Body() dto: EnableEvaluationDto) {
 		await this.service.enableEvaluation(id, dto);
 		return parseSuccessResponse(null);
+	}
+
+	@SwaggerStudyPlanCourseMaintenanceDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.DELETE })
+	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.service.deleteMaintenance(id));
 	}
 }

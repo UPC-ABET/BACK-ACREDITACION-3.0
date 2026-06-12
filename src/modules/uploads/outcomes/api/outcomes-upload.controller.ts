@@ -20,6 +20,10 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
+import {
+	ModalityTypeId,
+	ApiModalityTypeHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/modality-type-id.decorator';
 
 import { OutcomesUploadService } from './outcomes-upload.service';
 import { outcomesUploadRoutes } from '../config/outcomes-upload.routes';
@@ -64,6 +68,7 @@ export class OutcomesUploadController {
 		},
 	})
 	@ApiAcademicPeriodHeader()
+	@ApiModalityTypeHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
@@ -71,6 +76,7 @@ export class OutcomesUploadController {
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: OutcomesUploadDto,
 		@AcademicPeriodId() academicPeriodId: number,
+		@ModalityTypeId() modalityTypeId: number,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
@@ -79,6 +85,7 @@ export class OutcomesUploadController {
 				file.originalname,
 				req.user.userId,
 				academicPeriodId,
+				modalityTypeId,
 				dto,
 			),
 		);

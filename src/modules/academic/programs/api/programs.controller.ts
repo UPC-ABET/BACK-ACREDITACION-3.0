@@ -8,10 +8,16 @@ import {
 	SwaggerProgramGetAll,
 	SwaggerProgramGetById,
 	SwaggerProgramGetByFilters,
+	SwaggerProgramByModality,
 } from './docs/programs.swagger';
 import { ProgramService } from './programs.service';
 import { CreateProgramDto, UpdateProgramDto, FilterProgramDto } from '../model/programs.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	ModalityTypeId,
+	ApiModalityTypeHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/modality-type-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerProgramController()
@@ -54,5 +60,12 @@ export class ProgramController extends BaseController<ProgramService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterProgramDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerProgramByModality()
+	@ApiModalityTypeHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async byModality(@ModalityTypeId() modalityTypeId: number) {
+		return parseSuccessResponse(await this.service.getByModality(modalityTypeId));
 	}
 }

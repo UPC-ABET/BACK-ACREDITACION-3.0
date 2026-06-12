@@ -2,6 +2,9 @@ export const studyPlanCoursesValidationStrings = {
 	error: {
 		studyPlanCourseExists: 'error.studyPlanCourse.studyPlanCourseExists',
 		notFound: 'error.studyPlanCourse.notFound',
+		inUse: 'error.studyPlanCourse.inUse',
+		usedInRubrics: 'error.studyPlanCourse.usedInRubrics',
+		usedInCourseOutcomeMappings: 'error.studyPlanCourse.usedInCourseOutcomeMappings',
 	},
 	result: {
 		createFailed: 'error.studyPlanCourse.createFailed',

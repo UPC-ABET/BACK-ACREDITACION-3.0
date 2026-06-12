@@ -1,6 +1,14 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { StudyPlanCourseRepository } from './study-plan-courses.repository';
+import {
+	StudyPlanCourseRepository,
+	StudyPlanCourseDeleteBlockerCounts,
+} from './study-plan-courses.repository';
 import { studyPlanCoursesValidationStrings } from '../config/strings/study-plan-courses.validation';
+
+const DELETE_BLOCKER_KEYS: Array<[keyof StudyPlanCourseDeleteBlockerCounts, string]> = [
+	['rubrics', studyPlanCoursesValidationStrings.error.usedInRubrics],
+	['courseOutcomeMappings', studyPlanCoursesValidationStrings.error.usedInCourseOutcomeMappings],
+];
 
 export class StudyPlanCourseValidation {
 	static async validateCreate(repo: StudyPlanCourseRepository, data: any) {
@@ -75,6 +83,31 @@ export class StudyPlanCourseValidation {
 					message: studyPlanCoursesValidationStrings.result.deleteFailed,
 				},
 				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceDelete(repo: StudyPlanCourseRepository, id: number) {
+		if (!(await repo.findOneById(id))) {
+			throw new HttpException(
+				{
+					message: studyPlanCoursesValidationStrings.result.deleteFailed,
+					errors: [studyPlanCoursesValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		const counts = await repo.findDeleteBlockerCounts(id);
+		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
+
+		if (blockers.length > 0) {
+			throw new HttpException(
+				{
+					message: studyPlanCoursesValidationStrings.error.inUse,
+					errors: blockers,
+				},
+				HttpStatus.CONFLICT,
 			);
 		}
 	}

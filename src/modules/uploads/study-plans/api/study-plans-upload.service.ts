@@ -30,6 +30,7 @@ export class StudyPlansUploadService {
 		fileName: string,
 		userId: number,
 		academicPeriodId: number,
+		modalityTypeId: number,
 		dto: StudyPlansUploadDto,
 	): Promise<UploadResult> {
 		await this.uploadLogService.assertAcademicPeriodExists(academicPeriodId);
@@ -48,6 +49,7 @@ export class StudyPlansUploadService {
 			academicPeriodId,
 			userId,
 			fileName,
+			modalityTypeId,
 		);
 
 		const errors: UploadRowError[] = result

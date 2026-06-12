@@ -29,4 +29,8 @@ export class ProgramService extends BaseService<ProgramRepository> {
 	async getByFilters(filters: FilterProgramDto) {
 		return await this.repository.getByFilters(filters);
 	}
+
+	async getByModality(modalityTypeId: number) {
+		return await this.repository.findByModality(modalityTypeId);
+	}
 }

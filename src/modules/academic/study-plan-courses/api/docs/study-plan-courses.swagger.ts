@@ -29,3 +29,6 @@ export const SwaggerStudyPlanCourseGetByFilters = () =>
 
 export const SwaggerStudyPlanCourseEnableEvaluation = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.enableEvaluation, body: EnableEvaluationDto });
+
+export const SwaggerStudyPlanCourseMaintenanceDelete = () =>
+	HttpMethodWithSwagger(cfg.operation.maintenanceDelete);

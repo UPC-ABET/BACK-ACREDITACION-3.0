@@ -4,6 +4,7 @@ import { StudyPlanValidation } from './study-plans.validation';
 const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
+	findDeleteBlockerCounts: jest.fn(),
 };
 
 describe('StudyPlanValidation', () => {
@@ -56,6 +57,75 @@ describe('StudyPlanValidation', () => {
 			await expect(StudyPlanValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
 				HttpException,
 			);
+		});
+	});
+
+	describe('validateMaintenanceUpdate', () => {
+		const existing = { id: 1, programId: 5, code: 'SP-1' };
+
+		it('passes when neither code nor program change', async () => {
+			mockRepo.findOneById.mockResolvedValue(existing);
+			await expect(
+				StudyPlanValidation.validateMaintenanceUpdate(mockRepo as any, 1, { code: 'SP-1' }),
+			).resolves.toBeUndefined();
+			expect(mockRepo.findOneByCondition).not.toHaveBeenCalled();
+		});
+
+		it('passes when the new code is free in the program', async () => {
+			mockRepo.findOneById.mockResolvedValue(existing);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				StudyPlanValidation.validateMaintenanceUpdate(mockRepo as any, 1, { code: 'SP-2' }),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the entity is not found', async () => {
+			mockRepo.findOneById.mockResolvedValue(null);
+			await expect(
+				StudyPlanValidation.validateMaintenanceUpdate(mockRepo as any, 999, { code: 'SP-2' }),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the new (program, code) collides', async () => {
+			mockRepo.findOneById.mockResolvedValue(existing);
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
+			await expect(
+				StudyPlanValidation.validateMaintenanceUpdate(mockRepo as any, 1, { code: 'SP-2' }),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
+	describe('validateMaintenanceDelete', () => {
+		it('passes when no academic periods reference it', async () => {
+			mockRepo.findOneById.mockResolvedValue({ id: 1 });
+			mockRepo.findDeleteBlockerCounts.mockResolvedValue({ academicPeriods: 0 });
+			await expect(
+				StudyPlanValidation.validateMaintenanceDelete(mockRepo as any, 1),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the entity is not found', async () => {
+			mockRepo.findOneById.mockResolvedValue(null);
+			await expect(
+				StudyPlanValidation.validateMaintenanceDelete(mockRepo as any, 999),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws 409 when academic periods reference it', async () => {
+			mockRepo.findOneById.mockResolvedValue({ id: 1 });
+			mockRepo.findDeleteBlockerCounts.mockResolvedValue({ academicPeriods: 3 });
+
+			let caught: HttpException | undefined;
+			try {
+				await StudyPlanValidation.validateMaintenanceDelete(mockRepo as any, 1);
+			} catch (e) {
+				caught = e as HttpException;
+			}
+
+			expect(caught!.getStatus()).toBe(409);
+			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(body.message).toBe('error.studyPlan.inUse');
+			expect(body.errors).toEqual(['error.studyPlan.usedInAcademicPeriods']);
 		});
 	});
 });

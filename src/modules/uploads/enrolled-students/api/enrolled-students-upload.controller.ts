@@ -20,6 +20,10 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
+import {
+	ModalityTypeId,
+	ApiModalityTypeHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/modality-type-id.decorator';
 
 import { EnrolledStudentsUploadService } from './enrolled-students-upload.service';
 import { enrolledStudentsUploadRoutes } from '../config/enrolled-students-upload.routes';
@@ -67,6 +71,7 @@ export class EnrolledStudentsUploadController {
 		},
 	})
 	@ApiAcademicPeriodHeader()
+	@ApiModalityTypeHeader()
 	@UseInterceptors(FileInterceptor('file'))
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
@@ -74,6 +79,7 @@ export class EnrolledStudentsUploadController {
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: EnrolledStudentsUploadDto,
 		@AcademicPeriodId() academicPeriodId: number,
+		@ModalityTypeId() modalityTypeId: number,
 		@Req() req: any,
 	) {
 		return parseSuccessResponse(
@@ -82,6 +88,7 @@ export class EnrolledStudentsUploadController {
 				file.originalname,
 				req.user.userId,
 				academicPeriodId,
+				modalityTypeId,
 				dto,
 			),
 		);

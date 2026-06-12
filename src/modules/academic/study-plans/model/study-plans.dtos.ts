@@ -1,6 +1,8 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateStudyPlanDto {
 	@IsOptional()
@@ -60,6 +62,61 @@ export class UpdateStudyPlanDto {
 	@IsObject()
 	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
+}
+
+export class StudyPlanMaintenanceQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by program (carrera) id' })
+	programId?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'searchExample',
+		description: 'Search by study plan code or program name',
+	})
+	search?: string;
+}
+
+export class UpdateStudyPlanMaintenanceDto {
+	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiPropertyOptional({ example: 'SP-2026' })
+	code?: string;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1, description: 'Program (carrera) id' })
+	programId?: number;
+}
+
+export interface StudyPlanMaintenanceItem {
+	id: number;
+	code: string;
+	programName: I18nText;
+}
+
+export interface StudyPlanCourseViewItem {
+	id: number;
+	courseId: number;
+	courseCode: string;
+	courseName: I18nText;
+	learningOutcome: I18nText;
+}
+
+export interface StudyPlanLevelGroup {
+	level: number;
+	levelTypeId: number;
+	levelName: I18nText;
+	courses: StudyPlanCourseViewItem[];
+}
+
+export interface StudyPlanCoursesView {
+	levels: StudyPlanLevelGroup[];
+	electives: StudyPlanCourseViewItem[];
 }
 
 export class FilterStudyPlanDto {

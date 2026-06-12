@@ -69,4 +69,13 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 		}
 		return await qb.getMany();
 	}
+
+	async findByModality(modalityTypeId: number): Promise<ProgramEntity[]> {
+		return await this.dataSource
+			.createQueryBuilder(ProgramEntity, 'prog')
+			.where('prog.modality_type_id = :modalityTypeId', { modalityTypeId })
+			.andWhere('prog.is_active = true')
+			.orderBy('prog.code', 'ASC')
+			.getMany();
+	}
 }

@@ -9,6 +9,11 @@ import { FilterStudyPlanCourseDto } from '../model/study-plan-courses.dtos';
 const SCHOOL_TYPE_CODE = 'TG903-T002';
 const PROGRAM_TYPE_CODE = 'TG903-T003';
 
+export interface StudyPlanCourseDeleteBlockerCounts {
+	rubrics: number;
+	courseOutcomeMappings: number;
+}
+
 export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEntity> {
 	constructor(
 		@InjectRepository(StudyPlanCourseEntity)
@@ -98,5 +103,19 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 		}
 
 		return await qb.getMany();
+	}
+
+	async findDeleteBlockerCounts(id: number): Promise<StudyPlanCourseDeleteBlockerCounts> {
+		const [row] = await this.dataSource.query(
+			`SELECT
+				(SELECT COUNT(*) FROM evaluation.rubrics WHERE study_plan_course_id = $1) AS "rubrics",
+				(SELECT COUNT(*) FROM academic.course_outcome_mappings WHERE study_plan_course_id = $1) AS "courseOutcomeMappings"`,
+			[id],
+		);
+
+		return {
+			rubrics: Number(row.rubrics),
+			courseOutcomeMappings: Number(row.courseOutcomeMappings),
+		};
 	}
 }

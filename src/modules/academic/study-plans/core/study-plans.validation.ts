@@ -1,6 +1,11 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { StudyPlanRepository } from './study-plans.repository';
+import { StudyPlanRepository, StudyPlanDeleteBlockerCounts } from './study-plans.repository';
 import { studyPlansValidationStrings } from '../config/strings/study-plans.validation';
+import { UpdateStudyPlanMaintenanceDto } from '../model/study-plans.dtos';
+
+const DELETE_BLOCKER_KEYS: Array<[keyof StudyPlanDeleteBlockerCounts, string]> = [
+	['academicPeriods', studyPlansValidationStrings.error.usedInAcademicPeriods],
+];
 
 export class StudyPlanValidation {
 	static async validateCreate(repo: StudyPlanRepository, data: any) {
@@ -63,6 +68,67 @@ export class StudyPlanValidation {
 					message: studyPlansValidationStrings.result.deleteFailed,
 				},
 				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceUpdate(
+		repo: StudyPlanRepository,
+		id: number,
+		data: UpdateStudyPlanMaintenanceDto,
+	) {
+		const entity = await repo.findOneById(id);
+		if (!entity) {
+			throw new HttpException(
+				{
+					message: studyPlansValidationStrings.result.updateFailed,
+					errors: [studyPlansValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		const programId = data.programId ?? entity.programId;
+		const code = data.code ?? entity.code;
+		const codeOrProgramChanged =
+			(data.code !== undefined && data.code !== entity.code) ||
+			(data.programId !== undefined && data.programId !== entity.programId);
+
+		if (codeOrProgramChanged) {
+			const exists = await repo.findOneByCondition({ where: { programId, code } });
+			if (exists && exists.id !== id) {
+				throw new HttpException(
+					{
+						message: studyPlansValidationStrings.result.updateFailed,
+						errors: [studyPlansValidationStrings.error.codeExists],
+					},
+					HttpStatus.BAD_REQUEST,
+				);
+			}
+		}
+	}
+
+	static async validateMaintenanceDelete(repo: StudyPlanRepository, id: number) {
+		if (!(await repo.findOneById(id))) {
+			throw new HttpException(
+				{
+					message: studyPlansValidationStrings.result.deleteFailed,
+					errors: [studyPlansValidationStrings.error.notFound],
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		const counts = await repo.findDeleteBlockerCounts(id);
+		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
+
+		if (blockers.length > 0) {
+			throw new HttpException(
+				{
+					message: studyPlansValidationStrings.error.inUse,
+					errors: blockers,
+				},
+				HttpStatus.CONFLICT,
 			);
 		}
 	}
