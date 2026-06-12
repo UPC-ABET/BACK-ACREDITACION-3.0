@@ -43,8 +43,8 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		],
 		[
 			'TG302',
-			i18n('Tipo de resultado', 'Outcome type'),
-			i18n('Tipos de resultados de aprendizaje', 'Learning outcome types'),
+			i18n('Tipo de Outcome', 'Outcome type'),
+			i18n('Tipos de Outcomes de aprendizaje', 'Learning outcome types'),
 		],
 		[
 			'TG401',
@@ -180,7 +180,7 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'TG102',
 			'TG102-T001',
 			i18n('Regular', 'Regular'),
-			i18n('Programa en modalidad regular', 'Regular program modality'),
+			i18n('Carrera en modalidad regular', 'Regular program modality'),
 			'{}',
 		],
 		[
@@ -188,7 +188,7 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'TG102-T002',
 			i18n('EPE', 'EPE'),
 			i18n(
-				'Programa para Personas con Experiencia Laboral',
+				'Carrera para Personas con Experiencia Laboral',
 				'Program for People with Work Experience',
 			),
 			'{}',
@@ -742,15 +742,15 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		[
 			'TG1101',
 			'TG1101-T002',
-			i18n('Malla curricular', 'Study plan'),
-			i18n('Carga de malla curricular', 'Study plan upload'),
+			i18n('Malla Curricular', 'Study plan'),
+			i18n('Carga de Malla Curricular', 'Study plan upload'),
 			'{"order":2}',
 		],
 		[
 			'TG1101',
 			'TG1101-T003',
-			i18n('Resultados', 'Outcomes'),
-			i18n('Carga de resultados', 'Outcomes upload'),
+			i18n('Outcomes', 'Outcomes'),
+			i18n('Carga de Outcomes', 'Outcomes upload'),
 			'{"order":3}',
 		],
 		[

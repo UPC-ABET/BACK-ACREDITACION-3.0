@@ -53,11 +53,10 @@ export class ListUploadLogsQueryDto extends PaginationQueryDto {
 	@ApiPropertyOptional({ example: 'COMPLETED' })
 	statusCode?: string;
 
-	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@ApiPropertyOptional({ example: 1 })
-	academicPeriodId?: number;
+	@ApiProperty({ example: 1, required: true, description: 'Academic period id (from header)' })
+	academicPeriodId: number;
 }
 
 export class UpdateUploadLogDto {

@@ -6,7 +6,7 @@ import { UploadLogEntity } from '../model/upload-logs.entity';
 export interface FindLogsOptions {
 	uploadTypeCode?: string;
 	statusCode?: string;
-	academicPeriodId?: number;
+	academicPeriodId: number;
 	skip: number;
 	take: number;
 }
@@ -32,11 +32,9 @@ export class UploadLogRepository extends BaseRepository<UploadLogEntity> {
 		if (options.statusCode) {
 			qb.andWhere('statusType.code = :statusCode', { statusCode: options.statusCode });
 		}
-		if (options.academicPeriodId !== undefined) {
-			qb.andWhere('log.academicPeriodId = :academicPeriodId', {
-				academicPeriodId: options.academicPeriodId,
-			});
-		}
+		qb.andWhere('log.academicPeriodId = :academicPeriodId', {
+			academicPeriodId: options.academicPeriodId,
+		});
 		return await qb
 			.orderBy('log.createdAt', 'DESC')
 			.skip(options.skip)

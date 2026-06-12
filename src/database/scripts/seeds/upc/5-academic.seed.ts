@@ -54,7 +54,14 @@ runSeed('academic module', async (tenantDataSource) => {
 
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."programs" (modality_type_id, code, name, degree)
-		SELECT t.id, v.code, v.name, v.degree
+		SELECT
+			t.id,
+			v.code,
+			CASE WHEN v.modality_type_code = 'TG102-T002'
+				THEN (SELECT jsonb_object_agg(k, val || ' EPE') FROM jsonb_each_text(v.name) AS e(k, val))
+				ELSE v.name
+			END,
+			v.degree
 		FROM "core"."types" t
 		JOIN (
 			VALUES
