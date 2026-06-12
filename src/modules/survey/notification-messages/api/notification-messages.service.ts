@@ -7,25 +7,23 @@ import {
 	CreateNotificationMessageDto,
 	UpdateNotificationMessageDto,
 } from '../model/notification-messages.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class NotificationMessageService extends BaseService<NotificationMessageRepository> {
-	constructor(
-		protected readonly repository: NotificationMessageRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: NotificationMessageRepository) {
 		super(repository);
 	}
 
-	async create(dto: CreateNotificationMessageDto, manager?: EntityManager) {
+	// One-shot save: creates the SURVEY email template AND the message together.
+	async create(dto: CreateNotificationMessageDto) {
 		await NotificationMessageValidation.validateCreate(this.repository, dto);
-		return await super.create(dto, manager);
+		return await this.repository.createWithTemplate(dto);
 	}
 
-	async update(id: number, dto: UpdateNotificationMessageDto, manager?: EntityManager) {
+	async update(id: number, dto: UpdateNotificationMessageDto) {
 		await NotificationMessageValidation.validateUpdate(this.repository, id, dto);
-		return await super.update(id, dto, manager);
+		return await this.repository.updateWithTemplate(id, dto);
 	}
 
 	async delete(id: number, manager?: EntityManager) {

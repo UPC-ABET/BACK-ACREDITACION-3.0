@@ -45,6 +45,7 @@ import { ProgramCommissionModule } from './modules/accreditation/program-commiss
 
 //CORE MODULES
 import { ParameterModule } from './modules/core/parameters/parameters.module';
+import { EmailTemplateModule } from './modules/core/email-templates/email-templates.module';
 import { TypeGroupModule } from './modules/core/type-groups/type-groups.module';
 import { TypeModule } from './modules/core/types/types.module';
 
@@ -67,7 +68,7 @@ import { SurveyModule } from './modules/evidence/surveys/surveys.module';
 //IFC MODULES
 import { IfcFindingModule } from './modules/ifc/ifc-findings/ifc-findings.module';
 import { StatusModule } from './modules/ifc/statuses/statuses.module';
-import { NotificationLogModule } from './modules/ifc/notification-log/notification-log.module';
+import { NotificationLogModule } from './modules/core/notification-logs/notification-logs.module';
 
 //IMPROVEMENT MODULES
 import { ActionModule } from './modules/improvement/actions/actions.module';
@@ -181,6 +182,7 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 		OutcomeModule,
 		ProgramCommissionModule,
 		ParameterModule,
+		EmailTemplateModule,
 		TypeGroupModule,
 		TypeModule,
 		RubricQuestionCriteriaModule,

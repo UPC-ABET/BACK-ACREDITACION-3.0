@@ -37,13 +37,13 @@ export class CreateNotificationConfigDto {
 	@ApiProperty({ example: 1, required: true })
 	ifcStatusTypeId: number;
 
-	@IsObject()
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: true })
-	title: I18nText;
-
-	@IsObject()
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: true })
-	body: I18nText;
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'core.email_templates.id (IFC category)',
+	})
+	emailTemplateId: number;
 
 	@ApiProperty({ example: { key: 'toChartEntityTypeIdsValue' }, required: true })
 	toChartEntityTypeIds: any;
@@ -83,14 +83,9 @@ export class UpdateNotificationConfigDto {
 	ifcStatusTypeId?: number;
 
 	@IsOptional()
-	@IsObject()
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
-	title?: I18nText;
-
-	@IsOptional()
-	@IsObject()
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
-	body?: I18nText;
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	emailTemplateId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'toChartEntityTypeIdsValue' }, required: false })
@@ -127,12 +122,8 @@ export class FilterNotificationConfigDto {
 	ifcStatusTypeId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, required: false })
-	title?: I18nText;
-
-	@IsOptional()
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, required: false })
-	body?: I18nText;
+	@ApiProperty({ example: 1, required: false })
+	emailTemplateId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'toChartEntityTypeIdsValue' }, required: false })
@@ -172,15 +163,16 @@ export class UpsertNotificationConfigDto {
 	@Type(() => Number)
 	ifcStatusTypeId: number;
 
-	@ApiProperty({
-		example: { es: 'titleEs', en: 'titleEn' },
-		required: true,
-	})
+	@ApiProperty({ example: { es: 'Plantilla IFC', en: 'IFC template' }, required: true })
 	@IsObject()
-	title: I18nText;
+	name: I18nText;
+
+	@ApiProperty({ example: { es: 'Asunto', en: 'Subject' }, required: true })
+	@IsObject()
+	subject: I18nText;
 
 	@ApiProperty({
-		example: { es: 'bodyEs', en: 'bodyEn' },
+		example: { es: 'Hola {{course_name}}', en: 'Hi {{course_name}}' },
 		required: true,
 	})
 	@IsObject()
@@ -228,8 +220,11 @@ export class NotificationConfigViewDto {
 	@ApiProperty({ example: 'statusCodeExample' }) statusCode: string;
 	@ApiProperty({ example: { es: 'statusNameEs', en: 'statusNameEn' }, type: Object })
 	statusName: I18nText;
-	@ApiProperty({ example: { es: 'titleEs', en: 'titleEn' }, type: Object }) title: I18nText;
-	@ApiProperty({ example: { es: 'bodyEs', en: 'bodyEn' }, type: Object }) body: I18nText;
+	@ApiProperty({ example: 1 }) emailTemplateId: number;
+	@ApiProperty({ example: { es: 'Plantilla IFC', en: 'IFC template' }, type: Object })
+	name: I18nText;
+	@ApiProperty({ example: { es: 'Asunto', en: 'Subject' }, type: Object }) subject: I18nText;
+	@ApiProperty({ example: { es: 'Cuerpo', en: 'Body' }, type: Object }) body: I18nText;
 	@ApiProperty({ example: [1, 2, 3] }) toChartEntityTypeIds: number[];
 	@ApiProperty({ example: [1, 2, 3] }) ccChartEntityTypeIds: number[];
 	@ApiProperty({ example: true }) isActive: boolean;

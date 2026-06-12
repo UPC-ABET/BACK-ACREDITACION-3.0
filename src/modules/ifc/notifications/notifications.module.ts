@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MailModule } from 'src/modules/mail/mail.module';
-import { NotificationLogModule } from 'src/modules/ifc/notification-log/notification-log.module';
+import { NotificationLogModule } from 'src/modules/core/notification-logs/notification-logs.module';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 
 @Module({

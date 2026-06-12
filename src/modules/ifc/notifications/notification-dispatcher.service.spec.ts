@@ -3,7 +3,7 @@ import { BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { MailService } from 'src/modules/mail/mail.service';
-import { NotificationLogService } from 'src/modules/ifc/notification-log/api/notification-log.service';
+import { NotificationLogService } from 'src/modules/core/notification-logs/api/notification-logs.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 const ctxRow = (overrides: Partial<Record<string, any>> = {}) => ({
@@ -21,7 +21,8 @@ const ctxRow = (overrides: Partial<Record<string, any>> = {}) => ({
 
 const configRow = (overrides: Partial<Record<string, any>> = {}) => ({
 	id: 7,
-	title: { es: 'Hola {{course_name}}', en: 'Hi {{course_name}}' },
+	emailTemplateId: 11,
+	subject: { es: 'Hola {{course_name}}', en: 'Hi {{course_name}}' },
 	body: { es: '<p>{{coordinator_name}}</p>', en: '<p>{{coordinator_name}}</p>' },
 	toChartEntityTypeIds: [19],
 	ccChartEntityTypeIds: [18],
@@ -137,7 +138,7 @@ describe('NotificationDispatcherService.dispatch', () => {
 			.mockResolvedValueOnce([ctxRow()])
 			.mockResolvedValueOnce([
 				configRow({
-					title: {
+					subject: {
 						es: '[{{observer_name}}] {{course_name}}',
 						en: '[{{observer_name}}] {{course_name}}',
 					},

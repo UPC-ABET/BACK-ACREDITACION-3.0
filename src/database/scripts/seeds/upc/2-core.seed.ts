@@ -100,6 +100,27 @@ export async function loadCoreParameters(tenantDataSource: DataSource) {
 				{"var":"{{comment}}","description":{"es":"Comentario de observacion","en":"Observation comment"},"valid_status_codes":["TG701-T004"]},
 				{"var":"{{submitter_name}}","description":{"es":"Quien envio el IFC","en":"Who submitted the IFC"},"valid_status_codes":["TG701-T002"]}
 			 ] $$
+			),
+			('PARAMETER_USER_NOTIFICATION_VARS',
+			 $$ {"es":"Variables de correo de usuario","en":"User email variables"} $$,
+			 $$ {"es":"Variables disponibles en plantillas de correo de usuario","en":"Variables available in user email templates"} $$,
+			 $$ [
+				{"var":"{{first_name}}","description":{"es":"Nombre del usuario","en":"User first name"}},
+				{"var":"{{last_name}}","description":{"es":"Apellido del usuario","en":"User last name"}},
+				{"var":"{{app_link}}","description":{"es":"Enlace a la aplicacion","en":"Application link"}}
+			 ] $$
+			),
+			('PARAMETER_SURVEY_NOTIFICATION_VARS',
+			 $$ {"es":"Variables de correo de encuesta","en":"Survey email variables"} $$,
+			 $$ {"es":"Variables disponibles en plantillas de correo de encuesta","en":"Variables available in survey email templates"} $$,
+			 $$ [
+				{"var":"{{student_name}}","description":{"es":"Nombre del alumno","en":"Student name"}},
+				{"var":"{{student_code}}","description":{"es":"Codigo del alumno","en":"Student code"}},
+				{"var":"{{course_name}}","description":{"es":"Nombre del curso","en":"Course name"}},
+				{"var":"{{program_name}}","description":{"es":"Nombre de la carrera","en":"Program name"}},
+				{"var":"{{survey_link}}","description":{"es":"Enlace a la encuesta","en":"Survey link"}},
+				{"var":"{{token}}","description":{"es":"Token de la encuesta","en":"Survey token"}}
+			 ] $$
 			)
 		) AS v(code, name, description, value)
 		WHERE NOT EXISTS (SELECT 1 FROM "core"."parameters" p WHERE p.code = v.code);

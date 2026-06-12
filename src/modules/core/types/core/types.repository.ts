@@ -33,4 +33,24 @@ export class TypeRepository extends BaseRepository<TypeEntity> {
 		const nextNumber = Number(rows[0].maxNumber) + 1;
 		return `${groupCode}-T${String(nextNumber).padStart(3, '0')}`;
 	}
+
+	/**
+	 * Active types belonging to a type group, looked up by the group's code.
+	 * Returns the IAM-facing shape: id, typeGroupId, code, name, description, extra.
+	 */
+	async findByGroupCode(groupCode: string) {
+		return await this.dataSource.query(
+			`SELECT t.id::int AS id,
+			        t.type_group_id AS "typeGroupId",
+			        t.code,
+			        t.name,
+			        t.description,
+			        t.extra
+			 FROM core.types t
+			 JOIN core.type_groups g ON g.id = t.type_group_id
+			 WHERE g.code = $1 AND t.is_active = true
+			 ORDER BY t.code`,
+			[groupCode],
+		);
+	}
 }

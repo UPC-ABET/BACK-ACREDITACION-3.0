@@ -271,6 +271,15 @@ export class SendGraEmailDto {
 		required: false,
 	})
 	surveyBaseUrl?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'es',
+		description: 'Email language: es | en (defaults to es)',
+		required: false,
+	})
+	lang?: 'es' | 'en';
 }
 
 // ─────────────────────────────────────────────

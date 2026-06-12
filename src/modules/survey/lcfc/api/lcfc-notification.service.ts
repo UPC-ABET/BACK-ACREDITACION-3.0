@@ -218,6 +218,7 @@ export class LcfcNotificationService {
 			'http://localhost:3001';
 		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
 			TYPE_CODES.SURVEY_TYPE.LCFC,
+			dto.lang ?? 'es',
 		);
 
 		let emailsSent = 0;
@@ -228,12 +229,12 @@ export class LcfcNotificationService {
 			try {
 				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
 				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
-					NombreAlumno: notif.studentName,
-					CodigoAlumno: notif.studentCode,
-					NombreCurso: notif.courseName,
-					NombreCarrera: notif.programName,
-					LinkEncuesta: surveyUrl,
-					Token: notif.token,
+					student_name: notif.studentName,
+					student_code: notif.studentCode,
+					course_name: notif.courseName,
+					program_name: notif.programName,
+					survey_link: surveyUrl,
+					token: notif.token,
 				});
 
 				await this.mailService.sendRawEmail({
