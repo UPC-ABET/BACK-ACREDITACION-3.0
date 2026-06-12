@@ -9,6 +9,11 @@ export const staffRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar personal' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener personal' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar personal' },
+			lookup: {
+				method: 'GET',
+				route: '/lookup',
+				summary: 'Buscar personal para select (paginado, codigo de profesor o nombre)',
+			},
 		},
 	},
 };

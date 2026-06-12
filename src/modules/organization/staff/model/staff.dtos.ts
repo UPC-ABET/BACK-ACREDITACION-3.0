@@ -2,6 +2,15 @@ import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'cla
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
 
+export interface StaffLookupItem {
+	id: number;
+	professorCode: string | null;
+	firstName: string;
+	lastName: string;
+	jobTitle: I18nText;
+	label: string;
+}
+
 export class CreateStaffDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })

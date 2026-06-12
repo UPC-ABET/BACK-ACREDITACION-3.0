@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStaffController,
@@ -8,9 +8,12 @@ import {
 	SwaggerStaffGetAll,
 	SwaggerStaffGetById,
 	SwaggerStaffGetByFilters,
+	SwaggerStaffLookup,
 } from './docs/staff.swagger';
 import { StaffService } from './staff.service';
 import { CreateStaffDto, UpdateStaffDto, FilterStaffDto } from '../model/staff.dtos';
+import { LookupQueryDto } from 'src/commons/lookup.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
@@ -54,5 +57,11 @@ export class StaffController extends BaseController<StaffService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterStaffDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerStaffLookup()
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.GET })
+	async lookup(@Query() query: LookupQueryDto) {
+		return parseSuccessResponse(await this.service.getLookup(query));
 	}
 }

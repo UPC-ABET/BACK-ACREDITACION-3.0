@@ -16,6 +16,7 @@ import {
 	CommissionOptionsQueryDto,
 	ProgramOptionsQueryDto,
 } from '../model/program-commissions.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import {
 	AcademicPeriodId,
@@ -54,7 +55,9 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 		@AcademicPeriodId() academicPeriodId: number,
 		@Query() query: CommissionOptionsQueryDto,
 	) {
-		return await this.service.getCommissionOptions(academicPeriodId, query.accreditorId);
+		return parseSuccessResponse(
+			await this.service.getCommissionOptions(academicPeriodId, query.accreditorId),
+		);
 	}
 
 	@SwaggerProgramCommissionProgramOptions()
@@ -64,7 +67,9 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 		@AcademicPeriodId() academicPeriodId: number,
 		@Query() query: ProgramOptionsQueryDto,
 	) {
-		return await this.service.getProgramOptions(academicPeriodId, query.commissionId);
+		return parseSuccessResponse(
+			await this.service.getProgramOptions(academicPeriodId, query.commissionId),
+		);
 	}
 
 	@SwaggerProgramCommissionGetDetailedByFilters()
@@ -74,6 +79,6 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 		@AcademicPeriodId() academicPeriodId: number,
 		@Body() dto: FilterProgramCommissionDetailedDto,
 	) {
-		return await this.service.getDetailedByFilters(academicPeriodId, dto);
+		return parseSuccessResponse(await this.service.getDetailedByFilters(academicPeriodId, dto));
 	}
 }

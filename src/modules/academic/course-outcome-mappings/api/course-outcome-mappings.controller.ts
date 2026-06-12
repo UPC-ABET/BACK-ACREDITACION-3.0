@@ -19,6 +19,7 @@ import {
 	CourseOutcomeMappingViewDto,
 	BulkSaveCourseOutcomeMappingDto,
 } from '../model/course-outcome-mappings.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
@@ -67,12 +68,12 @@ export class CourseOutcomeMappingController extends BaseController<CourseOutcome
 	@SwaggerCourseOutcomeMappingMaintenanceView()
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async maintenanceView(@Body() dto: CourseOutcomeMappingViewDto) {
-		return await this.service.getMaintenanceView(dto.programCommissionId);
+		return parseSuccessResponse(await this.service.getMaintenanceView(dto.programCommissionId));
 	}
 
 	@SwaggerCourseOutcomeMappingMaintenanceBulkSave()
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.PUT })
 	async maintenanceBulkSave(@Body() dto: BulkSaveCourseOutcomeMappingDto) {
-		return await this.service.bulkSaveMaintenance(dto);
+		return parseSuccessResponse(await this.service.bulkSaveMaintenance(dto));
 	}
 }

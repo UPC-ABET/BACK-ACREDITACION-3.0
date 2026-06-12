@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerChartController,
@@ -8,10 +8,29 @@ import {
 	SwaggerChartGetAll,
 	SwaggerChartGetById,
 	SwaggerChartGetByFilters,
+	SwaggerChartMaintenanceTree,
+	SwaggerChartMaintenanceCreate,
+	SwaggerChartMaintenanceUpdate,
+	SwaggerChartMaintenanceDelete,
 } from './docs/charts.swagger';
 import { ChartService } from './charts.service';
-import { CreateChartDto, UpdateChartDto, FilterChartDto } from '../model/charts.dtos';
+import {
+	CreateChartDto,
+	UpdateChartDto,
+	FilterChartDto,
+	CreateChartNodeDto,
+	UpdateChartNodeDto,
+} from '../model/charts.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerChartController()
@@ -54,5 +73,44 @@ export class ChartController extends BaseController<ChartService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterChartDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerChartMaintenanceTree()
+	@ApiAcademicPeriodHeader()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.GET })
+	async maintenanceTree(
+		@AcademicPeriodId() academicPeriodId: number,
+		@SchoolId() schoolId: number,
+	) {
+		return parseSuccessResponse(await this.service.getMaintenanceTree(academicPeriodId, schoolId));
+	}
+
+	@SwaggerChartMaintenanceCreate()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
+	async maintenanceCreate(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Body() dto: CreateChartNodeDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.createNode(academicPeriodId, dto),
+			HttpStatus.CREATED,
+		);
+	}
+
+	@SwaggerChartMaintenanceUpdate()
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.PUT })
+	async maintenanceUpdate(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateChartNodeDto,
+	) {
+		return parseSuccessResponse(await this.service.updateNode(id, dto));
+	}
+
+	@SwaggerChartMaintenanceDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.DELETE })
+	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.service.deleteNode(id));
 	}
 }

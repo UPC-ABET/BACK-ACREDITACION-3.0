@@ -1,6 +1,12 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { chartsRoutes } from '../../config/charts.routes';
-import { CreateChartDto, UpdateChartDto, FilterChartDto } from '../../model/charts.dtos';
+import {
+	CreateChartDto,
+	UpdateChartDto,
+	FilterChartDto,
+	CreateChartNodeDto,
+	UpdateChartNodeDto,
+} from '../../model/charts.dtos';
 
 const cfg = chartsRoutes.charts;
 
@@ -20,3 +26,15 @@ export const SwaggerChartGetById = () => HttpMethodWithSwagger(cfg.operation.get
 
 export const SwaggerChartGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterChartDto });
+
+export const SwaggerChartMaintenanceTree = () =>
+	HttpMethodWithSwagger(cfg.operation.maintenanceTree);
+
+export const SwaggerChartMaintenanceCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceCreate, body: CreateChartNodeDto });
+
+export const SwaggerChartMaintenanceUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceUpdate, body: UpdateChartNodeDto });
+
+export const SwaggerChartMaintenanceDelete = () =>
+	HttpMethodWithSwagger(cfg.operation.maintenanceDelete);

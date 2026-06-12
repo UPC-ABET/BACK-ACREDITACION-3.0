@@ -1,6 +1,7 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { staffRoutes } from '../../config/staff.routes';
 import { CreateStaffDto, UpdateStaffDto, FilterStaffDto } from '../../model/staff.dtos';
+import { LookupQueryDto } from 'src/commons/lookup.dtos';
 
 const cfg = staffRoutes.staff;
 
@@ -20,3 +21,6 @@ export const SwaggerStaffGetById = () => HttpMethodWithSwagger(cfg.operation.get
 
 export const SwaggerStaffGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterStaffDto });
+
+export const SwaggerStaffLookup = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.lookup, query: LookupQueryDto });
