@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudentSectionEnrollmentController,
@@ -8,14 +8,24 @@ import {
 	SwaggerStudentSectionEnrollmentGetAll,
 	SwaggerStudentSectionEnrollmentGetById,
 	SwaggerStudentSectionEnrollmentGetByFilters,
+	SwaggerStudentSectionEnrollmentMaintenanceList,
+	SwaggerStudentSectionEnrollmentMaintenanceUpdate,
+	SwaggerStudentSectionEnrollmentMaintenanceDelete,
 } from './docs/student-section-enrollments.swagger';
 import { StudentSectionEnrollmentService } from './student-section-enrollments.service';
 import {
 	CreateStudentSectionEnrollmentDto,
 	UpdateStudentSectionEnrollmentDto,
 	FilterStudentSectionEnrollmentDto,
+	StudentSectionEnrollmentMaintenanceQueryDto,
+	UpdateStudentSectionEnrollmentMaintenanceDto,
 } from '../model/student-section-enrollments.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerStudentSectionEnrollmentController()
@@ -61,5 +71,30 @@ export class StudentSectionEnrollmentController extends BaseController<StudentSe
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterStudentSectionEnrollmentDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerStudentSectionEnrollmentMaintenanceList()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async maintenanceList(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Query() query: StudentSectionEnrollmentMaintenanceQueryDto,
+	) {
+		return parseSuccessResponse(await this.service.getMaintenanceList(academicPeriodId, query));
+	}
+
+	@SwaggerStudentSectionEnrollmentMaintenanceUpdate()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.PUT })
+	async maintenanceUpdate(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateStudentSectionEnrollmentMaintenanceDto,
+	) {
+		return parseSuccessResponse(await this.service.updateMaintenance(id, dto));
+	}
+
+	@SwaggerStudentSectionEnrollmentMaintenanceDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.DELETE })
+	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.service.deleteMaintenance(id));
 	}
 }

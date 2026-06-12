@@ -33,6 +33,23 @@ export const studentSectionEnrollmentsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar matrículas de estudiantes por sección',
 			},
+			maintenanceList: {
+				method: 'GET',
+				route: '/maintenance',
+				summary: 'Listar matrículas por sección (mantenimiento) por período académico',
+			},
+			maintenanceUpdate: {
+				method: 'PUT',
+				route: '/maintenance/:id',
+				summary: 'Actualizar matrícula por sección (mantenimiento)',
+				params: [{ name: 'id', description: 'ID de la matrícula por sección', type: Number }],
+			},
+			maintenanceDelete: {
+				method: 'DELETE',
+				route: '/maintenance/:id',
+				summary: 'Eliminar matrícula por sección (mantenimiento)',
+				params: [{ name: 'id', description: 'ID de la matrícula por sección', type: Number }],
+			},
 		},
 	},
 };

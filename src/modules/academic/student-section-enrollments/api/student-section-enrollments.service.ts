@@ -6,8 +6,13 @@ import { StudentSectionEnrollmentValidation } from '../core/student-section-enro
 import {
 	CreateStudentSectionEnrollmentDto,
 	UpdateStudentSectionEnrollmentDto,
+	StudentSectionEnrollmentMaintenanceQueryDto,
+	UpdateStudentSectionEnrollmentMaintenanceDto,
+	StudentSectionEnrollmentMaintenanceItem,
 } from '../model/student-section-enrollments.dtos';
 import { DataSource, EntityManager } from 'typeorm';
+import { StudentSectionEnrollmentEntity } from '../model/student-section-enrollments.entity';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class StudentSectionEnrollmentService extends BaseService<StudentSectionEnrollmentRepository> {
@@ -31,5 +36,59 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 	async delete(id: number, manager?: EntityManager) {
 		await StudentSectionEnrollmentValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getMaintenanceList(
+		academicPeriodId: number,
+		query: StudentSectionEnrollmentMaintenanceQueryDto,
+	): Promise<PaginatedResult<StudentSectionEnrollmentMaintenanceItem>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [rows, total] = await this.repository.findMaintenancePage(
+			academicPeriodId,
+			query.programId,
+			query.search,
+			skip,
+			take,
+		);
+
+		return toPaginated(
+			rows.map((row) => this.toMaintenanceItem(row)),
+			total,
+			page,
+			pageSize,
+		);
+	}
+
+	async updateMaintenance(id: number, dto: UpdateStudentSectionEnrollmentMaintenanceDto) {
+		await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(this.repository, id, dto);
+		await this.repository.update(id, dto);
+		return await this.getMaintenanceItem(id);
+	}
+
+	async deleteMaintenance(id: number) {
+		await StudentSectionEnrollmentValidation.validateMaintenanceDelete(this.repository, id);
+		await this.repository.remove(id);
+		return { id };
+	}
+
+	private async getMaintenanceItem(
+		id: number,
+	): Promise<StudentSectionEnrollmentMaintenanceItem | null> {
+		const row = await this.repository.findByIdWithRelations(id);
+		return row ? this.toMaintenanceItem(row) : null;
+	}
+
+	private toMaintenanceItem(
+		entity: StudentSectionEnrollmentEntity,
+	): StudentSectionEnrollmentMaintenanceItem {
+		return {
+			id: entity.id,
+			courseName: entity.courseSection.course.name,
+			courseCode: entity.courseSection.course.code,
+			sectionCode: entity.courseSection.sectionCode,
+			studentCode: entity.enrolledStudent.student.code,
+			studentFirstName: entity.enrolledStudent.student.firstName,
+			studentLastName: entity.enrolledStudent.student.lastName,
+		};
 	}
 }

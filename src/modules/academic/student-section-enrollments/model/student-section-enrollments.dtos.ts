@@ -1,5 +1,8 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStudentSectionEnrollmentDto {
 	@IsOptional()
@@ -57,4 +60,42 @@ export class FilterStudentSectionEnrollmentDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	courseSectionId?: number;
+}
+
+export class StudentSectionEnrollmentMaintenanceQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by program (carrera) id' })
+	programId?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'searchExample',
+		description: 'Search by course code, section code or student code',
+	})
+	search?: string;
+}
+
+export class UpdateStudentSectionEnrollmentMaintenanceDto {
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1, description: 'Course section id' })
+	courseSectionId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1, description: 'Enrolled student id' })
+	enrolledStudentId?: number;
+}
+
+export interface StudentSectionEnrollmentMaintenanceItem {
+	id: number;
+	courseName: I18nText;
+	courseCode: string;
+	sectionCode: string;
+	studentCode: string;
+	studentFirstName: string;
+	studentLastName: string;
 }

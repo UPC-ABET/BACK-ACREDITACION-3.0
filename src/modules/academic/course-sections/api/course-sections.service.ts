@@ -39,11 +39,12 @@ export class CourseSectionService extends BaseService<CourseSectionRepository> {
 	}
 
 	async getMaintenanceList(
+		academicPeriodId: number,
 		query: CourseSectionMaintenanceQueryDto,
 	): Promise<PaginatedResult<CourseSectionMaintenanceItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
 		const [sections, total] = await this.repository.findMaintenancePage(
-			query.academicPeriodId,
+			academicPeriodId,
 			query.search,
 			skip,
 			take,

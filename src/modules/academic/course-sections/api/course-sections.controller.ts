@@ -22,6 +22,10 @@ import {
 } from '../model/course-sections.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerCourseSectionController()
@@ -67,9 +71,13 @@ export class CourseSectionController extends BaseController<CourseSectionService
 	}
 
 	@SwaggerCourseSectionMaintenanceList()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
-	async maintenanceList(@Query() query: CourseSectionMaintenanceQueryDto) {
-		return parseSuccessResponse(await this.service.getMaintenanceList(query));
+	async maintenanceList(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Query() query: CourseSectionMaintenanceQueryDto,
+	) {
+		return parseSuccessResponse(await this.service.getMaintenanceList(academicPeriodId, query));
 	}
 
 	@SwaggerCourseSectionMaintenanceUpdate()

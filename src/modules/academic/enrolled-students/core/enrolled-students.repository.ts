@@ -34,6 +34,7 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 
 	async findMaintenancePage(
 		academicPeriodId: number,
+		programId: number | undefined,
 		search: string | undefined,
 		skip: number,
 		take: number,
@@ -45,6 +46,10 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 				'spap.id = enrolled.study_plan_academic_period',
 			)
 			.where('spap.academic_period_id = :academicPeriodId', { academicPeriodId });
+
+		if (programId !== undefined) {
+			qb.andWhere('student.program_id = :programId', { programId });
+		}
 
 		if (search?.trim()) {
 			const term = `%${search.trim()}%`;

@@ -1,5 +1,4 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Length } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
@@ -91,11 +90,6 @@ export class UpdateCourseSectionDto {
 }
 
 export class CourseSectionMaintenanceQueryDto extends PaginationQueryDto {
-	@Type(() => Number)
-	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period id (from header)' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({

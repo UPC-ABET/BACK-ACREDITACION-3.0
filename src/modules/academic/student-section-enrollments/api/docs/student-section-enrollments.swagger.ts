@@ -4,6 +4,8 @@ import {
 	CreateStudentSectionEnrollmentDto,
 	UpdateStudentSectionEnrollmentDto,
 	FilterStudentSectionEnrollmentDto,
+	StudentSectionEnrollmentMaintenanceQueryDto,
+	UpdateStudentSectionEnrollmentMaintenanceDto,
 } from '../../model/student-section-enrollments.dtos';
 
 const cfg = studentSectionEnrollmentsRoutes.studentSectionEnrollments;
@@ -28,3 +30,18 @@ export const SwaggerStudentSectionEnrollmentGetById = () =>
 
 export const SwaggerStudentSectionEnrollmentGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterStudentSectionEnrollmentDto });
+
+export const SwaggerStudentSectionEnrollmentMaintenanceList = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceList,
+		query: StudentSectionEnrollmentMaintenanceQueryDto,
+	});
+
+export const SwaggerStudentSectionEnrollmentMaintenanceUpdate = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceUpdate,
+		body: UpdateStudentSectionEnrollmentMaintenanceDto,
+	});
+
+export const SwaggerStudentSectionEnrollmentMaintenanceDelete = () =>
+	HttpMethodWithSwagger(cfg.operation.maintenanceDelete);

@@ -2,6 +2,11 @@ export const studentSectionEnrollmentsValidationStrings = {
 	error: {
 		enrollmentExists: 'error.studentSectionEnrollment.enrollmentExists',
 		notFound: 'error.studentSectionEnrollment.notFound',
+		inUse: 'error.studentSectionEnrollment.inUse',
+		usedInStudentCourseGrades: 'error.studentSectionEnrollment.usedInStudentCourseGrades',
+		usedInProjectStudents: 'error.studentSectionEnrollment.usedInProjectStudents',
+		usedInStudentCourseOutcomeGrades:
+			'error.studentSectionEnrollment.usedInStudentCourseOutcomeGrades',
 	},
 	result: {
 		createFailed: 'error.studentSectionEnrollment.createFailed',

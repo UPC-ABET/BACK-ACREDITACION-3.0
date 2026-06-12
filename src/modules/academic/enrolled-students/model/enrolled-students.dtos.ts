@@ -1,7 +1,8 @@
 import { Entity } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -110,6 +111,12 @@ export class FilterEnrolledStudentDto {
 }
 
 export class EnrolledStudentMaintenanceQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by program (carrera) id' })
+	programId?: number;
+
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({

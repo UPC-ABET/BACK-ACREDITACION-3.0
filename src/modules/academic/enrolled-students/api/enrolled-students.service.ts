@@ -45,6 +45,7 @@ export class EnrolledStudentService extends BaseService<EnrolledStudentRepositor
 		const { page, pageSize, skip, take } = resolvePagination(query);
 		const [rows, total] = await this.repository.findMaintenancePage(
 			academicPeriodId,
+			query.programId,
 			query.search,
 			skip,
 			take,
