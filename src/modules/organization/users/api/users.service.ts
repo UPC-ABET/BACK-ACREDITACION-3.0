@@ -217,14 +217,14 @@ export class UserService extends BaseService<UserRepository> {
 		]);
 	}
 
-	// Best-effort welcome email; a mail failure (or missing template) must never fail
-	// user creation. Renders {{first_name}} / {{app_link}} on the USER_WELCOME template.
+	// Best-effort welcome email; a mail failure (or a missing/inactive template) must never
+	// fail user creation. Renders {{first_name}} / {{app_link}} on the USER_WELCOME template.
 	private async sendWelcomeEmail(dto: CreateUserDto) {
 		try {
 			const template = await this.emailTemplateService.findByCode(USER_WELCOME_TEMPLATE_CODE);
-			if (!template) {
+			if (!template || template.isActive === false) {
 				this.logger.warn(
-					`${USER_WELCOME_TEMPLATE_CODE} email template not found; skipping welcome email for ${dto.email}`,
+					`${USER_WELCOME_TEMPLATE_CODE} email template not found or inactive; skipping welcome email for ${dto.email}`,
 				);
 				return;
 			}

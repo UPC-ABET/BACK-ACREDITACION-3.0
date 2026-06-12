@@ -23,6 +23,8 @@ describe('UserService - login', () => {
 	let jwtService: { sign: jest.Mock };
 	let userAuthorizationService: { buildAuthorizationProfile: jest.Mock };
 	let orgScopeService: { getUserSchools: jest.Mock };
+	let mailService: { sendRawEmail: jest.Mock };
+	let emailTemplateService: { findByCode: jest.Mock };
 	const dataSource = {} as DataSource;
 	const authorizationProfile = {
 		activeRole: { id: 2, name: { en: 'Coordinator', es: 'Coordinador' } },
@@ -56,10 +58,10 @@ describe('UserService - login', () => {
 			getOrThrow: jest.fn().mockReturnValue('ABET2020'),
 			get: jest.fn().mockReturnValue('https://app.example.com'),
 		};
-		const mailService = {
+		mailService = {
 			sendRawEmail: jest.fn().mockResolvedValue({ messageId: 'msg-1' }),
 		};
-		const emailTemplateService = {
+		emailTemplateService = {
 			findByCode: jest.fn().mockResolvedValue(null),
 		};
 
@@ -172,6 +174,48 @@ describe('UserService - login', () => {
 				userId: baseUser.id,
 				activeRoleId: authorizationProfile.activeRole.id,
 			});
+		});
+	});
+
+	describe('sendWelcomeEmail', () => {
+		const newUser = {
+			email: 'nuevo.usuario@example.com',
+			firstName: 'Nuevo',
+			lastName: 'Usuario',
+		} as any;
+
+		const activeTemplate = {
+			isActive: true,
+			subject: { es: 'Bienvenido {{first_name}}' },
+			body: { es: 'Hola {{first_name}}, ingresa en {{app_link}}' },
+		};
+
+		it('sends the welcome email when the USER_WELCOME template is active', async () => {
+			emailTemplateService.findByCode.mockResolvedValueOnce(activeTemplate);
+
+			await (service as any).sendWelcomeEmail(newUser);
+
+			expect(mailService.sendRawEmail).toHaveBeenCalledWith({
+				to: newUser.email,
+				subject: 'Bienvenido Nuevo',
+				html: 'Hola Nuevo, ingresa en https://app.example.com',
+			});
+		});
+
+		it('does not send the welcome email when the template is inactive', async () => {
+			emailTemplateService.findByCode.mockResolvedValueOnce({ ...activeTemplate, isActive: false });
+
+			await (service as any).sendWelcomeEmail(newUser);
+
+			expect(mailService.sendRawEmail).not.toHaveBeenCalled();
+		});
+
+		it('does not send the welcome email when the template is missing', async () => {
+			emailTemplateService.findByCode.mockResolvedValueOnce(null);
+
+			await (service as any).sendWelcomeEmail(newUser);
+
+			expect(mailService.sendRawEmail).not.toHaveBeenCalled();
 		});
 	});
 
