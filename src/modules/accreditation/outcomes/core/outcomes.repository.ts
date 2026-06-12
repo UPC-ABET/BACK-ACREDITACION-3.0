@@ -56,7 +56,7 @@ export class OutcomeRepository extends BaseRepository<OutcomeEntity> {
 
 		return await qb
 			.orderBy('commission.code', 'ASC')
-			.addOrderBy('outcome.outcome_code', 'ASC')
+			.addOrderBy('outcome.outcomeCode', 'ASC')
 			.addOrderBy('outcome.id', 'ASC')
 			.skip(skip)
 			.take(take)

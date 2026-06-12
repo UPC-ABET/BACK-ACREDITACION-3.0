@@ -91,11 +91,10 @@ export class UpdateCourseSectionDto {
 }
 
 export class CourseSectionMaintenanceQueryDto extends PaginationQueryDto {
-	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@ApiPropertyOptional({ example: 1, description: 'Academic period id (from header)' })
-	academicPeriodId?: number;
+	@ApiProperty({ example: 1, required: true, description: 'Academic period id (from header)' })
+	academicPeriodId: number;
 
 	@IsOptional()
 	@IsString()

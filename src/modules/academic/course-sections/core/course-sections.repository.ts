@@ -31,16 +31,14 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 	}
 
 	async findMaintenancePage(
-		academicPeriodId: number | undefined,
+		academicPeriodId: number,
 		search: string | undefined,
 		skip: number,
 		take: number,
 	): Promise<[CourseSectionEntity[], number]> {
-		const qb = this.maintenanceQuery();
-
-		if (academicPeriodId !== undefined) {
-			qb.andWhere('section.academic_period_id = :academicPeriodId', { academicPeriodId });
-		}
+		const qb = this.maintenanceQuery().where('section.academic_period_id = :academicPeriodId', {
+			academicPeriodId,
+		});
 
 		if (search?.trim()) {
 			const term = `%${search.trim()}%`;
@@ -55,7 +53,7 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 
 		return await qb
 			.orderBy('course.code', 'ASC')
-			.addOrderBy('section.section_code', 'ASC')
+			.addOrderBy('section.sectionCode', 'ASC')
 			.addOrderBy('section.id', 'ASC')
 			.skip(skip)
 			.take(take)
