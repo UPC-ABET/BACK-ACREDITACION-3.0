@@ -8,9 +8,12 @@ import {
 	UpdateCourseDto,
 	FilterCourseEnrolledStudentsDto,
 	CourseEnrolledStudentDto,
+	CourseLookupItem,
 } from '../model/courses.dtos';
 import { EntityManager, DataSource } from 'typeorm';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
+import { LookupQueryDto } from 'src/commons/lookup.dtos';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class CourseService extends BaseService<CourseRepository> {
@@ -38,6 +41,17 @@ export class CourseService extends BaseService<CourseRepository> {
 
 	async getByFilters(filters: FilterCourseDto) {
 		return await this.repository.getByFilters(filters);
+	}
+
+	async getLookup(query: LookupQueryDto): Promise<PaginatedResult<CourseLookupItem>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [courses, total] = await this.repository.findLookupPage(query.search, skip, take);
+		const items = courses.map((course) => ({
+			id: course.id,
+			code: course.code,
+			name: course.name,
+		}));
+		return toPaginated(items, total, page, pageSize);
 	}
 
 	async getEnrolledStudentsByCourseId(

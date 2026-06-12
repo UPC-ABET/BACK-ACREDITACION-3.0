@@ -4,18 +4,11 @@ import { EntityManager, QueryFailedError } from 'typeorm';
 import type { I18nText } from 'src/shared/types/i18n';
 import { UploadLogRepository } from '../core/upload-logs.repository';
 import { UploadLogEntity } from '../model/upload-logs.entity';
-import { CreateUploadLogDto } from '../model/upload-logs.dtos';
+import { CreateUploadLogDto, ListUploadLogsQueryDto } from '../model/upload-logs.dtos';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { ROLLBACK_RAISE_MAP } from '../model/upload-logs.constants';
 import { uploadLogsValidationStrings } from '../config/strings/upload-logs.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
-
-export interface ListUploadLogsFilters {
-	uploadTypeCode?: string;
-	statusCode?: string;
-	academicPeriodId?: number;
-	limit: number;
-	offset: number;
-}
 
 export interface UploadTypeRef {
 	code: string;
@@ -128,9 +121,21 @@ export class UploadLogService extends BaseService<UploadLogRepository> {
 		}
 	}
 
-	async listLogs(filters: ListUploadLogsFilters): Promise<UploadLogItem[]> {
-		const logs = await this.repository.findLogs(filters);
-		return logs.map((log) => this.toItem(log));
+	async listLogs(query: ListUploadLogsQueryDto): Promise<PaginatedResult<UploadLogItem>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [logs, total] = await this.repository.findLogs({
+			uploadTypeCode: query.uploadTypeCode,
+			statusCode: query.statusCode,
+			academicPeriodId: query.academicPeriodId,
+			skip,
+			take,
+		});
+		return toPaginated(
+			logs.map((log) => this.toItem(log)),
+			total,
+			page,
+			pageSize,
+		);
 	}
 
 	async findLog(id: number): Promise<UploadLogItem> {

@@ -80,4 +80,22 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 		return await qb.getMany();
 	}
+
+	async findLookupPage(
+		search: string | undefined,
+		skip: number,
+		take: number,
+	): Promise<[CourseEntity[], number]> {
+		const qb = this.dataSource.createQueryBuilder(CourseEntity, 'c');
+
+		if (search?.trim()) {
+			const term = `%${search.trim()}%`;
+			qb.where(
+				`(c.code ILIKE :term OR c.name->>'es' ILIKE :term OR c.name->>'en' ILIKE :term)`,
+				{ term },
+			);
+		}
+
+		return await qb.orderBy('c.code', 'ASC').skip(skip).take(take).getManyAndCount();
+	}
 }

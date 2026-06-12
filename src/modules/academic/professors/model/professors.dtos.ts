@@ -1,5 +1,6 @@
 import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateProfessorDto {
 	@IsOptional()
@@ -77,4 +78,42 @@ export class FilterProfessorDto {
 	@IsOptional()
 	@ApiProperty({ example: 'codeExample', required: false })
 	code?: string;
+}
+
+export class ProfessorMaintenanceQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'searchExample',
+		description: 'Search by professor code or staff first name / last name',
+	})
+	search?: string;
+}
+
+export class UpdateProfessorMaintenanceDto {
+	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiPropertyOptional({ example: 'PROF-001' })
+	code?: string;
+
+	@IsOptional()
+	@IsString()
+	@Length(1, 255)
+	@ApiPropertyOptional({ example: 'John' })
+	firstName?: string;
+
+	@IsOptional()
+	@IsString()
+	@Length(1, 255)
+	@ApiPropertyOptional({ example: 'Doe' })
+	lastName?: string;
+}
+
+export interface ProfessorMaintenanceItem {
+	id: number;
+	staffId: number;
+	code: string;
+	firstName: string;
+	lastName: string;
 }

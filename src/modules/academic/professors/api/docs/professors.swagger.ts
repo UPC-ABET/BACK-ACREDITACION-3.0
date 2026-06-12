@@ -4,6 +4,8 @@ import {
 	CreateProfessorDto,
 	UpdateProfessorDto,
 	FilterProfessorDto,
+	ProfessorMaintenanceQueryDto,
+	UpdateProfessorMaintenanceDto,
 } from '../../model/professors.dtos';
 
 const cfg = professorsRoutes.professors;
@@ -27,3 +29,15 @@ export const SwaggerProfessorGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterProfessorDto });
 
 export const SwaggerProfessorGetByUserId = () => HttpMethodWithSwagger(cfg.operation.getByUserId);
+
+export const SwaggerProfessorMaintenanceList = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: ProfessorMaintenanceQueryDto });
+
+export const SwaggerProfessorMaintenanceUpdate = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceUpdate,
+		body: UpdateProfessorMaintenanceDto,
+	});
+
+export const SwaggerProfessorMaintenanceDelete = () =>
+	HttpMethodWithSwagger(cfg.operation.maintenanceDelete);

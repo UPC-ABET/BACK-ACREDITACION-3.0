@@ -1,6 +1,8 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateOutcomeDto {
 	@IsOptional()
@@ -66,6 +68,52 @@ export class UpdateOutcomeDto {
 		required: false,
 	})
 	outcomeDescription?: I18nText;
+}
+
+export class OutcomeMaintenanceQueryDto extends PaginationQueryDto {
+	@Type(() => Number)
+	@IsInt()
+	@ApiProperty({ example: 1, required: true, description: 'Program (carrera) id, from header' })
+	programId: number;
+
+	@Type(() => Number)
+	@IsInt()
+	@ApiProperty({ example: 1, required: true, description: 'Academic period id, from header' })
+	academicPeriodId: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'searchExample',
+		description: 'Search by outcome code or outcome name (es / en)',
+	})
+	search?: string;
+}
+
+export class UpdateOutcomeMaintenanceDto {
+	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiPropertyOptional({ example: 'OUT-001' })
+	outcomeCode?: string;
+
+	@IsOptional()
+	@IsObject()
+	@ApiPropertyOptional({ example: { es: 'Nombre', en: 'Name' } })
+	outcomeName?: I18nText;
+
+	@IsOptional()
+	@IsObject()
+	@ApiPropertyOptional({ example: { es: 'Descripción', en: 'Description' } })
+	outcomeDescription?: I18nText;
+}
+
+export interface OutcomeMaintenanceItem {
+	id: number;
+	commissionCode: string;
+	outcomeCode: string;
+	outcomeName: I18nText;
+	outcomeDescription: I18nText;
 }
 
 export class FilterOutcomeDto {

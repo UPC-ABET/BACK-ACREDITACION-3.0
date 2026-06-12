@@ -114,6 +114,12 @@ export class FilterCourseDto {
 	schoolId?: number;
 }
 
+export interface CourseLookupItem {
+	id: number;
+	code: string;
+	name: I18nText;
+}
+
 // ── DTOs for Enrolled Students Endpoint ────────────────────────────────────
 
 export class FilterCourseEnrolledStudentsDto {

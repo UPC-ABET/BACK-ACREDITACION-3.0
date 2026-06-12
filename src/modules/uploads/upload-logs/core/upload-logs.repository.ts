@@ -7,8 +7,8 @@ export interface FindLogsOptions {
 	uploadTypeCode?: string;
 	statusCode?: string;
 	academicPeriodId?: number;
-	limit: number;
-	offset: number;
+	skip: number;
+	take: number;
 }
 
 export class UploadLogRepository extends BaseRepository<UploadLogEntity> {
@@ -24,7 +24,7 @@ export class UploadLogRepository extends BaseRepository<UploadLogEntity> {
 		return await this.update(id, { statusTypeId, rollbackAt: new Date() }, manager);
 	}
 
-	async findLogs(options: FindLogsOptions): Promise<UploadLogEntity[]> {
+	async findLogs(options: FindLogsOptions): Promise<[UploadLogEntity[], number]> {
 		const qb = this.baseQuery();
 		if (options.uploadTypeCode) {
 			qb.andWhere('uploadType.code = :uploadTypeCode', { uploadTypeCode: options.uploadTypeCode });
@@ -39,9 +39,9 @@ export class UploadLogRepository extends BaseRepository<UploadLogEntity> {
 		}
 		return await qb
 			.orderBy('log.createdAt', 'DESC')
-			.limit(options.limit)
-			.offset(options.offset)
-			.getMany();
+			.skip(options.skip)
+			.take(options.take)
+			.getManyAndCount();
 	}
 
 	async findLogById(id: number): Promise<UploadLogEntity | null> {

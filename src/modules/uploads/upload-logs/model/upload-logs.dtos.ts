@@ -1,5 +1,7 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateUploadLogDto {
 	@IsNumber()
@@ -38,6 +40,24 @@ export class CreateUploadLogDto {
 	@IsNumber()
 	@ApiProperty({ example: 0, required: false })
 	error_rows?: number;
+}
+
+export class ListUploadLogsQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({ example: 'MALLA_CURRICULAR' })
+	uploadTypeCode?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({ example: 'COMPLETED' })
+	statusCode?: string;
+
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1 })
+	academicPeriodId?: number;
 }
 
 export class UpdateUploadLogDto {

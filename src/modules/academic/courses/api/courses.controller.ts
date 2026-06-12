@@ -1,4 +1,4 @@
-import { Body, Param, Post, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, Post, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import {
@@ -9,6 +9,7 @@ import {
 	SwaggerCourseGetAll,
 	SwaggerCourseGetById,
 	SwaggerCourseGetByFilters,
+	SwaggerCourseLookup,
 } from './docs/courses.swagger';
 import { CourseService } from './courses.service';
 import {
@@ -18,6 +19,7 @@ import {
 	FilterCourseEnrolledStudentsDto,
 	CourseEnrolledStudentDto,
 } from '../model/courses.dtos';
+import { LookupQueryDto } from 'src/commons/lookup.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
@@ -62,6 +64,12 @@ export class CourseController extends BaseController<CourseService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterCourseDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerCourseLookup()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async lookup(@Query() query: LookupQueryDto) {
+		return parseSuccessResponse(await this.service.getLookup(query));
 	}
 
 	@Post(':courseId/enrolled-students')

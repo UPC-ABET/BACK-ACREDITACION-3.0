@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerCourseSectionController,
@@ -8,13 +8,19 @@ import {
 	SwaggerCourseSectionGetAll,
 	SwaggerCourseSectionGetById,
 	SwaggerCourseSectionGetByFilters,
+	SwaggerCourseSectionMaintenanceList,
+	SwaggerCourseSectionMaintenanceUpdate,
+	SwaggerCourseSectionMaintenanceDelete,
 } from './docs/course-sections.swagger';
 import { CourseSectionService } from './course-sections.service';
 import {
 	CreateCourseSectionDto,
 	UpdateCourseSectionDto,
 	FilterCourseSectionDto,
+	CourseSectionMaintenanceQueryDto,
+	UpdateCourseSectionMaintenanceDto,
 } from '../model/course-sections.dtos';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
@@ -58,5 +64,26 @@ export class CourseSectionController extends BaseController<CourseSectionService
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterCourseSectionDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerCourseSectionMaintenanceList()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async maintenanceList(@Query() query: CourseSectionMaintenanceQueryDto) {
+		return parseSuccessResponse(await this.service.getMaintenanceList(query));
+	}
+
+	@SwaggerCourseSectionMaintenanceUpdate()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.PUT })
+	async maintenanceUpdate(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateCourseSectionMaintenanceDto,
+	) {
+		return parseSuccessResponse(await this.service.updateMaintenance(id, dto));
+	}
+
+	@SwaggerCourseSectionMaintenanceDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.DELETE })
+	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.service.deleteMaintenance(id));
 	}
 }

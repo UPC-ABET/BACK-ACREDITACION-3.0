@@ -3,8 +3,16 @@ import { BaseService } from 'src/commons/base.service';
 import { OutcomeRepository } from '../core/outcomes.repository';
 import { OutcomeValidation } from '../core/outcomes.validation';
 
-import { CreateOutcomeDto, UpdateOutcomeDto } from '../model/outcomes.dtos';
+import {
+	CreateOutcomeDto,
+	UpdateOutcomeDto,
+	OutcomeMaintenanceQueryDto,
+	UpdateOutcomeMaintenanceDto,
+	OutcomeMaintenanceItem,
+} from '../model/outcomes.dtos';
 import { DataSource, EntityManager } from 'typeorm';
+import { OutcomeEntity } from '../model/outcomes.entity';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class OutcomeService extends BaseService<OutcomeRepository> {
@@ -32,5 +40,47 @@ export class OutcomeService extends BaseService<OutcomeRepository> {
 
 	async getById(id: number) {
 		return await this.repository.findByIdWithCommission(id);
+	}
+
+	async getMaintenanceList(
+		query: OutcomeMaintenanceQueryDto,
+	): Promise<PaginatedResult<OutcomeMaintenanceItem>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [outcomes, total] = await this.repository.findMaintenancePage(
+			query.programId,
+			query.academicPeriodId,
+			query.search,
+			skip,
+			take,
+		);
+
+		return toPaginated(outcomes.map((outcome) => this.toMaintenanceItem(outcome)), total, page, pageSize);
+	}
+
+	async updateMaintenance(id: number, dto: UpdateOutcomeMaintenanceDto) {
+		await OutcomeValidation.validateMaintenanceUpdate(this.repository, id, dto);
+		await this.repository.update(id, dto);
+		return await this.getMaintenanceItem(id);
+	}
+
+	async deleteMaintenance(id: number) {
+		await OutcomeValidation.validateMaintenanceDelete(this.repository, id);
+		await this.repository.remove(id);
+		return { id };
+	}
+
+	private async getMaintenanceItem(id: number): Promise<OutcomeMaintenanceItem | null> {
+		const outcome = await this.repository.findByIdWithCommission(id);
+		return outcome ? this.toMaintenanceItem(outcome) : null;
+	}
+
+	private toMaintenanceItem(outcome: OutcomeEntity): OutcomeMaintenanceItem {
+		return {
+			id: outcome.id,
+			commissionCode: outcome.programCommission.commission.code,
+			outcomeCode: outcome.outcomeCode,
+			outcomeName: outcome.outcomeName,
+			outcomeDescription: outcome.outcomeDescription,
+		};
 	}
 }

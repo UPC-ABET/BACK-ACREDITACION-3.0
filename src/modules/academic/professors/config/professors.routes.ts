@@ -15,6 +15,23 @@ export const professorsRoutes = {
 				summary: 'Obtener profesor por ID de usuario',
 				params: [{ name: 'id', description: 'ID del usuario', type: Number }],
 			},
+			maintenanceList: {
+				method: 'GET',
+				route: '/maintenance',
+				summary: 'Listar profesores (mantenimiento) con paginación',
+			},
+			maintenanceUpdate: {
+				method: 'PUT',
+				route: '/maintenance/:id',
+				summary: 'Actualizar profesor (mantenimiento)',
+				params: [{ name: 'id', description: 'ID del profesor', type: Number }],
+			},
+			maintenanceDelete: {
+				method: 'DELETE',
+				route: '/maintenance/:id',
+				summary: 'Eliminar profesor (mantenimiento)',
+				params: [{ name: 'id', description: 'ID del profesor', type: Number }],
+			},
 		},
 	},
 };

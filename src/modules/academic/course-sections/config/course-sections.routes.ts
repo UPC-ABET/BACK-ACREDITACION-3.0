@@ -13,6 +13,23 @@ export const courseSectionsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar secciones de curso',
 			},
+			maintenanceList: {
+				method: 'GET',
+				route: '/maintenance',
+				summary: 'Listar secciones (mantenimiento) con paginación',
+			},
+			maintenanceUpdate: {
+				method: 'PUT',
+				route: '/maintenance/:id',
+				summary: 'Actualizar sección (mantenimiento)',
+				params: [{ name: 'id', description: 'ID de la sección', type: Number }],
+			},
+			maintenanceDelete: {
+				method: 'DELETE',
+				route: '/maintenance/:id',
+				summary: 'Eliminar sección (mantenimiento)',
+				params: [{ name: 'id', description: 'ID de la sección', type: Number }],
+			},
 		},
 	},
 };

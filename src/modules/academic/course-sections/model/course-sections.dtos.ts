@@ -1,5 +1,8 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { I18nText } from 'src/shared/types/i18n';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateCourseSectionDto {
 	@IsOptional()
@@ -85,6 +88,59 @@ export class UpdateCourseSectionDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	sectionModalityTypeId?: number;
+}
+
+export class CourseSectionMaintenanceQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Academic period id (from header)' })
+	academicPeriodId?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'searchExample',
+		description: 'Search by section, course, professor or campus code',
+	})
+	search?: string;
+}
+
+export class UpdateCourseSectionMaintenanceDto {
+	@IsOptional()
+	@IsString()
+	@Length(1, 50)
+	@ApiPropertyOptional({ example: 'SEC-01' })
+	sectionCode?: string;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	courseId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	professorId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	campusId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	sectionModalityTypeId?: number;
+}
+
+export interface CourseSectionMaintenanceItem {
+	id: number;
+	courseCode: string;
+	sectionCode: string;
+	professorCode: string;
+	campusCode: string;
+	modalityTypeName: I18nText;
 }
 
 export class FilterCourseSectionDto {

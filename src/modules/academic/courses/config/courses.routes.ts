@@ -9,6 +9,11 @@ export const coursesRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar cursos' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener curso' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar cursos' },
+			lookup: {
+				method: 'GET',
+				route: '/lookup',
+				summary: 'Buscar cursos para select (paginado, búsqueda por código o nombre)',
+			},
 		},
 	},
 };

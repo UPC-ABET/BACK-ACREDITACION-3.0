@@ -1,6 +1,12 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { outcomesRoutes } from '../../config/outcomes.routes';
-import { CreateOutcomeDto, UpdateOutcomeDto, FilterOutcomeDto } from '../../model/outcomes.dtos';
+import {
+	CreateOutcomeDto,
+	UpdateOutcomeDto,
+	FilterOutcomeDto,
+	OutcomeMaintenanceQueryDto,
+	UpdateOutcomeMaintenanceDto,
+} from '../../model/outcomes.dtos';
 
 const cfg = outcomesRoutes.outcomes;
 
@@ -21,3 +27,12 @@ export const SwaggerOutcomeGetById = () => HttpMethodWithSwagger(cfg.operation.g
 
 export const SwaggerOutcomeGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterOutcomeDto });
+
+export const SwaggerOutcomeMaintenanceList = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: OutcomeMaintenanceQueryDto });
+
+export const SwaggerOutcomeMaintenanceUpdate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceUpdate, body: UpdateOutcomeMaintenanceDto });
+
+export const SwaggerOutcomeMaintenanceDelete = () =>
+	HttpMethodWithSwagger(cfg.operation.maintenanceDelete);

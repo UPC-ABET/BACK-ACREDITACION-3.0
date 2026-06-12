@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 
 import { UploadLogService } from './upload-logs.service';
+import { ListUploadLogsQueryDto } from '../model/upload-logs.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
@@ -14,22 +15,8 @@ export class UploadLogController {
 	@Get()
 	@ApiOperation({ summary: 'List upload history (audit.upload_logs) with optional filters' })
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
-	async list(
-		@Query('uploadTypeCode') uploadTypeCode?: string,
-		@Query('statusCode') statusCode?: string,
-		@Query('academicPeriodId') academicPeriodId?: string,
-		@Query('limit') limit?: string,
-		@Query('offset') offset?: string,
-	) {
-		return parseSuccessResponse(
-			await this.service.listLogs({
-				uploadTypeCode,
-				statusCode,
-				academicPeriodId: academicPeriodId ? Number(academicPeriodId) : undefined,
-				limit: limit ? Math.min(Number(limit), 200) : 50,
-				offset: offset ? Number(offset) : 0,
-			}),
-		);
+	async list(@Query() query: ListUploadLogsQueryDto) {
+		return parseSuccessResponse(await this.service.listLogs(query));
 	}
 
 	@Get(':id')

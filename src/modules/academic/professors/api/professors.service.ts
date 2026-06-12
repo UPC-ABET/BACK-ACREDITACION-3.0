@@ -7,9 +7,17 @@ import {
 	CreateProfessorDto,
 	UpdateProfessorDto,
 	FilterProfessorDto,
+	ProfessorMaintenanceQueryDto,
+	UpdateProfessorMaintenanceDto,
+	ProfessorMaintenanceItem,
 } from '../model/professors.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { ProfessorEntity } from '../model/professors.entity';
+import {
+	PaginatedResult,
+	resolvePagination,
+	toPaginated,
+} from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class ProfessorService extends BaseService<ProfessorRepository> {
@@ -74,5 +82,50 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 
 	async getByUserId(userId: number) {
 		return await this.repository.getByUserId(userId);
+	}
+
+	async getMaintenanceList(
+		query: ProfessorMaintenanceQueryDto,
+	): Promise<PaginatedResult<ProfessorMaintenanceItem>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [professors, total] = await this.repository.findMaintenancePage(
+			query.search,
+			skip,
+			take,
+		);
+
+		const items = professors.map((professor) => ({
+			id: professor.id,
+			staffId: professor.staffId,
+			code: professor.code,
+			firstName: professor.staff.firstName,
+			lastName: professor.staff.lastName,
+		}));
+
+		return toPaginated(items, total, page, pageSize);
+	}
+
+	async updateMaintenance(id: number, dto: UpdateProfessorMaintenanceDto) {
+		await ProfessorValidation.validateMaintenanceUpdate(this.repository, id, dto);
+		await this.repository.updateMaintenance(id, dto);
+		return await this.getMaintenanceItem(id);
+	}
+
+	async deleteMaintenance(id: number) {
+		await ProfessorValidation.validateMaintenanceDelete(this.repository, id);
+		await this.repository.deleteWithStaff(id);
+		return { id };
+	}
+
+	private async getMaintenanceItem(id: number): Promise<ProfessorMaintenanceItem | null> {
+		const professor = await this.repository.findOneById(id, ['staff']);
+		if (!professor) return null;
+		return {
+			id: professor.id,
+			staffId: professor.staffId,
+			code: professor.code,
+			firstName: professor.staff.firstName,
+			lastName: professor.staff.lastName,
+		};
 	}
 }

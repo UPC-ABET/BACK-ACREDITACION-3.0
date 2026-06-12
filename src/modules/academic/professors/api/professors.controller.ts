@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProfessorController,
@@ -9,12 +9,17 @@ import {
 	SwaggerProfessorGetById,
 	SwaggerProfessorGetByFilters,
 	SwaggerProfessorGetByUserId,
+	SwaggerProfessorMaintenanceList,
+	SwaggerProfessorMaintenanceUpdate,
+	SwaggerProfessorMaintenanceDelete,
 } from './docs/professors.swagger';
 import { ProfessorService } from './professors.service';
 import {
 	CreateProfessorDto,
 	UpdateProfessorDto,
 	FilterProfessorDto,
+	ProfessorMaintenanceQueryDto,
+	UpdateProfessorMaintenanceDto,
 } from '../model/professors.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -66,5 +71,26 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
 	async getByUserId(@Param('id', ParseIntPipe) userId: number) {
 		return parseSuccessResponse(await this.service.getByUserId(userId));
+	}
+
+	@SwaggerProfessorMaintenanceList()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async maintenanceList(@Query() query: ProfessorMaintenanceQueryDto) {
+		return parseSuccessResponse(await this.service.getMaintenanceList(query));
+	}
+
+	@SwaggerProfessorMaintenanceUpdate()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.PUT })
+	async maintenanceUpdate(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: UpdateProfessorMaintenanceDto,
+	) {
+		return parseSuccessResponse(await this.service.updateMaintenance(id, dto));
+	}
+
+	@SwaggerProfessorMaintenanceDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.DELETE })
+	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.service.deleteMaintenance(id));
 	}
 }
