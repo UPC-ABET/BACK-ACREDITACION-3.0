@@ -8,6 +8,7 @@ export const usersValidationStrings = {
 		noRolesAssigned: 'error.user.noRolesAssigned',
 		noPermissionsAssigned: 'error.user.noPermissionsAssigned',
 		inactiveOrNotFound: 'error.user.inactiveOrNotFound',
+		staffNotFound: 'error.user.staffNotFound',
 	},
 	result: {
 		createFailed: 'error.user.createFailed',

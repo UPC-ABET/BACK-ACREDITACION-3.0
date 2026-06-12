@@ -47,10 +47,13 @@ export class CreateNotificationLogDto {
 	@ApiProperty({ example: 'provider-message-id', required: false, nullable: true })
 	providerMessageId?: string | null;
 
-	@IsOptional()
-	@IsString()
-	@ApiProperty({ example: 'sent', required: false, nullable: true })
-	status?: string | null;
+	@IsInt()
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'core.types id of the notification status (TG1001)',
+	})
+	statusTypeId: number;
 
 	@IsOptional()
 	@IsString()
@@ -81,6 +84,6 @@ export class FilterNotificationLogDto {
 	notifierUserId?: number;
 
 	@IsOptional()
-	@ApiProperty({ example: 'sent', required: false })
-	status?: string;
+	@ApiProperty({ example: 1, required: false })
+	statusTypeId?: number;
 }

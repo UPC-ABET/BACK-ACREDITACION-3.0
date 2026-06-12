@@ -128,6 +128,14 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			i18n('Categoria de plantilla de correo', 'Email template category'),
 			i18n('Categorias para agrupar plantillas de correo', 'Categories to group email templates'),
 		],
+		[
+			'TG1005',
+			i18n('Estado de bitacora de notificacion', 'Notification log status'),
+			i18n(
+				'Resultado del envio registrado en la bitacora de notificaciones',
+				'Send outcome recorded in the notification log',
+			),
+		],
 	];
 
 	const typeGroupValues = typeGroupRows
@@ -677,6 +685,20 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'TG1001-T002',
 			i18n('Enviada', 'Sent'),
 			i18n('Notificacion enviada', 'Sent notification'),
+			'{}',
+		],
+		[
+			'TG1005',
+			'TG1005-T001',
+			i18n('Enviada', 'Sent'),
+			i18n('Correo enviado correctamente', 'Email sent successfully'),
+			'{}',
+		],
+		[
+			'TG1005',
+			'TG1005-T002',
+			i18n('Fallida', 'Failed'),
+			i18n('El envio del correo fallo', 'Email send failed'),
 			'{}',
 		],
 		[

@@ -11,11 +11,7 @@ import {
 	SwaggerUserRoleGetByFilters,
 } from './docs/user-roles.swagger';
 import { UserRoleService } from './user-roles.service';
-import {
-	CreateUserRoleDto,
-	UpdateUserRoleDto,
-	FilterUserRoleDto,
-} from '../model/user-roles.dtos';
+import { CreateUserRoleDto, UpdateUserRoleDto, FilterUserRoleDto } from '../model/user-roles.dtos';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerUserRoleController()

@@ -118,7 +118,7 @@ runSeed('survey module', async (tenantDataSource) => {
 		SELECT survey.id, notification_status.id, v.token, v.max_register_date::timestamptz
 		FROM (
 			VALUES
-				(20260101, 'TG1001-T002', 'TOKEN-SURVEY-20260101', '2026-07-05 23:59:59'),
+				(20260101, 'TG1001-T001', 'TOKEN-SURVEY-20260101', '2026-07-05 23:59:59'),
 				(20260102, 'TG1001-T001', 'TOKEN-SURVEY-20260102', '2026-07-05 23:59:59')
 		) AS v(survey_number, notification_status_type_code, token, max_register_date)
 		JOIN "evidence"."surveys" survey

@@ -35,9 +35,9 @@ describe('UserRoleValidation', () => {
 
 		it('throws when assignment not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(
-				UserRoleValidation.validateUpdate(mockRepo as any, 99, {}),
-			).rejects.toThrow(HttpException);
+			await expect(UserRoleValidation.validateUpdate(mockRepo as any, 99, {})).rejects.toThrow(
+				HttpException,
+			);
 		});
 
 		it('throws when the new pairing collides with another row', async () => {
@@ -52,16 +52,14 @@ describe('UserRoleValidation', () => {
 	describe('validateDelete', () => {
 		it('passes when assignment exists', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
-			await expect(
-				UserRoleValidation.validateDelete(mockRepo as any, 1),
-			).resolves.toBeUndefined();
+			await expect(UserRoleValidation.validateDelete(mockRepo as any, 1)).resolves.toBeUndefined();
 		});
 
 		it('throws when assignment not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(
-				UserRoleValidation.validateDelete(mockRepo as any, 99),
-			).rejects.toThrow(HttpException);
+			await expect(UserRoleValidation.validateDelete(mockRepo as any, 99)).rejects.toThrow(
+				HttpException,
+			);
 		});
 	});
 });
