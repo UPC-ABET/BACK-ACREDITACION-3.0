@@ -64,10 +64,10 @@ export class CourseService extends BaseService<CourseRepository> {
 			.innerJoinAndSelect('sse.courseSection', 'cs')
 			.innerJoinAndSelect('sse.enrolledStudent', 'es')
 			.innerJoinAndSelect('es.student', 's')
-			.innerJoinAndSelect('s.user', 'student_user')
+			.leftJoinAndSelect('s.user', 'student_user')
 			.innerJoinAndSelect('cs.professor', 'p')
 			.innerJoinAndSelect('p.staff', 'st')
-			.innerJoinAndSelect('st.user', 'prof_user')
+			.leftJoinAndSelect('st.user', 'prof_user')
 			.where('cs.course_id = :courseId', { courseId });
 
 		if (filters?.isActive !== undefined) {
@@ -86,9 +86,10 @@ export class CourseService extends BaseService<CourseRepository> {
 		}
 
 		if (filters?.studyPlanAcademicPeriodId !== undefined) {
-			qb.andWhere('es.study_plan_academic_period = :studyPlanAcademicPeriodId', {
-				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
-			});
+			qb.andWhere(
+				`cs.course_id IN (SELECT spc_filter.course_id FROM academic.study_plan_courses spc_filter WHERE spc_filter.study_plan_academic_period_id = :studyPlanAcademicPeriodId)`,
+				{ studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId },
+			);
 		}
 
 		const results = await qb.getMany();
@@ -99,15 +100,27 @@ export class CourseService extends BaseService<CourseRepository> {
 					id: item.enrolledStudentId,
 					studentSectionEnrollmentId: item.id,
 					studentId: item.enrolledStudent.studentId,
-					firstName: item.enrolledStudent.student.user.firstName,
-					lastName: item.enrolledStudent.student.user.lastName,
-					email: item.enrolledStudent.student.user.email,
-					studentCode: `EST-${item.enrolledStudent.student.user.documentCode}`,
+					firstName:
+						item.enrolledStudent.student.user?.firstName ||
+						item.enrolledStudent.student.firstName ||
+						'',
+					lastName:
+						item.enrolledStudent.student.user?.lastName ||
+						item.enrolledStudent.student.lastName ||
+						'',
+					email: item.enrolledStudent.student.user?.email || '',
+					studentCode: `EST-${item.enrolledStudent.student.user?.documentCode ?? item.enrolledStudent.student.code}`,
 					courseSectionId: item.courseSectionId,
 					sectionCode: item.courseSection.sectionCode,
 					professorId: item.courseSection.professorId,
-					professorFirstName: item.courseSection.professor.staff.user.firstName,
-					professorLastName: item.courseSection.professor.staff.user.lastName,
+					professorFirstName:
+						item.courseSection.professor.staff.user?.firstName ||
+						item.courseSection.professor.staff.firstName ||
+						'',
+					professorLastName:
+						item.courseSection.professor.staff.user?.lastName ||
+						item.courseSection.professor.staff.lastName ||
+						'',
 					campusId: item.courseSection.campusId,
 					enrollmentDate: item.createdAt,
 					isActive: item.isActive,

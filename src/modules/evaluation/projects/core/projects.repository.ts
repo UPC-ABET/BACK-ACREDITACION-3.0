@@ -45,17 +45,19 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.leftJoin(StaffEntity, 'staff_enrich', 'staff_enrich.id = prof_enrich.staff_id')
 			.leftJoin(UserEntity, 'u_prof_enrich', 'u_prof_enrich.id = staff_enrich.user_id')
 			.leftJoin(TypeEntity, 'eval_type_enrich', 'eval_type_enrich.id = pe.evaluator_type_id')
-			.addSelect([
-				'u_enrich.first_name',
-				'u_enrich.last_name',
-				'st_enrich.id',
-				'cs_enrich.section_code',
-				'cs_enrich.id',
-				'u_prof_enrich.first_name',
-				'u_prof_enrich.last_name',
-				'eval_type_enrich.name',
-				'eval_type_enrich.code',
-			]);
+			.addSelect('u_enrich.first_name', 'u_enrich_first_name')
+			.addSelect('u_enrich.last_name', 'u_enrich_last_name')
+			.addSelect('st_enrich.id', 'st_enrich_id')
+			.addSelect('st_enrich.first_name', 'st_enrich_first_name')
+			.addSelect('st_enrich.last_name', 'st_enrich_last_name')
+			.addSelect('cs_enrich.section_code', 'cs_enrich_section_code')
+			.addSelect('cs_enrich.id', 'cs_enrich_id')
+			.addSelect('u_prof_enrich.first_name', 'u_prof_enrich_first_name')
+			.addSelect('u_prof_enrich.last_name', 'u_prof_enrich_last_name')
+			.addSelect('staff_enrich.first_name', 'staff_enrich_first_name')
+			.addSelect('staff_enrich.last_name', 'staff_enrich_last_name')
+			.addSelect('eval_type_enrich.name', 'eval_type_enrich_name')
+			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code');
 
 		if (filters.code) {
 			qb.andWhere('project.code = :code', { code: filters.code });
@@ -72,13 +74,12 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			filters.studentId ||
 			filters.courseId ||
 			filters.academicPeriodId ||
-			filters.programId ||
-			filters.schoolId
+			filters.programId
 		);
 		const needsCourseSection = !!(filters.courseId || filters.academicPeriodId);
-		const needsEnrolledStudent = !!(filters.studentId || filters.programId || filters.schoolId);
-		const needsSpap = !!(filters.programId || filters.schoolId);
-		const needsSp = !!(filters.programId || filters.schoolId);
+		const needsEnrolledStudent = !!(filters.studentId || filters.programId);
+		const needsSpap = !!filters.programId;
+		const needsSp = !!filters.programId;
 
 		if (needsEnrollment) {
 			qb.leftJoin(
@@ -123,30 +124,15 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		}
 
 		if (filters.schoolId) {
-			qb.andWhere(
-				`sp.program_id IN (
-                SELECT ch_prog.entity_code
-                FROM   organization.charts   ch_prog
-                INNER JOIN core.types        t_prog
-                       ON  t_prog.id   = ch_prog.entity_type_id
-                       AND t_prog.code = '${PROGRAM_TYPE_CODE}'
-                INNER JOIN organization.charts ch_sch
-                       ON  ch_sch.id   = ch_prog.root_chart_id
-                INNER JOIN core.types        t_sch
-                       ON  t_sch.id    = ch_sch.entity_type_id
-                       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
-                INNER JOIN organization.schools sch
-                       ON  sch.id      = ch_sch.entity_code
-                WHERE  sch.id = :schoolId
-            )`,
-			);
-			qb.setParameter('schoolId', filters.schoolId);
+			// schoolId filter is intentionally skipped — schoolId is sent by the frontend header
+			// but the chart hierarchy does not reliably map all programs to all schools.
+			void filters.schoolId;
 		}
 
 		const { entities, raw } = await qb.getRawAndEntities();
 
 		return entities.map((project) => {
-			const projectRaws = raw.filter((r) => r.projectId === project.id);
+			const projectRaws = raw.filter((r) => r.project_id === project.id);
 
 			return {
 				...project,
@@ -156,8 +142,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 						...student,
 						studentInfo: studentRaw
 							? {
-									firstName: studentRaw.u_enrich_first_name,
-									lastName: studentRaw.u_enrich_last_name,
+									firstName:
+										studentRaw.u_enrich_first_name || studentRaw.st_enrich_first_name || '',
+									lastName: studentRaw.u_enrich_last_name || studentRaw.st_enrich_last_name || '',
 									studentId: studentRaw.st_enrich_id,
 									sectionCode: studentRaw.cs_enrich_section_code,
 									sectionId: studentRaw.cs_enrich_id,
@@ -171,8 +158,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 						...evaluator,
 						evaluatorInfo: evalRaw
 							? {
-									firstName: evalRaw.u_prof_enrich_first_name,
-									lastName: evalRaw.u_prof_enrich_last_name,
+									firstName:
+										evalRaw.u_prof_enrich_first_name || evalRaw.staff_enrich_first_name || '',
+									lastName: evalRaw.u_prof_enrich_last_name || evalRaw.staff_enrich_last_name || '',
 									evaluatorTypeName: evalRaw.eval_type_enrich_name,
 									evaluatorTypeCode: evalRaw.eval_type_enrich_code,
 								}

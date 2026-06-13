@@ -368,7 +368,8 @@ export class ProjectConfigService {
 		}
 
 		const studentDtos = (project.students || []).map((s) => {
-			const user = s.studentSectionEnrollment?.enrolledStudent?.student?.user;
+			const stu = s.studentSectionEnrollment?.enrolledStudent?.student;
+			const user = stu?.user;
 			const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
 
 			let totalGrade: number | null = null;
@@ -396,10 +397,10 @@ export class ProjectConfigService {
 			return {
 				id: s.id,
 				studentId: s.studentSectionEnrollment?.enrolledStudent?.studentId || 0,
-				firstName: user?.firstName || '',
-				lastName: user?.lastName || '',
+				firstName: user?.firstName || stu?.firstName || '',
+				lastName: user?.lastName || stu?.lastName || '',
 				email: user?.email || '',
-				studentCode: user?.documentCode ? String(user.documentCode) : '',
+				studentCode: user?.documentCode ? String(user.documentCode) : stu?.code || '',
 				totalGrade: isEvaluationMode ? totalGrade : null,
 				evaluations: evaluationStatuses,
 			};
@@ -446,14 +447,15 @@ export class ProjectConfigService {
 		}
 
 		const evaluatorDtos = (project.evaluators || []).map((e) => {
-			const professorUser = e.professor?.staff?.user;
+			const staff = e.professor?.staff;
+			const professorUser = staff?.user;
 			const evaluatorType = evaluatorTypesMap.get(e.evaluatorTypeId);
 
 			return {
 				id: e.id,
 				professorId: e.professorId,
-				professorFirstName: professorUser?.firstName || '',
-				professorLastName: professorUser?.lastName || '',
+				professorFirstName: professorUser?.firstName || staff?.firstName || '',
+				professorLastName: professorUser?.lastName || staff?.lastName || '',
 				professorEmail: professorUser?.email || '',
 				evaluatorTypeId: e.evaluatorTypeId,
 				evaluatorTypeName: evaluatorType?.name || '',
@@ -575,17 +577,17 @@ export class ProjectConfigService {
       -- evaluadores
       all_pe.id         AS "evalId",
       all_pe.professor_id AS "evalProfessorId",
-      all_u.first_name  AS "evalFirstName",
-      all_u.last_name   AS "evalLastName",
+      COALESCE(all_u.first_name, all_st.first_name, '') AS "evalFirstName",
+      COALESCE(all_u.last_name, all_st.last_name, '')   AS "evalLastName",
       all_u.email       AS "evalEmail",
       all_et.name       AS "evalTypeName",
       -- estudiantes
       ps.id             AS "studentPsId",
       stu.id            AS "studentId",
-      su.first_name     AS "stuFirstName",
-      su.last_name      AS "stuLastName",
+      COALESCE(su.first_name, stu.first_name, '') AS "stuFirstName",
+      COALESCE(su.last_name, stu.last_name, '')   AS "stuLastName",
       su.email          AS "stuEmail",
-      su.document_code  AS "stuCode",
+      COALESCE(su.document_code::text, stu.code, '') AS "stuCode",
       -- curso
       c.name            AS "courseName"
     FROM evaluation.projects p
