@@ -1,4 +1,12 @@
-import { IsArray, IsBoolean, IsInt, IsNumber, IsOptional, ValidateNested } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsIn,
+	IsInt,
+	IsNumber,
+	IsOptional,
+	ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -77,6 +85,17 @@ export class CourseOutcomeMappingViewDto {
 	@IsInt()
 	@ApiProperty({ example: 1, required: true })
 	programCommissionId: number;
+}
+
+export class ExportCourseOutcomeMappingDto {
+	@IsInt()
+	@ApiProperty({ example: 1, required: true })
+	programCommissionId: number;
+
+	@IsOptional()
+	@IsIn(['es', 'en'])
+	@ApiProperty({ example: 'es', required: false, enum: ['es', 'en'] })
+	lang?: 'es' | 'en';
 }
 
 export class BulkSaveCourseOutcomeDto {

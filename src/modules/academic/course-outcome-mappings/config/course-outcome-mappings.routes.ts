@@ -23,6 +23,11 @@ export const courseOutcomeMappingsRoutes = {
 				route: '/maintenance/bulk-save',
 				summary: 'Guardar el mapeo de outcomes por curso de una carrera-comision',
 			},
+			maintenanceExport: {
+				method: 'POST',
+				route: '/maintenance/export',
+				summary: 'Exportar la articulación de una carrera-comision en PDF',
+			},
 		},
 	},
 };
