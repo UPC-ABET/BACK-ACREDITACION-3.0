@@ -8,6 +8,7 @@ import {
 	UpdateCourseSectionDto,
 	CourseSectionMaintenanceQueryDto,
 	UpdateCourseSectionMaintenanceDto,
+	CreateCourseSectionMaintenanceDto,
 	CourseSectionMaintenanceItem,
 } from '../model/course-sections.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -56,6 +57,19 @@ export class CourseSectionService extends BaseService<CourseSectionRepository> {
 			page,
 			pageSize,
 		);
+	}
+
+	async createMaintenance(academicPeriodId: number, dto: CreateCourseSectionMaintenanceDto) {
+		await CourseSectionValidation.validateMaintenanceCreate(this.repository, academicPeriodId, dto);
+		const created = await this.repository.create({
+			courseId: dto.courseId,
+			professorId: dto.professorId,
+			campusId: dto.campusId,
+			sectionModalityTypeId: dto.sectionModalityTypeId,
+			sectionCode: dto.sectionCode,
+			academicPeriodId,
+		});
+		return await this.getMaintenanceItem(created.id);
 	}
 
 	async updateMaintenance(id: number, dto: UpdateCourseSectionMaintenanceDto) {

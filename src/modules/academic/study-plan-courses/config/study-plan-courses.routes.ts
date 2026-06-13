@@ -30,6 +30,11 @@ export const studyPlanCoursesRoutes = {
 				route: '/enable-evaluation/:id',
 				summary: 'Habilitar o deshabilitar evaluacion de un curso de plan de estudio',
 			},
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Agregar curso al plan de estudio (mantenimiento)',
+			},
 			maintenanceDelete: {
 				method: 'DELETE',
 				route: '/maintenance/:id',

@@ -68,6 +68,24 @@ describe('StudentSectionEnrollmentValidation', () => {
 		});
 	});
 
+	describe('validateMaintenanceCreate', () => {
+		const dto = { courseSectionId: 3, enrolledStudentId: 4 };
+
+		it('passes when the pair is free', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the enrollment already exists', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
+			await expect(
+				StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
 	describe('validateMaintenanceUpdate', () => {
 		const existing = { id: 1, enrolledStudentId: 10, courseSectionId: 20 };
 

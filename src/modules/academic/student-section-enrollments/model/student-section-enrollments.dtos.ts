@@ -90,6 +90,16 @@ export class UpdateStudentSectionEnrollmentMaintenanceDto {
 	enrolledStudentId?: number;
 }
 
+export class CreateStudentSectionEnrollmentMaintenanceDto {
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Course section id' })
+	courseSectionId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Enrolled student id' })
+	enrolledStudentId: number;
+}
+
 export interface StudentSectionEnrollmentMaintenanceItem {
 	id: number;
 	courseName: I18nText;

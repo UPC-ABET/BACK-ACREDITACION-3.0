@@ -8,6 +8,7 @@ import {
 	UpdateEnrolledStudentDto,
 	EnrolledStudentMaintenanceQueryDto,
 	UpdateEnrolledStudentMaintenanceDto,
+	CreateEnrolledStudentMaintenanceDto,
 	EnrolledStudentMaintenanceItem,
 } from '../model/enrolled-students.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -57,6 +58,24 @@ export class EnrolledStudentService extends BaseService<EnrolledStudentRepositor
 			page,
 			pageSize,
 		);
+	}
+
+	async createMaintenance(academicPeriodId: number, dto: CreateEnrolledStudentMaintenanceDto) {
+		const studyPlanAcademicPeriodId = await this.repository.findStudyPlanAcademicPeriodId(
+			dto.programId,
+			academicPeriodId,
+		);
+		const existingStudentId = await this.repository.findStudentIdByCode(dto.studentCode);
+
+		await EnrolledStudentValidation.validateMaintenanceCreate(
+			this.repository,
+			studyPlanAcademicPeriodId,
+			existingStudentId,
+			dto,
+		);
+
+		const id = await this.repository.createMaintenance(dto, studyPlanAcademicPeriodId as number);
+		return await this.getMaintenanceItem(id);
 	}
 
 	async updateMaintenance(id: number, dto: UpdateEnrolledStudentMaintenanceDto) {

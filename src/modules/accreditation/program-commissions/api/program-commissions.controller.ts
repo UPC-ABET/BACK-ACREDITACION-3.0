@@ -56,7 +56,11 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 		@Query() query: CommissionOptionsQueryDto,
 	) {
 		return parseSuccessResponse(
-			await this.service.getCommissionOptions(academicPeriodId, query.accreditorId),
+			await this.service.getCommissionOptions(
+				academicPeriodId,
+				query.accreditorId,
+				query.programId,
+			),
 		);
 	}
 

@@ -161,6 +161,35 @@ export class UpdateEnrolledStudentMaintenanceDto {
 	enrollementModalityTypeId?: number;
 }
 
+export class CreateEnrolledStudentMaintenanceDto {
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'STU-0001' })
+	studentCode: string;
+
+	@IsString()
+	@Length(1, 255)
+	@ApiProperty({ example: 'John' })
+	firstName: string;
+
+	@IsString()
+	@Length(1, 255)
+	@ApiProperty({ example: 'Doe' })
+	lastName: string;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program (carrera) id' })
+	programId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1 })
+	campusId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Enrollment modality type id' })
+	enrollementModalityTypeId: number;
+}
+
 export interface EnrolledStudentMaintenanceItem {
 	id: number;
 	studentCode: string;

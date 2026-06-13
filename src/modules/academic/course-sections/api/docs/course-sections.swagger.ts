@@ -6,6 +6,7 @@ import {
 	FilterCourseSectionDto,
 	CourseSectionMaintenanceQueryDto,
 	UpdateCourseSectionMaintenanceDto,
+	CreateCourseSectionMaintenanceDto,
 } from '../../model/course-sections.dtos';
 
 const cfg = courseSectionsRoutes.courseSections;
@@ -27,6 +28,12 @@ export const SwaggerCourseSectionGetById = () => HttpMethodWithSwagger(cfg.opera
 
 export const SwaggerCourseSectionGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterCourseSectionDto });
+
+export const SwaggerCourseSectionMaintenanceCreate = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceCreate,
+		body: CreateCourseSectionMaintenanceDto,
+	});
 
 export const SwaggerCourseSectionMaintenanceList = () =>
 	HttpMethodWithSwagger({

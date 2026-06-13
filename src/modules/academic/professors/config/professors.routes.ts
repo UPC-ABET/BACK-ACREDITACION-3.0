@@ -15,6 +15,11 @@ export const professorsRoutes = {
 				summary: 'Obtener profesor por ID de usuario',
 				params: [{ name: 'id', description: 'ID del usuario', type: Number }],
 			},
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Registrar profesor (mantenimiento)',
+			},
 			maintenanceList: {
 				method: 'GET',
 				route: '/maintenance',

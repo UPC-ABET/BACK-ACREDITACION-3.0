@@ -69,6 +69,24 @@ describe('ProfessorValidation', () => {
 		});
 	});
 
+	describe('validateMaintenanceCreate', () => {
+		const dto = { code: 'P1', firstName: 'John', lastName: 'Doe' };
+
+		it('passes when the code is free', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				ProfessorValidation.validateMaintenanceCreate(mockRepo as any, dto),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the code already exists', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9, code: 'P1' });
+			await expect(
+				ProfessorValidation.validateMaintenanceCreate(mockRepo as any, dto),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
 	describe('validateMaintenanceUpdate', () => {
 		it('passes when the code is unchanged', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1, code: 'P1' });

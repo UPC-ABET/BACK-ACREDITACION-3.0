@@ -92,6 +92,16 @@ export class CommissionOptionsQueryDto {
 	@IsInt()
 	@ApiProperty({ example: 1, required: false })
 	accreditorId?: number;
+
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Only commissions linked to this program in the active period',
+	})
+	programId?: number;
 }
 
 export class ProgramOptionsQueryDto {

@@ -13,6 +13,11 @@ export const courseSectionsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar secciones de curso',
 			},
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Registrar sección (mantenimiento)',
+			},
 			maintenanceList: {
 				method: 'GET',
 				route: '/maintenance',

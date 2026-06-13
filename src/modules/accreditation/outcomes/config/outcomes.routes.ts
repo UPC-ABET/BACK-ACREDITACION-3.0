@@ -9,6 +9,11 @@ export const outcomesRoutes = {
 			getAll: { method: 'GET', route: '/get-all', summary: 'Listar outcomes' },
 			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Obtener outcome' },
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar outcomes' },
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Registrar outcome (mantenimiento)',
+			},
 			maintenanceList: {
 				method: 'GET',
 				route: '/maintenance',

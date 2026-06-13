@@ -127,6 +127,29 @@ export class UpdateCourseSectionMaintenanceDto {
 	sectionModalityTypeId?: number;
 }
 
+export class CreateCourseSectionMaintenanceDto {
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'SEC-01' })
+	sectionCode: string;
+
+	@IsNumber()
+	@ApiProperty({ example: 1 })
+	courseId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1 })
+	professorId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1 })
+	campusId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1 })
+	sectionModalityTypeId: number;
+}
+
 export interface CourseSectionMaintenanceItem {
 	id: number;
 	courseCode: string;

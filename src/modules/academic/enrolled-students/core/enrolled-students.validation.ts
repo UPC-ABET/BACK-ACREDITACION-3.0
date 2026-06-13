@@ -4,7 +4,10 @@ import {
 	EnrolledStudentDeleteBlockerCounts,
 } from './enrolled-students.repository';
 import { enrolledStudentsValidationStrings } from '../config/strings/enrolled-students.validation';
-import { UpdateEnrolledStudentMaintenanceDto } from '../model/enrolled-students.dtos';
+import {
+	UpdateEnrolledStudentMaintenanceDto,
+	CreateEnrolledStudentMaintenanceDto,
+} from '../model/enrolled-students.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof EnrolledStudentDeleteBlockerCounts, string]> = [
 	[
@@ -73,6 +76,34 @@ export class EnrolledStudentValidation {
 				{
 					message: enrolledStudentsValidationStrings.result.deleteFailed,
 				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: EnrolledStudentRepository,
+		studyPlanAcademicPeriodId: number | null,
+		existingStudentId: number | null,
+		data: CreateEnrolledStudentMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		if (!studyPlanAcademicPeriodId) {
+			errors.push(enrolledStudentsValidationStrings.error.studyPlanPeriodNotFound);
+		} else if (existingStudentId) {
+			const exists = await repo.findOneByCondition({
+				where: {
+					studentId: existingStudentId,
+					studyPlanAcademicPeriod: studyPlanAcademicPeriodId,
+				},
+			});
+			if (exists) errors.push(enrolledStudentsValidationStrings.error.enrolledStudentExists);
+		}
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{ message: enrolledStudentsValidationStrings.result.createFailed, errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

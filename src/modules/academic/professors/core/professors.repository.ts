@@ -3,7 +3,10 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { ProfessorEntity } from '../model/professors.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
-import { UpdateProfessorMaintenanceDto } from '../model/professors.dtos';
+import {
+	UpdateProfessorMaintenanceDto,
+	CreateProfessorMaintenanceDto,
+} from '../model/professors.dtos';
 
 export interface DeleteBlockerCounts {
 	courseSections: number;
@@ -80,6 +83,21 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 			ifcStatuses: Number(row.ifcStatuses),
 			otherProfessors: Number(row.otherProfessors),
 		};
+	}
+
+	async createWithStaff(dto: CreateProfessorMaintenanceDto): Promise<number> {
+		return await this.dataSource.transaction(async (manager) => {
+			const staffRepo = manager.getRepository(StaffEntity);
+			const staff = await staffRepo.save(
+				staffRepo.create({ firstName: dto.firstName, lastName: dto.lastName }),
+			);
+
+			const professorRepo = manager.getRepository(ProfessorEntity);
+			const professor = await professorRepo.save(
+				professorRepo.create({ staffId: staff.id, code: dto.code }),
+			);
+			return professor.id;
+		});
 	}
 
 	async updateMaintenance(id: number, dto: UpdateProfessorMaintenanceDto): Promise<void> {

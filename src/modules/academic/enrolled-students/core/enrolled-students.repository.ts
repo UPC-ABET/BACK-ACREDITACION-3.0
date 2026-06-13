@@ -4,7 +4,11 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { EnrolledStudentEntity } from '../model/enrolled-students.entity';
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
-import { UpdateEnrolledStudentMaintenanceDto } from '../model/enrolled-students.dtos';
+import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
+import {
+	UpdateEnrolledStudentMaintenanceDto,
+	CreateEnrolledStudentMaintenanceDto,
+} from '../model/enrolled-students.dtos';
 
 export interface EnrolledStudentDeleteBlockerCounts {
 	studentSectionEnrollments: number;
@@ -66,6 +70,60 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async findStudyPlanAcademicPeriodId(
+		programId: number,
+		academicPeriodId: number,
+	): Promise<number | null> {
+		const spap = await this.dataSource
+			.createQueryBuilder(StudyPlanAcademicPeriodEntity, 'spap')
+			.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id')
+			.where('sp.program_id = :programId', { programId })
+			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.orderBy('spap.id', 'ASC')
+			.getOne();
+		return spap?.id ?? null;
+	}
+
+	async findStudentIdByCode(code: string): Promise<number | null> {
+		const student = await this.dataSource
+			.createQueryBuilder(StudentEntity, 's')
+			.where('s.code = :code', { code })
+			.getOne();
+		return student?.id ?? null;
+	}
+
+	async createMaintenance(
+		dto: CreateEnrolledStudentMaintenanceDto,
+		studyPlanAcademicPeriodId: number,
+	): Promise<number> {
+		return await this.dataSource.transaction(async (manager) => {
+			const studentRepo = manager.getRepository(StudentEntity);
+			let student = await studentRepo.findOne({ where: { code: dto.studentCode } });
+			if (!student) {
+				student = await studentRepo.save(
+					studentRepo.create({
+						code: dto.studentCode,
+						firstName: dto.firstName,
+						lastName: dto.lastName,
+						programId: dto.programId,
+						graduationModalityTypeId: dto.enrollementModalityTypeId,
+					}),
+				);
+			}
+
+			const enrolledRepo = manager.getRepository(EnrolledStudentEntity);
+			const enrolled = await enrolledRepo.save(
+				enrolledRepo.create({
+					studentId: student.id,
+					studyPlanAcademicPeriod: studyPlanAcademicPeriodId,
+					campusId: dto.campusId,
+					enrollementModalityTypeId: dto.enrollementModalityTypeId,
+				}),
+			);
+			return enrolled.id;
+		});
 	}
 
 	async isStudentCodeTaken(code: string, excludeStudentId: number): Promise<boolean> {

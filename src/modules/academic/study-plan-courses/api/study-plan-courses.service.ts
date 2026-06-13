@@ -8,6 +8,8 @@ import {
 	UpdateStudyPlanCourseDto,
 	FilterStudyPlanCourseDto,
 	EnableEvaluationDto,
+	CreateStudyPlanCourseMaintenanceDto,
+	StudyPlanCourseMaintenanceItem,
 } from '../model/study-plan-courses.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 
@@ -44,9 +46,43 @@ export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepositor
 		return await this.repository.getByFilters(filters);
 	}
 
+	async createMaintenance(academicPeriodId: number, dto: CreateStudyPlanCourseMaintenanceDto) {
+		const studyPlanAcademicPeriodId = await this.repository.findStudyPlanAcademicPeriodId(
+			dto.studyPlanId,
+			academicPeriodId,
+		);
+		const existingCourseId =
+			dto.courseId ??
+			(dto.newCourse ? await this.repository.findCourseIdByCode(dto.newCourse.code) : null);
+
+		await StudyPlanCourseValidation.validateMaintenanceCreate(
+			this.repository,
+			studyPlanAcademicPeriodId,
+			existingCourseId,
+			dto,
+		);
+
+		const id = await this.repository.createMaintenance(dto, studyPlanAcademicPeriodId as number);
+		return await this.getMaintenanceItem(id);
+	}
+
 	async deleteMaintenance(id: number) {
 		await StudyPlanCourseValidation.validateMaintenanceDelete(this.repository, id);
 		await this.repository.remove(id);
 		return { id };
+	}
+
+	private async getMaintenanceItem(id: number): Promise<StudyPlanCourseMaintenanceItem | null> {
+		const spc = await this.repository.findByIdWithCourse(id);
+		if (!spc) return null;
+		return {
+			id: spc.id,
+			courseId: spc.courseId,
+			courseCode: spc.course.code,
+			courseName: spc.course.name,
+			learningOutcome: spc.course.learningOutcome,
+			levelTypeId: spc.levelTypeId,
+			isElective: spc.isElective,
+		};
 	}
 }

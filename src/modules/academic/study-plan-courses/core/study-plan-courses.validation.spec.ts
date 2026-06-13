@@ -62,6 +62,70 @@ describe('StudyPlanCourseValidation', () => {
 		});
 	});
 
+	describe('validateMaintenanceCreate', () => {
+		const linkDto = { studyPlanId: 1, isElective: false, levelTypeId: 2, courseId: 5 };
+		const newCourseDto = {
+			studyPlanId: 1,
+			isElective: true,
+			levelTypeId: 2,
+			newCourse: { code: 'C1', name: { es: 'a', en: 'b' } },
+		};
+
+		it('passes for a new course with a resolvable study plan period', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				StudyPlanCourseValidation.validateMaintenanceCreate(
+					mockRepo as any,
+					100,
+					null,
+					newCourseDto as any,
+				),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when no study plan period exists for the period', async () => {
+			await expect(
+				StudyPlanCourseValidation.validateMaintenanceCreate(
+					mockRepo as any,
+					null,
+					null,
+					linkDto as any,
+				),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when both courseId and newCourse are provided', async () => {
+			await expect(
+				StudyPlanCourseValidation.validateMaintenanceCreate(mockRepo as any, 100, 5, {
+					...linkDto,
+					newCourse: { code: 'C1', name: { es: 'a', en: 'b' } },
+				} as any),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when neither courseId nor newCourse is provided', async () => {
+			await expect(
+				StudyPlanCourseValidation.validateMaintenanceCreate(mockRepo as any, 100, null, {
+					studyPlanId: 1,
+					isElective: false,
+					levelTypeId: 2,
+				} as any),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the course is already in the plan for that period', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
+			await expect(
+				StudyPlanCourseValidation.validateMaintenanceCreate(
+					mockRepo as any,
+					100,
+					5,
+					linkDto as any,
+				),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
 	describe('validateMaintenanceDelete', () => {
 		it('passes when nothing references the plan course', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });

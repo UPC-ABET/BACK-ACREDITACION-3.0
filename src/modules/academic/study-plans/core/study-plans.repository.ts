@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { StudyPlanEntity } from '../model/study-plans.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
 export interface StudyPlanDeleteBlockerCounts {
 	academicPeriods: number;
@@ -56,6 +57,15 @@ export class StudyPlanRepository extends BaseRepository<StudyPlanEntity> {
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async isProgramInModality(programId: number, modalityTypeId: number): Promise<boolean> {
+		const program = await this.dataSource
+			.createQueryBuilder(ProgramEntity, 'program')
+			.where('program.id = :programId', { programId })
+			.andWhere('program.modality_type_id = :modalityTypeId', { modalityTypeId })
+			.getOne();
+		return program !== null;
 	}
 
 	async findCoursesForView(

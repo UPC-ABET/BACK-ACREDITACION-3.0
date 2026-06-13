@@ -44,12 +44,18 @@ export class ProgramCommissionRepository extends BaseRepository<ProgramCommissio
 	async getCommissionOptions(
 		academicPeriodId: number,
 		accreditorId?: number,
+		programId?: number,
 	): Promise<CommissionOption[]> {
 		const params: number[] = [academicPeriodId];
 		let accreditorCondition = '';
 		if (accreditorId !== undefined) {
 			params.push(accreditorId);
 			accreditorCondition = `AND com.accreditor_id = $${params.length}`;
+		}
+		let programCondition = '';
+		if (programId !== undefined) {
+			params.push(programId);
+			programCondition = `AND pc.program_id = $${params.length}`;
 		}
 
 		return await this.dataSource.query(
@@ -62,7 +68,7 @@ export class ProgramCommissionRepository extends BaseRepository<ProgramCommissio
 			INNER JOIN accreditation.program_commissions pc
 			       ON pc.commission_id = com.id
 			      AND pc.academic_period_id = $1
-			      AND pc.is_active = true
+			      AND pc.is_active = true ${programCondition}
 			WHERE com.is_active = true ${accreditorCondition}
 			ORDER BY com.code`,
 			params,

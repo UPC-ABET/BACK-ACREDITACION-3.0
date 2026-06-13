@@ -5,6 +5,7 @@ const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
 	findDeleteBlockerCounts: jest.fn(),
+	isProgramInModality: jest.fn(),
 };
 
 describe('StudyPlanValidation', () => {
@@ -57,6 +58,34 @@ describe('StudyPlanValidation', () => {
 			await expect(StudyPlanValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
 				HttpException,
 			);
+		});
+	});
+
+	describe('validateMaintenanceCreate', () => {
+		const dto = { code: 'SP-1', programId: 5 };
+
+		it('passes when the program is in the modality and the code is free', async () => {
+			mockRepo.isProgramInModality.mockResolvedValue(true);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the program is not in the active modality', async () => {
+			mockRepo.isProgramInModality.mockResolvedValue(false);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the (program, code) already exists', async () => {
+			mockRepo.isProgramInModality.mockResolvedValue(true);
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
+			await expect(
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
+			).rejects.toThrow(HttpException);
 		});
 	});
 

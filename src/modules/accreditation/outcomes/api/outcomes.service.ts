@@ -8,6 +8,7 @@ import {
 	UpdateOutcomeDto,
 	OutcomeMaintenanceQueryDto,
 	UpdateOutcomeMaintenanceDto,
+	CreateOutcomeMaintenanceDto,
 	OutcomeMaintenanceItem,
 } from '../model/outcomes.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -60,6 +61,23 @@ export class OutcomeService extends BaseService<OutcomeRepository> {
 			page,
 			pageSize,
 		);
+	}
+
+	async createMaintenance(academicPeriodId: number, dto: CreateOutcomeMaintenanceDto) {
+		const programCommissionId = await this.repository.findProgramCommissionId(
+			dto.programId,
+			dto.commissionId,
+			academicPeriodId,
+		);
+		await OutcomeValidation.validateMaintenanceCreate(this.repository, programCommissionId, dto);
+
+		const created = await this.repository.create({
+			programCommissionId: programCommissionId as number,
+			outcomeCode: dto.outcomeCode,
+			outcomeName: dto.outcomeName,
+			outcomeDescription: dto.outcomeDescription ?? {},
+		});
+		return await this.getMaintenanceItem(created.id);
 	}
 
 	async updateMaintenance(id: number, dto: UpdateOutcomeMaintenanceDto) {

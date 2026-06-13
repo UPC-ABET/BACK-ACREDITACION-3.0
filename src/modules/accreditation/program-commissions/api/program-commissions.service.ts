@@ -54,8 +54,8 @@ export class ProgramCommissionService extends BaseService<ProgramCommissionRepos
 		return await super.getByFilters({ academicPeriodId });
 	}
 
-	async getCommissionOptions(academicPeriodId: number, accreditorId?: number) {
-		return await this.repository.getCommissionOptions(academicPeriodId, accreditorId);
+	async getCommissionOptions(academicPeriodId: number, accreditorId?: number, programId?: number) {
+		return await this.repository.getCommissionOptions(academicPeriodId, accreditorId, programId);
 	}
 
 	async getProgramOptions(academicPeriodId: number, commissionId?: number) {

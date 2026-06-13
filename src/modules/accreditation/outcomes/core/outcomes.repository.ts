@@ -2,6 +2,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { OutcomeEntity } from '../model/outcomes.entity';
+import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 
 export interface OutcomeDeleteBlockerCounts {
 	courseOutcomeMappings: number;
@@ -61,6 +62,20 @@ export class OutcomeRepository extends BaseRepository<OutcomeEntity> {
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async findProgramCommissionId(
+		programId: number,
+		commissionId: number,
+		academicPeriodId: number,
+	): Promise<number | null> {
+		const pc = await this.dataSource
+			.createQueryBuilder(ProgramCommissionEntity, 'pc')
+			.where('pc.program_id = :programId', { programId })
+			.andWhere('pc.commission_id = :commissionId', { commissionId })
+			.andWhere('pc.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.getOne();
+		return pc?.id ?? null;
 	}
 
 	async findDeleteBlockerCounts(outcomeId: number): Promise<OutcomeDeleteBlockerCounts> {

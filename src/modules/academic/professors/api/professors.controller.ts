@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerProfessorController,
@@ -9,6 +9,7 @@ import {
 	SwaggerProfessorGetById,
 	SwaggerProfessorGetByFilters,
 	SwaggerProfessorGetByUserId,
+	SwaggerProfessorMaintenanceCreate,
 	SwaggerProfessorMaintenanceList,
 	SwaggerProfessorMaintenanceUpdate,
 	SwaggerProfessorMaintenanceDelete,
@@ -20,6 +21,7 @@ import {
 	FilterProfessorDto,
 	ProfessorMaintenanceQueryDto,
 	UpdateProfessorMaintenanceDto,
+	CreateProfessorMaintenanceDto,
 } from '../model/professors.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -71,6 +73,12 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
 	async getByUserId(@Param('id', ParseIntPipe) userId: number) {
 		return parseSuccessResponse(await this.service.getByUserId(userId));
+	}
+
+	@SwaggerProfessorMaintenanceCreate()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
+	async maintenanceCreate(@Body() dto: CreateProfessorMaintenanceDto) {
+		return parseSuccessResponse(await this.service.createMaintenance(dto), HttpStatus.CREATED);
 	}
 
 	@SwaggerProfessorMaintenanceList()

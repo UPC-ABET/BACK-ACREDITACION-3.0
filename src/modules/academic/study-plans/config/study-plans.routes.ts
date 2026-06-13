@@ -13,6 +13,11 @@ export const studyPlansRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar planes de estudio',
 			},
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Registrar plan de estudio (mantenimiento)',
+			},
 			maintenanceList: {
 				method: 'GET',
 				route: '/maintenance',

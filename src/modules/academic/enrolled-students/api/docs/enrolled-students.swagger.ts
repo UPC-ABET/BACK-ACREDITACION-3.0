@@ -6,6 +6,7 @@ import {
 	FilterEnrolledStudentDto,
 	EnrolledStudentMaintenanceQueryDto,
 	UpdateEnrolledStudentMaintenanceDto,
+	CreateEnrolledStudentMaintenanceDto,
 } from '../../model/enrolled-students.dtos';
 
 const cfg = enrolledStudentsRoutes.enrolledStudents;
@@ -27,6 +28,12 @@ export const SwaggerEnrolledStudentGetById = () => HttpMethodWithSwagger(cfg.ope
 
 export const SwaggerEnrolledStudentGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterEnrolledStudentDto });
+
+export const SwaggerEnrolledStudentMaintenanceCreate = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceCreate,
+		body: CreateEnrolledStudentMaintenanceDto,
+	});
 
 export const SwaggerEnrolledStudentMaintenanceList = () =>
 	HttpMethodWithSwagger({
