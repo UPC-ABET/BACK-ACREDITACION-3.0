@@ -9,6 +9,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger';
+import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
+import { parseSuccessResponse } from 'src/libs/global.functions';
 import { S3Service } from './s3.service';
 import { SwaggerS3Controller, SwaggerS3GetSize, SwaggerS3Upload } from './docs/s3.swagger';
 
@@ -17,6 +20,7 @@ export class S3Controller {
 	constructor(private readonly s3Service: S3Service) {}
 
 	@SwaggerS3Upload()
+	@RequirePermission({ module: PERMISSION_MODULES.PORTFOLIO, action: PERMISSION_ACTIONS.POST })
 	@ApiQuery({
 		name: 'key',
 		required: true,
@@ -30,20 +34,24 @@ export class S3Controller {
 		},
 	})
 	@UseInterceptors(FileInterceptor('file'))
-	async upload(@Query('key') key: string, @UploadedFile() file: any): Promise<string> {
-		if (!key) throw new BadRequestException('The "key" query parameter is required.');
-		if (!file) throw new BadRequestException('No file was found in the form-data.');
+	async upload(
+		@Query('key') key: string,
+		@UploadedFile() file: Express.Multer.File,
+	) {
+		if (!key) throw new BadRequestException('error.s3.keyRequired');
+		if (!file) throw new BadRequestException('error.s3.fileRequired');
 
-		await this.s3Service.uploadBuffer(key, file.buffer as Buffer);
-		return `Uploaded successfully: ${key}`;
+		await this.s3Service.uploadBuffer(key, file.buffer);
+		return parseSuccessResponse({ key });
 	}
 
 	@SwaggerS3GetSize()
+	@RequirePermission({ module: PERMISSION_MODULES.PORTFOLIO, action: PERMISSION_ACTIONS.GET })
 	@HttpCode(HttpStatus.OK)
 	async getSize(@Body() prefixes: string[]) {
 		if (!Array.isArray(prefixes) || prefixes.length === 0) {
-			throw new BadRequestException('At least one prefix must be provided.');
+			throw new BadRequestException('error.s3.prefixRequired');
 		}
-		return this.s3Service.getSize(prefixes);
+		return parseSuccessResponse(await this.s3Service.getSize(prefixes));
 	}
 }

@@ -1,6 +1,6 @@
-import { Entity, ManyToOne, JoinColumn, Column } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn, TextShortColumn } from 'src/commons/configs/db.configs';
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
 import { PortfolioProjectEntity } from './portfolio-project.entity';
 import { ProjectApplicationStatus } from '../enums/project-application-status.enum';
@@ -15,12 +15,7 @@ export class PortfolioProjectApplicationEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	studentId: number;
 
-	@Column({
-		type: 'varchar',
-		length: 20,
-		nullable: false,
-		default: ProjectApplicationStatus.PENDING,
-	})
+	@TextShortColumn({ nullable: false, withDefault: true, default: ProjectApplicationStatus.PENDING })
 	status: ProjectApplicationStatus;
 
 	// %% RELATIONS

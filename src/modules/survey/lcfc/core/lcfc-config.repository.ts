@@ -90,10 +90,8 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				cs.section_code AS "sectionCode",
 				cs.campus_id    AS "campusId"
 			FROM academic.course_sections cs
-			INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-			INNER JOIN academic.courses c ON c.id = spc.course_id
-			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-			WHERE spap.academic_period_id = $1
+			INNER JOIN academic.courses c ON c.id = cs.course_id
+			WHERE cs.academic_period_id = $1
 		`;
 		const params: any[] = [academicPeriodId];
 
@@ -101,7 +99,10 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			query += ` AND EXISTS (
 				SELECT 1
 				FROM academic.study_plans sp
-				WHERE sp.id = spap.study_plan_id
+				INNER JOIN academic.study_plan_academic_periods spap ON spap.study_plan_id = sp.id
+				INNER JOIN academic.study_plan_courses spc ON spc.study_plan_academic_period_id = spap.id
+				WHERE spc.course_id = cs.course_id
+				  AND spap.academic_period_id = cs.academic_period_id
 				  AND sp.program_id = $${params.length + 1}
 			)`;
 			params.push(programId);
