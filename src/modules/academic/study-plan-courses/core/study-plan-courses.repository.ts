@@ -10,8 +10,6 @@ import {
 	CreateStudyPlanCourseMaintenanceDto,
 } from '../model/study-plan-courses.dtos';
 
-const SCHOOL_TYPE_CODE = 'TG903-T002';
-const PROGRAM_TYPE_CODE = 'TG903-T003';
 
 export interface StudyPlanCourseDeleteBlockerCounts {
 	rubrics: number;
@@ -55,12 +53,13 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
 			});
 
-		if (filters.academicPeriodId !== undefined || filters.schoolId !== undefined) {
+		if (filters.academicPeriodId !== undefined || filters.programId !== undefined) {
 			qb.innerJoin(
 				StudyPlanAcademicPeriodEntity,
 				'spap',
 				'spap.id = spc.study_plan_academic_period_id',
 			);
+			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 
 			if (filters.academicPeriodId !== undefined) {
 				qb.andWhere('spap.academic_period_id = :academicPeriodId', {
@@ -68,26 +67,8 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 				});
 			}
 
-			if (filters.schoolId !== undefined) {
-				qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
-				qb.andWhere(
-					`sp.program_id IN (
-						SELECT ch_prog.entity_code
-						FROM   organization.charts   ch_prog
-						INNER JOIN core.types        t_prog
-						       ON  t_prog.id   = ch_prog.entity_type_id
-						       AND t_prog.code = '${PROGRAM_TYPE_CODE}'
-						INNER JOIN organization.charts ch_sch
-						       ON  ch_sch.id   = ch_prog.root_chart_id
-						INNER JOIN core.types        t_sch
-						       ON  t_sch.id    = ch_sch.entity_type_id
-						       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
-						INNER JOIN organization.schools sch
-						       ON  sch.id      = ch_sch.entity_code
-						WHERE  sch.id = :schoolId
-					)`,
-				);
-				qb.setParameter('schoolId', filters.schoolId);
+			if (filters.programId !== undefined) {
+				qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 			}
 		}
 
