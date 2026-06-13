@@ -1,8 +1,9 @@
-import { Entity, ManyToOne, JoinColumn, OneToMany, Column } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import {
 	BooleanColumn,
 	CodeColumn,
+	IntegerColumn,
 	IntegerFKIDColumn,
 	NameColumn,
 	TextLargeColumn,
@@ -41,7 +42,7 @@ export class PortfolioProjectEntity extends BaseEntity {
 	@BooleanColumn({ nullable: false, withDefault: true, default: false })
 	isFromUPC: boolean;
 
-	@Column({ type: 'int', nullable: false, default: PortfolioStatus.PENDING })
+	@IntegerColumn({ nullable: false, withDefault: true, default: PortfolioStatus.PENDING })
 	status: PortfolioStatus;
 
 	@IntegerFKIDColumn({ nullable: true })

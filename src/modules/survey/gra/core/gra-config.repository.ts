@@ -100,10 +100,10 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	): Promise<Record<string, any>[]> {
 		return await this.dataSource.query(
 			`SELECT
-				pc.id         AS "programCommissionId",
-				pc.commissionId AS "commissionId",
-				c.name        AS "commissionName",
-				o.id          AS "outcomeId",
+				pc.id          AS "programCommissionId",
+				pc.commission_id AS "commissionId",
+				c.name         AS "commissionName",
+				o.id           AS "outcomeId",
 				o.outcome_code AS "outcomeCode",
 				o.outcome_name AS "outcomeName",
 				o.outcome_description AS "outcomeDescription"
@@ -113,7 +113,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			WHERE pc.program_id = $1
 			  AND pc.academic_period_id = $2
 			  AND o.is_active = true
-			ORDER BY pc.commissionId, o.outcome_code`,
+			ORDER BY pc.commission_id, o.outcome_code`,
 			[programId, academicPeriodId],
 		);
 	}
