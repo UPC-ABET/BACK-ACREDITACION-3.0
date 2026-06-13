@@ -363,11 +363,6 @@ export class FilterProjectDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	schoolId?: number;
-
-	@IsOptional()
-	@IsNumber()
 	@ApiProperty({
 		example: 1,
 		required: false,

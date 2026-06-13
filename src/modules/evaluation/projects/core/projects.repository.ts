@@ -14,10 +14,6 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
 
-// Origanization types for school and program
-const SCHOOL_TYPE_CODE = 'TG903-T002';
-const PROGRAM_TYPE_CODE = 'TG903-T003';
-
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
 		@InjectRepository(ProjectEntity)
@@ -121,12 +117,6 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 		if (filters.programId) {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
-		}
-
-		if (filters.schoolId) {
-			// schoolId filter is intentionally skipped — schoolId is sent by the frontend header
-			// but the chart hierarchy does not reliably map all programs to all schools.
-			void filters.schoolId;
 		}
 
 		const { entities, raw } = await qb.getRawAndEntities();

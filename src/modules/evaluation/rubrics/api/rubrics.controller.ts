@@ -33,6 +33,8 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@Get('resolve-type')
+	@ApiQuery({ name: 'studyPlanCourseId', required: true, type: Number })
+	@ApiQuery({ name: 'gradeTypeId', required: true, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async resolveRubricType(
 		@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number,
@@ -77,19 +79,9 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetAll()
-	@ApiQuery({
-		name: 'programId',
-		required: false,
-		type: Number,
-		description: 'ID del programa académico (carrera)',
-	})
-	@ApiQuery({
-		name: 'academicPeriodId',
-		required: false,
-		type: Number,
-		description: 'ID del período académico',
-	})
-	@ApiQuery({ name: 'courseId', required: false, type: Number, description: 'ID del curso' })
+	@ApiQuery({ name: 'programId', required: false, type: Number })
+	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
+	@ApiQuery({ name: 'courseId', required: false, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
 		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,

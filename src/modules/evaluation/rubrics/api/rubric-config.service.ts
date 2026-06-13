@@ -9,6 +9,7 @@ import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-ques
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { toI18n } from 'src/shared/types/i18n';
+import type { I18nText } from 'src/shared/types/i18n';
 import { rubricsValidationStrings } from '../config/strings/rubrics.validation';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
@@ -230,7 +231,7 @@ export class RubricConfigService {
 	async resolveRubricType(
 		studyPlanCourseId: number,
 		gradeTypeId: number,
-	): Promise<{ id: number; code: string; name: any }> {
+	): Promise<{ id: number; code: string; name: I18nText }> {
 		const [gradeType, capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
 			this.typeRepo.findOne({ where: { id: gradeTypeId } }),
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.CAPSTONE } }),
@@ -238,9 +239,9 @@ export class RubricConfigService {
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.OUTCOME_TYPE.VERIFICATION } }),
 		]);
 
-		if (!gradeType) throw new BadRequestException('Tipo de nota no encontrado');
+		if (!gradeType) throw new BadRequestException(rubricsValidationStrings.error.gradeTypeNotFound);
 		if (!capstoneType || !nonCapstoneType)
-			throw new BadRequestException('Tipos de rúbrica no configurados');
+			throw new BadRequestException(rubricsValidationStrings.error.rubricTypesNotConfigured);
 
 		const isEaOrEb =
 			gradeType.code === TYPE_CODES.GRADE_TYPE.EA || gradeType.code === TYPE_CODES.GRADE_TYPE.EB;

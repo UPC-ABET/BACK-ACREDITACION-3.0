@@ -91,5 +91,4 @@ export class FilterProgramDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
 	academicPeriodId?: number;
-
 }

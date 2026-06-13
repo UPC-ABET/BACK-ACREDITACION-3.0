@@ -109,7 +109,7 @@ export class CourseService extends BaseService<CourseRepository> {
 						item.enrolledStudent.student.lastName ||
 						'',
 					email: item.enrolledStudent.student.user?.email || '',
-					studentCode: `EST-${item.enrolledStudent.student.user?.documentCode ?? item.enrolledStudent.student.code}`,
+					studentCode: `EST-${item.enrolledStudent.student.user?.documentCode || item.enrolledStudent.student.code}`,
 					courseSectionId: item.courseSectionId,
 					sectionCode: item.courseSection.sectionCode,
 					professorId: item.courseSection.professorId,

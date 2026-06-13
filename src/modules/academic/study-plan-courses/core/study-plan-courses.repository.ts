@@ -10,7 +10,6 @@ import {
 	CreateStudyPlanCourseMaintenanceDto,
 } from '../model/study-plan-courses.dtos';
 
-
 export interface StudyPlanCourseDeleteBlockerCounts {
 	rubrics: number;
 	courseOutcomeMappings: number;

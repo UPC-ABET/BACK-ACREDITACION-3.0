@@ -9,6 +9,8 @@ export const rubricsValidationStrings = {
 		capstoneRequiresOutcome: 'error.rubric.capstoneRequiresOutcome',
 		studyPlanCourseNotFound: 'error.rubric.studyPlanCourseNotFound',
 		noRubricForCourse: 'error.rubric.noRubricForCourse',
+		gradeTypeNotFound: 'error.rubric.gradeTypeNotFound',
+		rubricTypesNotConfigured: 'error.rubric.rubricTypesNotConfigured',
 	},
 	result: {
 		createFailed: 'error.rubric.createFailed',
