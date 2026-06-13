@@ -15,7 +15,11 @@ export class PortfolioProjectApplicationEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	studentId: number;
 
-	@TextShortColumn({ nullable: false, withDefault: true, default: ProjectApplicationStatus.PENDING })
+	@TextShortColumn({
+		nullable: false,
+		withDefault: true,
+		default: ProjectApplicationStatus.PENDING,
+	})
 	status: ProjectApplicationStatus;
 
 	// %% RELATIONS

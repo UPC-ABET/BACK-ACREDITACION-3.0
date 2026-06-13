@@ -9,7 +9,6 @@ import { StudentEntity } from 'src/modules/academic/students/model/students.enti
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { CollaborationType } from '../enums/collaboration-type.enum';
-import { PortfolioStatus } from '../enums/portfolio-status.enum';
 import { PortfolioProjectEntity } from '../model/portfolio-project.entity';
 import { FilterPortfolioProjectDto, PageDto, PaginationResultDto } from '../model/portfolio.dtos';
 import { PortfolioValidation } from './portfolio.validation';
@@ -145,7 +144,10 @@ export class PortfolioRepository extends BaseRepository<PortfolioProjectEntity> 
 			});
 			if (!period) return { code: '', periodFound: false };
 			const lastCode = await this.findLastCodeByPeriod(academicPeriodId);
-			return { code: PortfolioValidation.generateProjectCode(lastCode, period.code), periodFound: true };
+			return {
+				code: PortfolioValidation.generateProjectCode(lastCode, period.code),
+				periodFound: true,
+			};
 		});
 	}
 
@@ -295,7 +297,8 @@ export class PortfolioRepository extends BaseRepository<PortfolioProjectEntity> 
 				const key = `${p.coauthorProfessor.id}-${CollaborationType.COAUTHOR}`;
 				const entry = map.get(key) ?? {
 					professorId: p.coauthorProfessor.id,
-					fullName: `${p.coauthorProfessor.staff?.firstName ?? ''} ${p.coauthorProfessor.staff?.lastName ?? ''}`.trim(),
+					fullName:
+						`${p.coauthorProfessor.staff?.firstName ?? ''} ${p.coauthorProfessor.staff?.lastName ?? ''}`.trim(),
 					type: CollaborationType.COAUTHOR,
 					total: 0,
 				};
@@ -306,7 +309,8 @@ export class PortfolioRepository extends BaseRepository<PortfolioProjectEntity> 
 				const key = `${p.consultantProfessor.id}-${CollaborationType.CONSULTANT}`;
 				const entry = map.get(key) ?? {
 					professorId: p.consultantProfessor.id,
-					fullName: `${p.consultantProfessor.staff?.firstName ?? ''} ${p.consultantProfessor.staff?.lastName ?? ''}`.trim(),
+					fullName:
+						`${p.consultantProfessor.staff?.firstName ?? ''} ${p.consultantProfessor.staff?.lastName ?? ''}`.trim(),
 					type: CollaborationType.CONSULTANT,
 					total: 0,
 				};

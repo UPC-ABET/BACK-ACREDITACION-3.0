@@ -101,10 +101,7 @@ export class ChartController extends BaseController<ChartService> {
 
 	@SwaggerChartMaintenanceUpdate()
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.PUT })
-	async maintenanceUpdate(
-		@Param('id', ParseIntPipe) id: number,
-		@Body() dto: UpdateChartNodeDto,
-	) {
+	async maintenanceUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateChartNodeDto) {
 		return parseSuccessResponse(await this.service.updateNode(id, dto));
 	}
 

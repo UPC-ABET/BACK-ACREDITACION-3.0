@@ -11,7 +11,11 @@ import { PdfModule } from 'src/libs/pdf.module';
 @Module({
 	imports: [TypeOrmModule.forFeature([CourseOutcomeMappingEntity]), PdfModule],
 	controllers: [CourseOutcomeMappingController],
-	providers: [CourseOutcomeMappingService, ArticulationReportService, CourseOutcomeMappingRepository],
+	providers: [
+		CourseOutcomeMappingService,
+		ArticulationReportService,
+		CourseOutcomeMappingRepository,
+	],
 	exports: [CourseOutcomeMappingService, CourseOutcomeMappingRepository],
 })
 export class CourseOutcomeMappingModule {}

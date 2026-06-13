@@ -202,8 +202,7 @@ export class ArticulationReportService {
 	): string {
 		const typeByOutcome = new Map(course.mappings.map((m) => [m.outcomeId, m.outcomeTypeId]));
 
-		const cfCell =
-			course.isTrainingCourse && formationType ? glyphCell(formationType) : '';
+		const cfCell = course.isTrainingCourse && formationType ? glyphCell(formationType) : '';
 
 		const outcomeCells = outcomes
 			.map((o) => {

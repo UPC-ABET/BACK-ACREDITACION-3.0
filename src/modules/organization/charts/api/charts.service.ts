@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { ChartRepository } from '../core/charts.repository';
-import {
-	ChartValidation,
-	entityTypeNeedsCode,
-	resolveEntityCode,
-} from '../core/charts.validation';
+import { ChartValidation, entityTypeNeedsCode, resolveEntityCode } from '../core/charts.validation';
 import type { I18nText } from 'src/shared/types/i18n';
 
 import {
