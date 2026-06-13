@@ -126,6 +126,7 @@ export class StudyPlanService extends BaseService<StudyPlanRepository> {
 		return {
 			id: plan.id,
 			code: plan.code,
+			programId: plan.programId,
 			programName: plan.program.name,
 		};
 	}

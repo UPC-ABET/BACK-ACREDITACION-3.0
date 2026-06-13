@@ -93,6 +93,8 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 	): StudentSectionEnrollmentMaintenanceItem {
 		return {
 			id: entity.id,
+			courseSectionId: entity.courseSectionId,
+			enrolledStudentId: entity.enrolledStudentId,
 			courseName: entity.courseSection.course.name,
 			courseCode: entity.courseSection.course.code,
 			sectionCode: entity.courseSection.sectionCode,

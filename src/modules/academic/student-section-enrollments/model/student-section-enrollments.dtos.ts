@@ -102,6 +102,8 @@ export class CreateStudentSectionEnrollmentMaintenanceDto {
 
 export interface StudentSectionEnrollmentMaintenanceItem {
 	id: number;
+	courseSectionId: number;
+	enrolledStudentId: number;
 	courseName: I18nText;
 	courseCode: string;
 	sectionCode: string;

@@ -115,6 +115,7 @@ export class CreateStudyPlanMaintenanceDto {
 export interface StudyPlanMaintenanceItem {
 	id: number;
 	code: string;
+	programId: number;
 	programName: I18nText;
 }
 

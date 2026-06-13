@@ -92,10 +92,14 @@ export class CourseSectionService extends BaseService<CourseSectionRepository> {
 	private toMaintenanceItem(section: CourseSectionEntity): CourseSectionMaintenanceItem {
 		return {
 			id: section.id,
+			courseId: section.courseId,
 			courseCode: section.course.code,
 			sectionCode: section.sectionCode,
+			professorId: section.professorId,
 			professorCode: section.professor.code,
+			campusId: section.campusId,
 			campusCode: section.campus.code,
+			sectionModalityTypeId: section.sectionModalityTypeId,
 			modalityTypeName: section.sectionModalityType.name,
 		};
 	}

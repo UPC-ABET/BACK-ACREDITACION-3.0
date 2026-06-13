@@ -152,10 +152,14 @@ export class CreateCourseSectionMaintenanceDto {
 
 export interface CourseSectionMaintenanceItem {
 	id: number;
+	courseId: number;
 	courseCode: string;
 	sectionCode: string;
+	professorId: number;
 	professorCode: string;
+	campusId: number;
 	campusCode: string;
+	sectionModalityTypeId: number;
 	modalityTypeName: I18nText;
 }
 

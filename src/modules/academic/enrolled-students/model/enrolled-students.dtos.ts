@@ -195,6 +195,9 @@ export interface EnrolledStudentMaintenanceItem {
 	studentCode: string;
 	firstName: string;
 	lastName: string;
+	programId: number;
+	campusId: number;
+	modalityTypeId: number;
 	campusName: I18nText;
 	programName: I18nText;
 	modalityTypeName: I18nText;
