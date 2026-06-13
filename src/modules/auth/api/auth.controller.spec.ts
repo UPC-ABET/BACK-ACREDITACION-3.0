@@ -11,9 +11,12 @@ type AuthServiceMock = {
 };
 
 const TEST_JWT_SECRET = 'a]3kF8xQ!mZ#9pLw$7rNv&2jYh^0sTbC';
+const TEST_FRONTEND_URL = 'https://accreditation.tcupc.pe';
 
 function fakeConfigService(): ConfigService {
-	return { get: () => TEST_JWT_SECRET } as unknown as ConfigService;
+	return {
+		get: (key: string) => (key === 'APP_FRONTEND_URL' ? TEST_FRONTEND_URL : TEST_JWT_SECRET),
+	} as unknown as ConfigService;
 }
 
 function fakeResponse(cookies: Record<string, string> = {}) {
@@ -114,23 +117,21 @@ describe('AuthController — MSAL state packing', () => {
 			).rejects.toBeInstanceOf(UnauthorizedException);
 		});
 
-		it('validates signed state and calls loginWithMicrosoftCode', async () => {
+		it('validates signed state, sets the access cookie, and redirects to the frontend', async () => {
 			const state = signState('matching-csrf');
-			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
+			const { res, cookieJar } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 			authService.loginWithMicrosoftCode.mockResolvedValueOnce({
 				user: { id: 1 },
 				microsoftProfile: { email: 'a@b.com', name: 'A' },
 				accessToken: 'tok',
 			});
 
-			const result = await controller.microsoftCallback('code-abc', state, res as never);
+			await controller.microsoftCallback('code-abc', state, res as never);
 
 			expect(authService.loginWithMicrosoftCode).toHaveBeenCalledWith('code-abc');
 			expect(res.clearCookie).toHaveBeenCalledWith('microsoftOauthState');
-			expect(result).toMatchObject({
-				code: 200,
-				data: expect.objectContaining({ accessToken: 'tok' }),
-			});
+			expect(cookieJar['accessToken']).toBe('tok');
+			expect(res.redirect).toHaveBeenCalledWith(TEST_FRONTEND_URL);
 		});
 	});
 });
