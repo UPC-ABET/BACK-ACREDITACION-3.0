@@ -22,6 +22,8 @@ import { OrgScopeService } from '../../org-scope/api/org-scope.service';
 import { MailService } from 'src/modules/mail/mail.service';
 import { EmailTemplateService } from 'src/modules/core/email-templates/api/email-templates.service';
 import type { I18nText } from 'src/shared/types/i18n';
+import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 
 const USER_WELCOME_TEMPLATE_CODE = 'USER_WELCOME';
 
@@ -140,32 +142,24 @@ export class UserService extends BaseService<UserRepository> {
 		return profile;
 	}
 
-	async getMe(
-		jwtPayload: {
-			userId: number;
-			activeRole: any;
-			allowedRoles: any[];
-			permissions: any[];
-		},
-		modalityCode: string,
-	) {
-		const user = await this.getUser(jwtPayload.userId);
+	async getMe(currentUser: RequestUser, modalityCode: string) {
+		const user = await this.getUser(currentUser.userId);
 		if (!user) {
 			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
 
-		const isAdmin = jwtPayload.activeRole?.code?.toUpperCase() === 'ADMIN';
+		const isAdmin = isAdminRole(currentUser.activeRole);
 		const userSchools = await this.orgScopeService.getUserSchools(
-			jwtPayload.userId,
+			currentUser.userId,
 			modalityCode,
 			isAdmin,
 		);
 
 		return {
 			user: this.sanitizeUser(user),
-			activeRole: jwtPayload.activeRole,
-			allowedRoles: jwtPayload.allowedRoles,
-			permissions: jwtPayload.permissions,
+			activeRole: currentUser.activeRole,
+			allowedRoles: currentUser.allowedRoles,
+			permissions: currentUser.permissions,
 			userSchools,
 		};
 	}

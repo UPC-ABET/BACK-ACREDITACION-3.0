@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Req } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
@@ -21,6 +21,8 @@ import {
 	PatchIfcFindingDto,
 } from '../model/ifc-findings.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
 	SchoolId,
 	ApiSchoolHeader,
@@ -55,9 +57,9 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 	async deleteCascade(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		await this.service.deleteWithCascade(id, req.user.userId, schoolId);
+		await this.service.deleteWithCascade(id, user.userId, schoolId);
 		return parseSuccessResponse(null);
 	}
 
@@ -101,9 +103,9 @@ export class IfcFindingController extends BaseController<IfcFindingService> {
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: PatchIfcFindingDto,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.patch(id, dto, req.user.userId, schoolId);
+		const result = await this.service.patch(id, dto, user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 }

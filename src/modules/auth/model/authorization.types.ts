@@ -22,3 +22,7 @@ export type AuthorizationProfile = {
 	allowedRoles: AuthorizationRole[];
 	permissions: AuthorizationPermission[];
 };
+
+export type RequestUser = {
+	userId: number;
+} & AuthorizationProfile;

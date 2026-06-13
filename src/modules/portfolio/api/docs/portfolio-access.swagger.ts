@@ -1,6 +1,6 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { portfolioAccessRoutes } from '../../config/portfolio-access.routes';
-import { UpdatePortfolioAccessDto } from '../../model/portfolio-access.dtos';
+import { SetPortfolioAccessDto } from '../../model/portfolio-access.dtos';
 
 const cfg = portfolioAccessRoutes.access;
 
@@ -23,5 +23,5 @@ export const SwaggerPortfolioAccessUpdateUser = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.updateUserAccess,
 		param: { name: 'userId', type: Number, description: 'User ID' },
-		body: UpdatePortfolioAccessDto,
+		body: SetPortfolioAccessDto,
 	});

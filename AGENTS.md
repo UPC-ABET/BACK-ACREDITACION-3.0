@@ -271,7 +271,15 @@ type BaseOptions = Partial<ColumnOptions> & {
 - **`synchronize: false`** — always use migrations, never auto-sync.
 - **`autoLoadEntities: true`** — entities are registered via `TypeOrmModule.forFeature()` in each module.
 - Migration CLI config: `src/database/typeorm.config.ts` (uses glob for entities since it runs outside NestJS).
-- Generate migrations: `npx typeorm migration:generate src/database/migrations/<Name> -d src/database/typeorm.config.ts`
+- **ALWAYS create the migration file with the CLI so the timestamp is correct — never hand-write the filename or pick a timestamp by hand.** Before writing any migration, run:
+
+  ```bash
+  pnpm migration:create src/database/migrations/<kebab-case-name>
+  ```
+
+  This stamps the file with the current epoch (`Date.now()`), which guarantees it sorts **after** every existing migration. Hand-picked/round-number timestamps drift out of order and can run before their dependencies (e.g. a table created before its schema exists), which breaks a fresh database. Then fill in `up()`/`down()` by hand (see the production rule below). The file name stays kebab-case; the generated class keeps its timestamp suffix.
+
+- `pnpm migration:generate src/database/migrations/<Name>` autogenerates SQL by diffing entities against a **live** DB connection. It also stamps a correct timestamp, but prefer hand-written `up()`/`down()` per the production rule below.
 - **The database is now in production. ALWAYS add a new, forward-only migration for every schema change (new column, table, index, constraint, type, etc.) — never edit the initial `1700000000000-initial-migration.ts` or any already-applied migration in place.** Editing an applied migration will not run against the production DB (its row already exists in the `migrations` table) and will desync environments. Every new migration must implement both `up()` and a correct `down()`.
 - Naming: indexes `IDX_<table>_<columns>`, FKs `FK_<table>_<column>`, unique constraints `UQ_<table>_<columns>`, primary keys `PK_<table>` — **always uppercase prefix, always human-readable** (never the auto-generated hash form like `PK_4689ce4c54254910a1e7ab56b1c`).
 - Seeds use the `i18n(es, en)` helper for JSONB display strings: `'${i18n('Spanish', 'English')}'::jsonb`.
@@ -401,6 +409,23 @@ req.user = {
 ```
 
 JWT is extracted from `Authorization: Bearer <token>` header OR `access_token` httpOnly cookie.
+
+### Reading the authenticated user
+
+Read the request user with the typed `@CurrentUser()` param decorator — **never** inject `@Req()`/`@Request()` to read `req.user`, and never type the user as `any`:
+
+```typescript
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
+
+async getMyAccess(@CurrentUser() user: RequestUser) {
+  return parseSuccessResponse(await this.service.getMyAccess(user.userId));
+}
+```
+
+`RequestUser` (`{ userId, activeRole, allowedRoles, permissions }`) is the single shape for the request user. A service that needs the user accepts `RequestUser` (or just the `userId`/role it needs) — never an inline or `any` payload. The **only** place allowed to touch the raw `request.user` is a guard (param decorators don't work there), and it must still type it as `Request & { user?: RequestUser }`.
+
+**Admin / role checks:** never compare a role code against a string literal (`activeRole.code === 'ADMIN'`). Use `isAdminRole(activeRole)` / `isAdmin(user)` from `src/modules/auth/model/authorization.functions.ts`, which compare against `ROLE_CODES` in `src/shared/constants/role-codes.ts`. Access control (who may call an endpoint) still belongs in `@RequirePermission`; `isAdmin*` is only for data-scoping or UI-hint decisions, not for gating endpoints.
 
 ## Scope Headers (School / Modality / Academic Period)
 
@@ -618,6 +643,9 @@ These are acknowledged and intentionally not fixed:
 - **Don't use `any` in base class signatures.**
 - **Don't use `process.env` directly — use `ConfigService`.**
 - **Don't use `synchronize: true` — use migrations.**
+- **Don't hand-pick a migration filename or timestamp — run `pnpm migration:create src/database/migrations/<kebab-case-name>` so the timestamp is current and monotonic.**
+- **Don't read `req.user` via `@Req()`/`@Request()` or type the user as `any` — use the typed `@CurrentUser()` decorator with `RequestUser` (guards are the only exception).**
+- **Don't compare role codes against string literals (e.g. `activeRole.code === 'ADMIN'`) — use `isAdminRole`/`isAdmin` with `ROLE_CODES`.**
 - **Don't write FK/index names with lowercase prefix — use `FK_` and `IDX_`.**
 - **Don't skip `@IsOptional()` on Update DTO fields** (unless the field is intentionally required like `id`).
 - **Don't add `@nestjs/schedule` — it was removed as unused.**

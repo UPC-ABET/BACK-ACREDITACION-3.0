@@ -56,55 +56,79 @@ runSeed('survey module', async (tenantDataSource) => {
 		);
 	`);
 
-	const notificationMessageValues = [
+	// Survey email template category (core.types TG1004-T003). Message content lives in
+	// core.email_templates; notification_messages only references the template + recipients.
+	const surveyEmailTemplateValues = [
 		[
-			'TG601-T001',
-			'PROG_SOFT',
+			'SURVEY_INVITATION_2026_1',
+			i18n('Invitacion a encuesta 2026-1', '2026-1 survey invitation'),
 			i18n('Invitacion a encuesta 2026-1', '2026-1 survey invitation'),
 			i18n(
 				'Te invitamos a completar la encuesta de satisfaccion del periodo 2026-1.',
 				'We invite you to complete the 2026-1 satisfaction survey.',
 			),
-			'["calidad@upc.edu.pe"]',
 		],
 		[
-			'TG601-T001',
-			'PROG_SOFT',
+			'SURVEY_REMINDER_2026_1',
+			i18n('Recordatorio de encuesta 2026-1', '2026-1 survey reminder'),
 			i18n('Recordatorio de encuesta 2026-1', '2026-1 survey reminder'),
 			i18n(
 				'Aun puedes completar la encuesta de satisfaccion antes de la fecha maxima.',
 				'You can still complete the satisfaction survey before the deadline.',
 			),
-			'["calidad@upc.edu.pe"]',
 		],
 	]
 		.map(
-			([st, pc, title, body, cc]) =>
-				`('${st}', '${pc}', '${title}'::jsonb, '${body}'::jsonb, '${cc}'::jsonb)`,
+			([code, name, subject, body]) =>
+				`('${code}', '${name}'::jsonb, '${subject}'::jsonb, '${body}'::jsonb)`,
 		)
-		.join(',\n\t\t\t');
+		.join(',\n\t\t\t\t');
+
+	await tenantDataSource.query(`
+		INSERT INTO "core"."email_templates" (category_type_id, code, name, subject, body)
+		SELECT category.id, v.code, v.name, v.subject, v.body
+		FROM (
+			VALUES
+				${surveyEmailTemplateValues}
+		) AS v(code, name, subject, body)
+		JOIN "core"."types" category
+			ON category.code = 'TG1004-T003'
+		ON CONFLICT ON CONSTRAINT "UQ_email_templates_code" DO UPDATE
+		SET name       = EXCLUDED.name,
+			subject    = EXCLUDED.subject,
+			body       = EXCLUDED.body,
+			updated_at = NOW();
+	`);
+
+	const notificationMessageValues = [
+		['TG601-T001', 'PROG_SOFT', 'SURVEY_INVITATION_2026_1', '["calidad@upc.edu.pe"]'],
+		['TG601-T001', 'PROG_SOFT', 'SURVEY_REMINDER_2026_1', '["calidad@upc.edu.pe"]'],
+	]
+		.map(([st, pc, tc, cc]) => `('${st}', '${pc}', '${tc}', '${cc}'::jsonb)`)
+		.join(',\n\t\t\t\t');
 
 	await tenantDataSource.query(`
 		INSERT INTO "survey"."notification_messages" (
 			survey_type_id,
 			program_id,
-			title,
-			body,
+			email_template_id,
 			cc_receivers
 		)
-		SELECT survey_type.id, program.id, v.title, v.body, v.cc_receivers
+		SELECT survey_type.id, program.id, template.id, v.cc_receivers
 		FROM (
 			VALUES
 				${notificationMessageValues}
-		) AS v(survey_type_code, program_code, title, body, cc_receivers)
+		) AS v(survey_type_code, program_code, template_code, cc_receivers)
 		JOIN "core"."types" survey_type
 			ON survey_type.code = v.survey_type_code
 		JOIN "academic"."programs" program
 			ON program.code = v.program_code
+		JOIN "core"."email_templates" template
+			ON template.code = v.template_code
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM "survey"."notification_messages" message
-			WHERE message.program_id = program.id AND message.title->>'es' = v.title->>'es'
+			WHERE message.program_id = program.id AND message.email_template_id = template.id
 		);
 	`);
 

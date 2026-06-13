@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPortfolioSchema1800000000000 implements MigrationInterface {
-	name = 'AddPortfolioSchema1800000000000';
+export class AddPortfolioSchema1781100000000 implements MigrationInterface {
+	name = 'AddPortfolioSchema1781100000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "portfolio"`);

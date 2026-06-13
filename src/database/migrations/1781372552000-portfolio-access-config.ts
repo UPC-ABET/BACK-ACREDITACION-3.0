@@ -1,14 +1,14 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PortfolioAccessConfig1749100000000 implements MigrationInterface {
-	name = 'PortfolioAccessConfig1749100000000';
+export class PortfolioAccessConfig1781372552000 implements MigrationInterface {
+	name = 'PortfolioAccessConfig1781372552000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`
 			CREATE TABLE "portfolio"."access_config" (
 				"id"                 SERIAL          NOT NULL,
 				"extra"              JSONB           NOT NULL DEFAULT '{}',
-				"is_active"          BOOLEAN         NOT NULL DEFAULT false,
+				"is_active"          BOOLEAN         NOT NULL DEFAULT true,
 				"created_at"         TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				"updated_at"         TIMESTAMPTZ     DEFAULT CURRENT_TIMESTAMP,
 				"user_id"            INTEGER         NOT NULL,
@@ -17,7 +17,7 @@ export class PortfolioAccessConfig1749100000000 implements MigrationInterface {
 				CONSTRAINT "PK_portfolio_access_config" PRIMARY KEY ("id"),
 				CONSTRAINT "UQ_portfolio_access_config_user_id" UNIQUE ("user_id"),
 				CONSTRAINT "FK_portfolio_access_config_user_id"
-					FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id")
+					FOREIGN KEY ("user_id") REFERENCES "organization"."users"("id") ON DELETE CASCADE
 			)
 		`);
 

@@ -7,8 +7,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * modality from p_academic_period_id. The parameter name changes, so the function is
  * dropped and recreated (CREATE OR REPLACE cannot rename input parameters).
  */
-export class UseModalityHeaderForUploadValidation1790000000000 implements MigrationInterface {
-	name = 'UseModalityHeaderForUploadValidation1790000000000';
+export class UseModalityHeaderForUploadValidation1781000000000 implements MigrationInterface {
+	name = 'UseModalityHeaderForUploadValidation1781000000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(

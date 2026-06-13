@@ -46,7 +46,7 @@ describe('UserController', () => {
 		const res = fakeResponse();
 		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, accessToken: 'role-token' });
 
-		await controller.changeRole({ newRole: 2 }, { user: { userId: 8 } }, res as never);
+		await controller.changeRole({ newRole: 2 }, { userId: 8 } as never, res as never);
 
 		expect(service.loginById).toHaveBeenCalledWith(8, 2);
 		expect(res.cookie).toHaveBeenCalledWith(
@@ -60,10 +60,7 @@ describe('UserController', () => {
 		const profile = { user: { id: 8 }, userSchools: [] };
 		service.getMe.mockResolvedValueOnce(profile);
 
-		const response = await controller.getMe(
-			{ modalityCode: 'TG102-T001' },
-			{ user: { userId: 8 } },
-		);
+		const response = await controller.getMe({ modalityCode: 'TG102-T001' }, { userId: 8 } as never);
 
 		expect(service.getMe).toHaveBeenCalledWith({ userId: 8 }, 'TG102-T001');
 		expect(response.data).toBe(profile);

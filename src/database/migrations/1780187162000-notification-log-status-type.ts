@@ -13,12 +13,12 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * A core.notification_logs row is written ONLY when an email is actually sent (skips/failures
  * currently write no row), so status_type_id is never absent on an existing row → NOT NULL.
  *
- * notification_logs is empty in production (added in 1760000000000 with no backfill), so dropping
+ * notification_logs is empty in production (added in 1778977562000 with no backfill), so dropping
  * the column and adding a NOT NULL FK is safe without a data migration. The TG1005 type group +
  * types are seeded here (idempotently) so the live DB has them without re-running the seeds.
  */
-export class NotificationLogStatusType1780000000000 implements MigrationInterface {
-	name = 'NotificationLogStatusType1780000000000';
+export class NotificationLogStatusType1780187162000 implements MigrationInterface {
+	name = 'NotificationLogStatusType1780187162000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// Notification-log status type group (distinct from the survey lifecycle TG1001).

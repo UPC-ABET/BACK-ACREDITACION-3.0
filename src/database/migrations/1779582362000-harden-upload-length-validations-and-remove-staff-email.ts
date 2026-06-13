@@ -23,8 +23,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * width (the narrowing can fail if longer codes were stored meanwhile — acceptable for a
  * rollback that is not expected to run in prod).
  */
-export class HardenUploadLengthValidationsAndRemoveStaffEmail1770000000000 implements MigrationInterface {
-	name = 'HardenUploadLengthValidationsAndRemoveStaffEmail1770000000000';
+export class HardenUploadLengthValidationsAndRemoveStaffEmail1779582362000 implements MigrationInterface {
+	name = 'HardenUploadLengthValidationsAndRemoveStaffEmail1779582362000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(
