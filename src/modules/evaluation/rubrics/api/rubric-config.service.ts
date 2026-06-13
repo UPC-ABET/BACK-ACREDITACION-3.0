@@ -227,6 +227,42 @@ export class RubricConfigService {
 		return savedRubric;
 	}
 
+	async resolveRubricType(
+		studyPlanCourseId: number,
+		gradeTypeId: number,
+	): Promise<{ id: number; code: string; name: any }> {
+		const [gradeType, capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
+			this.typeRepo.findOne({ where: { id: gradeTypeId } }),
+			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.CAPSTONE } }),
+			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.NON_CAPSTONE } }),
+			this.typeRepo.findOne({ where: { code: TYPE_CODES.OUTCOME_TYPE.VERIFICATION } }),
+		]);
+
+		if (!gradeType) throw new BadRequestException('Tipo de nota no encontrado');
+		if (!capstoneType || !nonCapstoneType)
+			throw new BadRequestException('Tipos de rúbrica no configurados');
+
+		const isEaOrEb =
+			gradeType.code === TYPE_CODES.GRADE_TYPE.EA || gradeType.code === TYPE_CODES.GRADE_TYPE.EB;
+
+		if (isEaOrEb && verificationOutcomeType) {
+			const hasVerificationOutcome = await this.dataSource
+				.getRepository(CourseOutcomeMappingEntity)
+				.exists({
+					where: {
+						studyPlanCourseId,
+						outcomeTypeId: verificationOutcomeType.id,
+					},
+				});
+
+			if (hasVerificationOutcome) {
+				return { id: capstoneType.id, code: capstoneType.code, name: capstoneType.name };
+			}
+		}
+
+		return { id: nonCapstoneType.id, code: nonCapstoneType.code, name: nonCapstoneType.name };
+	}
+
 	async getRubricByCourse(courseId: number): Promise<RubricEntity> {
 		const rubric = await this.rubricRepo.findOne({
 			where: { studyPlanCourseId: courseId },

@@ -32,6 +32,17 @@ export class RubricController extends BaseController<RubricService> {
 		return await this.rubricConfigService.createRubric(dto);
 	}
 
+	@Get('resolve-type')
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
+	async resolveRubricType(
+		@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number,
+		@Query('gradeTypeId', ParseIntPipe) gradeTypeId: number,
+	) {
+		return parseSuccessResponse(
+			await this.rubricConfigService.resolveRubricType(studyPlanCourseId, gradeTypeId),
+		);
+	}
+
 	@Get('course/:courseId')
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getRubricByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
