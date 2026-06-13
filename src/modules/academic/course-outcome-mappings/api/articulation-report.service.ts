@@ -68,6 +68,7 @@ const STYLES = `
 	.legend-table td { border: 1px solid #94a3b8; }
 	.legend-glyph { text-align: center; font-size: 12pt; width: 28px; }
 	.glyph { font-size: 11pt; }
+	.marker { vertical-align: middle; }
 `;
 
 @Injectable()
@@ -224,7 +225,19 @@ export class ArticulationReportService {
 function glyphCell(type: MaintenanceOutcomeType): string {
 	if (!type.glyph) return '';
 	const color = type.color ?? '#18181b';
-	return `<span class="glyph" style="color:${esc(color)};">${esc(type.glyph)}</span>`;
+	return markerSvg(type.glyph, color);
+}
+
+// Drawn as SVG because headless Chromium lacks fonts covering the unicode marker glyphs (◆, ✓).
+function markerSvg(glyph: string, color: string): string {
+	const fill = esc(color);
+	if (glyph === '✓' || glyph === '✔') {
+		return `<svg class="marker" viewBox="0 0 14 14" width="12" height="12"><path d="M2 7.5 L5.5 11 L12 3" stroke="${fill}" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+	}
+	if (glyph === '◆' || glyph === '◇' || glyph === '♦') {
+		return `<svg class="marker" viewBox="0 0 14 14" width="12" height="12"><polygon points="7,1 13,7 7,13 1,7" fill="${fill}"/></svg>`;
+	}
+	return `<span class="glyph" style="color:${fill};">${esc(glyph)}</span>`;
 }
 
 function i18n(value: I18nText, lang: 'es' | 'en'): string {
