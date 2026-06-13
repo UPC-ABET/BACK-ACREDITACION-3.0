@@ -123,8 +123,7 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 					COUNT(*)::int                                                                       AS "total"
 				FROM evidence.surveys s
 				INNER JOIN academic.course_sections cs ON cs.id = s.course_section_id
-				INNER JOIN academic.study_plan_courses spc ON spc.id = cs.study_plan_course_id
-				INNER JOIN academic.courses c ON c.id = spc.course_id
+				INNER JOIN academic.courses c ON c.id = cs.course_id
 				WHERE ${whereClause}
 				GROUP BY c.name, cs.section_code
 				ORDER BY c.name ASC, cs.section_code ASC`,
