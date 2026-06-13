@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
@@ -307,7 +313,44 @@ export class UserService extends BaseService<UserRepository> {
 
 	async delete(id: number, manager?: EntityManager) {
 		await UserValidation.validateDelete(this.repository, id);
-		return await super.delete(id, manager);
+
+		const run = async (m: EntityManager) => {
+			await this.assertUserDeletable(id, m);
+			await m.query(`DELETE FROM core.user_roles WHERE user_id = $1`, [id]);
+			return await super.delete(id, m);
+		};
+
+		return manager ? run(manager) : this.dataSource.transaction(run);
+	}
+
+	private async assertUserDeletable(id: number, manager: EntityManager) {
+		const [refs]: Array<{
+			hasStaff: boolean;
+			hasStudent: boolean;
+			hasUploads: boolean;
+			hasNotifications: boolean;
+		}> = await manager.query(
+			`SELECT
+				EXISTS(SELECT 1 FROM organization.staff WHERE user_id = $1) AS "hasStaff",
+				EXISTS(SELECT 1 FROM academic.students WHERE user_id = $1) AS "hasStudent",
+				EXISTS(SELECT 1 FROM audit.upload_logs WHERE user_id = $1) AS "hasUploads",
+				EXISTS(
+					SELECT 1 FROM core.notification_logs WHERE notifier_user_id = $1
+					UNION ALL
+					SELECT 1 FROM ifc.notification_logs WHERE notifier_user_id = $1
+				) AS "hasNotifications"`,
+			[id],
+		);
+
+		if (refs.hasStaff) {
+			throw new ConflictException(usersValidationStrings.error.linkedToStaff);
+		}
+		if (refs.hasStudent) {
+			throw new ConflictException(usersValidationStrings.error.linkedToStudent);
+		}
+		if (refs.hasUploads || refs.hasNotifications) {
+			throw new ConflictException(usersValidationStrings.error.hasActivityHistory);
+		}
 	}
 }
 
