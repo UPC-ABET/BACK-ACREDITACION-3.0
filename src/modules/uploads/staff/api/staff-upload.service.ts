@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell } from 'src/libs/excel.functions';
+
 import { StaffRow, UploadResult, UploadRowError } from '../model/staff-upload.types';
 import type { StaffUploadDto } from '../model/staff-upload.dtos';
 import {
@@ -119,17 +121,12 @@ export class StaffUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				professorCode: this.cell(row, 1),
-				lastName: this.cell(row, 2),
-				firstName: this.cell(row, 3),
+				professorCode: readCell(row, 1),
+				lastName: readCell(row, 2),
+				firstName: readCell(row, 3),
 			});
 		});
 		return rows;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

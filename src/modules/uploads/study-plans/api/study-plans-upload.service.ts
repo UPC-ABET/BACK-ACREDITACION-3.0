@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell, readI18nCells } from 'src/libs/excel.functions';
+
 import {
 	StudyPlanRow,
 	UploadResult,
@@ -150,17 +152,17 @@ export class StudyPlansUploadService {
 		worksheet.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
 			let col = 1;
-			const studyPlanCode = this.cell(row, col++);
-			const studyPlanName = this.i18nCells(row, col, languages);
+			const studyPlanCode = readCell(row, col++);
+			const studyPlanName = readI18nCells(row, col, languages);
 			col += L;
-			const programCode = this.cell(row, col++);
-			const level = this.cell(row, col++);
-			const courseCode = this.cell(row, col++);
-			const courseName = this.i18nCells(row, col, languages);
+			const programCode = readCell(row, col++);
+			const level = readCell(row, col++);
+			const courseCode = readCell(row, col++);
+			const courseName = readI18nCells(row, col, languages);
 			col += L;
-			const learningOutcome = this.i18nCells(row, col, languages);
+			const learningOutcome = readI18nCells(row, col, languages);
 			col += L;
-			const isElective = parseElective(this.cell(row, col));
+			const isElective = parseElective(readCell(row, col));
 
 			rows.push({
 				rowNumber,
@@ -175,23 +177,6 @@ export class StudyPlansUploadService {
 			});
 		});
 		return rows;
-	}
-
-	private i18nCells(
-		row: ExcelJS.Row,
-		startCol: number,
-		languages: string[],
-	): Record<string, string> {
-		const result: Record<string, string> = {};
-		languages.forEach((lang, i) => {
-			result[lang] = this.cell(row, startCol + i);
-		});
-		return result;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

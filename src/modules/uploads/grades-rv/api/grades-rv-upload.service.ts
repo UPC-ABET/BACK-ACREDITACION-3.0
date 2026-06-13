@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell } from 'src/libs/excel.functions';
+
 import { GradesRvRow, UploadResult, UploadRowError } from '../model/grades-rv-upload.types';
 import type { GradesRvUploadDto } from '../model/grades-rv-upload.dtos';
 import {
@@ -119,18 +121,13 @@ export class GradesRvUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				sectionCode: this.cell(row, 1),
-				studentCode: this.cell(row, 2),
-				outcomeCode: this.cell(row, 3),
-				grade: this.cell(row, 4),
+				sectionCode: readCell(row, 1),
+				studentCode: readCell(row, 2),
+				outcomeCode: readCell(row, 3),
+				grade: readCell(row, 4),
 			});
 		});
 		return rows;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(
