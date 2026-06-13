@@ -7,9 +7,6 @@ import { StudyPlanCourseEntity } from '../../study-plan-courses/model/study-plan
 import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from '../../study-plans/model/study-plans.entity';
 
-const SCHOOL_TYPE_CODE = 'TG903-T002';
-const PROGRAM_TYPE_CODE = 'TG903-T003';
-
 export class CourseRepository extends BaseRepository<CourseEntity> {
 	constructor(
 		@InjectRepository(CourseEntity)
@@ -26,17 +23,16 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 		if (filters.isActive !== undefined)
 			qb.andWhere('c.is_active = :isActive', { isActive: filters.isActive });
 
-		const needsSpc = !!(filters.academicPeriodId || filters.programId || filters.schoolId);
-		const needsSpap = needsSpc;
-		const needsSp = !!(filters.programId || filters.schoolId);
+		const needsJoins = !!(filters.academicPeriodId || filters.programId);
 
-		if (needsSpc) {
-			qb.leftJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = c.id');
-			qb.leftJoin(
+		if (needsJoins) {
+			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = c.id');
+			qb.innerJoin(
 				StudyPlanAcademicPeriodEntity,
 				'spap',
 				'spap.id = spc.study_plan_academic_period_id',
 			);
+			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 		}
 
 		if (filters.academicPeriodId) {
@@ -45,33 +41,8 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 			});
 		}
 
-		if (needsSp) {
-			qb.leftJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
-		}
-
 		if (filters.programId) {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
-		}
-
-		if (filters.schoolId) {
-			qb.andWhere(
-				`sp.program_id IN (
-                SELECT ch_prog.entity_code
-                FROM   organization.charts   ch_prog
-                INNER JOIN core.types        t_prog
-                       ON  t_prog.id   = ch_prog.entity_type_id
-                       AND t_prog.code = '${PROGRAM_TYPE_CODE}'
-                INNER JOIN organization.charts ch_sch
-                       ON  ch_sch.id   = ch_prog.root_chart_id
-                INNER JOIN core.types        t_sch
-                       ON  t_sch.id    = ch_sch.entity_type_id
-                       AND t_sch.code  = '${SCHOOL_TYPE_CODE}'
-                INNER JOIN organization.schools sch
-                       ON  sch.id      = ch_sch.entity_code
-                WHERE  sch.id = :schoolId
-            )`,
-			);
-			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		return await qb.getMany();
