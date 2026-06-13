@@ -25,13 +25,13 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
-			.where(`oc.extra->>'surveyType' = :type`, { type: PPP_SURVEY_TYPE });
+			.where(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'programId')::int = :programId`, { programId: filters.programId });
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
 		}
 		if (filters?.academicPeriodId !== undefined) {
-			qb.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
 				periodId: filters.academicPeriodId,
 			});
 		}
@@ -39,7 +39,7 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			qb.andWhere('oc.is_active = :isActive', { isActive: filters.isActive });
 		}
 		if (filters?.isVisible !== undefined) {
-			qb.andWhere(`(oc.extra->>'isVisible')::boolean = :isVisible`, {
+			qb.andWhere(`(oc.extra->>'is_visible')::boolean = :isVisible`, {
 				isVisible: filters.isVisible,
 			});
 		}
@@ -54,7 +54,7 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
 			.where('oc.id = :id', { id })
-			.andWhere(`oc.extra->>'surveyType' = :type`, { type: PPP_SURVEY_TYPE })
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE })
 			.getOne();
 	}
 
@@ -74,13 +74,13 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.where('oc.outcome_id = :outcomeId', { outcomeId })
-			.andWhere(`oc.extra->>'surveyType' = :type`, { type: PPP_SURVEY_TYPE });
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
 
 		if (programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'programId')::int = :programId`, { programId: programId });
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
 		}
 		if (academicPeriodId !== undefined) {
-			qb.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
 				periodId: academicPeriodId,
 			});
 		}

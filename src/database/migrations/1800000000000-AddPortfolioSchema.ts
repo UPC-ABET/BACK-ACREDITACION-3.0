@@ -10,7 +10,7 @@ export class AddPortfolioSchema1800000000000 implements MigrationInterface {
 			CREATE TABLE "portfolio"."companies" (
 				"id"                 SERIAL              NOT NULL,
 				"extra"              JSONB               NOT NULL DEFAULT '{}',
-				"is_active"          BOOLEAN             NOT NULL DEFAULT false,
+				"is_active"          BOOLEAN             NOT NULL DEFAULT true,
 				"created_at"         TIMESTAMPTZ         NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				"updated_at"         TIMESTAMPTZ         DEFAULT CURRENT_TIMESTAMP,
 				"name"               VARCHAR(255)        NOT NULL,
@@ -36,7 +36,7 @@ export class AddPortfolioSchema1800000000000 implements MigrationInterface {
 			CREATE TABLE "portfolio"."research_lines" (
 				"id"               SERIAL       NOT NULL,
 				"extra"            JSONB        NOT NULL DEFAULT '{}',
-				"is_active"        BOOLEAN      NOT NULL DEFAULT false,
+				"is_active"        BOOLEAN      NOT NULL DEFAULT true,
 				"created_at"       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				"updated_at"       TIMESTAMPTZ  DEFAULT CURRENT_TIMESTAMP,
 				"name"             VARCHAR(255) NOT NULL,
@@ -57,7 +57,7 @@ export class AddPortfolioSchema1800000000000 implements MigrationInterface {
 			CREATE TABLE "portfolio"."projects" (
 				"id"                           SERIAL        NOT NULL,
 				"extra"                        JSONB         NOT NULL DEFAULT '{}',
-				"is_active"                    BOOLEAN       NOT NULL DEFAULT false,
+				"is_active"                    BOOLEAN       NOT NULL DEFAULT true,
 				"created_at"                   TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				"updated_at"                   TIMESTAMPTZ   DEFAULT CURRENT_TIMESTAMP,
 				"code"                         VARCHAR(50)   NOT NULL,
@@ -124,7 +124,7 @@ export class AddPortfolioSchema1800000000000 implements MigrationInterface {
 			CREATE TABLE "portfolio"."project_applications" (
 				"id"         SERIAL       NOT NULL,
 				"extra"      JSONB        NOT NULL DEFAULT '{}',
-				"is_active"  BOOLEAN      NOT NULL DEFAULT false,
+				"is_active"  BOOLEAN      NOT NULL DEFAULT true,
 				"created_at" TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				"updated_at" TIMESTAMPTZ  DEFAULT CURRENT_TIMESTAMP,
 				"project_id" INTEGER      NOT NULL,

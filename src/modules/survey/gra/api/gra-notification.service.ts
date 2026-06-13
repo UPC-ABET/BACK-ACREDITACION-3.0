@@ -225,10 +225,10 @@ export class GraNotificationService {
 			return {
 				outcomeConfigId: cfg.id,
 				outcomeId: cfg.outcomeId,
-				name: language === 'en' && extra.nameEn ? extra.nameEn : cfg.userOutcomeName,
+				name: language === 'en' && extra.name_en ? extra.name_en : cfg.userOutcomeName,
 				description:
-					language === 'en' && extra.descriptionEn
-						? extra.descriptionEn
+					language === 'en' && extra.description_en
+						? extra.description_en
 						: (cfg.userOutcomeDescription ?? null),
 				order: extra.order ?? null,
 			};

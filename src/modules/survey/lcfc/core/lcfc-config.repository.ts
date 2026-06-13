@@ -23,13 +23,13 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}): Promise<OutcomeConfigEntity[]> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
-			.where(`oc.extra->>'surveyType' = :type`, { type: LCFC_SURVEY_TYPE });
+			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'programId')::int = :programId`, { programId: filters.programId });
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
 		}
 		if (filters?.academicPeriodId !== undefined) {
-			qb.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
 				periodId: filters.academicPeriodId,
 			});
 		}
@@ -47,9 +47,9 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	): Promise<OutcomeConfigEntity | null> {
 		return await this.repository
 			.createQueryBuilder('oc')
-			.where(`oc.extra->>'surveyType' = :type`, { type: LCFC_SURVEY_TYPE })
-			.andWhere(`(oc.extra->>'courseSectionId')::int = :csId`, { csId: courseSectionId })
-			.andWhere(`(oc.extra->>'academicPeriodId')::int = :periodId`, {
+			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE })
+			.andWhere(`(oc.extra->>'course_section_id')::int = :csId`, { csId: courseSectionId })
+			.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
 				periodId: academicPeriodId,
 			})
 			.getOne();
