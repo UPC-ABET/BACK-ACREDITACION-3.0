@@ -4,7 +4,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 	const instrumentValues = [
 		[
 			'TG501-T001',
-			'INST_FP_EXAM',
+			'FP_EXAM',
 			i18n('Examen de Fundamentos de Programacion', 'Fundamentals of Programming exam'),
 			i18n(
 				'Instrumento para medir solucion algoritmica basica',
@@ -14,7 +14,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'TG501-T002',
-			'INST_CAPSTONE',
+			'CAPSTONE',
 			i18n('Proyecto integrador de software', 'Software integrator project'),
 			i18n(
 				'Instrumento para medir competencias integradas del programa',
@@ -24,7 +24,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'TG501-T003',
-			'INST_SURVEY_STUDENT',
+			'SURVEY_STUDENT',
 			i18n('Encuesta de percepcion estudiantil', 'Student perception survey'),
 			i18n(
 				'Instrumento de percepcion para resultados del programa',
@@ -34,7 +34,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'TG501-T001',
-			'INST_IFC',
+			'IFC',
 			i18n('Informe Final del Curso', 'Course Final Report'),
 			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
 			true,
