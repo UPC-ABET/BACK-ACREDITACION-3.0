@@ -949,14 +949,14 @@ BEGIN
 	JOIN core.types pt ON pt.type_group_id = g.id AND pt.code = trim(e->>'positionTypeCode')
 	WHERE NOT EXISTS (SELECT 1 FROM organization.staff s WHERE s.user_id = u.id);
 
-	-- update staff that already existed (push prior values onto the extra.uploadUndo stack for rollback)
+	-- update staff that already existed (push prior values onto the extra.upload_undo stack for rollback)
 	UPDATE organization.staff s
 	SET position_type_id = pt.id,
 		job_title = COALESCE(e->'jobTitle', '{}'::jsonb),
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'positionTypeId', s.position_type_id, 'jobTitle', s.job_title))
+		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(s.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'position_type_id', s.position_type_id, 'job_title', s.job_title))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN organization.users u
 		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
@@ -975,13 +975,13 @@ BEGIN
 	WHERE NULLIF(trim(e->>'professorCode'), '') IS NOT NULL
 	  AND NOT EXISTS (SELECT 1 FROM academic.professors p WHERE p.code = trim(e->>'professorCode'));
 
-	-- re-point professors whose code already existed (push prior staff_id onto the extra.uploadUndo stack)
+	-- re-point professors whose code already existed (push prior staff_id onto the extra.upload_undo stack)
 	UPDATE academic.professors p
 	SET staff_id = s.id,
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(p.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(p.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'staffId', p.staff_id))
+		extra = jsonb_set(COALESCE(p.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(p.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'staff_id', p.staff_id))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN organization.users u
 		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
@@ -1036,51 +1036,51 @@ BEGIN
 	END IF;
 
 	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
-	-- Blocked when this upload's id is in a row's uploadUndo stack but is NOT the top element (a later
+	-- Blocked when this upload's id is in a row's upload_undo stack but is NOT the top element (a later
 	-- upload updated it since), or when this upload INSERTED a row that a later upload has since updated
 	-- (the inserted row carries a non-empty stack). Roll back the newer upload first.
 	IF EXISTS (
 		SELECT 1 FROM organization.staff s
-		WHERE (s.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (s.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (s.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (s.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM organization.staff s
 		WHERE s.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(s.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(s.extra->'upload_undo', '[]'::jsonb)) > 0
 	) OR EXISTS (
 		SELECT 1 FROM academic.professors p
-		WHERE (p.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (p.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (p.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (p.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM academic.professors p
 		WHERE p.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(p.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(p.extra->'upload_undo', '[]'::jsonb)) > 0
 	) THEN
 		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
 	END IF;
 
-	-- restore re-pointed professors by popping this upload's (top) uploadUndo entry, then drop inserts
+	-- restore re-pointed professors by popping this upload's (top) upload_undo entry, then drop inserts
 	UPDATE academic.professors p
-	SET staff_id = (p.extra->'uploadUndo' -> -1 ->> 'staffId')::int,
+	SET staff_id = (p.extra->'upload_undo' -> -1 ->> 'staff_id')::int,
 		extra = CASE
-			WHEN jsonb_array_length(p.extra->'uploadUndo') <= 1 THEN p.extra - 'uploadUndo'
-			ELSE jsonb_set(p.extra, '{uploadUndo}', (p.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(p.extra->'upload_undo') <= 1 THEN p.extra - 'upload_undo'
+			ELSE jsonb_set(p.extra, '{upload_undo}', (p.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (p.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (p.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM academic.professors WHERE upload_log_id = p_upload_log_id;
 
-	-- restore updated staff by popping this upload's (top) uploadUndo entry, then drop inserts
+	-- restore updated staff by popping this upload's (top) upload_undo entry, then drop inserts
 	UPDATE organization.staff s
-	SET position_type_id = (s.extra->'uploadUndo' -> -1 ->> 'positionTypeId')::int,
-		job_title = s.extra->'uploadUndo' -> -1 -> 'jobTitle',
+	SET position_type_id = (s.extra->'upload_undo' -> -1 ->> 'position_type_id')::int,
+		job_title = s.extra->'upload_undo' -> -1 -> 'job_title',
 		extra = CASE
-			WHEN jsonb_array_length(s.extra->'uploadUndo') <= 1 THEN s.extra - 'uploadUndo'
-			ELSE jsonb_set(s.extra, '{uploadUndo}', (s.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(s.extra->'upload_undo') <= 1 THEN s.extra - 'upload_undo'
+			ELSE jsonb_set(s.extra, '{upload_undo}', (s.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (s.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (s.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM organization.staff WHERE upload_log_id = p_upload_log_id;
 
@@ -1244,7 +1244,7 @@ BEGIN
 			ELSE NULL
 		END,
 		v_log_id,
-		jsonb_build_object('uploadNodeCode', lower(trim(e->>'code'))),
+		jsonb_build_object('upload_node_code', lower(trim(e->>'code'))),
 		true, NOW(), NOW()
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN organization.staff s
@@ -1266,9 +1266,9 @@ BEGIN
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN organization.charts parent
 		ON parent.upload_log_id = v_log_id
-	   AND parent.extra->>'uploadNodeCode' = lower(trim(e->>'parentCode'))
+	   AND parent.extra->>'upload_node_code' = lower(trim(e->>'parentCode'))
 	WHERE child.upload_log_id = v_log_id
-	  AND child.extra->>'uploadNodeCode' = lower(trim(e->>'code'))
+	  AND child.extra->>'upload_node_code' = lower(trim(e->>'code'))
 	  AND NULLIF(trim(e->>'parentCode'), '') IS NOT NULL;
 
 	-- pass 3: top-level rows (no parent in the file) hang under the school's chart node
@@ -1277,7 +1277,7 @@ BEGIN
 	WHERE upload_log_id = v_log_id AND root_chart_id IS NULL;
 
 	-- drop the temporary wiring code from extra
-	UPDATE organization.charts SET extra = extra - 'uploadNodeCode' WHERE charts.upload_log_id = v_log_id;
+	UPDATE organization.charts SET extra = extra - 'upload_node_code' WHERE charts.upload_log_id = v_log_id;
 
 	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
 END;
@@ -1424,15 +1424,15 @@ BEGIN
 		  AND o.outcome_code = trim(e->>'commissionCode') || '-' || trim(e->>'programCode') || '-' || trim(e->>'outcomeCode')
 	);
 
-	-- update outcomes whose code already existed in this period (push prior name + description onto the extra.uploadUndo stack)
+	-- update outcomes whose code already existed in this period (push prior name + description onto the extra.upload_undo stack)
 	UPDATE accreditation.outcomes o
 	SET outcome_name = COALESCE(e->'outcomeName', '{}'::jsonb),
 		outcome_description = COALESCE(e->'outcomeDescription', '{}'::jsonb),
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(o.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(o.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'outcomeName', o.outcome_name,
-				'outcomeDescription', o.outcome_description))
+		extra = jsonb_set(COALESCE(o.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(o.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'outcome_name', o.outcome_name,
+				'outcome_description', o.outcome_description))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN academic.programs p ON p.code = trim(e->>'programCode')
 	JOIN accreditation.commissions c ON c.code = trim(e->>'commissionCode')
@@ -1489,26 +1489,26 @@ BEGIN
 	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
 	IF EXISTS (
 		SELECT 1 FROM accreditation.outcomes o
-		WHERE (o.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (o.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (o.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (o.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM accreditation.outcomes o
 		WHERE o.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(o.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(o.extra->'upload_undo', '[]'::jsonb)) > 0
 	) THEN
 		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
 	END IF;
 
-	-- restore updated outcomes by popping this upload's (top) uploadUndo entry, then drop inserts
+	-- restore updated outcomes by popping this upload's (top) upload_undo entry, then drop inserts
 	UPDATE accreditation.outcomes o
-	SET outcome_name = o.extra->'uploadUndo' -> -1 -> 'outcomeName',
-		outcome_description = COALESCE(o.extra->'uploadUndo' -> -1 -> 'outcomeDescription', o.outcome_description),
+	SET outcome_name = o.extra->'upload_undo' -> -1 -> 'outcome_name',
+		outcome_description = COALESCE(o.extra->'upload_undo' -> -1 -> 'outcome_description', o.outcome_description),
 		extra = CASE
-			WHEN jsonb_array_length(o.extra->'uploadUndo') <= 1 THEN o.extra - 'uploadUndo'
-			ELSE jsonb_set(o.extra, '{uploadUndo}', (o.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(o.extra->'upload_undo') <= 1 THEN o.extra - 'upload_undo'
+			ELSE jsonb_set(o.extra, '{upload_undo}', (o.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (o.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (o.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM accreditation.outcomes WHERE upload_log_id = p_upload_log_id;
 
@@ -1651,13 +1651,13 @@ BEGIN
 		WHERE com.outcome_id = o.id AND com.study_plan_course_id = spc.id
 	);
 
-	-- update mappings that already existed (push prior outcome type onto the extra.uploadUndo stack)
+	-- update mappings that already existed (push prior outcome type onto the extra.upload_undo stack)
 	UPDATE academic.course_outcome_mappings com
 	SET outcome_type_id = t.id,
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(com.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(com.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'outcomeTypeId', com.outcome_type_id))
+		extra = jsonb_set(COALESCE(com.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(com.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'outcome_type_id', com.outcome_type_id))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN accreditation.outcomes o ON o.outcome_code = trim(e->>'outcomeCode')
 	JOIN accreditation.program_commissions opc ON opc.id = o.program_commission_id AND opc.academic_period_id = p_academic_period_id
@@ -1691,25 +1691,25 @@ BEGIN
 	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
 	IF EXISTS (
 		SELECT 1 FROM academic.course_outcome_mappings com
-		WHERE (com.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (com.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (com.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (com.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM academic.course_outcome_mappings com
 		WHERE com.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(com.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(com.extra->'upload_undo', '[]'::jsonb)) > 0
 	) THEN
 		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
 	END IF;
 
-	-- restore updated mappings by popping this upload's (top) uploadUndo entry, then drop inserts
+	-- restore updated mappings by popping this upload's (top) upload_undo entry, then drop inserts
 	UPDATE academic.course_outcome_mappings com
-	SET outcome_type_id = (com.extra->'uploadUndo' -> -1 ->> 'outcomeTypeId')::int,
+	SET outcome_type_id = (com.extra->'upload_undo' -> -1 ->> 'outcome_type_id')::int,
 		extra = CASE
-			WHEN jsonb_array_length(com.extra->'uploadUndo') <= 1 THEN com.extra - 'uploadUndo'
-			ELSE jsonb_set(com.extra, '{uploadUndo}', (com.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(com.extra->'upload_undo') <= 1 THEN com.extra - 'upload_undo'
+			ELSE jsonb_set(com.extra, '{upload_undo}', (com.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (com.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (com.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM academic.course_outcome_mappings WHERE upload_log_id = p_upload_log_id;
 
@@ -1853,7 +1853,7 @@ BEGIN
 	JOIN core.types t ON t.type_group_id = g.id AND t.code = trim(e->>'sectionModalityTypeCode')
 	WHERE NOT EXISTS (SELECT 1 FROM academic.course_sections cs WHERE cs.section_code = trim(e->>'sectionCode'));
 
-	-- update sections whose code already existed (push prior values onto the extra.uploadUndo stack)
+	-- update sections whose code already existed (push prior values onto the extra.upload_undo stack)
 	UPDATE academic.course_sections cs
 	SET course_id = c.id,
 		academic_period_id = spap.academic_period_id,
@@ -1861,12 +1861,12 @@ BEGIN
 		professor_id = pr.id,
 		section_modality_type_id = t.id,
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(cs.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(cs.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'courseId', cs.course_id,
-				'academicPeriodId', cs.academic_period_id,
-				'campusId', cs.campus_id, 'professorId', cs.professor_id,
-				'sectionModalityTypeId', cs.section_modality_type_id))
+		extra = jsonb_set(COALESCE(cs.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(cs.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'course_id', cs.course_id,
+				'academic_period_id', cs.academic_period_id,
+				'campus_id', cs.campus_id, 'professor_id', cs.professor_id,
+				'section_modality_type_id', cs.section_modality_type_id))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
 	JOIN academic.study_plan_academic_periods spap
@@ -1912,29 +1912,29 @@ BEGIN
 	-- block out-of-order rollback: this upload must be the NEWEST that touched each row it changed.
 	IF EXISTS (
 		SELECT 1 FROM academic.course_sections cs
-		WHERE (cs.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (cs.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (cs.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (cs.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM academic.course_sections cs
 		WHERE cs.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(cs.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(cs.extra->'upload_undo', '[]'::jsonb)) > 0
 	) THEN
 		RAISE EXCEPTION 'rollbackBlockedNewerUpload';
 	END IF;
 
-	-- restore updated sections by popping this upload's (top) uploadUndo entry, then drop inserts
+	-- restore updated sections by popping this upload's (top) upload_undo entry, then drop inserts
 	UPDATE academic.course_sections cs
-	SET course_id = (cs.extra->'uploadUndo' -> -1 ->> 'courseId')::int,
-		academic_period_id = (cs.extra->'uploadUndo' -> -1 ->> 'academicPeriodId')::int,
-		campus_id = (cs.extra->'uploadUndo' -> -1 ->> 'campusId')::int,
-		professor_id = (cs.extra->'uploadUndo' -> -1 ->> 'professorId')::int,
-		section_modality_type_id = (cs.extra->'uploadUndo' -> -1 ->> 'sectionModalityTypeId')::int,
+	SET course_id = (cs.extra->'upload_undo' -> -1 ->> 'course_id')::int,
+		academic_period_id = (cs.extra->'upload_undo' -> -1 ->> 'academic_period_id')::int,
+		campus_id = (cs.extra->'upload_undo' -> -1 ->> 'campus_id')::int,
+		professor_id = (cs.extra->'upload_undo' -> -1 ->> 'professor_id')::int,
+		section_modality_type_id = (cs.extra->'upload_undo' -> -1 ->> 'section_modality_type_id')::int,
 		extra = CASE
-			WHEN jsonb_array_length(cs.extra->'uploadUndo') <= 1 THEN cs.extra - 'uploadUndo'
-			ELSE jsonb_set(cs.extra, '{uploadUndo}', (cs.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(cs.extra->'upload_undo') <= 1 THEN cs.extra - 'upload_undo'
+			ELSE jsonb_set(cs.extra, '{upload_undo}', (cs.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (cs.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (cs.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM academic.course_sections WHERE upload_log_id = p_upload_log_id;
 
@@ -2068,16 +2068,16 @@ BEGIN
 	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
 	WHERE NOT EXISTS (SELECT 1 FROM academic.students s WHERE s.code = trim(e->>'studentCode'));
 
-	-- update students whose code already existed (push prior values onto the extra.uploadUndo stack)
+	-- update students whose code already existed (push prior values onto the extra.upload_undo stack)
 	UPDATE academic.students s
 	SET user_id = u.id,
 		program_id = p.id,
 		graduation_modality_type_id = tm.id,
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(s.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'userId', s.user_id, 'programId', s.program_id,
-				'graduationModalityTypeId', s.graduation_modality_type_id))
+		extra = jsonb_set(COALESCE(s.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(s.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'user_id', s.user_id, 'program_id', s.program_id,
+				'graduation_modality_type_id', s.graduation_modality_type_id))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN organization.users u
 		ON u.id = (SELECT uu.id FROM organization.users uu WHERE lower(uu.email) = lower(trim(e->>'email')) ORDER BY uu.id LIMIT 1)
@@ -2106,15 +2106,15 @@ BEGIN
 		WHERE es.student_id = s.id AND es.study_plan_academic_period = spap.id
 	);
 
-	-- update enrollments that already existed (push prior values onto the extra.uploadUndo stack)
+	-- update enrollments that already existed (push prior values onto the extra.upload_undo stack)
 	UPDATE academic.enrolled_students es
 	SET campus_id = cam.id,
 		enrollement_modality_type_id = tm.id,
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(es.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(es.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'campusId', es.campus_id,
-				'enrollementModalityTypeId', es.enrollement_modality_type_id))
+		extra = jsonb_set(COALESCE(es.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(es.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'campus_id', es.campus_id,
+				'enrollement_modality_type_id', es.enrollement_modality_type_id))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN academic.students s ON s.code = trim(e->>'studentCode')
 	JOIN academic.study_plans sp ON sp.code = trim(e->>'studyPlanCode')
@@ -2159,20 +2159,20 @@ BEGIN
 	-- and no newer upload may have hung an enrollment off a student this one inserted.
 	IF EXISTS (
 		SELECT 1 FROM academic.students s
-		WHERE (s.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (s.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (s.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (s.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM academic.students s
 		WHERE s.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(s.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(s.extra->'upload_undo', '[]'::jsonb)) > 0
 	) OR EXISTS (
 		SELECT 1 FROM academic.enrolled_students es
-		WHERE (es.extra->'uploadUndo') @> jsonb_build_array(jsonb_build_object('logId', p_upload_log_id))
-		  AND (es.extra->'uploadUndo' -> -1 ->> 'logId')::int <> p_upload_log_id
+		WHERE (es.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', p_upload_log_id))
+		  AND (es.extra->'upload_undo' -> -1 ->> 'log_id')::int <> p_upload_log_id
 	) OR EXISTS (
 		SELECT 1 FROM academic.enrolled_students es
 		WHERE es.upload_log_id = p_upload_log_id
-		  AND jsonb_array_length(COALESCE(es.extra->'uploadUndo', '[]'::jsonb)) > 0
+		  AND jsonb_array_length(COALESCE(es.extra->'upload_undo', '[]'::jsonb)) > 0
 	) OR EXISTS (
 		SELECT 1 FROM academic.enrolled_students es
 		WHERE es.upload_log_id IS DISTINCT FROM p_upload_log_id
@@ -2183,28 +2183,28 @@ BEGIN
 
 	-- restore updated enrollments (pop), then drop inserted enrollments
 	UPDATE academic.enrolled_students es
-	SET campus_id = (es.extra->'uploadUndo' -> -1 ->> 'campusId')::int,
-		enrollement_modality_type_id = (es.extra->'uploadUndo' -> -1 ->> 'enrollementModalityTypeId')::int,
+	SET campus_id = (es.extra->'upload_undo' -> -1 ->> 'campus_id')::int,
+		enrollement_modality_type_id = (es.extra->'upload_undo' -> -1 ->> 'enrollement_modality_type_id')::int,
 		extra = CASE
-			WHEN jsonb_array_length(es.extra->'uploadUndo') <= 1 THEN es.extra - 'uploadUndo'
-			ELSE jsonb_set(es.extra, '{uploadUndo}', (es.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(es.extra->'upload_undo') <= 1 THEN es.extra - 'upload_undo'
+			ELSE jsonb_set(es.extra, '{upload_undo}', (es.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (es.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (es.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM academic.enrolled_students WHERE upload_log_id = p_upload_log_id;
 
 	-- restore updated students (pop), then drop inserted students
 	UPDATE academic.students s
-	SET user_id = (s.extra->'uploadUndo' -> -1 ->> 'userId')::int,
-		program_id = (s.extra->'uploadUndo' -> -1 ->> 'programId')::int,
-		graduation_modality_type_id = (s.extra->'uploadUndo' -> -1 ->> 'graduationModalityTypeId')::int,
+	SET user_id = (s.extra->'upload_undo' -> -1 ->> 'user_id')::int,
+		program_id = (s.extra->'upload_undo' -> -1 ->> 'program_id')::int,
+		graduation_modality_type_id = (s.extra->'upload_undo' -> -1 ->> 'graduation_modality_type_id')::int,
 		extra = CASE
-			WHEN jsonb_array_length(s.extra->'uploadUndo') <= 1 THEN s.extra - 'uploadUndo'
-			ELSE jsonb_set(s.extra, '{uploadUndo}', (s.extra->'uploadUndo') - (-1))
+			WHEN jsonb_array_length(s.extra->'upload_undo') <= 1 THEN s.extra - 'upload_undo'
+			ELSE jsonb_set(s.extra, '{upload_undo}', (s.extra->'upload_undo') - (-1))
 		END,
 		updated_at = NOW()
-	WHERE (s.extra->'uploadUndo' -> -1 ->> 'logId')::int = p_upload_log_id;
+	WHERE (s.extra->'upload_undo' -> -1 ->> 'log_id')::int = p_upload_log_id;
 
 	DELETE FROM academic.students WHERE upload_log_id = p_upload_log_id;
 

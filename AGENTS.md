@@ -14,8 +14,8 @@
 Code should be self-explanatory by default — favour clear names, small functions, and obvious control flow over prose.
 
 - Write comments **only** for complex, high-reasoning code: non-obvious algorithms, tricky invariants, ordering/concurrency concerns, or a "why" the code cannot express on its own (e.g. the upload/rollback PG functions).
-- Do **not** add comments that restate what the code already says, narrate straightforward steps, or label obvious blocks. If a comment is only describing *what* a readable line does, delete it and let the code speak.
-- When a comment is genuinely needed, explain the *why*, not the *what*.
+- Do **not** add comments that restate what the code already says, narrate straightforward steps, or label obvious blocks. If a comment is only describing _what_ a readable line does, delete it and let the code speak.
+- When a comment is genuinely needed, explain the _why_, not the _what_.
 - If you feel a block needs a comment to be understood, first ask whether better naming or a small extracted function would remove the need.
 
 ## Naming Conventions
@@ -24,6 +24,7 @@ Code should be self-explanatory by default — favour clear names, small functio
 | ---------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | TypeScript code (entities, DTOs, services, controllers, vars, methods) | `camelCase` / `PascalCase`                              | `studyPlanCourseId`, `CourseService`                                                  |
 | Postgres columns                                                       | `snake_case`                                            | `study_plan_course_id`                                                                |
+| JSONB column content (keys stored _inside_ a `jsonb` column)           | `snake_case`                                            | `extra = '{ "upload_undo": [{ "log_id": 1 }] }'`                                      |
 | JSON wire format (request/response bodies)                             | `camelCase`                                             | `{ "studyPlanCourseId": 1 }`                                                          |
 | URL params and query strings                                           | `camelCase`                                             | `/professor/:professorId?academicPeriodId=...`                                        |
 | Constants                                                              | `SCREAMING_SNAKE_CASE`                                  | `TYPE_CODES.EVALUATOR_TYPE.COM`                                                       |
@@ -34,6 +35,8 @@ Code should be self-explanatory by default — favour clear names, small functio
 The TS ↔ DB bridge is `SnakeNamingStrategy` from `typeorm-naming-strategies`, wired in **both** `src/app.module.ts` and `src/database/typeorm.config.ts`. Do not hand-write `@Column({ name: '...' })` unless the DB column genuinely does not match `camelToSnake(propertyName)`.
 
 `@JoinColumn({ name: '...', foreignKeyConstraintName: '...' })`, `@Index('IDX_...', [...])`, and `@Entity({ name: '...' })` keep DB-side identifiers in `snake_case`. The array passed to `@Index([...])` contains **TS property names** (camelCase), which the strategy resolves to columns.
+
+**Every database column is `snake_case` — and so are the keys _inside_ `jsonb` columns.** `SnakeNamingStrategy` only bridges top-level column names; it does not reach inside a JSONB blob. So anything you write into a `jsonb` column (e.g. `extra`) must use `snake_case` keys at every depth, exactly like a real column. The camelCase wire shape is restored on read at the API boundary: `BaseService.normalizeJsonbColumns` runs `camelizeKeys` (`src/libs/case.functions.ts`) on JSONB columns, so services and clients still see `camelCase`. Writing camelCase keys into JSONB (including raw-SQL / PG-function writes such as the `audit.fn_upload_*` / `fn_rollback_*` undo stacks) is a violation — store `upload_undo` / `log_id`, never `uploadUndo` / `logId`.
 
 ### Raw SQL convention
 
@@ -409,10 +412,10 @@ a given one from the query (e.g. a comparison screen that spans periods).
 Read them only through the dedicated param decorators (each pairs a value decorator with a Swagger
 header decorator — apply both):
 
-| Scope           | Header              | Param decorator       | Swagger decorator           |
-| --------------- | ------------------- | --------------------- | --------------------------- |
-| School          | `X-School-Id`       | `@SchoolId()`         | `@ApiSchoolHeader()`        |
-| Modality        | `X-Modality-Type-Id`| `@ModalityTypeId()`   | `@ApiModalityTypeHeader()`  |
+| Scope           | Header                 | Param decorator       | Swagger decorator            |
+| --------------- | ---------------------- | --------------------- | ---------------------------- |
+| School          | `X-School-Id`          | `@SchoolId()`         | `@ApiSchoolHeader()`         |
+| Modality        | `X-Modality-Type-Id`   | `@ModalityTypeId()`   | `@ApiModalityTypeHeader()`   |
 | Academic period | `X-Academic-Period-Id` | `@AcademicPeriodId()` | `@ApiAcademicPeriodHeader()` |
 
 All live in `src/modules/auth/protocols/jwt/decorators/`. Pass `{ optional: true }` to the value
