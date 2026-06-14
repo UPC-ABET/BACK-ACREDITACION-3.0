@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { OrgScopeRepository } from '../core/org-scope.repository';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { I18nText } from 'src/shared/types/i18n';
 import type { UserSchool } from '../core/user-schools/user-schools.types';
 import {
@@ -28,17 +29,20 @@ export class OrgScopeService implements UserSchoolsService {
 		private readonly userSchoolsRepository: UserSchoolsRepository,
 	) {}
 
-	async getScope(userId: number, schoolId: number | null, periodId: number) {
+	async getScope(userId: number, schoolId: number | null, periodId: number, isAdmin = false) {
 		if (schoolId === null || schoolId === undefined) {
-			return { highestLevel: null, levels: [] };
+			return { highestLevel: null, levels: [], canNotify: isAdmin };
 		}
 
 		const rows = await this.orgScopeRepository.findScope(userId, schoolId, periodId);
-		if (rows.length === 0) return { highestLevel: null, levels: [] };
+		if (rows.length === 0) return { highestLevel: null, levels: [], canNotify: isAdmin };
+
+		const canNotify =
+			isAdmin || rows.some((r) => r.isAnchor && r.tagCode !== TYPE_CODES.ENTITY_TYPE.COURSE);
 
 		// The school is the anchor at depth 0; expose only the levels below it.
 		const selectable = rows.filter((r) => r.levelNum > 0);
-		if (selectable.length === 0) return { highestLevel: null, levels: [] };
+		if (selectable.length === 0) return { highestLevel: null, levels: [], canNotify };
 
 		const visibleIds = new Set(selectable.map((r) => r.id));
 
@@ -62,7 +66,7 @@ export class OrgScopeService implements UserSchoolsService {
 			.sort(([a], [b]) => a - b)
 			.map(([levelNum, v]) => ({ levelNum, options: v.options }));
 
-		return { highestLevel, levels };
+		return { highestLevel, levels, canNotify };
 	}
 
 	async getUserSchools(
