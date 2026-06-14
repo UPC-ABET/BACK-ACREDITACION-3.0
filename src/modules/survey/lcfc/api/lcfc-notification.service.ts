@@ -16,6 +16,7 @@ import { LcfcConfigRepository } from '../core/lcfc-config.repository';
 import { LcfcValidation } from '../core/lcfc.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
+import { i18nText } from 'src/shared/types/i18n';
 import {
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
@@ -300,6 +301,7 @@ export class LcfcNotificationService {
 		try {
 			await this.dataSource.transaction(async (manager) => {
 				for (const item of dto.scores) {
+					const commentaries = i18nText(item.commentaries);
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
 						[surveyId, item.outcomeId],
@@ -308,12 +310,12 @@ export class LcfcNotificationService {
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, surveyId, item.outcomeId],
+							[item.score, commentaries, surveyId, item.outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[surveyId, item.outcomeId, item.score, item.commentaries ?? null],
+							[surveyId, item.outcomeId, item.score, commentaries],
 						);
 					}
 				}

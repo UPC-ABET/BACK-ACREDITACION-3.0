@@ -4,6 +4,8 @@ import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
 import { PppValidation } from '../core/ppp.validation';
+import { i18nText } from 'src/shared/types/i18n';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	CreatePppSurveyDto,
 	FilterPppSurveyDto,
@@ -12,7 +14,7 @@ import {
 	GenerateFindingsPppDto,
 } from '../model/ppp.dtos';
 
-const PPP_TYPE_CODE = 'TG601-T003';
+const PPP_TYPE_CODE = TYPE_CODES.SURVEY_TYPE.PPP;
 const PPP_STATUS_ACTIVE_CODE = 'TG602-T001';
 
 @Injectable()
@@ -76,7 +78,7 @@ export class PppSurveyService {
 					surveyId: survey.id,
 					outcomeId: s.outcomeId,
 					score: s.score,
-					...(s.commentaries !== undefined && { commentaries: s.commentaries }),
+					...(s.commentaries !== undefined && { commentaries: i18nText(s.commentaries) }),
 				})),
 			);
 		}
