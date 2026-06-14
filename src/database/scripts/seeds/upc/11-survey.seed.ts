@@ -77,6 +77,36 @@ runSeed('survey module', async (tenantDataSource) => {
 				'You can still complete the satisfaction survey before the deadline.',
 			),
 		],
+		// Default template per survey type, keyed by the survey type code (TG601-T00x).
+		// SurveyEmailTemplateService.getEmailTemplate falls back to these when no
+		// program-specific notification_messages link is configured.
+		[
+			'TG601-T001',
+			i18n('Encuesta de Graduandos', 'Graduate Survey'),
+			i18n('Encuesta de Graduandos', 'Graduate Survey'),
+			i18n(
+				'<p>Hola {{student_name}},</p><p>Te invitamos a completar la encuesta de graduandos del programa {{program_name}}: <a href="{{survey_link}}">{{survey_link}}</a></p>',
+				'<p>Hi {{student_name}},</p><p>We invite you to complete the graduate survey for {{program_name}}: <a href="{{survey_link}}">{{survey_link}}</a></p>',
+			),
+		],
+		[
+			'TG601-T002',
+			i18n('Encuesta de Practicas Pre-Profesionales', 'Pre-Professional Internship Survey'),
+			i18n('Encuesta de Practicas Pre-Profesionales', 'Pre-Professional Internship Survey'),
+			i18n(
+				'<p>Hola {{student_name}},</p><p>Completa la encuesta de practicas pre-profesionales del programa {{program_name}}: <a href="{{survey_link}}">{{survey_link}}</a></p>',
+				'<p>Hi {{student_name}},</p><p>Please complete the pre-professional internship survey for {{program_name}}: <a href="{{survey_link}}">{{survey_link}}</a></p>',
+			),
+		],
+		[
+			'TG601-T003',
+			i18n('Encuesta de Logro de Fin de Ciclo', 'End-of-Cycle Achievement Survey'),
+			i18n('Encuesta de Logro de Fin de Ciclo', 'End-of-Cycle Achievement Survey'),
+			i18n(
+				'<p>Hola {{student_name}},</p><p>Completa la encuesta de logro de fin de ciclo del curso {{course_name}} ({{program_name}}): <a href="{{survey_link}}">{{survey_link}}</a></p>',
+				'<p>Hi {{student_name}},</p><p>Please complete the end-of-cycle achievement survey for {{course_name}} ({{program_name}}): <a href="{{survey_link}}">{{survey_link}}</a></p>',
+			),
+		],
 	]
 		.map(
 			([code, name, subject, body]) =>
@@ -100,9 +130,11 @@ runSeed('survey module', async (tenantDataSource) => {
 			updated_at = NOW();
 	`);
 
+	// Program-specific email template per (survey type, program). Points at the default
+	// per-type templates (TG601-T00x) that carry the {{survey_link}} placeholders.
 	const notificationMessageValues = [
-		['TG601-T001', 'PROG_SOFT', 'SURVEY_INVITATION_2026_1', '["calidad@upc.edu.pe"]'],
-		['TG601-T001', 'PROG_SOFT', 'SURVEY_REMINDER_2026_1', '["calidad@upc.edu.pe"]'],
+		['TG601-T001', 'PROG_SOFT', 'TG601-T001', '["calidad@upc.edu.pe"]'], // GRA
+		['TG601-T003', 'PROG_SOFT', 'TG601-T003', '["calidad@upc.edu.pe"]'], // LCFC
 	]
 		.map(([st, pc, tc, cc]) => `('${st}', '${pc}', '${tc}', '${cc}'::jsonb)`)
 		.join(',\n\t\t\t\t');
