@@ -18,7 +18,6 @@ export interface SqlRunner {
 
 export interface IfcTransitionContext {
 	ifcId: number;
-	ifcCourseStaffId: number | null;
 	courseChartId: number | null;
 	requesterStaffId: number | null;
 	currentStatusCode: string | null;
@@ -111,15 +110,45 @@ export class IfcValidation {
 		}
 	}
 
-	static assertNotOwnCoordinator(
+	static async assertHasHigherLevel(
+		runner: SqlRunner,
 		ctx: IfcTransitionContext,
 		op: typeof IFC_OPS.APPROVE | typeof IFC_OPS.REJECT,
 	) {
-		if (ctx.requesterStaffId != null && ctx.requesterStaffId === ctx.ifcCourseStaffId) {
+		if (ctx.courseChartId == null || ctx.requesterStaffId == null) {
 			throw new HttpException(
 				{
 					message: ifcsValidationStrings.result[`${op}Failed`],
-					errors: [ifcsValidationStrings.error.ownCoordinatorForbidden],
+					errors: [ifcsValidationStrings.error.higherLevelRequired],
+				},
+				HttpStatus.FORBIDDEN,
+			);
+		}
+		const rows = await runner.query(
+			`WITH RECURSIVE chain_up AS (
+				SELECT c.id, c.root_chart_id, c.staff_id
+				FROM organization.charts c
+				WHERE c.id = (
+					SELECT root_chart_id FROM organization.charts WHERE id = $1 AND is_active = true
+				)
+				AND c.is_active = true
+
+				UNION ALL
+
+				SELECT c.id, c.root_chart_id, c.staff_id
+				FROM organization.charts c
+				JOIN chain_up cu ON c.id = cu.root_chart_id
+				WHERE c.is_active = true
+			)
+			SELECT 1 FROM chain_up WHERE staff_id = $2 LIMIT 1`,
+			[ctx.courseChartId, ctx.requesterStaffId],
+		);
+
+		if (rows.length === 0) {
+			throw new HttpException(
+				{
+					message: ifcsValidationStrings.result[`${op}Failed`],
+					errors: [ifcsValidationStrings.error.higherLevelRequired],
 				},
 				HttpStatus.FORBIDDEN,
 			);

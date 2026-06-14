@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell } from 'src/libs/excel.functions';
+
 import {
 	StudentSectionRow,
 	UploadResult,
@@ -121,16 +123,11 @@ export class StudentSectionsUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				sectionCode: this.cell(row, 1),
-				studentCode: this.cell(row, 2),
+				sectionCode: readCell(row, 1),
+				studentCode: readCell(row, 2),
 			});
 		});
 		return rows;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

@@ -73,7 +73,6 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				em,
 				{
 					ifcId: 0,
-					ifcCourseStaffId: null,
 					courseChartId: courseChart.id,
 					requesterStaffId,
 					currentStatusCode: null,
@@ -176,7 +175,6 @@ export class IfcFindingService extends BaseService<IfcFindingRepository> {
 				em,
 				{
 					ifcId: 0,
-					ifcCourseStaffId: null,
 					courseChartId: courseChart.id,
 					requesterStaffId,
 					currentStatusCode: null,

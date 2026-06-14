@@ -12,6 +12,8 @@ import { Public } from '../protocols/jwt/decorators/public.decorator';
 import { getRequiredJwtSecret } from '../protocols/jwt/jwt.config';
 import { AuthService } from './auth.service';
 import { authValidationStrings } from '../config/strings/auth.validation';
+import { usersValidationStrings } from 'src/modules/organization/users/config/strings/users.validation';
+import { MicrosoftLoginErrorCode } from '../model/microsoft-login.types';
 
 interface MicrosoftState {
 	csrf: string;
@@ -58,16 +60,42 @@ export class AuthController {
 		@Query('state') state: string,
 		@Res() res: Response,
 	) {
-		const parsed = this.verifyAndParseState(state);
-		const storedCsrf = res.req?.cookies?.[MICROSOFT_STATE_COOKIE];
-		this.validateCsrf(parsed.csrf, storedCsrf);
+		try {
+			const parsed = this.verifyAndParseState(state);
+			const storedCsrf = res.req?.cookies?.[MICROSOFT_STATE_COOKIE];
+			this.validateCsrf(parsed.csrf, storedCsrf);
 
-		const result = await this.authService.loginWithMicrosoftCode(code);
+			const result = await this.authService.loginWithMicrosoftCode(code);
 
-		res.clearCookie(MICROSOFT_STATE_COOKIE);
-		saveAccessCookie(res, result);
+			res.clearCookie(MICROSOFT_STATE_COOKIE);
+			saveAccessCookie(res, result);
 
-		return res.redirect(this.getFrontendRedirectUrl());
+			return res.redirect(this.getFrontendBaseUrl());
+		} catch (error) {
+			// The callback is a top-level browser navigation, so failures must bounce back to the SPA
+			// with a stable code (not a raw JSON error) for the UI to render a friendly screen.
+			res.clearCookie(MICROSOFT_STATE_COOKIE);
+			return res.redirect(this.buildFrontendErrorUrl(this.mapMicrosoftError(error)));
+		}
+	}
+
+	private mapMicrosoftError(error: unknown): MicrosoftLoginErrorCode {
+		const key = error instanceof Error ? error.message : '';
+
+		switch (key) {
+			case usersValidationStrings.error.invalidCredentials:
+				return MicrosoftLoginErrorCode.USER_NOT_FOUND;
+			case usersValidationStrings.error.noRolesAssigned:
+			case usersValidationStrings.error.noPermissionsAssigned:
+				return MicrosoftLoginErrorCode.NO_ROLE;
+			default:
+				return MicrosoftLoginErrorCode.LOGIN_FAILED;
+		}
+	}
+
+	private buildFrontendErrorUrl(code: MicrosoftLoginErrorCode): string {
+		const base = this.getFrontendBaseUrl().replace(/\/$/, '');
+		return `${base}/auth/login?error=${code}`;
 	}
 
 	private signState(payload: MicrosoftState): string {
@@ -103,7 +131,7 @@ export class AuthController {
 		}
 	}
 
-	private getFrontendRedirectUrl(): string {
+	private getFrontendBaseUrl(): string {
 		const frontendUrl = this.configService.get<string>(APP_FRONTEND_URL_CONFIG_KEY);
 		if (!frontendUrl) {
 			throw new UnauthorizedException(authValidationStrings.error.missingConfig);

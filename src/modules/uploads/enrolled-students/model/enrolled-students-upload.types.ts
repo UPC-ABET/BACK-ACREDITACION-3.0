@@ -6,7 +6,6 @@ export interface EnrolledStudentRow {
 	programCode: string;
 	campusCode: string;
 	enrollmentModalityTypeCode: string;
-	email: string;
 }
 
 export interface UploadRowError {

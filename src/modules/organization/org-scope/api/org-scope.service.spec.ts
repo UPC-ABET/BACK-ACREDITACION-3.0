@@ -27,7 +27,7 @@ describe('OrgScopeService', () => {
 	it('returns empty scope when schoolId is null (user not attached to a school)', async () => {
 		const result = await service.getScope(1, null, 5);
 
-		expect(result).toEqual({ highestLevel: null, levels: [] });
+		expect(result).toEqual({ highestLevel: null, levels: [], canNotify: false });
 		expect(orgScopeRepository.findScope).not.toHaveBeenCalled();
 	});
 
@@ -36,7 +36,7 @@ describe('OrgScopeService', () => {
 
 		const result = await service.getScope(1, 7, 5);
 
-		expect(result).toEqual({ highestLevel: null, levels: [] });
+		expect(result).toEqual({ highestLevel: null, levels: [], canNotify: false });
 		expect(orgScopeRepository.findScope).toHaveBeenCalledTimes(1);
 		expect(orgScopeRepository.findScope).toHaveBeenCalledWith(1, 7, 5);
 	});
@@ -160,6 +160,95 @@ describe('OrgScopeService', () => {
 		expect(result.highestLevel).toBeNull();
 		expect(result.levels).toHaveLength(1);
 		expect(result.levels[0].levelNum).toBe(1);
+	});
+
+	it('sets canNotify=true when the user is an anchor above the course level', async () => {
+		orgScopeRepository.findScope.mockResolvedValueOnce([
+			{
+				id: 1,
+				parentId: null,
+				levelNum: 0,
+				tagCode: 'TG903-T002',
+				tagName: { es: 'Escuela' },
+				label: { es: 'Escuela' },
+				isAnchor: false,
+			},
+			{
+				id: 2,
+				parentId: 1,
+				levelNum: 1,
+				tagCode: 'TG903-T004',
+				tagName: { es: 'Área' },
+				label: { es: 'Área' },
+				isAnchor: true,
+			},
+		]);
+
+		const result = await service.getScope(1, 11, 5);
+
+		expect(result.canNotify).toBe(true);
+	});
+
+	it('sets canNotify=false when the only anchor is a course (no higher level)', async () => {
+		orgScopeRepository.findScope.mockResolvedValueOnce([
+			{
+				id: 1,
+				parentId: null,
+				levelNum: 0,
+				tagCode: 'TG903-T002',
+				tagName: { es: 'Escuela' },
+				label: { es: 'Escuela' },
+				isAnchor: false,
+			},
+			{
+				id: 9,
+				parentId: 1,
+				levelNum: 1,
+				tagCode: 'TG903-T006',
+				tagName: { es: 'Curso' },
+				label: { es: 'Curso' },
+				isAnchor: true,
+			},
+		]);
+
+		const result = await service.getScope(1, 11, 5);
+
+		expect(result.canNotify).toBe(false);
+	});
+
+	it('sets canNotify=true for an admin even when the only anchor is a course', async () => {
+		orgScopeRepository.findScope.mockResolvedValueOnce([
+			{
+				id: 1,
+				parentId: null,
+				levelNum: 0,
+				tagCode: 'TG903-T002',
+				tagName: { es: 'Escuela' },
+				label: { es: 'Escuela' },
+				isAnchor: false,
+			},
+			{
+				id: 9,
+				parentId: 1,
+				levelNum: 1,
+				tagCode: 'TG903-T006',
+				tagName: { es: 'Curso' },
+				label: { es: 'Curso' },
+				isAnchor: true,
+			},
+		]);
+
+		const result = await service.getScope(1, 11, 5, true);
+
+		expect(result.canNotify).toBe(true);
+	});
+
+	it('sets canNotify=true for an admin even with no scope rows', async () => {
+		orgScopeRepository.findScope.mockResolvedValueOnce([]);
+
+		const result = await service.getScope(1, 7, 5, true);
+
+		expect(result).toEqual({ highestLevel: null, levels: [], canNotify: true });
 	});
 
 	it('returns schools assigned to the user for the active academic period by modality', async () => {

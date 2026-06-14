@@ -40,7 +40,6 @@ export class IfcContentService {
 
 			const row = chartRows[0];
 			const courseId = Number(row.courseId);
-			const ifcCourseStaffId = row.ifcCourseStaffId === null ? null : Number(row.ifcCourseStaffId);
 			const requesterStaffId = row.requesterStaffId === null ? null : Number(row.requesterStaffId);
 			const programId = row.programId === null ? null : Number(row.programId);
 
@@ -49,7 +48,6 @@ export class IfcContentService {
 				em,
 				{
 					ifcId: 0,
-					ifcCourseStaffId,
 					courseChartId: dto.chartId,
 					requesterStaffId,
 					currentStatusCode: null,

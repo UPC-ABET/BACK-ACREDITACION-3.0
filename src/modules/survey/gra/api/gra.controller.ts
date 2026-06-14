@@ -100,7 +100,7 @@ export class GraController {
 	@SwaggerGraNotificationTemplate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async notificationTemplate(@Res() res: Response) {
-		const { buffer, fileName } = this.graService.generateNotificationTemplate();
+		const { buffer, fileName } = await this.graService.generateNotificationTemplate();
 		const encoded = encodeURIComponent(fileName);
 		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
 		res.setHeader(

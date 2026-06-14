@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
+import { normalizeCellText } from 'src/libs/excel.functions';
 import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
@@ -135,19 +136,21 @@ export class PppSurveyService {
 			...configs.map((_, idx) => `Competencia ${idx + 1}`),
 		];
 
-		const workbook = XLSX.utils.book_new();
-		XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([headers]), 'Plantilla');
+		const workbook = new ExcelJS.Workbook();
 
-		const legend = [
-			['Columna', 'Competencia'],
-			...configs.map((config, idx) => [
+		const dataSheet = workbook.addWorksheet('Plantilla');
+		dataSheet.addRow(headers);
+
+		const legendSheet = workbook.addWorksheet('Competencias');
+		legendSheet.addRow(['Columna', 'Competencia']);
+		configs.forEach((config, idx) => {
+			legendSheet.addRow([
 				`Competencia ${idx + 1}`,
 				i18nTrim(config.userOutcomeName as any) ?? '',
-			]),
-		];
-		XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(legend), 'Competencias');
+			]);
+		});
 
-		const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		const fileName = programId
 			? `plantilla_ppp_${programId}_${academicPeriodId}.xlsx`
 			: `plantilla_ppp_${academicPeriodId}.xlsx`;
@@ -169,7 +172,7 @@ export class PppSurveyService {
 			);
 		}
 
-		let workbook: XLSX.WorkBook;
+		const workbook = new ExcelJS.Workbook();
 		try {
 			// Accept both a raw base64 string and a data URI (e.g. "data:...;base64,XXXX")
 			// produced by FileReader.readAsDataURL on the frontend.
@@ -177,16 +180,15 @@ export class PppSurveyService {
 				? dto.fileBase64.slice(dto.fileBase64.indexOf(',') + 1)
 				: dto.fileBase64;
 			const buffer = Buffer.from(base64.trim(), 'base64');
-			workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+			await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
 		} catch {
 			throw new BadRequestException('The provided base64 file is not a valid Excel file');
 		}
 
-		const sheetName = workbook.SheetNames[0];
-		if (!sheetName) throw new BadRequestException('The Excel file contains no sheets');
+		const worksheet = workbook.worksheets[0];
+		if (!worksheet) throw new BadRequestException('The Excel file contains no sheets');
 
-		const sheet = workbook.Sheets[sheetName];
-		const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: null });
+		const rows = this.sheetToObjects(worksheet);
 
 		if (rows.length === 0)
 			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
@@ -203,29 +205,31 @@ export class PppSurveyService {
 			const rowNum = i + 2; // +2 because row 1 is headers
 
 			const normalizedRow = {
-				studentCode: String(
+				studentCode: normalizeCellText(
 					row['Codigo Alumno'] ??
 						row['Código Alumno'] ??
 						row['CODIGO_ALUMNO'] ??
-						row['student_code'] ??
-						'',
-				).trim(),
+						row['student_code'],
+				),
 				practiceNumber: Number(
-					row['# Practica'] ?? row['N Practica'] ?? row['practice_number'] ?? row['Practica'] ?? 0,
+					normalizeCellText(
+						row['# Practica'] ?? row['N Practica'] ?? row['practice_number'] ?? row['Practica'],
+					) || 0,
 				),
 				totalHours:
 					Number(
-						row['Horas'] ?? row['Total Horas'] ?? row['TOTAL_HORAS'] ?? row['total_hours'] ?? 0,
+						normalizeCellText(
+							row['Horas'] ?? row['Total Horas'] ?? row['TOTAL_HORAS'] ?? row['total_hours'],
+						) || 0,
 					) || null,
 				companyName:
-					String(row['Razon Social'] ?? row['Razón Social'] ?? row['company_name'] ?? '').trim() ||
+					normalizeCellText(row['Razon Social'] ?? row['Razón Social'] ?? row['company_name']) ||
 					null,
-				ruc: String(row['RUC'] ?? row['ruc'] ?? '').trim() || null,
-				bossName: String(row['Nombre Jefe'] ?? row['boss_name'] ?? '').trim() || null,
-				bossRole:
-					String(row['Cargo Jefe'] ?? row['Cargo'] ?? row['boss_role'] ?? '').trim() || null,
-				phone: String(row['Telefono'] ?? row['Teléfono'] ?? row['phone'] ?? '').trim() || null,
-				email: String(row['Email Jefe'] ?? row['email'] ?? '').trim() || null,
+				ruc: normalizeCellText(row['RUC'] ?? row['ruc']) || null,
+				bossName: normalizeCellText(row['Nombre Jefe'] ?? row['boss_name']) || null,
+				bossRole: normalizeCellText(row['Cargo Jefe'] ?? row['Cargo'] ?? row['boss_role']) || null,
+				phone: normalizeCellText(row['Telefono'] ?? row['Teléfono'] ?? row['phone']) || null,
+				email: normalizeCellText(row['Email Jefe'] ?? row['email']) || null,
 				startDate: row['Fecha Inicio'] ?? row['start_date'] ?? null,
 				endDate: row['Fecha Fin'] ?? row['end_date'] ?? null,
 			};
@@ -251,8 +255,8 @@ export class PppSurveyService {
 			configs.forEach((config, idx) => {
 				const colName = `Competencia ${idx + 1}`;
 				const altColName = config.userOutcomeName as unknown as string;
-				const rawScore = row[colName] ?? row[altColName] ?? null;
-				const score = rawScore !== null ? parseFloat(String(rawScore)) : null;
+				const rawScore = normalizeCellText(row[colName] ?? row[altColName]);
+				const score = rawScore !== '' ? parseFloat(rawScore) : null;
 
 				if (score !== null && !isNaN(score) && score >= 1 && score <= 5) {
 					scores.push({ outcomeId: config.outcomeId, score });
@@ -296,6 +300,28 @@ export class PppSurveyService {
 		}
 
 		return results;
+	}
+
+	private sheetToObjects(worksheet: ExcelJS.Worksheet): Record<string, ExcelJS.CellValue>[] {
+		const headers = new Map<number, string>();
+		worksheet.getRow(1).eachCell((cell, col) => {
+			const header = normalizeCellText(cell.value);
+			if (header) headers.set(col, header);
+		});
+
+		const rows: Record<string, ExcelJS.CellValue>[] = [];
+		for (let i = 2; i <= worksheet.rowCount; i++) {
+			const row = worksheet.getRow(i);
+			const obj: Record<string, ExcelJS.CellValue> = {};
+			let hasValue = false;
+			for (const [col, header] of headers) {
+				const value = row.getCell(col).value;
+				obj[header] = value;
+				if (normalizeCellText(value) !== '') hasValue = true;
+			}
+			if (hasValue) rows.push(obj);
+		}
+		return rows;
 	}
 
 	async getDashboard(dto: DashboardPppDto) {

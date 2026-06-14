@@ -6,6 +6,15 @@ export class ProjectEvaluatorValidation {
 	static async validateCreate(repo: ProjectEvaluatorRepository, data: any) {
 		const errors: Array<string> = [];
 
+		const duplicateType = await repo.findOneByCondition({
+			where: {
+				projectId: data.projectId,
+				evaluatorTypeId: data.evaluatorTypeId,
+			},
+		});
+
+		if (duplicateType) errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+
 		const exists = await repo.findOneByCondition({
 			where: {
 				projectId: data.projectId,
@@ -47,6 +56,17 @@ export class ProjectEvaluatorValidation {
 
 		if (exists && exists.id !== id) {
 			errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
+		}
+
+		const duplicateType = await repo.findOneByCondition({
+			where: {
+				projectId: projectId,
+				evaluatorTypeId: evaluatorTypeId,
+			},
+		});
+
+		if (duplicateType && duplicateType.id !== id) {
+			errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
 		}
 
 		if (errors.length > 0) {

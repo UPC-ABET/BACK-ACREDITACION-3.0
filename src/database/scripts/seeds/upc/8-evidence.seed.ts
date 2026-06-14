@@ -4,7 +4,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 	const instrumentValues = [
 		[
 			'TG501-T001',
-			'INST_FP_EXAM',
+			'FP_EXAM',
 			i18n('Examen de Fundamentos de Programacion', 'Fundamentals of Programming exam'),
 			i18n(
 				'Instrumento para medir solucion algoritmica basica',
@@ -14,7 +14,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'TG501-T002',
-			'INST_CAPSTONE',
+			'CAPSTONE',
 			i18n('Proyecto integrador de software', 'Software integrator project'),
 			i18n(
 				'Instrumento para medir competencias integradas del programa',
@@ -24,7 +24,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'TG501-T003',
-			'INST_SURVEY_STUDENT',
+			'SURVEY_STUDENT',
 			i18n('Encuesta de percepcion estudiantil', 'Student perception survey'),
 			i18n(
 				'Instrumento de percepcion para resultados del programa',
@@ -34,7 +34,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 		],
 		[
 			'TG501-T001',
-			'INST_IFC',
+			'IFC',
 			i18n('Informe Final del Curso', 'Course Final Report'),
 			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
 			true,
@@ -305,10 +305,8 @@ runSeed('evidence module', async (tenantDataSource) => {
 			ON survey_type.code = v.survey_type_code
 		JOIN "core"."types" survey_status
 			ON survey_status.code = v.survey_status_code
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."academic_periods" period
 			ON period.code = v.academic_period_code
 		JOIN "organization"."campuses" campus
@@ -338,10 +336,8 @@ runSeed('evidence module', async (tenantDataSource) => {
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_01', 15.000000),
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_04', 16.000000)
 		) AS v(student_email, section_code, outcome_code, grade)
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."enrolled_students" enrolled_student
 			ON enrolled_student.student_id = student.id
 		JOIN "academic"."course_sections" course_section
@@ -402,10 +398,8 @@ runSeed('evidence module', async (tenantDataSource) => {
 		) AS v(project_code, student_email, professor_email, qualification_status_code, observation, register_at)
 		JOIN "evaluation"."projects" project
 			ON project.code = v.project_code
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."enrolled_students" enrolled_student
 			ON enrolled_student.student_id = student.id
 		JOIN "academic"."student_section_enrollments" sse

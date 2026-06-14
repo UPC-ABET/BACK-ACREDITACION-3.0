@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { BaseService } from 'src/commons/base.service';
+import { readCell } from 'src/libs/excel.functions';
 import { PortfolioProjectApplicationRepository } from '../core/portfolio-project-application.repository';
 import { PortfolioCompanyRepository } from '../core/portfolio-company.repository';
 import { PortfolioRepository } from '../core/portfolio.repository';
@@ -494,10 +495,10 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 
 		for (let i = 2; i <= ws.rowCount; i++) {
 			const row = ws.getRow(i);
-			const name = String(row.getCell(1).value ?? '').trim();
-			const description = String(row.getCell(2).value ?? '').trim();
-			const programCode = String(row.getCell(3).value ?? '').trim();
-			const companyCode = String(row.getCell(4).value ?? '').trim();
+			const name = readCell(row, 1);
+			const description = readCell(row, 2);
+			const programCode = readCell(row, 3);
+			const companyCode = readCell(row, 4);
 
 			if (!name || !description || !programCode || !companyCode) {
 				errors.push({ row: i, message: 'error.portfolio.bulkUpload.fieldsRequired' });
@@ -580,13 +581,13 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 
 		for (let i = 2; i <= ws.rowCount; i++) {
 			const row = ws.getRow(i);
-			const projectCode = String(row.getCell(1).value ?? '').trim();
-			const studentCode1 = String(row.getCell(2).value ?? '').trim();
-			const studentCode2 = String(row.getCell(3).value ?? '').trim();
-			const title = String(row.getCell(4).value ?? '').trim();
-			const problem = String(row.getCell(5).value ?? '').trim();
-			const objective = String(row.getCell(6).value ?? '').trim();
-			const researchLineName = String(row.getCell(7).value ?? '').trim();
+			const projectCode = readCell(row, 1);
+			const studentCode1 = readCell(row, 2);
+			const studentCode2 = readCell(row, 3);
+			const title = readCell(row, 4);
+			const problem = readCell(row, 5);
+			const objective = readCell(row, 6);
+			const researchLineName = readCell(row, 7);
 
 			if (!projectCode || !studentCode1 || !title || !problem || !objective || !researchLineName) {
 				errors.push({ row: i, message: 'error.portfolio.bulkUpload.filledFieldsRequired' });

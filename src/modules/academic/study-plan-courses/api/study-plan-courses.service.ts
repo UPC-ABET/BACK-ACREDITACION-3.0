@@ -12,6 +12,7 @@ import {
 	StudyPlanCourseMaintenanceItem,
 } from '../model/study-plan-courses.dtos';
 import { DataSource, EntityManager } from 'typeorm';
+import { ScopeFilters } from 'src/commons/scope.dtos';
 
 @Injectable()
 export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepository> {
@@ -42,7 +43,7 @@ export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepositor
 		await this.repository.enableEvaluation(id, dto.isEvaluable);
 	}
 
-	async getByFilters(filters: FilterStudyPlanCourseDto) {
+	async getByFilters(filters: FilterStudyPlanCourseDto & ScopeFilters) {
 		return await this.repository.getByFilters(filters);
 	}
 

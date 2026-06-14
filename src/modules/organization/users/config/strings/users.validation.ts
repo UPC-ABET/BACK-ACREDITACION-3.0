@@ -10,7 +10,6 @@ export const usersValidationStrings = {
 		inactiveOrNotFound: 'error.user.inactiveOrNotFound',
 		staffNotFound: 'error.user.staffNotFound',
 		linkedToStaff: 'error.user.linkedToStaff',
-		linkedToStudent: 'error.user.linkedToStudent',
 		hasActivityHistory: 'error.user.hasActivityHistory',
 	},
 	result: {

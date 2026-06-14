@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell } from 'src/libs/excel.functions';
+
 import { SectionRow, UploadResult, UploadRowError } from '../model/sections-upload.types';
 import type { SectionsUploadDto } from '../model/sections-upload.dtos';
 import {
@@ -125,19 +127,14 @@ export class SectionsUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				courseCode: this.cell(row, 1),
-				sectionCode: this.cell(row, 2),
-				professorCode: this.cell(row, 3),
-				campusCode: this.cell(row, 4),
-				sectionModalityTypeCode: this.cell(row, 5),
+				courseCode: readCell(row, 1),
+				sectionCode: readCell(row, 2),
+				professorCode: readCell(row, 3),
+				campusCode: readCell(row, 4),
+				sectionModalityTypeCode: readCell(row, 5),
 			});
 		});
 		return rows;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

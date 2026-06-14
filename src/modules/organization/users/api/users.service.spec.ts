@@ -19,7 +19,11 @@ import { EmailTemplateService } from 'src/modules/core/email-templates/api/email
 
 describe('UserService - login', () => {
 	let service: UserService;
-	let userRepository: { findOneByCondition: jest.Mock; findForLogin: jest.Mock };
+	let userRepository: {
+		findOneByCondition: jest.Mock;
+		findForLogin: jest.Mock;
+		findActiveByEmail: jest.Mock;
+	};
 	let jwtService: { sign: jest.Mock };
 	let userAuthorizationService: { buildAuthorizationProfile: jest.Mock };
 	let orgScopeService: { getUserSchools: jest.Mock };
@@ -44,6 +48,7 @@ describe('UserService - login', () => {
 		userRepository = {
 			findOneByCondition: jest.fn(),
 			findForLogin: jest.fn(),
+			findActiveByEmail: jest.fn(),
 		};
 		jwtService = {
 			sign: jest.fn().mockReturnValue('signed-jwt-token'),
@@ -154,6 +159,38 @@ describe('UserService - login', () => {
 			await expect(service.createUserLogin(baseUser, null, undefined)).rejects.toBeInstanceOf(
 				UnauthorizedException,
 			);
+		});
+	});
+
+	describe('getUser', () => {
+		it('looks up by id via an active-scoped condition', async () => {
+			userRepository.findOneByCondition.mockResolvedValueOnce(baseUser);
+
+			const result = await service.getUser(baseUser.id);
+
+			expect(result).toBe(baseUser);
+			expect(userRepository.findOneByCondition).toHaveBeenCalledWith({
+				where: { id: baseUser.id, isActive: true },
+			});
+			expect(userRepository.findActiveByEmail).not.toHaveBeenCalled();
+		});
+
+		it('looks up by email via the case-insensitive active lookup (Microsoft flow)', async () => {
+			userRepository.findActiveByEmail.mockResolvedValueOnce(baseUser);
+
+			const result = await service.getUser(null, 'JUAN.PEREZ@example.com');
+
+			expect(result).toBe(baseUser);
+			expect(userRepository.findActiveByEmail).toHaveBeenCalledWith('JUAN.PEREZ@example.com');
+			expect(userRepository.findOneByCondition).not.toHaveBeenCalled();
+		});
+
+		it('returns null when neither id nor email is provided', async () => {
+			const result = await service.getUser();
+
+			expect(result).toBeNull();
+			expect(userRepository.findActiveByEmail).not.toHaveBeenCalled();
+			expect(userRepository.findOneByCondition).not.toHaveBeenCalled();
 		});
 	});
 

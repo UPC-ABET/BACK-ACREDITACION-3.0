@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell } from 'src/libs/excel.functions';
+
 import { ArticulationRow, UploadResult, UploadRowError } from '../model/articulation-upload.types';
 import type { ArticulationUploadDto } from '../model/articulation-upload.dtos';
 import {
@@ -133,18 +135,13 @@ export class ArticulationUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				outcomeCode: this.cell(row, 1),
-				studyPlanCode: this.cell(row, 2),
-				courseCode: this.cell(row, 3),
-				outcomeTypeCode: this.cell(row, 4),
+				outcomeCode: readCell(row, 1),
+				studyPlanCode: readCell(row, 2),
+				courseCode: readCell(row, 3),
+				outcomeTypeCode: readCell(row, 4),
 			});
 		});
 		return rows;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

@@ -19,7 +19,7 @@ describe('IfcFindingService.getDetail', () => {
 
 	const headerRow = {
 		id: 201,
-		findingCode: 'H-INST_IFC-CRS_FUND_PROG-2026001',
+		findingCode: 'H-IFC-CRS_FUND_PROG-2026001',
 		academicPeriodCode: 'AP_2026_1',
 		description: { es: 'Hallazgo' },
 		criticalityCode: TYPE_CODES.CRITICALITY.NORMAL,
@@ -28,7 +28,7 @@ describe('IfcFindingService.getDetail', () => {
 
 	const actionRow = {
 		id: 301,
-		actionCode: 'A-INST_IFC-CRS_FUND_PROG-2026101',
+		actionCode: 'A-IFC-CRS_FUND_PROG-2026101',
 		description: { es: 'Acción' },
 		completenessCode: TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 		completenessName: { es: 'Pendiente' },

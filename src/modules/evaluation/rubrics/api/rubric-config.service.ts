@@ -9,6 +9,7 @@ import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-ques
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { toI18n } from 'src/shared/types/i18n';
+import type { I18nText } from 'src/shared/types/i18n';
 import { rubricsValidationStrings } from '../config/strings/rubrics.validation';
 import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commissions/model/program-commissions.entity';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
@@ -51,26 +52,11 @@ export class RubricConfigService {
 		return type?.id ?? null;
 	}
 
-	private async isWascRubric(gradeTypeId: number): Promise<boolean> {
-		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
-	}
-
-	/**
-	 * Recalcula la nota máxima por pregunta y de toda la rúbrica (R-RUB-014, R-RUB-015)
-	 *
-	 * Para ABET (no PA): NotaOutcome = Sum(ValorMaximo)
-	 * Para WASC (PA): NotaOutcome = Max(ValorMaximo)
-	 *
-	 * Retorna { byQuestion: Map<questionId, maxValue>, totalMaxScore }
-	 */
 	async recalculateMaxScore(
 		rubricId: number,
 	): Promise<{ byQuestion: Map<number, number>; totalMaxScore: number }> {
 		const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
 		if (!rubric) throw new NotFoundException(rubricsValidationStrings.error.notFound);
-
-		const isWasc = await this.isWascRubric(rubric.gradeTypeId);
 
 		const questions = await this.questionRepo.find({
 			where: { rubricId: rubricId },
@@ -84,9 +70,7 @@ export class RubricConfigService {
 			const maxValues = question.criterias.map((c) => c.maxValue);
 			if (maxValues.length === 0) continue;
 
-			const questionMax = isWasc
-				? Math.max(...maxValues)
-				: maxValues.reduce((sum, v) => sum + v, 0);
+			const questionMax = Math.max(...maxValues);
 
 			byQuestion.set(question.id, questionMax);
 			totalMaxScore += questionMax;
@@ -225,6 +209,42 @@ export class RubricConfigService {
 		}
 
 		return savedRubric;
+	}
+
+	async resolveRubricType(
+		studyPlanCourseId: number,
+		gradeTypeId: number,
+	): Promise<{ id: number; code: string; name: I18nText }> {
+		const [gradeType, capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
+			this.typeRepo.findOne({ where: { id: gradeTypeId } }),
+			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.CAPSTONE } }),
+			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.NON_CAPSTONE } }),
+			this.typeRepo.findOne({ where: { code: TYPE_CODES.OUTCOME_TYPE.VERIFICATION } }),
+		]);
+
+		if (!gradeType) throw new BadRequestException(rubricsValidationStrings.error.gradeTypeNotFound);
+		if (!capstoneType || !nonCapstoneType)
+			throw new BadRequestException(rubricsValidationStrings.error.rubricTypesNotConfigured);
+
+		const isEaOrEb =
+			gradeType.code === TYPE_CODES.GRADE_TYPE.EA || gradeType.code === TYPE_CODES.GRADE_TYPE.EB;
+
+		if (isEaOrEb && verificationOutcomeType) {
+			const hasVerificationOutcome = await this.dataSource
+				.getRepository(CourseOutcomeMappingEntity)
+				.exists({
+					where: {
+						studyPlanCourseId,
+						outcomeTypeId: verificationOutcomeType.id,
+					},
+				});
+
+			if (hasVerificationOutcome) {
+				return { id: capstoneType.id, code: capstoneType.code, name: capstoneType.name };
+			}
+		}
+
+		return { id: nonCapstoneType.id, code: nonCapstoneType.code, name: nonCapstoneType.name };
 	}
 
 	async getRubricByCourse(courseId: number): Promise<RubricEntity> {

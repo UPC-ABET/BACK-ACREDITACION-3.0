@@ -43,7 +43,8 @@ export class OrgScopeController {
 		@CurrentUser() user: RequestUser,
 	) {
 		const userId = user.userId;
-		const result = await this.service.getScope(userId, schoolId, academicPeriodId);
+		const isAdmin = isAdminRole(user.activeRole);
+		const result = await this.service.getScope(userId, schoolId, academicPeriodId, isAdmin);
 		return parseSuccessResponse(result);
 	}
 

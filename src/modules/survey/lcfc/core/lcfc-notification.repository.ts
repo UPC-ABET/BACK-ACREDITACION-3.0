@@ -20,8 +20,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			`SELECT
 				n.survey_id            AS "surveyId",
 				s.student_id           AS "studentId",
-				u.first_name || ' ' || u.last_name AS "studentName",
-				u.document_code::text              AS "studentCode",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                            AS "studentCode",
 				s.program_id           AS "programId",
 				p.name->>'es'                      AS "programName",
 				s.academic_period_id   AS "academicPeriodId",
@@ -32,7 +32,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
-			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id
 			WHERE n.token = $1
@@ -58,9 +57,9 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		const rows = await this.dataSource.query(
 			`SELECT DISTINCT
 				st.id                                   AS "studentId",
-				u.first_name || ' ' || u.last_name     AS "studentName",
-				u.document_code::text                  AS "studentCode",
-				u.email                                AS "studentEmail",
+				st.first_name || ' ' || st.last_name    AS "studentName",
+				st.code                                 AS "studentCode",
+				st.email                                AS "studentEmail",
 				sse.course_section_id                  AS "courseSectionId",
 				c.name->>'es'                          AS "courseName",
 				cs.campus_id                           AS "campusId",
@@ -69,7 +68,6 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			FROM academic.student_section_enrollments sse
 			INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 			INNER JOIN academic.students st ON st.id = es.student_id
-			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
 			INNER JOIN academic.courses c ON c.id = cs.course_id
 			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period
@@ -112,15 +110,14 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				n.max_register_date                 AS "maxRegisterDate",
 				n.survey_id                         AS "surveyId",
 				s.student_id                        AS "studentId",
-				u.first_name || ' ' || u.last_name  AS "studentName",
-				u.document_code::text               AS "studentCode",
-				u.email                             AS "studentEmail",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                             AS "studentCode",
+				st.email                            AS "studentEmail",
 				c.name->>'es'                       AS "courseName",
 				p.name->>'es'                       AS "programName"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
-			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			INNER JOIN academic.course_sections cs ON cs.id = s.course_section_id
 			INNER JOIN academic.courses c ON c.id = cs.course_id

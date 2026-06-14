@@ -87,7 +87,7 @@ export class IfcStateMachineService {
 		return await this.dataSource.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE, em);
-			IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.APPROVE);
+			await IfcValidation.assertHasHigherLevel(em, ctx, IFC_OPS.APPROVE);
 			IfcValidation.assertCurrentStatus(
 				ctx.currentStatusCode,
 				[TYPE_CODES.IFC_STATUS.SUBMITTED],
@@ -107,7 +107,7 @@ export class IfcStateMachineService {
 		return await this.dataSource.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT, em);
-			IfcValidation.assertNotOwnCoordinator(ctx, IFC_OPS.REJECT);
+			await IfcValidation.assertHasHigherLevel(em, ctx, IFC_OPS.REJECT);
 			IfcValidation.assertCurrentStatus(
 				ctx.currentStatusCode,
 				[TYPE_CODES.IFC_STATUS.SUBMITTED],
@@ -167,7 +167,6 @@ export class IfcStateMachineService {
 		const row = rows[0];
 		const ctx: IfcTransitionContext = {
 			ifcId,
-			ifcCourseStaffId: row.ifcCourseStaffId == null ? null : Number(row.ifcCourseStaffId),
 			courseChartId: row.courseChartId == null ? null : Number(row.courseChartId),
 			requesterStaffId: row.requesterStaffId == null ? null : Number(row.requesterStaffId),
 			currentStatusCode: row.currentStatusCode ?? null,

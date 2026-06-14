@@ -125,7 +125,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 	const findingValues = [
 		[
 			'TG801-T002',
-			'INST_FP_EXAM',
+			'FP_EXAM',
 			'calidad@upc.edu.pe',
 			2026001,
 			i18n(
@@ -137,7 +137,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		],
 		[
 			'TG801-T001',
-			'INST_CAPSTONE',
+			'CAPSTONE',
 			'calidad@upc.edu.pe',
 			2026002,
 			i18n(
@@ -149,7 +149,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		],
 		[
 			'TG801-T001',
-			'INST_IFC',
+			'IFC',
 			'coord.eiscb@upc.edu.pe',
 			2025001,
 			i18n(
@@ -161,7 +161,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		],
 		[
 			'TG801-T003',
-			'INST_IFC',
+			'IFC',
 			'coord.eiscb@upc.edu.pe',
 			2025002,
 			i18n(
@@ -175,7 +175,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		// Its finding_actions wire actions 2026801 / 2026802 into the course's history.
 		[
 			'TG801-T002',
-			'INST_CAPSTONE',
+			'CAPSTONE',
 			'calidad@upc.edu.pe',
 			2026801,
 			i18n(
@@ -188,7 +188,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		// Prior CS findings in 202601 (one per CS course) — feed previous_actions in 202601.
 		[
 			'TG801-T002',
-			'INST_IFC',
+			'IFC',
 			'coord.eiscb@upc.edu.pe',
 			2026901,
 			i18n(
@@ -200,7 +200,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		],
 		[
 			'TG801-T001',
-			'INST_IFC',
+			'IFC',
 			'coord.eiscb@upc.edu.pe',
 			2026902,
 			i18n(
@@ -212,7 +212,7 @@ runSeed('improvement module', async (tenantDataSource) => {
 		],
 		[
 			'TG801-T003',
-			'INST_IFC',
+			'IFC',
 			'coord.eiscb@upc.edu.pe',
 			2026903,
 			i18n(

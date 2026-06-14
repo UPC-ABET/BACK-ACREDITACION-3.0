@@ -110,7 +110,13 @@ SELECT
 		SELECT 1
 		FROM chain_up cu, requester_staff rs
 		WHERE cu.staff_id = rs.staff_id
-	)                                               AS "requesterInChain"
+	)                                               AS "requesterInChain",
+	EXISTS (
+		SELECT 1
+		FROM chain_up cu, requester_staff rs
+		WHERE cu.staff_id = rs.staff_id
+		  AND cu.depth > 1
+	)                                               AS "requesterHasHigherLevel"
 FROM evidence.ifcs i
 JOIN academic.academic_periods ap ON ap.id = i.academic_period_id
 JOIN academic.courses          ac ON ac.id = i.course_id
@@ -278,7 +284,6 @@ school_check AS (
 )
 SELECT
 	(SELECT course_chart_id FROM course_chart)::int AS "courseChartId",
-	(SELECT staff_id FROM course_chart)::int        AS "ifcCourseStaffId",
 	rs.id::int                                       AS "requesterStaffId",
 	ifc_st.code                                      AS "currentStatusCode"
 FROM evidence.ifcs i
@@ -382,7 +387,6 @@ school_check AS (
 )
 SELECT
 	c_course.entity_code::int    AS "courseId",
-	c_course.staff_id::int       AS "ifcCourseStaffId",
 	c_program.entity_code::int   AS "programId",
 	rs.id::int                    AS "requesterStaffId"
 FROM course_chart c_course

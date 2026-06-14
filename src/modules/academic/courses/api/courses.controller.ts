@@ -22,6 +22,14 @@ import {
 import { LookupQueryDto } from 'src/commons/lookup.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerCourseController()
@@ -61,9 +69,17 @@ export class CourseController extends BaseController<CourseService> {
 	}
 
 	@SwaggerCourseGetByFilters()
+	@ApiSchoolHeader(false)
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterCourseDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterCourseDto,
+		@SchoolId({ optional: true }) schoolId?: number | null,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(
+			await this.service.getByFilters({ ...dto, schoolId, academicPeriodId }),
+		);
 	}
 
 	@SwaggerCourseLookup()

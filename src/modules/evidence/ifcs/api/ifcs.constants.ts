@@ -4,7 +4,7 @@ export const IFCS_PARAMETER_KEYS = {
 	IFC_NOTIFICATION_VARS: 'PARAMETER_IFC_NOTIFICATION_VARS',
 } as const;
 
-export const IFC_INSTRUMENT_CODE = 'INST_IFC';
+export const IFC_INSTRUMENT_CODE = 'IFC';
 
 export const IFC_OPS = {
 	CREATE: 'create',

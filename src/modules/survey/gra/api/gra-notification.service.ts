@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
+import { normalizeCellText } from 'src/libs/excel.functions';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
@@ -126,11 +127,11 @@ export class GraNotificationService {
 	}
 
 	/** Excel template for GRA bulk upload: a single "Codigo Alumno" column. */
-	generateNotificationTemplate(): { buffer: Buffer; fileName: string } {
-		const sheet = XLSX.utils.aoa_to_sheet([['Codigo Alumno']]);
-		const workbook = XLSX.utils.book_new();
-		XLSX.utils.book_append_sheet(workbook, sheet, 'Plantilla');
-		const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+	async generateNotificationTemplate(): Promise<{ buffer: Buffer; fileName: string }> {
+		const workbook = new ExcelJS.Workbook();
+		const sheet = workbook.addWorksheet('Plantilla');
+		sheet.addRow(['Codigo Alumno']);
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: 'plantilla_gra_notificaciones.xlsx' };
 	}
 
@@ -138,17 +139,18 @@ export class GraNotificationService {
 	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto) {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
-		let workbook: XLSX.WorkBook;
+		const workbook = new ExcelJS.Workbook();
 		try {
-			workbook = XLSX.read(Buffer.from(dto.fileBase64, 'base64'), { type: 'buffer' });
+			const buffer = Buffer.from(dto.fileBase64, 'base64');
+			await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
 		} catch {
 			throw new BadRequestException('The provided base64 file is not a valid Excel file');
 		}
 
-		const sheetName = workbook.SheetNames[0];
-		if (!sheetName) throw new BadRequestException('The Excel file contains no sheets');
+		const worksheet = workbook.worksheets[0];
+		if (!worksheet) throw new BadRequestException('The Excel file contains no sheets');
 
-		const rows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+		const rows = this.sheetToObjects(worksheet);
 		if (rows.length === 0)
 			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
 
@@ -158,13 +160,12 @@ export class GraNotificationService {
 		for (let i = 0; i < rows.length; i++) {
 			const rowNum = i + 2; // +2: row 1 is the header
 			const row = rows[i];
-			const studentCode = String(
+			const studentCode = normalizeCellText(
 				row['Codigo Alumno'] ??
 					row['Código Alumno'] ??
 					row['CODIGO_ALUMNO'] ??
-					row['student_code'] ??
-					'',
-			).trim();
+					row['student_code'],
+			);
 
 			if (!studentCode) {
 				results.failed++;
@@ -462,5 +463,27 @@ export class GraNotificationService {
 			byProgram: data.byProgram,
 			filters: dto,
 		};
+	}
+
+	private sheetToObjects(worksheet: ExcelJS.Worksheet): Record<string, ExcelJS.CellValue>[] {
+		const headers = new Map<number, string>();
+		worksheet.getRow(1).eachCell((cell, col) => {
+			const header = normalizeCellText(cell.value);
+			if (header) headers.set(col, header);
+		});
+
+		const rows: Record<string, ExcelJS.CellValue>[] = [];
+		for (let i = 2; i <= worksheet.rowCount; i++) {
+			const row = worksheet.getRow(i);
+			const obj: Record<string, ExcelJS.CellValue> = {};
+			let hasValue = false;
+			for (const [col, header] of headers) {
+				const value = row.getCell(col).value;
+				obj[header] = value;
+				if (normalizeCellText(value) !== '') hasValue = true;
+			}
+			if (hasValue) rows.push(obj);
+		}
+		return rows;
 	}
 }

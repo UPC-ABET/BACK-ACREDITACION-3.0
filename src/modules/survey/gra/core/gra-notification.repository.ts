@@ -55,15 +55,14 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 				n.token,
 				n.max_register_date                AS "maxRegisterDate",
 				n.survey_id                        AS "surveyId",
-				s.student_id                       AS "studentId",
-				u.first_name || ' ' || u.last_name AS "studentName",
-				u.document_code::text              AS "studentCode",
-				u.email                            AS "studentEmail",
-				p.name->>'es'                      AS "programName"
+				s.student_id                         AS "studentId",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                              AS "studentCode",
+				st.email                             AS "studentEmail",
+				p.name->>'es'                        AS "programName"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
-			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			WHERE s.survey_type_id = $1
 			  AND n.notification_status_type_id = $2
@@ -106,19 +105,18 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			SELECT
 				n.id                               AS "notificationId",
 				n.survey_id                        AS "surveyId",
-				s.student_id                       AS "studentId",
-				u.first_name || ' ' || u.last_name AS "studentName",
-				u.document_code::text              AS "studentCode",
-				u.email                            AS "studentEmail",
-				p.name->>'es'                      AS "programName",
-				t.name->>'es'                      AS "notificationStatus",
-				n.sent_date                        AS "sentDate",
-				n.max_register_date                AS "maxRegisterDate",
+				s.student_id                         AS "studentId",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                              AS "studentCode",
+				st.email                             AS "studentEmail",
+				p.name->>'es'                        AS "programName",
+				t.name->>'es'                        AS "notificationStatus",
+				n.sent_date                          AS "sentDate",
+				n.max_register_date                  AS "maxRegisterDate",
 				n.token
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
-			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			INNER JOIN core.types t ON t.id = n.notification_status_type_id
 			WHERE s.survey_type_id = $1
@@ -138,11 +136,11 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			params.push(filters.campusId);
 		}
 		if (filters.studentCode) {
-			query += ` AND u.document_code::text ILIKE $${params.length + 1}`;
+			query += ` AND st.code ILIKE $${params.length + 1}`;
 			params.push(`%${filters.studentCode}%`);
 		}
 
-		query += ` ORDER BY u.first_name ASC`;
+		query += ` ORDER BY st.first_name ASC`;
 
 		return await this.dataSource.query(query, params);
 	}
@@ -160,18 +158,17 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		const rows = await this.dataSource.query(
 			`SELECT
 				n.survey_id                        AS "surveyId",
-				s.student_id                       AS "studentId",
-				u.first_name || ' ' || u.last_name AS "studentName",
-				u.document_code::text              AS "studentCode",
-				s.program_id                       AS "programId",
-				p.name->>'es'                      AS "programName",
-				s.academic_period_id               AS "academicPeriodId",
-				n.max_register_date                AS "maxRegisterDate",
-				st2.code                           AS "surveyStatusCode"
+				s.student_id                         AS "studentId",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                              AS "studentCode",
+				s.program_id                         AS "programId",
+				p.name->>'es'                        AS "programName",
+				s.academic_period_id                 AS "academicPeriodId",
+				n.max_register_date                  AS "maxRegisterDate",
+				st2.code                             AS "surveyStatusCode"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
-			INNER JOIN organization.users u ON u.id = st.user_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id
 			WHERE n.token = $1

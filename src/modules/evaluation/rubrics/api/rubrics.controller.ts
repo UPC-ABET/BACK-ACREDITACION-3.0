@@ -15,6 +15,14 @@ import { RubricService } from './rubrics.service';
 import { RubricConfigService } from './rubric-config.service';
 import { CreateRubricDto, UpdateRubricDto, FilterRubricDto } from '../model/rubrics.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerRubricController()
@@ -30,6 +38,19 @@ export class RubricController extends BaseController<RubricService> {
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async createRubricFull(@Body() dto: CreateRubricDto) {
 		return await this.rubricConfigService.createRubric(dto);
+	}
+
+	@Get('resolve-type')
+	@ApiQuery({ name: 'studyPlanCourseId', required: true, type: Number })
+	@ApiQuery({ name: 'gradeTypeId', required: true, type: Number })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
+	async resolveRubricType(
+		@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number,
+		@Query('gradeTypeId', ParseIntPipe) gradeTypeId: number,
+	) {
+		return parseSuccessResponse(
+			await this.rubricConfigService.resolveRubricType(studyPlanCourseId, gradeTypeId),
+		);
 	}
 
 	@Get('course/:courseId')
@@ -66,29 +87,24 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetAll()
-	@ApiQuery({ name: 'schoolId', required: false, type: Number, description: 'ID de la escuela' })
-	@ApiQuery({
-		name: 'programId',
-		required: false,
-		type: Number,
-		description: 'ID del programa académico (carrera)',
-	})
-	@ApiQuery({
-		name: 'academicPeriodId',
-		required: false,
-		type: Number,
-		description: 'ID del período académico',
-	})
-	@ApiQuery({ name: 'courseId', required: false, type: Number, description: 'ID del curso' })
+	@ApiSchoolHeader(false)
+	@ApiAcademicPeriodHeader(false)
+	@ApiQuery({ name: 'programId', required: false, type: Number })
+	@ApiQuery({ name: 'courseId', required: false, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
-		@Query('schoolId', new ParseIntPipe({ optional: true })) schoolId?: number,
+		@SchoolId({ optional: true }) schoolId?: number | null,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
 		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
-		@Query('academicPeriodId', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
 		@Query('courseId', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
 		return parseSuccessResponse(
-			await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }),
+			await this.service.getAllWithFilters({
+				schoolId: schoolId ?? undefined,
+				programId,
+				academicPeriodId: academicPeriodId ?? undefined,
+				courseId,
+			}),
 		);
 	}
 

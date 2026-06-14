@@ -295,6 +295,51 @@ async function loadAccreditation(tenantDataSource: DataSource) {
 	`);
 }
 
+async function loadInstruments(tenantDataSource: DataSource) {
+	const EXAM = 'TG501-T001';
+
+	// Only the structurally-required IFC instrument belongs in the PROD baseline: the
+	// IFC module looks it up by code (IFC) at runtime and fails if it is missing.
+	// Course-specific instruments (exams, capstones, surveys) are demo fixtures and stay
+	// in the full demo seed.
+	const instrumentRows: Array<[string, string, string, string, boolean]> = [
+		[
+			EXAM,
+			'IFC',
+			i18n('Informe Final del Curso', 'Course Final Report'),
+			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
+			true,
+		],
+	];
+
+	const instrumentValues = instrumentRows
+		.map(
+			([ctCode, code, name, desc, acc]) =>
+				`('${ctCode}', '${code}', '${name}'::jsonb, '${desc}'::jsonb, ${acc})`,
+		)
+		.join(',\n\t\t\t');
+
+	await tenantDataSource.query(`
+		INSERT INTO "evidence"."instruments" (
+			constituent_type_id,
+			code,
+			name,
+			description,
+			is_for_accreditation
+		)
+		SELECT constituent_type.id, v.code, v.name, v.description, v.is_for_accreditation
+		FROM "core"."types" constituent_type
+		JOIN (
+			VALUES
+				${instrumentValues}
+		) AS v(constituent_type_code, code, name, description, is_for_accreditation)
+			ON constituent_type.code = v.constituent_type_code
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "evidence"."instruments" instrument WHERE instrument.code = v.code
+		);
+	`);
+}
+
 runSeed('initial PROD baseline', async (tenantDataSource) => {
 	await loadTypes(tenantDataSource);
 	await loadCoreParameters(tenantDataSource);
@@ -302,5 +347,6 @@ runSeed('initial PROD baseline', async (tenantDataSource) => {
 	await loadPrograms(tenantDataSource);
 	await loadAcademicPeriods(tenantDataSource);
 	await loadAccreditation(tenantDataSource);
+	await loadInstruments(tenantDataSource);
 	await loadAuthRolesAndPermissions(tenantDataSource);
 });

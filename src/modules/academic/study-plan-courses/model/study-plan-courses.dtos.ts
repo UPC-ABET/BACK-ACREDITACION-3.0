@@ -170,12 +170,7 @@ export class FilterStudyPlanCourseDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	schoolId?: number;
+	programId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

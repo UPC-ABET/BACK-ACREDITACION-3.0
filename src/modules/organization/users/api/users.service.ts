@@ -81,12 +81,7 @@ export class UserService extends BaseService<UserRepository> {
 		}
 
 		if (email) {
-			return await this.baseRepository.findOneByCondition({
-				where: {
-					email,
-					isActive: true,
-				},
-			});
+			return await this.repository.findActiveByEmail(email);
 		}
 
 		return null;
@@ -320,13 +315,11 @@ export class UserService extends BaseService<UserRepository> {
 	private async assertUserDeletable(id: number, manager: EntityManager) {
 		const [refs]: Array<{
 			hasStaff: boolean;
-			hasStudent: boolean;
 			hasUploads: boolean;
 			hasNotifications: boolean;
 		}> = await manager.query(
 			`SELECT
 				EXISTS(SELECT 1 FROM organization.staff WHERE user_id = $1) AS "hasStaff",
-				EXISTS(SELECT 1 FROM academic.students WHERE user_id = $1) AS "hasStudent",
 				EXISTS(SELECT 1 FROM audit.upload_logs WHERE user_id = $1) AS "hasUploads",
 				EXISTS(SELECT 1 FROM core.notification_logs WHERE notifier_user_id = $1) AS "hasNotifications"`,
 			[id],
@@ -334,9 +327,6 @@ export class UserService extends BaseService<UserRepository> {
 
 		if (refs.hasStaff) {
 			throw new ConflictException(usersValidationStrings.error.linkedToStaff);
-		}
-		if (refs.hasStudent) {
-			throw new ConflictException(usersValidationStrings.error.linkedToStudent);
 		}
 		if (refs.hasUploads || refs.hasNotifications) {
 			throw new ConflictException(usersValidationStrings.error.hasActivityHistory);

@@ -1,6 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell, readI18nCells } from 'src/libs/excel.functions';
+
 import { ChartRow, UploadResult, UploadRowError } from '../model/charts-upload.types';
 import type { ChartsUploadDto } from '../model/charts-upload.dtos';
 import {
@@ -229,13 +231,13 @@ export class ChartsUploadService {
 		worksheet.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
 			let col = 1;
-			const code = this.cell(row, col++);
-			const parentCode = this.cell(row, col++);
-			const title = this.i18nCells(row, col, languages);
+			const code = readCell(row, col++);
+			const parentCode = readCell(row, col++);
+			const title = readI18nCells(row, col, languages);
 			col += L;
-			const email = this.cell(row, col++);
-			const entityType = this.cell(row, col++);
-			const entityCode = this.cell(row, col);
+			const email = readCell(row, col++);
+			const entityType = readCell(row, col++);
+			const entityCode = readCell(row, col);
 
 			rows.push({
 				rowNumber,
@@ -248,23 +250,6 @@ export class ChartsUploadService {
 			});
 		});
 		return rows;
-	}
-
-	private i18nCells(
-		row: ExcelJS.Row,
-		startCol: number,
-		languages: string[],
-	): Record<string, string> {
-		const result: Record<string, string> = {};
-		languages.forEach((lang, i) => {
-			result[lang] = this.cell(row, startCol + i);
-		});
-		return result;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

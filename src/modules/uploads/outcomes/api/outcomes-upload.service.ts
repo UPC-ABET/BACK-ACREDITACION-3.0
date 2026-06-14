@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+import { readCell, readI18nCells } from 'src/libs/excel.functions';
+
 import { OutcomeRow, UploadResult, UploadRowError } from '../model/outcomes-upload.types';
 import type { OutcomesUploadDto } from '../model/outcomes-upload.dtos';
 import {
@@ -141,13 +143,13 @@ export class OutcomesUploadService {
 		worksheet.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
 			let col = 1;
-			const outcomeCode = this.cell(row, col++);
-			const outcomeName = this.i18nCells(row, col, languages);
+			const outcomeCode = readCell(row, col++);
+			const outcomeName = readI18nCells(row, col, languages);
 			col += L;
-			const outcomeDescription = this.i18nCells(row, col, languages);
+			const outcomeDescription = readI18nCells(row, col, languages);
 			col += L;
-			const commissionCode = this.cell(row, col++);
-			const programCode = this.cell(row, col);
+			const commissionCode = readCell(row, col++);
+			const programCode = readCell(row, col);
 
 			rows.push({
 				rowNumber,
@@ -159,23 +161,6 @@ export class OutcomesUploadService {
 			});
 		});
 		return rows;
-	}
-
-	private i18nCells(
-		row: ExcelJS.Row,
-		startCol: number,
-		languages: string[],
-	): Record<string, string> {
-		const result: Record<string, string> = {};
-		languages.forEach((lang, i) => {
-			result[lang] = this.cell(row, startCol + i);
-		});
-		return result;
-	}
-
-	private cell(row: ExcelJS.Row, col: number): string {
-		const value = row.getCell(col).value;
-		return value === null || value === undefined ? '' : String(value).trim();
 	}
 
 	private async annotateErrors(

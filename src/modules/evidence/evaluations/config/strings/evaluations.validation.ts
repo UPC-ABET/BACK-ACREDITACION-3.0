@@ -13,6 +13,7 @@ export const evaluationsValidationStrings = {
 		allCriteriaRequired: 'error.evaluation.allCriteriaRequired',
 		oneCriteriaPerQuestion: 'error.evaluation.oneCriteriaPerQuestion',
 		statusTypeNotFound: 'error.evaluation.statusTypeNotFound',
+		docCannotGrade: 'error.evaluation.docCannotGrade',
 		gradeAllStudents: 'error.evaluation.gradeAllStudents',
 		observationRequired: 'error.evaluation.observationRequired',
 	},

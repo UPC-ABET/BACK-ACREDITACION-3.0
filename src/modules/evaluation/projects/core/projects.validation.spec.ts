@@ -4,6 +4,7 @@ import { ProjectValidation } from './projects.validation';
 const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
+	hasRubricScores: jest.fn(),
 };
 
 describe('ProjectValidation', () => {
@@ -46,14 +47,23 @@ describe('ProjectValidation', () => {
 	});
 
 	describe('validateDelete', () => {
-		it('passes when entity exists', async () => {
+		it('passes when entity exists and has no rubric scores', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
+			mockRepo.hasRubricScores.mockResolvedValue(false);
 			await expect(ProjectValidation.validateDelete(mockRepo as any, 1)).resolves.toBeUndefined();
 		});
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(ProjectValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
+				HttpException,
+			);
+		});
+
+		it('throws when project has rubric scores', async () => {
+			mockRepo.findOneById.mockResolvedValue({ id: 1 });
+			mockRepo.hasRubricScores.mockResolvedValue(true);
+			await expect(ProjectValidation.validateDelete(mockRepo as any, 1)).rejects.toThrow(
 				HttpException,
 			);
 		});
