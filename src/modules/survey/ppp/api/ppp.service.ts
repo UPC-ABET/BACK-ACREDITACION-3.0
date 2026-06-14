@@ -64,6 +64,10 @@ export class PppService {
 		return this.surveyService.uploadExcel(dto);
 	}
 
+	generateTemplate(programId: number, academicPeriodId: number) {
+		return this.surveyService.generateTemplate(programId, academicPeriodId);
+	}
+
 	getDashboard(dto: DashboardPppDto) {
 		return this.surveyService.getDashboard(dto);
 	}

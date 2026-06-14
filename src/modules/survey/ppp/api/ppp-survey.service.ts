@@ -4,7 +4,7 @@ import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
 import { PppValidation } from '../core/ppp.validation';
-import { i18nText } from 'src/shared/types/i18n';
+import { i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	CreatePppSurveyDto,
@@ -103,6 +103,52 @@ export class PppSurveyService {
 	async getByFilters(dto: FilterPppSurveyDto) {
 		const typeId = await this.getPppTypeId();
 		return await this.surveyRepo.findAllPpp(typeId, dto);
+	}
+
+	/**
+	 * Builds the PPP bulk-import Excel template: the fixed data columns plus one
+	 * "Competencia N" column per active config (same headers uploadExcel parses).
+	 * A second sheet lists which competency each column maps to.
+	 */
+	async generateTemplate(
+		programId: number,
+		academicPeriodId: number,
+	): Promise<{ buffer: Buffer; fileName: string }> {
+		const configs = await this.configRepo.findAllPpp({
+			programId,
+			academicPeriodId,
+			isActive: true,
+		});
+
+		const headers = [
+			'Codigo Alumno',
+			'# Practica',
+			'Horas',
+			'Razon Social',
+			'RUC',
+			'Nombre Jefe',
+			'Cargo Jefe',
+			'Telefono',
+			'Email Jefe',
+			'Fecha Inicio',
+			'Fecha Fin',
+			...configs.map((_, idx) => `Competencia ${idx + 1}`),
+		];
+
+		const workbook = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([headers]), 'Plantilla');
+
+		const legend = [
+			['Columna', 'Competencia'],
+			...configs.map((config, idx) => [
+				`Competencia ${idx + 1}`,
+				i18nTrim(config.userOutcomeName as any) ?? '',
+			]),
+		];
+		XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(legend), 'Competencias');
+
+		const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+		return { buffer, fileName: `plantilla_ppp_${programId}_${academicPeriodId}.xlsx` };
 	}
 
 	async uploadExcel(dto: UploadPppExcelDto) {
