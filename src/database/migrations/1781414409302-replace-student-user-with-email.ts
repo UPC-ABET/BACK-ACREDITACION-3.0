@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class ReplaceStudentUserWithEmail1781414409302 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(
-			`ALTER TABLE "academic"."students" ADD COLUMN "email" character varying(254) NOT NULL`,
+			`ALTER TABLE "academic"."students" ADD COLUMN "email" character varying(254)`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE "academic"."students" ADD CONSTRAINT "UQ_students_email" UNIQUE ("email")`,

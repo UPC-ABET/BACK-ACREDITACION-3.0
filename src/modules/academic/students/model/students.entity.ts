@@ -20,8 +20,8 @@ export class StudentEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	graduationModalityTypeId: number;
 
-	@EmailColumn({ nullable: false })
-	email: string;
+	@EmailColumn({ nullable: true })
+	email: string | null;
 
 	@NameColumn({ withDefault: true })
 	firstName: string;
