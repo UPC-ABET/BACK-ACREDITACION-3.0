@@ -59,5 +59,16 @@ export class ProjectValidation {
 				HttpStatus.BAD_REQUEST,
 			);
 		}
+
+		const hasScores = await repo.hasRubricScores(id);
+		if (hasScores) {
+			throw new HttpException(
+				{
+					message: projectsValidationStrings.result.deleteFailed,
+					errors: [projectsValidationStrings.error.hasEvaluations],
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
 	}
 }

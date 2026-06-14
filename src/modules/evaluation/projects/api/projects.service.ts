@@ -23,7 +23,7 @@ export class ProjectService extends BaseService<ProjectRepository> {
 
 	async delete(id: number, manager?: EntityManager) {
 		await ProjectValidation.validateDelete(this.repository, id);
-		return await super.delete(id, manager);
+		return await this.repository.deleteWithChildren(id);
 	}
 
 	async getByFilters(filters: FilterProjectDto) {

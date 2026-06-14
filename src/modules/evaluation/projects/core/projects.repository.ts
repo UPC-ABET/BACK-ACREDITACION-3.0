@@ -15,6 +15,8 @@ import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-a
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
+import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
@@ -55,7 +57,17 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.addSelect('staff_enrich.first_name', 'staff_enrich_first_name')
 			.addSelect('staff_enrich.last_name', 'staff_enrich_last_name')
 			.addSelect('eval_type_enrich.name', 'eval_type_enrich_name')
-			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code');
+			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code')
+			.addSelect(
+				`EXISTS (
+					SELECT 1
+					FROM   evaluation.rubric_scores rs
+					INNER JOIN evidence.evaluations e   ON e.id  = rs.evaluation_id
+					INNER JOIN evaluation.project_students ps2 ON ps2.id = e.project_student_id
+					WHERE  ps2.project_id = project.id
+				)`,
+				'project_has_evaluations',
+			);
 
 		if (filters.code) {
 			qb.andWhere('project.code = :code', { code: filters.code });
@@ -135,9 +147,13 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 		return entities.map((project) => {
 			const projectRaws = raw.filter((r) => r.project_id === project.id);
+			const hasEvaluations =
+				projectRaws[0]?.project_has_evaluations === true ||
+				projectRaws[0]?.project_has_evaluations === 't';
 
 			return {
 				...project,
+				hasEvaluations,
 				students: project.students.map((student) => {
 					const studentRaw = projectRaws.find((r) => r.ps_id === student.id);
 					return {
@@ -171,5 +187,26 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 				}),
 			};
 		});
+	}
+
+	async deleteWithChildren(id: number) {
+		return await this.dataSource.transaction(async (tx) => {
+			await tx.delete(ProjectStudentEntity, { projectId: id });
+			await tx.delete(ProjectEvaluatorEntity, { projectId: id });
+			return await this.remove(id, tx);
+		});
+	}
+
+	async hasRubricScores(projectId: number): Promise<boolean> {
+		const result = await this.dataSource.query(
+			`SELECT 1
+			 FROM   evaluation.rubric_scores rs
+			 INNER JOIN evidence.evaluations e  ON e.id  = rs.evaluation_id
+			 INNER JOIN evaluation.project_students ps ON ps.id = e.project_student_id
+			 WHERE  ps.project_id = $1
+			 LIMIT  1`,
+			[projectId],
+		);
+		return result.length > 0;
 	}
 }
