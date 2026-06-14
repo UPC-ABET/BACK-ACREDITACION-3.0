@@ -144,7 +144,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		const rows = await this.dataSource.query(
 			`SELECT id FROM academic.course_sections ORDER BY id LIMIT 1`,
 		);
-		return rows?.[0]?.id ?? 1;
+		return rows?.[0]?.id ?? null;
 	}
 
 	async findStudentByCode(code: string): Promise<{ id: number } | null> {
@@ -153,5 +153,13 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			[code],
 		);
 		return rows?.[0] ?? null;
+	}
+
+	async findStudentsByCodes(codes: string[]): Promise<{ id: number; code: string }[]> {
+		if (codes.length === 0) return [];
+		return await this.dataSource.query(
+			`SELECT id, code FROM academic.students WHERE code = ANY($1)`,
+			[codes],
+		);
 	}
 }

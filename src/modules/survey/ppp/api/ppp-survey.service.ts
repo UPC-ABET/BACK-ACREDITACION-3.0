@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { normalizeCellText } from 'src/libs/excel.functions';
+import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
 import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
@@ -144,10 +144,7 @@ export class PppSurveyService {
 		const legendSheet = workbook.addWorksheet('Competencias');
 		legendSheet.addRow(['Columna', 'Competencia']);
 		configs.forEach((config, idx) => {
-			legendSheet.addRow([
-				`Competencia ${idx + 1}`,
-				i18nTrim(config.userOutcomeName as any) ?? '',
-			]);
+			legendSheet.addRow([`Competencia ${idx + 1}`, i18nTrim(config.userOutcomeName) ?? '']);
 		});
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -188,7 +185,7 @@ export class PppSurveyService {
 		const worksheet = workbook.worksheets[0];
 		if (!worksheet) throw new BadRequestException('The Excel file contains no sheets');
 
-		const rows = this.sheetToObjects(worksheet);
+		const rows = sheetToObjects(worksheet);
 
 		if (rows.length === 0)
 			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
@@ -300,28 +297,6 @@ export class PppSurveyService {
 		}
 
 		return results;
-	}
-
-	private sheetToObjects(worksheet: ExcelJS.Worksheet): Record<string, ExcelJS.CellValue>[] {
-		const headers = new Map<number, string>();
-		worksheet.getRow(1).eachCell((cell, col) => {
-			const header = normalizeCellText(cell.value);
-			if (header) headers.set(col, header);
-		});
-
-		const rows: Record<string, ExcelJS.CellValue>[] = [];
-		for (let i = 2; i <= worksheet.rowCount; i++) {
-			const row = worksheet.getRow(i);
-			const obj: Record<string, ExcelJS.CellValue> = {};
-			let hasValue = false;
-			for (const [col, header] of headers) {
-				const value = row.getCell(col).value;
-				obj[header] = value;
-				if (normalizeCellText(value) !== '') hasValue = true;
-			}
-			if (hasValue) rows.push(obj);
-		}
-		return rows;
 	}
 
 	async getDashboard(dto: DashboardPppDto) {
