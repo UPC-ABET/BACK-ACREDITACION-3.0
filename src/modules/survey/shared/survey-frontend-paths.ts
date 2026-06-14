@@ -1,4 +1,4 @@
 export const SURVEY_FRONTEND_PATHS = {
-	GRA: '/encuesta/gra',
-	LCFC: '/encuesta/lcfc',
+	GRA: '/survey/gra/respond',
+	LCFC: '/survey/lcfc/respond',
 } as const;
