@@ -146,4 +146,12 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		);
 		return rows?.[0]?.id ?? 1;
 	}
+
+	async findStudentByCode(code: string): Promise<{ id: number } | null> {
+		const rows = await this.dataSource.query(
+			`SELECT id FROM academic.students WHERE code = $1 LIMIT 1`,
+			[code],
+		);
+		return rows?.[0] ?? null;
+	}
 }

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
+import * as XLSX from 'xlsx';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
@@ -21,6 +22,8 @@ import { i18nText } from 'src/shared/types/i18n';
 import { graValidationStrings } from '../config/strings/gra.validation';
 import {
 	SaveGraNotificationDto,
+	BulkUploadGraNotificationDto,
+	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
 	GetSurveyByTokenDto,
@@ -122,6 +125,96 @@ export class GraNotificationService {
 		};
 	}
 
+	/** Excel template for GRA bulk upload: a single "Codigo Alumno" column. */
+	generateNotificationTemplate(): { buffer: Buffer; fileName: string } {
+		const sheet = XLSX.utils.aoa_to_sheet([['Codigo Alumno']]);
+		const workbook = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(workbook, sheet, 'Plantilla');
+		const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+		return { buffer, fileName: 'plantilla_gra_notificaciones.xlsx' };
+	}
+
+	/** Bulk version of saveNotification: adds every student code in the Excel to the GRA list. */
+	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto) {
+		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
+
+		let workbook: XLSX.WorkBook;
+		try {
+			workbook = XLSX.read(Buffer.from(dto.fileBase64, 'base64'), { type: 'buffer' });
+		} catch {
+			throw new BadRequestException('The provided base64 file is not a valid Excel file');
+		}
+
+		const sheetName = workbook.SheetNames[0];
+		if (!sheetName) throw new BadRequestException('The Excel file contains no sheets');
+
+		const rows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+		if (rows.length === 0)
+			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
+
+		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
+		const results = { total: rows.length, success: 0, failed: 0, errors: [] as string[] };
+
+		for (let i = 0; i < rows.length; i++) {
+			const rowNum = i + 2; // +2: row 1 is the header
+			const row = rows[i];
+			const studentCode = String(
+				row['Codigo Alumno'] ??
+					row['Código Alumno'] ??
+					row['CODIGO_ALUMNO'] ??
+					row['student_code'] ??
+					'',
+			).trim();
+
+			if (!studentCode) {
+				results.failed++;
+				results.errors.push(`Row ${rowNum}: empty student code`);
+				continue;
+			}
+
+			const student = await this.surveyRepo.findStudentByCode(studentCode);
+			if (!student) {
+				results.failed++;
+				results.errors.push(`Row ${rowNum}: student with code "${studentCode}" not found`);
+				continue;
+			}
+
+			let survey = await this.surveyRepo.findExistingGraSurvey(
+				graSurveyTypeId,
+				student.id,
+				dto.academicPeriodId,
+				dto.programId,
+			);
+			if (!survey) {
+				survey = (await this.surveyRepo.create({
+					surveyTypeId: graSurveyTypeId,
+					surveyStatusTypeId: activeStatusId,
+					studentId: student.id,
+					academicPeriodId: dto.academicPeriodId,
+					campusId: dto.campusId,
+					programId: dto.programId,
+					courseSectionId: courseSectionId ?? 1,
+				})) as SurveyEntity;
+			}
+
+			if (await this.notifRepo.existsForStudent(survey.id)) {
+				results.failed++;
+				results.errors.push(`Row ${rowNum}: student "${studentCode}" is already in the GRA list`);
+				continue;
+			}
+
+			await this.notifRepo.create({
+				surveyId: survey.id,
+				notificationStatusTypeId: scheduledStatusId,
+				token: uuidv4(),
+				maxRegisterDate: dto.maxRegisterDate,
+			});
+			results.success++;
+		}
+
+		return results;
+	}
+
 	async listStudents(dto: ListStudentsGraDto) {
 		const { graSurveyTypeId } = await this.getTypeIds();
 		return await this.notifRepo.listStudentsGra(graSurveyTypeId, {
@@ -190,6 +283,39 @@ export class GraNotificationService {
 		}
 
 		return results;
+	}
+
+	/** Reads the GRA email template (email_templates row keyed by the GRA survey type code). */
+	async getEmailTemplateConfig() {
+		const rows = await this.dataSource.query(
+			`SELECT code, name, subject, body FROM core.email_templates WHERE code = $1 LIMIT 1`,
+			[TYPE_CODES.SURVEY_TYPE.GRA],
+		);
+		if (!rows?.[0]) {
+			throw new NotFoundException(graValidationStrings.error.emailTemplateMissing);
+		}
+		return rows[0];
+	}
+
+	/** Upserts the GRA email template content (subject/body, i18n). */
+	async updateEmailTemplateConfig(dto: UpdateGraEmailTemplateDto) {
+		const name = JSON.stringify({ es: 'Encuesta de Graduandos', en: 'Graduate Survey' });
+		const subject = JSON.stringify({ es: dto.subjectEs, en: dto.subjectEn ?? dto.subjectEs });
+		const body = JSON.stringify({ es: dto.bodyEs, en: dto.bodyEn ?? dto.bodyEs });
+
+		const rows = await this.dataSource.query(
+			`INSERT INTO core.email_templates (category_type_id, code, name, subject, body)
+			 SELECT cat.id, $1, $2::jsonb, $3::jsonb, $4::jsonb
+			 FROM core.types cat WHERE cat.code = 'TG1004-T003'
+			 ON CONFLICT ON CONSTRAINT "UQ_email_templates_code" DO UPDATE
+			 SET subject = EXCLUDED.subject, body = EXCLUDED.body, updated_at = NOW()
+			 RETURNING code, name, subject, body`,
+			[TYPE_CODES.SURVEY_TYPE.GRA, name, subject, body],
+		);
+		if (!rows?.[0]) {
+			throw new BadRequestException(graValidationStrings.error.emailTemplateCategoryMissing);
+		}
+		return rows[0];
 	}
 
 	async validateToken(token: string) {

@@ -10,6 +10,8 @@ export const graValidationStrings = {
 		studentAlreadyNotified: 'error.survey.gra.studentAlreadyNotified',
 		notificationNotFound: 'error.survey.gra.notificationNotFound',
 		completeFailed: 'error.survey.gra.completeFailed',
+		emailTemplateMissing: 'error.survey.gra.emailTemplateMissing',
+		emailTemplateCategoryMissing: 'error.survey.gra.emailTemplateCategoryMissing',
 	},
 	success: {
 		notificationCreated: 'success.survey.gra.notificationCreated',

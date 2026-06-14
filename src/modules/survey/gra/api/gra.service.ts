@@ -8,6 +8,8 @@ import {
 	ReplicateGraConfigDto,
 	ListGraSurveyOutcomesDto,
 	SaveGraNotificationDto,
+	BulkUploadGraNotificationDto,
+	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
 	GetSurveyByTokenDto,
@@ -54,6 +56,14 @@ export class GraService {
 		return this.notifService.saveNotification(dto);
 	}
 
+	generateNotificationTemplate() {
+		return this.notifService.generateNotificationTemplate();
+	}
+
+	bulkUploadNotifications(dto: BulkUploadGraNotificationDto) {
+		return this.notifService.bulkUploadNotifications(dto);
+	}
+
 	listStudents(dto: ListStudentsGraDto) {
 		return this.notifService.listStudents(dto);
 	}
@@ -64,6 +74,14 @@ export class GraService {
 
 	sendEmails(dto: SendGraEmailDto) {
 		return this.notifService.sendEmails(dto);
+	}
+
+	getEmailTemplateConfig() {
+		return this.notifService.getEmailTemplateConfig();
+	}
+
+	updateEmailTemplateConfig(dto: UpdateGraEmailTemplateDto) {
+		return this.notifService.updateEmailTemplateConfig(dto);
 	}
 
 	validateToken(token: string) {

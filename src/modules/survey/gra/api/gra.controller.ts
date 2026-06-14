@@ -1,5 +1,7 @@
-import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
+import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 import { GraService } from './gra.service';
 import {
 	SwaggerGraController,
@@ -11,9 +13,13 @@ import {
 	SwaggerGraConfigDelete,
 	SwaggerGraConfigReplicate,
 	SwaggerGraNotificationSave,
+	SwaggerGraNotificationTemplate,
+	SwaggerGraNotificationUploadExcel,
 	SwaggerGraNotificationListStudents,
 	SwaggerGraNotificationDelete,
 	SwaggerGraEmailSend,
+	SwaggerGraEmailGetTemplate,
+	SwaggerGraEmailUpdateTemplate,
 	SwaggerGraTokenValidate,
 	SwaggerGraSurveyGetByToken,
 	SwaggerGraSurveyComplete,
@@ -25,6 +31,8 @@ import {
 	UpdateGraConfigDto,
 	FilterGraConfigDto,
 	SaveGraNotificationDto,
+	BulkUploadGraNotificationDto,
+	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
 	GetSurveyByTokenDto,
@@ -89,6 +97,26 @@ export class GraController {
 		return parseSuccessResponse(await this.graService.saveNotification(dto));
 	}
 
+	@SwaggerGraNotificationTemplate()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async notificationTemplate(@Res() res: Response) {
+		const { buffer, fileName } = this.graService.generateNotificationTemplate();
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
+	}
+
+	@SwaggerGraNotificationUploadExcel()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async notificationUploadExcel(@Body() dto: BulkUploadGraNotificationDto) {
+		return parseSuccessResponse(await this.graService.bulkUploadNotifications(dto));
+	}
+
 	@SwaggerGraNotificationListStudents()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async notificationListStudents(@Body() dto: ListStudentsGraDto) {
@@ -105,6 +133,18 @@ export class GraController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async emailSend(@Body() dto: SendGraEmailDto) {
 		return parseSuccessResponse(await this.graService.sendEmails(dto));
+	}
+
+	@SwaggerGraEmailGetTemplate()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async emailGetTemplate() {
+		return parseSuccessResponse(await this.graService.getEmailTemplateConfig());
+	}
+
+	@SwaggerGraEmailUpdateTemplate()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.PUT })
+	async emailUpdateTemplate(@Body() dto: UpdateGraEmailTemplateDto) {
+		return parseSuccessResponse(await this.graService.updateEmailTemplateConfig(dto));
 	}
 
 	@SwaggerGraTokenValidate()

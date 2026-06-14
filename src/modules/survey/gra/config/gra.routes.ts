@@ -46,12 +46,32 @@ export const graRoutes = {
 			route: 'notification/delete/:id',
 			summary: 'Remove student from GRA list',
 		},
+		template: {
+			method: 'GET',
+			route: 'notification/template',
+			summary: 'Download GRA bulk-upload Excel template (student codes)',
+		},
+		uploadExcel: {
+			method: 'POST',
+			route: 'notification/upload-excel',
+			summary: 'Bulk add students to the GRA survey list from a base64 Excel',
+		},
 	},
 	email: {
 		send: {
 			method: 'POST',
 			route: 'email/send',
 			summary: 'Send GRA surveys by email to pending students',
+		},
+		getTemplate: {
+			method: 'GET',
+			route: 'email/template',
+			summary: 'Get the GRA email template (subject/body)',
+		},
+		updateTemplate: {
+			method: 'PUT',
+			route: 'email/template',
+			summary: 'Update the GRA email template (subject/body, i18n)',
 		},
 	},
 	token: {
