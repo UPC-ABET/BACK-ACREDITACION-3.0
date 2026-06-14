@@ -4,6 +4,8 @@ import { createHmac } from 'crypto';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { MicrosoftLoginErrorCode } from '../model/microsoft-login.types';
+import { usersValidationStrings } from 'src/modules/organization/users/config/strings/users.validation';
 
 type AuthServiceMock = {
 	buildMicrosoftLoginUrl: jest.Mock;
@@ -87,34 +89,89 @@ describe('AuthController — MSAL state packing', () => {
 	});
 
 	describe('GET /callback/azure-ad', () => {
-		it('throws when CSRF in state does not match the cookie', async () => {
+		const errorUrl = (code: MicrosoftLoginErrorCode) =>
+			`${TEST_FRONTEND_URL}/auth/login?error=${code}`;
+
+		it('redirects to the login error page when CSRF in state does not match the cookie', async () => {
 			const state = signState('expected-csrf');
 			const { res } = fakeResponse({ microsoftOauthState: 'different-csrf' });
 
-			await expect(
-				controller.microsoftCallback('code-abc', state, res as never),
-			).rejects.toBeInstanceOf(UnauthorizedException);
+			await controller.microsoftCallback('code-abc', state, res as never);
+
 			expect(authService.loginWithMicrosoftCode).not.toHaveBeenCalled();
+			expect(res.clearCookie).toHaveBeenCalledWith('microsoftOauthState');
+			expect(res.redirect).toHaveBeenCalledWith(errorUrl(MicrosoftLoginErrorCode.LOGIN_FAILED));
 		});
 
-		it('throws when state is missing or malformed', async () => {
-			const { res } = fakeResponse({ microsoftOauthState: 'whatever' });
-			await expect(
-				controller.microsoftCallback('code-abc', '', res as never),
-			).rejects.toBeInstanceOf(UnauthorizedException);
-			await expect(
-				controller.microsoftCallback('code-abc', 'not-json', res as never),
-			).rejects.toBeInstanceOf(UnauthorizedException);
+		it('redirects to the login error page when state is missing or malformed', async () => {
+			const { res: resMissing } = fakeResponse({ microsoftOauthState: 'whatever' });
+			await controller.microsoftCallback('code-abc', '', resMissing as never);
+			expect(resMissing.redirect).toHaveBeenCalledWith(
+				errorUrl(MicrosoftLoginErrorCode.LOGIN_FAILED),
+			);
+
+			const { res: resMalformed } = fakeResponse({ microsoftOauthState: 'whatever' });
+			await controller.microsoftCallback('code-abc', 'not-json', resMalformed as never);
+			expect(resMalformed.redirect).toHaveBeenCalledWith(
+				errorUrl(MicrosoftLoginErrorCode.LOGIN_FAILED),
+			);
 		});
 
-		it('throws when HMAC signature is tampered', async () => {
+		it('redirects to the login error page when the HMAC signature is tampered', async () => {
 			const state = signState('matching-csrf');
 			const tampered = state.slice(0, -4) + 'XXXX';
 			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
 
-			await expect(
-				controller.microsoftCallback('code-abc', tampered, res as never),
-			).rejects.toBeInstanceOf(UnauthorizedException);
+			await controller.microsoftCallback('code-abc', tampered, res as never);
+
+			expect(res.redirect).toHaveBeenCalledWith(errorUrl(MicrosoftLoginErrorCode.LOGIN_FAILED));
+		});
+
+		it('redirects with USER_NOT_FOUND when there is no account for the Microsoft email', async () => {
+			const state = signState('matching-csrf');
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
+			authService.loginWithMicrosoftCode.mockRejectedValueOnce(
+				new UnauthorizedException(usersValidationStrings.error.invalidCredentials),
+			);
+
+			await controller.microsoftCallback('code-abc', state, res as never);
+
+			expect(res.clearCookie).toHaveBeenCalledWith('microsoftOauthState');
+			expect(res.redirect).toHaveBeenCalledWith(errorUrl(MicrosoftLoginErrorCode.USER_NOT_FOUND));
+		});
+
+		it('redirects with NO_ROLE when the account has no role assigned', async () => {
+			const state = signState('matching-csrf');
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
+			authService.loginWithMicrosoftCode.mockRejectedValueOnce(
+				new UnauthorizedException(usersValidationStrings.error.noRolesAssigned),
+			);
+
+			await controller.microsoftCallback('code-abc', state, res as never);
+
+			expect(res.redirect).toHaveBeenCalledWith(errorUrl(MicrosoftLoginErrorCode.NO_ROLE));
+		});
+
+		it('redirects with NO_ROLE when the role has no permissions assigned', async () => {
+			const state = signState('matching-csrf');
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
+			authService.loginWithMicrosoftCode.mockRejectedValueOnce(
+				new UnauthorizedException(usersValidationStrings.error.noPermissionsAssigned),
+			);
+
+			await controller.microsoftCallback('code-abc', state, res as never);
+
+			expect(res.redirect).toHaveBeenCalledWith(errorUrl(MicrosoftLoginErrorCode.NO_ROLE));
+		});
+
+		it('redirects with LOGIN_FAILED for any other unexpected error', async () => {
+			const state = signState('matching-csrf');
+			const { res } = fakeResponse({ microsoftOauthState: 'matching-csrf' });
+			authService.loginWithMicrosoftCode.mockRejectedValueOnce(new Error('boom'));
+
+			await controller.microsoftCallback('code-abc', state, res as never);
+
+			expect(res.redirect).toHaveBeenCalledWith(errorUrl(MicrosoftLoginErrorCode.LOGIN_FAILED));
 		});
 
 		it('validates signed state, sets the access cookie, and redirects to the frontend', async () => {
