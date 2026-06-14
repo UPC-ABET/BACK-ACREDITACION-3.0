@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsEmail, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateStudentDto {
@@ -11,9 +11,9 @@ export class CreateStudentDto {
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	userId: number;
+	@IsEmail()
+	@ApiProperty({ example: 'U202111363@upc.edu.pe', required: true })
+	email: string;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -35,9 +35,9 @@ export class UpdateStudentDto {
 	isActive?: boolean;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	userId?: number;
+	@IsEmail()
+	@ApiProperty({ example: 'U202111363@upc.edu.pe', required: false })
+	email?: string;
 
 	@IsOptional()
 	@IsNumber()
@@ -60,8 +60,9 @@ export class FilterStudentDto {
 	isActive?: boolean;
 
 	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	userId?: number;
+	@IsEmail()
+	@ApiProperty({ example: 'U202111363@upc.edu.pe', required: false })
+	email?: string;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

@@ -18,7 +18,7 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Student', 'Last name', 'First name', 'Program', 'Campus', 'Modality', 'Email'];
+const HEADER = ['Student', 'Last name', 'First name', 'Program', 'Campus', 'Modality'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -42,15 +42,13 @@ function makeRepository(uploadFnResult: any[]) {
 }
 
 describe('EnrolledStudentsUploadService — positional parsing', () => {
-	it('sends structured rows with names and optional email', async () => {
+	it('sends structured rows with names (email is derived from the code, not the file)', async () => {
 		const { repository, calls } = makeRepository([
 			{ row_number: null, error_code: null, upload_log_id: 42 },
 		]);
 		const service = new EnrolledStudentsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P', 'luis@uni.edu'],
-		]);
+		const buffer = await makeXlsx([['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P']]);
 		const result = await service.processUpload(buffer, 'enrolled.xlsx', 7, 1, 2, {} as any);
 
 		expect(result.success).toBe(true);
@@ -66,21 +64,19 @@ describe('EnrolledStudentsUploadService — positional parsing', () => {
 			programCode: 'INF',
 			campusCode: 'CAMP-1',
 			enrollmentModalityTypeCode: 'P',
-			email: 'luis@uni.edu',
 		});
+		expect(rows[0]).not.toHaveProperty('email');
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
 	});
 
 	it('returns annotated excel with localized text when the function reports row errors', async () => {
 		const { repository } = makeRepository([
-			{ row_number: 2, error_code: 'userNotFound', upload_log_id: null },
+			{ row_number: 2, error_code: 'programNotFound', upload_log_id: null },
 		]);
 		const service = new EnrolledStudentsUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([
-			['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P', 'ghost@uni.edu'],
-		]);
+		const buffer = await makeXlsx([['STU-001', 'Ramirez', 'Luis', 'INF', 'CAMP-1', 'P']]);
 		const result = await service.processUpload(buffer, 'enrolled.xlsx', 1, 1, 2, {
 			lang: 'es',
 		} as any);
@@ -108,6 +104,5 @@ describe('EnrolledStudentsUploadService — template', () => {
 		expect(header).toContain('Apellidos');
 		expect(header).toContain('Nombres');
 		expect(header).toContain('Código de modalidad de matrícula');
-		expect(header).toContain('Correo del usuario');
 	});
 });

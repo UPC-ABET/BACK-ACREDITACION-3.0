@@ -64,7 +64,6 @@ export class CourseService extends BaseService<CourseRepository> {
 			.innerJoinAndSelect('sse.courseSection', 'cs')
 			.innerJoinAndSelect('sse.enrolledStudent', 'es')
 			.innerJoinAndSelect('es.student', 's')
-			.leftJoinAndSelect('s.user', 'student_user')
 			.innerJoinAndSelect('cs.professor', 'p')
 			.innerJoinAndSelect('p.staff', 'st')
 			.leftJoinAndSelect('st.user', 'prof_user')
@@ -100,16 +99,10 @@ export class CourseService extends BaseService<CourseRepository> {
 					id: item.enrolledStudentId,
 					studentSectionEnrollmentId: item.id,
 					studentId: item.enrolledStudent.studentId,
-					firstName:
-						item.enrolledStudent.student.user?.firstName ||
-						item.enrolledStudent.student.firstName ||
-						'',
-					lastName:
-						item.enrolledStudent.student.user?.lastName ||
-						item.enrolledStudent.student.lastName ||
-						'',
-					email: item.enrolledStudent.student.user?.email || '',
-					studentCode: `EST-${item.enrolledStudent.student.user?.documentCode || item.enrolledStudent.student.code}`,
+					firstName: item.enrolledStudent.student.firstName || '',
+					lastName: item.enrolledStudent.student.lastName || '',
+					email: item.enrolledStudent.student.email || '',
+					studentCode: `EST-${item.enrolledStudent.student.code}`,
 					courseSectionId: item.courseSectionId,
 					sectionCode: item.courseSection.sectionCode,
 					professorId: item.courseSection.professorId,

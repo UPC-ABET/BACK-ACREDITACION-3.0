@@ -70,10 +70,8 @@ runSeed('evaluation module', async (tenantDataSource) => {
 		) AS v(project_code, student_email, section_code)
 		JOIN "evaluation"."projects" project
 			ON project.code = v.project_code
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."enrolled_students" enrolled_student
 			ON enrolled_student.student_id = student.id
 		JOIN "academic"."course_sections" course_section

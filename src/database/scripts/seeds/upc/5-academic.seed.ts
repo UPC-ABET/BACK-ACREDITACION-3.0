@@ -74,10 +74,9 @@ runSeed('academic module', async (tenantDataSource) => {
 	`);
 
 	await tenantDataSource.query(`
-		INSERT INTO "academic"."students" (code, user_id, program_id, graduation_modality_type_id)
-		SELECT v.code, u.id, p.id, t.id
-		FROM "organization"."users" u
-		JOIN (
+		INSERT INTO "academic"."students" (code, email, program_id, graduation_modality_type_id)
+		SELECT v.code, v.email, p.id, t.id
+		FROM (
 			VALUES
 				('STU-0001', 'student.luis.ramirez@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
 				('STU-0002', 'student.sofia.torres@upc.edu.pe', 'PROG_SOFT', 'TG103-T002'),
@@ -90,13 +89,12 @@ runSeed('academic module', async (tenantDataSource) => {
 				('STU-0009', 'student.elena.ramos@upc.edu.pe', 'CS', 'TG103-T002'),
 				('STU-0010', 'student.alex.medina@upc.edu.pe', 'CS', 'TG103-T002')
 		) AS v(code, email, program_code, graduation_type_code)
-			ON u.email = v.email
 		JOIN "academic"."programs" p
 			ON p.code = v.program_code
 		JOIN "core"."types" t
 			ON t.code = v.graduation_type_code
 		WHERE NOT EXISTS (
-			SELECT 1 FROM "academic"."students" s WHERE s.user_id = u.id
+			SELECT 1 FROM "academic"."students" s WHERE s.code = v.code
 		);
 	`);
 
@@ -436,10 +434,8 @@ runSeed('academic module', async (tenantDataSource) => {
 				('student.roberto.chavez@upc.edu.pe', 'SP_ADM26', '202601', 'MON', 'TG103-T001'),
 				('student.valeria.morales@upc.edu.pe', 'SP_ADM26', '202601', 'MON', 'TG103-T001')
 		) AS v(email, study_plan_code, academic_period_code, campus_code, modality_type_code)
-		JOIN "organization"."users" u
-			ON u.email = v.email
 		JOIN "academic"."students" st
-			ON st.user_id = u.id
+			ON st.email = v.email
 		JOIN "academic"."study_plans" sp
 			ON sp.code = v.study_plan_code
 		JOIN "academic"."study_plan_academic_periods" spap
@@ -489,10 +485,8 @@ runSeed('academic module', async (tenantDataSource) => {
 				('student.valeria.morales@upc.edu.pe', 'ADM-FIN-2026-1-A'),
 				('student.valeria.morales@upc.edu.pe', 'ADM-MKT-2026-1-A')
 		) AS v(email, section_code)
-		JOIN "organization"."users" u
-			ON u.email = v.email
 		JOIN "academic"."students" st
-			ON st.user_id = u.id
+			ON st.email = v.email
 		JOIN "academic"."enrolled_students" es
 			ON es.student_id = st.id
 		JOIN "academic"."course_sections" cs
@@ -556,10 +550,8 @@ runSeed('academic module', async (tenantDataSource) => {
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'TG205-T001', 40.000000, 15.000000),
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'TG205-T002', 60.000000, 16.000000)
 		) AS v(email, section_code, grade_type_code, grade_type_percentage, grade)
-		JOIN "organization"."users" u
-			ON u.email = v.email
 		JOIN "academic"."students" st
-			ON st.user_id = u.id
+			ON st.email = v.email
 		JOIN "academic"."enrolled_students" es
 			ON es.student_id = st.id
 		JOIN "academic"."course_sections" cs

@@ -275,7 +275,6 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('s.studentSectionEnrollment', 'sse')
 			.leftJoinAndSelect('sse.enrolledStudent', 'es')
 			.leftJoinAndSelect('es.student', 'stu')
-			.leftJoinAndSelect('stu.user', 'suser')
 			.leftJoinAndSelect('sse.courseSection', 'cs')
 			.leftJoinAndSelect('cs.academicPeriod', 'ap')
 			.leftJoinAndSelect('p.evaluators', 'pe')
@@ -369,7 +368,6 @@ export class ProjectConfigService {
 
 		const studentDtos = (project.students || []).map((s) => {
 			const stu = s.studentSectionEnrollment?.enrolledStudent?.student;
-			const user = stu?.user;
 			const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
 
 			let totalGrade: number | null = null;
@@ -397,10 +395,10 @@ export class ProjectConfigService {
 			return {
 				id: s.id,
 				studentId: s.studentSectionEnrollment?.enrolledStudent?.studentId || 0,
-				firstName: user?.firstName || stu?.firstName || '',
-				lastName: user?.lastName || stu?.lastName || '',
-				email: user?.email || '',
-				studentCode: user?.documentCode ? String(user.documentCode) : stu?.code || '',
+				firstName: stu?.firstName || '',
+				lastName: stu?.lastName || '',
+				email: stu?.email || '',
+				studentCode: stu?.code || '',
 				totalGrade: isEvaluationMode ? totalGrade : null,
 				evaluations: evaluationStatuses,
 			};
@@ -584,10 +582,10 @@ export class ProjectConfigService {
       -- estudiantes
       ps.id             AS "studentPsId",
       stu.id            AS "studentId",
-      COALESCE(su.first_name, stu.first_name, '') AS "stuFirstName",
-      COALESCE(su.last_name, stu.last_name, '')   AS "stuLastName",
-      su.email          AS "stuEmail",
-      COALESCE(su.document_code::text, stu.code, '') AS "stuCode",
+      COALESCE(stu.first_name, '') AS "stuFirstName",
+      COALESCE(stu.last_name, '')  AS "stuLastName",
+      stu.email         AS "stuEmail",
+      COALESCE(stu.code, '') AS "stuCode",
       -- curso
       c.name            AS "courseName"
     FROM evaluation.projects p
@@ -600,7 +598,6 @@ export class ProjectConfigService {
     LEFT JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
     LEFT JOIN academic.enrolled_students es        ON es.id = sse.enrolled_student_id
     LEFT JOIN academic.students stu                ON stu.id = es.student_id
-    LEFT JOIN organization.users su                ON su.id = stu.user_id
     LEFT JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
     LEFT JOIN academic.courses c                   ON c.id = cs.course_id
     WHERE p.id = ANY($1::int[])

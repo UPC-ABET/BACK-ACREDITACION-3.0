@@ -305,10 +305,8 @@ runSeed('evidence module', async (tenantDataSource) => {
 			ON survey_type.code = v.survey_type_code
 		JOIN "core"."types" survey_status
 			ON survey_status.code = v.survey_status_code
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."academic_periods" period
 			ON period.code = v.academic_period_code
 		JOIN "organization"."campuses" campus
@@ -338,10 +336,8 @@ runSeed('evidence module', async (tenantDataSource) => {
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_01', 15.000000),
 				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_04', 16.000000)
 		) AS v(student_email, section_code, outcome_code, grade)
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."enrolled_students" enrolled_student
 			ON enrolled_student.student_id = student.id
 		JOIN "academic"."course_sections" course_section
@@ -402,10 +398,8 @@ runSeed('evidence module', async (tenantDataSource) => {
 		) AS v(project_code, student_email, professor_email, qualification_status_code, observation, register_at)
 		JOIN "evaluation"."projects" project
 			ON project.code = v.project_code
-		JOIN "organization"."users" user_entity
-			ON user_entity.email = v.student_email
 		JOIN "academic"."students" student
-			ON student.user_id = user_entity.id
+			ON student.email = v.student_email
 		JOIN "academic"."enrolled_students" enrolled_student
 			ON enrolled_student.student_id = student.id
 		JOIN "academic"."student_section_enrollments" sse

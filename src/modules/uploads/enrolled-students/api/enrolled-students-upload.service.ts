@@ -103,7 +103,6 @@ export class EnrolledStudentsUploadService {
 			labels.programCode,
 			labels.campusCode,
 			labels.enrollmentModalityTypeCode,
-			labels.email,
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
@@ -126,7 +125,7 @@ export class EnrolledStudentsUploadService {
 	}
 
 	// Positional layout (header ignored):
-	// studentCode | lastName | firstName | programCode | campusCode | enrollmentModalityTypeCode | email
+	// studentCode | lastName | firstName | programCode | campusCode | enrollmentModalityTypeCode
 	private parseWorkbook(workbook: ExcelJS.Workbook): EnrolledStudentRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: EnrolledStudentRow[] = [];
@@ -141,7 +140,6 @@ export class EnrolledStudentsUploadService {
 				programCode: readCell(row, 4),
 				campusCode: readCell(row, 5),
 				enrollmentModalityTypeCode: readCell(row, 6),
-				email: readCell(row, 7),
 			});
 		});
 		return rows;
@@ -154,8 +152,8 @@ export class EnrolledStudentsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = studentCode, lastName, firstName, programCode, campusCode, enrollmentModalityTypeCode, email; error column is next.
-		const errorColumn = 8;
+		// data columns = studentCode, lastName, firstName, programCode, campusCode, enrollmentModalityTypeCode; error column is next.
+		const errorColumn = 7;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
