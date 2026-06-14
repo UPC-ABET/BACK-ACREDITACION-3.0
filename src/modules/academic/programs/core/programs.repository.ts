@@ -5,6 +5,7 @@ import { ProgramEntity } from '../model/programs.entity';
 import { FilterProgramDto } from '../model/programs.dtos';
 import { StudyPlanEntity } from '../../study-plans/model/study-plans.entity';
 import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods/model/study-plan-academic-periods.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export class ProgramRepository extends BaseRepository<ProgramEntity> {
 	constructor(
@@ -32,6 +33,23 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 			qb.andWhere('spap.academic_period_id = :academicPeriodId', {
 				academicPeriodId: filters.academicPeriodId,
 			});
+		}
+
+		if (filters.schoolId) {
+			qb.andWhere(
+				`prog.id IN (
+					SELECT ch_prog.entity_code
+					FROM   organization.charts ch_prog
+					INNER JOIN organization.charts ch_sch
+					       ON  ch_sch.id = ch_prog.root_chart_id
+					WHERE  ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = :programTypeCode)
+					  AND  ch_sch.entity_type_id  = (SELECT id FROM core.types WHERE code = :schoolTypeCode)
+					  AND  ch_sch.entity_code = :schoolId
+				)`,
+			);
+			qb.setParameter('programTypeCode', TYPE_CODES.ENTITY_TYPE.PROGRAM);
+			qb.setParameter('schoolTypeCode', TYPE_CODES.ENTITY_TYPE.SCHOOL);
+			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		return await qb.getMany();

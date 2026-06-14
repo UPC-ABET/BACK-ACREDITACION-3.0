@@ -4,6 +4,7 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { StudyPlanCourseEntity } from '../model/study-plan-courses.entity';
 import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from '../../study-plans/model/study-plans.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { CourseEntity } from '../../courses/model/courses.entity';
 import {
 	FilterStudyPlanCourseDto,
@@ -52,7 +53,11 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
 			});
 
-		if (filters.academicPeriodId !== undefined || filters.programId !== undefined) {
+		if (
+			filters.academicPeriodId !== undefined ||
+			filters.programId !== undefined ||
+			filters.schoolId !== undefined
+		) {
 			qb.innerJoin(
 				StudyPlanAcademicPeriodEntity,
 				'spap',
@@ -68,6 +73,23 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 
 			if (filters.programId !== undefined) {
 				qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
+			}
+
+			if (filters.schoolId !== undefined) {
+				qb.andWhere(
+					`sp.program_id IN (
+						SELECT ch_prog.entity_code
+						FROM   organization.charts ch_prog
+						INNER JOIN organization.charts ch_sch
+						       ON  ch_sch.id = ch_prog.root_chart_id
+						WHERE  ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = :programTypeCode)
+						  AND  ch_sch.entity_type_id  = (SELECT id FROM core.types WHERE code = :schoolTypeCode)
+						  AND  ch_sch.entity_code = :schoolId
+					)`,
+				);
+				qb.setParameter('programTypeCode', TYPE_CODES.ENTITY_TYPE.PROGRAM);
+				qb.setParameter('schoolTypeCode', TYPE_CODES.ENTITY_TYPE.SCHOOL);
+				qb.setParameter('schoolId', filters.schoolId);
 			}
 		}
 

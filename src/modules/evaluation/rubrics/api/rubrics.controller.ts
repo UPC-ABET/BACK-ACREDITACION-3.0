@@ -79,17 +79,19 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetAll()
+	@ApiQuery({ name: 'schoolId', required: false, type: Number, description: 'ID de la escuela' })
 	@ApiQuery({ name: 'programId', required: false, type: Number })
 	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
 	@ApiQuery({ name: 'courseId', required: false, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
+		@Query('schoolId', new ParseIntPipe({ optional: true })) schoolId?: number,
 		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
 		@Query('academicPeriodId', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
 		@Query('courseId', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
 		return parseSuccessResponse(
-			await this.service.getAllWithFilters({ programId, academicPeriodId, courseId }),
+			await this.service.getAllWithFilters({ schoolId, programId, academicPeriodId, courseId }),
 		);
 	}
 
