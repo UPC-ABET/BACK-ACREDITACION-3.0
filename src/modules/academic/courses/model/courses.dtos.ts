@@ -98,11 +98,6 @@ export class FilterCourseDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
 	programId?: number;
 }

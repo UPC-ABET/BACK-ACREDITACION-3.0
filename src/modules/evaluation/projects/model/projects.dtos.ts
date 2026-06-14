@@ -138,8 +138,11 @@ export class EvaluatorInfoDto {
 	@ApiProperty({ example: 'user@example.com' })
 	email: string;
 
-	@ApiProperty({ example: 'evaluatorTypeExample' })
-	evaluatorType: string; // DOC, COM, GER...
+	@ApiProperty({ example: { es: 'COMITÉ', en: 'COMMITTEE' } })
+	evaluatorType: string; // jsonb i18n object at runtime
+
+	@ApiProperty({ example: 'COM' })
+	evaluatorTypeCode: string;
 }
 
 export class StudentInfoDto {
@@ -275,8 +278,11 @@ export class ProjectEvaluatorDetailDto {
 	@ApiProperty({ example: 1 })
 	evaluatorTypeId: number;
 
-	@ApiProperty({ example: 'evaluatorTypeNameExample' })
-	evaluatorTypeName: string;
+	@ApiProperty({ example: { es: 'COMITÉ', en: 'COMMITTEE' } })
+	evaluatorTypeName: string; // jsonb i18n object at runtime
+
+	@ApiProperty({ example: 'COM' })
+	evaluatorTypeCode: string;
 }
 
 export class ProjectDetailsResponseDto {
@@ -342,15 +348,6 @@ export class FilterProjectDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })
 	extra?: any;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: false,
-		description: 'ID del periodo académico',
-	})
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()

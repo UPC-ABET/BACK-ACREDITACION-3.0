@@ -15,6 +15,14 @@ import { RubricService } from './rubrics.service';
 import { RubricConfigService } from './rubric-config.service';
 import { CreateRubricDto, UpdateRubricDto, FilterRubricDto } from '../model/rubrics.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerRubricController()
@@ -79,17 +87,24 @@ export class RubricController extends BaseController<RubricService> {
 	}
 
 	@SwaggerRubricGetAll()
+	@ApiSchoolHeader(false)
+	@ApiAcademicPeriodHeader(false)
 	@ApiQuery({ name: 'programId', required: false, type: Number })
-	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
 	@ApiQuery({ name: 'courseId', required: false, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
+		@SchoolId({ optional: true }) schoolId?: number | null,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
 		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
-		@Query('academicPeriodId', new ParseIntPipe({ optional: true })) academicPeriodId?: number,
 		@Query('courseId', new ParseIntPipe({ optional: true })) courseId?: number,
 	) {
 		return parseSuccessResponse(
-			await this.service.getAllWithFilters({ programId, academicPeriodId, courseId }),
+			await this.service.getAllWithFilters({
+				schoolId: schoolId ?? undefined,
+				programId,
+				academicPeriodId: academicPeriodId ?? undefined,
+				courseId,
+			}),
 		);
 	}
 

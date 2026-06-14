@@ -13,6 +13,14 @@ import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { ScopeFilters } from 'src/commons/scope.dtos';
+import {
+	programInSchoolSubquery,
+	schoolProgramFilterParams,
+} from 'src/libs/school-program.functions';
+import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
+import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
@@ -23,7 +31,10 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		super(repository, dataSource);
 	}
 
-	async getByFilters(filters: FilterProjectDto): Promise<any[]> {
+	async getByFilters(filters: FilterProjectDto & ScopeFilters): Promise<any[]> {
+		const academicPeriodId = filters.academicPeriodId ?? undefined;
+		const schoolId = filters.schoolId ?? undefined;
+
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectEntity, 'project')
 			.leftJoinAndSelect('project.students', 'ps')
@@ -35,14 +46,11 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			)
 			.leftJoin(EnrolledStudentEntity, 'es_enrich', 'es_enrich.id = sse_enrich.enrolled_student_id')
 			.leftJoin(StudentEntity, 'st_enrich', 'st_enrich.id = es_enrich.student_id')
-			.leftJoin(UserEntity, 'u_enrich', 'u_enrich.id = st_enrich.user_id')
 			.leftJoin(CourseSectionEntity, 'cs_enrich', 'cs_enrich.id = sse_enrich.course_section_id')
 			.leftJoin(ProfessorEntity, 'prof_enrich', 'prof_enrich.id = pe.professor_id')
 			.leftJoin(StaffEntity, 'staff_enrich', 'staff_enrich.id = prof_enrich.staff_id')
 			.leftJoin(UserEntity, 'u_prof_enrich', 'u_prof_enrich.id = staff_enrich.user_id')
 			.leftJoin(TypeEntity, 'eval_type_enrich', 'eval_type_enrich.id = pe.evaluator_type_id')
-			.addSelect('u_enrich.first_name', 'u_enrich_first_name')
-			.addSelect('u_enrich.last_name', 'u_enrich_last_name')
 			.addSelect('st_enrich.id', 'st_enrich_id')
 			.addSelect('st_enrich.first_name', 'st_enrich_first_name')
 			.addSelect('st_enrich.last_name', 'st_enrich_last_name')
@@ -53,7 +61,17 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.addSelect('staff_enrich.first_name', 'staff_enrich_first_name')
 			.addSelect('staff_enrich.last_name', 'staff_enrich_last_name')
 			.addSelect('eval_type_enrich.name', 'eval_type_enrich_name')
-			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code');
+			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code')
+			.addSelect(
+				`EXISTS (
+					SELECT 1
+					FROM   evaluation.rubric_scores rs
+					INNER JOIN evidence.evaluations e   ON e.id  = rs.evaluation_id
+					INNER JOIN evaluation.project_students ps2 ON ps2.id = e.project_student_id
+					WHERE  ps2.project_id = project.id
+				)`,
+				'project_has_evaluations',
+			);
 
 		if (filters.code) {
 			qb.andWhere('project.code = :code', { code: filters.code });
@@ -66,75 +84,75 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('pe.professor_id = :professorId', { professorId: filters.professorId });
 		}
 
-		const needsEnrollment = !!(
+		const needsStudentJoin = !!(
 			filters.studentId ||
 			filters.courseId ||
-			filters.academicPeriodId ||
-			filters.programId
+			academicPeriodId ||
+			filters.programId ||
+			schoolId
 		);
-		const needsCourseSection = !!(filters.courseId || filters.academicPeriodId);
-		const needsEnrolledStudent = !!(filters.studentId || filters.programId);
-		const needsSpap = !!filters.programId;
-		const needsSp = !!filters.programId;
 
-		if (needsEnrollment) {
-			qb.leftJoin(
+		if (needsStudentJoin) {
+			qb.innerJoin(
 				StudentSectionEnrollmentEntity,
 				'sse',
 				'sse.id = ps.student_section_enrollment_id',
 			);
-		}
-
-		if (needsEnrolledStudent) {
-			qb.leftJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
-		}
-
-		if (filters.studentId) {
-			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
-		}
-
-		if (needsCourseSection) {
-			qb.leftJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
+			qb.innerJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
 		}
 
 		if (filters.courseId) {
 			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
 		}
 
-		if (filters.academicPeriodId) {
-			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
-				academicPeriodId: filters.academicPeriodId,
-			});
+		if (academicPeriodId) {
+			qb.andWhere('cs.academic_period_id = :academicPeriodId', { academicPeriodId });
 		}
 
-		if (needsSpap) {
-			qb.leftJoin(StudyPlanAcademicPeriodEntity, 'spap', 'spap.id = es.study_plan_academic_period');
+		if (filters.studentId) {
+			qb.innerJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
+			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
-		if (needsSp) {
-			qb.leftJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
+		if (filters.programId || schoolId) {
+			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = cs.course_id');
+			qb.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = spc.study_plan_academic_period_id',
+			);
+			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 		}
 
 		if (filters.programId) {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 		}
 
+		if (schoolId) {
+			qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
+				schoolProgramFilterParams(schoolId),
+			);
+		}
+
 		const { entities, raw } = await qb.getRawAndEntities();
 
 		return entities.map((project) => {
 			const projectRaws = raw.filter((r) => r.project_id === project.id);
+			const hasEvaluations =
+				projectRaws[0]?.project_has_evaluations === true ||
+				projectRaws[0]?.project_has_evaluations === 't';
 
 			return {
 				...project,
+				hasEvaluations,
 				students: project.students.map((student) => {
 					const studentRaw = projectRaws.find((r) => r.ps_id === student.id);
 					return {
 						...student,
 						studentInfo: studentRaw
 							? {
-									firstName:
-										studentRaw.u_enrich_first_name || studentRaw.st_enrich_first_name || '',
-									lastName: studentRaw.u_enrich_last_name || studentRaw.st_enrich_last_name || '',
+									firstName: studentRaw.st_enrich_first_name || '',
+									lastName: studentRaw.st_enrich_last_name || '',
 									studentId: studentRaw.st_enrich_id,
 									sectionCode: studentRaw.cs_enrich_section_code,
 									sectionId: studentRaw.cs_enrich_id,
@@ -159,5 +177,26 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 				}),
 			};
 		});
+	}
+
+	async deleteWithChildren(id: number) {
+		return await this.dataSource.transaction(async (tx) => {
+			await tx.delete(ProjectStudentEntity, { projectId: id });
+			await tx.delete(ProjectEvaluatorEntity, { projectId: id });
+			return await this.remove(id, tx);
+		});
+	}
+
+	async hasRubricScores(projectId: number): Promise<boolean> {
+		const result = await this.dataSource.query(
+			`SELECT 1
+			 FROM   evaluation.rubric_scores rs
+			 INNER JOIN evidence.evaluations e  ON e.id  = rs.evaluation_id
+			 INNER JOIN evaluation.project_students ps ON ps.id = e.project_student_id
+			 WHERE  ps.project_id = $1
+			 LIMIT  1`,
+			[projectId],
+		);
+		return result.length > 0;
 	}
 }

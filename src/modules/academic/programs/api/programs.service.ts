@@ -3,6 +3,7 @@ import { BaseService } from 'src/commons/base.service';
 import { ProgramRepository } from '../core/programs.repository';
 import { ProgramValidation } from '../core/programs.validation';
 import { CreateProgramDto, FilterProgramDto, UpdateProgramDto } from '../model/programs.dtos';
+import { ScopeFilters } from 'src/commons/scope.dtos';
 import { EntityManager } from 'typeorm';
 
 @Injectable()
@@ -26,7 +27,7 @@ export class ProgramService extends BaseService<ProgramRepository> {
 		return await super.delete(id, manager);
 	}
 
-	async getByFilters(filters: FilterProgramDto) {
+	async getByFilters(filters: FilterProgramDto & ScopeFilters) {
 		return await this.repository.getByFilters(filters);
 	}
 

@@ -14,6 +14,7 @@ import { EntityManager, DataSource } from 'typeorm';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { LookupQueryDto } from 'src/commons/lookup.dtos';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
+import { ScopeFilters } from 'src/commons/scope.dtos';
 
 @Injectable()
 export class CourseService extends BaseService<CourseRepository> {
@@ -39,7 +40,7 @@ export class CourseService extends BaseService<CourseRepository> {
 		return await super.delete(id, manager);
 	}
 
-	async getByFilters(filters: FilterCourseDto) {
+	async getByFilters(filters: FilterCourseDto & ScopeFilters) {
 		return await this.repository.getByFilters(filters);
 	}
 

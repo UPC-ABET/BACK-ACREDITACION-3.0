@@ -12,12 +12,12 @@ export const projectsValidationStrings = {
 		studentNotInCourse: 'error.project.studentNotInCourse',
 		studentAlreadyInProject: 'error.project.studentAlreadyInProject',
 		noEvaluators: 'error.project.noEvaluators',
-		evaluatorDuplicate: 'error.project.evaluatorDuplicate',
 		evaluatorLimit: 'error.project.evaluatorLimit',
 		noStudentsWithCourse: 'error.project.noStudentsWithCourse',
 		activeRubricNotFound: 'error.project.activeRubricNotFound',
 		rubricContextError: 'error.project.rubricContextError',
 		invalidGradeTypeCode: 'error.project.invalidGradeTypeCode',
+		hasEvaluations: 'error.project.hasEvaluations',
 	},
 	result: {
 		createFailed: 'error.project.createFailed',

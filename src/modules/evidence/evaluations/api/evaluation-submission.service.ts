@@ -40,13 +40,15 @@ import { evaluationsValidationStrings } from '../config/strings/evaluations.vali
  * - R-NOT-003: NotaOutcome = Sum(NotaCriterio)
  * - R-NOT-004: NotaRubrica = Sum(NotaOutcome)
  * - R-NOT-005: Guardada se activa si hay observación o todos los criterios están completos
- * - R-NOT-008: Comité (COM) promedia notas de todos los evaluadores del mismo tipo
+ * - R-NOT-008: Comité (COM) escribe directo (sobrescribe, no promedia)
  * - R-NOT-009: Gerente (GER) en WASC escribe directo (sin promediar)
  * - R-NOT-010: Validación de rango de puntaje contra min_value/max_value del criterio
  * - R-NOT-011: Exclusión de alumnos retirados en finalización
  * - R-NOT-012: Validación de completitud al guardar calificación
  * - R-NOT-013: Observación obligatoria salvo en PA
  * - R-NOT-014: Observación vacía revierte estado
+ * - R-NOT-015: Rol DOC (docente) solo visualiza, no califica
+ * - R-NOT-016: Máximo 1 evaluador por tipo de rol en el proyecto
  */
 @Injectable()
 export class EvaluationSubmissionService {
@@ -330,13 +332,11 @@ export class EvaluationSubmissionService {
 	 *
 	 * Flujo:
 	 * 1. Valida evaluador/estudiante y rangos
-	 * 2. UPSERT en rubric_scores
-	 * 3. Según el tipo de evaluador:
-	 *    - COM: promedia todos los COM del proyecto (R-NOT-008)
-	 *    - GER: escribe directo (R-NOT-009)
-	 *    - Otros: escribe directo (DOC, CLI, COA)
-	 * 4. Persiste outcome grades escalados
-	 * 5. Devuelve nota vigesimal
+	 * 2. Rechaza si el evaluador es de tipo DOC (solo visualiza)
+	 * 3. UPSERT en rubric_scores
+	 * 4. Escribe directo los outcome grades (sin promediar entre evaluadores)
+	 * 5. Persiste outcome grades escalados
+	 * 6. Devuelve nota vigesimal
 	 */
 	async submitEvaluation(
 		dto: SubmitEvaluationDto,
@@ -355,6 +355,11 @@ export class EvaluationSubmissionService {
 		}
 		if (evaluator.projectId !== student.projectId) {
 			throw new ConflictException(evaluationsValidationStrings.error.notSameProject);
+		}
+
+		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
+		if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.DOC) {
+			throw new BadRequestException(evaluationsValidationStrings.error.docCannotGrade);
 		}
 
 		const criteriaIds = dto.scores.map((s) => s.rubricQuestionCriteriaId);
@@ -485,84 +490,23 @@ export class EvaluationSubmissionService {
 					}
 				}
 
-				const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 				const isPa = await this.isPaRubric(rubric.id);
 
 				let txOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
 
-				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.COM) {
-					const comEvaluators = await manager.find(ProjectEvaluatorEntity, {
-						where: {
-							projectId: evaluator.projectId,
-							evaluatorTypeId: evaluator.evaluatorTypeId,
-						},
-					});
-					const comEvaluatorIds = comEvaluators.map((e) => e.id);
-
-					const aggregatedGrades = new Map<
-						number,
-						{ sum: number; count: number; maxValue: number }
-					>();
-
-					const comEvaluations = await manager.find(EvaluationEntity, {
-						where: {
-							projectStudentId: dto.projectStudentId,
-							projectEvaluatorId: In(comEvaluatorIds),
-						},
-					});
-					const evalMap = new Map(comEvaluations.map((e) => [e.projectEvaluatorId, e]));
-
-					for (const comEvalId of comEvaluatorIds) {
-						const comStudentEval = evalMap.get(comEvalId);
-						if (!comStudentEval) continue;
-
-						const { outcomeGrades: comGrades } = await this.aggregateScoresByOutcome(
-							manager,
-							comStudentEval.id,
-						);
-						for (const og of comGrades) {
-							const existing = aggregatedGrades.get(og.outcomeId);
-							if (existing) {
-								existing.sum += og.grade;
-								existing.count += 1;
-							} else {
-								aggregatedGrades.set(og.outcomeId, {
-									sum: og.grade,
-									count: 1,
-									maxValue: og.maxValue,
-								});
-							}
-						}
-					}
-
-					txOutcomeGrades = [];
-					for (const [outcomeId, data] of aggregatedGrades) {
-						const average = data.count > 0 ? Math.round((data.sum / data.count) * 100) / 100 : 0;
-						txOutcomeGrades.push({ outcomeId, grade: average, maxValue: data.maxValue });
-					}
-
-					await this.upsertOutcomeGrades(
-						manager,
-						student.studentSectionEnrollmentId,
-						txOutcomeGrades,
-					);
-				} else if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
+				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
 					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
 					txOutcomeGrades = outcomeGrades;
-					await this.upsertOutcomeGrades(
-						manager,
-						student.studentSectionEnrollmentId,
-						txOutcomeGrades,
-					);
 				} else {
 					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
 					txOutcomeGrades = outcomeGrades;
-					await this.upsertOutcomeGrades(
-						manager,
-						student.studentSectionEnrollmentId,
-						txOutcomeGrades,
-					);
 				}
+
+				await this.upsertOutcomeGrades(
+					manager,
+					student.studentSectionEnrollmentId,
+					txOutcomeGrades,
+				);
 
 				return { evaluationId: evaluation.id, finalOutcomeGrades: txOutcomeGrades };
 			},
@@ -580,6 +524,19 @@ export class EvaluationSubmissionService {
 	 * Guarda/actualiza la observación de una evaluación (R-NOT-014)
 	 */
 	async saveObservation(dto: SaveObservationDto): Promise<{ success: boolean }> {
+		const evaluator = await this.evaluatorRepo.findOne({
+			where: { id: dto.projectEvaluatorId },
+		});
+
+		if (!evaluator) {
+			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
+		}
+
+		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
+		if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.DOC) {
+			throw new BadRequestException(evaluationsValidationStrings.error.docCannotGrade);
+		}
+
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
 			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
 		);
@@ -618,9 +575,22 @@ export class EvaluationSubmissionService {
 	}
 
 	/**
-	 * Finaliza la calificación de un proyecto (R-NOT-011, R-NOT-012, R-NOT-013)
+	 * Finaliza la calificación de un proyecto (R-NOT-011, R-NOT-012, R-NOT-013, R-NOT-015)
 	 */
 	async finalizeProject(dto: FinalizeProjectDto): Promise<{ success: boolean; message: string }> {
+		const evaluator = await this.evaluatorRepo.findOne({
+			where: { id: dto.evaluatorId },
+		});
+
+		if (!evaluator) {
+			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
+		}
+
+		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
+		if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.DOC) {
+			throw new BadRequestException(evaluationsValidationStrings.error.docCannotGrade);
+		}
+
 		const project = await this.projectRepo.findOne({
 			where: { id: dto.projectId },
 			relations: ['students', 'students.studentSectionEnrollment'],

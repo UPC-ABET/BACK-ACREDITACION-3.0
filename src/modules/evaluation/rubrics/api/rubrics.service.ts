@@ -16,6 +16,10 @@ import { RubricConfigService } from './rubric-config.service';
 import { RubricEntity } from '../model/rubrics.entity';
 import type { I18nText } from 'src/shared/types/i18n';
 import pLimit from 'p-limit';
+import {
+	programInSchoolSubquery,
+	schoolProgramFilterParams,
+} from 'src/libs/school-program.functions';
 
 @Injectable()
 export class RubricService extends BaseService<RubricRepository> {
@@ -167,6 +171,7 @@ export class RubricService extends BaseService<RubricRepository> {
 	}
 
 	async getAllWithFilters(filters?: {
+		schoolId?: number;
 		programId?: number;
 		academicPeriodId?: number;
 		courseId?: number;
@@ -182,6 +187,12 @@ export class RubricService extends BaseService<RubricRepository> {
 			.leftJoinAndSelect('studyPlanAcademicPeriod.academicPeriod', 'academicPeriod')
 			.leftJoinAndSelect('studyPlanAcademicPeriod.studyPlan', 'studyPlan')
 			.leftJoinAndSelect('studyPlan.program', 'program');
+
+		if (filters?.schoolId) {
+			qb.andWhere(programInSchoolSubquery('program.id')).setParameters(
+				schoolProgramFilterParams(filters.schoolId),
+			);
+		}
 
 		if (filters?.programId) {
 			qb.andWhere('program.id = :programId', { programId: filters.programId });
