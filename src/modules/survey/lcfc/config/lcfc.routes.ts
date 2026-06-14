@@ -22,6 +22,12 @@ export const lcfcRoutes = {
 			route: 'config/update-status',
 			summary: 'Bulk update active/inactive status of LCFC courses',
 		},
+		clone: {
+			method: 'POST',
+			route: 'config/clone',
+			summary:
+				'Clone LCFC configuration: generate target period and copy course status from source',
+		},
 	},
 	notification: {
 		send: {

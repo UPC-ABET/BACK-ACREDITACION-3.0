@@ -33,6 +33,25 @@ export class GenerateLcfcConfigDto {
 	campusId?: number;
 }
 
+export class CloneLcfcConfigDto {
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Source academic period ID (to copy status from)' })
+	sourceAcademicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 2, description: 'Target academic period ID (generated and updated)' })
+	targetAcademicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program ID' })
+	programId: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Campus ID (optional)', required: false })
+	campusId?: number;
+}
+
 export class FilterLcfcConfigDto {
 	@IsOptional()
 	@IsNumber()

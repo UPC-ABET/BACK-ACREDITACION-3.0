@@ -7,6 +7,7 @@ import {
 	SwaggerLcfcConfigGetAll,
 	SwaggerLcfcConfigGetByFilters,
 	SwaggerLcfcConfigUpdateStatus,
+	SwaggerLcfcConfigClone,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
 	SwaggerLcfcSurveyGetByToken,
@@ -15,6 +16,7 @@ import {
 } from './docs/lcfc.swagger';
 import {
 	GenerateLcfcConfigDto,
+	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	SendLcfcNotificationDto,
@@ -52,6 +54,12 @@ export class LcfcController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async configUpdateStatus(@Body() dto: UpdateLcfcConfigStatusDto) {
 		return parseSuccessResponse(await this.lcfcService.updateConfigStatus(dto));
+	}
+
+	@SwaggerLcfcConfigClone()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async configClone(@Body() dto: CloneLcfcConfigDto) {
+		return parseSuccessResponse(await this.lcfcService.cloneConfig(dto));
 	}
 
 	@SwaggerLcfcNotificationSend()
