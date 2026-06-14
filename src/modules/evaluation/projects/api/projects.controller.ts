@@ -66,6 +66,31 @@ export class ProjectController extends BaseController<ProjectService> {
 		);
 	}
 
+	@Get('evaluator/:evaluatorId')
+	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
+	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
+	@ApiQuery({ name: 'schoolId', required: false, type: Number })
+	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
+	async getProjectsByEvaluatorId(
+		@Param('evaluatorId', ParseIntPipe) evaluatorId: number,
+		@Query('academicPeriodId') academicPeriodId?: string,
+		@Query('schoolId') schoolId?: string,
+		@Query('gradeTypeCode') gradeTypeCode?: string,
+	) {
+		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
+		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
+
+		return parseSuccessResponse(
+			await this.projectConfigService.getProjectsByProfessor(
+				evaluatorId,
+				parsedAcademicPeriodId,
+				parsedSchoolId,
+				gradeTypeCode,
+			),
+		);
+	}
+
 	@Get('project/:projectId')
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
 	@ApiQuery({ name: 'isEvaluationMode', required: false, type: Boolean })

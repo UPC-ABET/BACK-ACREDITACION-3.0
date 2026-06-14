@@ -196,8 +196,6 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.noEvaluators);
 		}
 
-		const evaluatorTypeIds = [...new Set(dto.evaluators.map((e) => e.evaluatorTypeId))];
-		const evaluatorTypes = await this.typeRepo.findByIds(evaluatorTypeIds);
 		const typeCountInRequest = new Map<number, number>();
 		for (const ev of dto.evaluators) {
 			typeCountInRequest.set(
@@ -443,6 +441,7 @@ export class ProjectConfigService {
 				professorEmail: professorUser?.email || '',
 				evaluatorTypeId: e.evaluatorTypeId,
 				evaluatorTypeName: evaluatorType?.name || '',
+				evaluatorTypeCode: evaluatorType?.code || '',
 			};
 		});
 
@@ -565,6 +564,7 @@ export class ProjectConfigService {
       COALESCE(all_u.last_name, all_st.last_name, '')   AS "evalLastName",
       all_u.email       AS "evalEmail",
       all_et.name       AS "evalTypeName",
+      all_et.code       AS "evalTypeCode",
       -- estudiantes
       ps.id             AS "studentPsId",
       stu.id            AS "studentId",
@@ -620,6 +620,7 @@ export class ProjectConfigService {
 					lastName: row.evalLastName || '',
 					email: row.evalEmail || '',
 					evaluatorType: row.evalTypeName || '',
+					evaluatorTypeCode: row.evalTypeCode || '',
 				});
 			}
 
