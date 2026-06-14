@@ -13,6 +13,8 @@ import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
@@ -66,35 +68,21 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('pe.professor_id = :professorId', { professorId: filters.professorId });
 		}
 
-		const needsEnrollment = !!(
+		const needsStudentJoin = !!(
 			filters.studentId ||
 			filters.courseId ||
 			filters.academicPeriodId ||
-			filters.programId
+			filters.programId ||
+			filters.schoolId
 		);
-		const needsCourseSection = !!(filters.courseId || filters.academicPeriodId);
-		const needsEnrolledStudent = !!(filters.studentId || filters.programId);
-		const needsSpap = !!filters.programId;
-		const needsSp = !!filters.programId;
 
-		if (needsEnrollment) {
-			qb.leftJoin(
+		if (needsStudentJoin) {
+			qb.innerJoin(
 				StudentSectionEnrollmentEntity,
 				'sse',
 				'sse.id = ps.student_section_enrollment_id',
 			);
-		}
-
-		if (needsEnrolledStudent) {
-			qb.leftJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
-		}
-
-		if (filters.studentId) {
-			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
-		}
-
-		if (needsCourseSection) {
-			qb.leftJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
+			qb.innerJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
 		}
 
 		if (filters.courseId) {
@@ -107,16 +95,40 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			});
 		}
 
-		if (needsSpap) {
-			qb.leftJoin(StudyPlanAcademicPeriodEntity, 'spap', 'spap.id = es.study_plan_academic_period');
+		if (filters.studentId) {
+			qb.innerJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
+			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
-		if (needsSp) {
-			qb.leftJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
+		if (filters.programId || filters.schoolId) {
+			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = cs.course_id');
+			qb.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = spc.study_plan_academic_period_id',
+			);
+			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 		}
 
 		if (filters.programId) {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
+		}
+
+		if (filters.schoolId) {
+			qb.andWhere(
+				`sp.program_id IN (
+					SELECT ch_prog.entity_code
+					FROM   organization.charts ch_prog
+					INNER JOIN organization.charts ch_sch
+					       ON  ch_sch.id = ch_prog.root_chart_id
+					WHERE  ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = :programTypeCode)
+					  AND  ch_sch.entity_type_id  = (SELECT id FROM core.types WHERE code = :schoolTypeCode)
+					  AND  ch_sch.entity_code = :schoolId
+				)`,
+			);
+			qb.setParameter('programTypeCode', TYPE_CODES.ENTITY_TYPE.PROGRAM);
+			qb.setParameter('schoolTypeCode', TYPE_CODES.ENTITY_TYPE.SCHOOL);
+			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		const { entities, raw } = await qb.getRawAndEntities();
