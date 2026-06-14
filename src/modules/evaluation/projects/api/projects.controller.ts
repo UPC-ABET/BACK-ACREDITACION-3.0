@@ -1,4 +1,5 @@
-import { Body, HttpStatus, Param, Post, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, Post, Get, ParseIntPipe, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
@@ -147,5 +148,35 @@ export class ProjectController extends BaseController<ProjectService> {
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterProjectDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@Get('export/grades')
+	@ApiQuery({ name: 'academicPeriodId', required: true, type: Number })
+	@ApiQuery({ name: 'schoolId', required: true, type: Number })
+	@ApiQuery({ name: 'gradeTypeCode', required: true, type: String })
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
+	async exportGrades(
+		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@Query('schoolId', ParseIntPipe) schoolId: number,
+		@Query('gradeTypeCode') gradeTypeCode: string,
+		@Res() res: Response,
+	) {
+		const xlsx = await this.projectConfigService.exportProjectGrades(
+			academicPeriodId,
+			schoolId,
+			gradeTypeCode,
+		);
+		const filename = `notas-proyectos-periodo${academicPeriodId}-escuela${schoolId}.xlsx`;
+		const encoded = encodeURIComponent(filename);
+		res.setHeader(
+			'Content-Type',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${filename}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', xlsx.length.toString());
+		res.end(xlsx);
 	}
 }

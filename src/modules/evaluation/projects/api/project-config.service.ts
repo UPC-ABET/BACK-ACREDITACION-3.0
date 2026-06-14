@@ -6,6 +6,7 @@ import {
 	Inject,
 	forwardRef,
 } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ProjectEntity } from '../model/projects.entity';
@@ -53,6 +54,31 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.invalidGradeTypeCode);
 		}
 		return type.id;
+	}
+
+	private async resolveCapstoneMaxScore(
+		academicPeriodId: number,
+		rubricId: number,
+	): Promise<number> {
+		const [[levelRow], [questionRow]] = await Promise.all([
+			this.dataSource.query(
+				`SELECT MAX(pl.max_value) AS "maxValue"
+				 FROM academic.performance_levels pl
+				 INNER JOIN core.types t ON t.id = pl.instrument_type_id
+				 WHERE t.code = $1
+				   AND pl.academic_period_id = $2`,
+				[TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE, academicPeriodId],
+			),
+			this.dataSource.query(
+				`SELECT COUNT(*) AS "questionCount"
+				 FROM evaluation.rubric_questions
+				 WHERE rubric_id = $1`,
+				[rubricId],
+			),
+		]);
+		const maxPerQuestion = Number(levelRow?.maxValue ?? 0);
+		const questionCount = Number(questionRow?.questionCount ?? 0);
+		return maxPerQuestion * questionCount;
 	}
 
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
@@ -303,6 +329,7 @@ export class ProjectConfigService {
 		const rubric = await this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('r')
+			.leftJoinAndSelect('r.rubricType', 'rt')
 			.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.id = r.study_plan_course_id')
 			.innerJoin(
 				StudyPlanAcademicPeriodEntity,
@@ -328,10 +355,18 @@ export class ProjectConfigService {
 				.catch(() => null);
 
 			if (isEvaluationMode) {
-				const maxScoreData = await this.rubricConfigService
-					.recalculateMaxScore(rubric.id)
-					.catch(() => ({ totalMaxScore: 0 }));
-				totalMaxScore = maxScoreData.totalMaxScore || 0;
+				const isCapstoneEb =
+					rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+					gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+
+				if (isCapstoneEb) {
+					totalMaxScore = await this.resolveCapstoneMaxScore(sectionAcademicPeriodId, rubric.id);
+				} else {
+					const maxScoreData = await this.rubricConfigService
+						.recalculateMaxScore(rubric.id)
+						.catch(() => ({ totalMaxScore: 0 }));
+					totalMaxScore = maxScoreData.totalMaxScore || 0;
+				}
 
 				evaluations = await this.dataSource
 					.getRepository(EvaluationEntity)
@@ -362,11 +397,11 @@ export class ProjectConfigService {
 					return sum + evalSum;
 				}, 0);
 
-				if (totalMaxScore > 0) {
-					totalGrade = Math.round(((sumScores * 20) / totalMaxScore) * 100) / 100;
-				} else {
-					totalGrade = sumScores;
-				}
+				const isCapstoneOrEb =
+					rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+					gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+
+				totalGrade = isCapstoneOrEb ? this.computeGrade(sumScores, totalMaxScore) : sumScores;
 			}
 
 			const evaluationStatuses = isEvaluationMode
@@ -647,4 +682,159 @@ export class ProjectConfigService {
 
 		return Array.from(projectMap.values());
 	}
+
+	async exportProjectGrades(
+		academicPeriodId: number,
+		schoolId: number,
+		gradeTypeCode: string,
+	): Promise<Buffer> {
+		const gradeTypeId = await this.resolveGradeTypeIdByCode(gradeTypeCode);
+
+		const programIds = await this.resolveProgramIdsBySchoolId(schoolId);
+		if (programIds.length === 0) return this.buildGradesExcel([]);
+
+		const rows = (await this.dataSource.query(
+			`
+      SELECT
+        cs.section_code                           AS "sectionCode",
+        c.code                                    AS "courseCode",
+        stu.code                                  AS "studentCode",
+        CONCAT(stu.first_name, ' ', stu.last_name) AS "studentName",
+        r.id                                      AS "rubricId",
+        r.rubric_type_id                          AS "rubricTypeId",
+        rt.code                                   AS "rubricTypeCode",
+        gt.code                                   AS "gradeTypeCode",
+        SUM(rs.score)                             AS "totalScore"
+      FROM evaluation.projects p
+      INNER JOIN evaluation.project_students ps       ON ps.project_id = p.id
+      INNER JOIN evidence.evaluations ev              ON ev.project_student_id = ps.id
+      INNER JOIN evaluation.rubric_scores rs          ON rs.evaluation_id = ev.id
+      INNER JOIN evaluation.rubric_question_criterias rqc ON rqc.id = rs.rubric_question_criteria_id
+      INNER JOIN evaluation.rubric_questions rq       ON rq.id = rqc.rubric_question_id
+      INNER JOIN evaluation.rubrics r                 ON r.id = rq.rubric_id
+      INNER JOIN core.types rt                        ON rt.id = r.rubric_type_id
+      INNER JOIN core.types gt                        ON gt.id = r.grade_type_id
+      INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+      INNER JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
+      INNER JOIN academic.courses c                   ON c.id = cs.course_id
+      INNER JOIN academic.enrolled_students es        ON es.id = sse.enrolled_student_id
+      INNER JOIN academic.students stu                ON stu.id = es.student_id
+      INNER JOIN academic.study_plan_courses spc      ON spc.course_id = c.id
+      INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
+      INNER JOIN academic.study_plans sp              ON sp.id = sp_ap.study_plan_id
+      WHERE cs.academic_period_id = $1
+        AND r.grade_type_id = $2
+        AND sp.program_id = ANY($3::int[])
+      GROUP BY
+        cs.section_code, c.code, stu.code, stu.first_name, stu.last_name,
+        r.id, r.rubric_type_id, rt.code, gt.code
+      ORDER BY c.code, cs.section_code, stu.last_name, stu.first_name
+      `,
+			[academicPeriodId, gradeTypeId, programIds],
+		)) as GradeExportRow[];
+
+		// Obtener totalMaxScore por rubric_id (puede haber distintas rúbricas por course)
+		const isCapstoneEbExport = gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+
+		const rubricIds = [...new Set(rows.map((r) => r.rubricId))];
+		const maxScoreByRubricId = new Map<number, number>();
+		await Promise.all(
+			rubricIds.map(async (rubricId) => {
+				if (isCapstoneEbExport) {
+					const max = await this.resolveCapstoneMaxScore(academicPeriodId, rubricId);
+					maxScoreByRubricId.set(rubricId, max);
+				} else {
+					const data = await this.rubricConfigService
+						.recalculateMaxScore(rubricId)
+						.catch(() => ({ totalMaxScore: 0 }));
+					maxScoreByRubricId.set(rubricId, data.totalMaxScore || 0);
+				}
+			}),
+		);
+
+		const graded = rows.map((row) => ({
+			...row,
+			grade: this.calculateGrade(row, maxScoreByRubricId.get(row.rubricId) ?? 0),
+		}));
+
+		return this.buildGradesExcel(graded);
+	}
+
+	private computeGrade(sumScores: number, totalMaxScore: number): number {
+		if (totalMaxScore > 0) {
+			return Math.round(((sumScores * 20) / totalMaxScore) * 100) / 100;
+		}
+		return 0;
+	}
+
+	private calculateGrade(row: GradeExportRow, totalMaxScore: number): number {
+		const isCapstoneAndEb =
+			row.rubricTypeCode === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+			row.gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+
+		const sumScores = Number(row.totalScore);
+
+		if (isCapstoneAndEb) {
+			return this.computeGrade(sumScores, totalMaxScore);
+		}
+
+		return sumScores;
+	}
+
+	private async buildGradesExcel(rows: (GradeExportRow & { grade: number })[]): Promise<Buffer> {
+		const wb = new ExcelJS.Workbook();
+		const ws = wb.addWorksheet('Notas');
+
+		const HEADERS = [
+			'Código de curso',
+			'Código de sección',
+			'Código de alumno',
+			'Nombre del alumno',
+			'Nota',
+		];
+
+		ws.columns = [
+			{ key: 'courseCode', width: 20 },
+			{ key: 'sectionCode', width: 20 },
+			{ key: 'studentCode', width: 20 },
+			{ key: 'studentName', width: 36 },
+			{ key: 'grade', width: 12 },
+		];
+
+		const headerRow = ws.getRow(1);
+		HEADERS.forEach((h, i) => {
+			const cell = headerRow.getCell(i + 1);
+			cell.value = h;
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCC0000' } };
+			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+			cell.alignment = { vertical: 'middle', horizontal: 'center' };
+			cell.border = {
+				top: { style: 'thin' },
+				left: { style: 'thin' },
+				right: { style: 'thin' },
+				bottom: { style: 'thin' },
+			};
+		});
+		headerRow.height = 22;
+
+		for (const row of rows) {
+			ws.addRow([row.courseCode, row.sectionCode, row.studentCode, row.studentName, row.grade]);
+		}
+
+		ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+		return Buffer.from(await wb.xlsx.writeBuffer());
+	}
+}
+
+interface GradeExportRow {
+	sectionCode: string;
+	courseCode: string;
+	studentCode: string;
+	studentName: string;
+	rubricId: number;
+	rubricTypeId: number;
+	rubricTypeCode: string;
+	gradeTypeCode: string;
+	totalScore: string;
 }

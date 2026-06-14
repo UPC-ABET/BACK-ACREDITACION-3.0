@@ -85,9 +85,7 @@ export class RubricConfigService {
 			const maxValues = question.criterias.map((c) => c.maxValue);
 			if (maxValues.length === 0) continue;
 
-			const questionMax = isWasc
-				? Math.max(...maxValues)
-				: maxValues.reduce((sum, v) => sum + v, 0);
+			const questionMax = Math.max(...maxValues);
 
 			byQuestion.set(question.id, questionMax);
 			totalMaxScore += questionMax;
