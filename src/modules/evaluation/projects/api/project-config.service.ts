@@ -485,8 +485,9 @@ export class ProjectConfigService {
     INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
     INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
     INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-    INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = es.study_plan_academic_period
+    INNER JOIN academic.courses c ON c.id = cs.course_id
+    INNER JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
     INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
     INNER JOIN academic.programs program ON program.id = sp.program_id
     WHERE pe.professor_id = $1 AND pe.is_active = true
@@ -555,7 +556,12 @@ export class ProjectConfigService {
         SELECT MAX(ev.register_at)
         FROM evidence.evaluations ev
         INNER JOIN evaluation.project_students ev_ps ON ev_ps.id = ev.project_student_id
+        INNER JOIN evaluation.rubric_scores rs ON rs.evaluation_id = ev.id
+        INNER JOIN evaluation.rubric_question_criterias rqc ON rqc.id = rs.rubric_question_criteria_id
+        INNER JOIN evaluation.rubric_questions rq ON rq.id = rqc.rubric_question_id
+        INNER JOIN evaluation.rubrics r ON r.id = rq.rubric_id
         WHERE ev_ps.project_id = p.id
+        AND ($2::int IS NULL OR r.grade_type_id = $2)
       )                 AS "evaluationDate",
       -- evaluadores
       all_pe.id         AS "evalId",
@@ -588,7 +594,7 @@ export class ProjectConfigService {
     LEFT JOIN academic.courses c                   ON c.id = cs.course_id
     WHERE p.id = ANY($1::int[])
   `,
-			[projectIds],
+			[projectIds, gradeTypeId ?? null],
 		)) as any[];
 
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
