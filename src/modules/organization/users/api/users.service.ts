@@ -81,12 +81,7 @@ export class UserService extends BaseService<UserRepository> {
 		}
 
 		if (email) {
-			return await this.baseRepository.findOneByCondition({
-				where: {
-					email,
-					isActive: true,
-				},
-			});
+			return await this.repository.findActiveByEmail(email);
 		}
 
 		return null;
