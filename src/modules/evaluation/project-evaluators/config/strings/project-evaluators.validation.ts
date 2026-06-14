@@ -1,6 +1,7 @@
 export const projectEvaluatorsValidationStrings = {
 	error: {
 		projectEvaluatorExists: 'error.projectEvaluator.projectEvaluatorExists',
+		duplicateEvaluatorType: 'error.projectEvaluator.duplicateEvaluatorType',
 		notFound: 'error.projectEvaluator.notFound',
 	},
 	result: {

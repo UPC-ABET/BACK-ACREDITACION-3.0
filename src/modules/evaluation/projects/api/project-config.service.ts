@@ -27,8 +27,6 @@ import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/m
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 
-const UNLIMITED_EVALUATOR_TYPE_CODE = TYPE_CODES.EVALUATOR_TYPE.COM;
-
 @Injectable()
 export class ProjectConfigService {
 	constructor(
@@ -200,17 +198,6 @@ export class ProjectConfigService {
 
 		const evaluatorTypeIds = [...new Set(dto.evaluators.map((e) => e.evaluatorTypeId))];
 		const evaluatorTypes = await this.typeRepo.findByIds(evaluatorTypeIds);
-		const typeCodeMap = new Map(evaluatorTypes.map((t) => [t.id, t.code]));
-
-		const evalKeys = new Set<string>();
-		for (const ev of dto.evaluators) {
-			const key = `${ev.professorId}-${ev.evaluatorTypeId}`;
-			if (evalKeys.has(key)) {
-				throw new BadRequestException(projectsValidationStrings.error.evaluatorDuplicate);
-			}
-			evalKeys.add(key);
-		}
-
 		const typeCountInRequest = new Map<number, number>();
 		for (const ev of dto.evaluators) {
 			typeCountInRequest.set(
@@ -220,8 +207,7 @@ export class ProjectConfigService {
 		}
 
 		for (const [typeId, count] of typeCountInRequest.entries()) {
-			const code = typeCodeMap.get(typeId);
-			if (code !== UNLIMITED_EVALUATOR_TYPE_CODE && count > 1) {
+			if (count > 1) {
 				throw new BadRequestException(projectsValidationStrings.error.evaluatorLimit);
 			}
 		}
