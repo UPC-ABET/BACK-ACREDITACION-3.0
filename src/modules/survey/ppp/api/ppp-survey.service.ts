@@ -171,7 +171,12 @@ export class PppSurveyService {
 
 		let workbook: XLSX.WorkBook;
 		try {
-			const buffer = Buffer.from(dto.fileBase64, 'base64');
+			// Accept both a raw base64 string and a data URI (e.g. "data:...;base64,XXXX")
+			// produced by FileReader.readAsDataURL on the frontend.
+			const base64 = dto.fileBase64.includes(',')
+				? dto.fileBase64.slice(dto.fileBase64.indexOf(',') + 1)
+				: dto.fileBase64;
+			const buffer = Buffer.from(base64.trim(), 'base64');
 			workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 		} catch {
 			throw new BadRequestException('The provided base64 file is not a valid Excel file');

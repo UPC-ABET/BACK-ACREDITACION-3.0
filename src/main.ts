@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, LogLevel, Logger, ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 
 const LOG_LEVELS: Record<string, LogLevel[]> = {
 	error: ['error'],
@@ -23,6 +24,11 @@ async function bootstrap() {
 	const port = configService.getOrThrow<number>('APP_PORT');
 
 	app.setGlobalPrefix('api');
+
+	// Base64-encoded Excel uploads (bulk survey import) exceed the 100kb Express
+	// default, so raise the JSON/urlencoded body limit.
+	app.use(json({ limit: '25mb' }));
+	app.use(urlencoded({ limit: '25mb', extended: true }));
 
 	app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
 
