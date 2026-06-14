@@ -39,14 +39,11 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			)
 			.leftJoin(EnrolledStudentEntity, 'es_enrich', 'es_enrich.id = sse_enrich.enrolled_student_id')
 			.leftJoin(StudentEntity, 'st_enrich', 'st_enrich.id = es_enrich.student_id')
-			.leftJoin(UserEntity, 'u_enrich', 'u_enrich.id = st_enrich.user_id')
 			.leftJoin(CourseSectionEntity, 'cs_enrich', 'cs_enrich.id = sse_enrich.course_section_id')
 			.leftJoin(ProfessorEntity, 'prof_enrich', 'prof_enrich.id = pe.professor_id')
 			.leftJoin(StaffEntity, 'staff_enrich', 'staff_enrich.id = prof_enrich.staff_id')
 			.leftJoin(UserEntity, 'u_prof_enrich', 'u_prof_enrich.id = staff_enrich.user_id')
 			.leftJoin(TypeEntity, 'eval_type_enrich', 'eval_type_enrich.id = pe.evaluator_type_id')
-			.addSelect('u_enrich.first_name', 'u_enrich_first_name')
-			.addSelect('u_enrich.last_name', 'u_enrich_last_name')
 			.addSelect('st_enrich.id', 'st_enrich_id')
 			.addSelect('st_enrich.first_name', 'st_enrich_first_name')
 			.addSelect('st_enrich.last_name', 'st_enrich_last_name')
@@ -160,9 +157,8 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 						...student,
 						studentInfo: studentRaw
 							? {
-									firstName:
-										studentRaw.u_enrich_first_name || studentRaw.st_enrich_first_name || '',
-									lastName: studentRaw.u_enrich_last_name || studentRaw.st_enrich_last_name || '',
+									firstName: studentRaw.st_enrich_first_name || '',
+									lastName: studentRaw.st_enrich_last_name || '',
 									studentId: studentRaw.st_enrich_id,
 									sectionCode: studentRaw.cs_enrich_section_code,
 									sectionId: studentRaw.cs_enrich_id,
