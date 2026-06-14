@@ -111,8 +111,8 @@ export class PppSurveyService {
 	 * A second sheet lists which competency each column maps to.
 	 */
 	async generateTemplate(
-		programId: number,
 		academicPeriodId: number,
+		programId?: number,
 	): Promise<{ buffer: Buffer; fileName: string }> {
 		const configs = await this.configRepo.findAllPpp({
 			programId,
@@ -148,7 +148,10 @@ export class PppSurveyService {
 		XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(legend), 'Competencias');
 
 		const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
-		return { buffer, fileName: `plantilla_ppp_${programId}_${academicPeriodId}.xlsx` };
+		const fileName = programId
+			? `plantilla_ppp_${programId}_${academicPeriodId}.xlsx`
+			: `plantilla_ppp_${academicPeriodId}.xlsx`;
+		return { buffer, fileName };
 	}
 
 	async uploadExcel(dto: UploadPppExcelDto) {

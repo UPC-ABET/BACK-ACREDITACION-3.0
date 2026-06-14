@@ -113,17 +113,19 @@ export class PppController {
 	}
 
 	@SwaggerPppSurveyTemplate()
-	@ApiQuery({ name: 'programId', type: Number, example: 1 })
+	@ApiQuery({ name: 'programId', type: Number, example: 1, required: false })
 	@ApiQuery({ name: 'academicPeriodId', type: Number, example: 1 })
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async surveyTemplate(
-		@Query('programId', ParseIntPipe) programId: number,
 		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
 		@Res() res: Response,
+		@Query('programId') programIdRaw?: string,
 	) {
+		const programId =
+			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
 		const { buffer, fileName } = await this.pppService.generateTemplate(
-			programId,
 			academicPeriodId,
+			programId,
 		);
 		const encoded = encodeURIComponent(fileName);
 		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
