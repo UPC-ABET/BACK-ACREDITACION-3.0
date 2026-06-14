@@ -81,14 +81,14 @@ export class LcfcNotificationService {
 			throw new BadRequestException(lcfcValidationStrings.error.noActiveCourses);
 		}
 		let courseSectionIds = activeConfigs
-			.map((c) => c.extra?.courseSectionId)
+			.map((c) => c.extra?.course_section_id)
 			.filter((id): id is number => typeof id === 'number');
 
 		if (dto.campusId) {
 			const campusId = dto.campusId;
 			courseSectionIds = courseSectionIds.filter((id) => {
-				const cfg = activeConfigs.find((c) => c.extra?.courseSectionId === id);
-				return cfg?.extra?.campusId === campusId;
+				const cfg = activeConfigs.find((c) => c.extra?.course_section_id === id);
+				return cfg?.extra?.campus_id === campusId;
 			});
 		}
 
@@ -123,10 +123,10 @@ export class LcfcNotificationService {
 			await this.dataSource.transaction(async (manager) => {
 				for (const student of enrolledStudents) {
 					const config = activeConfigs.find(
-						(c) => c.extra?.courseSectionId === student.courseSectionId,
+						(c) => c.extra?.course_section_id === student.courseSectionId,
 					);
-					const programId = dto.programId ?? student.programId ?? config?.extra?.programId ?? null;
-					const campusId = dto.campusId ?? student.campusId ?? config?.extra?.campusId ?? null;
+					const programId = dto.programId ?? student.programId ?? config?.extra?.program_id ?? null;
+					const campusId = dto.campusId ?? student.campusId ?? config?.extra?.campus_id ?? null;
 
 					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
 						lcfcSurveyTypeId,

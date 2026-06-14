@@ -5,6 +5,7 @@ export const enrolledStudentsValidationStrings = {
 		notFound: 'error.enrolledStudent.notFound',
 		inUse: 'error.enrolledStudent.inUse',
 		usedInStudentSectionEnrollments: 'error.enrolledStudent.usedInStudentSectionEnrollments',
+		studyPlanPeriodNotFound: 'error.enrolledStudent.studyPlanPeriodNotFound',
 	},
 	result: {
 		createFailed: 'error.enrolledStudent.createFailed',

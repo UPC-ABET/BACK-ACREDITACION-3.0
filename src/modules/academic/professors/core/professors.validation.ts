@@ -1,7 +1,10 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ProfessorRepository, DeleteBlockerCounts } from './professors.repository';
 import { professorsValidationStrings } from '../config/strings/professors.validation';
-import { UpdateProfessorMaintenanceDto } from '../model/professors.dtos';
+import {
+	UpdateProfessorMaintenanceDto,
+	CreateProfessorMaintenanceDto,
+} from '../model/professors.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof DeleteBlockerCounts, string]> = [
 	['courseSections', professorsValidationStrings.error.usedInCourseSections],
@@ -70,6 +73,23 @@ export class ProfessorValidation {
 				{
 					message: professorsValidationStrings.result.deleteFailed,
 				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: ProfessorRepository,
+		data: CreateProfessorMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		const codeOwner = await repo.findOneByCondition({ where: { code: data.code } });
+		if (codeOwner) errors.push(professorsValidationStrings.error.codeExists);
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{ message: professorsValidationStrings.result.createFailed, errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

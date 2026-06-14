@@ -8,6 +8,8 @@ import {
 	REQUIRED_PERMISSION_KEY,
 	RequiredPermission,
 } from '../decorators/require-permission.decorator';
+import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -27,9 +29,9 @@ export class PermissionsGuard implements CanActivate {
 			return true;
 		}
 
-		const request = context.switchToHttp().getRequest<Request & { user?: any }>();
+		const request = context.switchToHttp().getRequest<Request & { user?: RequestUser }>();
 
-		if (this.isAdmin(request.user?.activeRole)) {
+		if (isAdminRole(request.user?.activeRole)) {
 			return true;
 		}
 
@@ -64,11 +66,5 @@ export class PermissionsGuard implements CanActivate {
 		}
 
 		return true;
-	}
-
-	private isAdmin(activeRole?: any) {
-		const code = activeRole?.code?.toUpperCase?.();
-
-		return code === 'ADMIN';
 	}
 }

@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { OutcomeRepository, OutcomeDeleteBlockerCounts } from './outcomes.repository';
 import { outcomesValidationStrings } from '../config/strings/outcomes.validation';
-import { UpdateOutcomeMaintenanceDto } from '../model/outcomes.dtos';
+import { UpdateOutcomeMaintenanceDto, CreateOutcomeMaintenanceDto } from '../model/outcomes.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof OutcomeDeleteBlockerCounts, string]> = [
 	['courseOutcomeMappings', outcomesValidationStrings.error.usedInCourseOutcomeMappings],
@@ -72,6 +72,30 @@ export class OutcomeValidation {
 				{
 					message: outcomesValidationStrings.result.deleteFailed,
 				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: OutcomeRepository,
+		programCommissionId: number | null,
+		data: CreateOutcomeMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		if (!programCommissionId) {
+			errors.push(outcomesValidationStrings.error.programCommissionNotFound);
+		} else {
+			const codeOwner = await repo.findOneByCondition({
+				where: { programCommissionId, outcomeCode: data.outcomeCode },
+			});
+			if (codeOwner) errors.push(outcomesValidationStrings.error.outcomeCodeExists);
+		}
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{ message: outcomesValidationStrings.result.createFailed, errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

@@ -8,6 +8,7 @@ import {
 	UpdateEnrolledStudentDto,
 	EnrolledStudentMaintenanceQueryDto,
 	UpdateEnrolledStudentMaintenanceDto,
+	CreateEnrolledStudentMaintenanceDto,
 	EnrolledStudentMaintenanceItem,
 } from '../model/enrolled-students.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -59,6 +60,24 @@ export class EnrolledStudentService extends BaseService<EnrolledStudentRepositor
 		);
 	}
 
+	async createMaintenance(academicPeriodId: number, dto: CreateEnrolledStudentMaintenanceDto) {
+		const studyPlanAcademicPeriodId = await this.repository.findStudyPlanAcademicPeriodId(
+			dto.programId,
+			academicPeriodId,
+		);
+		const existingStudentId = await this.repository.findStudentIdByCode(dto.studentCode);
+
+		await EnrolledStudentValidation.validateMaintenanceCreate(
+			this.repository,
+			studyPlanAcademicPeriodId,
+			existingStudentId,
+			dto,
+		);
+
+		const id = await this.repository.createMaintenance(dto, studyPlanAcademicPeriodId as number);
+		return await this.getMaintenanceItem(id);
+	}
+
 	async updateMaintenance(id: number, dto: UpdateEnrolledStudentMaintenanceDto) {
 		await EnrolledStudentValidation.validateMaintenanceUpdate(this.repository, id, dto);
 		await this.repository.updateMaintenance(id, dto);
@@ -82,6 +101,9 @@ export class EnrolledStudentService extends BaseService<EnrolledStudentRepositor
 			studentCode: entity.student.code,
 			firstName: entity.student.firstName,
 			lastName: entity.student.lastName,
+			programId: entity.student.programId,
+			campusId: entity.campusId,
+			modalityTypeId: entity.enrollementModalityTypeId,
 			campusName: entity.campus.name,
 			programName: entity.student.program.name,
 			modalityTypeName: entity.enrollementModalityType.name,

@@ -4,7 +4,10 @@ import {
 	StudentSectionEnrollmentDeleteBlockerCounts,
 } from './student-section-enrollments.repository';
 import { studentSectionEnrollmentsValidationStrings } from '../config/strings/student-section-enrollments.validation';
-import { UpdateStudentSectionEnrollmentMaintenanceDto } from '../model/student-section-enrollments.dtos';
+import {
+	UpdateStudentSectionEnrollmentMaintenanceDto,
+	CreateStudentSectionEnrollmentMaintenanceDto,
+} from '../model/student-section-enrollments.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof StudentSectionEnrollmentDeleteBlockerCounts, string]> = [
 	[
@@ -77,6 +80,31 @@ export class StudentSectionEnrollmentValidation {
 			throw new HttpException(
 				{
 					message: studentSectionEnrollmentsValidationStrings.result.deleteFailed,
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: StudentSectionEnrollmentRepository,
+		data: CreateStudentSectionEnrollmentMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		const exists = await repo.findOneByCondition({
+			where: {
+				enrolledStudentId: data.enrolledStudentId,
+				courseSectionId: data.courseSectionId,
+			},
+		});
+		if (exists) errors.push(studentSectionEnrollmentsValidationStrings.error.enrollmentExists);
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{
+					message: studentSectionEnrollmentsValidationStrings.result.createFailed,
+					errors,
 				},
 				HttpStatus.BAD_REQUEST,
 			);

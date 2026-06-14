@@ -101,9 +101,21 @@ export class UpdateStudyPlanMaintenanceDto {
 	programId?: number;
 }
 
+export class CreateStudyPlanMaintenanceDto {
+	@IsString()
+	@Length(1, 10)
+	@ApiProperty({ example: 'SP-2026' })
+	code: string;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program (carrera) id' })
+	programId: number;
+}
+
 export interface StudyPlanMaintenanceItem {
 	id: number;
 	code: string;
+	programId: number;
 	programName: I18nText;
 }
 

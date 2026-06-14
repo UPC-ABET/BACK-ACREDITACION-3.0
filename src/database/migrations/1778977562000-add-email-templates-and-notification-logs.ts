@@ -11,8 +11,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * are empty in production (only the initial seed has run), so dropping title/body and
  * adding NOT NULL FK columns is safe without defaults.
  */
-export class AddEmailTemplatesAndNotificationLogs1760000000000 implements MigrationInterface {
-	name = 'AddEmailTemplatesAndNotificationLogs1760000000000';
+export class AddEmailTemplatesAndNotificationLogs1778977562000 implements MigrationInterface {
+	name = 'AddEmailTemplatesAndNotificationLogs1778977562000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(

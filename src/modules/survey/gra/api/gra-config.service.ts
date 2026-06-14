@@ -8,6 +8,7 @@ import {
 	ListGraSurveyOutcomesDto,
 } from '../model/gra.dtos';
 import { PerformanceLevelService } from 'src/modules/academic/performance-levels/api/performance-levels.service';
+import { camelizeKeys } from 'src/libs/case.functions';
 
 @Injectable()
 export class GraConfigService {
@@ -18,14 +19,14 @@ export class GraConfigService {
 
 	async create(dto: CreateGraConfigDto) {
 		const extra = {
-			surveyType: GRA_SURVEY_TYPE,
-			nameEn: dto.nameEn ?? null,
-			descriptionEn: dto.descriptionEn ?? null,
+			survey_type: GRA_SURVEY_TYPE,
+			name_en: dto.nameEn ?? null,
+			description_en: dto.descriptionEn ?? null,
 			order: dto.order ?? null,
-			programId: dto.programId ?? null,
-			academicPeriodId: dto.academicPeriodId ?? null,
-			commissionId: dto.commissionId ?? null,
-			isVisible: dto.isVisible ?? true,
+			program_id: dto.programId ?? null,
+			academic_period_id: dto.academicPeriodId ?? null,
+			commission_id: dto.commissionId ?? null,
+			is_visible: dto.isVisible ?? true,
 		};
 
 		return await this.configRepo.create({
@@ -38,12 +39,15 @@ export class GraConfigService {
 	}
 
 	async getAll(filters?: FilterGraConfigDto) {
-		return await this.configRepo.findAllGra(filters);
+		const configs = await this.configRepo.findAllGra(filters);
+		for (const config of configs) config.extra = camelizeKeys(config.extra);
+		return configs;
 	}
 
 	async getById(id: number) {
 		const config = await this.configRepo.findOneGra(id);
 		if (!config) throw new NotFoundException(`GRA configuration with ID ${id} not found`);
+		config.extra = camelizeKeys(config.extra);
 		return config;
 	}
 
@@ -55,13 +59,13 @@ export class GraConfigService {
 
 		const extra = {
 			...currentExtra,
-			...(dto.nameEn !== undefined && { nameEn: dto.nameEn }),
-			...(dto.descriptionEn !== undefined && { descriptionEn: dto.descriptionEn }),
+			...(dto.nameEn !== undefined && { name_en: dto.nameEn }),
+			...(dto.descriptionEn !== undefined && { description_en: dto.descriptionEn }),
 			...(dto.order !== undefined && { order: dto.order }),
-			...(dto.programId !== undefined && { programId: dto.programId }),
-			...(dto.academicPeriodId !== undefined && { academicPeriodId: dto.academicPeriodId }),
-			...(dto.commissionId !== undefined && { commissionId: dto.commissionId }),
-			...(dto.isVisible !== undefined && { isVisible: dto.isVisible }),
+			...(dto.programId !== undefined && { program_id: dto.programId }),
+			...(dto.academicPeriodId !== undefined && { academic_period_id: dto.academicPeriodId }),
+			...(dto.commissionId !== undefined && { commission_id: dto.commissionId }),
+			...(dto.isVisible !== undefined && { is_visible: dto.isVisible }),
 		};
 
 		const updatePayload: Record<string, any> = { extra };
@@ -99,7 +103,7 @@ export class GraConfigService {
 			const sourceExtra = (config.extra as Record<string, any>) ?? {};
 			const alreadyExists = await this.configRepo.existsGra(
 				config.outcomeId,
-				sourceExtra.programId,
+				sourceExtra.program_id,
 				dto.targetAcademicPeriodId,
 			);
 			if (alreadyExists) continue;
@@ -108,7 +112,7 @@ export class GraConfigService {
 				outcomeId: config.outcomeId,
 				userOutcomeName: config.userOutcomeName,
 				userOutcomeDescription: config.userOutcomeDescription,
-				extra: { ...sourceExtra, academicPeriodId: dto.targetAcademicPeriodId },
+				extra: { ...sourceExtra, academic_period_id: dto.targetAcademicPeriodId },
 				isActive: true,
 			});
 			replicatedConfigs++;

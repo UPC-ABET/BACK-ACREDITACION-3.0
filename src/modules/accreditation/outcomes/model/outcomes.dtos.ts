@@ -116,6 +116,30 @@ export class UpdateOutcomeMaintenanceDto {
 	outcomeDescription?: I18nText;
 }
 
+export class CreateOutcomeMaintenanceDto {
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'OUT-001' })
+	outcomeCode: string;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'Nombre', en: 'Name' } })
+	outcomeName: I18nText;
+
+	@IsOptional()
+	@IsObject()
+	@ApiPropertyOptional({ example: { es: 'Descripción', en: 'Description' } })
+	outcomeDescription?: I18nText;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program (carrera) id' })
+	programId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Commission id' })
+	commissionId: number;
+}
+
 export interface OutcomeMaintenanceItem {
 	id: number;
 	commissionCode: string;

@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { BaseController } from 'src/commons/base.controller';
 import {
@@ -9,6 +9,7 @@ import {
 	SwaggerOutcomeGetAll,
 	SwaggerOutcomeGetById,
 	SwaggerOutcomeGetByFilters,
+	SwaggerOutcomeMaintenanceCreate,
 	SwaggerOutcomeMaintenanceList,
 	SwaggerOutcomeMaintenanceUpdate,
 	SwaggerOutcomeMaintenanceDelete,
@@ -20,8 +21,13 @@ import {
 	FilterOutcomeDto,
 	OutcomeMaintenanceQueryDto,
 	UpdateOutcomeMaintenanceDto,
+	CreateOutcomeMaintenanceDto,
 } from '../model/outcomes.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerOutcomeController()
@@ -67,6 +73,19 @@ export class OutcomeController extends BaseController<OutcomeService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterOutcomeDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerOutcomeMaintenanceCreate()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.POST })
+	async maintenanceCreate(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Body() dto: CreateOutcomeMaintenanceDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.createMaintenance(academicPeriodId, dto),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerOutcomeMaintenanceList()

@@ -64,6 +64,30 @@ describe('CourseSectionValidation', () => {
 		});
 	});
 
+	describe('validateMaintenanceCreate', () => {
+		const dto = {
+			sectionCode: 'SEC-1',
+			courseId: 3,
+			professorId: 4,
+			campusId: 5,
+			sectionModalityTypeId: 6,
+		};
+
+		it('passes when no duplicate exists for the period', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				CourseSectionValidation.validateMaintenanceCreate(mockRepo as any, 10, dto),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the section already exists for the period', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
+			await expect(
+				CourseSectionValidation.validateMaintenanceCreate(mockRepo as any, 10, dto),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
 	describe('validateMaintenanceUpdate', () => {
 		const existing = { id: 1, courseId: 10, academicPeriodId: 7, sectionCode: 'S1' };
 

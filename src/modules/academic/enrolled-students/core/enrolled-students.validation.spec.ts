@@ -64,6 +64,36 @@ describe('EnrolledStudentValidation', () => {
 		});
 	});
 
+	describe('validateMaintenanceCreate', () => {
+		const dto = {
+			studentCode: 'S1',
+			firstName: 'A',
+			lastName: 'B',
+			programId: 5,
+			campusId: 6,
+			enrollementModalityTypeId: 7,
+		};
+
+		it('passes for a new student with a resolvable study plan period', async () => {
+			await expect(
+				EnrolledStudentValidation.validateMaintenanceCreate(mockRepo as any, 100, null, dto),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when no study plan period exists for the program and period', async () => {
+			await expect(
+				EnrolledStudentValidation.validateMaintenanceCreate(mockRepo as any, null, null, dto),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the student is already enrolled in that study plan period', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
+			await expect(
+				EnrolledStudentValidation.validateMaintenanceCreate(mockRepo as any, 100, 50, dto),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
 	describe('validateMaintenanceUpdate', () => {
 		const existing = { id: 1, studentId: 7, student: { code: 'STU-1' } };
 

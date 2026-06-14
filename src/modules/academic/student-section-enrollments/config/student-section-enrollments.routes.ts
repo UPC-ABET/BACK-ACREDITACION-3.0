@@ -33,6 +33,11 @@ export const studentSectionEnrollmentsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar matrículas de estudiantes por sección',
 			},
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Registrar matrícula por sección (mantenimiento)',
+			},
 			maintenanceList: {
 				method: 'GET',
 				route: '/maintenance',

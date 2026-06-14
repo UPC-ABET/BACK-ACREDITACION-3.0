@@ -12,8 +12,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * function. The caller runs this before the insert function and aborts the load when it
  * returns any rows, so the existing all-or-nothing semantics are preserved.
  */
-export class AddProgramModalityUploadValidation1780000000000 implements MigrationInterface {
-	name = 'AddProgramModalityUploadValidation1780000000000';
+export class AddProgramModalityUploadValidation1780791962000 implements MigrationInterface {
+	name = 'AddProgramModalityUploadValidation1780791962000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`

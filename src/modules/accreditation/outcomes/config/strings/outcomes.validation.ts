@@ -9,6 +9,7 @@ export const outcomesValidationStrings = {
 		usedInFindingOutcomes: 'error.outcome.usedInFindingOutcomes',
 		usedInOutcomeConfigs: 'error.outcome.usedInOutcomeConfigs',
 		usedInScores: 'error.outcome.usedInScores',
+		programCommissionNotFound: 'error.outcome.programCommissionNotFound',
 	},
 	result: {
 		createFailed: 'error.outcome.createFailed',

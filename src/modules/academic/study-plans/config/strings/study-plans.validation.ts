@@ -4,6 +4,7 @@ export const studyPlansValidationStrings = {
 		notFound: 'error.studyPlan.notFound',
 		inUse: 'error.studyPlan.inUse',
 		usedInAcademicPeriods: 'error.studyPlan.usedInAcademicPeriods',
+		programNotInModality: 'error.studyPlan.programNotInModality',
 	},
 	result: {
 		createFailed: 'error.studyPlan.createFailed',

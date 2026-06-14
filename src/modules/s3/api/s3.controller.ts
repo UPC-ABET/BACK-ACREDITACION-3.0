@@ -14,6 +14,7 @@ import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/per
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { S3Service } from './s3.service';
 import { SwaggerS3Controller, SwaggerS3GetSize, SwaggerS3Upload } from './docs/s3.swagger';
+import { s3ValidationStrings } from '../config/strings/s3.validation';
 
 @SwaggerS3Controller()
 export class S3Controller {
@@ -34,12 +35,9 @@ export class S3Controller {
 		},
 	})
 	@UseInterceptors(FileInterceptor('file'))
-	async upload(
-		@Query('key') key: string,
-		@UploadedFile() file: Express.Multer.File,
-	) {
-		if (!key) throw new BadRequestException('error.s3.keyRequired');
-		if (!file) throw new BadRequestException('error.s3.fileRequired');
+	async upload(@Query('key') key: string, @UploadedFile() file: Express.Multer.File) {
+		if (!key) throw new BadRequestException(s3ValidationStrings.error.keyRequired);
+		if (!file) throw new BadRequestException(s3ValidationStrings.error.fileRequired);
 
 		await this.s3Service.uploadBuffer(key, file.buffer);
 		return parseSuccessResponse({ key });
@@ -50,7 +48,7 @@ export class S3Controller {
 	@HttpCode(HttpStatus.OK)
 	async getSize(@Body() prefixes: string[]) {
 		if (!Array.isArray(prefixes) || prefixes.length === 0) {
-			throw new BadRequestException('error.s3.prefixRequired');
+			throw new BadRequestException(s3ValidationStrings.error.prefixRequired);
 		}
 		return parseSuccessResponse(await this.s3Service.getSize(prefixes));
 	}

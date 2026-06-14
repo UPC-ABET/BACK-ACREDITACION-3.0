@@ -4,7 +4,11 @@ import { BaseRepository } from 'src/commons/base.repository';
 import { StudyPlanCourseEntity } from '../model/study-plan-courses.entity';
 import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from '../../study-plans/model/study-plans.entity';
-import { FilterStudyPlanCourseDto } from '../model/study-plan-courses.dtos';
+import { CourseEntity } from '../../courses/model/courses.entity';
+import {
+	FilterStudyPlanCourseDto,
+	CreateStudyPlanCourseMaintenanceDto,
+} from '../model/study-plan-courses.dtos';
 
 const SCHOOL_TYPE_CODE = 'TG903-T002';
 const PROGRAM_TYPE_CODE = 'TG903-T003';
@@ -103,6 +107,68 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 		}
 
 		return await qb.getMany();
+	}
+
+	async findStudyPlanAcademicPeriodId(
+		studyPlanId: number,
+		academicPeriodId: number,
+	): Promise<number | null> {
+		const spap = await this.dataSource
+			.createQueryBuilder(StudyPlanAcademicPeriodEntity, 'spap')
+			.where('spap.study_plan_id = :studyPlanId', { studyPlanId })
+			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.getOne();
+		return spap?.id ?? null;
+	}
+
+	async findCourseIdByCode(code: string): Promise<number | null> {
+		const course = await this.dataSource
+			.createQueryBuilder(CourseEntity, 'course')
+			.where('course.code = :code', { code })
+			.getOne();
+		return course?.id ?? null;
+	}
+
+	async findByIdWithCourse(id: number): Promise<StudyPlanCourseEntity | null> {
+		return await this.dataSource
+			.createQueryBuilder(StudyPlanCourseEntity, 'spc')
+			.innerJoinAndSelect('spc.course', 'course')
+			.where('spc.id = :id', { id })
+			.getOne();
+	}
+
+	async createMaintenance(
+		dto: CreateStudyPlanCourseMaintenanceDto,
+		studyPlanAcademicPeriodId: number,
+	): Promise<number> {
+		return await this.dataSource.transaction(async (manager) => {
+			let courseId = dto.courseId ?? null;
+			if (!courseId && dto.newCourse) {
+				const courseRepo = manager.getRepository(CourseEntity);
+				let course = await courseRepo.findOne({ where: { code: dto.newCourse.code } });
+				if (!course) {
+					course = await courseRepo.save(
+						courseRepo.create({
+							code: dto.newCourse.code,
+							name: dto.newCourse.name,
+							learningOutcome: dto.newCourse.learningOutcome ?? {},
+						}),
+					);
+				}
+				courseId = course.id;
+			}
+
+			const spcRepo = manager.getRepository(StudyPlanCourseEntity);
+			const spc = await spcRepo.save(
+				spcRepo.create({
+					studyPlanAcademicPeriodId,
+					courseId: courseId as number,
+					isElective: dto.isElective,
+					levelTypeId: dto.levelTypeId,
+				}),
+			);
+			return spc.id;
+		});
 	}
 
 	async findDeleteBlockerCounts(id: number): Promise<StudyPlanCourseDeleteBlockerCounts> {

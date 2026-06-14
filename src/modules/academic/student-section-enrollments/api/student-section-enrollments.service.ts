@@ -8,6 +8,7 @@ import {
 	UpdateStudentSectionEnrollmentDto,
 	StudentSectionEnrollmentMaintenanceQueryDto,
 	UpdateStudentSectionEnrollmentMaintenanceDto,
+	CreateStudentSectionEnrollmentMaintenanceDto,
 	StudentSectionEnrollmentMaintenanceItem,
 } from '../model/student-section-enrollments.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -59,6 +60,15 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 		);
 	}
 
+	async createMaintenance(dto: CreateStudentSectionEnrollmentMaintenanceDto) {
+		await StudentSectionEnrollmentValidation.validateMaintenanceCreate(this.repository, dto);
+		const created = await this.repository.create({
+			courseSectionId: dto.courseSectionId,
+			enrolledStudentId: dto.enrolledStudentId,
+		});
+		return await this.getMaintenanceItem(created.id);
+	}
+
 	async updateMaintenance(id: number, dto: UpdateStudentSectionEnrollmentMaintenanceDto) {
 		await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(this.repository, id, dto);
 		await this.repository.update(id, dto);
@@ -83,6 +93,8 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 	): StudentSectionEnrollmentMaintenanceItem {
 		return {
 			id: entity.id,
+			courseSectionId: entity.courseSectionId,
+			enrolledStudentId: entity.enrolledStudentId,
 			courseName: entity.courseSection.course.name,
 			courseCode: entity.courseSection.course.code,
 			sectionCode: entity.courseSection.sectionCode,

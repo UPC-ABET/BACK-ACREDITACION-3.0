@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerEnrolledStudentController,
@@ -8,6 +8,7 @@ import {
 	SwaggerEnrolledStudentGetAll,
 	SwaggerEnrolledStudentGetById,
 	SwaggerEnrolledStudentGetByFilters,
+	SwaggerEnrolledStudentMaintenanceCreate,
 	SwaggerEnrolledStudentMaintenanceList,
 	SwaggerEnrolledStudentMaintenanceUpdate,
 	SwaggerEnrolledStudentMaintenanceDelete,
@@ -19,6 +20,7 @@ import {
 	FilterEnrolledStudentDto,
 	EnrolledStudentMaintenanceQueryDto,
 	UpdateEnrolledStudentMaintenanceDto,
+	CreateEnrolledStudentMaintenanceDto,
 } from '../model/enrolled-students.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -68,6 +70,19 @@ export class EnrolledStudentController extends BaseController<EnrolledStudentSer
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterEnrolledStudentDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerEnrolledStudentMaintenanceCreate()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
+	async maintenanceCreate(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Body() dto: CreateEnrolledStudentMaintenanceDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.createMaintenance(academicPeriodId, dto),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerEnrolledStudentMaintenanceList()

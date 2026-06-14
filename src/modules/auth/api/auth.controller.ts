@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { Response } from 'express';
-import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
 	MICROSOFT_STATE_COOKIE,
 	MICROSOFT_STATE_COOKIE_MAX_AGE_MS,
@@ -17,6 +16,8 @@ import { authValidationStrings } from '../config/strings/auth.validation';
 interface MicrosoftState {
 	csrf: string;
 }
+
+const APP_FRONTEND_URL_CONFIG_KEY = 'APP_FRONTEND_URL';
 
 @ApiTags('Autenticación')
 @Controller('auth')
@@ -55,7 +56,7 @@ export class AuthController {
 	async microsoftCallback(
 		@Query('code') code: string,
 		@Query('state') state: string,
-		@Res({ passthrough: true }) res: Response,
+		@Res() res: Response,
 	) {
 		const parsed = this.verifyAndParseState(state);
 		const storedCsrf = res.req?.cookies?.[MICROSOFT_STATE_COOKIE];
@@ -66,7 +67,7 @@ export class AuthController {
 		res.clearCookie(MICROSOFT_STATE_COOKIE);
 		saveAccessCookie(res, result);
 
-		return parseSuccessResponse(result);
+		return res.redirect(this.getFrontendRedirectUrl());
 	}
 
 	private signState(payload: MicrosoftState): string {
@@ -100,6 +101,14 @@ export class AuthController {
 		} catch {
 			throw new UnauthorizedException(authValidationStrings.error.invalidSession);
 		}
+	}
+
+	private getFrontendRedirectUrl(): string {
+		const frontendUrl = this.configService.get<string>(APP_FRONTEND_URL_CONFIG_KEY);
+		if (!frontendUrl) {
+			throw new UnauthorizedException(authValidationStrings.error.missingConfig);
+		}
+		return frontendUrl;
 	}
 
 	private validateCsrf(provided: string, stored?: string) {

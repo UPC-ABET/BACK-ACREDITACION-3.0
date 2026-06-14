@@ -10,6 +10,21 @@ export const programCommissionsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar comisiones de programa',
 			},
+			commissionOptions: {
+				method: 'GET',
+				route: '/commission-options',
+				summary: 'Listar comisiones con comision de programa en el periodo academico (header)',
+			},
+			programOptions: {
+				method: 'GET',
+				route: '/program-options',
+				summary: 'Listar carreras con comision de programa en el periodo academico (header)',
+			},
+			getDetailedByFilters: {
+				method: 'POST',
+				route: '/get-detailed-by-filters',
+				summary: 'Listar comisiones de programa enriquecidas del periodo academico (header)',
+			},
 		},
 	},
 };

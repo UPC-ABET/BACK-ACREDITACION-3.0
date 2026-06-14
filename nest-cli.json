@@ -8,6 +8,10 @@
 			{
 				"include": "modules/communication/email/templates/**/*",
 				"outDir": "dist"
+			},
+			{
+				"include": "assets/**/*",
+				"outDir": "dist"
 			}
 		]
 	}

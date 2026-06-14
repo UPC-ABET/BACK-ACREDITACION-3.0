@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query, Req, Res } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { UserService } from './users.service';
 import {
@@ -27,6 +27,8 @@ import { parseSuccessResponse } from 'src/libs/global.functions';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 import { SkipPermissions } from 'src/modules/auth/protocols/jwt/decorators/skip-permissions.decorator';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import { removeAccessCookie, saveAccessCookie } from 'src/libs/secure.functions';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
@@ -85,8 +87,8 @@ export class UserController extends BaseController<UserService> {
 
 	@SkipPermissions()
 	@SwaggerUserMe()
-	async getMe(@Query() dto: GetMeDto, @Req() req) {
-		return parseSuccessResponse(await this.service.getMe(req.user, dto.modalityCode));
+	async getMe(@Query() dto: GetMeDto, @CurrentUser() user: RequestUser) {
+		return parseSuccessResponse(await this.service.getMe(user, dto.modalityCode));
 	}
 
 	@SkipPermissions()
@@ -100,10 +102,10 @@ export class UserController extends BaseController<UserService> {
 	@SwaggerUserChangeRole()
 	async changeRole(
 		@Body() dto: ChangeRoleDto,
-		@Req() req,
+		@CurrentUser() user: RequestUser,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const result = await this.service.loginById(req.user.userId, dto.newRole);
+		const result = await this.service.loginById(user.userId, dto.newRole);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
 	}

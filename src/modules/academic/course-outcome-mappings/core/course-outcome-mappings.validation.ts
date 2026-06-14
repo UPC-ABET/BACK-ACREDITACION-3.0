@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { CourseOutcomeMappingRepository } from './course-outcome-mappings.repository';
+import { BulkSaveCourseOutcomeMappingDto } from '../model/course-outcome-mappings.dtos';
 import { courseOutcomeMappingsValidationStrings } from '../config/strings/course-outcome-mappings.validation';
 
 export class CourseOutcomeMappingValidation {
@@ -61,6 +62,70 @@ export class CourseOutcomeMappingValidation {
 			throw new HttpException(
 				{
 					message: courseOutcomeMappingsValidationStrings.result.deleteFailed,
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateBulkSave(
+		repo: CourseOutcomeMappingRepository,
+		data: BulkSaveCourseOutcomeMappingDto,
+	) {
+		const errors: Array<string> = [];
+
+		const scope = await repo.getProgramCommissionScope(data.programCommissionId);
+		if (!scope) {
+			throw new HttpException(
+				{
+					message: courseOutcomeMappingsValidationStrings.result.bulkSaveFailed,
+					errors: [courseOutcomeMappingsValidationStrings.error.programCommissionNotFound],
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
+		const [scopedCourseIds, scopedOutcomeIds, assignableTypeIds] = await Promise.all([
+			repo.getStudyPlanCourseIdsInScope(scope),
+			repo.getOutcomeIdsForProgramCommission(data.programCommissionId),
+			repo.getAssignableOutcomeTypeIds(),
+		]);
+
+		const courseScope = new Set(scopedCourseIds);
+		const outcomeScope = new Set(scopedOutcomeIds);
+		const typeScope = new Set(assignableTypeIds);
+
+		let courseOutOfScope = false;
+		let outcomeOutOfScope = false;
+		let invalidOutcomeType = false;
+		let duplicateCourseOutcome = false;
+
+		for (const course of data.courses) {
+			if (!courseScope.has(course.studyPlanCourseId)) courseOutOfScope = true;
+
+			const seenOutcomes = new Set<number>();
+			for (const outcome of course.outcomes) {
+				if (!outcomeScope.has(outcome.outcomeId)) outcomeOutOfScope = true;
+				if (!typeScope.has(outcome.outcomeTypeId)) invalidOutcomeType = true;
+				if (seenOutcomes.has(outcome.outcomeId)) duplicateCourseOutcome = true;
+				seenOutcomes.add(outcome.outcomeId);
+			}
+		}
+
+		if (courseOutOfScope)
+			errors.push(courseOutcomeMappingsValidationStrings.error.courseOutOfScope);
+		if (outcomeOutOfScope)
+			errors.push(courseOutcomeMappingsValidationStrings.error.outcomeOutOfScope);
+		if (invalidOutcomeType)
+			errors.push(courseOutcomeMappingsValidationStrings.error.invalidOutcomeType);
+		if (duplicateCourseOutcome)
+			errors.push(courseOutcomeMappingsValidationStrings.error.duplicateCourseOutcome);
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{
+					message: courseOutcomeMappingsValidationStrings.result.bulkSaveFailed,
+					errors,
 				},
 				HttpStatus.BAD_REQUEST,
 			);

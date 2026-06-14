@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
@@ -16,6 +22,8 @@ import { OrgScopeService } from '../../org-scope/api/org-scope.service';
 import { MailService } from 'src/modules/mail/mail.service';
 import { EmailTemplateService } from 'src/modules/core/email-templates/api/email-templates.service';
 import type { I18nText } from 'src/shared/types/i18n';
+import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 
 const USER_WELCOME_TEMPLATE_CODE = 'USER_WELCOME';
 
@@ -134,32 +142,24 @@ export class UserService extends BaseService<UserRepository> {
 		return profile;
 	}
 
-	async getMe(
-		jwtPayload: {
-			userId: number;
-			activeRole: any;
-			allowedRoles: any[];
-			permissions: any[];
-		},
-		modalityCode: string,
-	) {
-		const user = await this.getUser(jwtPayload.userId);
+	async getMe(currentUser: RequestUser, modalityCode: string) {
+		const user = await this.getUser(currentUser.userId);
 		if (!user) {
 			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
 
-		const isAdmin = jwtPayload.activeRole?.code?.toUpperCase() === 'ADMIN';
+		const isAdmin = isAdminRole(currentUser.activeRole);
 		const userSchools = await this.orgScopeService.getUserSchools(
-			jwtPayload.userId,
+			currentUser.userId,
 			modalityCode,
 			isAdmin,
 		);
 
 		return {
 			user: this.sanitizeUser(user),
-			activeRole: jwtPayload.activeRole,
-			allowedRoles: jwtPayload.allowedRoles,
-			permissions: jwtPayload.permissions,
+			activeRole: currentUser.activeRole,
+			allowedRoles: currentUser.allowedRoles,
+			permissions: currentUser.permissions,
 			userSchools,
 		};
 	}
@@ -307,7 +307,40 @@ export class UserService extends BaseService<UserRepository> {
 
 	async delete(id: number, manager?: EntityManager) {
 		await UserValidation.validateDelete(this.repository, id);
-		return await super.delete(id, manager);
+
+		const run = async (m: EntityManager) => {
+			await this.assertUserDeletable(id, m);
+			await m.query(`DELETE FROM core.user_roles WHERE user_id = $1`, [id]);
+			return await super.delete(id, m);
+		};
+
+		return manager ? run(manager) : this.dataSource.transaction(run);
+	}
+
+	private async assertUserDeletable(id: number, manager: EntityManager) {
+		const [refs]: Array<{
+			hasStaff: boolean;
+			hasStudent: boolean;
+			hasUploads: boolean;
+			hasNotifications: boolean;
+		}> = await manager.query(
+			`SELECT
+				EXISTS(SELECT 1 FROM organization.staff WHERE user_id = $1) AS "hasStaff",
+				EXISTS(SELECT 1 FROM academic.students WHERE user_id = $1) AS "hasStudent",
+				EXISTS(SELECT 1 FROM audit.upload_logs WHERE user_id = $1) AS "hasUploads",
+				EXISTS(SELECT 1 FROM core.notification_logs WHERE notifier_user_id = $1) AS "hasNotifications"`,
+			[id],
+		);
+
+		if (refs.hasStaff) {
+			throw new ConflictException(usersValidationStrings.error.linkedToStaff);
+		}
+		if (refs.hasStudent) {
+			throw new ConflictException(usersValidationStrings.error.linkedToStudent);
+		}
+		if (refs.hasUploads || refs.hasNotifications) {
+			throw new ConflictException(usersValidationStrings.error.hasActivityHistory);
+		}
 	}
 }
 

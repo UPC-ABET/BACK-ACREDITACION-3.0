@@ -9,13 +9,13 @@ import { IfcContentService } from './api/ifc-content.service';
 import { IfcViewService } from './api/ifc-view.service';
 import { IfcReportService } from './api/ifc-report.service';
 import { IfcController } from './api/ifcs.controller';
-import { PdfRendererService } from './api/pdf-renderer.service';
+import { PdfModule } from 'src/libs/pdf.module';
 import { NotificationsModule } from 'src/modules/ifc/notifications/notifications.module';
 import { IfcSchoolsChartRepository } from './core/ifc-schools.repository';
 import { USER_SCHOOLS_REPOSITORY } from 'src/modules/organization/org-scope/core/user-schools/user-schools.repository.interface';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([IfcEntity]), NotificationsModule],
+	imports: [TypeOrmModule.forFeature([IfcEntity]), NotificationsModule, PdfModule],
 	controllers: [IfcController],
 	providers: [
 		IfcService,
@@ -24,7 +24,6 @@ import { USER_SCHOOLS_REPOSITORY } from 'src/modules/organization/org-scope/core
 		IfcViewService,
 		IfcReportService,
 		IfcRepository,
-		PdfRendererService,
 		IfcSchoolsChartRepository,
 		{ provide: USER_SCHOOLS_REPOSITORY, useExisting: IfcSchoolsChartRepository },
 	],

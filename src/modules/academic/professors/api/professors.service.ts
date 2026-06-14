@@ -9,6 +9,7 @@ import {
 	FilterProfessorDto,
 	ProfessorMaintenanceQueryDto,
 	UpdateProfessorMaintenanceDto,
+	CreateProfessorMaintenanceDto,
 	ProfessorMaintenanceItem,
 } from '../model/professors.dtos';
 import { DataSource, EntityManager } from 'typeorm';
@@ -94,6 +95,12 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 		}));
 
 		return toPaginated(items, total, page, pageSize);
+	}
+
+	async createMaintenance(dto: CreateProfessorMaintenanceDto) {
+		await ProfessorValidation.validateMaintenanceCreate(this.repository, dto);
+		const id = await this.repository.createWithStaff(dto);
+		return await this.getMaintenanceItem(id);
 	}
 
 	async updateMaintenance(id: number, dto: UpdateProfessorMaintenanceDto) {

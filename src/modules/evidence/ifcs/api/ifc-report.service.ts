@@ -4,12 +4,8 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IfcStatusReportDto } from '../model/ifcs.dtos';
-import {
-	PDF_LABELS,
-	PdfRendererService,
-	PDF_STYLES,
-	UPC_LOGO_DATA_URI,
-} from './pdf-renderer.service';
+import { PdfRendererService, UPC_LOGO_DATA_URI } from 'src/libs/pdf-renderer.service';
+import { PDF_LABELS, PDF_STYLES } from './ifc-pdf.theme';
 import { IfcViewService } from './ifc-view.service';
 import { REPORT_CODES_SQL, STATUS_REPORT_SQL } from './ifcs.sql';
 import { IFC_INSTRUMENT_CODE } from './ifcs.constants';

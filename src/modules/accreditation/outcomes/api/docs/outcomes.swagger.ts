@@ -6,6 +6,7 @@ import {
 	FilterOutcomeDto,
 	OutcomeMaintenanceQueryDto,
 	UpdateOutcomeMaintenanceDto,
+	CreateOutcomeMaintenanceDto,
 } from '../../model/outcomes.dtos';
 
 const cfg = outcomesRoutes.outcomes;
@@ -27,6 +28,9 @@ export const SwaggerOutcomeGetById = () => HttpMethodWithSwagger(cfg.operation.g
 
 export const SwaggerOutcomeGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterOutcomeDto });
+
+export const SwaggerOutcomeMaintenanceCreate = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenanceCreate, body: CreateOutcomeMaintenanceDto });
 
 export const SwaggerOutcomeMaintenanceList = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: OutcomeMaintenanceQueryDto });

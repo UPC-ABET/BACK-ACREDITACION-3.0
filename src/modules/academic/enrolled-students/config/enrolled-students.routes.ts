@@ -25,6 +25,11 @@ export const enrolledStudentsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar estudiantes matriculados',
 			},
+			maintenanceCreate: {
+				method: 'POST',
+				route: '/maintenance',
+				summary: 'Registrar matrícula (mantenimiento)',
+			},
 			maintenanceList: {
 				method: 'GET',
 				route: '/maintenance',

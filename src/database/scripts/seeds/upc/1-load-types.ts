@@ -418,6 +418,16 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'{}',
 		],
 		[
+			'TG302',
+			'TG302-T003',
+			i18n('Formacion', 'Formation'),
+			i18n(
+				'Curso de formacion (sin outcome configurado)',
+				'Training course (no configured outcome)',
+			),
+			'{}',
+		],
+		[
 			'TG401',
 			'TG401-T001',
 			i18n('Rubrica Capstone', 'Capstone rubric'),
@@ -874,6 +884,9 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		['TG801-T003', '{"color":"#64748b"}'],
 		['TG1003-T001', '{"color":"#71717A"}'],
 		['TG1003-T002', '{"color":"#10B981"}'],
+		['TG302-T001', '{"glyph":"✓","color":"#16a34a"}'],
+		['TG302-T002', '{"glyph":"◆","color":"#111827"}'],
+		['TG302-T003', '{"glyph":"◆","color":"#dc2626"}'],
 	];
 	const colorPatchValues = colorPatches
 		.map(([code, patch]) => `('${code}', '${patch}'::jsonb)`)

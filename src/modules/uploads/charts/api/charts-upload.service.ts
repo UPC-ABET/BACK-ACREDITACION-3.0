@@ -26,6 +26,11 @@ const UPLOADABLE_ENTITY_TYPE_CODES: string[] = [
 	TYPE_CODES.ENTITY_TYPE.SUBAREA,
 	TYPE_CODES.ENTITY_TYPE.COURSE,
 ];
+const ENTITY_TYPE_CODES_REQUIRING_CODE: string[] = [
+	TYPE_CODES.ENTITY_TYPE.SCHOOL,
+	TYPE_CODES.ENTITY_TYPE.PROGRAM,
+	TYPE_CODES.ENTITY_TYPE.COURSE,
+];
 const TEMPLATE_MAX_ROWS = 1000;
 
 @Injectable()
@@ -149,9 +154,29 @@ export class ChartsUploadService {
 		this.styleHeaderRow(dataSheet, headers);
 
 		this.applyEntityTypeDropdown(dataSheet, languages.length, entityTypes);
+		this.addEntityTypeLegend(workbook, labels, entityTypes);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
+	}
+
+	private addEntityTypeLegend(
+		workbook: ExcelJS.Workbook,
+		labels: Record<string, string>,
+		entityTypes: Array<{ code: string; name: string }>,
+	): void {
+		const uploadable = entityTypes.filter((t) => UPLOADABLE_ENTITY_TYPE_CODES.includes(t.code));
+		if (uploadable.length === 0) return;
+
+		const sheet = workbook.addWorksheet(labels.entityLegendSheet);
+		const headers = [labels.entityType, labels.legendEntityCodeUsage];
+		sheet.addRow(headers);
+		this.styleHeaderRow(sheet, headers);
+
+		for (const entityType of uploadable) {
+			const requiresCode = ENTITY_TYPE_CODES_REQUIRING_CODE.includes(entityType.code);
+			sheet.addRow([entityType.name, requiresCode ? labels.legendYes : labels.legendNo]);
+		}
 	}
 
 	// Locks the entity-type column to a dropdown of the uploadable tags (localized names). Blank stays

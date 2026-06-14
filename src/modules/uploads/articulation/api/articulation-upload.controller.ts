@@ -6,7 +6,6 @@ import {
 	HttpStatus,
 	Post,
 	Query,
-	Req,
 	Res,
 	UploadedFile,
 	UseInterceptors,
@@ -16,6 +15,8 @@ import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/s
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
@@ -71,13 +72,13 @@ export class ArticulationUploadController {
 		@UploadedFile() file: Express.Multer.File,
 		@Body() dto: ArticulationUploadDto,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
 		return parseSuccessResponse(
 			await this.service.processUpload(
 				file.buffer,
 				file.originalname,
-				req.user.userId,
+				user.userId,
 				academicPeriodId,
 				dto,
 			),

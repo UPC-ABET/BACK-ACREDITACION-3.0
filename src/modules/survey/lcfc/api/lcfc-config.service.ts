@@ -5,6 +5,7 @@ import {
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 } from '../model/lcfc.dtos';
+import { camelizeKeys } from 'src/libs/case.functions';
 
 @Injectable()
 export class LcfcConfigService {
@@ -49,14 +50,14 @@ export class LcfcConfigService {
 			}
 
 			const extra = {
-				surveyType: LCFC_SURVEY_TYPE,
-				courseSectionId: section.courseSectionId,
-				courseId: section.courseId,
-				courseName: section.courseName,
-				sectionCode: section.sectionCode,
-				academicPeriodId: dto.academicPeriodId,
-				programId: dto.programId,
-				campusId: dto.campusId ?? section.campusId,
+				survey_type: LCFC_SURVEY_TYPE,
+				course_section_id: section.courseSectionId,
+				course_id: section.courseId,
+				course_name: section.courseName,
+				section_code: section.sectionCode,
+				academic_period_id: dto.academicPeriodId,
+				program_id: dto.programId,
+				campus_id: dto.campusId ?? section.campusId,
 			};
 
 			const config = await this.configRepo.create({
@@ -75,7 +76,9 @@ export class LcfcConfigService {
 	}
 
 	async getAll(filters?: FilterLcfcConfigDto) {
-		return await this.configRepo.findAllLcfc(filters);
+		const configs = await this.configRepo.findAllLcfc(filters);
+		for (const config of configs) config.extra = camelizeKeys(config.extra);
+		return configs;
 	}
 
 	async updateStatus(dto: UpdateLcfcConfigStatusDto): Promise<{ updated: number }> {

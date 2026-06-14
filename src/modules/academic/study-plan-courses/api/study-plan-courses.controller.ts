@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudyPlanCourseController,
@@ -9,6 +9,7 @@ import {
 	SwaggerStudyPlanCourseGetById,
 	SwaggerStudyPlanCourseGetByFilters,
 	SwaggerStudyPlanCourseEnableEvaluation,
+	SwaggerStudyPlanCourseMaintenanceCreate,
 	SwaggerStudyPlanCourseMaintenanceDelete,
 } from './docs/study-plan-courses.swagger';
 import { StudyPlanCourseService } from './study-plan-courses.service';
@@ -17,9 +18,14 @@ import {
 	UpdateStudyPlanCourseDto,
 	FilterStudyPlanCourseDto,
 	EnableEvaluationDto,
+	CreateStudyPlanCourseMaintenanceDto,
 } from '../model/study-plan-courses.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerStudyPlanCourseController()
@@ -69,6 +75,19 @@ export class StudyPlanCourseController extends BaseController<StudyPlanCourseSer
 	async enableEvaluation(@Param('id', ParseIntPipe) id: number, @Body() dto: EnableEvaluationDto) {
 		await this.service.enableEvaluation(id, dto);
 		return parseSuccessResponse(null);
+	}
+
+	@SwaggerStudyPlanCourseMaintenanceCreate()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
+	async maintenanceCreate(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Body() dto: CreateStudyPlanCourseMaintenanceDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.createMaintenance(academicPeriodId, dto),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerStudyPlanCourseMaintenanceDelete()

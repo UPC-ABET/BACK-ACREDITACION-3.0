@@ -4,6 +4,7 @@ import {
 	StudyPlanCourseDeleteBlockerCounts,
 } from './study-plan-courses.repository';
 import { studyPlanCoursesValidationStrings } from '../config/strings/study-plan-courses.validation';
+import { CreateStudyPlanCourseMaintenanceDto } from '../model/study-plan-courses.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof StudyPlanCourseDeleteBlockerCounts, string]> = [
 	['rubrics', studyPlanCoursesValidationStrings.error.usedInRubrics],
@@ -82,6 +83,39 @@ export class StudyPlanCourseValidation {
 				{
 					message: studyPlanCoursesValidationStrings.result.deleteFailed,
 				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: StudyPlanCourseRepository,
+		studyPlanAcademicPeriodId: number | null,
+		existingCourseId: number | null,
+		data: CreateStudyPlanCourseMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		if (!studyPlanAcademicPeriodId) {
+			errors.push(studyPlanCoursesValidationStrings.error.studyPlanPeriodNotFound);
+		}
+
+		const hasCourseId = data.courseId !== undefined && data.courseId !== null;
+		const hasNewCourse = data.newCourse !== undefined && data.newCourse !== null;
+		if (hasCourseId === hasNewCourse) {
+			errors.push(studyPlanCoursesValidationStrings.error.courseSelectionInvalid);
+		}
+
+		if (studyPlanAcademicPeriodId && existingCourseId) {
+			const exists = await repo.findOneByCondition({
+				where: { studyPlanAcademicPeriodId, courseId: existingCourseId },
+			});
+			if (exists) errors.push(studyPlanCoursesValidationStrings.error.studyPlanCourseExists);
+		}
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{ message: studyPlanCoursesValidationStrings.result.createFailed, errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

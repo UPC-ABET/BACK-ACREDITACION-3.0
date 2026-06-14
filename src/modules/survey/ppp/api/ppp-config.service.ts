@@ -8,6 +8,7 @@ import {
 	ReplicatePppConfigDto,
 } from '../model/ppp.dtos';
 import { PerformanceLevelService } from 'src/modules/academic/performance-levels/api/performance-levels.service';
+import { camelizeKeys } from 'src/libs/case.functions';
 
 @Injectable()
 export class PppConfigService {
@@ -20,13 +21,13 @@ export class PppConfigService {
 		await PppValidation.validateCreateConfig(this.configRepo, dto);
 
 		const extra = {
-			surveyType: PPP_SURVEY_TYPE,
-			nameEn: dto.nameEn ?? null,
-			descriptionEn: dto.descriptionEn ?? null,
+			survey_type: PPP_SURVEY_TYPE,
+			name_en: dto.nameEn ?? null,
+			description_en: dto.descriptionEn ?? null,
 			order: dto.order ?? null,
-			programId: dto.programId ?? null,
-			academicPeriodId: dto.academicPeriodId ?? null,
-			isVisible: dto.isVisible ?? true,
+			program_id: dto.programId ?? null,
+			academic_period_id: dto.academicPeriodId ?? null,
+			is_visible: dto.isVisible ?? true,
 		};
 
 		return await this.configRepo.create({
@@ -39,12 +40,15 @@ export class PppConfigService {
 	}
 
 	async getAll(filters?: FilterPppConfigDto) {
-		return await this.configRepo.findAllPpp(filters);
+		const configs = await this.configRepo.findAllPpp(filters);
+		for (const config of configs) config.extra = camelizeKeys(config.extra);
+		return configs;
 	}
 
 	async getById(id: number) {
 		const config = await this.configRepo.findOnePpp(id);
 		if (!config) throw new NotFoundException(`PPP configuration with ID ${id} not found`);
+		config.extra = camelizeKeys(config.extra);
 		return config;
 	}
 
@@ -56,12 +60,12 @@ export class PppConfigService {
 
 		const extra = {
 			...currentExtra,
-			...(dto.nameEn !== undefined && { nameEn: dto.nameEn }),
-			...(dto.descriptionEn !== undefined && { descriptionEn: dto.descriptionEn }),
+			...(dto.nameEn !== undefined && { name_en: dto.nameEn }),
+			...(dto.descriptionEn !== undefined && { description_en: dto.descriptionEn }),
 			...(dto.order !== undefined && { order: dto.order }),
-			...(dto.programId !== undefined && { programId: dto.programId }),
-			...(dto.academicPeriodId !== undefined && { academicPeriodId: dto.academicPeriodId }),
-			...(dto.isVisible !== undefined && { isVisible: dto.isVisible }),
+			...(dto.programId !== undefined && { program_id: dto.programId }),
+			...(dto.academicPeriodId !== undefined && { academic_period_id: dto.academicPeriodId }),
+			...(dto.isVisible !== undefined && { is_visible: dto.isVisible }),
 		};
 
 		const updatePayload: Record<string, any> = { extra };
@@ -98,7 +102,7 @@ export class PppConfigService {
 			const sourceExtra = (config.extra as Record<string, any>) ?? {};
 			const alreadyExists = await this.configRepo.existsPpp(
 				config.outcomeId,
-				sourceExtra.programId,
+				sourceExtra.program_id,
 				dto.targetAcademicPeriodId,
 			);
 			if (alreadyExists) continue;
@@ -107,7 +111,7 @@ export class PppConfigService {
 				outcomeId: config.outcomeId,
 				userOutcomeName: config.userOutcomeName,
 				userOutcomeDescription: config.userOutcomeDescription,
-				extra: { ...sourceExtra, academicPeriodId: dto.targetAcademicPeriodId },
+				extra: { ...sourceExtra, academic_period_id: dto.targetAcademicPeriodId },
 				isActive: true,
 			});
 			replicatedConfigs++;

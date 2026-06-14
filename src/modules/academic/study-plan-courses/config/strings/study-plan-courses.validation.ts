@@ -5,6 +5,8 @@ export const studyPlanCoursesValidationStrings = {
 		inUse: 'error.studyPlanCourse.inUse',
 		usedInRubrics: 'error.studyPlanCourse.usedInRubrics',
 		usedInCourseOutcomeMappings: 'error.studyPlanCourse.usedInCourseOutcomeMappings',
+		studyPlanPeriodNotFound: 'error.studyPlanCourse.studyPlanPeriodNotFound',
+		courseSelectionInvalid: 'error.studyPlanCourse.courseSelectionInvalid',
 	},
 	result: {
 		createFailed: 'error.studyPlanCourse.createFailed',

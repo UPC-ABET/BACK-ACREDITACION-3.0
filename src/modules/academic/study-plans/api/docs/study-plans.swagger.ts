@@ -6,6 +6,7 @@ import {
 	FilterStudyPlanDto,
 	StudyPlanMaintenanceQueryDto,
 	UpdateStudyPlanMaintenanceDto,
+	CreateStudyPlanMaintenanceDto,
 } from '../../model/study-plans.dtos';
 
 const cfg = studyPlansRoutes.studyPlans;
@@ -27,6 +28,12 @@ export const SwaggerStudyPlanGetById = () => HttpMethodWithSwagger(cfg.operation
 
 export const SwaggerStudyPlanGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterStudyPlanDto });
+
+export const SwaggerStudyPlanMaintenanceCreate = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenanceCreate,
+		body: CreateStudyPlanMaintenanceDto,
+	});
 
 export const SwaggerStudyPlanMaintenanceList = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.maintenanceList, query: StudyPlanMaintenanceQueryDto });

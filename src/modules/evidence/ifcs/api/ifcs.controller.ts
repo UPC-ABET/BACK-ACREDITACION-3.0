@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query, Req, Res } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
@@ -37,6 +37,9 @@ import {
 } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
 	SchoolId,
 	ApiSchoolHeader,
@@ -74,9 +77,9 @@ export class IfcController extends BaseController<IfcService> {
 		@Body() dto: CreateIfcDto,
 		@SchoolId() schoolId: number,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.createIfc(dto, req.user.userId, schoolId, academicPeriodId);
+		const result = await this.service.createIfc(dto, user.userId, schoolId, academicPeriodId);
 		return parseSuccessResponse(result);
 	}
 
@@ -114,10 +117,10 @@ export class IfcController extends BaseController<IfcService> {
 	@SwaggerIfcSchools()
 	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
-	async schools(@AcademicPeriodId() academicPeriodId: number, @Req() req: any) {
-		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';
+	async schools(@AcademicPeriodId() academicPeriodId: number, @CurrentUser() user: RequestUser) {
+		const isAdmin = isAdminRole(user.activeRole);
 		return parseSuccessResponse(
-			await this.service.userSchools(req.user.userId, academicPeriodId, isAdmin),
+			await this.service.userSchools(user.userId, academicPeriodId, isAdmin),
 		);
 	}
 
@@ -127,9 +130,9 @@ export class IfcController extends BaseController<IfcService> {
 	async getView(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.getView(id, req.user.userId, schoolId);
+		const result = await this.service.getView(id, user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -139,9 +142,9 @@ export class IfcController extends BaseController<IfcService> {
 	async submit(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.submit(id, req.user.userId, schoolId);
+		const result = await this.service.submit(id, user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -151,9 +154,9 @@ export class IfcController extends BaseController<IfcService> {
 	async approve(
 		@Param('id', ParseIntPipe) id: number,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.approve(id, req.user.userId, schoolId);
+		const result = await this.service.approve(id, user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -164,9 +167,9 @@ export class IfcController extends BaseController<IfcService> {
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: RejectIfcDto,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.reject(id, req.user.userId, schoolId, dto);
+		const result = await this.service.reject(id, user.userId, schoolId, dto);
 		return parseSuccessResponse(result);
 	}
 
@@ -177,9 +180,9 @@ export class IfcController extends BaseController<IfcService> {
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: IfcContentDto,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.patch(id, dto, req.user.userId, schoolId);
+		const result = await this.service.patch(id, dto, user.userId, schoolId);
 		return parseSuccessResponse(result);
 	}
 
@@ -190,11 +193,11 @@ export class IfcController extends BaseController<IfcService> {
 		@Param('id', ParseIntPipe) id: number,
 		@Query() query: IfcPdfQueryDto,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 		@Res({ passthrough: false }) res: Response,
 	) {
 		const lang = (query.lang ?? 'es') as 'es' | 'en';
-		const { pdf, filename } = await this.service.generatePdf(id, req.user.userId, schoolId, lang);
+		const { pdf, filename } = await this.service.generatePdf(id, user.userId, schoolId, lang);
 		writeBinary(res, pdf, filename, 'application/pdf');
 	}
 
@@ -204,12 +207,12 @@ export class IfcController extends BaseController<IfcService> {
 	async pdfBulk(
 		@Body() dto: IfcPdfBulkDto,
 		@SchoolId() schoolId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 		@Res({ passthrough: false }) res: Response,
 	) {
 		const { zip, filename } = await this.service.generatePdfBulk(
 			dto.ifcIds,
-			req.user.userId,
+			user.userId,
 			schoolId,
 			dto.lang,
 		);
@@ -245,9 +248,9 @@ export class IfcController extends BaseController<IfcService> {
 	async notify(
 		@Body() dto: IfcNotifyDto,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.notify(dto.chartId, academicPeriodId, req.user.userId);
+		const result = await this.service.notify(dto.chartId, academicPeriodId, user.userId);
 		return parseSuccessResponse(result);
 	}
 
@@ -257,9 +260,9 @@ export class IfcController extends BaseController<IfcService> {
 	async notifyAll(
 		@Body() dto: IfcNotifyAllDto,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.notifyAll(dto.chartIds, academicPeriodId, req.user.userId);
+		const result = await this.service.notifyAll(dto.chartIds, academicPeriodId, user.userId);
 		return parseSuccessResponse(result);
 	}
 }

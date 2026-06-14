@@ -1,6 +1,59 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
+
+export class CreateChartNodeDto {
+	@IsInt()
+	@ApiProperty({ example: 1, required: true, description: 'Parent chart node id' })
+	rootChartId: number;
+
+	@IsInt()
+	@ApiProperty({ example: 1, required: true })
+	staffId: number;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'Coordinador', en: 'Coordinator' }, required: true })
+	title: I18nText;
+
+	@IsInt()
+	@ApiProperty({ example: 1, required: true, description: 'Entity type id (TG903)' })
+	entityTypeId: number;
+
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Referenced entity id; omit for Area/Subarea',
+	})
+	entityCode?: number;
+}
+
+export class UpdateChartNodeDto {
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 1, required: false })
+	staffId?: number;
+
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'Coordinador', en: 'Coordinator' }, required: false })
+	title?: I18nText;
+
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({ example: 1, required: false, description: 'Entity type id (TG903)' })
+	entityTypeId?: number;
+
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Referenced entity id; omit for Area/Subarea',
+	})
+	entityCode?: number;
+}
 
 export class CreateChartDto {
 	@IsOptional()

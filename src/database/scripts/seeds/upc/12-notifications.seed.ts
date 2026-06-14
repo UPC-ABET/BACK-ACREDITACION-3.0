@@ -2,6 +2,9 @@ import { runSeed } from '../seed-runner';
 
 const i18nJson = (es: string, en?: string) => JSON.stringify({ es, en: en ?? es });
 
+// IFC email template category (core.types TG1004-T002).
+const EMAIL_TEMPLATE_CATEGORY_CODE = 'TG1004-T002';
+
 runSeed('ifc notification configs', async (tenantDataSource) => {
 	const SCHOOL_CODE = 'EISCB';
 	const ACADEMIC_PERIOD_CODE = '202502';
@@ -12,7 +15,9 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 			statusCode: 'TG701-T001', // SAVED
 			toCodes: ['TG903-T006'], // COURSE
 			ccCodes: ['TG903-T005', 'TG903-T004'], // SUBAREA, AREA
-			title: i18nJson(
+			templateCode: 'IFC_PENDING_SUBMISSION',
+			name: i18nJson('Recordatorio de IFC pendiente de envío', 'IFC pending submission reminder'),
+			subject: i18nJson(
 				'Recordatorio: IFC pendiente de envío — {{course_name}}',
 				'Reminder: IFC pending submission — {{course_name}}',
 			),
@@ -32,7 +37,12 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 			statusCode: 'TG701-T004', // OBSERVED
 			toCodes: ['TG903-T006'],
 			ccCodes: ['TG903-T005', 'TG903-T004'],
-			title: i18nJson('IFC con observaciones — {{course_name}}', 'IFC observed — {{course_name}}'),
+			templateCode: 'IFC_OBSERVED',
+			name: i18nJson('IFC con observaciones', 'IFC observed'),
+			subject: i18nJson(
+				'IFC con observaciones — {{course_name}}',
+				'IFC observed — {{course_name}}',
+			),
 			body: i18nJson(
 				`<p>Hola {{coordinator_name}},</p>
 <p>El IFC del curso <strong>{{course_name}}</strong> (periodo {{academic_period}}) fue <strong>observado</strong> por {{observer_name}}.</p>
@@ -51,7 +61,9 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 			statusCode: 'TG701-T005', // UNREGISTERED
 			toCodes: ['TG903-T006'],
 			ccCodes: ['TG903-T005', 'TG903-T004'],
-			title: i18nJson(
+			templateCode: 'IFC_UNREGISTERED',
+			name: i18nJson('IFC sin registrar', 'IFC not yet registered'),
+			subject: i18nJson(
 				'IFC sin registrar — {{course_name}}',
 				'IFC not yet registered — {{course_name}}',
 			),
@@ -71,7 +83,9 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 			statusCode: 'TG701-T002', // SUBMITTED
 			toCodes: ['TG903-T005'], // SUBAREA — the reviewer
 			ccCodes: ['TG903-T004', 'TG903-T003'], // AREA + PROGRAM
-			title: i18nJson(
+			templateCode: 'IFC_SUBMITTED',
+			name: i18nJson('Nuevo IFC enviado a revisión', 'New IFC submitted for review'),
+			subject: i18nJson(
 				'Nuevo IFC enviado a revisión — {{course_name}}',
 				'New IFC submitted for review — {{course_name}}',
 			),
@@ -104,46 +118,63 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 	}
 
 	for (const r of rows) {
+		const templateRow = await tenantDataSource.query(
+			`
+			INSERT INTO "core"."email_templates" (category_type_id, code, name, subject, body)
+			SELECT
+				(SELECT id FROM "core"."types" WHERE code = $1),
+				$2,
+				$3::jsonb,
+				$4::jsonb,
+				$5::jsonb
+			ON CONFLICT ON CONSTRAINT "UQ_email_templates_code" DO UPDATE
+			SET name       = EXCLUDED.name,
+				subject    = EXCLUDED.subject,
+				body       = EXCLUDED.body,
+				updated_at = NOW()
+			RETURNING id;
+			`,
+			[EMAIL_TEMPLATE_CATEGORY_CODE, r.templateCode, r.name, r.subject, r.body],
+		);
+		const emailTemplateId = templateRow[0].id;
+
 		await tenantDataSource.query(
 			`
 			INSERT INTO "ifc"."notification_configs"
 				(school_id, academic_period_id, trigger_type_id, ifc_status_type_id,
-				 title, body, to_chart_entity_type_ids, cc_chart_entity_type_ids, is_active)
+				 email_template_id, to_chart_entity_type_ids, cc_chart_entity_type_ids, is_active)
 			SELECT
 				$1::int,
 				$2::int,
 				(SELECT id FROM "core"."types" WHERE code = $3),
 				(SELECT id FROM "core"."types" WHERE code = $4),
-				$5::jsonb,
-				$6::jsonb,
+				$5::int,
+				COALESCE(
+					(SELECT to_jsonb(array_agg(id))
+					 FROM "core"."types"
+					 WHERE code = ANY($6::text[])),
+					'[]'::jsonb
+				),
 				COALESCE(
 					(SELECT to_jsonb(array_agg(id))
 					 FROM "core"."types"
 					 WHERE code = ANY($7::text[])),
 					'[]'::jsonb
 				),
-				COALESCE(
-					(SELECT to_jsonb(array_agg(id))
-					 FROM "core"."types"
-					 WHERE code = ANY($8::text[])),
-					'[]'::jsonb
-				),
 				true
 			ON CONFLICT ON CONSTRAINT "UQ_notification_configs_school_period_trigger_status" DO UPDATE
-			SET title                     = EXCLUDED.title,
-				body                      = EXCLUDED.body,
-				to_chart_entity_type_ids   = EXCLUDED.to_chart_entity_type_ids,
-				cc_chart_entity_type_ids   = EXCLUDED.cc_chart_entity_type_ids,
-				is_active                 = true,
-				updated_at                = NOW();
+			SET email_template_id        = EXCLUDED.email_template_id,
+				to_chart_entity_type_ids = EXCLUDED.to_chart_entity_type_ids,
+				cc_chart_entity_type_ids = EXCLUDED.cc_chart_entity_type_ids,
+				is_active                = true,
+				updated_at               = NOW();
 			`,
 			[
 				schoolId,
 				academicPeriodId,
 				r.triggerCode,
 				r.statusCode,
-				r.title,
-				r.body,
+				emailTemplateId,
 				r.toCodes,
 				r.ccCodes,
 			],

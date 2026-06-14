@@ -12,6 +12,7 @@ import { PortfolioCompanyRepository } from '../core/portfolio-company.repository
 import { PortfolioRepository } from '../core/portfolio.repository';
 import { PortfolioResearchLineRepository } from '../core/portfolio-research-line.repository';
 import { PortfolioProjectEntity } from '../model/portfolio-project.entity';
+import { PortfolioProjectApplicationEntity } from '../model/portfolio-project-application.entity';
 import { PortfolioStatus } from '../enums/portfolio-status.enum';
 import { PortfolioValidation } from '../core/portfolio.validation';
 import { portfolioValidationStrings } from '../config/strings/portfolio.validation';
@@ -146,11 +147,13 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 
 		if (dto.studentOneId) {
 			const student = await this.repository.findStudentById(dto.studentOneId);
-			if (!student) throw new BadRequestException(portfolioValidationStrings.error.studentOneNotFound);
+			if (!student)
+				throw new BadRequestException(portfolioValidationStrings.error.studentOneNotFound);
 		}
 		if (dto.studentTwoId) {
 			const student = await this.repository.findStudentById(dto.studentTwoId);
-			if (!student) throw new BadRequestException(portfolioValidationStrings.error.studentTwoNotFound);
+			if (!student)
+				throw new BadRequestException(portfolioValidationStrings.error.studentTwoNotFound);
 		}
 
 		const code = await this.generateCode(dto.academicPeriodId);
@@ -234,11 +237,11 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			programId: dto.programId ?? project.programId,
 			coauthorProfessorId:
 				dto.coauthorProfessorId !== undefined
-					? dto.coauthorProfessorId ?? undefined
+					? (dto.coauthorProfessorId ?? undefined)
 					: project.coauthorProfessorId,
 			consultantProfessorId:
 				dto.consultantProfessorId !== undefined
-					? dto.consultantProfessorId ?? undefined
+					? (dto.consultantProfessorId ?? undefined)
 					: project.consultantProfessorId,
 			courseSectionId: dto.courseSectionId ?? project.courseSectionId,
 		} as Partial<PortfolioProjectEntity>);
@@ -281,11 +284,11 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			studentTwoId: studentTwoId ?? undefined,
 			coauthorProfessorId:
 				dto.coauthorProfessorId !== undefined
-					? dto.coauthorProfessorId ?? undefined
+					? (dto.coauthorProfessorId ?? undefined)
 					: project.coauthorProfessorId,
 			consultantProfessorId:
 				dto.consultantProfessorId !== undefined
-					? dto.consultantProfessorId ?? undefined
+					? (dto.consultantProfessorId ?? undefined)
 					: project.consultantProfessorId,
 		} as Partial<PortfolioProjectEntity>);
 
@@ -327,7 +330,10 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			return { message: portfolioValidationStrings.result.projectAutoDeleted };
 		}
 
-		await this.repository.update(projectId, { studentOneId, studentTwoId } as Partial<PortfolioProjectEntity>);
+		await this.repository.update(projectId, {
+			studentOneId,
+			studentTwoId,
+		} as Partial<PortfolioProjectEntity>);
 		return (await this.repository.findWithRelations(projectId))!;
 	}
 
@@ -383,9 +389,13 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			const partnerId = partner.studentOneId ?? partner.studentTwoId!;
 
 			if (project.studentOneId) {
-				await this.repository.update(project.id, { studentTwoId: partnerId } as Partial<PortfolioProjectEntity>);
+				await this.repository.update(project.id, {
+					studentTwoId: partnerId,
+				} as Partial<PortfolioProjectEntity>);
 			} else {
-				await this.repository.update(project.id, { studentOneId: partnerId } as Partial<PortfolioProjectEntity>);
+				await this.repository.update(project.id, {
+					studentOneId: partnerId,
+				} as Partial<PortfolioProjectEntity>);
 			}
 
 			assignedStudentIds.add(partnerId);
@@ -402,11 +412,13 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		if (!project) throw new NotFoundException(portfolioValidationStrings.error.projectNotFound);
 
 		const student1 = await this.repository.findStudentById(dto.studentOneId);
-		if (!student1) throw new BadRequestException(portfolioValidationStrings.error.studentOneNotFound);
+		if (!student1)
+			throw new BadRequestException(portfolioValidationStrings.error.studentOneNotFound);
 
 		if (dto.studentTwoId) {
 			const student2 = await this.repository.findStudentById(dto.studentTwoId);
-			if (!student2) throw new BadRequestException(portfolioValidationStrings.error.studentTwoNotFound);
+			if (!student2)
+				throw new BadRequestException(portfolioValidationStrings.error.studentTwoNotFound);
 		}
 
 		await this.repository.update(dto.projectId, {
@@ -658,9 +670,20 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		const ws = workbook.addWorksheet('Portfolio');
 
 		ws.addRow([
-			'ID', 'Code', 'Name', 'Description', 'Status', 'From UPC',
-			'Student 1', 'Student 2', 'Program', 'Company', 'Academic Period',
-			'Modality', 'Co-author', 'Consultant',
+			'ID',
+			'Code',
+			'Name',
+			'Description',
+			'Status',
+			'From UPC',
+			'Student 1',
+			'Student 2',
+			'Program',
+			'Company',
+			'Academic Period',
+			'Modality',
+			'Co-author',
+			'Consultant',
 		]);
 
 		const header = ws.getRow(1);
@@ -669,12 +692,18 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 
 		for (const p of all.data) {
 			ws.addRow([
-				p.id, p.code, p.name, p.description ?? '',
-				PortfolioStatus[p.status], p.isFromUPC ? 'Yes' : 'No',
+				p.id,
+				p.code,
+				p.name,
+				p.description ?? '',
+				PortfolioStatus[p.status],
+				p.isFromUPC ? 'Yes' : 'No',
 				p.studentOne ? `${p.studentOne.firstName} ${p.studentOne.lastName}` : '',
 				p.studentTwo ? `${p.studentTwo.firstName} ${p.studentTwo.lastName}` : '',
-				p.program?.code ?? '', p.company?.name ?? '',
-				p.academicPeriod?.code ?? '', p.modalityType?.id ?? '',
+				p.program?.code ?? '',
+				p.company?.name ?? '',
+				p.academicPeriod?.code ?? '',
+				p.modalityType?.id ?? '',
 				p.coauthorProfessor
 					? `${p.coauthorProfessor.staff?.firstName ?? ''} ${p.coauthorProfessor.staff?.lastName ?? ''}`.trim()
 					: '',
@@ -684,7 +713,9 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 			]);
 		}
 
-		ws.columns.forEach((col) => { col.width = 25; });
+		ws.columns.forEach((col) => {
+			col.width = 25;
+		});
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { bytes: buffer, fileName: 'portfolio_export.xlsx' };
@@ -699,7 +730,9 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		const header = ws.getRow(1);
 		header.font = { bold: true };
 		header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
-		ws.columns.forEach((col) => { col.width = 30; });
+		ws.columns.forEach((col) => {
+			col.width = 30;
+		});
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { bytes: buffer, fileName: 'portfolio_bulk_upload_template.xlsx' };
 	}
@@ -707,11 +740,21 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 	async generateBulkUploadFilledTemplate(): Promise<{ bytes: Buffer; fileName: string }> {
 		const workbook = new ExcelJS.Workbook();
 		const ws = workbook.addWorksheet('Sheet1');
-		ws.addRow(['Project Code', 'Student 1 Code', 'Student 2 Code', 'Title', 'Problem', 'Objective', 'Research Line']);
+		ws.addRow([
+			'Project Code',
+			'Student 1 Code',
+			'Student 2 Code',
+			'Title',
+			'Problem',
+			'Objective',
+			'Research Line',
+		]);
 		const header = ws.getRow(1);
 		header.font = { bold: true };
 		header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
-		ws.columns.forEach((col) => { col.width = 30; });
+		ws.columns.forEach((col) => {
+			col.width = 30;
+		});
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { bytes: buffer, fileName: 'portfolio_bulk_upload_filled_template.xlsx' };
 	}
@@ -759,7 +802,10 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 		});
 		if (existing) throw new BadRequestException(portfolioValidationStrings.error.applicationExists);
 
-		return this.applicationRepository.create({ projectId, studentId } as Partial<any>);
+		return this.applicationRepository.create({
+			projectId,
+			studentId,
+		} as Partial<PortfolioProjectApplicationEntity>);
 	}
 
 	async deleteApplication(applicationId: number) {

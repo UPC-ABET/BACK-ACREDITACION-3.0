@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudyPlanController,
@@ -8,6 +8,7 @@ import {
 	SwaggerStudyPlanGetAll,
 	SwaggerStudyPlanGetById,
 	SwaggerStudyPlanGetByFilters,
+	SwaggerStudyPlanMaintenanceCreate,
 	SwaggerStudyPlanMaintenanceList,
 	SwaggerStudyPlanMaintenanceUpdate,
 	SwaggerStudyPlanMaintenanceDelete,
@@ -20,6 +21,7 @@ import {
 	FilterStudyPlanDto,
 	StudyPlanMaintenanceQueryDto,
 	UpdateStudyPlanMaintenanceDto,
+	CreateStudyPlanMaintenanceDto,
 } from '../model/study-plans.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -73,6 +75,19 @@ export class StudyPlanController extends BaseController<StudyPlanService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getByFilters(@Body() dto: FilterStudyPlanDto) {
 		return await super.getByFilters(dto);
+	}
+
+	@SwaggerStudyPlanMaintenanceCreate()
+	@ApiModalityTypeHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
+	async maintenanceCreate(
+		@ModalityTypeId() modalityTypeId: number,
+		@Body() dto: CreateStudyPlanMaintenanceDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.createMaintenance(modalityTypeId, dto),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerStudyPlanMaintenanceList()

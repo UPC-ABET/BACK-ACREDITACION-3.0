@@ -4,7 +4,10 @@ import {
 	CourseSectionDeleteBlockerCounts,
 } from './course-sections.repository';
 import { courseSectionsValidationStrings } from '../config/strings/course-sections.validation';
-import { UpdateCourseSectionMaintenanceDto } from '../model/course-sections.dtos';
+import {
+	UpdateCourseSectionMaintenanceDto,
+	CreateCourseSectionMaintenanceDto,
+} from '../model/course-sections.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof CourseSectionDeleteBlockerCounts, string]> = [
 	[
@@ -76,6 +79,30 @@ export class CourseSectionValidation {
 				{
 					message: courseSectionsValidationStrings.result.deleteFailed,
 				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: CourseSectionRepository,
+		academicPeriodId: number,
+		data: CreateCourseSectionMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		const exists = await repo.findOneByCondition({
+			where: {
+				courseId: data.courseId,
+				academicPeriodId,
+				sectionCode: data.sectionCode,
+			},
+		});
+		if (exists) errors.push(courseSectionsValidationStrings.error.sectionExists);
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{ message: courseSectionsValidationStrings.result.createFailed, errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

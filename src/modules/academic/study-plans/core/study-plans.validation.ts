@@ -1,7 +1,10 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { StudyPlanRepository, StudyPlanDeleteBlockerCounts } from './study-plans.repository';
 import { studyPlansValidationStrings } from '../config/strings/study-plans.validation';
-import { UpdateStudyPlanMaintenanceDto } from '../model/study-plans.dtos';
+import {
+	UpdateStudyPlanMaintenanceDto,
+	CreateStudyPlanMaintenanceDto,
+} from '../model/study-plans.dtos';
 
 const DELETE_BLOCKER_KEYS: Array<[keyof StudyPlanDeleteBlockerCounts, string]> = [
 	['academicPeriods', studyPlansValidationStrings.error.usedInAcademicPeriods],
@@ -67,6 +70,30 @@ export class StudyPlanValidation {
 				{
 					message: studyPlansValidationStrings.result.deleteFailed,
 				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+	}
+
+	static async validateMaintenanceCreate(
+		repo: StudyPlanRepository,
+		modalityTypeId: number,
+		data: CreateStudyPlanMaintenanceDto,
+	) {
+		const errors: Array<string> = [];
+
+		if (!(await repo.isProgramInModality(data.programId, modalityTypeId))) {
+			errors.push(studyPlansValidationStrings.error.programNotInModality);
+		}
+
+		const exists = await repo.findOneByCondition({
+			where: { programId: data.programId, code: data.code },
+		});
+		if (exists) errors.push(studyPlansValidationStrings.error.codeExists);
+
+		if (errors.length > 0) {
+			throw new HttpException(
+				{ message: studyPlansValidationStrings.result.createFailed, errors },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

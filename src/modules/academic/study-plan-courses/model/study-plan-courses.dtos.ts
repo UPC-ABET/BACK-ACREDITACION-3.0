@@ -1,5 +1,16 @@
-import { IsBoolean, IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+	IsBoolean,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsNotEmpty,
+	IsString,
+	Length,
+	ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateStudyPlanCourseDto {
 	@IsOptional()
@@ -57,6 +68,69 @@ export class UpdateStudyPlanCourseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	levelTypeId?: number;
+}
+
+export class NewStudyPlanCourseDto {
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'CS101' })
+	code: string;
+
+	@IsObject()
+	@ApiProperty({ example: { es: 'Cálculo I', en: 'Calculus I' } })
+	name: I18nText;
+
+	@IsOptional()
+	@IsObject()
+	@ApiPropertyOptional({ example: { es: 'Resultado de aprendizaje', en: 'Learning outcome' } })
+	learningOutcome?: I18nText;
+}
+
+export class CreateStudyPlanCourseMaintenanceDto {
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		description: 'Study plan id; the period comes from X-Academic-Period-Id',
+	})
+	studyPlanId: number;
+
+	@IsBoolean()
+	@ApiProperty({ example: false })
+	isElective: boolean;
+
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		description: 'Level type id (group TG203); required even when isElective is true',
+	})
+	levelTypeId: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({
+		example: 1,
+		description: 'Existing course id (link mode). Provide this OR newCourse, not both.',
+	})
+	courseId?: number;
+
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => NewStudyPlanCourseDto)
+	@ApiPropertyOptional({
+		type: NewStudyPlanCourseDto,
+		description: 'New course to find-or-create and link. Provide this OR courseId, not both.',
+	})
+	newCourse?: NewStudyPlanCourseDto;
+}
+
+export interface StudyPlanCourseMaintenanceItem {
+	id: number;
+	courseId: number;
+	courseCode: string;
+	courseName: I18nText;
+	learningOutcome: I18nText;
+	levelTypeId: number;
+	isElective: boolean;
 }
 
 export class EnableEvaluationDto {

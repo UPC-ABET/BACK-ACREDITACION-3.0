@@ -110,6 +110,23 @@ export class UpdateProfessorMaintenanceDto {
 	lastName?: string;
 }
 
+export class CreateProfessorMaintenanceDto {
+	@IsString()
+	@Length(1, 50)
+	@ApiProperty({ example: 'PROF-001' })
+	code: string;
+
+	@IsString()
+	@Length(1, 255)
+	@ApiProperty({ example: 'John' })
+	firstName: string;
+
+	@IsString()
+	@Length(1, 255)
+	@ApiProperty({ example: 'Doe' })
+	lastName: string;
+}
+
 export interface ProfessorMaintenanceItem {
 	id: number;
 	staffId: number;

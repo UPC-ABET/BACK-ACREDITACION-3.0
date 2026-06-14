@@ -1,4 +1,4 @@
-import { Body, Inject, Req } from '@nestjs/common';
+import { Body, Inject } from '@nestjs/common';
 import { OrgScopeService } from './org-scope.service';
 import { GetUserSchoolsDto } from '../model/org-scope.dtos';
 import {
@@ -8,6 +8,9 @@ import {
 } from './docs/org-scope.swagger';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
 	SchoolId,
 	ApiSchoolHeader,
@@ -37,18 +40,18 @@ export class OrgScopeController {
 	async getScope(
 		@SchoolId({ optional: true }) schoolId: number | null,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Req() req: any,
+		@CurrentUser() user: RequestUser,
 	) {
-		const userId = req.user.userId;
+		const userId = user.userId;
 		const result = await this.service.getScope(userId, schoolId, academicPeriodId);
 		return parseSuccessResponse(result);
 	}
 
 	@SwaggerOrgScopeGetUserSchools()
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
-	async getUserSchools(@Body() dto: GetUserSchoolsDto, @Req() req: any) {
-		const userId = req.user.userId;
-		const isAdmin = req.user.activeRole?.code?.toUpperCase() === 'ADMIN';
+	async getUserSchools(@Body() dto: GetUserSchoolsDto, @CurrentUser() user: RequestUser) {
+		const userId = user.userId;
+		const isAdmin = isAdminRole(user.activeRole);
 		const result = await this.userSchoolsService.getUserSchools(userId, dto.modalityCode, isAdmin);
 		return parseSuccessResponse(result);
 	}

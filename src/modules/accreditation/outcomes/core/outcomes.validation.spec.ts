@@ -69,6 +69,35 @@ describe('OutcomeValidation', () => {
 		});
 	});
 
+	describe('validateMaintenanceCreate', () => {
+		const dto = {
+			outcomeCode: 'O1',
+			outcomeName: { es: 'a', en: 'b' },
+			programId: 5,
+			commissionId: 6,
+		};
+
+		it('passes when the program commission exists and the code is free', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				OutcomeValidation.validateMaintenanceCreate(mockRepo as any, 100, dto),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when no program commission exists', async () => {
+			await expect(
+				OutcomeValidation.validateMaintenanceCreate(mockRepo as any, null, dto),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the outcome code already exists in the program commission', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
+			await expect(
+				OutcomeValidation.validateMaintenanceCreate(mockRepo as any, 100, dto),
+			).rejects.toThrow(HttpException);
+		});
+	});
+
 	describe('validateMaintenanceUpdate', () => {
 		it('passes when the code is unchanged', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1, programCommissionId: 5, outcomeCode: 'O1' });

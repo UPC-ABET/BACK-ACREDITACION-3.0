@@ -8,6 +8,7 @@ import {
 	UpdateStudyPlanDto,
 	StudyPlanMaintenanceQueryDto,
 	UpdateStudyPlanMaintenanceDto,
+	CreateStudyPlanMaintenanceDto,
 	StudyPlanMaintenanceItem,
 	StudyPlanCourseViewItem,
 	StudyPlanLevelGroup,
@@ -60,6 +61,12 @@ export class StudyPlanService extends BaseService<StudyPlanRepository> {
 			page,
 			pageSize,
 		);
+	}
+
+	async createMaintenance(modalityTypeId: number, dto: CreateStudyPlanMaintenanceDto) {
+		await StudyPlanValidation.validateMaintenanceCreate(this.repository, modalityTypeId, dto);
+		const created = await this.repository.create({ programId: dto.programId, code: dto.code });
+		return await this.getMaintenanceItem(created.id);
 	}
 
 	async updateMaintenance(id: number, dto: UpdateStudyPlanMaintenanceDto) {
@@ -119,6 +126,7 @@ export class StudyPlanService extends BaseService<StudyPlanRepository> {
 		return {
 			id: plan.id,
 			code: plan.code,
+			programId: plan.programId,
 			programName: plan.program.name,
 		};
 	}
