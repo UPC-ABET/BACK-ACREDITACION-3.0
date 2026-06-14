@@ -14,7 +14,11 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
-import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { ScopeFilters } from 'src/commons/scope.dtos';
+import {
+	programInSchoolSubquery,
+	schoolProgramFilterParams,
+} from 'src/libs/school-program.functions';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 
@@ -27,7 +31,10 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		super(repository, dataSource);
 	}
 
-	async getByFilters(filters: FilterProjectDto): Promise<any[]> {
+	async getByFilters(filters: FilterProjectDto & ScopeFilters): Promise<any[]> {
+		const academicPeriodId = filters.academicPeriodId ?? undefined;
+		const schoolId = filters.schoolId ?? undefined;
+
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectEntity, 'project')
 			.leftJoinAndSelect('project.students', 'ps')
@@ -80,9 +87,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const needsStudentJoin = !!(
 			filters.studentId ||
 			filters.courseId ||
-			filters.academicPeriodId ||
+			academicPeriodId ||
 			filters.programId ||
-			filters.schoolId
+			schoolId
 		);
 
 		if (needsStudentJoin) {
@@ -98,10 +105,8 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
 		}
 
-		if (filters.academicPeriodId) {
-			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
-				academicPeriodId: filters.academicPeriodId,
-			});
+		if (academicPeriodId) {
+			qb.andWhere('cs.academic_period_id = :academicPeriodId', { academicPeriodId });
 		}
 
 		if (filters.studentId) {
@@ -109,7 +114,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
-		if (filters.programId || filters.schoolId) {
+		if (filters.programId || schoolId) {
 			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = cs.course_id');
 			qb.innerJoin(
 				StudyPlanAcademicPeriodEntity,
@@ -123,21 +128,10 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
 		}
 
-		if (filters.schoolId) {
-			qb.andWhere(
-				`sp.program_id IN (
-					SELECT ch_prog.entity_code
-					FROM   organization.charts ch_prog
-					INNER JOIN organization.charts ch_sch
-					       ON  ch_sch.id = ch_prog.root_chart_id
-					WHERE  ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = :programTypeCode)
-					  AND  ch_sch.entity_type_id  = (SELECT id FROM core.types WHERE code = :schoolTypeCode)
-					  AND  ch_sch.entity_code = :schoolId
-				)`,
+		if (schoolId) {
+			qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
+				schoolProgramFilterParams(schoolId),
 			);
-			qb.setParameter('programTypeCode', TYPE_CODES.ENTITY_TYPE.PROGRAM);
-			qb.setParameter('schoolTypeCode', TYPE_CODES.ENTITY_TYPE.SCHOOL);
-			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		const { entities, raw } = await qb.getRawAndEntities();

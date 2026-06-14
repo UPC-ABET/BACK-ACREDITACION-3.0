@@ -52,26 +52,11 @@ export class RubricConfigService {
 		return type?.id ?? null;
 	}
 
-	private async isWascRubric(gradeTypeId: number): Promise<boolean> {
-		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
-	}
-
-	/**
-	 * Recalcula la nota máxima por pregunta y de toda la rúbrica (R-RUB-014, R-RUB-015)
-	 *
-	 * Para ABET (no PA): NotaOutcome = Sum(ValorMaximo)
-	 * Para WASC (PA): NotaOutcome = Max(ValorMaximo)
-	 *
-	 * Retorna { byQuestion: Map<questionId, maxValue>, totalMaxScore }
-	 */
 	async recalculateMaxScore(
 		rubricId: number,
 	): Promise<{ byQuestion: Map<number, number>; totalMaxScore: number }> {
 		const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
 		if (!rubric) throw new NotFoundException(rubricsValidationStrings.error.notFound);
-
-		const isWasc = await this.isWascRubric(rubric.gradeTypeId);
 
 		const questions = await this.questionRepo.find({
 			where: { rubricId: rubricId },

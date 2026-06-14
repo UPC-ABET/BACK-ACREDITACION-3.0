@@ -22,6 +22,14 @@ import {
 	ProjectDetailsResponseDto,
 } from '../model/projects.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	SchoolId,
+	ApiSchoolHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerProjectController()
@@ -44,24 +52,21 @@ export class ProjectController extends BaseController<ProjectService> {
 
 	@Get('professor/:professorId')
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
-	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
-	@ApiQuery({ name: 'schoolId', required: false, type: Number })
+	@ApiAcademicPeriodHeader(false)
+	@ApiSchoolHeader(false)
 	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectsByProfessor(
 		@Param('professorId', ParseIntPipe) professorId: number,
-		@Query('academicPeriodId') academicPeriodId?: string,
-		@Query('schoolId') schoolId?: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@SchoolId({ optional: true }) schoolId: number | null,
 		@Query('gradeTypeCode') gradeTypeCode?: string,
 	) {
-		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
-		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
-
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectsByProfessor(
 				professorId,
-				parsedAcademicPeriodId,
-				parsedSchoolId,
+				academicPeriodId ?? undefined,
+				schoolId ?? undefined,
 				gradeTypeCode,
 			),
 		);
@@ -69,24 +74,21 @@ export class ProjectController extends BaseController<ProjectService> {
 
 	@Get('evaluator/:evaluatorId')
 	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
-	@ApiQuery({ name: 'academicPeriodId', required: false, type: Number })
-	@ApiQuery({ name: 'schoolId', required: false, type: Number })
+	@ApiAcademicPeriodHeader(false)
+	@ApiSchoolHeader(false)
 	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectsByEvaluatorId(
 		@Param('evaluatorId', ParseIntPipe) evaluatorId: number,
-		@Query('academicPeriodId') academicPeriodId?: string,
-		@Query('schoolId') schoolId?: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@SchoolId({ optional: true }) schoolId: number | null,
 		@Query('gradeTypeCode') gradeTypeCode?: string,
 	) {
-		const parsedAcademicPeriodId = academicPeriodId ? parseInt(academicPeriodId, 10) : undefined;
-		const parsedSchoolId = schoolId ? parseInt(schoolId, 10) : undefined;
-
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectsByProfessor(
 				evaluatorId,
-				parsedAcademicPeriodId,
-				parsedSchoolId,
+				academicPeriodId ?? undefined,
+				schoolId ?? undefined,
 				gradeTypeCode,
 			),
 		);
@@ -145,19 +147,27 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@SwaggerProjectGetByFilters()
+	@ApiSchoolHeader(false)
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterProjectDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterProjectDto,
+		@SchoolId({ optional: true }) schoolId?: number | null,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(
+			await this.service.getByFilters({ ...dto, schoolId, academicPeriodId }),
+		);
 	}
 
 	@Get('export/grades')
-	@ApiQuery({ name: 'academicPeriodId', required: true, type: Number })
-	@ApiQuery({ name: 'schoolId', required: true, type: Number })
+	@ApiAcademicPeriodHeader()
+	@ApiSchoolHeader()
 	@ApiQuery({ name: 'gradeTypeCode', required: true, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async exportGrades(
-		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
-		@Query('schoolId', ParseIntPipe) schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+		@SchoolId() schoolId: number,
 		@Query('gradeTypeCode') gradeTypeCode: string,
 		@Res() res: Response,
 	) {

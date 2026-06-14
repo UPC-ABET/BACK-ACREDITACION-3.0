@@ -733,7 +733,6 @@ export class ProjectConfigService {
 			[academicPeriodId, gradeTypeId, programIds],
 		)) as GradeExportRow[];
 
-		// Obtener totalMaxScore por rubric_id (puede haber distintas rúbricas por course)
 		const isCapstoneEbExport = gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
 
 		const rubricIds = [...new Set(rows.map((r) => r.rubricId))];

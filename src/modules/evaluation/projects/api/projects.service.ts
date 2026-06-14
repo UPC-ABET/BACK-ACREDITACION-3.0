@@ -3,6 +3,7 @@ import { BaseService } from 'src/commons/base.service';
 import { ProjectRepository } from '../core/projects.repository';
 import { ProjectValidation } from '../core/projects.validation';
 import { CreateProjectDto, FilterProjectDto, UpdateProjectDto } from '../model/projects.dtos';
+import { ScopeFilters } from 'src/commons/scope.dtos';
 import { EntityManager } from 'typeorm';
 
 @Injectable()
@@ -26,7 +27,7 @@ export class ProjectService extends BaseService<ProjectRepository> {
 		return await this.repository.deleteWithChildren(id);
 	}
 
-	async getByFilters(filters: FilterProjectDto) {
+	async getByFilters(filters: FilterProjectDto & ScopeFilters) {
 		return await this.repository.getByFilters(filters);
 	}
 }

@@ -354,15 +354,6 @@ export class FilterProjectDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del periodo académico',
-	})
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: false,
 		description: 'ID del programa/carrera',
 	})
 	programId?: number;
@@ -392,9 +383,4 @@ export class FilterProjectDto {
 		description: 'ID del profesor evaluador.',
 	})
 	professorId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	schoolId?: number;
 }

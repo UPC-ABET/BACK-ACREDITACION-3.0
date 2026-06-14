@@ -86,14 +86,4 @@ export class FilterProgramDto {
 	@IsOptional()
 	@ApiProperty({ example: { es: 'degreeEs', en: 'degreeEn' }, required: false })
 	degree?: I18nText;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'ID del período académico' })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'ID de la escuela' })
-	schoolId?: number;
 }

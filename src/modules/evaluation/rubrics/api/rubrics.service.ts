@@ -16,7 +16,10 @@ import { RubricConfigService } from './rubric-config.service';
 import { RubricEntity } from '../model/rubrics.entity';
 import type { I18nText } from 'src/shared/types/i18n';
 import pLimit from 'p-limit';
-import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import {
+	programInSchoolSubquery,
+	schoolProgramFilterParams,
+} from 'src/libs/school-program.functions';
 
 @Injectable()
 export class RubricService extends BaseService<RubricRepository> {
@@ -186,20 +189,9 @@ export class RubricService extends BaseService<RubricRepository> {
 			.leftJoinAndSelect('studyPlan.program', 'program');
 
 		if (filters?.schoolId) {
-			qb.andWhere(
-				`program.id IN (
-					SELECT ch_prog.entity_code
-					FROM   organization.charts ch_prog
-					INNER JOIN organization.charts ch_sch
-					       ON  ch_sch.id = ch_prog.root_chart_id
-					WHERE  ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = :programTypeCode)
-					  AND  ch_sch.entity_type_id  = (SELECT id FROM core.types WHERE code = :schoolTypeCode)
-					  AND  ch_sch.entity_code = :schoolId
-				)`,
+			qb.andWhere(programInSchoolSubquery('program.id')).setParameters(
+				schoolProgramFilterParams(filters.schoolId),
 			);
-			qb.setParameter('programTypeCode', TYPE_CODES.ENTITY_TYPE.PROGRAM);
-			qb.setParameter('schoolTypeCode', TYPE_CODES.ENTITY_TYPE.SCHOOL);
-			qb.setParameter('schoolId', filters.schoolId);
 		}
 
 		if (filters?.programId) {
