@@ -235,6 +235,7 @@ export class IfcViewService {
 					}
 				: null,
 			requesterInChain: Boolean(header.requesterInChain),
+			requesterHasHigherLevel: Boolean(header.requesterHasHigherLevel),
 		};
 
 		const outcomesByFinding = new Map<number, any[]>();

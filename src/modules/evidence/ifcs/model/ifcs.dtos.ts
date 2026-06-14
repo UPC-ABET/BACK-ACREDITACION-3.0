@@ -224,6 +224,12 @@ export class IfcHeaderDto {
 			'True when the requester is the own coordinator OR any ancestor of the course in the chart tree. Drives the Edit button on the view page.',
 	})
 	requesterInChain: boolean;
+	@ApiProperty({
+		example: true,
+		description:
+			'True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). Drives the Approve/Reject buttons on the view page.',
+	})
+	requesterHasHigherLevel: boolean;
 }
 
 export class IfcOutcomeItemDto {
