@@ -5,6 +5,7 @@ export interface ChartRow {
 	code: string;
 	parentCode: string;
 	title: I18nText;
+	professorCode: string;
 	email: string;
 	entityType: string;
 	entityCode: string;
