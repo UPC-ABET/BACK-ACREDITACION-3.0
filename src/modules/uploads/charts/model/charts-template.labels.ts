@@ -4,7 +4,7 @@ export const chartsTemplateLabels: Record<string, Record<string, string>> = {
 		parentCode: 'Padre',
 		title: 'Unidad académica',
 		professorCode: 'Código de docente',
-		email: 'Correo del responsable',
+		email: 'Correo del docente',
 		entityType: 'Tipo de entidad',
 		entityCode: 'Código de entidad',
 		entityLegendSheet: 'Tipos de entidad',
@@ -47,8 +47,8 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 		titleEmpty: 'El título es obligatorio.',
 		professorCodeEmpty: 'El código de docente es obligatorio.',
 		professorNotFound: 'No existe un docente con ese código.',
-		emailEmpty: 'El correo del responsable es obligatorio.',
-		emailTooLong: 'El correo del responsable supera el largo máximo permitido (255 caracteres).',
+		emailEmpty: 'El correo del docente es obligatorio.',
+		emailTooLong: 'El correo del docente supera el largo máximo permitido (255 caracteres).',
 		inconsistentEmailForProfessor:
 			'El mismo código de docente aparece con correos distintos en el archivo.',
 		inconsistentProfessorForEmail:
