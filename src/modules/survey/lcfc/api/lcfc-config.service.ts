@@ -7,6 +7,7 @@ import {
 	UpdateLcfcConfigStatusDto,
 } from '../model/lcfc.dtos';
 import { camelizeKeys } from 'src/libs/case.functions';
+import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 
 @Injectable()
 export class LcfcConfigService {
@@ -22,16 +23,12 @@ export class LcfcConfigService {
 		);
 
 		if (sections.length === 0) {
-			throw new BadRequestException(
-				'No course sections found for the specified period and program.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noCourseSections);
 		}
 
 		const outcomeId = await this.configRepo.findFirstProgramOutcomeId(dto.programId);
 		if (!outcomeId) {
-			throw new BadRequestException(
-				`No outcomes found for program ${dto.programId}. Verify that outcomes exist in accreditation.outcomes.`,
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noProgramOutcomes);
 		}
 
 		let created = 0;
@@ -145,8 +142,7 @@ export class LcfcConfigService {
 		let updated = 0;
 		for (const item of dto.updates) {
 			const existing = await this.configRepo.findOneById(item.configId);
-			if (!existing)
-				throw new NotFoundException(`LCFC configuration with ID ${item.configId} not found.`);
+			if (!existing) throw new NotFoundException(lcfcValidationStrings.error.configNotFound);
 			await this.configRepo.update(item.configId, { isActive: item.isActive });
 			updated++;
 		}

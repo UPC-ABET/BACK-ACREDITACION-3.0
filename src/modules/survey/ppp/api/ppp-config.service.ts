@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PppConfigRepository, PPP_SURVEY_TYPE } from '../core/ppp-config.repository';
 import { PppValidation } from '../core/ppp.validation';
+import { pppValidationStrings } from '../config/strings/ppp.validation';
 import {
 	CreatePppConfigDto,
 	UpdatePppConfigDto,
@@ -47,7 +48,7 @@ export class PppConfigService {
 
 	async getById(id: number) {
 		const config = await this.configRepo.findOnePpp(id);
-		if (!config) throw new NotFoundException(`PPP configuration with ID ${id} not found`);
+		if (!config) throw new NotFoundException(pppValidationStrings.error.configNotFound);
 		config.extra = camelizeKeys(config.extra);
 		return config;
 	}

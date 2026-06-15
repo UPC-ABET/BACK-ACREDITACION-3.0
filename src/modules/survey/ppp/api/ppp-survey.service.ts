@@ -5,6 +5,7 @@ import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
 import { PppValidation } from '../core/ppp.validation';
+import { pppValidationStrings } from '../config/strings/ppp.validation';
 import { i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
@@ -28,19 +29,13 @@ export class PppSurveyService {
 
 	private async getPppTypeId(): Promise<number> {
 		const id = await this.surveyRepo.getPppTypeId(PPP_TYPE_CODE);
-		if (!id)
-			throw new BadRequestException(
-				`PPP survey type (${PPP_TYPE_CODE}) not found. Run the type seeds.`,
-			);
+		if (!id) throw new BadRequestException(pppValidationStrings.error.surveyTypeMissing);
 		return id;
 	}
 
 	private async getPppStatusId(): Promise<number> {
 		const id = await this.surveyRepo.getPppStatusTypeId(PPP_STATUS_ACTIVE_CODE);
-		if (!id)
-			throw new BadRequestException(
-				`Survey status (${PPP_STATUS_ACTIVE_CODE}) not found. Run the type seeds.`,
-			);
+		if (!id) throw new BadRequestException(pppValidationStrings.error.surveyStatusMissing);
 		return id;
 	}
 
@@ -164,9 +159,7 @@ export class PppSurveyService {
 		});
 
 		if (configs.length === 0) {
-			throw new BadRequestException(
-				'No active PPP configurations found for the selected program and period. Create the outcome configurations first.',
-			);
+			throw new BadRequestException(pppValidationStrings.error.noActiveConfig);
 		}
 
 		const workbook = new ExcelJS.Workbook();
@@ -179,16 +172,15 @@ export class PppSurveyService {
 			const buffer = Buffer.from(base64.trim(), 'base64');
 			await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
 		} catch {
-			throw new BadRequestException('The provided base64 file is not a valid Excel file');
+			throw new BadRequestException(pppValidationStrings.error.invalidExcelFile);
 		}
 
 		const worksheet = workbook.worksheets[0];
-		if (!worksheet) throw new BadRequestException('The Excel file contains no sheets');
+		if (!worksheet) throw new BadRequestException(pppValidationStrings.error.excelNoSheets);
 
 		const rows = sheetToObjects(worksheet);
 
-		if (rows.length === 0)
-			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
+		if (rows.length === 0) throw new BadRequestException(pppValidationStrings.error.excelEmpty);
 
 		const results = {
 			total: rows.length,
@@ -247,6 +239,16 @@ export class PppSurveyService {
 				continue;
 			}
 
+			// campus_id and course_section_id are NOT NULL FKs on the survey; the Excel
+			// does not provide them, so resolve them from the student (or a fallback).
+			const placement = await this.surveyRepo.resolveCourseSectionAndCampus(student.id);
+			if (!placement) {
+				results.failed++;
+				results.errors.push(`Row ${rowNum}: No course section available to register the survey`);
+				continue;
+			}
+			const resolvedCampusId = dto.campusId || placement.campusId;
+
 			// Extract scores from Excel columns (one column per outcome config, in order)
 			const scores: { outcomeId: number; score: number }[] = [];
 			configs.forEach((config, idx) => {
@@ -278,11 +280,11 @@ export class PppSurveyService {
 					surveyStatusTypeId: statusId,
 					studentId: student.id,
 					academicPeriodId: dto.academicPeriodId,
-					campusId: dto.campusId,
+					campusId: resolvedCampusId,
 					programId: dto.programId,
 					surveyNumber: Number(normalizedRow.practiceNumber),
 					information: information as any,
-					courseSectionId: 1,
+					courseSectionId: placement.courseSectionId,
 				});
 
 				if (scores.length > 0) {
