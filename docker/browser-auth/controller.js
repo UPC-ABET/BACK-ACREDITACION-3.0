@@ -36,6 +36,7 @@ async function startSession({ sessionId, intranetUrl, authStatePath }) {
 	try {
 		const browser = await chromium.launch({
 			headless: false,
+			executablePath: process.env.CHROMIUM_PATH || undefined,
 			args: ['--no-sandbox', '--disable-dev-shm-usage', '--start-maximized'],
 		});
 		session.browser = browser;

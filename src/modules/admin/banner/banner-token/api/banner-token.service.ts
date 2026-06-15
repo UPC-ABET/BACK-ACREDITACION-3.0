@@ -36,8 +36,17 @@ export class BannerTokenService {
 	constructor(private readonly config: ConfigService) {}
 
 	async getValidToken(forceRefresh = false): Promise<string> {
-		if (!forceRefresh && this.cachedToken && !this.isExpiring(this.cachedExpMs)) {
-			return this.cachedToken;
+		if (!forceRefresh) {
+			if (this.cachedToken && !this.isExpiring(this.cachedExpMs)) {
+				return this.cachedToken;
+			}
+			// A streamed login (browser-auth) writes a fresh token to auth_state.json
+			// without touching this cache — adopt it if still valid, no browser launch.
+			const fileToken = this.readTokenFromState();
+			if (fileToken && !this.isExpiring(this.decodeExpMs(fileToken))) {
+				this.cache(fileToken);
+				return fileToken;
+			}
 		}
 		if (this.refreshing) return this.refreshing;
 		this.refreshing = this.headlessRefresh().finally(() => {
@@ -47,13 +56,21 @@ export class BannerTokenService {
 	}
 
 	getStatus(): { status: SessionStatus; tokenExp: string | null } {
-		const expMs = this.cachedExpMs ?? this.decodeExpMs(this.readTokenFromState());
+		// Use the freshest of the cache and the file: a streamed login updates the
+		// file but not the cache, so the file may hold a newer token than the cache.
+		const expMs = this.latestExp(this.cachedExpMs, this.decodeExpMs(this.readTokenFromState()));
 		if (expMs === null) return { status: 'expired', tokenExp: null };
 
 		const remaining = expMs - Date.now();
 		const status: SessionStatus =
 			remaining <= 0 ? 'expired' : remaining <= EXPIRING_WINDOW_MS ? 'expiring' : 'active';
 		return { status, tokenExp: new Date(expMs).toISOString() };
+	}
+
+	private latestExp(a: number | null, b: number | null): number | null {
+		if (a === null) return b;
+		if (b === null) return a;
+		return Math.max(a, b);
 	}
 
 	// Refreshes only if the token is expired/expiring (no-op if valid), and
