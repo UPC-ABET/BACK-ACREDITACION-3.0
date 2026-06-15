@@ -15,6 +15,11 @@ export const professorsRoutes = {
 				summary: 'Obtener profesor por ID de usuario',
 				params: [{ name: 'id', description: 'ID del usuario', type: Number }],
 			},
+			lookup: {
+				method: 'GET',
+				route: '/lookup',
+				summary: 'Buscar profesores para select (paginado, búsqueda por código o nombre)',
+			},
 			maintenanceCreate: {
 				method: 'POST',
 				route: '/maintenance',

@@ -11,6 +11,8 @@ import {
 	UpdateProfessorMaintenanceDto,
 	CreateProfessorMaintenanceDto,
 	ProfessorMaintenanceItem,
+	ProfessorLookupQueryDto,
+	ProfessorLookupItem,
 } from '../model/professors.dtos';
 import { DataSource, EntityManager } from 'typeorm';
 import { ProfessorEntity } from '../model/professors.entity';
@@ -78,6 +80,34 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 
 	async getByUserId(userId: number) {
 		return await this.repository.getByUserId(userId);
+	}
+
+	async getLookup(query: ProfessorLookupQueryDto): Promise<PaginatedResult<ProfessorLookupItem>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [professors, total] = await this.repository.findLookupPage(
+			query.search,
+			query.unassigned === true,
+			skip,
+			take,
+		);
+
+		const items = professors.map((professor) => ({
+			id: professor.id,
+			staffId: professor.staffId,
+			code: professor.code ?? null,
+			firstName: professor.staff.firstName,
+			lastName: professor.staff.lastName,
+			user: professor.staff.user
+				? {
+						id: professor.staff.user.id,
+						firstName: professor.staff.user.firstName,
+						lastName: professor.staff.user.lastName,
+						email: professor.staff.user.email,
+					}
+				: null,
+		}));
+
+		return toPaginated(items, total, page, pageSize);
 	}
 
 	async getMaintenanceList(

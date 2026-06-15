@@ -60,6 +60,38 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 			.getManyAndCount();
 	}
 
+	async findLookupPage(
+		search: string | undefined,
+		unassigned: boolean,
+		skip: number,
+		take: number,
+	): Promise<[ProfessorEntity[], number]> {
+		const qb = this.dataSource
+			.createQueryBuilder(ProfessorEntity, 'professor')
+			.innerJoinAndSelect('professor.staff', 'staff')
+			.leftJoinAndSelect('staff.user', 'user');
+
+		if (unassigned) {
+			qb.andWhere('staff.userId IS NULL');
+		}
+
+		if (search?.trim()) {
+			const term = `%${search.trim()}%`;
+			qb.andWhere(
+				'(professor.code ILIKE :term OR staff.firstName ILIKE :term OR staff.lastName ILIKE :term)',
+				{ term },
+			);
+		}
+
+		return await qb
+			.orderBy('staff.lastName', 'ASC')
+			.addOrderBy('staff.firstName', 'ASC')
+			.addOrderBy('professor.id', 'ASC')
+			.skip(skip)
+			.take(take)
+			.getManyAndCount();
+	}
+
 	async findDeleteBlockerCounts(
 		professorId: number,
 		staffId: number,

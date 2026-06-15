@@ -53,6 +53,8 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 			'El mismo código de docente aparece con correos distintos en el archivo.',
 		inconsistentProfessorForEmail:
 			'El mismo correo aparece con códigos de docente distintos en el archivo.',
+		emailMismatchForLinkedUser:
+			'El docente ya tiene un usuario vinculado con un correo distinto. Use el correo del usuario vinculado.',
 		entityCodeWithoutType: 'Indicó un código de entidad sin tipo de entidad.',
 		entityTypeInvalid: 'El código de tipo de entidad no es válido.',
 		entityNotFound: 'No existe la entidad indicada para ese tipo.',
@@ -70,6 +72,8 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 			'The same professor code appears with different emails in the file.',
 		inconsistentProfessorForEmail:
 			'The same email appears with different professor codes in the file.',
+		emailMismatchForLinkedUser:
+			"The professor is already linked to a user with a different email. Use the linked user's email.",
 		entityCodeWithoutType: 'An entity code was provided without an entity type.',
 		entityTypeInvalid: 'The entity type code is not valid.',
 		entityNotFound: 'No entity exists with that code for the given type.',
