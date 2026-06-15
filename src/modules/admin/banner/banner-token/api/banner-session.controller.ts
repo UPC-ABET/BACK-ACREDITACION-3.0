@@ -4,6 +4,7 @@ import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/per
 import { BannerTokenService } from './banner-token.service';
 import {
 	SwaggerBannerSessionController,
+	SwaggerBannerSessionRefresh,
 	SwaggerBannerSessionStatus,
 } from './docs/banner-session.swagger';
 
@@ -15,5 +16,11 @@ export class BannerSessionController {
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	getStatus() {
 		return parseSuccessResponse(this.tokenService.getStatus());
+	}
+
+	@SwaggerBannerSessionRefresh()
+	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.POST })
+	async refresh() {
+		return parseSuccessResponse(await this.tokenService.refresh());
 	}
 }

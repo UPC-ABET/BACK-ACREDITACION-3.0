@@ -26,6 +26,18 @@ interface ScrapeStats {
 	errors: Array<{ step: string; key: string; message: string }>;
 }
 
+export interface RunSummary {
+	runId: string;
+	nivel: string;
+	periodo: string;
+	departamentos: string[];
+	status: ScrapeRunStatus;
+	startedAt: string;
+	finishedAt: string | null;
+	counts: ScrapeStats['counts'] | null;
+	triggeredBy: string | null;
+}
+
 @Injectable()
 export class ScraperService {
 	private readonly logger = new Logger(ScraperService.name);
@@ -40,9 +52,21 @@ export class ScraperService {
 		private readonly http: BannerHttpClient,
 	) {}
 
-	async run(dto: RunScrapeDto, triggeredBy: string | null): Promise<{ runId: string }> {
+	async run(
+		academicPeriodId: number,
+		dto: RunScrapeDto,
+		triggeredBy: string | null,
+	): Promise<{ runId: string }> {
 		if (this.running) {
 			throw new HttpException(scraperValidationStrings.error.scrapeInProgress, HttpStatus.CONFLICT);
+		}
+
+		const periodo = await this.departmentSourceRepository.findAcademicPeriodCode(academicPeriodId);
+		if (!periodo) {
+			throw new HttpException(
+				scraperValidationStrings.error.periodNotFound,
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
 		const nivel = dto.nivel?.trim() || DEFAULT_NIVEL;
@@ -58,13 +82,13 @@ export class ScraperService {
 		await this.scrapeRunRepository.createRun({
 			id: runId,
 			nivel,
-			periodo: dto.periodo,
+			periodo,
 			departamentos,
 			triggeredBy,
 		});
 
 		this.running = true;
-		void this.execute(runId, nivel, dto.periodo, departamentos).finally(() => {
+		void this.execute(runId, nivel, periodo, departamentos).finally(() => {
 			this.running = false;
 		});
 
@@ -77,6 +101,28 @@ export class ScraperService {
 			throw new HttpException(scraperValidationStrings.error.runNotFound, HttpStatus.NOT_FOUND);
 		}
 		return { status: run.status, stats: run.stats as ScrapeStats | null };
+	}
+
+	async listRuns(academicPeriodId: number): Promise<RunSummary[]> {
+		const periodo = await this.departmentSourceRepository.findAcademicPeriodCode(academicPeriodId);
+		if (!periodo) {
+			throw new HttpException(
+				scraperValidationStrings.error.periodNotFound,
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+		const runs = await this.scrapeRunRepository.findByPeriodo(periodo);
+		return runs.map((run) => ({
+			runId: run.id,
+			nivel: run.nivel,
+			periodo: run.periodo,
+			departamentos: run.departamentos,
+			status: run.status,
+			startedAt: run.startedAt.toISOString(),
+			finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
+			counts: (run.stats as ScrapeStats | null)?.counts ?? null,
+			triggeredBy: run.triggeredBy,
+		}));
 	}
 
 	private async execute(

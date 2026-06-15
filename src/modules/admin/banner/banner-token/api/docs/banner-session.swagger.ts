@@ -7,3 +7,5 @@ export const SwaggerBannerSessionController = () =>
 	ControllerWithTags({ tag: cfg.tag, route: cfg.route });
 
 export const SwaggerBannerSessionStatus = () => HttpMethodWithSwagger(cfg.operation.status);
+
+export const SwaggerBannerSessionRefresh = () => HttpMethodWithSwagger(cfg.operation.refresh);

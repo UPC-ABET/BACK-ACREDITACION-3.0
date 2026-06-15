@@ -3,10 +3,6 @@ import { ConfigService } from '@nestjs/config';
 
 export type ControllerStatus = 'active' | 'completed' | 'failed' | 'expired';
 
-// HTTP client for the browser-auth container's private control API. The
-// container owns the Playwright controller that launches a headful browser on
-// xvfb, navigates to the intranet, watches for localStorage.token, and writes
-// auth_state.json to the shared volume. This client only drives that lifecycle.
 @Injectable()
 export class BrowserAuthClient {
 	constructor(private readonly config: ConfigService) {}
@@ -22,7 +18,8 @@ export class BrowserAuthClient {
 			}),
 		});
 		if (!res.ok) {
-			throw new Error(`browser-auth start failed: HTTP ${res.status}`);
+			const body = await res.text().catch(() => '');
+			throw new Error(`browser-auth start failed: HTTP ${res.status} ${body}`.trim());
 		}
 	}
 

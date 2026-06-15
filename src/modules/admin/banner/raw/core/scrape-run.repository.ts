@@ -34,4 +34,11 @@ export class ScrapeRunRepository {
 	async findById(id: string): Promise<ScrapeRunEntity | null> {
 		return await this.repository.findOne({ where: { id } });
 	}
+
+	async findByPeriodo(periodo: string): Promise<ScrapeRunEntity[]> {
+		return await this.repository.find({
+			where: { periodo },
+			order: { startedAt: 'DESC' },
+		});
+	}
 }

@@ -12,8 +12,7 @@ export interface AuthSession {
 	watcher?: ReturnType<typeof setInterval>;
 }
 
-// Single-flight, in-memory session holder: at most one Banner login session
-// exists at a time (per the spec's single concurrent session requirement).
+// At most one login session at a time (single concurrent session).
 @Injectable()
 export class AuthSessionStore {
 	private current: AuthSession | null = null;

@@ -10,9 +10,8 @@ interface StreamTokenPayload {
 	purpose: string;
 }
 
-// Mints/verifies the one-time, short-TTL JWT that authorizes a single noVNC
-// websocket connection. Uses a dedicated secret (AUTH_SESSION_TOKEN_SECRET),
-// separate from the app's JWT_SECRET.
+// Signs/verifies with a dedicated secret (AUTH_SESSION_TOKEN_SECRET), not the
+// app's JWT_SECRET.
 @Injectable()
 export class SessionTokenService {
 	constructor(

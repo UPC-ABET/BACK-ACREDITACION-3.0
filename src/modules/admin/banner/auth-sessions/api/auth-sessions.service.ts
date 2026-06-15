@@ -70,12 +70,9 @@ export class AuthSessionService {
 		};
 	}
 
-	// Absolute ws(s) URL the frontend can hand straight to `new WebSocket(...)`.
-	// Behind Nginx, TLS terminates at the edge, so x-forwarded-proto tells us the
-	// public scheme; default to wss. Falls back to a relative path if no host.
+	// Scheme from x-forwarded-proto (TLS terminates at Nginx), default wss; the
+	// global prefix is part of the public path Nginx routes to the backend.
 	private buildWsUrl(token: string, origin: RequestOrigin): string {
-		// Include the global prefix: the public path is /<prefix>/banner/auth/stream
-		// (that's what Nginx routes to the backend).
 		const path = `/${API_GLOBAL_PREFIX}/banner/auth/stream?token=${token}`;
 		if (!origin.host) return path;
 		const scheme = origin.forwardedProto === 'http' ? 'ws' : 'wss';
@@ -99,7 +96,6 @@ export class AuthSessionService {
 		return { status: 'failed' };
 	}
 
-	// Called by the ws proxy gateway: validate + single-use consume of the token.
 	consumeStreamToken(token: string | null): string {
 		if (!token) throw new HttpException('unauthorized', HttpStatus.UNAUTHORIZED);
 		const sessionId = this.tokenService.verify(token);

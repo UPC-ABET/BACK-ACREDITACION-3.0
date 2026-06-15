@@ -17,4 +17,12 @@ export class DepartmentSourceRepository {
 		`);
 		return rows.map((row) => row.code);
 	}
+
+	async findAcademicPeriodCode(academicPeriodId: number): Promise<string | null> {
+		const rows: Array<{ code: string }> = await this.dataSource.query(
+			`SELECT code AS "code" FROM academic.academic_periods WHERE id = $1 LIMIT 1`,
+			[academicPeriodId],
+		);
+		return rows[0]?.code ?? null;
+	}
 }

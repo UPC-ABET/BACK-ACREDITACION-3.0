@@ -18,6 +18,9 @@ interface StorageState {
 }
 
 const REFRESH_SKEW_MS = 60_000;
+// After a failed refresh (dead SSO cookies), don't relaunch Chromium on every
+// "Try to refresh" press — report expired until this cooldown passes.
+const REFRESH_COOLDOWN_MS = 30_000;
 const EXPIRING_WINDOW_MS = 30 * 60_000;
 const DEFAULT_TOKEN_TTL_MS = 11 * 60 * 60_000;
 const WELCOME_APP_PATH = '/welcome/app/consulta-de-alumnos-matriculados';
@@ -28,6 +31,7 @@ export class BannerTokenService {
 	private cachedToken: string | null = null;
 	private cachedExpMs: number | null = null;
 	private refreshing: Promise<string> | null = null;
+	private lastRefreshFailMs: number | null = null;
 
 	constructor(private readonly config: ConfigService) {}
 
@@ -50,6 +54,29 @@ export class BannerTokenService {
 		const status: SessionStatus =
 			remaining <= 0 ? 'expired' : remaining <= EXPIRING_WINDOW_MS ? 'expiring' : 'active';
 		return { status, tokenExp: new Date(expMs).toISOString() };
+	}
+
+	// Refreshes only if the token is expired/expiring (no-op if valid), and
+	// short-circuits during the post-failure cooldown — so repeated presses don't
+	// relaunch Chromium. Returns expired (not throws) when the cookies are dead.
+	async refresh(): Promise<{ status: SessionStatus; tokenExp: string | null }> {
+		if (
+			this.lastRefreshFailMs !== null &&
+			Date.now() - this.lastRefreshFailMs < REFRESH_COOLDOWN_MS
+		) {
+			return { status: 'expired', tokenExp: null };
+		}
+		try {
+			await this.getValidToken(false);
+			this.lastRefreshFailMs = null;
+		} catch (error) {
+			if (error instanceof SessionExpiredError) {
+				this.lastRefreshFailMs = Date.now();
+				return { status: 'expired', tokenExp: null };
+			}
+			throw error;
+		}
+		return this.getStatus();
 	}
 
 	private isExpiring(expMs: number | null): boolean {

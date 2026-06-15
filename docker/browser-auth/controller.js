@@ -1,11 +1,7 @@
 'use strict';
 
-// Browser-auth controller: the backend-owned Playwright controller that runs
-// INSIDE the browser-auth container (headful Chromium on the Xvfb display so the
-// session is streamable over noVNC). NestJS drives its lifecycle over the private
-// control API. Mirrors the prototype main.ts login: navigate to the intranet,
-// wait for localStorage.token, then save the Playwright storage state to the
-// shared volume. Single session at a time (matches the API's single-flight).
+// Control API (driven by NestJS) that runs headful Chromium on the Xvfb display
+// so the login is streamable over noVNC, then saves the storage state on success.
 
 const http = require('http');
 const fs = require('fs');
@@ -30,32 +26,47 @@ async function teardownBrowser() {
 
 async function startSession({ sessionId, intranetUrl, authStatePath }) {
 	if (session && session.status === 'active') {
-		throw new Error('a login session is already in progress');
+		const err = new Error('a login session is already in progress');
+		err.code = 'IN_PROGRESS';
+		throw err;
 	}
 	session = { id: sessionId, status: 'active', browser: null };
 
-	const browser = await chromium.launch({
-		headless: false,
-		args: ['--no-sandbox', '--disable-dev-shm-usage', '--start-maximized'],
-	});
-	session.browser = browser;
+	let context;
+	try {
+		const browser = await chromium.launch({
+			headless: false,
+			args: ['--no-sandbox', '--disable-dev-shm-usage', '--start-maximized'],
+		});
+		session.browser = browser;
 
-	const context = await browser.newContext({ viewport: null });
-	const page = await context.newPage();
+		context = await browser.newContext({ viewport: null });
+		const page = await context.newPage();
 
-	await context.route('**/*', (route) => {
-		const request = route.request();
-		const isTopNav =
-			request.resourceType() === 'document' &&
-			request.isNavigationRequest() &&
-			request.frame() === page.mainFrame();
-		if (isTopNav && !ALLOWED_HOST.test(new URL(request.url()).hostname)) {
-			return route.abort();
-		}
-		return route.continue();
-	});
+		await context.route('**/*', (route) => {
+			const request = route.request();
+			const isTopNav =
+				request.resourceType() === 'document' &&
+				request.isNavigationRequest() &&
+				request.frame() === page.mainFrame();
+			if (isTopNav && !ALLOWED_HOST.test(new URL(request.url()).hostname)) {
+				return route.abort();
+			}
+			return route.continue();
+		});
 
-	await page.goto(intranetUrl, { waitUntil: 'domcontentloaded' });
+		await page.goto(intranetUrl, { waitUntil: 'domcontentloaded' });
+		registerTokenWatcher(page, context, authStatePath);
+	} catch (err) {
+		// Make the real cause observable, and clear the slot so it never sticks.
+		console.error('startSession failed:', err);
+		await teardownBrowser();
+		session = null;
+		throw err;
+	}
+}
+
+function registerTokenWatcher(page, context, authStatePath) {
 
 	// Detached watcher: survives the whole SSO redirect chain. On success, persist
 	// cookies + localStorage to the shared volume at 0600, then tear down.
@@ -99,7 +110,11 @@ const server = http.createServer((req, res) => {
 			}
 			startSession(body)
 				.then(() => send(res, 200, { sessionId: body.sessionId, status: 'active' }))
-				.catch((err) => send(res, 409, { error: err.message }));
+				.catch((err) =>
+					err && err.code === 'IN_PROGRESS'
+						? send(res, 409, { error: err.message })
+						: send(res, 500, { error: err.message }),
+				);
 		});
 		return;
 	}

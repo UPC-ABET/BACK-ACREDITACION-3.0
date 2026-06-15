@@ -16,9 +16,8 @@ interface PendingFrame {
 	binary: boolean;
 }
 
-// Authenticated wss -> private noVNC proxy. The browser/noVNC is never public;
-// the only way in is this proxy, which validates the one-time session token on
-// the upgrade handshake before piping frames to the browser-auth container.
+// The browser/noVNC is never public; this proxy is the only way in, and it
+// validates the one-time session token on the upgrade handshake before piping.
 @Injectable()
 export class BannerAuthStreamGateway implements OnApplicationBootstrap {
 	private readonly logger = new Logger(BannerAuthStreamGateway.name);
@@ -102,9 +101,15 @@ export class BannerAuthStreamGateway implements OnApplicationBootstrap {
 		upstream.on('close', closeBoth);
 		client.on('close', closeBoth);
 		upstream.on('error', (err) => {
-			this.logger.warn(`upstream ws ${sessionId}: ${err.message}`);
+			// 1005/1006 (no/abnormal close code) are normal when the viewer closes —
+			// don't log them as warnings.
+			if (!isBenignWsClose(err)) this.logger.warn(`upstream ws ${sessionId}: ${err.message}`);
 			closeBoth();
 		});
 		client.on('error', () => closeBoth());
 	}
+}
+
+function isBenignWsClose(err: Error): boolean {
+	return /invalid status code 10\d\d/i.test(err.message);
 }

@@ -10,6 +10,8 @@ export const SwaggerScraperController = () =>
 export const SwaggerScraperRun = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.run, body: RunScrapeDto });
 
+export const SwaggerScraperList = () => HttpMethodWithSwagger(cfg.operation.list);
+
 export const SwaggerScraperGetRun = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.getRun,

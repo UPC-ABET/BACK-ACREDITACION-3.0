@@ -1,10 +1,8 @@
-import { ArrayNotEmpty, IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsOptional, IsString } from 'class-validator';
 
+// Period comes from the X-Academic-Period-Id header, not the body. These are
+// optional overrides (defaults: UG, and all active programs' departments).
 export class RunScrapeDto {
-	@IsString()
-	@IsNotEmpty()
-	periodo: string;
-
 	@IsOptional()
 	@IsString()
 	nivel?: string;
