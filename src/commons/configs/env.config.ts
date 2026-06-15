@@ -69,6 +69,7 @@ const envSchema = z
 		AUTH_SESSION_TOKEN_SECRET: z.string().min(32).optional(),
 		AUTH_SESSION_TTL_SECONDS: z.string().regex(/^\d+$/).optional(),
 		BROWSER_AUTH_INTERNAL_URL: z.string().url().optional(),
+		BROWSER_AUTH_VNC_WS_URL: z.string().optional(),
 	})
 	.passthrough()
 	.refine(

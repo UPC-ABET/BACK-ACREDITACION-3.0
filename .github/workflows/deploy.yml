@@ -51,6 +51,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push browser-auth (Banner Option C login)
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/browser-auth
+          push: true
+          tags: ${{ env.IMAGE }}:browser-auth
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
