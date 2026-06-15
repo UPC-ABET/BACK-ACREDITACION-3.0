@@ -4,9 +4,12 @@ import { ConfigService } from '@nestjs/config';
 import { IncomingMessage, Server } from 'http';
 import { Duplex } from 'stream';
 import { RawData, WebSocket, WebSocketServer } from 'ws';
+import { API_GLOBAL_PREFIX } from 'src/shared/constants/app.constants';
 import { AuthSessionService } from '../api/auth-sessions.service';
 
-const STREAM_PATH = '/banner/auth/stream';
+// Nginx forwards the full path (incl. the global prefix) to the backend, and the
+// raw upgrade handler bypasses Nest's prefix stripping — so match the prefixed path.
+const STREAM_PATH = `/${API_GLOBAL_PREFIX}/banner/auth/stream`;
 
 interface PendingFrame {
 	data: RawData;

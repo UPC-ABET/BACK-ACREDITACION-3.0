@@ -6,6 +6,7 @@ import { ClassSerializerInterceptor, LogLevel, Logger, ValidationPipe } from '@n
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
+import { API_GLOBAL_PREFIX } from './shared/constants/app.constants';
 
 const LOG_LEVELS: Record<string, LogLevel[]> = {
 	error: ['error'],
@@ -23,7 +24,7 @@ async function bootstrap() {
 	const configService = app.get(ConfigService);
 	const port = configService.getOrThrow<number>('APP_PORT');
 
-	app.setGlobalPrefix('api');
+	app.setGlobalPrefix(API_GLOBAL_PREFIX);
 
 	// Base64-encoded Excel uploads (bulk survey import) exceed the 100kb Express
 	// default, so raise the JSON/urlencoded body limit.

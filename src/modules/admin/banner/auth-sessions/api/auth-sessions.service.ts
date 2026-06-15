@@ -4,6 +4,7 @@ import { AuthSessionStatus, AuthSessionStore } from '../core/auth-session.store'
 import { SessionTokenService } from '../core/session-token.service';
 import { BrowserAuthClient } from '../core/browser-auth.client';
 import { authSessionsValidationStrings } from '../config/strings/auth-sessions.validation';
+import { API_GLOBAL_PREFIX } from 'src/shared/constants/app.constants';
 
 const WATCH_INTERVAL_MS = 2_000;
 const SESSION_TIMEOUT_MS = 10 * 60_000;
@@ -13,6 +14,11 @@ export interface StartSessionResult {
 	wsUrl: string;
 	sessionToken: string;
 	expiresAt: string;
+}
+
+export interface RequestOrigin {
+	host?: string;
+	forwardedProto?: string;
 }
 
 @Injectable()
@@ -25,7 +31,7 @@ export class AuthSessionService {
 		private readonly browserAuth: BrowserAuthClient,
 	) {}
 
-	async start(startedBy: string | null): Promise<StartSessionResult> {
+	async start(startedBy: string | null, origin: RequestOrigin = {}): Promise<StartSessionResult> {
 		if (this.store.hasActive()) {
 			throw new HttpException(
 				authSessionsValidationStrings.error.sessionInProgress,
@@ -58,10 +64,22 @@ export class AuthSessionService {
 
 		return {
 			sessionId,
-			wsUrl: `/banner/auth/stream?token=${token}`,
+			wsUrl: this.buildWsUrl(token, origin),
 			sessionToken: token,
 			expiresAt: expiresAt.toISOString(),
 		};
+	}
+
+	// Absolute ws(s) URL the frontend can hand straight to `new WebSocket(...)`.
+	// Behind Nginx, TLS terminates at the edge, so x-forwarded-proto tells us the
+	// public scheme; default to wss. Falls back to a relative path if no host.
+	private buildWsUrl(token: string, origin: RequestOrigin): string {
+		// Include the global prefix: the public path is /<prefix>/banner/auth/stream
+		// (that's what Nginx routes to the backend).
+		const path = `/${API_GLOBAL_PREFIX}/banner/auth/stream?token=${token}`;
+		if (!origin.host) return path;
+		const scheme = origin.forwardedProto === 'http' ? 'ws' : 'wss';
+		return `${scheme}://${origin.host}${path}`;
 	}
 
 	getStatus(id: string): { status: AuthSessionStatus } {
