@@ -96,11 +96,16 @@ export class ChartHeadsRepository {
 		const deanRows: ChartHeadDeanViewDto[] = await this.dataSource.query(
 			`SELECT c.id AS "chartId", s.id AS "staffId", p.code AS "code",
 				s.first_name AS "firstName", s.last_name AS "lastName", s.user_id AS "userId",
+				CASE WHEN u.id IS NULL THEN NULL ELSE
+					json_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name,
+						'email', u.email)
+				END AS "user",
 				c.title AS "title"
 			 FROM organization.charts c
 			 JOIN organization.staff s ON s.id = c.staff_id
 			 JOIN core.types et ON et.id = c.entity_type_id
 			 LEFT JOIN academic.professors p ON p.staff_id = s.id
+			 LEFT JOIN organization.users u ON u.id = s.user_id
 			 WHERE c.academic_period_id = $1 AND et.code = $2 AND c.is_active = true
 			 ORDER BY c.id
 			 LIMIT 1`,
@@ -110,11 +115,16 @@ export class ChartHeadsRepository {
 		const directors: ChartHeadDirectorViewDto[] = await this.dataSource.query(
 			`SELECT c.id AS "chartId", s.id AS "staffId", p.code AS "code",
 				s.first_name AS "firstName", s.last_name AS "lastName", s.user_id AS "userId",
+				CASE WHEN u.id IS NULL THEN NULL ELSE
+					json_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name,
+						'email', u.email)
+				END AS "user",
 				c.title AS "title", c.entity_code AS "schoolId", sch.code AS "schoolCode"
 			 FROM organization.charts c
 			 JOIN organization.staff s ON s.id = c.staff_id
 			 JOIN core.types et ON et.id = c.entity_type_id
 			 LEFT JOIN academic.professors p ON p.staff_id = s.id
+			 LEFT JOIN organization.users u ON u.id = s.user_id
 			 LEFT JOIN organization.schools sch ON sch.id = c.entity_code
 			 WHERE c.academic_period_id = $1 AND et.code = $2 AND c.is_active = true
 			 ORDER BY sch.code`,

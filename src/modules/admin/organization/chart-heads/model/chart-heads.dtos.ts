@@ -78,6 +78,20 @@ export class ConfigureChartHeadsDto {
 	directors: ChartDirectorDto[];
 }
 
+export class ChartHeadUserViewDto {
+	@ApiProperty({ example: 88 })
+	id: number;
+
+	@ApiProperty({ example: 'Juan' })
+	firstName: string;
+
+	@ApiProperty({ example: 'Perez' })
+	lastName: string;
+
+	@ApiProperty({ example: 'juan.perez@example.com' })
+	email: string;
+}
+
 export class ChartHeadDeanViewDto {
 	@ApiProperty({ example: 1 })
 	chartId: number;
@@ -96,6 +110,9 @@ export class ChartHeadDeanViewDto {
 
 	@ApiProperty({ example: 12, nullable: true })
 	userId: number | null;
+
+	@ApiProperty({ type: ChartHeadUserViewDto, nullable: true })
+	user: ChartHeadUserViewDto | null;
 
 	@ApiProperty({ example: { es: 'Decanato', en: "Dean's Office" } })
 	title: I18nText;
