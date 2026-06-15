@@ -162,6 +162,10 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.studyPlanCourseNotFound);
 		}
 
+		if (!(isCapstone && isEbGrade)) {
+			this.validateCriteriaScores(dto.questions);
+		}
+
 		const savedRubric = await this.dataSource.transaction(async (manager) => {
 			const rubric = manager.create(RubricEntity, {
 				rubricTypeId: dto.rubricTypeId,
@@ -183,7 +187,8 @@ export class RubricConfigService {
 				});
 				const savedQuestion = await manager.save(question);
 
-				const criteriaEntities = questionDto.criterias.map((criteriaDto) =>
+				const sortedCriterias = [...questionDto.criterias].sort((a, b) => a.minValue - b.minValue);
+				const criteriaEntities = sortedCriterias.map((criteriaDto) =>
 					manager.create(RubricQuestionCriteriaEntity, {
 						rubricQuestionId: savedQuestion.id,
 						criteria: toI18n(criteriaDto.criteria),
@@ -258,6 +263,50 @@ export class RubricConfigService {
 		}
 
 		return rubric;
+	}
+
+	private validateCriteriaScores(
+		questions: { criterias: { minValue: number; maxValue: number }[] }[],
+	): void {
+		// Per-question: minValue <= maxValue, no overlaps
+		for (let qi = 0; qi < questions.length; qi++) {
+			const sorted = [...questions[qi].criterias].sort((a, b) => a.minValue - b.minValue);
+			for (let ci = 0; ci < sorted.length; ci++) {
+				const c = sorted[ci];
+				if (c.minValue > c.maxValue) {
+					throw new BadRequestException({
+						message: rubricsValidationStrings.error.criteriaInvalidRange,
+						errors: [
+							`question ${qi + 1}, criteria ${ci + 1}: minValue (${c.minValue}) > maxValue (${c.maxValue})`,
+						],
+					});
+				}
+				if (ci > 0) {
+					const prev = sorted[ci - 1];
+					if (c.minValue <= prev.maxValue) {
+						throw new BadRequestException({
+							message: rubricsValidationStrings.error.criteriaOverlap,
+							errors: [
+								`question ${qi + 1}: criteria ${ci} (max ${prev.maxValue}) overlaps criteria ${ci + 1} (min ${c.minValue})`,
+							],
+						});
+					}
+				}
+			}
+		}
+
+		// Sum of each question's highest maxValue must equal 20
+		const total = questions.reduce((sum, q) => {
+			const maxVal = Math.max(...q.criterias.map((c) => c.maxValue));
+			return sum + maxVal;
+		}, 0);
+
+		if (Math.round(total * 1e6) !== Math.round(20 * 1e6)) {
+			throw new BadRequestException({
+				message: rubricsValidationStrings.error.criteriaTotalNot20,
+				errors: [`sum of max scores per question = ${total}, expected 20`],
+			});
+		}
 	}
 
 	async getRubricById(id: number): Promise<RubricEntity> {

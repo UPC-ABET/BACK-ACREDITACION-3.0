@@ -11,6 +11,9 @@ export const rubricsValidationStrings = {
 		noRubricForCourse: 'error.rubric.noRubricForCourse',
 		gradeTypeNotFound: 'error.rubric.gradeTypeNotFound',
 		rubricTypesNotConfigured: 'error.rubric.rubricTypesNotConfigured',
+		criteriaOverlap: 'error.rubric.criteriaOverlap',
+		criteriaInvalidRange: 'error.rubric.criteriaInvalidRange',
+		criteriaTotalNot20: 'error.rubric.criteriaTotalNot20',
 	},
 	result: {
 		createFailed: 'error.rubric.createFailed',
