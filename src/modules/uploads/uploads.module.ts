@@ -11,6 +11,7 @@ import { ChartsUploadModule } from './charts/charts-upload.module';
 import { OutcomesUploadModule } from './outcomes/outcomes-upload.module';
 import { ArticulationUploadModule } from './articulation/articulation-upload.module';
 import { StudentSectionsUploadModule } from './student-sections/student-sections-upload.module';
+import { ProjectsUploadModule } from './projects/projects-upload.module';
 
 @Module({
 	imports: [
@@ -25,6 +26,7 @@ import { StudentSectionsUploadModule } from './student-sections/student-sections
 		GradesRcUploadModule,
 		GradesRvUploadModule,
 		StudentSectionsUploadModule,
+		ProjectsUploadModule,
 	],
 })
 export class UploadsModule {}
