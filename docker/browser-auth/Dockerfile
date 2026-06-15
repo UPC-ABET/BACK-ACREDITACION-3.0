@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================
-# browser-auth — streamed remote browser for Banner Option C login.
+# browser-auth — streamed remote browser for Streamed-login browser.
 # Backend-owned, never published publicly: reachable only from the NestJS
 # backend over the private sys_acc_web network.
 #   Xvfb (:99) + headful Chromium (Playwright) + x11vnc + websockify(:6080)

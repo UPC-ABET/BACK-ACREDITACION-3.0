@@ -1,0 +1,42 @@
+name: Build browser-auth image
+
+# Kept OFF the production deploy pipeline: this image (Banner Streamed
+# login) rarely changes, so rebuilding it on every app deploy is wasted work.
+# Builds on demand (Actions tab -> Run workflow) or automatically only when the
+# image source under docker/browser-auth/ changes on production.
+#
+# NOTE: the ghcr ":browser-auth" tag must exist before the first deploy that
+# references it (docker-compose.prod.yml) — run this workflow once up front.
+on:
+  workflow_dispatch:
+  push:
+    branches: [production]
+    paths:
+      - 'docker/browser-auth/**'
+
+env:
+  IMAGE: ghcr.io/upc-abet/back-acreditacion-3.0
+
+jobs:
+  build-browser-auth:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push browser-auth
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/browser-auth
+          push: true
+          tags: ${{ env.IMAGE }}:browser-auth
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

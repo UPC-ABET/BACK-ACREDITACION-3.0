@@ -2,7 +2,7 @@
 	"name": "browser-auth-controller",
 	"version": "1.0.0",
 	"private": true,
-	"description": "Backend-owned Playwright controller for the Banner Option C streamed login.",
+	"description": "Backend-owned Playwright controller for the Banner streamed login.",
 	"main": "controller.js",
 	"dependencies": {
 		"playwright": "1.60.0"

@@ -20,7 +20,7 @@ services:
     networks:
       - sys_acc_web
 
-  # Banner Option C streamed-login browser. Private to sys_acc_web — no ports
+  # Streamed-login browser. Private to sys_acc_web — no ports
   # published; reached only through sys_acc_back's authenticated wss proxy.
   # Shares the auth_state.json volume with the backend (writes it; backend reads).
   browser-auth:
