@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { normalizeCellText } from 'src/libs/excel.functions';
+import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
 import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
 import { PppValidation } from '../core/ppp.validation';
+import { pppValidationStrings } from '../config/strings/ppp.validation';
+import { i18nText, i18nTrim } from 'src/shared/types/i18n';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	CreatePppSurveyDto,
 	FilterPppSurveyDto,
@@ -13,7 +16,7 @@ import {
 	GenerateFindingsPppDto,
 } from '../model/ppp.dtos';
 
-const PPP_TYPE_CODE = 'TG601-T003';
+const PPP_TYPE_CODE = TYPE_CODES.SURVEY_TYPE.PPP;
 const PPP_STATUS_ACTIVE_CODE = 'TG602-T001';
 
 @Injectable()
@@ -26,19 +29,13 @@ export class PppSurveyService {
 
 	private async getPppTypeId(): Promise<number> {
 		const id = await this.surveyRepo.getPppTypeId(PPP_TYPE_CODE);
-		if (!id)
-			throw new BadRequestException(
-				`PPP survey type (${PPP_TYPE_CODE}) not found. Run the type seeds.`,
-			);
+		if (!id) throw new BadRequestException(pppValidationStrings.error.surveyTypeMissing);
 		return id;
 	}
 
 	private async getPppStatusId(): Promise<number> {
 		const id = await this.surveyRepo.getPppStatusTypeId(PPP_STATUS_ACTIVE_CODE);
-		if (!id)
-			throw new BadRequestException(
-				`Survey status (${PPP_STATUS_ACTIVE_CODE}) not found. Run the type seeds.`,
-			);
+		if (!id) throw new BadRequestException(pppValidationStrings.error.surveyStatusMissing);
 		return id;
 	}
 
@@ -77,7 +74,7 @@ export class PppSurveyService {
 					surveyId: survey.id,
 					outcomeId: s.outcomeId,
 					score: s.score,
-					...(s.commentaries !== undefined && { commentaries: s.commentaries }),
+					...(s.commentaries !== undefined && { commentaries: i18nText(s.commentaries) }),
 				})),
 			);
 		}
@@ -104,6 +101,54 @@ export class PppSurveyService {
 		return await this.surveyRepo.findAllPpp(typeId, dto);
 	}
 
+	/**
+	 * Builds the PPP bulk-import Excel template: the fixed data columns plus one
+	 * "Competencia N" column per active config (same headers uploadExcel parses).
+	 * A second sheet lists which competency each column maps to.
+	 */
+	async generateTemplate(
+		academicPeriodId: number,
+		programId?: number,
+	): Promise<{ buffer: Buffer; fileName: string }> {
+		const configs = await this.configRepo.findAllPpp({
+			programId,
+			academicPeriodId,
+			isActive: true,
+		});
+
+		const headers = [
+			'Codigo Alumno',
+			'# Practica',
+			'Horas',
+			'Razon Social',
+			'RUC',
+			'Nombre Jefe',
+			'Cargo Jefe',
+			'Telefono',
+			'Email Jefe',
+			'Fecha Inicio',
+			'Fecha Fin',
+			...configs.map((_, idx) => `Competencia ${idx + 1}`),
+		];
+
+		const workbook = new ExcelJS.Workbook();
+
+		const dataSheet = workbook.addWorksheet('Plantilla');
+		dataSheet.addRow(headers);
+
+		const legendSheet = workbook.addWorksheet('Competencias');
+		legendSheet.addRow(['Columna', 'Competencia']);
+		configs.forEach((config, idx) => {
+			legendSheet.addRow([`Competencia ${idx + 1}`, i18nTrim(config.userOutcomeName) ?? '']);
+		});
+
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		const fileName = programId
+			? `plantilla_ppp_${programId}_${academicPeriodId}.xlsx`
+			: `plantilla_ppp_${academicPeriodId}.xlsx`;
+		return { buffer, fileName };
+	}
+
 	async uploadExcel(dto: UploadPppExcelDto) {
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
@@ -114,26 +159,28 @@ export class PppSurveyService {
 		});
 
 		if (configs.length === 0) {
-			throw new BadRequestException(
-				'No active PPP configurations found for the selected program and period. Create the outcome configurations first.',
-			);
+			throw new BadRequestException(pppValidationStrings.error.noActiveConfig);
 		}
 
 		const workbook = new ExcelJS.Workbook();
 		try {
-			const buffer = Buffer.from(dto.fileBase64, 'base64');
+			// Accept both a raw base64 string and a data URI (e.g. "data:...;base64,XXXX")
+			// produced by FileReader.readAsDataURL on the frontend.
+			const base64 = dto.fileBase64.includes(',')
+				? dto.fileBase64.slice(dto.fileBase64.indexOf(',') + 1)
+				: dto.fileBase64;
+			const buffer = Buffer.from(base64.trim(), 'base64');
 			await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
 		} catch {
-			throw new BadRequestException('The provided base64 file is not a valid Excel file');
+			throw new BadRequestException(pppValidationStrings.error.invalidExcelFile);
 		}
 
 		const worksheet = workbook.worksheets[0];
-		if (!worksheet) throw new BadRequestException('The Excel file contains no sheets');
+		if (!worksheet) throw new BadRequestException(pppValidationStrings.error.excelNoSheets);
 
-		const rows = this.sheetToObjects(worksheet);
+		const rows = sheetToObjects(worksheet);
 
-		if (rows.length === 0)
-			throw new BadRequestException('The Excel file is empty or has no data on the first sheet');
+		if (rows.length === 0) throw new BadRequestException(pppValidationStrings.error.excelEmpty);
 
 		const results = {
 			total: rows.length,
@@ -192,6 +239,16 @@ export class PppSurveyService {
 				continue;
 			}
 
+			// campus_id and course_section_id are NOT NULL FKs on the survey; the Excel
+			// does not provide them, so resolve them from the student (or a fallback).
+			const placement = await this.surveyRepo.resolveCourseSectionAndCampus(student.id);
+			if (!placement) {
+				results.failed++;
+				results.errors.push(`Row ${rowNum}: No course section available to register the survey`);
+				continue;
+			}
+			const resolvedCampusId = dto.campusId || placement.campusId;
+
 			// Extract scores from Excel columns (one column per outcome config, in order)
 			const scores: { outcomeId: number; score: number }[] = [];
 			configs.forEach((config, idx) => {
@@ -223,11 +280,11 @@ export class PppSurveyService {
 					surveyStatusTypeId: statusId,
 					studentId: student.id,
 					academicPeriodId: dto.academicPeriodId,
-					campusId: dto.campusId,
+					campusId: resolvedCampusId,
 					programId: dto.programId,
 					surveyNumber: Number(normalizedRow.practiceNumber),
 					information: information as any,
-					courseSectionId: 1,
+					courseSectionId: placement.courseSectionId,
 				});
 
 				if (scores.length > 0) {
@@ -242,28 +299,6 @@ export class PppSurveyService {
 		}
 
 		return results;
-	}
-
-	private sheetToObjects(worksheet: ExcelJS.Worksheet): Record<string, ExcelJS.CellValue>[] {
-		const headers = new Map<number, string>();
-		worksheet.getRow(1).eachCell((cell, col) => {
-			const header = normalizeCellText(cell.value);
-			if (header) headers.set(col, header);
-		});
-
-		const rows: Record<string, ExcelJS.CellValue>[] = [];
-		for (let i = 2; i <= worksheet.rowCount; i++) {
-			const row = worksheet.getRow(i);
-			const obj: Record<string, ExcelJS.CellValue> = {};
-			let hasValue = false;
-			for (const [col, header] of headers) {
-				const value = row.getCell(col).value;
-				obj[header] = value;
-				if (normalizeCellText(value) !== '') hasValue = true;
-			}
-			if (hasValue) rows.push(obj);
-		}
-		return rows;
 	}
 
 	async getDashboard(dto: DashboardPppDto) {

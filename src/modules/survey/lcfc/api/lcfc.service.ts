@@ -3,6 +3,7 @@ import { LcfcConfigService } from './lcfc-config.service';
 import { LcfcNotificationService } from './lcfc-notification.service';
 import {
 	GenerateLcfcConfigDto,
+	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	SendLcfcNotificationDto,
@@ -28,6 +29,10 @@ export class LcfcService {
 
 	updateConfigStatus(dto: UpdateLcfcConfigStatusDto) {
 		return this.configService.updateStatus(dto);
+	}
+
+	cloneConfig(dto: CloneLcfcConfigDto) {
+		return this.configService.cloneConfig(dto);
 	}
 
 	sendNotifications(dto: SendLcfcNotificationDto) {

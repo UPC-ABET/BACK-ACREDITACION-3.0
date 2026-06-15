@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 @Injectable()
 export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
@@ -115,7 +116,30 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows?.[0] ?? null;
 	}
 
-	async getPppTypeId(code: string = 'TG601-T003'): Promise<number | null> {
+	// PPP surveys are tied to a campus + course section (NOT NULL FKs). The Excel
+	// upload does not carry these, so resolve the student's actual section/campus
+	// when enrolled, falling back to the first available section otherwise.
+	async resolveCourseSectionAndCampus(
+		studentId: number,
+	): Promise<{ courseSectionId: number; campusId: number } | null> {
+		const enrolled = await this.dataSource.query(
+			`SELECT sse.course_section_id AS "courseSectionId", es.campus_id AS "campusId"
+			 FROM academic.enrolled_students es
+			 JOIN academic.student_section_enrollments sse ON sse.enrolled_student_id = es.id
+			 WHERE es.student_id = $1
+			 ORDER BY sse.id DESC LIMIT 1`,
+			[studentId],
+		);
+		if (enrolled?.[0]) return enrolled[0];
+
+		const fallback = await this.dataSource.query(
+			`SELECT id AS "courseSectionId", campus_id AS "campusId"
+			 FROM academic.course_sections ORDER BY id LIMIT 1`,
+		);
+		return fallback?.[0] ?? null;
+	}
+
+	async getPppTypeId(code: string = TYPE_CODES.SURVEY_TYPE.PPP): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
 		]);

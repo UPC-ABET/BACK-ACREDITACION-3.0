@@ -182,4 +182,36 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		const count = await this.repository.count({ where: { surveyId: surveyId } });
 		return count > 0;
 	}
+
+	async findEmailTemplateByCode(code: string): Promise<{
+		code: string;
+		name: unknown;
+		subject: unknown;
+		body: unknown;
+	} | null> {
+		const rows = await this.dataSource.query(
+			`SELECT code, name, subject, body FROM core.email_templates WHERE code = $1 LIMIT 1`,
+			[code],
+		);
+		return rows?.[0] ?? null;
+	}
+
+	async upsertEmailTemplate(params: {
+		code: string;
+		categoryCode: string;
+		name: string;
+		subject: string;
+		body: string;
+	}): Promise<{ code: string; name: unknown; subject: unknown; body: unknown } | null> {
+		const rows = await this.dataSource.query(
+			`INSERT INTO core.email_templates (category_type_id, code, name, subject, body)
+			 SELECT cat.id, $1, $2::jsonb, $3::jsonb, $4::jsonb
+			 FROM core.types cat WHERE cat.code = $5
+			 ON CONFLICT ON CONSTRAINT "UQ_email_templates_code" DO UPDATE
+			 SET subject = EXCLUDED.subject, body = EXCLUDED.body, updated_at = NOW()
+			 RETURNING code, name, subject, body`,
+			[params.code, params.name, params.subject, params.body, params.categoryCode],
+		);
+		return rows?.[0] ?? null;
+	}
 }

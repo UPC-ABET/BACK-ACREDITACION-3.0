@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { ScoreEntity } from 'src/modules/survey/scores/model/scores.entity';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Injectable()
 export class PppScoreRepository extends BaseRepository<ScoreEntity> {
@@ -26,7 +27,12 @@ export class PppScoreRepository extends BaseRepository<ScoreEntity> {
 	}
 
 	async bulkCreate(
-		scores: { surveyId: number; outcomeId: number; score: number; commentaries?: string }[],
+		scores: {
+			surveyId: number;
+			outcomeId: number;
+			score: number;
+			commentaries?: I18nText | null;
+		}[],
 	): Promise<ScoreEntity[]> {
 		const entities = scores.map((s) => this.repository.create(s as any) as unknown as ScoreEntity);
 		return await this.repository.save(entities);

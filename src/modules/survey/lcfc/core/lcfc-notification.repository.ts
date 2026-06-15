@@ -74,7 +74,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)
-			ORDER BY st.first_name ASC`,
+			ORDER BY "studentName" ASC`,
 			[courseSectionIds],
 		);
 		return rows ?? [];

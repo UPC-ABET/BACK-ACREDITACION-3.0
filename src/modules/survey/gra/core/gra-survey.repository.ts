@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 @Injectable()
 export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
@@ -29,7 +30,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			.getOne();
 	}
 
-	async getGraSurveyTypeId(code = 'TG601-T002'): Promise<number | null> {
+	async getGraSurveyTypeId(code = TYPE_CODES.SURVEY_TYPE.GRA): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
 		]);
@@ -143,6 +144,22 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		const rows = await this.dataSource.query(
 			`SELECT id FROM academic.course_sections ORDER BY id LIMIT 1`,
 		);
-		return rows?.[0]?.id ?? 1;
+		return rows?.[0]?.id ?? null;
+	}
+
+	async findStudentByCode(code: string): Promise<{ id: number } | null> {
+		const rows = await this.dataSource.query(
+			`SELECT id FROM academic.students WHERE code = $1 LIMIT 1`,
+			[code],
+		);
+		return rows?.[0] ?? null;
+	}
+
+	async findStudentsByCodes(codes: string[]): Promise<{ id: number; code: string }[]> {
+		if (codes.length === 0) return [];
+		return await this.dataSource.query(
+			`SELECT id, code FROM academic.students WHERE code = ANY($1)`,
+			[codes],
+		);
 	}
 }

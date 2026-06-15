@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 @Injectable()
 export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
@@ -14,7 +15,7 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		super(repository, dataSource);
 	}
 
-	async getLcfcSurveyTypeId(code = 'TG601-T004'): Promise<number | null> {
+	async getLcfcSurveyTypeId(code = TYPE_CODES.SURVEY_TYPE.LCFC): Promise<number | null> {
 		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
 			code,
 		]);

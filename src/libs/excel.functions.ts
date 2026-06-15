@@ -6,6 +6,7 @@ import type {
 	CellSharedFormulaValue,
 	CellValue,
 	Row,
+	Worksheet,
 } from 'exceljs';
 
 type FormulaCell = CellFormulaValue | CellSharedFormulaValue;
@@ -51,4 +52,31 @@ export function readI18nCells(
 		result[lang] = readCell(row, startCol + i);
 	});
 	return result;
+}
+
+/**
+ * Parses a worksheet into row objects keyed by the header cells in row 1.
+ * Rows where every mapped cell is blank are skipped. Shared by the survey
+ * Excel importers (GRA / PPP) so they use one parser.
+ */
+export function sheetToObjects(worksheet: Worksheet): Record<string, CellValue>[] {
+	const headers = new Map<number, string>();
+	worksheet.getRow(1).eachCell((cell, col) => {
+		const header = normalizeCellText(cell.value);
+		if (header) headers.set(col, header);
+	});
+
+	const rows: Record<string, CellValue>[] = [];
+	for (let i = 2; i <= worksheet.rowCount; i++) {
+		const row = worksheet.getRow(i);
+		const obj: Record<string, CellValue> = {};
+		let hasValue = false;
+		for (const [col, header] of headers) {
+			const value = row.getCell(col).value;
+			obj[header] = value;
+			if (normalizeCellText(value) !== '') hasValue = true;
+		}
+		if (hasValue) rows.push(obj);
+	}
+	return rows;
 }

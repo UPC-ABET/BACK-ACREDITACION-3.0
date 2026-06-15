@@ -1,4 +1,5 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
+import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 import { pppRoutes } from '../../config/ppp.routes';
 import {
 	CreatePppConfigDto,
@@ -50,6 +51,8 @@ export const SwaggerPppSurveyGetById = () =>
 	});
 export const SwaggerPppSurveyUploadExcel = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.uploadExcel, body: UploadPppExcelDto });
+export const SwaggerPppSurveyTemplate = () =>
+	HttpMethodWithSwagger({ ...cfg.survey.template, produces: XLSX_CONTENT_TYPE });
 export const SwaggerPppSurveyDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.dashboard, body: DashboardPppDto });
 export const SwaggerPppSurveyGenerateFindings = () =>

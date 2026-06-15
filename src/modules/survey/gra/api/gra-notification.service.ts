@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
+import * as ExcelJS from 'exceljs';
+import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
@@ -17,9 +19,12 @@ import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { i18nText } from 'src/shared/types/i18n';
 import { graValidationStrings } from '../config/strings/gra.validation';
 import {
 	SaveGraNotificationDto,
+	BulkUploadGraNotificationDto,
+	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
 	GetSurveyByTokenDto,
@@ -82,9 +87,8 @@ export class GraNotificationService {
 			dto.programId,
 		);
 
-		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
-
 		if (!survey) {
+			const courseSectionId = await this.resolveDefaultCourseSectionId();
 			survey = (await this.surveyRepo.create({
 				surveyTypeId: graSurveyTypeId,
 				surveyStatusTypeId: activeStatusId,
@@ -92,7 +96,7 @@ export class GraNotificationService {
 				academicPeriodId: dto.academicPeriodId,
 				campusId: dto.campusId,
 				programId: dto.programId,
-				courseSectionId: courseSectionId ?? 1,
+				courseSectionId,
 			})) as SurveyEntity;
 		}
 
@@ -119,6 +123,123 @@ export class GraNotificationService {
 			token,
 			message: graValidationStrings.success.notificationCreated,
 		};
+	}
+
+	/** Excel template for GRA bulk upload: a single "Codigo Alumno" column. */
+	async generateNotificationTemplate(): Promise<{ buffer: Buffer; fileName: string }> {
+		const workbook = new ExcelJS.Workbook();
+		const sheet = workbook.addWorksheet('Plantilla');
+		sheet.addRow(['Codigo Alumno']);
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		return { buffer, fileName: 'plantilla_gra_notificaciones.xlsx' };
+	}
+
+	/** Bulk version of saveNotification: adds every student code in the Excel to the GRA list. */
+	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto) {
+		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
+
+		const workbook = new ExcelJS.Workbook();
+		try {
+			const buffer = Buffer.from(dto.fileBase64, 'base64');
+			await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+		} catch {
+			throw new BadRequestException(graValidationStrings.error.invalidExcelFile);
+		}
+
+		const worksheet = workbook.worksheets[0];
+		if (!worksheet) throw new BadRequestException(graValidationStrings.error.excelNoSheets);
+
+		const rows = sheetToObjects(worksheet);
+		if (rows.length === 0) throw new BadRequestException(graValidationStrings.error.excelEmpty);
+
+		const courseSectionId = await this.resolveDefaultCourseSectionId();
+
+		// Resolve every student code up front in a single query to avoid an N+1 lookup per row.
+		const codeByRow = rows.map((row) =>
+			normalizeCellText(
+				row['Codigo Alumno'] ??
+					row['Código Alumno'] ??
+					row['CODIGO_ALUMNO'] ??
+					row['student_code'],
+			),
+		);
+		const uniqueCodes = [...new Set(codeByRow.filter((code) => code !== ''))];
+		const students = await this.surveyRepo.findStudentsByCodes(uniqueCodes);
+		const studentIdByCode = new Map(students.map((s) => [s.code, s.id]));
+
+		const results = {
+			total: rows.length,
+			success: 0,
+			failed: 0,
+			errors: [] as { row: number; reason: string }[],
+		};
+
+		// Per-row reporting (total/success/failed/errors) is the contract, so each row commits
+		// independently — we deliberately do NOT wrap the loop in a single transaction, which
+		// would roll back every previously-succeeded row on the first failure.
+		for (let i = 0; i < rows.length; i++) {
+			const rowNum = i + 2; // +2: row 1 is the header
+			const studentCode = codeByRow[i];
+
+			if (!studentCode) {
+				results.failed++;
+				results.errors.push({ row: rowNum, reason: graValidationStrings.error.emptyStudentCode });
+				continue;
+			}
+
+			const studentId = studentIdByCode.get(studentCode);
+			if (!studentId) {
+				results.failed++;
+				results.errors.push({ row: rowNum, reason: graValidationStrings.error.studentNotFound });
+				continue;
+			}
+
+			let survey = await this.surveyRepo.findExistingGraSurvey(
+				graSurveyTypeId,
+				studentId,
+				dto.academicPeriodId,
+				dto.programId,
+			);
+			if (!survey) {
+				survey = (await this.surveyRepo.create({
+					surveyTypeId: graSurveyTypeId,
+					surveyStatusTypeId: activeStatusId,
+					studentId,
+					academicPeriodId: dto.academicPeriodId,
+					campusId: dto.campusId,
+					programId: dto.programId,
+					courseSectionId,
+				})) as SurveyEntity;
+			}
+
+			if (await this.notifRepo.existsForStudent(survey.id)) {
+				results.failed++;
+				results.errors.push({ row: rowNum, reason: graValidationStrings.error.alreadyInList });
+				continue;
+			}
+
+			await this.notifRepo.create({
+				surveyId: survey.id,
+				notificationStatusTypeId: scheduledStatusId,
+				token: uuidv4(),
+				maxRegisterDate: dto.maxRegisterDate,
+			});
+			results.success++;
+		}
+
+		return results;
+	}
+
+	/** Resolves the default course section, failing loudly (i18n) when none is seeded. */
+	private async resolveDefaultCourseSectionId(): Promise<number> {
+		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
+		if (!courseSectionId) {
+			this.logger.error('No default course section found for GRA survey creation');
+			throw new InternalServerErrorException(
+				graValidationStrings.error.defaultCourseSectionMissing,
+			);
+		}
+		return courseSectionId;
 	}
 
 	async listStudents(dto: ListStudentsGraDto) {
@@ -191,6 +312,34 @@ export class GraNotificationService {
 		return results;
 	}
 
+	/** Reads the GRA email template (email_templates row keyed by the GRA survey type code). */
+	async getEmailTemplateConfig() {
+		const template = await this.notifRepo.findEmailTemplateByCode(TYPE_CODES.SURVEY_TYPE.GRA);
+		if (!template) {
+			throw new NotFoundException(graValidationStrings.error.emailTemplateMissing);
+		}
+		return template;
+	}
+
+	/** Upserts the GRA email template content (subject/body, i18n). GRA-specific by design. */
+	async updateEmailTemplateConfig(dto: UpdateGraEmailTemplateDto) {
+		const name = JSON.stringify({ es: 'Encuesta de Graduandos', en: 'Graduate Survey' });
+		const subject = JSON.stringify({ es: dto.subjectEs, en: dto.subjectEn ?? dto.subjectEs });
+		const body = JSON.stringify({ es: dto.bodyEs, en: dto.bodyEn ?? dto.bodyEs });
+
+		const template = await this.notifRepo.upsertEmailTemplate({
+			code: TYPE_CODES.SURVEY_TYPE.GRA,
+			categoryCode: TYPE_CODES.EMAIL_TEMPLATE_CATEGORY.SURVEY,
+			name,
+			subject,
+			body,
+		});
+		if (!template) {
+			throw new BadRequestException(graValidationStrings.error.emailTemplateCategoryMissing);
+		}
+		return template;
+	}
+
 	async validateToken(token: string) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(token);
 		GraValidation.validateToken(tokenData);
@@ -255,13 +404,14 @@ export class GraNotificationService {
 			await this.dataSource.transaction(async (manager) => {
 				for (const item of dto.scores) {
 					const configRows = await manager.query(
-						`SELECT outcome_id FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
+						`SELECT outcome_id AS "outcomeId" FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
 						[item.outcomeConfigId],
 					);
 
 					if (!configRows?.[0]) continue;
 
 					const outcomeId = configRows[0].outcomeId;
+					const commentaries = i18nText(item.commentaries);
 
 					const existing = await manager.query(
 						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
@@ -271,12 +421,12 @@ export class GraNotificationService {
 					if (existing?.length > 0) {
 						await manager.query(
 							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, item.commentaries ?? null, surveyId, outcomeId],
+							[item.score, commentaries, surveyId, outcomeId],
 						);
 					} else {
 						await manager.query(
 							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[surveyId, outcomeId, item.score, item.commentaries ?? null],
+							[surveyId, outcomeId, item.score, commentaries],
 						);
 					}
 				}

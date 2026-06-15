@@ -375,22 +375,22 @@ runSeed('academic module', async (tenantDataSource) => {
 			modality.id
 		FROM (
 			VALUES
-				('SP_SOFT26', '202601', 'Fundamentos de Programacion', 'SOFT-FP-2026-1-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"09:00-11:00"}'::jsonb, 'TG103-T001'),
-				('SP_SOFT26', '202601', 'Ingenieria de Requisitos', 'SOFT-REQ-2026-1-A', 'MON', 'prof.maria.garcia@upc.edu.pe', '{"days":["Tuesday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
-				('SP_SOFT26', '202502', 'Proyecto Integrador de Software', 'SOFT-INT-2026-2-A', 'MON', 'prof.carlos.mendez@upc.edu.pe', '{"days":["Thursday","Friday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2025-2-A', 'MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202502', 'Bases de Datos', 'CS-DB-2025-2-A', 'MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202502', 'Ingenieria de Software', 'CS-SE-2025-2-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-1-A', 'MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202601', 'Bases de Datos', 'CS-DB-2026-1-A', 'MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202601', 'Ingenieria de Software', 'CS-SE-2026-1-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_SOFT26', '202601', 'Fundamentos de Programacion', 'SOFT-FP-2026-1-A', 'MO', 'prof.juan.perez@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"09:00-11:00"}'::jsonb, 'TG103-T001'),
+				('SP_SOFT26', '202601', 'Ingenieria de Requisitos', 'SOFT-REQ-2026-1-A', 'MO', 'prof.maria.garcia@upc.edu.pe', '{"days":["Tuesday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_SOFT26', '202502', 'Proyecto Integrador de Software', 'SOFT-INT-2026-2-A', 'MO', 'prof.carlos.mendez@upc.edu.pe', '{"days":["Thursday","Friday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202502', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2025-2-A', 'MO', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202502', 'Bases de Datos', 'CS-DB-2025-2-A', 'MO', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202502', 'Ingenieria de Software', 'CS-SE-2025-2-A', 'MO', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202601', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-1-A', 'MO', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202601', 'Bases de Datos', 'CS-DB-2026-1-A', 'MO', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202601', 'Ingenieria de Software', 'CS-SE-2026-1-A', 'MO', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
 				-- CS sections in 202602 (current period for the previous_actions demo).
-				('SP_CS_2502', '202602', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-2-A', 'MON', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202602', 'Bases de Datos', 'CS-DB-2026-2-A', 'MON', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
-				('SP_CS_2502', '202602', 'Ingenieria de Software', 'CS-SE-2026-2-A', 'MON', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
-				('SP_ADM26', '202601', 'Gestion Empresarial', 'ADM-GEST-2026-1-A', 'MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"11:00-13:00"}'::jsonb, 'TG103-T001'),
-				('SP_ADM26', '202601', 'Finanzas Corporativas', 'ADM-FIN-2026-1-A', 'MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"15:00-17:00"}'::jsonb, 'TG103-T001'),
-				('SP_ADM26', '202601', 'Marketing Estrategico', 'ADM-MKT-2026-1-A', 'MON', 'prof.ana.torres@upc.edu.pe', '{"days":["Friday"],"time":"10:00-13:00"}'::jsonb, 'TG103-T001')
+				('SP_CS_2502', '202602', 'Algoritmos y Estructuras de Datos', 'CS-ALG-2026-2-A', 'MO', 'prof.jorge.vargas@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"08:00-10:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202602', 'Bases de Datos', 'CS-DB-2026-2-A', 'MO', 'prof.lucia.flores@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"10:00-12:00"}'::jsonb, 'TG103-T001'),
+				('SP_CS_2502', '202602', 'Ingenieria de Software', 'CS-SE-2026-2-A', 'MO', 'prof.juan.perez@upc.edu.pe', '{"days":["Friday"],"time":"14:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_ADM26', '202601', 'Gestion Empresarial', 'ADM-GEST-2026-1-A', 'MO', 'prof.ana.torres@upc.edu.pe', '{"days":["Monday","Wednesday"],"time":"11:00-13:00"}'::jsonb, 'TG103-T001'),
+				('SP_ADM26', '202601', 'Finanzas Corporativas', 'ADM-FIN-2026-1-A', 'MO', 'prof.ana.torres@upc.edu.pe', '{"days":["Tuesday","Thursday"],"time":"15:00-17:00"}'::jsonb, 'TG103-T001'),
+				('SP_ADM26', '202601', 'Marketing Estrategico', 'ADM-MKT-2026-1-A', 'MO', 'prof.ana.torres@upc.edu.pe', '{"days":["Friday"],"time":"10:00-13:00"}'::jsonb, 'TG103-T001')
 		) AS v(study_plan_code, academic_period_code, course_name, section_code, campus_code, professor_email, schedule, section_modality_type_code)
 		JOIN "academic"."study_plans" sp
 			ON sp.code = v.study_plan_code
@@ -423,16 +423,16 @@ runSeed('academic module', async (tenantDataSource) => {
 		SELECT st.id, spap.id, campus.id, modality.id
 		FROM (
 			VALUES
-				('student.luis.ramirez@upc.edu.pe', 'SP_SOFT26', '202601', 'MON', 'TG103-T001'),
-				('student.sofia.torres@upc.edu.pe', 'SP_SOFT26', '202601', 'MON', 'TG103-T001'),
-				('student.pedro.silva@upc.edu.pe', 'SP_SOFT26', '202502', 'MON', 'TG103-T001'),
-				('student.andrea.quispe@upc.edu.pe', 'SP_SOFT26', '202502', 'MON', 'TG103-T001'),
-				('student.marco.luna@upc.edu.pe', 'SP_CS_2502', '202502', 'MON', 'TG103-T001'),
-				('student.diana.paredes@upc.edu.pe', 'SP_CS_2502', '202502', 'MON', 'TG103-T001'),
-				('student.elena.ramos@upc.edu.pe', 'SP_CS_2502', '202601', 'MON', 'TG103-T001'),
-				('student.alex.medina@upc.edu.pe', 'SP_CS_2502', '202601', 'MON', 'TG103-T001'),
-				('student.roberto.chavez@upc.edu.pe', 'SP_ADM26', '202601', 'MON', 'TG103-T001'),
-				('student.valeria.morales@upc.edu.pe', 'SP_ADM26', '202601', 'MON', 'TG103-T001')
+				('student.luis.ramirez@upc.edu.pe', 'SP_SOFT26', '202601', 'MO', 'TG103-T001'),
+				('student.sofia.torres@upc.edu.pe', 'SP_SOFT26', '202601', 'MO', 'TG103-T001'),
+				('student.pedro.silva@upc.edu.pe', 'SP_SOFT26', '202502', 'MO', 'TG103-T001'),
+				('student.andrea.quispe@upc.edu.pe', 'SP_SOFT26', '202502', 'MO', 'TG103-T001'),
+				('student.marco.luna@upc.edu.pe', 'SP_CS_2502', '202502', 'MO', 'TG103-T001'),
+				('student.diana.paredes@upc.edu.pe', 'SP_CS_2502', '202502', 'MO', 'TG103-T001'),
+				('student.elena.ramos@upc.edu.pe', 'SP_CS_2502', '202601', 'MO', 'TG103-T001'),
+				('student.alex.medina@upc.edu.pe', 'SP_CS_2502', '202601', 'MO', 'TG103-T001'),
+				('student.roberto.chavez@upc.edu.pe', 'SP_ADM26', '202601', 'MO', 'TG103-T001'),
+				('student.valeria.morales@upc.edu.pe', 'SP_ADM26', '202601', 'MO', 'TG103-T001')
 		) AS v(email, study_plan_code, academic_period_code, campus_code, modality_type_code)
 		JOIN "academic"."students" st
 			ON st.email = v.email

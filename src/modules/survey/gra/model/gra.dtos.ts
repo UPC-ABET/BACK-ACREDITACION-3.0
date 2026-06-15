@@ -203,6 +203,52 @@ export class SaveGraNotificationDto {
 	maxRegisterDate: string;
 }
 
+export class BulkUploadGraNotificationDto {
+	@IsString()
+	@ApiProperty({ example: 'fileBase64Example', description: 'Base64-encoded Excel file' })
+	fileBase64: string;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program ID' })
+	programId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
+	academicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Campus ID' })
+	campusId: number;
+
+	@IsString()
+	@ApiProperty({ example: '2025-12-31', description: 'Deadline for completing the survey' })
+	maxRegisterDate: string;
+}
+
+export class UpdateGraEmailTemplateDto {
+	@IsString()
+	@ApiProperty({ example: 'Encuesta de Graduandos', description: 'Subject (Spanish)' })
+	subjectEs: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: 'Graduate Survey', description: 'Subject (English)', required: false })
+	subjectEn?: string;
+
+	@IsString()
+	@ApiProperty({
+		example: '<p>Hola {{student_name}}, completa la encuesta: {{survey_link}}</p>',
+		description:
+			'HTML body (Spanish). Placeholders: {{student_name}}, {{program_name}}, {{survey_link}}, {{token}}',
+	})
+	bodyEs: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({ example: '<p>Hi {{student_name}}...</p>', required: false })
+	bodyEn?: string;
+}
+
 export class ListStudentsGraDto {
 	@IsOptional()
 	@IsNumber()

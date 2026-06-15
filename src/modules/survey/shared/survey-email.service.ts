@@ -9,6 +9,9 @@ export class SurveyEmailTemplateService {
 		surveyTypeCode: string,
 		lang: 'es' | 'en' = 'es',
 	): Promise<{ subject: string; body: string }> {
+		// 1) Program-specific template configured in survey.notification_messages. The
+		//    email_template_id link column is guaranteed by migration
+		//    1778977562000-add-email-templates-and-notification-logs.
 		const rows = await this.dataSource.query(
 			`SELECT et.subject AS subject, et.body AS body
 				FROM survey.notification_messages nm
@@ -20,9 +23,26 @@ export class SurveyEmailTemplateService {
 				LIMIT 1`,
 			[surveyTypeCode],
 		);
-
 		if (rows?.[0]) {
 			return { subject: pickLocale(rows[0].subject, lang), body: pickLocale(rows[0].body, lang) };
+		}
+
+		// 2) Default template for the survey type: core.email_templates keyed by the survey
+		//    type code (e.g. TG601-T001 for GRA). Decoupled from notification_messages.
+		const fallback = await this.dataSource.query(
+			`SELECT et.subject AS subject, et.body AS body
+				FROM core.email_templates et
+				WHERE et.code = $1
+				AND et.is_active = true
+				ORDER BY et.id ASC
+				LIMIT 1`,
+			[surveyTypeCode],
+		);
+		if (fallback?.[0]) {
+			return {
+				subject: pickLocale(fallback[0].subject, lang),
+				body: pickLocale(fallback[0].body, lang),
+			};
 		}
 
 		throw new NotFoundException('error.survey.emailTemplateMissing');

@@ -12,6 +12,9 @@ export const lcfcValidationStrings = {
 		noEnrolledStudents: 'error.survey.lcfc.noEnrolledStudents',
 		processFailed: 'error.survey.lcfc.processFailed',
 		completeFailed: 'error.survey.lcfc.completeFailed',
+		noCourseSections: 'error.survey.lcfc.noCourseSections',
+		noProgramOutcomes: 'error.survey.lcfc.noProgramOutcomes',
+		configNotFound: 'error.survey.lcfc.configNotFound',
 	},
 	success: {
 		completed: 'success.survey.lcfc.completed',

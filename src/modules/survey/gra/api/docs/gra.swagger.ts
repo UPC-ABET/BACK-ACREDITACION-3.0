@@ -1,10 +1,13 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
+import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 import { graRoutes } from '../../config/gra.routes';
 import {
 	CreateGraConfigDto,
 	UpdateGraConfigDto,
 	FilterGraConfigDto,
 	SaveGraNotificationDto,
+	BulkUploadGraNotificationDto,
+	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
 	GetSurveyByTokenDto,
@@ -49,8 +52,15 @@ export const SwaggerGraNotificationDelete = () =>
 		...cfg.notification.delete,
 		params: [{ name: 'id', description: 'ID de la notificación GRA', type: Number }],
 	});
+export const SwaggerGraNotificationTemplate = () =>
+	HttpMethodWithSwagger({ ...cfg.notification.template, produces: XLSX_CONTENT_TYPE });
+export const SwaggerGraNotificationUploadExcel = () =>
+	HttpMethodWithSwagger({ ...cfg.notification.uploadExcel, body: BulkUploadGraNotificationDto });
 export const SwaggerGraEmailSend = () =>
 	HttpMethodWithSwagger({ ...cfg.email.send, body: SendGraEmailDto });
+export const SwaggerGraEmailGetTemplate = () => HttpMethodWithSwagger(cfg.email.getTemplate);
+export const SwaggerGraEmailUpdateTemplate = () =>
+	HttpMethodWithSwagger({ ...cfg.email.updateTemplate, body: UpdateGraEmailTemplateDto });
 export const SwaggerGraTokenValidate = () =>
 	HttpMethodWithSwagger({
 		...cfg.token.validate,

@@ -2,6 +2,7 @@ import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.deco
 import { lcfcRoutes } from '../../config/lcfc.routes';
 import {
 	GenerateLcfcConfigDto,
+	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	SendLcfcNotificationDto,
@@ -20,6 +21,8 @@ export const SwaggerLcfcConfigGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.config.getByFilters, body: FilterLcfcConfigDto });
 export const SwaggerLcfcConfigUpdateStatus = () =>
 	HttpMethodWithSwagger({ ...cfg.config.updateStatus, body: UpdateLcfcConfigStatusDto });
+export const SwaggerLcfcConfigClone = () =>
+	HttpMethodWithSwagger({ ...cfg.config.clone, body: CloneLcfcConfigDto });
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 export const SwaggerLcfcTokenValidate = () =>

@@ -1,24 +1,17 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { PppConfigRepository } from './ppp-config.repository';
 import { CreatePppConfigDto, CreatePppSurveyDto } from '../model/ppp.dtos';
+import { pppValidationStrings } from '../config/strings/ppp.validation';
 
 export class PppValidation {
 	static async validateCreateConfig(
 		repo: PppConfigRepository,
 		dto: CreatePppConfigDto,
 	): Promise<void> {
-		const errors: string[] = [];
-
 		const exists = await repo.existsPpp(dto.outcomeId, dto.programId, dto.academicPeriodId);
 		if (exists) {
-			errors.push(
-				'A PPP configuration already exists for this outcome in the selected program and period',
-			);
-		}
-
-		if (errors.length > 0) {
 			throw new HttpException(
-				{ message: 'Error creating PPP configuration', errors },
+				{ message: pppValidationStrings.error.configExists },
 				HttpStatus.BAD_REQUEST,
 			);
 		}
@@ -28,10 +21,7 @@ export class PppValidation {
 		const exists = await repo.findOnePpp(id);
 		if (!exists) {
 			throw new HttpException(
-				{
-					message: 'PPP configuration not found',
-					errors: [`No PPP configuration exists with ID ${id}`],
-				},
+				{ message: pppValidationStrings.error.configNotFound },
 				HttpStatus.NOT_FOUND,
 			);
 		}
@@ -41,39 +31,38 @@ export class PppValidation {
 		const exists = await repo.findOnePpp(id);
 		if (!exists) {
 			throw new HttpException(
-				{
-					message: 'PPP configuration not found',
-					errors: [`No PPP configuration exists with ID ${id}`],
-				},
+				{ message: pppValidationStrings.error.configNotFound },
 				HttpStatus.NOT_FOUND,
 			);
 		}
 	}
 
 	static validateCreateSurvey(dto: CreatePppSurveyDto): void {
-		const errors: string[] = [];
-
 		if (dto.practiceNumber !== 1 && dto.practiceNumber !== 2) {
-			errors.push('Practice number must be 1 (Practice I) or 2 (Practice II)');
+			throw new HttpException(
+				{ message: pppValidationStrings.error.invalidPracticeNumber },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
 		if (dto.scores?.length === 0) {
-			errors.push('At least one outcome score must be provided');
+			throw new HttpException(
+				{ message: pppValidationStrings.error.noScores },
+				HttpStatus.BAD_REQUEST,
+			);
 		}
 
-		dto.scores?.forEach((s, i) => {
-			if (s.score < 1 || s.score > 5) {
-				errors.push(`Invalid score for outcome #${i + 1}: must be between 1.0 and 5.0`);
-			}
-		});
+		const hasInvalidScore = dto.scores?.some((s) => s.score < 1 || s.score > 5);
+		if (hasInvalidScore) {
+			throw new HttpException(
+				{ message: pppValidationStrings.error.invalidScore },
+				HttpStatus.BAD_REQUEST,
+			);
+		}
 
 		if (dto.ruc && !/^\d{11}$/.test(dto.ruc)) {
-			errors.push('RUC must be exactly 11 numeric digits');
-		}
-
-		if (errors.length > 0) {
 			throw new HttpException(
-				{ message: 'Error registering PPP survey', errors },
+				{ message: pppValidationStrings.error.invalidRuc },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

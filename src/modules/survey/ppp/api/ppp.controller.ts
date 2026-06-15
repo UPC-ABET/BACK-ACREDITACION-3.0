@@ -1,5 +1,8 @@
-import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
+import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 import { PppService } from './ppp.service';
 import {
 	SwaggerPppController,
@@ -15,6 +18,7 @@ import {
 	SwaggerPppSurveyGetByFilters,
 	SwaggerPppSurveyGetById,
 	SwaggerPppSurveyUploadExcel,
+	SwaggerPppSurveyTemplate,
 	SwaggerPppSurveyDashboard,
 	SwaggerPppSurveyGenerateFindings,
 } from './docs/ppp.swagger';
@@ -106,6 +110,31 @@ export class PppController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async surveyUploadExcel(@Body() dto: UploadPppExcelDto) {
 		return parseSuccessResponse(await this.pppService.uploadExcel(dto));
+	}
+
+	@SwaggerPppSurveyTemplate()
+	@ApiQuery({ name: 'programId', type: Number, example: 1, required: false })
+	@ApiQuery({ name: 'academicPeriodId', type: Number, example: 1 })
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async surveyTemplate(
+		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@Res() res: Response,
+		@Query('programId') programIdRaw?: string,
+	) {
+		const programId =
+			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
+		const { buffer, fileName } = await this.pppService.generateTemplate(
+			academicPeriodId,
+			programId,
+		);
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
 	}
 
 	@SwaggerPppSurveyDashboard()

@@ -3,8 +3,10 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-// Application schemas created by the initial migration. Dropping these wipes all data
-// for a clean rebuild (dev only). The `migrations` tracking table lives in `public`.
+// Application schemas created by the migrations. Dropping these wipes all data for a
+// clean rebuild (dev only). The migration tracking tables (public.migrations,
+// public.typeorm_metadata) are also dropped so a following `migration:run` re-applies
+// every migration from scratch.
 const APP_SCHEMAS = [
 	'academic',
 	'accreditation',
@@ -16,6 +18,7 @@ const APP_SCHEMAS = [
 	'evaluation',
 	'core',
 	'audit',
+	'portfolio',
 ];
 
 async function run() {
@@ -31,6 +34,10 @@ async function run() {
 	for (const schema of APP_SCHEMAS) {
 		await dataSource.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE;`);
 	}
+
+	// Reset migration tracking so `migration:run` re-applies every migration cleanly.
+	await dataSource.query(`DROP TABLE IF EXISTS "public"."migrations" CASCADE;`);
+	await dataSource.query(`DROP TABLE IF EXISTS "public"."typeorm_metadata" CASCADE;`);
 
 	await dataSource.destroy();
 

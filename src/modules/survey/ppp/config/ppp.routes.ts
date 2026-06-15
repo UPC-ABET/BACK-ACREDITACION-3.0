@@ -52,6 +52,11 @@ export const pppRoutes = {
 			route: 'survey/upload-excel',
 			summary: 'Bulk import PPP data from base64 Excel',
 		},
+		template: {
+			method: 'GET',
+			route: 'survey/template',
+			summary: 'Download PPP Excel template (fixed columns + one per active competency)',
+		},
 		dashboard: {
 			method: 'POST',
 			route: 'survey/dashboard',

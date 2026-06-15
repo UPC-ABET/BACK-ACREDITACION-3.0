@@ -2,10 +2,12 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { LcfcConfigRepository, LCFC_SURVEY_TYPE } from '../core/lcfc-config.repository';
 import {
 	GenerateLcfcConfigDto,
+	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 } from '../model/lcfc.dtos';
 import { camelizeKeys } from 'src/libs/case.functions';
+import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 
 @Injectable()
 export class LcfcConfigService {
@@ -21,16 +23,12 @@ export class LcfcConfigService {
 		);
 
 		if (sections.length === 0) {
-			throw new BadRequestException(
-				'No course sections found for the specified period and program.',
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noCourseSections);
 		}
 
 		const outcomeId = await this.configRepo.findFirstProgramOutcomeId(dto.programId);
 		if (!outcomeId) {
-			throw new BadRequestException(
-				`No outcomes found for program ${dto.programId}. Verify that outcomes exist in accreditation.outcomes.`,
-			);
+			throw new BadRequestException(lcfcValidationStrings.error.noProgramOutcomes);
 		}
 
 		let created = 0;
@@ -75,6 +73,65 @@ export class LcfcConfigService {
 		return { created, skipped, configs };
 	}
 
+	/**
+	 * Clones an LCFC configuration into a new period: generates the target-period configs
+	 * (idempotent) and copies the active/inactive status of each course from the source
+	 * period, matching by course (course sections differ across periods).
+	 */
+	async cloneConfig(dto: CloneLcfcConfigDto): Promise<{
+		generated: number;
+		skipped: number;
+		statusCopied: number;
+		message: string;
+	}> {
+		const generated = await this.generateConfigs({
+			academicPeriodId: dto.targetAcademicPeriodId,
+			programId: dto.programId,
+			campusId: dto.campusId,
+		});
+
+		const [sourceConfigs, targetConfigs] = await Promise.all([
+			this.configRepo.findAllLcfc({
+				academicPeriodId: dto.sourceAcademicPeriodId,
+				programId: dto.programId,
+			}),
+			this.configRepo.findAllLcfc({
+				academicPeriodId: dto.targetAcademicPeriodId,
+				programId: dto.programId,
+			}),
+		]);
+
+		const courseId = (config: { extra?: unknown }): number | null => {
+			const extra = (config.extra as Record<string, any>) ?? {};
+			const value = extra.course_id ?? extra.courseId;
+			return value == null ? null : Number(value);
+		};
+
+		const sourceStatusByCourse = new Map<number, boolean>();
+		for (const config of sourceConfigs) {
+			const id = courseId(config);
+			if (id !== null) sourceStatusByCourse.set(id, config.isActive ?? false);
+		}
+
+		let statusCopied = 0;
+		for (const target of targetConfigs) {
+			const id = courseId(target);
+			if (id === null) continue;
+			const sourceActive = sourceStatusByCourse.get(id);
+			if (sourceActive !== undefined && sourceActive !== target.isActive) {
+				await this.configRepo.update(target.id, { isActive: sourceActive });
+				statusCopied++;
+			}
+		}
+
+		return {
+			generated: generated.created,
+			skipped: generated.skipped,
+			statusCopied,
+			message: `Generated ${generated.created} configs (skipped ${generated.skipped}) and copied status for ${statusCopied} courses from the source period`,
+		};
+	}
+
 	async getAll(filters?: FilterLcfcConfigDto) {
 		const configs = await this.configRepo.findAllLcfc(filters);
 		for (const config of configs) config.extra = camelizeKeys(config.extra);
@@ -85,8 +142,7 @@ export class LcfcConfigService {
 		let updated = 0;
 		for (const item of dto.updates) {
 			const existing = await this.configRepo.findOneById(item.configId);
-			if (!existing)
-				throw new NotFoundException(`LCFC configuration with ID ${item.configId} not found.`);
+			if (!existing) throw new NotFoundException(lcfcValidationStrings.error.configNotFound);
 			await this.configRepo.update(item.configId, { isActive: item.isActive });
 			updated++;
 		}
