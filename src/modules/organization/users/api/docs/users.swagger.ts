@@ -4,6 +4,7 @@ import {
 	CreateUserDto,
 	UpdateUserDto,
 	FilterUserDto,
+	ListUsersQueryDto,
 	LoginUserByCredentialsDto,
 	ChangeRoleDto,
 } from '../../model/users.dtos';
@@ -20,7 +21,8 @@ export const SwaggerUserUpdate = () =>
 
 export const SwaggerUserDelete = () => HttpMethodWithSwagger(cfg.operation.delete);
 
-export const SwaggerUserGetAll = () => HttpMethodWithSwagger(cfg.operation.getAll);
+export const SwaggerUserGetAll = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.getAll, query: ListUsersQueryDto });
 
 export const SwaggerUserGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
