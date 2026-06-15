@@ -11,6 +11,16 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		errorColumn: 'Mensaje de error',
 		errorsFileName: 'ErroresCargaProyectos.xlsx',
 		templateFileName: 'PlantillaProyectos.xlsx',
+		instructionsTitle: 'Instrucciones de llenado',
+		instructionsColField: 'Campo',
+		instructionsColDescription: 'Descripción',
+		instructionsColRequired: 'Obligatorio',
+		instructionsColExample: 'Ejemplo',
+		instructionsYes: 'Sí',
+		instructionsNo: 'No',
+		evaluatorTypesTitle: 'Tipos de evaluador disponibles',
+		evaluatorTypesColCode: 'Código',
+		evaluatorTypesColName: 'Nombre',
 	},
 	en: {
 		projectCode: 'Project code',
@@ -24,8 +34,156 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		errorColumn: 'Error message',
 		errorsFileName: 'ProjectsUploadErrors.xlsx',
 		templateFileName: 'ProjectsTemplate.xlsx',
+		instructionsTitle: 'Fill instructions',
+		instructionsColField: 'Field',
+		instructionsColDescription: 'Description',
+		instructionsColRequired: 'Required',
+		instructionsColExample: 'Example',
+		instructionsYes: 'Yes',
+		instructionsNo: 'No',
+		evaluatorTypesTitle: 'Available evaluator types',
+		evaluatorTypesColCode: 'Code',
+		evaluatorTypesColName: 'Name',
 	},
 };
+
+export interface FieldInstruction {
+	field: string;
+	description: string;
+	required: boolean;
+	example: string;
+}
+
+export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
+	es: [
+		{
+			field: 'Código del proyecto',
+			description:
+				'Identificador único del proyecto. Máximo 50 caracteres. Se repite en cada fila del mismo proyecto.',
+			required: true,
+			example: 'PROY-XXXX-000',
+		},
+		{
+			field: 'Nombre del proyecto (ES)',
+			description:
+				'Nombre en español. Solo es obligatorio en una fila del proyecto; puede dejarse vacío en las demás.',
+			required: true,
+			example: 'Nombre del proyecto en español',
+		},
+		{
+			field: 'Nombre del proyecto (EN)',
+			description:
+				'Nombre en inglés. Solo es obligatorio en una fila del proyecto; puede dejarse vacío en las demás.',
+			required: true,
+			example: 'Project name in English',
+		},
+		{
+			field: 'Código del curso',
+			description:
+				'Código del curso asociado al proyecto. Debe ser un curso evaluable en el periodo académico.',
+			required: true,
+			example: 'CURSXXXX',
+		},
+		{
+			field: 'Código del alumno',
+			description:
+				'Código del alumno integrante. Cada alumno ocupa una fila. Requerido si no se indica docente evaluador.',
+			required: false,
+			example: '20XXXXXXXX',
+		},
+		{
+			field: 'Código de sección',
+			description: 'Sección del alumno en el curso. Obligatorio cuando se indica un alumno.',
+			required: false,
+			example: 'XXXXX',
+		},
+		{
+			field: 'Código del docente evaluador',
+			description:
+				'Código del docente que evalúa el proyecto. Cada evaluador ocupa una fila. Requerido si no se indica alumno.',
+			required: false,
+			example: 'NXXXXXXXX',
+		},
+		{
+			field: 'Código de tipo de evaluador',
+			description:
+				'Tipo de rol del evaluador. Obligatorio cuando se indica un docente evaluador. Ver tabla de tipos a continuación.',
+			required: false,
+			example: 'TG403-T00X',
+		},
+	],
+	en: [
+		{
+			field: 'Project code',
+			description:
+				'Unique project identifier. Max 50 characters. Repeat on every row of the same project.',
+			required: true,
+			example: 'PROJ-XXXX-000',
+		},
+		{
+			field: 'Project name (ES)',
+			description:
+				'Name in Spanish. Only required on one row per project; may be left empty on others.',
+			required: true,
+			example: 'Nombre del proyecto en español',
+		},
+		{
+			field: 'Project name (EN)',
+			description:
+				'Name in English. Only required on one row per project; may be left empty on others.',
+			required: true,
+			example: 'Project name in English',
+		},
+		{
+			field: 'Course code',
+			description:
+				'Code of the course linked to the project. Must be an evaluable course in the academic period.',
+			required: true,
+			example: 'COURSXXXX',
+		},
+		{
+			field: 'Student code',
+			description:
+				'Code of a member student. Each student occupies one row. Required if no evaluator is provided.',
+			required: false,
+			example: '20XXXXXXXX',
+		},
+		{
+			field: 'Section code',
+			description: "Student's section in the course. Required when a student code is provided.",
+			required: false,
+			example: 'XXXXX',
+		},
+		{
+			field: 'Evaluator professor code',
+			description:
+				'Code of the evaluating professor. Each evaluator occupies one row. Required if no student is provided.',
+			required: false,
+			example: 'NXXXXXXXX',
+		},
+		{
+			field: 'Evaluator type code',
+			description:
+				'Role type of the evaluator. Required when an evaluator professor is provided. See types table below.',
+			required: false,
+			example: 'TG403-T00X',
+		},
+	],
+};
+
+export interface EvaluatorType {
+	code: string;
+	name: string;
+}
+
+// These must match core.types where type_group.code = 'TG403'
+export const evaluatorTypesList: EvaluatorType[] = [
+	{ code: 'TG403-T001', name: 'Comité / Committee' },
+	{ code: 'TG403-T002', name: 'Gerente / Manager' },
+	{ code: 'TG403-T003', name: 'Docente / Professor' },
+	{ code: 'TG403-T004', name: 'Cliente / Client' },
+	{ code: 'TG403-T005', name: 'Coautor / Co-author' },
+];
 
 export const projectsErrorMessages: Record<string, Record<string, string>> = {
 	es: {

@@ -7,7 +7,9 @@ import { ProjectRow, UploadResult, UploadRowError } from '../model/projects-uplo
 import type { ProjectsUploadDto } from '../model/projects-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
+	evaluatorTypesList,
 	projectsErrorMessages,
+	projectsFieldInstructions,
 	projectsTemplateLabels,
 } from '../model/projects-template.labels';
 import { ProjectsUploadRepository } from '../core/projects-upload.repository';
@@ -86,10 +88,12 @@ export class ProjectsUploadService {
 	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
 		const language = this.resolveLanguage(lang);
 		const labels = projectsTemplateLabels[language];
+		const instructions = projectsFieldInstructions[language];
 
 		const workbook = new ExcelJS.Workbook();
 		const sheet = workbook.addWorksheet('Template');
 
+		// ── Data table (cols 1-8) ─────────────────────────────────────────
 		const headers = [
 			labels.projectCode,
 			labels.projectNameEs,
@@ -104,17 +108,86 @@ export class ProjectsUploadService {
 		sheet.addRow(headers);
 		this.styleHeaderRow(sheet, headers);
 
-		// Example row
-		sheet.addRow([
-			'TFG-001',
-			'Mi tesis de grado',
-			'My undergraduate thesis',
-			'CS101',
-			'STU001',
-			'SEC-001',
-			'PROF001',
-			'TG403-T001',
-		]);
+		// ── Instructions sheet ────────────────────────────────────────────
+		const instrSheet = workbook.addWorksheet(labels.instructionsTitle);
+
+		const instHeaders = [
+			labels.instructionsColField,
+			labels.instructionsColDescription,
+			labels.instructionsColRequired,
+			labels.instructionsColExample,
+		];
+
+		// Header row
+		const instHeaderRow = instrSheet.getRow(1);
+		instHeaders.forEach((h, i) => {
+			const cell = instHeaderRow.getCell(i + 1);
+			cell.value = h;
+			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+			cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+		});
+		instHeaderRow.height = 22;
+
+		// Instruction rows
+		instructions.forEach((instr, idx) => {
+			const r = instrSheet.getRow(2 + idx);
+			r.getCell(1).value = instr.field;
+			r.getCell(2).value = instr.description;
+			r.getCell(3).value = instr.required ? labels.instructionsYes : labels.instructionsNo;
+			r.getCell(4).value = instr.example;
+
+			for (let c = 1; c <= 4; c++) {
+				const cell = r.getCell(c);
+				cell.alignment = { vertical: 'middle', wrapText: true };
+				cell.border = {
+					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+				};
+			}
+			r.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
+			r.height = 40;
+		});
+
+		instrSheet.getColumn(1).width = 30;
+		instrSheet.getColumn(2).width = 60;
+		instrSheet.getColumn(3).width = 13;
+		instrSheet.getColumn(4).width = 25;
+
+		// ── Evaluator types (below instructions, 2 rows gap) ─────────────
+		const evalStartRow = 2 + instructions.length + 2;
+
+		const evalTitleRow = instrSheet.getRow(evalStartRow);
+		const evalTitleCell = evalTitleRow.getCell(1);
+		evalTitleCell.value = labels.evaluatorTypesTitle;
+		evalTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+		evalTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+		evalTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+		instrSheet.mergeCells(evalStartRow, 1, evalStartRow, 2);
+		evalTitleRow.height = 22;
+
+		const evalSubRow = instrSheet.getRow(evalStartRow + 1);
+		[labels.evaluatorTypesColCode, labels.evaluatorTypesColName].forEach((h, i) => {
+			const cell = evalSubRow.getCell(i + 1);
+			cell.value = h;
+			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
+			cell.alignment = { horizontal: 'center', vertical: 'middle' };
+		});
+
+		evaluatorTypesList.forEach((et, idx) => {
+			const r = instrSheet.getRow(evalStartRow + 2 + idx);
+			r.getCell(1).value = et.code;
+			r.getCell(2).value = et.name;
+			[1, 2].forEach((c) => {
+				const cell = r.getCell(c);
+				cell.alignment = { vertical: 'middle' };
+				cell.border = {
+					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+				};
+			});
+		});
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
