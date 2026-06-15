@@ -15,7 +15,9 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV DISPLAY=:99
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# DEBIAN_FRONTEND=noninteractive stops tzdata (pulled in by x11vnc/xvfb) from
+# prompting for a timezone and hanging the build (no TTY in CI/Docker).
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       xvfb \
       x11vnc \
       websockify \
