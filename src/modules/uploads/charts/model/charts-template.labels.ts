@@ -3,7 +3,8 @@ export const chartsTemplateLabels: Record<string, Record<string, string>> = {
 		code: 'Id',
 		parentCode: 'Padre',
 		title: 'Unidad académica',
-		email: 'Correo del responsable',
+		professorCode: 'Código de docente',
+		email: 'Correo del docente',
 		entityType: 'Tipo de entidad',
 		entityCode: 'Código de entidad',
 		entityLegendSheet: 'Tipos de entidad',
@@ -20,6 +21,7 @@ export const chartsTemplateLabels: Record<string, Record<string, string>> = {
 		code: 'Id',
 		parentCode: 'Parent',
 		title: 'Academic unit',
+		professorCode: 'Professor code',
 		email: 'Responsible email',
 		entityType: 'Entity type',
 		entityCode: 'Entity code',
@@ -36,16 +38,23 @@ export const chartsTemplateLabels: Record<string, Record<string, string>> = {
 };
 
 // Human-readable text for the downloadable error report. The PG function returns stable short codes
-// (e.g. 'userNotFound'); the frontend never sees the generated Excel, so we resolve each code to
+// (e.g. 'professorNotFound'); the frontend never sees the generated Excel, so we resolve each code to
 // localized text here before writing the error column.
 export const chartsErrorMessages: Record<string, Record<string, string>> = {
 	es: {
 		duplicateCodeInFile: 'Código duplicado en el archivo.',
 		codeEmpty: 'El código del nodo es obligatorio.',
 		titleEmpty: 'El título es obligatorio.',
-		emailEmpty: 'El correo del responsable es obligatorio.',
-		userNotFound: 'No existe un usuario con ese correo.',
-		staffNotFound: 'El usuario no está registrado como personal.',
+		professorCodeEmpty: 'El código de docente es obligatorio.',
+		professorNotFound: 'No existe un docente con ese código.',
+		emailEmpty: 'El correo del docente es obligatorio.',
+		emailTooLong: 'El correo del docente supera el largo máximo permitido (255 caracteres).',
+		inconsistentEmailForProfessor:
+			'El mismo código de docente aparece con correos distintos en el archivo.',
+		inconsistentProfessorForEmail:
+			'El mismo correo aparece con códigos de docente distintos en el archivo.',
+		emailMismatchForLinkedUser:
+			'El docente ya tiene un usuario vinculado con un correo distinto. Use el correo del usuario vinculado.',
 		entityCodeWithoutType: 'Indicó un código de entidad sin tipo de entidad.',
 		entityTypeInvalid: 'El código de tipo de entidad no es válido.',
 		entityNotFound: 'No existe la entidad indicada para ese tipo.',
@@ -55,9 +64,16 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 		duplicateCodeInFile: 'Duplicate code in the file.',
 		codeEmpty: 'Node code is required.',
 		titleEmpty: 'Title is required.',
+		professorCodeEmpty: 'Professor code is required.',
+		professorNotFound: 'No professor exists with that code.',
 		emailEmpty: 'Responsible email is required.',
-		userNotFound: 'No user exists with that email.',
-		staffNotFound: 'The user is not registered as staff.',
+		emailTooLong: 'Responsible email exceeds the maximum allowed length (255 characters).',
+		inconsistentEmailForProfessor:
+			'The same professor code appears with different emails in the file.',
+		inconsistentProfessorForEmail:
+			'The same email appears with different professor codes in the file.',
+		emailMismatchForLinkedUser:
+			"The professor is already linked to a user with a different email. Use the linked user's email.",
 		entityCodeWithoutType: 'An entity code was provided without an entity type.',
 		entityTypeInvalid: 'The entity type code is not valid.',
 		entityNotFound: 'No entity exists with that code for the given type.',

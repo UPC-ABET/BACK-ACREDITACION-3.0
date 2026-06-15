@@ -1,5 +1,10 @@
 jest.mock('@nestjs/common', () => ({
 	Injectable: () => () => undefined,
+	Logger: class {
+		error() {}
+		warn() {}
+		log() {}
+	},
 	HttpException: class HttpException extends Error {
 		constructor(
 			public response: unknown,
@@ -16,6 +21,9 @@ jest.mock('../core/charts-upload.repository', () => ({ ChartsUploadRepository: c
 jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), {
 	virtual: true,
 });
+jest.mock('src/modules/organization/users/api/users.service', () => ({ UserService: class {} }), {
+	virtual: true,
+});
 jest.mock(
 	'../../upload-logs/config/strings/upload-logs.validation',
 	() => ({
@@ -23,6 +31,7 @@ jest.mock(
 			error: {
 				chartsAlreadyLoadedForPeriod: 'error.uploads.chartsAlreadyLoadedForPeriod',
 				schoolChartNotConfigured: 'error.uploads.schoolChartNotConfigured',
+				ifcRoleNotConfigured: 'error.uploads.ifcRoleNotConfigured',
 			},
 		},
 	}),
@@ -40,8 +49,17 @@ const uploadLogServiceStub: any = {
 };
 
 // Positional layout for languages = ['es','en']:
-// code | parentCode | title_es | title_en | email | entityType (name) | entityCode
-const HEADER = ['Code', 'Parent', 'Title ES', 'Title EN', 'Email', 'EntityType', 'EntityCode'];
+// code | parentCode | title_es | title_en | professorCode | email | entityType (name) | entityCode
+const HEADER = [
+	'Code',
+	'Parent',
+	'Title ES',
+	'Title EN',
+	'ProfessorCode',
+	'Email',
+	'EntityType',
+	'EntityCode',
+];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -64,9 +82,16 @@ function makeRepository(langs: string[], uploadFnResult: any[], loaded = false) 
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
 		getEntityTypes: jest.fn().mockResolvedValue([]),
+		getActiveRoleIdByCode: jest.fn().mockResolvedValue(77),
+		getStaffForProvisioning: jest.fn().mockResolvedValue([]),
+		findActiveUserIdByEmail: jest.fn().mockResolvedValue(null),
+		linkStaffToUser: jest.fn().mockResolvedValue(undefined),
+		assignUserRole: jest.fn().mockResolvedValue(undefined),
 	};
 	return { repository, calls };
 }
+
+const userServiceStub: any = { create: jest.fn().mockResolvedValue({ id: 1 }) };
 
 describe('ChartsUploadService — positional parsing', () => {
 	it('assembles per-language title jsonb and tree columns into structured rows', async () => {
@@ -74,11 +99,11 @@ describe('ChartsUploadService — positional parsing', () => {
 			['es', 'en'],
 			[{ row_number: null, error_code: null, upload_log_id: 42 }],
 		);
-		const service = new ChartsUploadService(repository, uploadLogServiceStub);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
 
 		const buffer = await makeXlsx([
-			['PC1', '', 'Coordinacion CS', 'CS Coordination', 'pc@uni.edu', 'Carrera', 'CS'],
-			['A1', 'PC1', 'Area Datos', 'Data Area', 'area@uni.edu', 'Area', ''],
+			['PC1', '', 'Coordinacion CS', 'CS Coordination', 'P001', 'pc@uni.edu', 'Carrera', 'CS'],
+			['A1', 'PC1', 'Area Datos', 'Data Area', 'P002', 'area@uni.edu', 'Area', ''],
 		]);
 		const result = await service.processUpload(buffer, 'chart.xlsx', 7, SCHOOL_ID, 1, {} as any);
 
@@ -92,6 +117,7 @@ describe('ChartsUploadService — positional parsing', () => {
 			code: 'PC1',
 			parentCode: '',
 			title: { es: 'Coordinacion CS', en: 'CS Coordination' },
+			professorCode: 'P001',
 			email: 'pc@uni.edu',
 			entityType: 'Carrera',
 			entityCode: 'CS',
@@ -109,8 +135,8 @@ describe('ChartsUploadService — positional parsing', () => {
 
 	it('throws when the school already has an uploaded chart for the period', async () => {
 		const { repository } = makeRepository(['es', 'en'], [], true);
-		const service = new ChartsUploadService(repository, uploadLogServiceStub);
-		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'x@uni.edu', 'Carrera', 'CS']]);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'P001', 'pc@uni.edu', 'Carrera', 'CS']]);
 		await expect(
 			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {} as any),
 		).rejects.toThrow();
@@ -119,8 +145,8 @@ describe('ChartsUploadService — positional parsing', () => {
 	it('throws when the school chart node is not configured', async () => {
 		const { repository } = makeRepository(['es', 'en'], []);
 		repository.schoolChartExists.mockResolvedValueOnce(false);
-		const service = new ChartsUploadService(repository, uploadLogServiceStub);
-		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'x@uni.edu', 'Carrera', 'CS']]);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'P001', 'pc@uni.edu', 'Carrera', 'CS']]);
 		await expect(
 			service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {} as any),
 		).rejects.toThrow();
@@ -129,10 +155,12 @@ describe('ChartsUploadService — positional parsing', () => {
 	it('returns annotated excel when the function reports row errors', async () => {
 		const { repository } = makeRepository(
 			['es', 'en'],
-			[{ row_number: 2, error_code: 'staffNotFound', upload_log_id: null }],
+			[{ row_number: 2, error_code: 'professorNotFound', upload_log_id: null }],
 		);
-		const service = new ChartsUploadService(repository, uploadLogServiceStub);
-		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'ghost@uni.edu', 'Carrera', 'CS']]);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		const buffer = await makeXlsx([
+			['PC1', '', 'a', 'b', 'GHOST', 'ghost@uni.edu', 'Carrera', 'CS'],
+		]);
 		const result = await service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {
 			lang: 'es',
 		} as any);
@@ -140,6 +168,69 @@ describe('ChartsUploadService — positional parsing', () => {
 		expect(result.success).toBe(false);
 		expect(result.errorRows).toBe(1);
 		expect(result.excelWithErrors).toBeTruthy();
+	});
+});
+
+describe('ChartsUploadService — IFC role guard & provisioning', () => {
+	const okResult = [{ row_number: null, error_code: null, upload_log_id: 9 }];
+	const oneRow = () => makeXlsx([['PC1', '', 'a', 'b', 'P001', 'x@u.edu', 'Carrera', 'CS']]);
+
+	beforeEach(() => userServiceStub.create.mockClear());
+
+	it('throws before loading when the IFC role is not configured', async () => {
+		const { repository } = makeRepository(['es', 'en'], []);
+		repository.getActiveRoleIdByCode.mockResolvedValueOnce(null);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		await expect(
+			service.processUpload(await oneRow(), 'c.xlsx', 1, SCHOOL_ID, 1, {} as any),
+		).rejects.toThrow();
+		expect(repository.callUploadFunction).not.toHaveBeenCalled();
+	});
+
+	it('links the staff to an existing user instead of creating one', async () => {
+		const { repository } = makeRepository(['es', 'en'], okResult);
+		repository.getStaffForProvisioning.mockResolvedValueOnce([
+			{ staffId: 5, firstName: 'A', lastName: 'B', email: 'x@u.edu', userId: null },
+		]);
+		repository.findActiveUserIdByEmail.mockResolvedValueOnce(42);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		const result = await service.processUpload(
+			await oneRow(),
+			'c.xlsx',
+			1,
+			SCHOOL_ID,
+			1,
+			{} as any,
+		);
+		expect(result.success).toBe(true);
+		expect(repository.linkStaffToUser).toHaveBeenCalledWith(5, 42);
+		expect(userServiceStub.create).not.toHaveBeenCalled();
+	});
+
+	it('creates an IFC user and assigns the role when none exists for the email', async () => {
+		const { repository } = makeRepository(['es', 'en'], okResult);
+		repository.getStaffForProvisioning.mockResolvedValueOnce([
+			{ staffId: 5, firstName: 'A', lastName: 'B', email: 'x@u.edu', userId: null },
+		]);
+		repository.findActiveUserIdByEmail.mockResolvedValueOnce(null);
+		userServiceStub.create.mockResolvedValueOnce({ id: 100 });
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		await service.processUpload(await oneRow(), 'c.xlsx', 1, SCHOOL_ID, 1, {} as any);
+		expect(userServiceStub.create).toHaveBeenCalledWith(
+			expect.objectContaining({ email: 'x@u.edu', firstName: 'A', lastName: 'B', staffId: 5 }),
+		);
+		expect(repository.assignUserRole).toHaveBeenCalledWith(100, 77);
+	});
+
+	it('skips provisioning for staff already linked to a user', async () => {
+		const { repository } = makeRepository(['es', 'en'], okResult);
+		repository.getStaffForProvisioning.mockResolvedValueOnce([
+			{ staffId: 5, firstName: 'A', lastName: 'B', email: 'x@u.edu', userId: 7 },
+		]);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		await service.processUpload(await oneRow(), 'c.xlsx', 1, SCHOOL_ID, 1, {} as any);
+		expect(userServiceStub.create).not.toHaveBeenCalled();
+		expect(repository.linkStaffToUser).not.toHaveBeenCalled();
 	});
 });
 
@@ -160,6 +251,7 @@ describe('ChartsUploadService — template', () => {
 		const service = new ChartsUploadService(
 			makeTemplateRepository(['es', 'en']),
 			uploadLogServiceStub,
+			userServiceStub,
 		);
 		const { buffer, fileName } = await service.generateTemplate('es');
 		expect(fileName).toBe('PlantillaOrganigrama.xlsx');
@@ -191,10 +283,10 @@ describe('ChartsUploadService — template', () => {
 		expect(usageByType.get('Area')).toBe('No');
 		expect(usageByType.get('Subarea')).toBe('No');
 
-		// the dropdown must sit on the entity-type column (code, parentCode, title×2, email, entityType),
-		// not on the "Correo del responsable" (email) column
+		// the dropdown must sit on the entity-type column
+		// (code, parentCode, title×2, professorCode, email, entityType), not on the email column
 		const sheet = wb.getWorksheet('Template')!;
-		const entityTypeCol = 2 + 2 + 2; // SINGLE_COLUMNS_BEFORE_TITLE + langs(2) + 2
+		const entityTypeCol = 2 + 2 + 3; // SINGLE_COLUMNS_BEFORE_TITLE + langs(2) + 3
 		const emailCol = entityTypeCol - 1;
 		expect(sheet.getCell(2, entityTypeCol).dataValidation?.type).toBe('list');
 		expect(sheet.getCell(2, emailCol).dataValidation).toBeUndefined();

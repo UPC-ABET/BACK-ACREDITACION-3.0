@@ -72,6 +72,10 @@ export class FilterProgramDto {
 	isActive?: boolean;
 
 	@IsOptional()
+	@ApiProperty({ example: true, required: false })
+	schoolFilter?: boolean;
+
+	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	modalityTypeId?: number;
 

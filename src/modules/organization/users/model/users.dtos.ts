@@ -11,6 +11,15 @@ import {
 	MinLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+
+export class ListUsersQueryDto {
+	@IsOptional()
+	@Transform(({ value }) => value === true || value === 'true')
+	@IsBoolean()
+	@ApiProperty({ example: true, required: false })
+	unlinkedOnly?: boolean;
+}
 
 export class CreateUserDto {
 	@IsOptional()

@@ -25,6 +25,12 @@ export class ChartHeadsValidation {
 			errors.push(chartHeadsValidationStrings.error.schoolNotFound);
 		}
 
+		const staffIds = [dto.dean.staffId, ...dto.directors.map((d) => d.staffId)];
+		const missingStaff = await repo.findMissingStaffIds(staffIds);
+		if (missingStaff.length > 0) {
+			errors.push(chartHeadsValidationStrings.error.staffNotFound);
+		}
+
 		const userIds = [dto.dean.userId, ...dto.directors.map((d) => d.userId)].filter(
 			(id): id is number => id !== undefined && id !== null,
 		);

@@ -9,6 +9,7 @@ import {
 	SwaggerProfessorGetById,
 	SwaggerProfessorGetByFilters,
 	SwaggerProfessorGetByUserId,
+	SwaggerProfessorLookup,
 	SwaggerProfessorMaintenanceCreate,
 	SwaggerProfessorMaintenanceList,
 	SwaggerProfessorMaintenanceUpdate,
@@ -22,6 +23,7 @@ import {
 	ProfessorMaintenanceQueryDto,
 	UpdateProfessorMaintenanceDto,
 	CreateProfessorMaintenanceDto,
+	ProfessorLookupQueryDto,
 } from '../model/professors.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -73,6 +75,12 @@ export class ProfessorController extends BaseController<ProfessorService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
 	async getByUserId(@Param('id', ParseIntPipe) userId: number) {
 		return parseSuccessResponse(await this.service.getByUserId(userId));
+	}
+
+	@SwaggerProfessorLookup()
+	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.GET })
+	async lookup(@Query() query: ProfessorLookupQueryDto) {
+		return parseSuccessResponse(await this.service.getLookup(query));
 	}
 
 	@SwaggerProfessorMaintenanceCreate()

@@ -1,6 +1,8 @@
 import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
+import { LookupQueryDto } from 'src/commons/lookup.dtos';
 
 export class CreateProfessorDto {
 	@IsOptional()
@@ -133,4 +135,31 @@ export interface ProfessorMaintenanceItem {
 	code: string;
 	firstName: string;
 	lastName: string;
+}
+
+export class ProfessorLookupQueryDto extends LookupQueryDto {
+	@IsOptional()
+	@Transform(({ value }) => value === true || value === 'true')
+	@IsBoolean()
+	@ApiPropertyOptional({
+		example: true,
+		description: 'When true, only professors whose staff has no linked user account',
+	})
+	unassigned?: boolean;
+}
+
+export interface ProfessorLookupUser {
+	id: number;
+	firstName: string;
+	lastName: string;
+	email: string;
+}
+
+export interface ProfessorLookupItem {
+	id: number;
+	staffId: number;
+	code: string | null;
+	firstName: string;
+	lastName: string;
+	user: ProfessorLookupUser | null;
 }

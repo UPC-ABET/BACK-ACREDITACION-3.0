@@ -18,6 +18,7 @@ import {
 	CreateUserDto,
 	UpdateUserDto,
 	FilterUserDto,
+	ListUsersQueryDto,
 	LoginUserByCredentialsDto,
 	ChangeRoleDto,
 	GetMeDto,
@@ -58,8 +59,10 @@ export class UserController extends BaseController<UserService> {
 
 	@SwaggerUserGetAll()
 	@RequirePermission({ module: PERMISSION_MODULES.USERS, action: PERMISSION_ACTIONS.GET })
-	async getAll() {
-		return await super.getAll();
+	async getAll(@Query() query?: ListUsersQueryDto) {
+		return parseSuccessResponse(
+			await this.service.getAll(undefined, { unlinkedOnly: query?.unlinkedOnly }),
+		);
 	}
 
 	@SwaggerUserGetById()

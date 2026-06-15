@@ -40,7 +40,7 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 			qb.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId });
 		}
 
-		if (schoolId) {
+		if (filters.schoolFilter && schoolId) {
 			qb.andWhere(programInSchoolSubquery('prog.id')).setParameters(
 				schoolProgramFilterParams(schoolId),
 			);

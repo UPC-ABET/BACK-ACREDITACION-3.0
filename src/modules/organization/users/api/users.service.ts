@@ -249,8 +249,12 @@ export class UserService extends BaseService<UserRepository> {
 		return updated;
 	}
 
-	async getAll(options?: FindManyOptions) {
-		return await this.attachLinkedTeachers(await super.getAll(options));
+	async getAll(options?: FindManyOptions, filter?: { unlinkedOnly?: boolean }) {
+		const users = await this.attachLinkedTeachers(await super.getAll(options));
+		if (filter?.unlinkedOnly) {
+			return (users as Array<Record<string, any>>).filter((u) => u.staff === null);
+		}
+		return users;
 	}
 
 	async getById(id: number, options?: FindOneOptions) {
@@ -284,7 +288,7 @@ export class UserService extends BaseService<UserRepository> {
 		for (const r of rows) {
 			if (!byUser.has(r.user_id)) {
 				byUser.set(r.user_id, {
-					staffId: r.staff_id,
+					id: r.staff_id,
 					code: r.code,
 					firstName: r.first_name,
 					lastName: r.last_name,
@@ -293,9 +297,7 @@ export class UserService extends BaseService<UserRepository> {
 		}
 
 		for (const user of list) {
-			const teacher = byUser.get(user.id) ?? null;
-			user.staffId = teacher ? (teacher.staffId as number) : null;
-			user.linkedTeacher = teacher;
+			user.staff = byUser.get(user.id) ?? null;
 		}
 		return users;
 	}

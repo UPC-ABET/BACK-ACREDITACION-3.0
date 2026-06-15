@@ -3,7 +3,6 @@ import { DataSource, EntityManager } from 'typeorm';
 
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ChartEntity } from 'src/modules/organization/charts/model/charts.entity';
-import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import type { I18nText } from 'src/shared/types/i18n';
 import type {
 	ChartHeadDeanViewDto,
@@ -17,8 +16,7 @@ interface HeadInput {
 	entityCode: number | null;
 	rootChartId: number | null;
 	academicPeriodId: number;
-	firstName: string;
-	lastName: string;
+	staffId: number;
 	userId: number | null;
 	title: I18nText;
 }
@@ -55,6 +53,16 @@ export class ChartHeadsRepository {
 		return ids.filter((id) => !foundIds.has(id));
 	}
 
+	async findMissingStaffIds(ids: number[]): Promise<number[]> {
+		if (ids.length === 0) return [];
+		const found: Array<{ id: number }> = await this.dataSource.query(
+			'SELECT id FROM organization.staff WHERE id = ANY($1::int[])',
+			[ids],
+		);
+		const foundIds = new Set(found.map((r) => Number(r.id)));
+		return ids.filter((id) => !foundIds.has(id));
+	}
+
 	async configure(dto: ConfigureChartHeadsDto): Promise<void> {
 		await this.dataSource.transaction(async (manager) => {
 			const deanTypeId = await this.typeIdByCode(manager, TYPE_CODES.ENTITY_TYPE.DEAN);
@@ -65,8 +73,7 @@ export class ChartHeadsRepository {
 				entityCode: null,
 				rootChartId: null,
 				academicPeriodId: dto.academicPeriodId,
-				firstName: dto.dean.firstName,
-				lastName: dto.dean.lastName,
+				staffId: dto.dean.staffId,
 				userId: dto.dean.userId ?? null,
 				title: dto.dean.title,
 			});
@@ -77,8 +84,7 @@ export class ChartHeadsRepository {
 					entityCode: director.schoolId,
 					rootChartId: deanChartId,
 					academicPeriodId: dto.academicPeriodId,
-					firstName: director.firstName,
-					lastName: director.lastName,
+					staffId: director.staffId,
 					userId: director.userId ?? null,
 					title: director.title,
 				});
@@ -88,11 +94,18 @@ export class ChartHeadsRepository {
 
 	async getConfiguration(academicPeriodId: number): Promise<ChartHeadsConfigurationDto> {
 		const deanRows: ChartHeadDeanViewDto[] = await this.dataSource.query(
-			`SELECT c.id AS "chartId", s.id AS "staffId", s.first_name AS "firstName",
-				s.last_name AS "lastName", s.user_id AS "userId", c.title AS "title"
+			`SELECT c.id AS "chartId", s.id AS "staffId", p.code AS "code",
+				s.first_name AS "firstName", s.last_name AS "lastName", s.user_id AS "userId",
+				CASE WHEN u.id IS NULL THEN NULL ELSE
+					json_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name,
+						'email', u.email)
+				END AS "user",
+				c.title AS "title"
 			 FROM organization.charts c
 			 JOIN organization.staff s ON s.id = c.staff_id
 			 JOIN core.types et ON et.id = c.entity_type_id
+			 LEFT JOIN academic.professors p ON p.staff_id = s.id
+			 LEFT JOIN organization.users u ON u.id = s.user_id
 			 WHERE c.academic_period_id = $1 AND et.code = $2 AND c.is_active = true
 			 ORDER BY c.id
 			 LIMIT 1`,
@@ -100,12 +113,18 @@ export class ChartHeadsRepository {
 		);
 
 		const directors: ChartHeadDirectorViewDto[] = await this.dataSource.query(
-			`SELECT c.id AS "chartId", s.id AS "staffId", s.first_name AS "firstName",
-				s.last_name AS "lastName", s.user_id AS "userId", c.title AS "title",
-				c.entity_code AS "schoolId", sch.code AS "schoolCode"
+			`SELECT c.id AS "chartId", s.id AS "staffId", p.code AS "code",
+				s.first_name AS "firstName", s.last_name AS "lastName", s.user_id AS "userId",
+				CASE WHEN u.id IS NULL THEN NULL ELSE
+					json_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name,
+						'email', u.email)
+				END AS "user",
+				c.title AS "title", c.entity_code AS "schoolId", sch.code AS "schoolCode"
 			 FROM organization.charts c
 			 JOIN organization.staff s ON s.id = c.staff_id
 			 JOIN core.types et ON et.id = c.entity_type_id
+			 LEFT JOIN academic.professors p ON p.staff_id = s.id
+			 LEFT JOIN organization.users u ON u.id = s.user_id
 			 LEFT JOIN organization.schools sch ON sch.id = c.entity_code
 			 WHERE c.academic_period_id = $1 AND et.code = $2 AND c.is_active = true
 			 ORDER BY sch.code`,
@@ -125,7 +144,8 @@ export class ChartHeadsRepository {
 
 	private async upsertHead(manager: EntityManager, input: HeadInput): Promise<number> {
 		const charts = manager.getRepository(ChartEntity);
-		const staff = manager.getRepository(StaffEntity);
+
+		await this.linkUserToStaff(manager, input.staffId, input.userId);
 
 		const existing = await charts.findOne({
 			where: {
@@ -137,28 +157,17 @@ export class ChartHeadsRepository {
 		});
 
 		if (existing) {
-			await staff.update(existing.staffId, {
-				firstName: input.firstName,
-				lastName: input.lastName,
-				userId: input.userId,
-			});
 			await charts.update(existing.id, {
+				staffId: input.staffId,
 				title: input.title,
 				rootChartId: input.rootChartId,
 			});
 			return existing.id;
 		}
 
-		const createdStaff = await staff.save(
-			staff.create({
-				firstName: input.firstName,
-				lastName: input.lastName,
-				userId: input.userId,
-			}),
-		);
 		const createdChart = await charts.save(
 			charts.create({
-				staffId: createdStaff.id,
+				staffId: input.staffId,
 				academicPeriodId: input.academicPeriodId,
 				rootChartId: input.rootChartId,
 				title: input.title,
@@ -167,5 +176,23 @@ export class ChartHeadsRepository {
 			}),
 		);
 		return createdChart.id;
+	}
+
+	// "Current wins": links only when both sides are free; an existing link on either side makes this
+	// a no-op (also avoids tripping the 1:1 unique index).
+	private async linkUserToStaff(
+		manager: EntityManager,
+		staffId: number,
+		userId: number | null,
+	): Promise<void> {
+		if (userId === null) return;
+		await manager.query(
+			`UPDATE organization.staff
+			 SET user_id = $1, updated_at = NOW()
+			 WHERE id = $2
+			   AND user_id IS NULL
+			   AND NOT EXISTS (SELECT 1 FROM organization.staff s2 WHERE s2.user_id = $1)`,
+			[userId, staffId],
+		);
 	}
 }

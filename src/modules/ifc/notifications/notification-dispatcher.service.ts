@@ -251,11 +251,13 @@ export class NotificationDispatcherService {
 				JOIN chain_up cu ON c.id = cu.root_chart_id
 				WHERE c.is_active = true AND cu.depth < 20
 			)
-			SELECT cu.entity_type_id::int AS "entityTypeId", s.id::int AS "staffId", s.staff_email AS "staffEmail"
+			SELECT cu.entity_type_id::int AS "entityTypeId", s.id::int AS "staffId",
+				COALESCE(s.staff_email, u.email) AS "staffEmail"
 			FROM chain_up cu
 			JOIN organization.staff s         ON s.id  = cu.staff_id
+			LEFT JOIN organization.users u    ON u.id  = s.user_id
 			WHERE cu.entity_type_id = ANY($2::int[])
-			  AND s.staff_email IS NOT NULL
+			  AND COALESCE(s.staff_email, u.email) IS NOT NULL
 			`,
 			[courseChartId, wanted],
 		);
