@@ -11,10 +11,12 @@ services:
       - .env
     ports:
       # Exposed only on localhost; Nginx reverse-proxies to it.
-      - "127.0.0.1:7777:7777"
+      - '127.0.0.1:7777:7777'
     extra_hosts:
       # Lets the container reach the host's PostgreSQL via host.docker.internal
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ./scrapping:/data/banner
     networks:
       - sys_acc_web
 

@@ -58,6 +58,17 @@ const envSchema = z
 		SMTP_REQUIRE_TLS: z.enum(['true', 'false']).optional(),
 
 		PUPPETEER_EXECUTABLE_PATH: z.string().optional(),
+
+		RAW_DB_URL: z.string().url().optional(),
+		RAW_DB_SSL: z.string().optional(),
+		BANNER_BASE_API: z.string().url().optional(),
+		BANNER_INTRANET_URL: z.string().url().optional(),
+		BANNER_API_KEY: z.string().optional(),
+		BANNER_AUTH_STATE_PATH: z.string().optional(),
+
+		AUTH_SESSION_TOKEN_SECRET: z.string().min(32).optional(),
+		AUTH_SESSION_TTL_SECONDS: z.string().regex(/^\d+$/).optional(),
+		BROWSER_AUTH_INTERNAL_URL: z.string().url().optional(),
 	})
 	.passthrough()
 	.refine(

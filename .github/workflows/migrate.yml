@@ -13,6 +13,8 @@ on:
         options:
           - "migration:run"
           - "migration:revert"
+          - "migration:raw:run"
+          - "migration:raw:revert"
           - "seed:initial"
 
 env:
@@ -60,6 +62,7 @@ jobs:
             CMD="${{ inputs.command }}"
             docker run --rm \
               --env-file /var/www/apps/sys_acc_back/.env \
+              --network sys_acc_web \
               --add-host host.docker.internal:host-gateway \
               ghcr.io/upc-abet/back-acreditacion-3.0:migrator \
               pnpm $CMD

@@ -1,0 +1,284 @@
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { createHash, randomUUID } from 'crypto';
+import { ScrapeRunRepository } from '../../raw/core/scrape-run.repository';
+import { RawHorarioInsert, RawHorarioRepository } from '../../raw/core/raw-horario.repository';
+import {
+	RawMatriculaInsert,
+	RawMatriculaRepository,
+} from '../../raw/core/raw-matricula.repository';
+import { RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
+import { DepartmentSourceRepository } from '../core/department-source.repository';
+import { BannerHttpClient } from '../core/banner-http.client';
+import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
+import { ScrapeRunStatus } from '../../raw/model/scrape-run.entity';
+import { RunScrapeDto } from '../model/scraper.dtos';
+import { scraperValidationStrings } from '../config/strings/scraper.validation';
+
+const DEFAULT_NIVEL = 'UG';
+const NRC_CHUNK_SIZE = 50;
+const MATRICULA_CONCURRENCY = 3;
+const ALUMNO_CONCURRENCY = 40;
+
+interface ScrapeStats {
+	departments: { requested: string[]; succeeded: string[]; failed: string[] };
+	counts: { horario: number; matricula: number; alumno: number };
+	uniqueStudents: number;
+	errors: Array<{ step: string; key: string; message: string }>;
+}
+
+@Injectable()
+export class ScraperService {
+	private readonly logger = new Logger(ScraperService.name);
+	private running = false;
+
+	constructor(
+		private readonly scrapeRunRepository: ScrapeRunRepository,
+		private readonly rawHorarioRepository: RawHorarioRepository,
+		private readonly rawMatriculaRepository: RawMatriculaRepository,
+		private readonly rawAlumnoRepository: RawAlumnoRepository,
+		private readonly departmentSourceRepository: DepartmentSourceRepository,
+		private readonly http: BannerHttpClient,
+	) {}
+
+	async run(dto: RunScrapeDto, triggeredBy: string | null): Promise<{ runId: string }> {
+		if (this.running) {
+			throw new HttpException(scraperValidationStrings.error.scrapeInProgress, HttpStatus.CONFLICT);
+		}
+
+		const nivel = dto.nivel?.trim() || DEFAULT_NIVEL;
+		const departamentos = dto.departamentos?.length
+			? [...new Set(dto.departamentos)]
+			: await this.departmentSourceRepository.findActiveDepartmentCodes();
+
+		if (departamentos.length === 0) {
+			throw new HttpException(scraperValidationStrings.error.noDepartments, HttpStatus.BAD_REQUEST);
+		}
+
+		const runId = randomUUID();
+		await this.scrapeRunRepository.createRun({
+			id: runId,
+			nivel,
+			periodo: dto.periodo,
+			departamentos,
+			triggeredBy,
+		});
+
+		this.running = true;
+		void this.execute(runId, nivel, dto.periodo, departamentos).finally(() => {
+			this.running = false;
+		});
+
+		return { runId };
+	}
+
+	async getRun(runId: string): Promise<{ status: ScrapeRunStatus; stats: ScrapeStats | null }> {
+		const run = await this.scrapeRunRepository.findById(runId);
+		if (!run) {
+			throw new HttpException(scraperValidationStrings.error.runNotFound, HttpStatus.NOT_FOUND);
+		}
+		return { status: run.status, stats: run.stats as ScrapeStats | null };
+	}
+
+	private async execute(
+		runId: string,
+		nivel: string,
+		periodo: string,
+		departamentos: string[],
+	): Promise<void> {
+		const stats: ScrapeStats = {
+			departments: { requested: departamentos, succeeded: [], failed: [] },
+			counts: { horario: 0, matricula: 0, alumno: 0 },
+			uniqueStudents: 0,
+			errors: [],
+		};
+
+		try {
+			const nrcs = await this.scrapeHorario(runId, nivel, periodo, departamentos, stats);
+			const codigos = await this.scrapeMatricula(runId, nivel, periodo, nrcs, stats);
+			stats.uniqueStudents = codigos.length;
+			await this.scrapeAlumnos(runId, nivel, codigos, stats);
+
+			const status: ScrapeRunStatus =
+				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
+			await this.scrapeRunRepository.finish(runId, status, stats);
+			this.logger.log(`Scrape ${runId} ${status}: ${JSON.stringify(stats.counts)}`);
+		} catch (error) {
+			const expired = error instanceof SessionExpiredError;
+			const status: ScrapeRunStatus = expired ? 'expired' : 'failed';
+			await this.scrapeRunRepository.finish(runId, status, {
+				...stats,
+				fatal: (error as Error).message,
+			});
+			this.logger.error(`Scrape ${runId} ${status}: ${(error as Error).message}`);
+		}
+	}
+
+	private async scrapeHorario(
+		runId: string,
+		nivel: string,
+		periodo: string,
+		departamentos: string[],
+		stats: ScrapeStats,
+	): Promise<string[]> {
+		const nrcs = new Set<string>();
+
+		for (const departamento of departamentos) {
+			try {
+				const json = await this.http.get<{ detalle?: unknown }>('/horario/HorarioClasesPracticas', {
+					codigoNivel: nivel,
+					codigoPeriodo: periodo,
+					codigoDepartamento: departamento,
+				});
+				const sections = asArray<Record<string, unknown>>(json.detalle);
+				const rows: RawHorarioInsert[] = sections.map((section) => {
+					const nrc = toStringOrNull(section.nrc);
+					if (nrc) nrcs.add(nrc);
+					return {
+						runId,
+						nivel,
+						periodo,
+						departamento,
+						nrc,
+						payload: section,
+						payloadHash: hashPayload(section),
+					};
+				});
+				await this.rawHorarioRepository.bulkInsert(rows);
+				stats.counts.horario += rows.length;
+				stats.departments.succeeded.push(departamento);
+			} catch (error) {
+				if (error instanceof SessionExpiredError) throw error;
+				stats.departments.failed.push(departamento);
+				stats.errors.push({
+					step: 'horario',
+					key: departamento,
+					message: (error as Error).message,
+				});
+			}
+		}
+
+		return [...nrcs];
+	}
+
+	private async scrapeMatricula(
+		runId: string,
+		nivel: string,
+		periodo: string,
+		nrcs: string[],
+		stats: ScrapeStats,
+	): Promise<string[]> {
+		const codigos = new Set<string>();
+		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
+		const limit = await createLimiter(MATRICULA_CONCURRENCY);
+
+		await Promise.all(
+			chunks.map((nrcChunk) =>
+				limit(async () => {
+					try {
+						const json = await this.http.get<{ detalle?: unknown }>(
+							'/detallematricula/detallematricula/listado',
+							{ codigoNivel: nivel, codigoPeriodo: periodo, nrcs: nrcChunk.join(',') },
+						);
+						const items = asArray<Record<string, unknown>>(json.detalle);
+						const rows: RawMatriculaInsert[] = [];
+						for (const item of items) {
+							const nrc = toStringOrNull(item.nrc) ?? '';
+							const alumnos = asArray<Record<string, unknown>>(item.listaAlumnos);
+							for (const alumno of alumnos) {
+								const codigoAlumno = toStringOrNull(alumno.codigoAlumno);
+								if (codigoAlumno) codigos.add(codigoAlumno);
+								rows.push({
+									runId,
+									nivel,
+									periodo,
+									nrc,
+									codigoAlumno,
+									payload: alumno,
+									payloadHash: hashPayload(alumno),
+								});
+							}
+						}
+						await this.rawMatriculaRepository.bulkInsert(rows);
+						stats.counts.matricula += rows.length;
+					} catch (error) {
+						if (error instanceof SessionExpiredError) throw error;
+						stats.errors.push({
+							step: 'matricula',
+							key: `${nrcChunk[0]}..${nrcChunk[nrcChunk.length - 1]}`,
+							message: (error as Error).message,
+						});
+					}
+				}),
+			),
+		);
+
+		return [...codigos];
+	}
+
+	private async scrapeAlumnos(
+		runId: string,
+		nivel: string,
+		codigos: string[],
+		stats: ScrapeStats,
+	): Promise<void> {
+		const limit = await createLimiter(ALUMNO_CONCURRENCY);
+
+		await Promise.all(
+			codigos.map((codigoAlumno) =>
+				limit(async () => {
+					try {
+						const json = await this.http.get<{ detalle?: { listaAlumnos?: unknown } }>(
+							'/Alumno/Listado',
+							{ nivel, codigoAlumno, pagina: '1' },
+						);
+						const alumno = asArray<Record<string, unknown>>(json.detalle?.listaAlumnos)[0];
+						if (!alumno) return;
+						await this.rawAlumnoRepository.bulkInsert([
+							{
+								runId,
+								nivel,
+								codigoAlumno,
+								payload: alumno,
+								payloadHash: hashPayload(alumno),
+							},
+						]);
+						stats.counts.alumno += 1;
+					} catch (error) {
+						if (error instanceof SessionExpiredError) throw error;
+						stats.errors.push({
+							step: 'alumno',
+							key: codigoAlumno,
+							message: (error as Error).message,
+						});
+					}
+				}),
+			),
+		);
+	}
+}
+
+function asArray<T>(value: unknown): T[] {
+	if (Array.isArray(value)) return value as T[];
+	if (value && typeof value === 'object') return [value as T];
+	return [];
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+	return out;
+}
+
+function toStringOrNull(value: unknown): string | null {
+	if (value === null || value === undefined || value === '') return null;
+	return String(value);
+}
+
+function hashPayload(payload: unknown): string {
+	return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
+async function createLimiter(concurrency: number) {
+	const { default: pLimit } = await import('p-limit');
+	return pLimit(concurrency);
+}

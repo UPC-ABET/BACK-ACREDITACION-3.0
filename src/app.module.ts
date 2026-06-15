@@ -89,6 +89,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { S3Module } from './modules/s3/s3.module';
 
+import { BannerModule } from './modules/admin/banner/banner.module';
 import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
 import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart-heads.module';
@@ -215,6 +216,7 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 		RoleModulePermissionModule,
 		PortfolioModule,
 		S3Module,
+		...(process.env.RAW_DB_URL ? [BannerModule] : []),
 	],
 	controllers: [AppController],
 	providers: [
