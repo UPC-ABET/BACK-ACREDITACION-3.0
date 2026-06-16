@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+/encuestas_anterior
 
 # Logs
 logs

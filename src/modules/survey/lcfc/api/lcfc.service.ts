@@ -6,6 +6,7 @@ import {
 	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
+	UpdateLcfcConfigDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
@@ -19,12 +20,20 @@ export class LcfcService {
 		private readonly notifService: LcfcNotificationService,
 	) {}
 
-	generateConfigs(dto: GenerateLcfcConfigDto) {
-		return this.configService.generateConfigs(dto);
+	generateConfigs(dto: GenerateLcfcConfigDto, schoolId: number) {
+		return this.configService.generateConfigs(dto, schoolId);
 	}
 
 	getAllConfigs(filters?: FilterLcfcConfigDto) {
 		return this.configService.getAll(filters);
+	}
+
+	getConfigById(id: number) {
+		return this.configService.getConfigById(id);
+	}
+
+	updateConfig(id: number, dto: UpdateLcfcConfigDto) {
+		return this.configService.updateConfig(id, dto);
 	}
 
 	updateConfigStatus(dto: UpdateLcfcConfigStatusDto) {
@@ -33,6 +42,10 @@ export class LcfcService {
 
 	cloneConfig(dto: CloneLcfcConfigDto) {
 		return this.configService.cloneConfig(dto);
+	}
+
+	deleteConfig(id: number) {
+		return this.configService.deleteConfig(id);
 	}
 
 	sendNotifications(dto: SendLcfcNotificationDto) {

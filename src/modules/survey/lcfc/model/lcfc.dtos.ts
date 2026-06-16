@@ -2,6 +2,7 @@ import {
 	IsArray,
 	IsBoolean,
 	IsNumber,
+	IsObject,
 	IsOptional,
 	IsString,
 	ValidateNested,
@@ -10,27 +11,27 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export class GenerateLcfcConfigDto {
 	@IsNumber()
 	@ApiProperty({
 		example: 1,
-		description: 'Academic period ID for which configurations are generated',
+		description: 'Modality type ID (must match the academic period and program modality)',
+	})
+	modalityTypeId: number;
+
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		description:
+			'Academic period ID for which configurations are generated. Must be the latest period for the given modality',
 	})
 	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		description: 'Campus ID (optional, filters by campus)',
-		required: false,
-	})
-	campusId?: number;
 }
 
 export class CloneLcfcConfigDto {
@@ -45,11 +46,23 @@ export class CloneLcfcConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
+}
+
+export class UpdateLcfcConfigDto {
+	@IsOptional()
+	@IsObject()
+	@ApiProperty({ example: { es: 'nombreEs', en: 'nameEn' }, required: false })
+	userOutcomeName?: I18nText;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Campus ID (optional)', required: false })
-	campusId?: number;
+	@IsObject()
+	@ApiProperty({ example: { es: 'descripcionEs', en: 'descriptionEn' }, required: false })
+	userOutcomeDescription?: I18nText;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({ example: true, required: false })
+	isActive?: boolean;
 }
 
 export class FilterLcfcConfigDto {
