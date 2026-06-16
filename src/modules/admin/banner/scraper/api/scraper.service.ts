@@ -6,8 +6,8 @@ import {
 	RawMatriculaInsert,
 	RawMatriculaRepository,
 } from '../../raw/core/raw-matricula.repository';
-import { RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
-import { RawNotasRepository } from '../../raw/core/raw-notas.repository';
+import { RawAlumnoInsert, RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
+import { RawNotasInsert, RawNotasRepository } from '../../raw/core/raw-notas.repository';
 import { DepartmentSourceRepository } from '../core/department-source.repository';
 import { BannerHttpClient } from '../core/banner-http.client';
 import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
@@ -18,8 +18,8 @@ import { scraperValidationStrings } from '../config/strings/scraper.validation';
 const DEFAULT_NIVEL = 'UG';
 const NRC_CHUNK_SIZE = 50;
 const MATRICULA_CONCURRENCY = 3;
-const ALUMNO_CONCURRENCY = 40;
-const NOTA_CONCURRENCY = 40;
+const SCRAPE_CONCURRENCY = 80;
+const INSERT_BATCH_SIZE = 500;
 
 interface ScrapeStats {
 	departments: { requested: string[]; succeeded: string[]; failed: string[] };
@@ -168,14 +168,20 @@ export class ScraperService {
 				stats,
 			);
 			stats.uniqueStudents = codigos.length;
-			await this.scrapeAlumnos(runId, nivel, codigos, stats);
-			await this.scrapeNotas(
-				runId,
-				nivel,
-				periodo,
-				buildNotaPairs(enrollments, courseByNrc),
-				stats,
-			);
+			// Alumnos and Notas only depend on matricula output, not on each other.
+			// Run them concurrently through one shared limiter (see SCRAPE_CONCURRENCY).
+			const limit = await createLimiter(SCRAPE_CONCURRENCY);
+			await Promise.all([
+				this.scrapeAlumnos(runId, nivel, codigos, stats, limit),
+				this.scrapeNotas(
+					runId,
+					nivel,
+					periodo,
+					buildNotaPairs(enrollments, courseByNrc),
+					stats,
+					limit,
+				),
+			]);
 
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
@@ -310,8 +316,11 @@ export class ScraperService {
 		nivel: string,
 		codigos: string[],
 		stats: ScrapeStats,
+		limit: Limiter,
 	): Promise<void> {
-		const limit = await createLimiter(ALUMNO_CONCURRENCY);
+		const buffer = new InsertBuffer<RawAlumnoInsert>(INSERT_BATCH_SIZE, (rows) =>
+			this.rawAlumnoRepository.bulkInsert(rows),
+		);
 
 		await Promise.all(
 			codigos.map((codigoAlumno) =>
@@ -323,15 +332,13 @@ export class ScraperService {
 						);
 						const alumno = asArray<Record<string, unknown>>(json.detalle?.listaAlumnos)[0];
 						if (!alumno) return;
-						await this.rawAlumnoRepository.bulkInsert([
-							{
-								runId,
-								nivel,
-								codigoAlumno,
-								payload: alumno,
-								payloadHash: hashPayload(alumno),
-							},
-						]);
+						await buffer.add({
+							runId,
+							nivel,
+							codigoAlumno,
+							payload: alumno,
+							payloadHash: hashPayload(alumno),
+						});
 						stats.counts.alumno += 1;
 					} catch (error) {
 						if (error instanceof SessionExpiredError) throw error;
@@ -344,18 +351,21 @@ export class ScraperService {
 				}),
 			),
 		);
+
+		await buffer.flush();
 	}
 
-	// Phase 4: per (alumno, curso), fetch the current grades; one raw row each. The
-	// notas endpoint is path-param based: /notas/{codigoAlumno}/{nivel}-{periodo}/{cursoCodigo}.
 	private async scrapeNotas(
 		runId: string,
 		nivel: string,
 		periodo: string,
 		pairs: NotaPair[],
 		stats: ScrapeStats,
+		limit: Limiter,
 	): Promise<void> {
-		const limit = await createLimiter(NOTA_CONCURRENCY);
+		const buffer = new InsertBuffer<RawNotasInsert>(INSERT_BATCH_SIZE, (rows) =>
+			this.rawNotasRepository.bulkInsert(rows),
+		);
 
 		await Promise.all(
 			pairs.map((pair) =>
@@ -371,17 +381,15 @@ export class ScraperService {
 						// No grades yet for this (alumno, curso) — skip, don't store an empty row.
 						if (!detalle || (detalle.notaFinal == null && !detalle.notas)) return;
 
-						await this.rawNotasRepository.bulkInsert([
-							{
-								runId,
-								nivel,
-								periodo,
-								codigoAlumno: pair.codigoAlumno,
-								cursoCodigo: pair.cursoCodigo,
-								payload: json,
-								payloadHash: hashPayload(json),
-							},
-						]);
+						await buffer.add({
+							runId,
+							nivel,
+							periodo,
+							codigoAlumno: pair.codigoAlumno,
+							cursoCodigo: pair.cursoCodigo,
+							payload: json,
+							payloadHash: hashPayload(json),
+						});
 						stats.counts.nota += 1;
 					} catch (error) {
 						if (error instanceof SessionExpiredError) throw error;
@@ -394,6 +402,8 @@ export class ScraperService {
 				}),
 			),
 		);
+
+		await buffer.flush();
 	}
 }
 
@@ -444,4 +454,28 @@ function hashPayload(payload: unknown): string {
 async function createLimiter(concurrency: number) {
 	const { default: pLimit } = await import('p-limit');
 	return pLimit(concurrency);
+}
+
+type Limiter = Awaited<ReturnType<typeof createLimiter>>;
+
+class InsertBuffer<T> {
+	private rows: T[] = [];
+
+	constructor(
+		private readonly size: number,
+		private readonly onFlush: (rows: T[]) => Promise<void>,
+	) {}
+
+	async add(row: T): Promise<void> {
+		this.rows.push(row);
+		if (this.rows.length >= this.size) {
+			await this.onFlush(this.rows.splice(0, this.rows.length));
+		}
+	}
+
+	async flush(): Promise<void> {
+		if (this.rows.length > 0) {
+			await this.onFlush(this.rows.splice(0, this.rows.length));
+		}
+	}
 }
