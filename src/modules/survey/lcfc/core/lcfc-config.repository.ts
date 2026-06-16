@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export const LCFC_SURVEY_TYPE = 'LCFC';
 
@@ -53,6 +54,35 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				periodId: academicPeriodId,
 			})
 			.getOne();
+	}
+
+	/** Latest academic period id for a given modality, ordered by start date. */
+	async findLatestAcademicPeriodId(modalityTypeId: number): Promise<number | null> {
+		const rows = await this.dataSource.query(
+			`SELECT id
+			 FROM academic.academic_periods
+			 WHERE modality_type_id = $1
+			 ORDER BY start_date DESC
+			 LIMIT 1`,
+			[modalityTypeId],
+		);
+		return rows?.[0]?.id ?? null;
+	}
+
+	/** Whether a program belongs to the given school's org chart. */
+	async isProgramInSchool(programId: number, schoolId: number): Promise<boolean> {
+		const rows = await this.dataSource.query(
+			`SELECT 1
+			 FROM organization.charts ch_prog
+			 INNER JOIN organization.charts ch_sch ON ch_sch.id = ch_prog.root_chart_id
+			 WHERE ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = $1)
+			   AND ch_sch.entity_type_id = (SELECT id FROM core.types WHERE code = $2)
+			   AND ch_sch.entity_code = $3
+			   AND ch_prog.entity_code = $4
+			 LIMIT 1`,
+			[TYPE_CODES.ENTITY_TYPE.PROGRAM, TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId, programId],
+		);
+		return rows.length > 0;
 	}
 
 	/** Gets first valid outcome_id for a program (required to satisfy FK constraint in outcome_configs) */

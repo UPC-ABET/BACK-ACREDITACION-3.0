@@ -15,6 +15,8 @@ export const lcfcValidationStrings = {
 		noCourseSections: 'error.survey.lcfc.noCourseSections',
 		noProgramOutcomes: 'error.survey.lcfc.noProgramOutcomes',
 		configNotFound: 'error.survey.lcfc.configNotFound',
+		programNotInSchool: 'error.survey.lcfc.programNotInSchool',
+		notLatestPeriod: 'error.survey.lcfc.notLatestPeriod',
 	},
 	success: {
 		completed: 'success.survey.lcfc.completed',

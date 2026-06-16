@@ -17,6 +17,16 @@ export const lcfcRoutes = {
 			route: 'config/get-by-filters',
 			summary: 'Filter LCFC course configurations',
 		},
+		getById: {
+			method: 'GET',
+			route: 'config/get-by-id/:id',
+			summary: 'Get an LCFC course configuration by ID',
+		},
+		update: {
+			method: 'PUT',
+			route: 'config/update/:id',
+			summary: 'Update an LCFC course configuration',
+		},
 		updateStatus: {
 			method: 'POST',
 			route: 'config/update-status',
@@ -27,6 +37,11 @@ export const lcfcRoutes = {
 			route: 'config/clone',
 			summary:
 				'Clone LCFC configuration: generate target period and copy course status from source',
+		},
+		delete: {
+			method: 'DELETE',
+			route: 'config/delete/:id',
+			summary: 'Delete an LCFC course configuration',
 		},
 	},
 	notification: {

@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { LcfcService } from './lcfc.service';
 import {
@@ -6,8 +6,11 @@ import {
 	SwaggerLcfcConfigGenerate,
 	SwaggerLcfcConfigGetAll,
 	SwaggerLcfcConfigGetByFilters,
+	SwaggerLcfcConfigGetById,
+	SwaggerLcfcConfigUpdate,
 	SwaggerLcfcConfigUpdateStatus,
 	SwaggerLcfcConfigClone,
+	SwaggerLcfcConfigDelete,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
 	SwaggerLcfcSurveyGetByToken,
@@ -18,6 +21,7 @@ import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
+	UpdateLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
@@ -27,6 +31,7 @@ import {
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
+import { SchoolId } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 
 @SwaggerLcfcController()
 export class LcfcController {
@@ -34,8 +39,8 @@ export class LcfcController {
 
 	@SwaggerLcfcConfigGenerate()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configGenerate(@Body() dto: GenerateLcfcConfigDto) {
-		return parseSuccessResponse(await this.lcfcService.generateConfigs(dto));
+	async configGenerate(@Body() dto: GenerateLcfcConfigDto, @SchoolId() schoolId: number) {
+		return parseSuccessResponse(await this.lcfcService.generateConfigs(dto, schoolId));
 	}
 
 	@SwaggerLcfcConfigGetAll()
@@ -50,6 +55,18 @@ export class LcfcController {
 		return parseSuccessResponse(await this.lcfcService.getAllConfigs(dto));
 	}
 
+	@SwaggerLcfcConfigGetById()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async configGetById(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.lcfcService.getConfigById(id));
+	}
+
+	@SwaggerLcfcConfigUpdate()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.PUT })
+	async configUpdate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateLcfcConfigDto) {
+		return parseSuccessResponse(await this.lcfcService.updateConfig(id, dto));
+	}
+
 	@SwaggerLcfcConfigUpdateStatus()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async configUpdateStatus(@Body() dto: UpdateLcfcConfigStatusDto) {
@@ -60,6 +77,12 @@ export class LcfcController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async configClone(@Body() dto: CloneLcfcConfigDto) {
 		return parseSuccessResponse(await this.lcfcService.cloneConfig(dto));
+	}
+
+	@SwaggerLcfcConfigDelete()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.DELETE })
+	async configDelete(@Param('id', ParseIntPipe) id: number) {
+		return parseSuccessResponse(await this.lcfcService.deleteConfig(id));
 	}
 
 	@SwaggerLcfcNotificationSend()
