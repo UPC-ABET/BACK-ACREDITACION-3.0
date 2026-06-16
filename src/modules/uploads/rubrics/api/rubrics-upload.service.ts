@@ -92,9 +92,10 @@ export class RubricsUploadService {
 		const workbook = new ExcelJS.Workbook();
 		const sheet = workbook.addWorksheet('Template');
 
-		// ── Data table (cols 1-9) ─────────────────────────────────────────
+		// ── Data table (cols 1-10) ────────────────────────────────────────
 		const headers = [
 			labels.courseCode,
+			labels.programCode,
 			labels.gradeTypeCode,
 			labels.outcomeCode,
 			labels.questionEs,
@@ -192,7 +193,7 @@ export class RubricsUploadService {
 	}
 
 	// Positional layout (header row ignored):
-	// courseCode | gradeTypeCode | outcomeCode | questionEs | questionEn |
+	// courseCode | programCode | gradeTypeCode | outcomeCode | questionEs | questionEn |
 	// criteriaEs | criteriaEn | minValue | maxValue
 	private parseWorkbook(workbook: ExcelJS.Workbook): RubricRow[] {
 		const worksheet = workbook.worksheets[0];
@@ -203,14 +204,15 @@ export class RubricsUploadService {
 			rows.push({
 				rowNumber,
 				courseCode: readCell(row, 1),
-				gradeTypeCode: readCell(row, 2),
-				outcomeCode: readCell(row, 3),
-				questionEs: readCell(row, 4),
-				questionEn: readCell(row, 5),
-				criteriaEs: readCell(row, 6),
-				criteriaEn: readCell(row, 7),
-				minValue: readCell(row, 8),
-				maxValue: readCell(row, 9),
+				programCode: readCell(row, 2),
+				gradeTypeCode: readCell(row, 3),
+				outcomeCode: readCell(row, 4),
+				questionEs: readCell(row, 5),
+				questionEn: readCell(row, 6),
+				criteriaEs: readCell(row, 7),
+				criteriaEn: readCell(row, 8),
+				minValue: readCell(row, 9),
+				maxValue: readCell(row, 10),
 			});
 		});
 
@@ -237,7 +239,7 @@ export class RubricsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		const errorColumn = 10; // after the 9 data columns
+		const errorColumn = 11; // after the 10 data columns
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -262,6 +264,8 @@ export class RubricsUploadService {
 const rubricsErrorMessages: Record<string, Record<string, string>> = {
 	es: {
 		courseCodeEmpty: 'El código del curso es obligatorio.',
+		programCodeEmpty: 'El código de carrera es obligatorio.',
+		programNotFound: 'No existe una carrera con ese código.',
 		gradeTypeCodeEmpty: 'El código de tipo de calificación es obligatorio.',
 		criteriaEsEmpty: 'El criterio en español es obligatorio.',
 		criteriaEnEmpty: 'El criterio en inglés es obligatorio.',
@@ -272,7 +276,8 @@ const rubricsErrorMessages: Record<string, Record<string, string>> = {
 			'La pregunta en español es obligatoria para rúbricas no-Capstone+EB.',
 		outcomeRequiredCapstoneEb:
 			'El código de outcome es obligatorio para rúbricas Capstone con tipo EB.',
-		courseNotFound: 'No existe un curso con ese código en el periodo académico.',
+		courseNotFound:
+			'No existe el curso con ese código en la carrera indicada para el periodo académico.',
 		gradeTypeNotFound: 'El código de tipo de calificación no es válido.',
 		rubricAlreadyExists:
 			'Ya existe una rúbrica activa para ese curso y tipo de calificación en el periodo.',
@@ -282,6 +287,8 @@ const rubricsErrorMessages: Record<string, Record<string, string>> = {
 	},
 	en: {
 		courseCodeEmpty: 'Course code is required.',
+		programCodeEmpty: 'Program code is required.',
+		programNotFound: 'No program exists with that code.',
 		gradeTypeCodeEmpty: 'Grade type code is required.',
 		criteriaEsEmpty: 'Criteria in Spanish is required.',
 		criteriaEnEmpty: 'Criteria in English is required.',
@@ -290,7 +297,8 @@ const rubricsErrorMessages: Record<string, Record<string, string>> = {
 		minValueGreaterThanMax: 'Min score cannot be greater than max score.',
 		questionRequiredNonCapstone: 'Question in Spanish is required for non-Capstone+EB rubrics.',
 		outcomeRequiredCapstoneEb: 'Outcome code is required for Capstone rubrics with grade type EB.',
-		courseNotFound: 'No course with that code exists in the academic period.',
+		courseNotFound:
+			'No course with that code exists in the specified program for the academic period.',
 		gradeTypeNotFound: 'Grade type code is not valid.',
 		rubricAlreadyExists:
 			'An active rubric already exists for that course and grade type in the period.',

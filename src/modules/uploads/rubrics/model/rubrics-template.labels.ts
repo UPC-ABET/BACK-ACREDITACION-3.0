@@ -1,6 +1,7 @@
 export const rubricsTemplateLabels: Record<string, Record<string, string>> = {
 	es: {
 		courseCode: 'Código del curso',
+		programCode: 'Código de carrera',
 		gradeTypeCode: 'Código de tipo de calificación',
 		outcomeCode: 'Código de outcome',
 		questionEs: 'Pregunta (ES)',
@@ -25,6 +26,7 @@ export const rubricsTemplateLabels: Record<string, Record<string, string>> = {
 	},
 	en: {
 		courseCode: 'Course code',
+		programCode: 'Program code',
 		gradeTypeCode: 'Grade type code',
 		outcomeCode: 'Outcome code',
 		questionEs: 'Question (ES)',
@@ -64,6 +66,13 @@ export const rubricsFieldInstructions: Record<string, FieldInstruction[]> = {
 				'Código del curso al que pertenece la rúbrica. Se repite en todas las filas de la misma rúbrica.',
 			required: true,
 			example: 'CURSXXXX',
+		},
+		{
+			field: 'Código de carrera',
+			description:
+				'Código de la carrera (programa) al que pertenece el curso. Permite diferenciar cursos con el mismo código en distintas carreras.',
+			required: true,
+			example: 'PROG001',
 		},
 		{
 			field: 'Código de tipo de calificación',
@@ -124,6 +133,13 @@ export const rubricsFieldInstructions: Record<string, FieldInstruction[]> = {
 				'Code of the course the rubric belongs to. Repeat on all rows of the same rubric.',
 			required: true,
 			example: 'COURSXXXX',
+		},
+		{
+			field: 'Program code',
+			description:
+				'Code of the academic program (career) the course belongs to. Disambiguates courses with the same code across different programs.',
+			required: true,
+			example: 'PROG001',
 		},
 		{
 			field: 'Grade type code',
