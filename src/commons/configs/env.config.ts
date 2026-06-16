@@ -66,6 +66,13 @@ const envSchema = z
 		BANNER_API_KEY: z.string().optional(),
 		BANNER_AUTH_STATE_PATH: z.string().optional(),
 
+		PLANNER_LOGIN_URL: z.string().url().optional(),
+		PLANNER_API_BASE: z.string().url().optional(),
+		PLANNER_VALIDATE_URL: z.string().url().optional(),
+		PLANNER_USER: z.string().optional(),
+		PLANNER_PASSWORD: z.string().optional(),
+		PLANNER_TOKEN_STORE_PATH: z.string().optional(),
+
 		AUTH_SESSION_TOKEN_SECRET: z.string().min(32).optional(),
 		AUTH_SESSION_TTL_SECONDS: z.string().regex(/^\d+$/).optional(),
 		BROWSER_AUTH_INTERNAL_URL: z.string().url().optional(),

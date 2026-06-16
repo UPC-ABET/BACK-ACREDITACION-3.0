@@ -13,6 +13,6 @@ export default new DataSource({
 	logging: false,
 	namingStrategy: new UpperPrefixSnakeNamingStrategy(),
 
-	entities: ['src/modules/admin/banner/raw/model/*.entity.ts'],
+	entities: ['src/modules/admin/*/raw/model/*.entity.ts'],
 	migrations: ['src/database/migrations-raw/*.ts'],
 });
