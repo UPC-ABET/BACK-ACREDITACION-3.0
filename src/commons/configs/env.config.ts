@@ -63,6 +63,7 @@ const envSchema = z
 		RAW_DB_SSL: z.string().optional(),
 		BANNER_BASE_API: z.string().url().optional(),
 		BANNER_INTRANET_URL: z.string().url().optional(),
+		BANNER_MICUENTA_URL: z.string().url().optional(),
 		BANNER_API_KEY: z.string().optional(),
 		BANNER_AUTH_STATE_PATH: z.string().optional(),
 
