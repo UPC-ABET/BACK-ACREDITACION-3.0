@@ -285,6 +285,34 @@ export class ProjectEvaluatorDetailDto {
 	evaluatorTypeCode: string;
 }
 
+export class ProjectDetailsStudentWithSpcDto extends ProjectDetailsStudentDto {
+	@ApiProperty({ example: 42, description: 'ID del study_plan_course al que pertenece el alumno' })
+	studyPlanCourseId: number | null;
+}
+
+export class ProjectRubricEntryDto {
+	@ApiProperty({
+		example: 42,
+		description: 'ID del study_plan_course al que corresponde la rúbrica',
+	})
+	studyPlanCourseId: number;
+
+	@ApiProperty({
+		example: { es: 'Ingeniería de Software', en: 'Software Engineering' },
+		nullable: true,
+	})
+	programName: any;
+
+	@ApiProperty({ example: {}, nullable: true })
+	rubric: any;
+
+	@ApiProperty({ example: [], type: Array })
+	outcomes: any[];
+
+	@ApiProperty({ example: {}, type: [RubricQuestionDetailsDto] })
+	questions: RubricQuestionDetailsDto[];
+}
+
 export class ProjectDetailsResponseDto {
 	@ApiProperty({ example: { es: 'Ejemplo', en: 'Example' } })
 	project: {
@@ -301,8 +329,8 @@ export class ProjectDetailsResponseDto {
 		code: string;
 	};
 
-	@ApiProperty({ example: {}, type: [ProjectDetailsStudentDto] })
-	students: ProjectDetailsStudentDto[];
+	@ApiProperty({ example: {}, type: [ProjectDetailsStudentWithSpcDto] })
+	students: ProjectDetailsStudentWithSpcDto[];
 
 	@ApiProperty({ example: {}, type: [ProjectEvaluatorDetailDto] })
 	evaluators: ProjectEvaluatorDetailDto[];
@@ -318,12 +346,8 @@ export class ProjectDetailsResponseDto {
 		learningOutcome: any;
 	} | null;
 
-	@ApiProperty({ example: {}, nullable: true })
-	rubric: {
-		rubric: any;
-		outcomes: any[];
-		questions: RubricQuestionDetailsDto[];
-	} | null;
+	@ApiProperty({ example: [], type: [ProjectRubricEntryDto] })
+	rubrics: ProjectRubricEntryDto[];
 }
 
 export class FilterProjectDto {
