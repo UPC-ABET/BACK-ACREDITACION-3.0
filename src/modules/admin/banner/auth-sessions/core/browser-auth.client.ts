@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 
 export type ControllerStatus = 'active' | 'completed' | 'failed' | 'expired';
 
+// Stable UPC host — env-overridable but defaulted so it isn't required config.
+const DEFAULT_BANNER_INTRANET_URL = 'https://intranetdocente-administrativo.upc.edu.pe';
+
 @Injectable()
 export class BrowserAuthClient {
 	constructor(private readonly config: ConfigService) {}
@@ -13,7 +16,7 @@ export class BrowserAuthClient {
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
 				sessionId,
-				intranetUrl: this.config.getOrThrow<string>('BANNER_INTRANET_URL'),
+				intranetUrl: this.config.get<string>('BANNER_INTRANET_URL') ?? DEFAULT_BANNER_INTRANET_URL,
 				authStatePath: this.config.getOrThrow<string>('BANNER_AUTH_STATE_PATH'),
 			}),
 		});

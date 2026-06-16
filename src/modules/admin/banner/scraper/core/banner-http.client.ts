@@ -16,6 +16,9 @@ const MAX_5XX_RETRIES = 3;
 const BASE_BACKOFF_MS = 500;
 const USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36';
+// Stable UPC hosts — env-overridable but defaulted so they aren't required config.
+const DEFAULT_BANNER_BASE_API = 'https://api-manageraws.upc.edu.pe/intranet-docente/api';
+const DEFAULT_BANNER_INTRANET_URL = 'https://intranetdocente-administrativo.upc.edu.pe';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -55,7 +58,7 @@ export class BannerHttpClient {
 	}
 
 	private buildUrl(path: string, query: Record<string, string>): string {
-		const base = this.config.getOrThrow<string>('BANNER_BASE_API');
+		const base = this.config.get<string>('BANNER_BASE_API') ?? DEFAULT_BANNER_BASE_API;
 		const url = new URL(`${base}${path}`);
 		for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
 		return url.toString();
@@ -66,7 +69,7 @@ export class BannerHttpClient {
 			Authorization: `Bearer ${token}`,
 			'x-api-key': this.config.getOrThrow<string>('BANNER_API_KEY'),
 			accept: 'application/json, text/plain, */*',
-			origin: this.config.getOrThrow<string>('BANNER_INTRANET_URL'),
+			origin: this.config.get<string>('BANNER_INTRANET_URL') ?? DEFAULT_BANNER_INTRANET_URL,
 			'user-agent': USER_AGENT,
 		};
 	}
