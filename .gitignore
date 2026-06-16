@@ -52,3 +52,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Cursor
 .cursor
+
+# Scraping runtime artifacts (token stores, auth state) — never commit
+.scraping/
