@@ -1,6 +1,7 @@
 export interface RubricRow {
 	rowNumber: number;
 	courseCode: string;
+	programCode: string;
 	gradeTypeCode: string;
 	outcomeCode: string;
 	questionEs: string;
