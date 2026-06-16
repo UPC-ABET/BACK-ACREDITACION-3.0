@@ -20,4 +20,5 @@ export const ROLLBACK_RAISE_MAP: Record<string, { key: string; status: HttpStatu
 	rollbackBlockedProfessors: { key: E.rollbackBlockedProfessors, status: HttpStatus.CONFLICT },
 	rollbackBlockedStaff: { key: E.rollbackBlockedStaff, status: HttpStatus.CONFLICT },
 	rollbackBlockedNewerUpload: { key: E.rollbackBlockedNewerUpload, status: HttpStatus.CONFLICT },
+	rollbackBlockedEvaluations: { key: E.rollbackBlockedEvaluations, status: HttpStatus.CONFLICT },
 };

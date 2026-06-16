@@ -16,5 +16,6 @@ export const uploadLogsValidationStrings = {
 		rollbackBlockedProfessors: 'error.uploads.rollbackBlockedProfessors',
 		rollbackBlockedStaff: 'error.uploads.rollbackBlockedStaff',
 		rollbackBlockedNewerUpload: 'error.uploads.rollbackBlockedNewerUpload',
+		rollbackBlockedEvaluations: 'error.uploads.rollbackBlockedEvaluations',
 	},
 } as const;
