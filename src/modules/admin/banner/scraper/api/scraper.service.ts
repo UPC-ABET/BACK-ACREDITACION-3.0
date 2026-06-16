@@ -7,6 +7,7 @@ import {
 	RawMatriculaRepository,
 } from '../../raw/core/raw-matricula.repository';
 import { RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
+import { RawNotasRepository } from '../../raw/core/raw-notas.repository';
 import { DepartmentSourceRepository } from '../core/department-source.repository';
 import { BannerHttpClient } from '../core/banner-http.client';
 import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
@@ -18,12 +19,24 @@ const DEFAULT_NIVEL = 'UG';
 const NRC_CHUNK_SIZE = 50;
 const MATRICULA_CONCURRENCY = 3;
 const ALUMNO_CONCURRENCY = 40;
+const NOTA_CONCURRENCY = 40;
 
 interface ScrapeStats {
 	departments: { requested: string[]; succeeded: string[]; failed: string[] };
-	counts: { horario: number; matricula: number; alumno: number };
+	counts: { horario: number; matricula: number; alumno: number; nota: number };
 	uniqueStudents: number;
 	errors: Array<{ step: string; key: string; message: string }>;
+}
+
+// A student enrolled in a section (from matricula); joined to a course code by NRC.
+interface Enrollment {
+	codigoAlumno: string;
+	nrc: string;
+}
+// A unique (alumno, curso) target for the notas endpoint (NRC is not part of its key).
+interface NotaPair {
+	codigoAlumno: string;
+	cursoCodigo: string;
 }
 
 export interface RunSummary {
@@ -48,6 +61,7 @@ export class ScraperService {
 		private readonly rawHorarioRepository: RawHorarioRepository,
 		private readonly rawMatriculaRepository: RawMatriculaRepository,
 		private readonly rawAlumnoRepository: RawAlumnoRepository,
+		private readonly rawNotasRepository: RawNotasRepository,
 		private readonly departmentSourceRepository: DepartmentSourceRepository,
 		private readonly http: BannerHttpClient,
 	) {}
@@ -133,16 +147,35 @@ export class ScraperService {
 	): Promise<void> {
 		const stats: ScrapeStats = {
 			departments: { requested: departamentos, succeeded: [], failed: [] },
-			counts: { horario: 0, matricula: 0, alumno: 0 },
+			counts: { horario: 0, matricula: 0, alumno: 0, nota: 0 },
 			uniqueStudents: 0,
 			errors: [],
 		};
 
 		try {
-			const nrcs = await this.scrapeHorario(runId, nivel, periodo, departamentos, stats);
-			const codigos = await this.scrapeMatricula(runId, nivel, periodo, nrcs, stats);
+			const { nrcs, courseByNrc } = await this.scrapeHorario(
+				runId,
+				nivel,
+				periodo,
+				departamentos,
+				stats,
+			);
+			const { codigos, enrollments } = await this.scrapeMatricula(
+				runId,
+				nivel,
+				periodo,
+				nrcs,
+				stats,
+			);
 			stats.uniqueStudents = codigos.length;
 			await this.scrapeAlumnos(runId, nivel, codigos, stats);
+			await this.scrapeNotas(
+				runId,
+				nivel,
+				periodo,
+				buildNotaPairs(enrollments, courseByNrc),
+				stats,
+			);
 
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
@@ -165,8 +198,11 @@ export class ScraperService {
 		periodo: string,
 		departamentos: string[],
 		stats: ScrapeStats,
-	): Promise<string[]> {
+	): Promise<{ nrcs: string[]; courseByNrc: Map<string, string> }> {
 		const nrcs = new Set<string>();
+		// NRC -> course code, used later to turn (alumno, nrc) enrollments into the
+		// (alumno, curso) pairs the notas endpoint needs.
+		const courseByNrc = new Map<string, string>();
 
 		for (const departamento of departamentos) {
 			try {
@@ -178,7 +214,11 @@ export class ScraperService {
 				const sections = asArray<Record<string, unknown>>(json.detalle);
 				const rows: RawHorarioInsert[] = sections.map((section) => {
 					const nrc = toStringOrNull(section.nrc);
-					if (nrc) nrcs.add(nrc);
+					if (nrc) {
+						nrcs.add(nrc);
+						const cursoCodigo = courseCodeOf(section);
+						if (cursoCodigo) courseByNrc.set(nrc, cursoCodigo);
+					}
 					return {
 						runId,
 						nivel,
@@ -203,7 +243,7 @@ export class ScraperService {
 			}
 		}
 
-		return [...nrcs];
+		return { nrcs: [...nrcs], courseByNrc };
 	}
 
 	private async scrapeMatricula(
@@ -212,8 +252,9 @@ export class ScraperService {
 		periodo: string,
 		nrcs: string[],
 		stats: ScrapeStats,
-	): Promise<string[]> {
+	): Promise<{ codigos: string[]; enrollments: Enrollment[] }> {
 		const codigos = new Set<string>();
+		const enrollments: Enrollment[] = [];
 		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
 		const limit = await createLimiter(MATRICULA_CONCURRENCY);
 
@@ -232,7 +273,10 @@ export class ScraperService {
 							const alumnos = asArray<Record<string, unknown>>(item.listaAlumnos);
 							for (const alumno of alumnos) {
 								const codigoAlumno = toStringOrNull(alumno.codigoAlumno);
-								if (codigoAlumno) codigos.add(codigoAlumno);
+								if (codigoAlumno) {
+									codigos.add(codigoAlumno);
+									if (nrc) enrollments.push({ codigoAlumno, nrc });
+								}
 								rows.push({
 									runId,
 									nivel,
@@ -258,7 +302,7 @@ export class ScraperService {
 			),
 		);
 
-		return [...codigos];
+		return { codigos: [...codigos], enrollments };
 	}
 
 	private async scrapeAlumnos(
@@ -301,6 +345,79 @@ export class ScraperService {
 			),
 		);
 	}
+
+	// Phase 4: per (alumno, curso), fetch the current grades; one raw row each. The
+	// notas endpoint is path-param based: /notas/{codigoAlumno}/{nivel}-{periodo}/{cursoCodigo}.
+	private async scrapeNotas(
+		runId: string,
+		nivel: string,
+		periodo: string,
+		pairs: NotaPair[],
+		stats: ScrapeStats,
+	): Promise<void> {
+		const limit = await createLimiter(NOTA_CONCURRENCY);
+
+		await Promise.all(
+			pairs.map((pair) =>
+				limit(async () => {
+					try {
+						const path =
+							`/alumno/notaactual/notas/${encodeURIComponent(pair.codigoAlumno)}` +
+							`/${encodeURIComponent(`${nivel}-${periodo}`)}/${encodeURIComponent(pair.cursoCodigo)}`;
+						const json = await this.http.get<{
+							detalle?: { notaFinal?: unknown; notas?: unknown };
+						}>(path, {});
+						const detalle = json.detalle;
+						// No grades yet for this (alumno, curso) — skip, don't store an empty row.
+						if (!detalle || (detalle.notaFinal == null && !detalle.notas)) return;
+
+						await this.rawNotasRepository.bulkInsert([
+							{
+								runId,
+								nivel,
+								periodo,
+								codigoAlumno: pair.codigoAlumno,
+								cursoCodigo: pair.cursoCodigo,
+								payload: json,
+								payloadHash: hashPayload(json),
+							},
+						]);
+						stats.counts.nota += 1;
+					} catch (error) {
+						if (error instanceof SessionExpiredError) throw error;
+						stats.errors.push({
+							step: 'nota',
+							key: `${pair.codigoAlumno}/${pair.cursoCodigo}`,
+							message: (error as Error).message,
+						});
+					}
+				}),
+			),
+		);
+	}
+}
+
+// Course code is derived: materia.codigo + numeroCurso (e.g. "1ASI" + "0572").
+function courseCodeOf(section: Record<string, unknown>): string {
+	const materia = section.materia as { codigo?: unknown } | null | undefined;
+	const codigo = toStringOrNull(materia?.codigo) ?? '';
+	const numero = toStringOrNull(section.numeroCurso) ?? '';
+	return `${codigo}${numero}`;
+}
+
+// Join enrollments -> course code by NRC, deduped to unique (alumno, curso) pairs.
+function buildNotaPairs(enrollments: Enrollment[], courseByNrc: Map<string, string>): NotaPair[] {
+	const pairs: NotaPair[] = [];
+	const seen = new Set<string>();
+	for (const enrollment of enrollments) {
+		const cursoCodigo = courseByNrc.get(enrollment.nrc);
+		if (!cursoCodigo) continue;
+		const key = `${enrollment.codigoAlumno}|${cursoCodigo}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		pairs.push({ codigoAlumno: enrollment.codigoAlumno, cursoCodigo });
+	}
+	return pairs;
 }
 
 function asArray<T>(value: unknown): T[] {

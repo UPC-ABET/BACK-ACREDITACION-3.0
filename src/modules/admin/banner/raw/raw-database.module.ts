@@ -7,18 +7,27 @@ import { ScrapeRunEntity } from './model/scrape-run.entity';
 import { RawHorarioEntity } from './model/raw-horario.entity';
 import { RawMatriculaEntity } from './model/raw-matricula.entity';
 import { RawAlumnoEntity } from './model/raw-alumno.entity';
+import { RawNotasEntity } from './model/raw-notas.entity';
 
 import { ScrapeRunRepository } from './core/scrape-run.repository';
 import { RawHorarioRepository } from './core/raw-horario.repository';
 import { RawMatriculaRepository } from './core/raw-matricula.repository';
 import { RawAlumnoRepository } from './core/raw-alumno.repository';
+import { RawNotasRepository } from './core/raw-notas.repository';
 
-const RAW_ENTITIES = [ScrapeRunEntity, RawHorarioEntity, RawMatriculaEntity, RawAlumnoEntity];
+const RAW_ENTITIES = [
+	ScrapeRunEntity,
+	RawHorarioEntity,
+	RawMatriculaEntity,
+	RawAlumnoEntity,
+	RawNotasEntity,
+];
 const RAW_REPOSITORIES = [
 	ScrapeRunRepository,
 	RawHorarioRepository,
 	RawMatriculaRepository,
 	RawAlumnoRepository,
+	RawNotasRepository,
 ];
 
 @Module({
