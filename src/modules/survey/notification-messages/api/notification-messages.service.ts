@@ -30,4 +30,14 @@ export class NotificationMessageService extends BaseService<NotificationMessageR
 		await NotificationMessageValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
 	}
+
+	// Override list/detail so name/subject/body (stored in core.email_templates) are
+	// returned alongside the message; otherwise the edit form opens with empty fields.
+	async getAll() {
+		return await this.repository.findAllWithTemplate();
+	}
+
+	async getById(id: number) {
+		return await this.repository.findByIdWithTemplate(id);
+	}
 }

@@ -17,11 +17,54 @@ export class NotificationMessageRepository extends BaseRepository<NotificationMe
 		super(repository, dataSource);
 	}
 
+	// Lists messages joined with their email template so the UI can show/edit the
+	// name/subject/body, which live in core.email_templates (not on this table).
+	async findAllWithTemplate() {
+		return await this.dataSource.query(
+			`SELECT nm.id,
+			        nm.survey_type_id    AS "surveyTypeId",
+			        nm.program_id        AS "programId",
+			        nm.email_template_id AS "emailTemplateId",
+			        nm.cc_receivers      AS "ccReceivers",
+			        nm.is_active         AS "isActive",
+			        et.name              AS "name",
+			        et.subject           AS "subject",
+			        et.body              AS "body"
+			 FROM survey.notification_messages nm
+			 LEFT JOIN core.email_templates et ON et.id = nm.email_template_id
+			 ORDER BY nm.id ASC`,
+		);
+	}
+
+	async findByIdWithTemplate(id: number) {
+		const rows = await this.dataSource.query(
+			`SELECT nm.id,
+			        nm.survey_type_id    AS "surveyTypeId",
+			        nm.program_id        AS "programId",
+			        nm.email_template_id AS "emailTemplateId",
+			        nm.cc_receivers      AS "ccReceivers",
+			        nm.is_active         AS "isActive",
+			        et.name              AS "name",
+			        et.subject           AS "subject",
+			        et.body              AS "body"
+			 FROM survey.notification_messages nm
+			 LEFT JOIN core.email_templates et ON et.id = nm.email_template_id
+			 WHERE nm.id = $1
+			 LIMIT 1`,
+			[id],
+		);
+		return rows?.[0] ?? null;
+	}
+
 	// Creates the SURVEY email template AND the message in a single transaction.
 	async createWithTemplate(dto: CreateNotificationMessageDto) {
 		return await this.dataSource.transaction(async (manager) => {
 			const { name, subject, body, ...rest } = dto;
-			const code = `SURVEY_${dto.surveyTypeId}_${dto.programId}`;
+			// program is optional: a message without a program is a general template for the type.
+			const code =
+				dto.programId != null
+					? `SURVEY_${dto.surveyTypeId}_${dto.programId}`
+					: `SURVEY_${dto.surveyTypeId}`;
 			const emailTemplateId = await this.upsertTemplate(manager, code, { name, subject, body });
 			return await this.create({ ...rest, emailTemplateId }, manager);
 		});

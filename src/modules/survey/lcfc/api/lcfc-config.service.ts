@@ -10,6 +10,7 @@ import {
 	UpdateLcfcConfigDto,
 } from '../model/lcfc.dtos';
 import { camelizeKeys } from 'src/libs/case.functions';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 
 @Injectable()
@@ -221,7 +222,33 @@ export class LcfcConfigService {
 	}
 
 	async deleteConfig(id: number) {
-		await this.findLcfcConfigOrFail(id);
-		return await this.configRepo.remove(id);
+		const config = await this.findLcfcConfigOrFail(id);
+		const extra = (config.extra as Record<string, any>) ?? {};
+		const courseSectionId = extra.course_section_id ?? extra.courseSectionId ?? null;
+		const academicPeriodId = extra.academic_period_id ?? extra.academicPeriodId ?? null;
+
+		return await this.dataSource.transaction(async (manager) => {
+			// Remove the surveys generated for this section (and their notifications/scores)
+			// so the course section can later be deleted; otherwise the FKs from
+			// evidence.surveys keep the section "in use" even after its config is gone.
+			if (courseSectionId && academicPeriodId) {
+				const surveys = await manager.query(
+					`SELECT s.id FROM evidence.surveys s
+					 WHERE s.survey_type_id = (SELECT id FROM core.types WHERE code = $1)
+					   AND s.course_section_id = $2
+					   AND s.academic_period_id = $3`,
+					[TYPE_CODES.SURVEY_TYPE.LCFC, courseSectionId, academicPeriodId],
+				);
+				const surveyIds = surveys.map((r: { id: number }) => r.id);
+				if (surveyIds.length > 0) {
+					await manager.query(`DELETE FROM survey.scores WHERE survey_id = ANY($1)`, [surveyIds]);
+					await manager.query(`DELETE FROM survey.notifications WHERE survey_id = ANY($1)`, [
+						surveyIds,
+					]);
+					await manager.query(`DELETE FROM evidence.surveys WHERE id = ANY($1)`, [surveyIds]);
+				}
+			}
+			return await manager.delete(OutcomeConfigEntity, id);
+		});
 	}
 }

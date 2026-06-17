@@ -12,8 +12,8 @@ export class NotificationMessageEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	surveyTypeId: number;
 
-	@IntegerFKIDColumn({ nullable: false })
-	programId: number;
+	@IntegerFKIDColumn({ nullable: true })
+	programId: number | null;
 
 	@IntegerFKIDColumn({ nullable: false })
 	emailTemplateId: number;

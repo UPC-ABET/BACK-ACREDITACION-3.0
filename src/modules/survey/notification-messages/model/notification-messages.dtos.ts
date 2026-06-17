@@ -16,9 +16,14 @@ export class CreateNotificationMessageDto {
 	@ApiProperty({ example: 1, required: true })
 	surveyTypeId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	programId: number;
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Optional program. Omit for a general template that applies to the survey type.',
+	})
+	programId?: number;
 
 	@IsObject()
 	@ApiProperty({ example: { es: 'Plantilla encuesta', en: 'Survey template' }, required: true })
