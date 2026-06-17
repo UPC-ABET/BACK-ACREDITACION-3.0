@@ -288,7 +288,12 @@ export class LcfcNotificationService {
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData);
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData.courseSectionId);
+		// Show only the outcomes of the student's own program (a shared course can be
+		// mapped to outcomes of several programs).
+		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
+			tokenData.courseSectionId,
+			tokenData.programId,
+		);
 		const language = dto.language ?? 'es';
 
 		const outcomeList = outcomes.map((o) => ({

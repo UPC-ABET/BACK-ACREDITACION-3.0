@@ -65,7 +65,12 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 
 	async getOutcomesForCourseSection(
 		courseSectionId: number,
+		programId?: number,
+		outcomeId?: number,
 	): Promise<{ outcomeId: number; name: string; code: string; description: string | null }[]> {
+		// Only the outcomes of the student's own program must show in the survey (a shared
+		// course can be mapped to outcomes of several programs). When the LCFC config pins a
+		// single outcome, restrict to it.
 		const rows = await this.dataSource.query(
 			`SELECT DISTINCT
 				o.id                   AS "outcomeId",
@@ -73,12 +78,15 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 				o.outcome_code         AS "code",
 				o.outcome_description  AS "description"
 			FROM accreditation.outcomes o
+			INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
 			INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
 			INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
 			INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
 			WHERE cs.id = $1
+			  AND ($2::int IS NULL OR pc.program_id = $2)
+			  AND ($3::int IS NULL OR o.id = $3)
 			ORDER BY o.outcome_code ASC`,
-			[courseSectionId],
+			[courseSectionId, programId ?? null, outcomeId ?? null],
 		);
 		return rows ?? [];
 	}
