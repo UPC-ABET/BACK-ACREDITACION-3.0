@@ -384,6 +384,7 @@ export class ProjectConfigService {
 					studyPlanCourseId: spcId,
 					programName: spcToProgramName.get(spcId) ?? null,
 					rubric: null,
+					commissions: [],
 					outcomes: [],
 					questions: [],
 				});
@@ -487,6 +488,7 @@ export class ProjectConfigService {
 				studyPlanCourseId: spcId,
 				programName: spcToProgramName.get(spcId) ?? null,
 				rubric: rubricContext?.rubric ?? null,
+				commissions: rubricContext?.commissions ?? [],
 				outcomes: rubricContext?.outcomes ?? [],
 				questions,
 			});

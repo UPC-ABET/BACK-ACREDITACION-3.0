@@ -307,6 +307,9 @@ export class ProjectRubricEntryDto {
 	rubric: any;
 
 	@ApiProperty({ example: [], type: Array })
+	commissions: any[];
+
+	@ApiProperty({ example: [], type: Array })
 	outcomes: any[];
 
 	@ApiProperty({ example: {}, type: [RubricQuestionDetailsDto] })
