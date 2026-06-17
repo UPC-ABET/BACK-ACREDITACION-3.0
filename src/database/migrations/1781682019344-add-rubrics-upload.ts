@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddRubricsUpload1781800000000 implements MigrationInterface {
+export class AddRubricsUpload1781682019344 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// ── Add upload_log_id to rubric tables ────────────────────────────
 		await queryRunner.query(

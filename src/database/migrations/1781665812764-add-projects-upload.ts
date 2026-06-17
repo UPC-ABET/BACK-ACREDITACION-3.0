@@ -22,8 +22,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *   projectCode | projectNameEs | projectNameEn | courseCode |
  *   studentCode | professorCode | evaluatorTypeCode
  */
-export class AddProjectsUpload1781735812764 implements MigrationInterface {
-	name = 'AddProjectsUpload1781735812764';
+export class AddProjectsUpload1781665812764 implements MigrationInterface {
+	name = 'AddProjectsUpload1781665812764';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// ── 1. Schema columns ───────────────────────────────────────────────

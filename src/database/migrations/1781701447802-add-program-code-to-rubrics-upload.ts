@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddProgramCodeToRubricsUpload1781632319244 implements MigrationInterface {
+export class AddProgramCodeToRubricsUpload1781701447802 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`
 CREATE OR REPLACE FUNCTION audit.fn_upload_rubrics(

@@ -21,8 +21,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * a best-effort reverse backfill (see note inline — re-camelizing is lossy in the general case
  * but round-trips for these undo-stack-only blobs).
  */
-export class NormalizeUploadExtraKeysToSnakeCase1781200000000 implements MigrationInterface {
-	name = 'NormalizeUploadExtraKeysToSnakeCase1781200000000';
+export class NormalizeUploadExtraKeysToSnakeCase1781188404691 implements MigrationInterface {
+	name = 'NormalizeUploadExtraKeysToSnakeCase1781188404691';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`
