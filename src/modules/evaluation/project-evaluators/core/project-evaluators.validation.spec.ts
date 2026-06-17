@@ -4,11 +4,15 @@ import { ProjectEvaluatorValidation } from './project-evaluators.validation';
 const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
+	getMaxEvaluators: jest.fn(),
+	countActiveByType: jest.fn(),
 };
 
 describe('ProjectEvaluatorValidation', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockRepo.getMaxEvaluators.mockResolvedValue(null);
+		mockRepo.countActiveByType.mockResolvedValue(0);
 	});
 
 	describe('validateCreate', () => {
@@ -47,7 +51,7 @@ describe('ProjectEvaluatorValidation', () => {
 
 	describe('validateDelete', () => {
 		it('passes when entity exists', async () => {
-			mockRepo.findOneById.mockResolvedValue({ id: 1 });
+			mockRepo.findOneById.mockResolvedValue({ id: 1, isActive: true });
 			await expect(
 				ProjectEvaluatorValidation.validateDelete(mockRepo as any, 1),
 			).resolves.toBeUndefined();
