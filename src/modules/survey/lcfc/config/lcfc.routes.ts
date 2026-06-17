@@ -43,6 +43,12 @@ export const lcfcRoutes = {
 			route: 'config/delete/:id',
 			summary: 'Delete an LCFC course configuration',
 		},
+		availableSections: {
+			method: 'GET',
+			route: 'config/available-sections',
+			summary:
+				'List course sections available for config generation (active study plan, non-elective)',
+		},
 	},
 	notification: {
 		send: {
