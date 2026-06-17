@@ -91,6 +91,7 @@ import { S3Module } from './modules/s3/s3.module';
 
 import { BannerModule } from './modules/admin/banner/banner.module';
 import { PlannerModule } from './modules/admin/planner/planner.module';
+import { ScrapingExportsModule } from './modules/admin/scraping-exports/scraping-exports.module';
 import { ConfigurationModule } from './modules/admin/configuration/configuration.module';
 import { NotificationConfigModule } from './modules/admin/ifc/notification-configs/notification-configs.module';
 import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart-heads.module';
@@ -217,7 +218,7 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 		RoleModulePermissionModule,
 		PortfolioModule,
 		S3Module,
-		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule] : []),
+		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule, ScrapingExportsModule] : []),
 	],
 	controllers: [AppController],
 	providers: [

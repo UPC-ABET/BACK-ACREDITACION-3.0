@@ -278,6 +278,8 @@ export class LcfcNotificationService {
 			programId: tokenData.programId,
 			programName: tokenData.programName,
 			academicPeriodId: tokenData.academicPeriodId,
+			period: tokenData.period,
+			courseName: tokenData.courseName,
 			courseSectionId: tokenData.courseSectionId,
 			maxRegisterDate: tokenData.maxRegisterDate,
 		};

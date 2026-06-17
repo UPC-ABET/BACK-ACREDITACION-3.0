@@ -10,6 +10,8 @@ export type LcfcTokenData = {
 	programId: number;
 	programName: string;
 	academicPeriodId: number;
+	period?: string;
+	courseName?: string;
 	campusId: number;
 	courseSectionId: number;
 	maxRegisterDate: string | null;
