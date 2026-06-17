@@ -9,7 +9,8 @@ export class NotificationMessageValidation {
 		const exists = await repo.findOneByCondition({
 			where: {
 				surveyTypeId: data.surveyTypeId,
-				programId: data.programId,
+				// null → "program_id IS NULL" (general template); a number matches that program.
+				programId: data.programId ?? null,
 			},
 		});
 
@@ -33,7 +34,7 @@ export class NotificationMessageValidation {
 		if (!entity) errors.push(notificationMessagesValidationStrings.error.notFound);
 
 		const surveyTypeId = data.surveyTypeId ?? entity?.surveyTypeId;
-		const programId = data.programId ?? entity?.programId;
+		const programId = data.programId ?? entity?.programId ?? null;
 
 		const exists = await repo.findOneByCondition({
 			where: {

@@ -137,12 +137,29 @@ export class LcfcNotificationService {
 
 					if (existingSurvey) {
 						alreadyExisted++;
-						const existingNotif = await manager.query(
-							`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
-							[existingSurvey.id, scheduledStatusId],
-						);
+						// Default behaviour only (re)sends notifications still scheduled (never sent),
+						// so pressing "send" twice does not spam students. On resend we reuse the
+						// latest existing notification regardless of status and refresh its deadline.
+						const existingNotif = dto.resend
+							? await manager.query(
+									`SELECT id, token FROM survey.notifications WHERE survey_id = $1 ORDER BY id DESC LIMIT 1`,
+									[existingSurvey.id],
+								)
+							: await manager.query(
+									`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
+									[existingSurvey.id, scheduledStatusId],
+								);
 
 						if (existingNotif?.[0]) {
+							if (dto.resend) {
+								// Reset to scheduled and push the new deadline so the reused token is valid again.
+								await manager.query(
+									`UPDATE survey.notifications
+									 SET notification_status_type_id = $1, max_register_date = $2, sent_date = NULL, updated_at = NOW()
+									 WHERE id = $3`,
+									[scheduledStatusId, maxRegisterDate, existingNotif[0].id],
+								);
+							}
 							pendingNotifications.push({
 								studentId: student.studentId,
 								studentName: student.studentName,
