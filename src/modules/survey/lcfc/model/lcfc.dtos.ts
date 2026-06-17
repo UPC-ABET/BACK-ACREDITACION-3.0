@@ -47,12 +47,21 @@ export class GenerateLcfcConfigDto {
 }
 
 export class CloneLcfcConfigDto {
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Source academic period ID (to copy status from)' })
-	sourceAcademicPeriodId: number;
+	@ApiProperty({
+		example: 5,
+		description:
+			'Source academic period ID to copy status from. If omitted, the backend automatically uses the period immediately before targetAcademicPeriodId (same modality, ordered by start_date).',
+		required: false,
+	})
+	sourceAcademicPeriodId?: number;
 
 	@IsNumber()
-	@ApiProperty({ example: 2, description: 'Target academic period ID (generated and updated)' })
+	@ApiProperty({
+		example: 7,
+		description: 'Target academic period ID (configs will be generated here)',
+	})
 	targetAcademicPeriodId: number;
 
 	@IsNumber()

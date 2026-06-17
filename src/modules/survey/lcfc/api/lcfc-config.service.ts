@@ -116,13 +116,25 @@ export class LcfcConfigService {
 		generated: number;
 		skipped: number;
 		statusCopied: number;
+		sourcePeriodId: number;
 		message: string;
 	}> {
+		let sourcePeriodId = dto.sourceAcademicPeriodId;
+		if (!sourcePeriodId) {
+			const resolved = await this.configRepo.findPreviousAcademicPeriodId(
+				dto.targetAcademicPeriodId,
+			);
+			if (!resolved) {
+				throw new BadRequestException(lcfcValidationStrings.error.noPreviousPeriod);
+			}
+			sourcePeriodId = resolved;
+		}
+
 		const generated = await this.generateForPeriod(dto.programId, dto.targetAcademicPeriodId);
 
 		const [sourceConfigs, targetConfigs] = await Promise.all([
 			this.configRepo.findAllLcfc({
-				academicPeriodId: dto.sourceAcademicPeriodId,
+				academicPeriodId: sourcePeriodId,
 				programId: dto.programId,
 			}),
 			this.configRepo.findAllLcfc({
@@ -131,23 +143,24 @@ export class LcfcConfigService {
 			}),
 		]);
 
-		const courseId = (config: { extra?: unknown }): number | null => {
+		const sectionKey = (config: { extra?: unknown }): string | null => {
 			const extra = (config.extra as Record<string, any>) ?? {};
-			const value = extra.course_id ?? extra.courseId;
-			return value == null ? null : Number(value);
+			const cid = extra.course_id ?? extra.courseId;
+			const scode = extra.section_code ?? extra.sectionCode;
+			return cid != null && scode != null ? `${cid}:${scode}` : null;
 		};
 
-		const sourceStatusByCourse = new Map<number, boolean>();
+		const sourceStatusBySection = new Map<string, boolean>();
 		for (const config of sourceConfigs) {
-			const id = courseId(config);
-			if (id !== null) sourceStatusByCourse.set(id, config.isActive ?? false);
+			const key = sectionKey(config);
+			if (key !== null) sourceStatusBySection.set(key, config.isActive ?? false);
 		}
 
 		let statusCopied = 0;
 		for (const target of targetConfigs) {
-			const id = courseId(target);
-			if (id === null) continue;
-			const sourceActive = sourceStatusByCourse.get(id);
+			const key = sectionKey(target);
+			if (key === null) continue;
+			const sourceActive = sourceStatusBySection.get(key);
 			if (sourceActive !== undefined && sourceActive !== target.isActive) {
 				await this.configRepo.update(target.id, { isActive: sourceActive });
 				statusCopied++;
@@ -158,7 +171,8 @@ export class LcfcConfigService {
 			generated: generated.created,
 			skipped: generated.skipped,
 			statusCopied,
-			message: `Generated ${generated.created} configs (skipped ${generated.skipped}) and copied status for ${statusCopied} courses from the source period`,
+			sourcePeriodId,
+			message: `Generated ${generated.created} configs (skipped ${generated.skipped}) and copied status for ${statusCopied} sections from period ${sourcePeriodId}`,
 		};
 	}
 

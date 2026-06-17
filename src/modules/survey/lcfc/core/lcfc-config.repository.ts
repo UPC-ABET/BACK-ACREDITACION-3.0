@@ -56,6 +56,27 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			.getOne();
 	}
 
+	/**
+	 * Returns the academic period immediately before targetPeriodId (same modality, ordered by
+	 * start_date DESC). Used when cloning without an explicit sourceAcademicPeriodId.
+	 */
+	async findPreviousAcademicPeriodId(targetPeriodId: number): Promise<number | null> {
+		const rows = await this.dataSource.query(
+			`SELECT id
+			 FROM academic.academic_periods
+			 WHERE modality_type_id = (
+				 SELECT modality_type_id FROM academic.academic_periods WHERE id = $1
+			 )
+			   AND start_date < (
+				 SELECT start_date FROM academic.academic_periods WHERE id = $1
+			 )
+			 ORDER BY start_date DESC
+			 LIMIT 1`,
+			[targetPeriodId],
+		);
+		return rows?.[0]?.id ?? null;
+	}
+
 	/** Latest academic period id for a given modality, ordered by start date. */
 	async findLatestAcademicPeriodId(modalityTypeId: number): Promise<number | null> {
 		const rows = await this.dataSource.query(
