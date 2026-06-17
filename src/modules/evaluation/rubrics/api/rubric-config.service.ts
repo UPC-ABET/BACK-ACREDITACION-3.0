@@ -89,30 +89,6 @@ export class RubricConfigService {
 	 * 4. Tras crear, recalcula la nota máxima total (R-RUB-014)
 	 */
 	async createRubric(dto: CreateRubricDto): Promise<RubricEntity> {
-		const conflictingRubric = (
-			await this.dataSource.query(
-				`
-			SELECT r.id
-			FROM evaluation.rubrics r
-			INNER JOIN academic.study_plan_courses spc ON spc.id = r.study_plan_course_id
-			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-			INNER JOIN academic.study_plan_courses spc_target ON spc_target.id = $1
-			INNER JOIN academic.study_plan_academic_periods spap_target ON spap_target.id = spc_target.study_plan_academic_period_id
-			WHERE r.is_active = true
-			  AND r.grade_type_id = $2
-			  AND spc.course_id = spc_target.course_id
-			  AND spap.academic_period_id = spap_target.academic_period_id
-			  AND r.study_plan_course_id != $1
-			LIMIT 1
-		`,
-				[dto.studyPlanCourseId, dto.gradeTypeId],
-			)
-		)[0] as { id: number } | undefined;
-
-		if (conflictingRubric) {
-			throw new BadRequestException(rubricsValidationStrings.error.activeRubricExistsForPeriod);
-		}
-
 		const existingRubric = await this.rubricRepo.findOne({
 			where: {
 				studyPlanCourseId: dto.studyPlanCourseId,
