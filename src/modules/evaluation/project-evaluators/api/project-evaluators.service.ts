@@ -30,6 +30,6 @@ export class ProjectEvaluatorService extends BaseService<ProjectEvaluatorReposit
 
 	async delete(id: number, manager?: EntityManager) {
 		await ProjectEvaluatorValidation.validateDelete(this.repository, id);
-		return await super.delete(id, manager);
+		return await this.repository.update(id, { isActive: false } as any, manager);
 	}
 }

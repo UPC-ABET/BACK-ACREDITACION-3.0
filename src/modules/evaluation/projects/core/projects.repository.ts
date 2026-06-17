@@ -38,7 +38,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectEntity, 'project')
 			.leftJoinAndSelect('project.students', 'ps')
-			.leftJoinAndSelect('project.evaluators', 'pe')
+			.leftJoinAndSelect('project.evaluators', 'pe', 'pe.is_active = true')
 			.leftJoin(
 				StudentSectionEnrollmentEntity,
 				'sse_enrich',
@@ -58,10 +58,13 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.addSelect('cs_enrich.id', 'cs_enrich_id')
 			.addSelect('u_prof_enrich.first_name', 'u_prof_enrich_first_name')
 			.addSelect('u_prof_enrich.last_name', 'u_prof_enrich_last_name')
+			.addSelect('u_prof_enrich.email', 'u_prof_enrich_email')
 			.addSelect('staff_enrich.first_name', 'staff_enrich_first_name')
 			.addSelect('staff_enrich.last_name', 'staff_enrich_last_name')
 			.addSelect('eval_type_enrich.name', 'eval_type_enrich_name')
 			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code')
+			.addSelect('eval_type_enrich.extra', 'eval_type_enrich_extra')
+			.addSelect('prof_enrich.code', 'prof_enrich_code')
 			.addSelect(
 				`EXISTS (
 					SELECT 1
@@ -164,15 +167,15 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 					const evalRaw = projectRaws.find((r) => r.pe_id === evaluator.id);
 					return {
 						...evaluator,
-						evaluatorInfo: evalRaw
-							? {
-									firstName:
-										evalRaw.u_prof_enrich_first_name || evalRaw.staff_enrich_first_name || '',
-									lastName: evalRaw.u_prof_enrich_last_name || evalRaw.staff_enrich_last_name || '',
-									evaluatorTypeName: evalRaw.eval_type_enrich_name,
-									evaluatorTypeCode: evalRaw.eval_type_enrich_code,
-								}
-							: null,
+						professorFirstName:
+							evalRaw?.u_prof_enrich_first_name || evalRaw?.staff_enrich_first_name || '',
+						professorLastName:
+							evalRaw?.u_prof_enrich_last_name || evalRaw?.staff_enrich_last_name || '',
+						professorCode: evalRaw?.prof_enrich_code || '',
+						evaluatorTypeName: evalRaw?.eval_type_enrich_name ?? null,
+						evaluatorTypeCode: evalRaw?.eval_type_enrich_code ?? null,
+						canEvaluate: evalRaw?.eval_type_enrich_extra?.can_evaluate === true,
+						maxEvaluators: evalRaw?.eval_type_enrich_extra?.max_evaluators ?? null,
 					};
 				}),
 			};

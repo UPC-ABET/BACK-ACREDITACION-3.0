@@ -38,8 +38,27 @@ export class TypeRepository extends BaseRepository<TypeEntity> {
 	 * Active types belonging to a type group, looked up by the group's code.
 	 * Returns the IAM-facing shape: id, typeGroupId, code, name, description, extra.
 	 */
+	async setCanEvaluate(
+		id: number,
+		canEvaluate: boolean,
+		maxEvaluators?: number | null,
+	): Promise<void> {
+		await this.dataSource.query(
+			`UPDATE core.types
+			 SET extra = COALESCE(extra, '{}'::jsonb)
+			           || jsonb_build_object('can_evaluate', $1::boolean)
+			           || CASE
+			                WHEN $3::text IS NULL THEN jsonb_build_object('max_evaluators', NULL)
+			                ELSE jsonb_build_object('max_evaluators', $3::int)
+			              END,
+			     updated_at = now()
+			 WHERE id = $2`,
+			[canEvaluate, id, maxEvaluators ?? null],
+		);
+	}
+
 	async findByGroupCode(groupCode: string) {
-		return await this.dataSource.query(
+		const rows = await this.dataSource.query(
 			`SELECT t.id::int AS id,
 			        t.type_group_id AS "typeGroupId",
 			        t.code,
@@ -52,5 +71,7 @@ export class TypeRepository extends BaseRepository<TypeEntity> {
 			 ORDER BY NULLIF(t.extra->>'order', '')::int NULLS LAST, t.code`,
 			[groupCode],
 		);
+
+		return rows;
 	}
 }

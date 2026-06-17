@@ -4,7 +4,7 @@ import { TypeRepository } from '../core/types.repository';
 import { TypeValidation } from '../core/types.validation';
 import { typesValidationStrings } from '../config/strings/types.validation';
 
-import { CreateTypeDto, UpdateTypeDto } from '../model/types.dtos';
+import { CreateTypeDto, UpdateTypeDto, SetCanEvaluateDto } from '../model/types.dtos';
 import { EntityManager } from 'typeorm';
 
 @Injectable()
@@ -35,6 +35,11 @@ export class TypeService extends BaseService<TypeRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await TypeValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async setCanEvaluate(id: number, dto: SetCanEvaluateDto) {
+		await TypeValidation.validateExists(this.repository, id);
+		await this.repository.setCanEvaluate(id, dto.canEvaluate, dto.maxEvaluators);
 	}
 
 	async findByGroupCode(groupCode: string) {

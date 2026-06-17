@@ -56,6 +56,15 @@ export class TypeValidation {
 		}
 	}
 
+	static async validateExists(repo: TypeRepository, id: number) {
+		if (!(await repo.findOneById(id))) {
+			throw new HttpException(
+				{ message: typesValidationStrings.error.notFound },
+				HttpStatus.NOT_FOUND,
+			);
+		}
+	}
+
 	static async validateDelete(repo: TypeRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
 			throw new HttpException(

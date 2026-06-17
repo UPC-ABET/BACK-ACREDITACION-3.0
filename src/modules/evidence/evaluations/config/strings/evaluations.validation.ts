@@ -14,6 +14,8 @@ export const evaluationsValidationStrings = {
 		oneCriteriaPerQuestion: 'error.evaluation.oneCriteriaPerQuestion',
 		statusTypeNotFound: 'error.evaluation.statusTypeNotFound',
 		docCannotGrade: 'error.evaluation.docCannotGrade',
+		inactiveEvaluatorCannotGrade: 'error.evaluation.inactiveEvaluatorCannotGrade',
+		onlyComiteCanGrade: 'error.evaluation.onlyComiteCanGrade',
 		gradeAllStudents: 'error.evaluation.gradeAllStudents',
 		observationRequired: 'error.evaluation.observationRequired',
 	},

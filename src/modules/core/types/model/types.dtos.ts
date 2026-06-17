@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
 
@@ -50,6 +50,26 @@ export class UpdateTypeDto {
 	@IsObject()
 	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
+}
+
+export class SetCanEvaluateDto {
+	@IsNotEmpty()
+	@IsBoolean()
+	@ApiProperty({
+		example: true,
+		required: true,
+		description: 'Habilita o deshabilita si este tipo de evaluador puede calificar proyectos',
+	})
+	canEvaluate: boolean;
+
+	@IsOptional()
+	@ApiProperty({
+		example: 3,
+		required: false,
+		nullable: true,
+		description: 'Máximo de evaluadores permitidos por proyecto para este tipo. null = sin límite.',
+	})
+	maxEvaluators?: number | null;
 }
 
 export class FilterTypeDto {

@@ -6,24 +6,23 @@ export class ProjectEvaluatorValidation {
 	static async validateCreate(repo: ProjectEvaluatorRepository, data: any) {
 		const errors: Array<string> = [];
 
-		const duplicateType = await repo.findOneByCondition({
-			where: {
-				projectId: data.projectId,
-				evaluatorTypeId: data.evaluatorTypeId,
-			},
-		});
-
-		if (duplicateType) errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
-
+		// Active duplicate check (ignore inactive rows from previous uploads)
 		const exists = await repo.findOneByCondition({
 			where: {
 				projectId: data.projectId,
 				professorId: data.professorId,
 				evaluatorTypeId: data.evaluatorTypeId,
+				isActive: true,
 			},
 		});
-
 		if (exists) errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
+
+		const maxEvaluators = await repo.getMaxEvaluators(data.evaluatorTypeId);
+		if (maxEvaluators !== null) {
+			const current = await repo.countActiveByType(data.projectId, data.evaluatorTypeId);
+			if (current >= maxEvaluators)
+				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+		}
 
 		if (errors.length > 0) {
 			throw new HttpException(
@@ -48,25 +47,22 @@ export class ProjectEvaluatorValidation {
 
 		const exists = await repo.findOneByCondition({
 			where: {
-				projectId: projectId,
-				professorId: professorId,
-				evaluatorTypeId: evaluatorTypeId,
+				projectId,
+				professorId,
+				evaluatorTypeId,
+				isActive: true,
 			},
 		});
-
 		if (exists && exists.id !== id) {
 			errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
 		}
 
-		const duplicateType = await repo.findOneByCondition({
-			where: {
-				projectId: projectId,
-				evaluatorTypeId: evaluatorTypeId,
-			},
-		});
-
-		if (duplicateType && duplicateType.id !== id) {
-			errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+		const maxEvaluators = await repo.getMaxEvaluators(evaluatorTypeId);
+		if (maxEvaluators !== null) {
+			const current = await repo.countActiveByType(projectId, evaluatorTypeId);
+			if (current > maxEvaluators) {
+				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+			}
 		}
 
 		if (errors.length > 0) {
@@ -81,11 +77,10 @@ export class ProjectEvaluatorValidation {
 	}
 
 	static async validateDelete(repo: ProjectEvaluatorRepository, id: number) {
-		if (!(await repo.findOneById(id))) {
+		const entity = await repo.findOneById(id);
+		if (!entity || !entity.isActive) {
 			throw new HttpException(
-				{
-					message: projectEvaluatorsValidationStrings.result.deleteFailed,
-				},
+				{ message: projectEvaluatorsValidationStrings.result.deleteFailed },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

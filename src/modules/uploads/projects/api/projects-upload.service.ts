@@ -15,6 +15,11 @@ import {
 import { ProjectsUploadRepository } from '../core/projects-upload.repository';
 import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
+// Columns: projectCode(1) projectNameEs(2) projectNameEn(3) courseCode(4)
+//          studentCode(5) sectionCode(6) + one column per evaluator type starting at 7
+const FIXED_COLUMNS = 6;
+const ERROR_COLUMN = FIXED_COLUMNS + evaluatorTypesList.length + 1;
+
 @Injectable()
 export class ProjectsUploadService {
 	constructor(
@@ -93,7 +98,13 @@ export class ProjectsUploadService {
 		const workbook = new ExcelJS.Workbook();
 		const sheet = workbook.addWorksheet('Template');
 
-		// ── Data table (cols 1-8) ─────────────────────────────────────────
+		// ── Data table ────────────────────────────────────────────────────────
+		const evaluatorHeaders = evaluatorTypesList.map((et) => {
+			const [nameEs, nameEn] = et.name.split(' / ');
+			const name = language === 'es' ? nameEs : nameEn;
+			return `${name} (${et.code})`;
+		});
+
 		const headers = [
 			labels.projectCode,
 			labels.projectNameEs,
@@ -101,8 +112,7 @@ export class ProjectsUploadService {
 			labels.courseCode,
 			labels.studentCode,
 			labels.sectionCode,
-			labels.professorCode,
-			labels.evaluatorTypeCode,
+			...evaluatorHeaders,
 		];
 
 		sheet.addRow(headers);
@@ -118,7 +128,6 @@ export class ProjectsUploadService {
 			labels.instructionsColExample,
 		];
 
-		// Header row
 		const instHeaderRow = instrSheet.getRow(1);
 		instHeaders.forEach((h, i) => {
 			const cell = instHeaderRow.getCell(i + 1);
@@ -129,7 +138,6 @@ export class ProjectsUploadService {
 		});
 		instHeaderRow.height = 22;
 
-		// Instruction rows
 		instructions.forEach((instr, idx) => {
 			const r = instrSheet.getRow(2 + idx);
 			r.getCell(1).value = instr.field;
@@ -154,7 +162,7 @@ export class ProjectsUploadService {
 		instrSheet.getColumn(3).width = 13;
 		instrSheet.getColumn(4).width = 25;
 
-		// ── Evaluator types (below instructions, 2 rows gap) ─────────────
+		// ── Evaluator types reference (below instructions) ────────────────
 		const evalStartRow = 2 + instructions.length + 2;
 
 		const evalTitleRow = instrSheet.getRow(evalStartRow);
@@ -194,14 +202,20 @@ export class ProjectsUploadService {
 	}
 
 	// Positional layout (header row ignored):
-	// projectCode | projectNameEs | projectNameEn | courseCode |
-	// studentCode | sectionCode | professorCode | evaluatorTypeCode
+	// projectCode(1) | projectNameEs(2) | projectNameEn(3) | courseCode(4) |
+	// studentCode(5) | sectionCode(6) | [evaluatorType cols 7..N]
 	private parseWorkbook(workbook: ExcelJS.Workbook): ProjectRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: ProjectRow[] = [];
 
 		worksheet.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
+
+			const evaluators: Record<string, string> = {};
+			evaluatorTypesList.forEach((et, idx) => {
+				evaluators[et.code] = readCell(row, FIXED_COLUMNS + 1 + idx);
+			});
+
 			rows.push({
 				rowNumber,
 				projectCode: readCell(row, 1),
@@ -210,8 +224,7 @@ export class ProjectsUploadService {
 				courseCode: readCell(row, 4),
 				studentCode: readCell(row, 5),
 				sectionCode: readCell(row, 6),
-				professorCode: readCell(row, 7),
-				evaluatorTypeCode: readCell(row, 8),
+				evaluators,
 			});
 		});
 
@@ -238,12 +251,11 @@ export class ProjectsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		const errorColumn = 9; // after the 8 data columns
-		const headerCell = worksheet.getRow(1).getCell(errorColumn);
+		const headerCell = worksheet.getRow(1).getCell(ERROR_COLUMN);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
 		headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
-		worksheet.getColumn(errorColumn).width = errorColumnHeader.length + 2;
+		worksheet.getColumn(ERROR_COLUMN).width = errorColumnHeader.length + 2;
 
 		const byRow = new Map<number, string[]>();
 		for (const e of errors) {
@@ -252,7 +264,7 @@ export class ProjectsUploadService {
 			byRow.set(e.rowNumber, list);
 		}
 		for (const [rowNumber, texts] of byRow) {
-			worksheet.getRow(rowNumber).getCell(errorColumn).value = texts.join(' | ');
+			worksheet.getRow(rowNumber).getCell(ERROR_COLUMN).value = texts.join(' | ');
 		}
 
 		const buffer = await workbook.xlsx.writeBuffer();

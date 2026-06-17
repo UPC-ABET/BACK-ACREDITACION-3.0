@@ -6,8 +6,8 @@ export interface ProjectRow {
 	courseCode: string;
 	studentCode: string;
 	sectionCode: string;
-	professorCode: string;
-	evaluatorTypeCode: string;
+	/** Comma-separated professor codes keyed by evaluator type code (e.g. 'TG403-T001') */
+	evaluators: Record<string, string>;
 }
 
 export interface UploadRowError {

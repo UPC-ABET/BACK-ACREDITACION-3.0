@@ -288,7 +288,7 @@ export class ProjectConfigService {
 			.leftJoinAndSelect('es.student', 'stu')
 			.leftJoinAndSelect('sse.courseSection', 'cs')
 			.leftJoinAndSelect('cs.academicPeriod', 'ap')
-			.leftJoinAndSelect('p.evaluators', 'pe')
+			.leftJoinAndSelect('p.evaluators', 'pe', 'pe.is_active = true')
 			.leftJoinAndSelect('pe.professor', 'prof')
 			.leftJoinAndSelect('prof.staff', 'staff')
 			.leftJoinAndSelect('staff.user', 'puser')
@@ -526,12 +526,15 @@ export class ProjectConfigService {
 			return {
 				id: e.id,
 				professorId: e.professorId,
+				professorCode: e.professor?.code || '',
 				professorFirstName: professorUser?.firstName || staff?.firstName || '',
 				professorLastName: professorUser?.lastName || staff?.lastName || '',
 				professorEmail: professorUser?.email || '',
 				evaluatorTypeId: e.evaluatorTypeId,
 				evaluatorTypeName: evaluatorType?.name || '',
 				evaluatorTypeCode: evaluatorType?.code || '',
+				canEvaluate: evaluatorType?.extra?.can_evaluate === true,
+				maxEvaluators: evaluatorType?.extra?.max_evaluators ?? null,
 			};
 		});
 
@@ -665,7 +668,7 @@ export class ProjectConfigService {
       -- curso
       c.name            AS "courseName"
     FROM evaluation.projects p
-    LEFT JOIN evaluation.project_evaluators all_pe ON all_pe.project_id = p.id
+    LEFT JOIN evaluation.project_evaluators all_pe ON all_pe.project_id = p.id AND all_pe.is_active = true
     LEFT JOIN academic.professors all_prof         ON all_prof.id = all_pe.professor_id
     LEFT JOIN organization.staff all_st            ON all_st.id = all_prof.staff_id
     LEFT JOIN organization.users all_u             ON all_u.id = all_st.user_id

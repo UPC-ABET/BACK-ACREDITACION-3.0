@@ -10,9 +10,15 @@ import {
 	SwaggerTypeGetById,
 	SwaggerTypeGetByFilters,
 	SwaggerTypesByGroupCode,
+	SwaggerTypeSetCanEvaluate,
 } from './docs/types.swagger';
 import { TypeService } from './types.service';
-import { CreateTypeDto, UpdateTypeDto, FilterTypeDto } from '../model/types.dtos';
+import {
+	CreateTypeDto,
+	UpdateTypeDto,
+	FilterTypeDto,
+	SetCanEvaluateDto,
+} from '../model/types.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
@@ -62,5 +68,12 @@ export class TypeController extends BaseController<TypeService> {
 	@RequirePermission({ module: PERMISSION_MODULES.CORE, action: PERMISSION_ACTIONS.GET })
 	async byGroupCode(@Param('code') code: string) {
 		return parseSuccessResponse(await this.service.findByGroupCode(code));
+	}
+
+	@SwaggerTypeSetCanEvaluate()
+	@RequirePermission({ module: PERMISSION_MODULES.CORE, action: PERMISSION_ACTIONS.PATCH })
+	async setCanEvaluate(@Param('id', ParseIntPipe) id: number, @Body() dto: SetCanEvaluateDto) {
+		await this.service.setCanEvaluate(id, dto);
+		return parseSuccessResponse(null);
 	}
 }
