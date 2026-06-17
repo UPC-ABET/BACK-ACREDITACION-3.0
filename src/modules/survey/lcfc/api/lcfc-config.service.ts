@@ -27,8 +27,13 @@ export class LcfcConfigService {
 	private async generateForPeriod(
 		programId: number,
 		academicPeriodId: number,
+		courseSectionIds?: number[],
 	): Promise<{ created: number; skipped: number; configs: any[] }> {
-		const sections = await this.configRepo.getCourseSectionsForPeriod(academicPeriodId, programId);
+		let sections = await this.configRepo.getCourseSectionsForPeriod(academicPeriodId, programId);
+
+		if (courseSectionIds && courseSectionIds.length > 0) {
+			sections = sections.filter((s) => courseSectionIds.includes(s.courseSectionId));
+		}
 
 		if (sections.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noCourseSections);
@@ -67,9 +72,9 @@ export class LcfcConfigService {
 			};
 
 			const config = await this.configRepo.create({
-				outcomeId: outcomeId,
+				outcomeId,
 				userOutcomeName: section.courseName as any,
-				userOutcomeDescription: `Section: ${section.sectionCode}` as any,
+				userOutcomeDescription: section.sectionCode as any,
 				extra,
 				isActive: true,
 			});
@@ -95,7 +100,11 @@ export class LcfcConfigService {
 			throw new BadRequestException(lcfcValidationStrings.error.notLatestPeriod);
 		}
 
-		return this.generateForPeriod(dto.programId, dto.academicPeriodId);
+		return this.generateForPeriod(dto.programId, dto.academicPeriodId, dto.courseSectionIds);
+	}
+
+	async getAvailableSections(programId: number, academicPeriodId: number) {
+		return this.configRepo.getCourseSectionsForPeriod(academicPeriodId, programId);
 	}
 
 	/**

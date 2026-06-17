@@ -32,6 +32,18 @@ export class GenerateLcfcConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
+
+	@IsOptional()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	@ApiProperty({
+		example: [55, 56, 57],
+		description:
+			'Specific course section IDs to generate configs for. If omitted, generates for all non-elective sections of the active study plan.',
+		required: false,
+		type: [Number],
+	})
+	courseSectionIds?: number[];
 }
 
 export class CloneLcfcConfigDto {
