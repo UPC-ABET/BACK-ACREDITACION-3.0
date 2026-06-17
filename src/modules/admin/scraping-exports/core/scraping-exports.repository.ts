@@ -11,8 +11,6 @@ import {
 
 export const EXPORTS_RAW_CONNECTION = 'exports-raw';
 
-const UPC_EMAIL_DOMAIN = '@upc.edu.pe';
-
 // Planner stores teacherName as "Apellidos, Nombres". Split on the first comma; if there is no
 // comma, treat the whole string as the last name.
 function splitTeacherName(name: string | null): { lastName: string; firstName: string } {
@@ -32,20 +30,37 @@ export class ScrapingExportsRepository {
 		@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly dataSource: DataSource,
 	) {}
 
-	// Distinct teachers from the latest Planner run. The professor code is the scraped teacherCode;
-	// the email is derived as `${teacherCode}@upc.edu.pe`.
+	// Distinct teachers from the latest Planner run. The professor code is the scraped teacherCode.
+	// The email is the real institutional one pulled from Banner's raw_horario: Banner has no short
+	// teacher code and Planner has no email, so the two are matched by name ("Apellidos, Nombres",
+	// case/space-insensitive). Blank when there is no Banner match (Banner only scraped some depts).
 	async getDocentes(): Promise<DocenteExportRow[]> {
-		const rows: Array<{ professor_code: string; teacher_name: string | null }> =
-			await this.dataSource.query(`
-				SELECT DISTINCT ON (t->>'teacherCode')
-					t->>'teacherCode' AS professor_code,
-					t->>'teacherName' AS teacher_name
-				FROM raw_planner_seccion s
-				CROSS JOIN LATERAL jsonb_array_elements(COALESCE(s.payload->'teachers', '[]'::jsonb)) t
-				WHERE s.run_id = (SELECT id FROM planner_scrape_run ORDER BY started_at DESC LIMIT 1)
-				  AND NULLIF(trim(t->>'teacherCode'), '') IS NOT NULL
-				ORDER BY t->>'teacherCode'
-			`);
+		const rows: Array<{
+			professor_code: string;
+			teacher_name: string | null;
+			email: string | null;
+		}> = await this.dataSource.query(`
+			WITH banner_email AS (
+				SELECT
+					lower(btrim(d->>'apellidos') || ', ' || btrim(d->>'nombres')) AS name_key,
+					max(d->>'correo')                                             AS correo
+				FROM raw_horario h
+				CROSS JOIN LATERAL jsonb_array_elements(COALESCE(h.payload->'horarios', '[]'::jsonb)) hr
+				CROSS JOIN LATERAL jsonb_array_elements(COALESCE(hr->'docentes', '[]'::jsonb)) d
+				WHERE NULLIF(d->>'correo', '') IS NOT NULL
+				GROUP BY 1
+			)
+			SELECT DISTINCT ON (t->>'teacherCode')
+				t->>'teacherCode' AS professor_code,
+				t->>'teacherName' AS teacher_name,
+				be.correo         AS email
+			FROM raw_planner_seccion s
+			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(s.payload->'teachers', '[]'::jsonb)) t
+			LEFT JOIN banner_email be ON be.name_key = lower(btrim(t->>'teacherName'))
+			WHERE s.run_id = (SELECT id FROM planner_scrape_run ORDER BY started_at DESC LIMIT 1)
+			  AND NULLIF(trim(t->>'teacherCode'), '') IS NOT NULL
+			ORDER BY t->>'teacherCode'
+		`);
 
 		return rows.map((row) => {
 			const { lastName, firstName } = splitTeacherName(row.teacher_name);
@@ -53,7 +68,7 @@ export class ScrapingExportsRepository {
 				professorCode: row.professor_code,
 				lastName,
 				firstName,
-				email: `${row.professor_code}${UPC_EMAIL_DOMAIN}`,
+				email: row.email ?? '',
 			};
 		});
 	}
