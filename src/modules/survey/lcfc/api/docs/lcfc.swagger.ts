@@ -1,4 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ApiSchoolHeader } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 import { lcfcRoutes } from '../../config/lcfc.routes';
@@ -51,6 +52,17 @@ export const SwaggerLcfcConfigDelete = () =>
 			{ name: 'id', description: 'LCFC configuration ID (outcome_config.id)', type: Number },
 		],
 	});
+export const SwaggerLcfcConfigAvailableSections = () =>
+	applyDecorators(
+		HttpMethodWithSwagger(cfg.config.availableSections),
+		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: true }),
+		ApiQuery({
+			name: 'academicPeriodId',
+			description: 'Academic period ID',
+			type: Number,
+			required: true,
+		}),
+	);
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 export const SwaggerLcfcTokenValidate = () =>

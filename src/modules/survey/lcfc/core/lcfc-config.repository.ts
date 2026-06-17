@@ -56,6 +56,27 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			.getOne();
 	}
 
+	/**
+	 * Returns the academic period immediately before targetPeriodId (same modality, ordered by
+	 * start_date DESC). Used when cloning without an explicit sourceAcademicPeriodId.
+	 */
+	async findPreviousAcademicPeriodId(targetPeriodId: number): Promise<number | null> {
+		const rows = await this.dataSource.query(
+			`SELECT id
+			 FROM academic.academic_periods
+			 WHERE modality_type_id = (
+				 SELECT modality_type_id FROM academic.academic_periods WHERE id = $1
+			 )
+			   AND start_date < (
+				 SELECT start_date FROM academic.academic_periods WHERE id = $1
+			 )
+			 ORDER BY start_date DESC
+			 LIMIT 1`,
+			[targetPeriodId],
+		);
+		return rows?.[0]?.id ?? null;
+	}
+
 	/** Latest academic period id for a given modality, ordered by start date. */
 	async findLatestAcademicPeriodId(modalityTypeId: number): Promise<number | null> {
 		const rows = await this.dataSource.query(
@@ -99,10 +120,13 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return rows?.[0]?.id ?? null;
 	}
 
+	/**
+	 * Returns all non-elective course sections from the active study plan for a given program
+	 * and academic period. Used both for config generation and for the available-sections modal.
+	 */
 	async getCourseSectionsForPeriod(
 		academicPeriodId: number,
-		programId?: number,
-		campusId?: number,
+		programId: number,
 	): Promise<
 		{
 			courseSectionId: number;
@@ -112,8 +136,8 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			campusId: number;
 		}[]
 	> {
-		let query = `
-			SELECT
+		return await this.dataSource.query(
+			`SELECT
 				cs.id           AS "courseSectionId",
 				c.id            AS "courseId",
 				c.name          AS "courseName",
@@ -122,28 +146,22 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			FROM academic.course_sections cs
 			INNER JOIN academic.courses c ON c.id = cs.course_id
 			WHERE cs.academic_period_id = $1
-		`;
-		const params: any[] = [academicPeriodId];
-
-		if (programId) {
-			query += ` AND EXISTS (
-				SELECT 1
-				FROM academic.study_plans sp
-				INNER JOIN academic.study_plan_academic_periods spap ON spap.study_plan_id = sp.id
-				INNER JOIN academic.study_plan_courses spc ON spc.study_plan_academic_period_id = spap.id
-				WHERE spc.course_id = cs.course_id
-				  AND spap.academic_period_id = cs.academic_period_id
-				  AND sp.program_id = $${params.length + 1}
-			)`;
-			params.push(programId);
-		}
-		if (campusId) {
-			query += ` AND cs.campus_id = $${params.length + 1}`;
-			params.push(campusId);
-		}
-
-		query += ` ORDER BY c.name ASC, cs.section_code ASC`;
-
-		return await this.dataSource.query(query, params);
+			  AND c.is_active = true
+			  AND EXISTS (
+				  SELECT 1
+				  FROM academic.study_plans sp
+				  INNER JOIN academic.study_plan_academic_periods spap ON spap.study_plan_id = sp.id
+				  INNER JOIN academic.study_plan_courses spc ON spc.study_plan_academic_period_id = spap.id
+				  WHERE spc.course_id = cs.course_id
+				    AND spap.academic_period_id = $1
+				    AND sp.program_id = $2
+				    AND spc.is_elective = false
+				    AND sp.is_active = true
+				    AND spap.is_active = true
+				    AND spc.is_active = true
+			  )
+			ORDER BY c.name ASC, cs.section_code ASC`,
+			[academicPeriodId, programId],
+		);
 	}
 }

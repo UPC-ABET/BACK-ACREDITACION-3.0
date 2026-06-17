@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { LcfcService } from './lcfc.service';
 import {
@@ -11,6 +11,7 @@ import {
 	SwaggerLcfcConfigUpdateStatus,
 	SwaggerLcfcConfigClone,
 	SwaggerLcfcConfigDelete,
+	SwaggerLcfcConfigAvailableSections,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
 	SwaggerLcfcSurveyGetByToken,
@@ -83,6 +84,17 @@ export class LcfcController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.DELETE })
 	async configDelete(@Param('id', ParseIntPipe) id: number) {
 		return parseSuccessResponse(await this.lcfcService.deleteConfig(id));
+	}
+
+	@SwaggerLcfcConfigAvailableSections()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async configAvailableSections(
+		@Query('programId', ParseIntPipe) programId: number,
+		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.lcfcService.getAvailableSections(programId, academicPeriodId),
+		);
 	}
 
 	@SwaggerLcfcNotificationSend()

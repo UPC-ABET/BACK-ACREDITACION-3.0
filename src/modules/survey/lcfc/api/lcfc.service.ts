@@ -48,6 +48,10 @@ export class LcfcService {
 		return this.configService.deleteConfig(id);
 	}
 
+	getAvailableSections(programId: number, academicPeriodId: number) {
+		return this.configService.getAvailableSections(programId, academicPeriodId);
+	}
+
 	sendNotifications(dto: SendLcfcNotificationDto) {
 		return this.notifService.sendNotifications(dto);
 	}
