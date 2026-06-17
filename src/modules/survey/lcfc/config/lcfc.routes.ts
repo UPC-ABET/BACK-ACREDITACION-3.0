@@ -49,6 +49,11 @@ export const lcfcRoutes = {
 			summary:
 				'List course sections available for config generation (active study plan, non-elective)',
 		},
+		sectionOutcomes: {
+			method: 'GET',
+			route: 'config/section-outcomes',
+			summary: "List a course section's outcomes for the given program (for config editing)",
+		},
 	},
 	notification: {
 		send: {

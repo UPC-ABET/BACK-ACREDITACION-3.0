@@ -106,6 +106,27 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return rows.length > 0;
 	}
 
+	/** Outcomes mapped to a course section, scoped to one program (for the edit modal). */
+	async getSectionOutcomes(
+		courseSectionId: number,
+		programId: number,
+	): Promise<{ outcomeId: number; code: string; name: unknown }[]> {
+		return await this.dataSource.query(
+			`SELECT DISTINCT
+				o.id           AS "outcomeId",
+				o.outcome_code AS "code",
+				o.outcome_name AS "name"
+			FROM accreditation.outcomes o
+			INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
+			INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
+			INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
+			WHERE cs.id = $1 AND pc.program_id = $2
+			ORDER BY o.outcome_code ASC`,
+			[courseSectionId, programId],
+		);
+	}
+
 	/** Gets first valid outcome_id for a program (required to satisfy FK constraint in outcome_configs) */
 	async findFirstProgramOutcomeId(programId: number): Promise<number | null> {
 		const rows = await this.dataSource.query(

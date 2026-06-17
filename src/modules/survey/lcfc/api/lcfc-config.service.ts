@@ -108,6 +108,10 @@ export class LcfcConfigService {
 		return this.configRepo.getCourseSectionsForPeriod(academicPeriodId, programId);
 	}
 
+	async getSectionOutcomes(courseSectionId: number, programId: number) {
+		return this.configRepo.getSectionOutcomes(courseSectionId, programId);
+	}
+
 	/**
 	 * Clones an LCFC configuration into a new period: generates the target-period configs
 	 * (idempotent) and copies the active/inactive status of each course from the source

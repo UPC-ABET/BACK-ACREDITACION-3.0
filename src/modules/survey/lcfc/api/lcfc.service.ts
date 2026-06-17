@@ -52,6 +52,10 @@ export class LcfcService {
 		return this.configService.getAvailableSections(programId, academicPeriodId);
 	}
 
+	getSectionOutcomes(courseSectionId: number, programId: number) {
+		return this.configService.getSectionOutcomes(courseSectionId, programId);
+	}
+
 	sendNotifications(dto: SendLcfcNotificationDto) {
 		return this.notifService.sendNotifications(dto);
 	}

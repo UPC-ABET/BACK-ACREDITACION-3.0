@@ -84,6 +84,15 @@ export class UpdateLcfcConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Outcome evaluated by this LCFC config (chosen in the edit modal).',
+	})
+	outcomeId?: number;
 }
 
 export class FilterLcfcConfigDto {

@@ -12,6 +12,7 @@ import {
 	SwaggerLcfcConfigClone,
 	SwaggerLcfcConfigDelete,
 	SwaggerLcfcConfigAvailableSections,
+	SwaggerLcfcConfigSectionOutcomes,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
 	SwaggerLcfcSurveyGetByToken,
@@ -94,6 +95,17 @@ export class LcfcController {
 	) {
 		return parseSuccessResponse(
 			await this.lcfcService.getAvailableSections(programId, academicPeriodId),
+		);
+	}
+
+	@SwaggerLcfcConfigSectionOutcomes()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async configSectionOutcomes(
+		@Query('courseSectionId', ParseIntPipe) courseSectionId: number,
+		@Query('programId', ParseIntPipe) programId: number,
+	) {
+		return parseSuccessResponse(
+			await this.lcfcService.getSectionOutcomes(courseSectionId, programId),
 		);
 	}
 

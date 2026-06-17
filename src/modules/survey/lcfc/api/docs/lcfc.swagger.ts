@@ -63,6 +63,17 @@ export const SwaggerLcfcConfigAvailableSections = () =>
 			required: true,
 		}),
 	);
+export const SwaggerLcfcConfigSectionOutcomes = () =>
+	applyDecorators(
+		HttpMethodWithSwagger(cfg.config.sectionOutcomes),
+		ApiQuery({
+			name: 'courseSectionId',
+			description: 'Course section ID',
+			type: Number,
+			required: true,
+		}),
+		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: true }),
+	);
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 export const SwaggerLcfcTokenValidate = () =>
