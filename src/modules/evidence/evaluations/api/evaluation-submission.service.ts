@@ -100,6 +100,11 @@ export class EvaluationSubmissionService {
 		return type?.code ?? null;
 	}
 
+	private async canEvaluatorTypeGrade(evaluatorTypeId: number): Promise<boolean> {
+		const type = await this.typeRepo.findOne({ where: { id: evaluatorTypeId } });
+		return type?.extra?.can_evaluate === true;
+	}
+
 	private async resolveStatusTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
 		if (!type) {
@@ -363,7 +368,7 @@ export class EvaluationSubmissionService {
 		}
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
-		if (evaluatorCode !== TYPE_CODES.EVALUATOR_TYPE.COM) {
+		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
 			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
 		}
 
@@ -543,7 +548,7 @@ export class EvaluationSubmissionService {
 		}
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
-		if (evaluatorCode !== TYPE_CODES.EVALUATOR_TYPE.COM) {
+		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
 			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
 		}
 
@@ -602,7 +607,7 @@ export class EvaluationSubmissionService {
 		}
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
-		if (evaluatorCode !== TYPE_CODES.EVALUATOR_TYPE.COM) {
+		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
 			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
 		}
 

@@ -1,6 +1,11 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { typesRoutes } from '../../config/types.routes';
-import { CreateTypeDto, UpdateTypeDto, FilterTypeDto } from '../../model/types.dtos';
+import {
+	CreateTypeDto,
+	UpdateTypeDto,
+	FilterTypeDto,
+	SetCanEvaluateDto,
+} from '../../model/types.dtos';
 
 const cfg = typesRoutes.types;
 
@@ -25,4 +30,11 @@ export const SwaggerTypesByGroupCode = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.byGroupCode,
 		param: { name: 'code', type: 'string' },
+	});
+
+export const SwaggerTypeSetCanEvaluate = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.setCanEvaluate,
+		param: { name: 'id', type: 'number' },
+		body: SetCanEvaluateDto,
 	});

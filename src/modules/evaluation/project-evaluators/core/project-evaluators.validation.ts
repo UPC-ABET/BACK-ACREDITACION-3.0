@@ -6,21 +6,6 @@ export class ProjectEvaluatorValidation {
 	static async validateCreate(repo: ProjectEvaluatorRepository, data: any) {
 		const errors: Array<string> = [];
 
-		const isComite = await repo.isComiteType(data.evaluatorTypeId);
-
-		// Comité allows multiple professors per type; all other types allow only one
-		if (!isComite) {
-			const duplicateType = await repo.findOneByCondition({
-				where: {
-					projectId: data.projectId,
-					evaluatorTypeId: data.evaluatorTypeId,
-					isActive: true,
-				},
-			});
-			if (duplicateType)
-				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
-		}
-
 		// Active duplicate check (ignore inactive rows from previous uploads)
 		const exists = await repo.findOneByCondition({
 			where: {
@@ -31,6 +16,13 @@ export class ProjectEvaluatorValidation {
 			},
 		});
 		if (exists) errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
+
+		const maxEvaluators = await repo.getMaxEvaluators(data.evaluatorTypeId);
+		if (maxEvaluators !== null) {
+			const current = await repo.countActiveByType(data.projectId, data.evaluatorTypeId);
+			if (current >= maxEvaluators)
+				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+		}
 
 		if (errors.length > 0) {
 			throw new HttpException(
@@ -53,8 +45,6 @@ export class ProjectEvaluatorValidation {
 		const professorId = data.professorId ?? entity?.professorId;
 		const evaluatorTypeId = data.evaluatorTypeId ?? entity?.evaluatorTypeId;
 
-		const isComite = await repo.isComiteType(evaluatorTypeId);
-
 		const exists = await repo.findOneByCondition({
 			where: {
 				projectId,
@@ -67,15 +57,10 @@ export class ProjectEvaluatorValidation {
 			errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
 		}
 
-		if (!isComite) {
-			const duplicateType = await repo.findOneByCondition({
-				where: {
-					projectId,
-					evaluatorTypeId,
-					isActive: true,
-				},
-			});
-			if (duplicateType && duplicateType.id !== id) {
+		const maxEvaluators = await repo.getMaxEvaluators(evaluatorTypeId);
+		if (maxEvaluators !== null) {
+			const current = await repo.countActiveByType(projectId, evaluatorTypeId);
+			if (current > maxEvaluators) {
 				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
 			}
 		}

@@ -103,28 +103,28 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 		{
 			field: 'Gerente (TG403-T002)',
 			description:
-				'Código del docente con rol de Gerente. Solo se permite un docente por proyecto.',
+				'Código(s) del docente con rol de Gerente. Para múltiples docentes, separarlos por coma sin espacios. Si se re-sube el proyecto, reemplaza los evaluadores anteriores de este rol.',
 			required: false,
 			example: 'N12345678',
 		},
 		{
 			field: 'Docente (TG403-T003)',
 			description:
-				'Código del docente con rol de Docente. Solo se permite un docente por proyecto.',
+				'Código(s) del docente con rol de Docente. Para múltiples docentes, separarlos por coma sin espacios. Si se re-sube el proyecto, reemplaza los evaluadores anteriores de este rol.',
 			required: false,
 			example: 'N12345678',
 		},
 		{
 			field: 'Cliente (TG403-T004)',
 			description:
-				'Código del docente con rol de Cliente. Solo se permite un docente por proyecto.',
+				'Código(s) del docente con rol de Cliente. Para múltiples docentes, separarlos por coma sin espacios. Si se re-sube el proyecto, reemplaza los evaluadores anteriores de este rol.',
 			required: false,
 			example: 'N12345678',
 		},
 		{
 			field: 'Coautor (TG403-T005)',
 			description:
-				'Código del docente con rol de Coautor. Solo se permite un docente por proyecto.',
+				'Código(s) del docente con rol de Coautor. Para múltiples docentes, separarlos por coma sin espacios. Si se re-sube el proyecto, reemplaza los evaluadores anteriores de este rol.',
 			required: false,
 			example: 'N12345678',
 		},
@@ -181,28 +181,28 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 		{
 			field: 'Manager (TG403-T002)',
 			description:
-				'Professor code with the Manager role. Only one professor per project is allowed.',
+				'Professor code(s) with the Manager role. For multiple professors, separate with commas and no spaces. On re-upload, replaces previous evaluators for this role.',
 			required: false,
 			example: 'N12345678',
 		},
 		{
 			field: 'Professor (TG403-T003)',
 			description:
-				'Professor code with the Professor role. Only one professor per project is allowed.',
+				'Professor code(s) with the Professor role. For multiple professors, separate with commas and no spaces. On re-upload, replaces previous evaluators for this role.',
 			required: false,
 			example: 'N12345678',
 		},
 		{
 			field: 'Client (TG403-T004)',
 			description:
-				'Professor code with the Client role. Only one professor per project is allowed.',
+				'Professor code(s) with the Client role. For multiple professors, separate with commas and no spaces. On re-upload, replaces previous evaluators for this role.',
 			required: false,
 			example: 'N12345678',
 		},
 		{
 			field: 'Co-author (TG403-T005)',
 			description:
-				'Professor code with the Co-author role. Only one professor per project is allowed.',
+				'Professor code(s) with the Co-author role. For multiple professors, separate with commas and no spaces. On re-upload, replaces previous evaluators for this role.',
 			required: false,
 			example: 'N12345678',
 		},

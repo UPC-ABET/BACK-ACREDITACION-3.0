@@ -14,6 +14,11 @@ export const typesRoutes = {
 				route: '/by-group-code/:code',
 				summary: 'Listar tipos activos pertenecientes a un grupo, por código del grupo',
 			},
+			setCanEvaluate: {
+				method: 'PATCH',
+				route: '/set-can-evaluate/:id',
+				summary: 'Habilita o deshabilita si un tipo de evaluador puede calificar proyectos',
+			},
 		},
 	},
 };

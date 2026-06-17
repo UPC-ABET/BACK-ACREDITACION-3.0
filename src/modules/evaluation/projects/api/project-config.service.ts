@@ -526,12 +526,15 @@ export class ProjectConfigService {
 			return {
 				id: e.id,
 				professorId: e.professorId,
+				professorCode: e.professor?.code || '',
 				professorFirstName: professorUser?.firstName || staff?.firstName || '',
 				professorLastName: professorUser?.lastName || staff?.lastName || '',
 				professorEmail: professorUser?.email || '',
 				evaluatorTypeId: e.evaluatorTypeId,
 				evaluatorTypeName: evaluatorType?.name || '',
 				evaluatorTypeCode: evaluatorType?.code || '',
+				canEvaluate: evaluatorType?.extra?.can_evaluate === true,
+				maxEvaluators: evaluatorType?.extra?.max_evaluators ?? null,
 			};
 		});
 
