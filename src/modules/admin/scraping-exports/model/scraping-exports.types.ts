@@ -2,8 +2,8 @@
 // column, with the matching uploads/* Excel template so a generated file can be re-uploaded as-is.
 
 // uploads/staff template: professorCode | lastName | firstName. The `email` column is appended as
-// an extra (the staff upload reads positionally and ignores it); it is the real institutional email
-// pulled from Banner's raw_horario, matched to the Planner teacher by name. Blank when unmatched.
+// an extra (the staff upload reads positionally and ignores it); it is always reconstructable as
+// `${professorCode}@upc.edu.pe`, which is exactly why staff stopped persisting it.
 export interface DocenteExportRow {
 	professorCode: string;
 	lastName: string;
