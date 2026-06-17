@@ -178,6 +178,16 @@ export class SendLcfcNotificationDto {
 		required: false,
 	})
 	lang?: 'es' | 'en';
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description:
+			'Resend the survey to students who already received it (reuses the existing token and refreshes the deadline). Defaults to false.',
+		required: false,
+	})
+	resend?: boolean;
 }
 
 export class GetLcfcSurveyByTokenDto {
