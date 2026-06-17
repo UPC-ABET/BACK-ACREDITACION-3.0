@@ -6,8 +6,6 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		courseCode: 'Código del curso',
 		studentCode: 'Código del alumno',
 		sectionCode: 'Código de sección',
-		professorCode: 'Código del docente evaluador',
-		evaluatorTypeCode: 'Código de tipo de evaluador',
 		errorColumn: 'Mensaje de error',
 		errorsFileName: 'ErroresCargaProyectos.xlsx',
 		templateFileName: 'PlantillaProyectos.xlsx',
@@ -29,8 +27,6 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		courseCode: 'Course code',
 		studentCode: 'Student code',
 		sectionCode: 'Section code',
-		professorCode: 'Evaluator professor code',
-		evaluatorTypeCode: 'Evaluator type code',
 		errorColumn: 'Error message',
 		errorsFileName: 'ProjectsUploadErrors.xlsx',
 		templateFileName: 'ProjectsTemplate.xlsx',
@@ -87,7 +83,7 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 		{
 			field: 'Código del alumno',
 			description:
-				'Código del alumno integrante. Cada alumno ocupa una fila. Requerido si no se indica docente evaluador.',
+				'Código del alumno integrante del proyecto. Cada alumno ocupa una fila. Opcional si el proyecto ya existe y solo se desean actualizar los evaluadores.',
 			required: false,
 			example: '20XXXXXXXX',
 		},
@@ -98,18 +94,39 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 			example: 'XXXXX',
 		},
 		{
-			field: 'Código del docente evaluador',
+			field: 'Comité (TG403-T001)',
 			description:
-				'Código del docente que evalúa el proyecto. Cada evaluador ocupa una fila. Requerido si no se indica alumno.',
+				'Código(s) del docente con rol de Comité. Para múltiples docentes, separarlos por coma sin espacios. Si se re-sube el proyecto, reemplaza los evaluadores anteriores de este rol.',
 			required: false,
-			example: 'NXXXXXXXX',
+			example: 'N12345678,N87654321',
 		},
 		{
-			field: 'Código de tipo de evaluador',
+			field: 'Gerente (TG403-T002)',
 			description:
-				'Tipo de rol del evaluador. Obligatorio cuando se indica un docente evaluador. Ver tabla de tipos a continuación.',
+				'Código del docente con rol de Gerente. Solo se permite un docente por proyecto.',
 			required: false,
-			example: 'TG403-T00X',
+			example: 'N12345678',
+		},
+		{
+			field: 'Docente (TG403-T003)',
+			description:
+				'Código del docente con rol de Docente. Solo se permite un docente por proyecto.',
+			required: false,
+			example: 'N12345678',
+		},
+		{
+			field: 'Cliente (TG403-T004)',
+			description:
+				'Código del docente con rol de Cliente. Solo se permite un docente por proyecto.',
+			required: false,
+			example: 'N12345678',
+		},
+		{
+			field: 'Coautor (TG403-T005)',
+			description:
+				'Código del docente con rol de Coautor. Solo se permite un docente por proyecto.',
+			required: false,
+			example: 'N12345678',
 		},
 	],
 	en: [
@@ -144,7 +161,7 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 		{
 			field: 'Student code',
 			description:
-				'Code of a member student. Each student occupies one row. Required if no evaluator is provided.',
+				'Code of a member student. Each student occupies one row. Optional if the project already exists and only evaluators need to be updated.',
 			required: false,
 			example: '20XXXXXXXX',
 		},
@@ -155,18 +172,39 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 			example: 'XXXXX',
 		},
 		{
-			field: 'Evaluator professor code',
+			field: 'Committee (TG403-T001)',
 			description:
-				'Code of the evaluating professor. Each evaluator occupies one row. Required if no student is provided.',
+				'Professor code(s) with the Committee role. For multiple professors, separate with commas and no spaces. On re-upload, replaces previous evaluators for this role.',
 			required: false,
-			example: 'NXXXXXXXX',
+			example: 'N12345678,N87654321',
 		},
 		{
-			field: 'Evaluator type code',
+			field: 'Manager (TG403-T002)',
 			description:
-				'Role type of the evaluator. Required when an evaluator professor is provided. See types table below.',
+				'Professor code with the Manager role. Only one professor per project is allowed.',
 			required: false,
-			example: 'TG403-T00X',
+			example: 'N12345678',
+		},
+		{
+			field: 'Professor (TG403-T003)',
+			description:
+				'Professor code with the Professor role. Only one professor per project is allowed.',
+			required: false,
+			example: 'N12345678',
+		},
+		{
+			field: 'Client (TG403-T004)',
+			description:
+				'Professor code with the Client role. Only one professor per project is allowed.',
+			required: false,
+			example: 'N12345678',
+		},
+		{
+			field: 'Co-author (TG403-T005)',
+			description:
+				'Professor code with the Co-author role. Only one professor per project is allowed.',
+			required: false,
+			example: 'N12345678',
 		},
 	],
 };
@@ -190,48 +228,41 @@ export const projectsErrorMessages: Record<string, Record<string, string>> = {
 		projectCodeEmpty: 'El código del proyecto es obligatorio.',
 		projectCodeTooLong: 'El código del proyecto supera el largo máximo permitido (50 caracteres).',
 		courseCodeEmpty: 'El código del curso es obligatorio.',
-		rowMissingStudentAndEvaluator:
-			'Cada fila debe tener al menos un código de alumno o un código de docente evaluador.',
 		sectionCodeEmpty: 'El código de sección es obligatorio cuando se indica un alumno.',
-		evaluatorTypeCodeEmpty:
-			'El código de tipo de evaluador es obligatorio cuando se indica un docente evaluador.',
-		projectNameEmpty: 'El proyecto debe tener nombre en español e inglés en al menos una fila.',
+		projectNameEmpty:
+			'El proyecto nuevo debe tener nombre en español e inglés en al menos una fila.',
+		newProjectRequiresStudent:
+			'El proyecto es nuevo y debe tener al menos una fila con código de alumno.',
 		courseNotFound: 'No existe un curso con ese código.',
 		courseNotEvaluable:
 			'El curso no está configurado como evaluable (is_evaluable) en el periodo académico.',
-		projectCodeDuplicateInPeriod: 'Ya existe un proyecto con ese código en el periodo académico.',
 		studentNotFound: 'No existe un alumno con ese código.',
 		studentNotInCourse:
 			'El alumno no está matriculado en esa sección del curso durante el periodo académico.',
 		studentAlreadyInProject: 'El alumno ya pertenece a un proyecto activo en el periodo académico.',
-		professorNotFound: 'No existe un docente con ese código.',
-		evaluatorTypeNotFound:
-			'El código de tipo de evaluador no es válido. Use un código del grupo TG403.',
-		duplicateEvaluatorType:
-			'El mismo tipo de evaluador aparece más de una vez en el mismo proyecto.',
+		professorNotFound: 'No existe un docente con ese código en la columna de evaluadores.',
+		multipleEvaluatorsNotAllowed:
+			'Solo el tipo Comité permite múltiples docentes. Los demás tipos aceptan un único código.',
 	},
 	en: {
 		projectCodeEmpty: 'Project code is required.',
 		projectCodeTooLong: 'Project code exceeds the maximum allowed length (50 characters).',
 		courseCodeEmpty: 'Course code is required.',
-		rowMissingStudentAndEvaluator:
-			'Each row must have at least a student code or an evaluator professor code.',
 		sectionCodeEmpty: 'Section code is required when a student code is provided.',
-		evaluatorTypeCodeEmpty:
-			'Evaluator type code is required when an evaluator professor code is provided.',
-		projectNameEmpty: 'The project must have a name in Spanish and English on at least one row.',
+		projectNameEmpty: 'A new project must have a name in Spanish and English on at least one row.',
+		newProjectRequiresStudent:
+			'The project is new and must have at least one row with a student code.',
 		courseNotFound: 'No course exists with that code.',
 		courseNotEvaluable:
 			'The course is not configured as evaluable (is_evaluable) in the academic period.',
-		projectCodeDuplicateInPeriod: 'A project with that code already exists in the academic period.',
 		studentNotFound: 'No student exists with that code.',
 		studentNotInCourse:
 			'The student is not enrolled in that course section during the academic period.',
 		studentAlreadyInProject:
 			'The student already belongs to an active project in the academic period.',
-		professorNotFound: 'No professor exists with that code.',
-		evaluatorTypeNotFound: 'The evaluator type code is not valid. Use a code from group TG403.',
-		duplicateEvaluatorType: 'The same evaluator type appears more than once in the same project.',
+		professorNotFound: 'No professor exists with that code in the evaluator columns.',
+		multipleEvaluatorsNotAllowed:
+			'Only the Committee type allows multiple professors. Other types accept a single code.',
 	},
 };
 

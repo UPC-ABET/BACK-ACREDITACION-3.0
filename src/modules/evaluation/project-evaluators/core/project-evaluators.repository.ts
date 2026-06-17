@@ -11,4 +11,11 @@ export class ProjectEvaluatorRepository extends BaseRepository<ProjectEvaluatorE
 	) {
 		super(repository, dataSource);
 	}
+
+	async isComiteType(evaluatorTypeId: number): Promise<boolean> {
+		const [row] = await this.dataSource.query(`SELECT code FROM core.types WHERE id = $1`, [
+			evaluatorTypeId,
+		]);
+		return row?.code === 'TG403-T001';
+	}
 }

@@ -6,23 +6,30 @@ export class ProjectEvaluatorValidation {
 	static async validateCreate(repo: ProjectEvaluatorRepository, data: any) {
 		const errors: Array<string> = [];
 
-		const duplicateType = await repo.findOneByCondition({
-			where: {
-				projectId: data.projectId,
-				evaluatorTypeId: data.evaluatorTypeId,
-			},
-		});
+		const isComite = await repo.isComiteType(data.evaluatorTypeId);
 
-		if (duplicateType) errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+		// Comité allows multiple professors per type; all other types allow only one
+		if (!isComite) {
+			const duplicateType = await repo.findOneByCondition({
+				where: {
+					projectId: data.projectId,
+					evaluatorTypeId: data.evaluatorTypeId,
+					isActive: true,
+				},
+			});
+			if (duplicateType)
+				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+		}
 
+		// Active duplicate check (ignore inactive rows from previous uploads)
 		const exists = await repo.findOneByCondition({
 			where: {
 				projectId: data.projectId,
 				professorId: data.professorId,
 				evaluatorTypeId: data.evaluatorTypeId,
+				isActive: true,
 			},
 		});
-
 		if (exists) errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
 
 		if (errors.length > 0) {
@@ -46,27 +53,31 @@ export class ProjectEvaluatorValidation {
 		const professorId = data.professorId ?? entity?.professorId;
 		const evaluatorTypeId = data.evaluatorTypeId ?? entity?.evaluatorTypeId;
 
+		const isComite = await repo.isComiteType(evaluatorTypeId);
+
 		const exists = await repo.findOneByCondition({
 			where: {
-				projectId: projectId,
-				professorId: professorId,
-				evaluatorTypeId: evaluatorTypeId,
+				projectId,
+				professorId,
+				evaluatorTypeId,
+				isActive: true,
 			},
 		});
-
 		if (exists && exists.id !== id) {
 			errors.push(projectEvaluatorsValidationStrings.error.projectEvaluatorExists);
 		}
 
-		const duplicateType = await repo.findOneByCondition({
-			where: {
-				projectId: projectId,
-				evaluatorTypeId: evaluatorTypeId,
-			},
-		});
-
-		if (duplicateType && duplicateType.id !== id) {
-			errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+		if (!isComite) {
+			const duplicateType = await repo.findOneByCondition({
+				where: {
+					projectId,
+					evaluatorTypeId,
+					isActive: true,
+				},
+			});
+			if (duplicateType && duplicateType.id !== id) {
+				errors.push(projectEvaluatorsValidationStrings.error.duplicateEvaluatorType);
+			}
 		}
 
 		if (errors.length > 0) {
@@ -81,11 +92,10 @@ export class ProjectEvaluatorValidation {
 	}
 
 	static async validateDelete(repo: ProjectEvaluatorRepository, id: number) {
-		if (!(await repo.findOneById(id))) {
+		const entity = await repo.findOneById(id);
+		if (!entity || !entity.isActive) {
 			throw new HttpException(
-				{
-					message: projectEvaluatorsValidationStrings.result.deleteFailed,
-				},
+				{ message: projectEvaluatorsValidationStrings.result.deleteFailed },
 				HttpStatus.BAD_REQUEST,
 			);
 		}

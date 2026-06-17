@@ -38,7 +38,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectEntity, 'project')
 			.leftJoinAndSelect('project.students', 'ps')
-			.leftJoinAndSelect('project.evaluators', 'pe')
+			.leftJoinAndSelect('project.evaluators', 'pe', 'pe.is_active = true')
 			.leftJoin(
 				StudentSectionEnrollmentEntity,
 				'sse_enrich',

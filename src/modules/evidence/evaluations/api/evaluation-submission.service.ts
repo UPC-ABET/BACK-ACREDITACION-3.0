@@ -353,13 +353,18 @@ export class EvaluationSubmissionService {
 		if (!evaluator || !student) {
 			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
 		}
+		if (!evaluator.isActive) {
+			throw new BadRequestException(
+				evaluationsValidationStrings.error.inactiveEvaluatorCannotGrade,
+			);
+		}
 		if (evaluator.projectId !== student.projectId) {
 			throw new ConflictException(evaluationsValidationStrings.error.notSameProject);
 		}
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
-		if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.DOC) {
-			throw new BadRequestException(evaluationsValidationStrings.error.docCannotGrade);
+		if (evaluatorCode !== TYPE_CODES.EVALUATOR_TYPE.COM) {
+			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
 		}
 
 		const criteriaIds = dto.scores.map((s) => s.rubricQuestionCriteriaId);
@@ -531,10 +536,15 @@ export class EvaluationSubmissionService {
 		if (!evaluator) {
 			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
 		}
+		if (!evaluator.isActive) {
+			throw new BadRequestException(
+				evaluationsValidationStrings.error.inactiveEvaluatorCannotGrade,
+			);
+		}
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
-		if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.DOC) {
-			throw new BadRequestException(evaluationsValidationStrings.error.docCannotGrade);
+		if (evaluatorCode !== TYPE_CODES.EVALUATOR_TYPE.COM) {
+			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
 		}
 
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
@@ -585,10 +595,15 @@ export class EvaluationSubmissionService {
 		if (!evaluator) {
 			throw new NotFoundException(evaluationsValidationStrings.error.evaluatorOrStudentNotFound);
 		}
+		if (!evaluator.isActive) {
+			throw new BadRequestException(
+				evaluationsValidationStrings.error.inactiveEvaluatorCannotGrade,
+			);
+		}
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
-		if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.DOC) {
-			throw new BadRequestException(evaluationsValidationStrings.error.docCannotGrade);
+		if (evaluatorCode !== TYPE_CODES.EVALUATOR_TYPE.COM) {
+			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
 		}
 
 		const project = await this.projectRepo.findOne({
