@@ -25,6 +25,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				s.program_id           AS "programId",
 				p.name->>'es'                      AS "programName",
 				s.academic_period_id   AS "academicPeriodId",
+				ap.code                            AS "period",
+				c.name->>'es'                      AS "courseName",
 				s.campus_id            AS "campusId",
 				s.course_section_id    AS "courseSectionId",
 				n.max_register_date    AS "maxRegisterDate",
@@ -34,6 +36,9 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.students st ON st.id = s.student_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			INNER JOIN core.types st2 ON st2.id = s.survey_status_type_id
+			LEFT JOIN academic.academic_periods ap ON ap.id = s.academic_period_id
+			LEFT JOIN academic.course_sections cs ON cs.id = s.course_section_id
+			LEFT JOIN academic.courses c ON c.id = cs.course_id
 			WHERE n.token = $1
 			LIMIT 1`,
 			[token],
