@@ -35,8 +35,9 @@ export class CreateNotificationMessageDto {
 	})
 	body: I18nText;
 
-	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: true })
-	ccReceivers: any;
+	@IsOptional()
+	@ApiProperty({ example: { key: 'ccReceiversValue' }, required: false })
+	ccReceivers?: any;
 }
 
 export class UpdateNotificationMessageDto {
