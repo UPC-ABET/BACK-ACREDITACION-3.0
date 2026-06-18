@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
@@ -87,7 +87,7 @@ export class ProfessorMaintenanceQueryDto extends PaginationQueryDto {
 	@IsString()
 	@ApiPropertyOptional({
 		example: 'searchExample',
-		description: 'Search by professor code or staff first name / last name',
+		description: 'Search by professor code or staff first name / last name / email',
 	})
 	search?: string;
 }
@@ -110,6 +110,12 @@ export class UpdateProfessorMaintenanceDto {
 	@Length(1, 255)
 	@ApiPropertyOptional({ example: 'Doe' })
 	lastName?: string;
+
+	@IsOptional()
+	@IsEmail()
+	@Length(1, 255)
+	@ApiPropertyOptional({ example: 'john.doe@university.edu' })
+	staffEmail?: string;
 }
 
 export class CreateProfessorMaintenanceDto {
@@ -127,6 +133,12 @@ export class CreateProfessorMaintenanceDto {
 	@Length(1, 255)
 	@ApiProperty({ example: 'Doe' })
 	lastName: string;
+
+	@IsOptional()
+	@IsEmail()
+	@Length(1, 255)
+	@ApiPropertyOptional({ example: 'john.doe@university.edu' })
+	staffEmail?: string;
 }
 
 export interface ProfessorMaintenanceItem {
@@ -135,6 +147,7 @@ export interface ProfessorMaintenanceItem {
 	code: string;
 	firstName: string;
 	lastName: string;
+	staffEmail: string | null;
 }
 
 export class ProfessorLookupQueryDto extends LookupQueryDto {

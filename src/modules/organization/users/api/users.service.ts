@@ -11,10 +11,12 @@ import { UserRepository } from '../core/users.repository';
 import * as bcrypt from 'bcryptjs';
 import { hashPassword } from 'src/libs/secure.functions';
 import { UserValidation } from '../core/users.validation';
-import { CreateUserDto, UpdateUserDto } from '../model/users.dtos';
+import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from '../model/users.dtos';
+import { UserEntity } from '../model/users.entity';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { usersValidationStrings } from '../config/strings/users.validation';
 import { JwtService } from '@nestjs/jwt';
-import { DataSource, EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
+import { DataSource, EntityManager, FindOneOptions } from 'typeorm';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
@@ -249,12 +251,17 @@ export class UserService extends BaseService<UserRepository> {
 		return updated;
 	}
 
-	async getAll(options?: FindManyOptions, filter?: { unlinkedOnly?: boolean }) {
-		const users = await this.attachLinkedTeachers(await super.getAll(options));
-		if (filter?.unlinkedOnly) {
-			return (users as Array<Record<string, any>>).filter((u) => u.staff === null);
-		}
-		return users;
+	async getMaintenanceList(query: ListUsersQueryDto): Promise<PaginatedResult<UserEntity>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+		const [users, total] = await this.repository.findMaintenancePage(
+			query.search,
+			query.unlinkedOnly === true,
+			skip,
+			take,
+		);
+
+		const items = await this.attachLinkedTeachers(users);
+		return toPaginated(items, total, page, pageSize);
 	}
 
 	async getById(id: number, options?: FindOneOptions) {

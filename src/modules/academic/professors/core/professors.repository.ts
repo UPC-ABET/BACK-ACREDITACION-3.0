@@ -46,7 +46,7 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 		if (search?.trim()) {
 			const term = `%${search.trim()}%`;
 			qb.andWhere(
-				'(professor.code ILIKE :term OR staff.firstName ILIKE :term OR staff.lastName ILIKE :term)',
+				'(professor.code ILIKE :term OR staff.firstName ILIKE :term OR staff.lastName ILIKE :term OR staff.staffEmail ILIKE :term)',
 				{ term },
 			);
 		}
@@ -121,7 +121,11 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 		return await this.dataSource.transaction(async (manager) => {
 			const staffRepo = manager.getRepository(StaffEntity);
 			const staff = await staffRepo.save(
-				staffRepo.create({ firstName: dto.firstName, lastName: dto.lastName }),
+				staffRepo.create({
+					firstName: dto.firstName,
+					lastName: dto.lastName,
+					staffEmail: dto.staffEmail ?? null,
+				}),
 			);
 
 			const professorRepo = manager.getRepository(ProfessorEntity);
@@ -144,6 +148,7 @@ export class ProfessorRepository extends BaseRepository<ProfessorEntity> {
 			const staffChange: Partial<StaffEntity> = {};
 			if (dto.firstName !== undefined) staffChange.firstName = dto.firstName;
 			if (dto.lastName !== undefined) staffChange.lastName = dto.lastName;
+			if (dto.staffEmail !== undefined) staffChange.staffEmail = dto.staffEmail;
 			if (Object.keys(staffChange).length > 0) {
 				await manager.getRepository(StaffEntity).update(professor.staffId, staffChange);
 			}

@@ -12,13 +12,23 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
-export class ListUsersQueryDto {
+export class ListUsersQueryDto extends PaginationQueryDto {
 	@IsOptional()
 	@Transform(({ value }) => value === true || value === 'true')
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	unlinkedOnly?: boolean;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'searchExample',
+		required: false,
+		description: 'Search by user first name / last name / email / linked professor code',
+	})
+	search?: string;
 }
 
 export class CreateUserDto {

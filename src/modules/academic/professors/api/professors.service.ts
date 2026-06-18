@@ -123,6 +123,7 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 			code: professor.code,
 			firstName: professor.staff.firstName,
 			lastName: professor.staff.lastName,
+			staffEmail: professor.staff.staffEmail ?? null,
 		}));
 
 		return toPaginated(items, total, page, pageSize);
@@ -155,6 +156,7 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 			code: professor.code,
 			firstName: professor.staff.firstName,
 			lastName: professor.staff.lastName,
+			staffEmail: professor.staff.staffEmail ?? null,
 		};
 	}
 }
