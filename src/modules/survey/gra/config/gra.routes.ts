@@ -102,5 +102,10 @@ export const graRoutes = {
 	},
 	dashboard: {
 		get: { method: 'POST', route: 'dashboard', summary: 'GRA survey progress dashboard' },
+		export: {
+			method: 'GET',
+			route: 'export',
+			summary: 'Download completed GRA surveys with scores as an Excel file',
+		},
 	},
 };

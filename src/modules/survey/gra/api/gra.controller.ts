@@ -1,4 +1,4 @@
-import { Body, HttpStatus, Param, ParseIntPipe, Res } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
@@ -25,6 +25,7 @@ import {
 	SwaggerGraSurveyComplete,
 	SwaggerGraOutcomesList,
 	SwaggerGraDashboard,
+	SwaggerGraExport,
 } from './docs/gra.swagger';
 import {
 	CreateGraConfigDto,
@@ -175,5 +176,25 @@ export class GraController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async dashboardGet(@Body() dto: DashboardGraDto) {
 		return parseSuccessResponse(await this.graService.getDashboard(dto));
+	}
+
+	@SwaggerGraExport()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async exportSurveys(
+		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@Res() res: Response,
+		@Query('programId') programIdRaw?: string,
+	) {
+		const programId =
+			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
+		const { buffer, fileName } = await this.graService.exportSurveys(academicPeriodId, programId);
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
 	}
 }

@@ -1,5 +1,7 @@
-import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
+import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 import { LcfcService } from './lcfc.service';
 import {
 	SwaggerLcfcController,
@@ -12,11 +14,15 @@ import {
 	SwaggerLcfcConfigClone,
 	SwaggerLcfcConfigDelete,
 	SwaggerLcfcConfigAvailableSections,
+	SwaggerLcfcConfigSectionOutcomes,
+	SwaggerLcfcConfigSetDeadline,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
+	SwaggerLcfcSurveyListByToken,
 	SwaggerLcfcSurveyGetByToken,
 	SwaggerLcfcSurveyComplete,
 	SwaggerLcfcDashboard,
+	SwaggerLcfcExport,
 } from './docs/lcfc.swagger';
 import {
 	GenerateLcfcConfigDto,
@@ -24,6 +30,7 @@ import {
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
+	SetLcfcDeadlineDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
@@ -97,6 +104,23 @@ export class LcfcController {
 		);
 	}
 
+	@SwaggerLcfcConfigSectionOutcomes()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async configSectionOutcomes(
+		@Query('courseSectionId', ParseIntPipe) courseSectionId: number,
+		@Query('programId', ParseIntPipe) programId: number,
+	) {
+		return parseSuccessResponse(
+			await this.lcfcService.getSectionOutcomes(courseSectionId, programId),
+		);
+	}
+
+	@SwaggerLcfcConfigSetDeadline()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async configSetDeadline(@Body() dto: SetLcfcDeadlineDto) {
+		return parseSuccessResponse(await this.lcfcService.setDeadline(dto));
+	}
+
 	@SwaggerLcfcNotificationSend()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async notificationSend(@Body() dto: SendLcfcNotificationDto) {
@@ -107,6 +131,12 @@ export class LcfcController {
 	@Public()
 	async tokenValidate(@Param('token') token: string) {
 		return parseSuccessResponse(await this.lcfcService.validateToken(token));
+	}
+
+	@SwaggerLcfcSurveyListByToken()
+	@Public()
+	async surveyListByToken(@Param('token') token: string) {
+		return parseSuccessResponse(await this.lcfcService.getStudentSurveys(token));
 	}
 
 	@SwaggerLcfcSurveyGetByToken()
@@ -125,5 +155,25 @@ export class LcfcController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async dashboardGet(@Body() dto: DashboardLcfcDto) {
 		return parseSuccessResponse(await this.lcfcService.getDashboard(dto));
+	}
+
+	@SwaggerLcfcExport()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async exportSurveys(
+		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@Res() res: Response,
+		@Query('programId') programIdRaw?: string,
+	) {
+		const programId =
+			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
+		const { buffer, fileName } = await this.lcfcService.exportSurveys(academicPeriodId, programId);
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
 	}
 }
