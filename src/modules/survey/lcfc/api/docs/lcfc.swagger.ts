@@ -9,6 +9,7 @@ import {
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
+	SetLcfcDeadlineDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
@@ -63,6 +64,19 @@ export const SwaggerLcfcConfigAvailableSections = () =>
 			required: true,
 		}),
 	);
+export const SwaggerLcfcConfigSectionOutcomes = () =>
+	applyDecorators(
+		HttpMethodWithSwagger(cfg.config.sectionOutcomes),
+		ApiQuery({
+			name: 'courseSectionId',
+			description: 'Course section ID',
+			type: Number,
+			required: true,
+		}),
+		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: true }),
+	);
+export const SwaggerLcfcConfigSetDeadline = () =>
+	HttpMethodWithSwagger({ ...cfg.config.setDeadline, body: SetLcfcDeadlineDto });
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 export const SwaggerLcfcTokenValidate = () =>
@@ -70,9 +84,22 @@ export const SwaggerLcfcTokenValidate = () =>
 		...cfg.token.validate,
 		params: [{ name: 'token', description: 'Token UUID de la encuesta LCFC', type: String }],
 	});
+export const SwaggerLcfcSurveyListByToken = () =>
+	HttpMethodWithSwagger({
+		...cfg.survey.listByToken,
+		params: [
+			{ name: 'token', description: 'Token UUID de cualquier encuesta del alumno', type: String },
+		],
+	});
 export const SwaggerLcfcSurveyGetByToken = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.getByToken, body: GetLcfcSurveyByTokenDto });
 export const SwaggerLcfcSurveyComplete = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.complete, body: CompleteLcfcSurveyDto });
 export const SwaggerLcfcDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.get, body: DashboardLcfcDto });
+export const SwaggerLcfcExport = () =>
+	applyDecorators(
+		HttpMethodWithSwagger(cfg.dashboard.export),
+		ApiQuery({ name: 'academicPeriodId', description: 'Academic period ID', type: Number, required: true }),
+		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: false }),
+	);

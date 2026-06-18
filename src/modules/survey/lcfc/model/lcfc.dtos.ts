@@ -84,6 +84,15 @@ export class UpdateLcfcConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Outcome evaluated by this LCFC config (chosen in the edit modal).',
+	})
+	outcomeId?: number;
 }
 
 export class FilterLcfcConfigDto {
@@ -101,6 +110,20 @@ export class FilterLcfcConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
+}
+
+export class SetLcfcDeadlineDto {
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
+	academicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program ID' })
+	programId: number;
+
+	@IsString()
+	@ApiProperty({ example: '2026-06-30T23:59:59.000Z', description: 'Survey deadline (ISO date)' })
+	maxRegisterDate: string;
 }
 
 export class LcfcConfigStatusItemDto {

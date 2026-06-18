@@ -74,3 +74,5 @@ export const SwaggerGraOutcomesList = () =>
 	HttpMethodWithSwagger({ ...cfg.outcomes.list, body: ListGraSurveyOutcomesDto });
 export const SwaggerGraDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.get, body: DashboardGraDto });
+export const SwaggerGraExport = () =>
+	HttpMethodWithSwagger({ ...cfg.dashboard.export, produces: XLSX_CONTENT_TYPE });

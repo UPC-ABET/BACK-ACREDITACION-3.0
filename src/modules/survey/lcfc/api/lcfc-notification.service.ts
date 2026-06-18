@@ -5,6 +5,7 @@ import {
 	InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as ExcelJS from 'exceljs';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
@@ -106,7 +107,13 @@ export class LcfcNotificationService {
 		if (enrolledStudents.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
-		const maxRegisterDate = dto.maxRegisterDate ?? null;
+		// Deadline is configured in the Configuration tab; fall back to it when the send
+		// request doesn't carry one of its own.
+		const maxRegisterDate =
+			dto.maxRegisterDate ??
+			(dto.programId
+				? await this.configRepo.getDeadline(dto.programId, dto.academicPeriodId)
+				: null);
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
 		const pendingNotifications: {
@@ -126,7 +133,10 @@ export class LcfcNotificationService {
 					const config = activeConfigs.find(
 						(c) => c.extra?.course_section_id === student.courseSectionId,
 					);
-					const programId = dto.programId ?? student.programId ?? config?.extra?.program_id ?? null;
+					// Use the STUDENT's own program (a shared course can enrol students from other
+					// programs), so the survey shows the student's career and their own outcomes —
+					// not the program the config was created for.
+					const programId = student.programId ?? dto.programId ?? config?.extra?.program_id ?? null;
 					const campusId = dto.campusId ?? student.campusId ?? config?.extra?.campus_id ?? null;
 
 					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
@@ -285,10 +295,72 @@ export class LcfcNotificationService {
 		};
 	}
 
+	/** Builds an Excel workbook of the completed LCFC surveys for a period/program. */
+	async exportSurveys(
+		academicPeriodId: number,
+		programId?: number,
+	): Promise<{ buffer: Buffer; fileName: string }> {
+		const rows = await this.surveyRepo.getCompletedSurveysForExport(academicPeriodId, programId);
+
+		const workbook = new ExcelJS.Workbook();
+		const sheet = workbook.addWorksheet('Encuestas LCFC');
+		sheet.columns = [
+			{ header: 'Código alumno', key: 'studentCode', width: 16 },
+			{ header: 'Alumno', key: 'studentName', width: 32 },
+			{ header: 'Carrera', key: 'programName', width: 30 },
+			{ header: 'Curso', key: 'courseName', width: 32 },
+			{ header: 'Sección', key: 'sectionCode', width: 12 },
+			{ header: 'Outcome', key: 'outcomeCode', width: 14 },
+			{ header: 'Descripción outcome', key: 'outcomeName', width: 40 },
+			{ header: 'Puntaje', key: 'score', width: 10 },
+			{ header: 'Comentario', key: 'commentaries', width: 40 },
+			{ header: 'Fecha', key: 'completedAt', width: 22 },
+		];
+		sheet.getRow(1).font = { bold: true };
+
+		for (const r of rows) {
+			const comment =
+				r.commentaries && typeof r.commentaries === 'object'
+					? ((r.commentaries as Record<string, unknown>).commentaries ?? '')
+					: (r.commentaries ?? '');
+			sheet.addRow({
+				studentCode: r.studentCode,
+				studentName: r.studentName,
+				programName: r.programName,
+				courseName: r.courseName,
+				sectionCode: r.sectionCode,
+				outcomeCode: r.outcomeCode,
+				outcomeName: r.outcomeName,
+				score: r.score,
+				commentaries: String(comment ?? ''),
+				completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : '',
+			});
+		}
+
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		const fileName = programId
+			? `encuestas_lcfc_${programId}_${academicPeriodId}.xlsx`
+			: `encuestas_lcfc_${academicPeriodId}.xlsx`;
+		return { buffer, fileName };
+	}
+
+	async getStudentSurveys(token: string) {
+		const data = await this.notifRepo.getStudentSurveysByToken(token);
+		if (!data) {
+			throw new BadRequestException(lcfcValidationStrings.error.tokenNotFound);
+		}
+		return data;
+	}
+
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData);
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(tokenData.courseSectionId);
+		// Show only the outcomes of the student's own program (a shared course can be
+		// mapped to outcomes of several programs).
+		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
+			tokenData.courseSectionId,
+			tokenData.programId,
+		);
 		const language = dto.language ?? 'es';
 
 		const outcomeList = outcomes.map((o) => ({

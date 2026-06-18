@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { LcfcTokenData } from './lcfc.validation';
 
 @Injectable()
@@ -44,6 +45,72 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			[token],
 		);
 		return rows?.[0] ?? null;
+	}
+
+	/**
+	 * Lists every LCFC survey of the student that owns the given token (same period),
+	 * so the survey page can show a "my surveys" list with each one's status + link.
+	 */
+	async getStudentSurveysByToken(token: string): Promise<{
+		studentName: string;
+		studentCode: string;
+		programName: string;
+		period: string;
+		surveys: {
+			token: string;
+			courseName: string;
+			sectionCode: string;
+			completed: boolean;
+		}[];
+	} | null> {
+		const rows = await this.dataSource.query(
+			`WITH src AS (
+				SELECT s.student_id, s.academic_period_id
+				FROM survey.notifications n
+				INNER JOIN evidence.surveys s ON s.id = n.survey_id
+				WHERE n.token = $1
+				LIMIT 1
+			)
+			SELECT
+				n.token                              AS "token",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                              AS "studentCode",
+				p.name->>'es'                        AS "programName",
+				ap.code                              AS "period",
+				c.name->>'es'                        AS "courseName",
+				cs.section_code                      AS "sectionCode",
+				(stt.code = $3)                      AS "completed"
+			FROM evidence.surveys s
+			INNER JOIN survey.notifications n ON n.survey_id = s.id
+			INNER JOIN academic.students st ON st.id = s.student_id
+			INNER JOIN academic.programs p ON p.id = s.program_id
+			INNER JOIN core.types stt ON stt.id = s.survey_status_type_id
+			LEFT JOIN academic.academic_periods ap ON ap.id = s.academic_period_id
+			LEFT JOIN academic.course_sections cs ON cs.id = s.course_section_id
+			LEFT JOIN academic.courses c ON c.id = cs.course_id
+			WHERE s.student_id = (SELECT student_id FROM src)
+			  AND s.academic_period_id = (SELECT academic_period_id FROM src)
+			  AND s.survey_type_id = (SELECT id FROM core.types WHERE code = $2)
+			ORDER BY c.name->>'es' ASC`,
+			[token, TYPE_CODES.SURVEY_TYPE.LCFC, TYPE_CODES.SURVEY_STATUS.CLOSED],
+		);
+
+		if (!rows?.length) return null;
+
+		return {
+			studentName: rows[0].studentName,
+			studentCode: rows[0].studentCode,
+			programName: rows[0].programName,
+			period: rows[0].period,
+			surveys: rows.map(
+				(r: { token: string; courseName: string; sectionCode: string; completed: boolean }) => ({
+					token: r.token,
+					courseName: r.courseName,
+					sectionCode: r.sectionCode,
+					completed: r.completed,
+				}),
+			),
+		};
 	}
 
 	async getEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<

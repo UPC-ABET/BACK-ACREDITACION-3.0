@@ -49,6 +49,17 @@ export const lcfcRoutes = {
 			summary:
 				'List course sections available for config generation (active study plan, non-elective)',
 		},
+		sectionOutcomes: {
+			method: 'GET',
+			route: 'config/section-outcomes',
+			summary: "List a course section's outcomes for the given program (for config editing)",
+		},
+		setDeadline: {
+			method: 'POST',
+			route: 'config/set-deadline',
+			summary:
+				'Set the survey deadline for a program/period: stored on the config and applied to existing notifications (no resend)',
+		},
 	},
 	notification: {
 		send: {
@@ -65,6 +76,11 @@ export const lcfcRoutes = {
 		},
 	},
 	survey: {
+		listByToken: {
+			method: 'GET',
+			route: 'survey/list-by-token/:token',
+			summary: "List all of the student's LCFC surveys (from any of their tokens)",
+		},
 		getByToken: {
 			method: 'POST',
 			route: 'survey/get-by-token',
@@ -81,6 +97,11 @@ export const lcfcRoutes = {
 			method: 'POST',
 			route: 'dashboard',
 			summary: 'LCFC dashboard: completed vs pending survey progress',
+		},
+		export: {
+			method: 'GET',
+			route: 'export',
+			summary: 'Download completed LCFC surveys with scores as an Excel file',
 		},
 	},
 };
