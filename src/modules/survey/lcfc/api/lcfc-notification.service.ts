@@ -294,6 +294,14 @@ export class LcfcNotificationService {
 		};
 	}
 
+	async getStudentSurveys(token: string) {
+		const data = await this.notifRepo.getStudentSurveysByToken(token);
+		if (!data) {
+			throw new BadRequestException(lcfcValidationStrings.error.tokenNotFound);
+		}
+		return data;
+	}
+
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData);

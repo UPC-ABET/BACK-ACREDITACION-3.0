@@ -84,6 +84,13 @@ export const SwaggerLcfcTokenValidate = () =>
 		...cfg.token.validate,
 		params: [{ name: 'token', description: 'Token UUID de la encuesta LCFC', type: String }],
 	});
+export const SwaggerLcfcSurveyListByToken = () =>
+	HttpMethodWithSwagger({
+		...cfg.survey.listByToken,
+		params: [
+			{ name: 'token', description: 'Token UUID de cualquier encuesta del alumno', type: String },
+		],
+	});
 export const SwaggerLcfcSurveyGetByToken = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.getByToken, body: GetLcfcSurveyByTokenDto });
 export const SwaggerLcfcSurveyComplete = () =>

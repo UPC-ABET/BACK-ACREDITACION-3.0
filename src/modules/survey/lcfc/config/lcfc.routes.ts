@@ -76,6 +76,11 @@ export const lcfcRoutes = {
 		},
 	},
 	survey: {
+		listByToken: {
+			method: 'GET',
+			route: 'survey/list-by-token/:token',
+			summary: "List all of the student's LCFC surveys (from any of their tokens)",
+		},
 		getByToken: {
 			method: 'POST',
 			route: 'survey/get-by-token',

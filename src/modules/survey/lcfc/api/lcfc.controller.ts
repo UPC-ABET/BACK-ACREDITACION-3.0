@@ -16,6 +16,7 @@ import {
 	SwaggerLcfcConfigSetDeadline,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
+	SwaggerLcfcSurveyListByToken,
 	SwaggerLcfcSurveyGetByToken,
 	SwaggerLcfcSurveyComplete,
 	SwaggerLcfcDashboard,
@@ -127,6 +128,12 @@ export class LcfcController {
 	@Public()
 	async tokenValidate(@Param('token') token: string) {
 		return parseSuccessResponse(await this.lcfcService.validateToken(token));
+	}
+
+	@SwaggerLcfcSurveyListByToken()
+	@Public()
+	async surveyListByToken(@Param('token') token: string) {
+		return parseSuccessResponse(await this.lcfcService.getStudentSurveys(token));
 	}
 
 	@SwaggerLcfcSurveyGetByToken()

@@ -73,6 +73,10 @@ export class LcfcService {
 		return this.notifService.validateToken(token);
 	}
 
+	getStudentSurveys(token: string) {
+		return this.notifService.getStudentSurveys(token);
+	}
+
 	getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		return this.notifService.getSurveyByToken(dto);
 	}
