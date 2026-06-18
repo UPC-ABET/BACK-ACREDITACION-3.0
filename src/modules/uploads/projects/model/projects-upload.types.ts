@@ -5,7 +5,6 @@ export interface ProjectRow {
 	projectNameEn: string;
 	courseCode: string;
 	studentCode: string;
-	sectionCode: string;
 	/** Comma-separated professor codes keyed by evaluator type code (e.g. 'TG403-T001') */
 	evaluators: Record<string, string>;
 }

@@ -11,8 +11,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class ProjectEvaluatorInputDto {
 	@IsInt()
@@ -353,7 +354,33 @@ export class ProjectDetailsResponseDto {
 	rubrics: ProjectRubricEntryDto[];
 }
 
-export class FilterProjectDto {
+export class GetProjectsByProfessorQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'TG205-T001',
+		description: 'Filter by grade type code',
+	})
+	gradeTypeCode?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'García',
+		description: 'Search by project code, project name (es/en) or student full name',
+	})
+	search?: string;
+}
+
+export class FilterProjectDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'García',
+		description: 'Busca por código, nombre del proyecto o nombre del estudiante',
+	})
+	search?: string;
+
 	@IsOptional()
 	@IsString()
 	@ApiProperty({ example: 'codeExample', required: false })

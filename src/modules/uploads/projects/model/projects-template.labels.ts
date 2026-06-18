@@ -5,7 +5,6 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		projectNameEn: 'Nombre del proyecto (EN)',
 		courseCode: 'Código del curso',
 		studentCode: 'Código del alumno',
-		sectionCode: 'Código de sección',
 		errorColumn: 'Mensaje de error',
 		errorsFileName: 'ErroresCargaProyectos.xlsx',
 		templateFileName: 'PlantillaProyectos.xlsx',
@@ -26,7 +25,6 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		projectNameEn: 'Project name (EN)',
 		courseCode: 'Course code',
 		studentCode: 'Student code',
-		sectionCode: 'Section code',
 		errorColumn: 'Error message',
 		errorsFileName: 'ProjectsUploadErrors.xlsx',
 		templateFileName: 'ProjectsTemplate.xlsx',
@@ -86,12 +84,6 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 				'Código del alumno integrante del proyecto. Cada alumno ocupa una fila. Opcional si el proyecto ya existe y solo se desean actualizar los evaluadores.',
 			required: false,
 			example: '20XXXXXXXX',
-		},
-		{
-			field: 'Código de sección',
-			description: 'Sección del alumno en el curso. Obligatorio cuando se indica un alumno.',
-			required: false,
-			example: 'XXXXX',
 		},
 		{
 			field: 'Comité (TG403-T001)',
@@ -166,12 +158,6 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 			example: '20XXXXXXXX',
 		},
 		{
-			field: 'Section code',
-			description: "Student's section in the course. Required when a student code is provided.",
-			required: false,
-			example: 'XXXXX',
-		},
-		{
 			field: 'Committee (TG403-T001)',
 			description:
 				'Professor code(s) with the Committee role. For multiple professors, separate with commas and no spaces. On re-upload, replaces previous evaluators for this role.',
@@ -228,7 +214,6 @@ export const projectsErrorMessages: Record<string, Record<string, string>> = {
 		projectCodeEmpty: 'El código del proyecto es obligatorio.',
 		projectCodeTooLong: 'El código del proyecto supera el largo máximo permitido (50 caracteres).',
 		courseCodeEmpty: 'El código del curso es obligatorio.',
-		sectionCodeEmpty: 'El código de sección es obligatorio cuando se indica un alumno.',
 		projectNameEmpty:
 			'El proyecto nuevo debe tener nombre en español e inglés en al menos una fila.',
 		newProjectRequiresStudent:
@@ -248,7 +233,6 @@ export const projectsErrorMessages: Record<string, Record<string, string>> = {
 		projectCodeEmpty: 'Project code is required.',
 		projectCodeTooLong: 'Project code exceeds the maximum allowed length (50 characters).',
 		courseCodeEmpty: 'Course code is required.',
-		sectionCodeEmpty: 'Section code is required when a student code is provided.',
 		projectNameEmpty: 'A new project must have a name in Spanish and English on at least one row.',
 		newProjectRequiresStudent:
 			'The project is new and must have at least one row with a student code.',

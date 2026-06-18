@@ -16,8 +16,8 @@ import { ProjectsUploadRepository } from '../core/projects-upload.repository';
 import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
 // Columns: projectCode(1) projectNameEs(2) projectNameEn(3) courseCode(4)
-//          studentCode(5) sectionCode(6) + one column per evaluator type starting at 7
-const FIXED_COLUMNS = 6;
+//          studentCode(5) + one column per evaluator type starting at 6
+const FIXED_COLUMNS = 5;
 const ERROR_COLUMN = FIXED_COLUMNS + evaluatorTypesList.length + 1;
 
 @Injectable()
@@ -111,7 +111,6 @@ export class ProjectsUploadService {
 			labels.projectNameEn,
 			labels.courseCode,
 			labels.studentCode,
-			labels.sectionCode,
 			...evaluatorHeaders,
 		];
 
@@ -203,7 +202,7 @@ export class ProjectsUploadService {
 
 	// Positional layout (header row ignored):
 	// projectCode(1) | projectNameEs(2) | projectNameEn(3) | courseCode(4) |
-	// studentCode(5) | sectionCode(6) | [evaluatorType cols 7..N]
+	// studentCode(5) | [evaluatorType cols 6..N]
 	private parseWorkbook(workbook: ExcelJS.Workbook): ProjectRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: ProjectRow[] = [];
@@ -223,7 +222,6 @@ export class ProjectsUploadService {
 				projectNameEn: readCell(row, 3),
 				courseCode: readCell(row, 4),
 				studentCode: readCell(row, 5),
-				sectionCode: readCell(row, 6),
 				evaluators,
 			});
 		});

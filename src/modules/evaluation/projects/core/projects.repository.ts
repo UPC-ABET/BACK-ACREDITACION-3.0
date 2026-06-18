@@ -1,5 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { ProjectEntity } from '../model/projects.entity';
 import { FilterProjectDto } from '../model/projects.dtos';
@@ -8,6 +8,7 @@ import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/mo
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
 import { UserEntity } from 'src/modules/organization/users/model/users.entity';
 import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/course-sections.entity';
+import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
 import { ProfessorEntity } from 'src/modules/academic/professors/model/professors.entity';
 import { StaffEntity } from 'src/modules/organization/staff/model/staff.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
@@ -21,6 +22,7 @@ import {
 } from 'src/libs/school-program.functions';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
@@ -31,12 +33,117 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		super(repository, dataSource);
 	}
 
-	async getByFilters(filters: FilterProjectDto & ScopeFilters): Promise<any[]> {
-		const academicPeriodId = filters.academicPeriodId ?? undefined;
-		const schoolId = filters.schoolId ?? undefined;
+	private buildFilterQb(
+		filters: FilterProjectDto & ScopeFilters,
+		academicPeriodId: number | undefined,
+		schoolId: number | undefined,
+	): SelectQueryBuilder<ProjectEntity> {
+		const search = filters.search?.trim() || undefined;
 
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectEntity, 'project')
+			.leftJoin('project.students', 'ps');
+
+		if (filters.code) {
+			qb.andWhere('project.code = :code', { code: filters.code });
+		}
+		if (filters.isActive !== undefined) {
+			qb.andWhere('project.is_active = :isActive', { isActive: filters.isActive });
+		}
+		if (filters.professorId) {
+			qb.leftJoin('project.evaluators', 'pe_f', 'pe_f.is_active = true');
+			qb.andWhere('pe_f.professor_id = :professorId', { professorId: filters.professorId });
+		}
+
+		const needsSseJoin = !!(
+			filters.studentId ||
+			filters.courseId ||
+			academicPeriodId ||
+			filters.programId ||
+			schoolId ||
+			search
+		);
+		const needsCsJoin = !!(filters.courseId || academicPeriodId || schoolId);
+
+		if (needsSseJoin) {
+			qb.innerJoin(
+				StudentSectionEnrollmentEntity,
+				'sse',
+				'sse.id = ps.student_section_enrollment_id',
+			);
+		}
+		if (needsCsJoin) {
+			qb.innerJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
+		}
+		if (filters.courseId) {
+			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
+		}
+		if (academicPeriodId) {
+			qb.andWhere('cs.academic_period_id = :academicPeriodId', { academicPeriodId });
+		}
+		if (filters.studentId) {
+			qb.innerJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
+			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
+		}
+		if (filters.programId) {
+			qb.innerJoin(EnrolledStudentEntity, 'es_prog', 'es_prog.id = sse.enrolled_student_id');
+			qb.innerJoin(StudentEntity, 'st_prog', 'st_prog.id = es_prog.student_id');
+			qb.andWhere('st_prog.program_id = :programId', { programId: filters.programId });
+		}
+		if (schoolId) {
+			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = cs.course_id');
+			qb.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = spc.study_plan_academic_period_id',
+			);
+			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
+			qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
+				schoolProgramFilterParams(schoolId),
+			);
+		}
+
+		if (search) {
+			qb.innerJoin(EnrolledStudentEntity, 'es_search', 'es_search.id = sse.enrolled_student_id');
+			qb.innerJoin(StudentEntity, 'st_search', 'st_search.id = es_search.student_id');
+			qb.andWhere(
+				`(project.code ILIKE :search
+				OR project.name->>'es' ILIKE :search
+				OR project.name->>'en' ILIKE :search
+				OR CONCAT(st_search.first_name, ' ', st_search.last_name) ILIKE :search)`,
+				{ search: `%${search}%` },
+			);
+		}
+
+		return qb;
+	}
+
+	async getByFilters(filters: FilterProjectDto & ScopeFilters): Promise<PaginatedResult<any>> {
+		const { page, pageSize, skip, take } = resolvePagination(filters);
+		const academicPeriodId = filters.academicPeriodId ?? undefined;
+		const schoolId = filters.schoolId ?? undefined;
+
+		const countRow = await this.buildFilterQb(filters, academicPeriodId, schoolId)
+			.select('COUNT(DISTINCT project.id)', 'total')
+			.getRawOne<{ total: string }>();
+		const total = Number(countRow?.total ?? 0);
+
+		if (total === 0) return toPaginated([], 0, page, pageSize);
+
+		const idRows = await this.buildFilterQb(filters, academicPeriodId, schoolId)
+			.select('project.id')
+			.distinct(true)
+			.orderBy('project.id', 'ASC')
+			.skip(skip)
+			.take(take)
+			.getRawMany<{ project_id: number }>();
+
+		const projectIds = idRows.map((r) => r.project_id);
+		if (!projectIds.length) return toPaginated([], total, page, pageSize);
+
+		const { entities, raw } = await this.dataSource
+			.createQueryBuilder(ProjectEntity, 'project')
+			.where('project.id IN (:...projectIds)', { projectIds })
 			.leftJoinAndSelect('project.students', 'ps')
 			.leftJoinAndSelect('project.evaluators', 'pe', 'pe.is_active = true')
 			.leftJoin(
@@ -47,6 +154,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.leftJoin(EnrolledStudentEntity, 'es_enrich', 'es_enrich.id = sse_enrich.enrolled_student_id')
 			.leftJoin(StudentEntity, 'st_enrich', 'st_enrich.id = es_enrich.student_id')
 			.leftJoin(CourseSectionEntity, 'cs_enrich', 'cs_enrich.id = sse_enrich.course_section_id')
+			.leftJoin(CourseEntity, 'course_enrich', 'course_enrich.id = cs_enrich.course_id')
 			.leftJoin(ProfessorEntity, 'prof_enrich', 'prof_enrich.id = pe.professor_id')
 			.leftJoin(StaffEntity, 'staff_enrich', 'staff_enrich.id = prof_enrich.staff_id')
 			.leftJoin(UserEntity, 'u_prof_enrich', 'u_prof_enrich.id = staff_enrich.user_id')
@@ -64,6 +172,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.addSelect('eval_type_enrich.name', 'eval_type_enrich_name')
 			.addSelect('eval_type_enrich.code', 'eval_type_enrich_code')
 			.addSelect('eval_type_enrich.extra', 'eval_type_enrich_extra')
+			.addSelect('course_enrich.name', 'course_enrich_name')
 			.addSelect('prof_enrich.code', 'prof_enrich_code')
 			.addSelect(
 				`EXISTS (
@@ -74,72 +183,10 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 					WHERE  ps2.project_id = project.id
 				)`,
 				'project_has_evaluations',
-			);
+			)
+			.getRawAndEntities();
 
-		if (filters.code) {
-			qb.andWhere('project.code = :code', { code: filters.code });
-		}
-		if (filters.isActive !== undefined) {
-			qb.andWhere('project.is_active = :isActive', { isActive: filters.isActive });
-		}
-
-		if (filters.professorId) {
-			qb.andWhere('pe.professor_id = :professorId', { professorId: filters.professorId });
-		}
-
-		const needsStudentJoin = !!(
-			filters.studentId ||
-			filters.courseId ||
-			academicPeriodId ||
-			filters.programId ||
-			schoolId
-		);
-
-		if (needsStudentJoin) {
-			qb.innerJoin(
-				StudentSectionEnrollmentEntity,
-				'sse',
-				'sse.id = ps.student_section_enrollment_id',
-			);
-			qb.innerJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
-		}
-
-		if (filters.courseId) {
-			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
-		}
-
-		if (academicPeriodId) {
-			qb.andWhere('cs.academic_period_id = :academicPeriodId', { academicPeriodId });
-		}
-
-		if (filters.studentId) {
-			qb.innerJoin(EnrolledStudentEntity, 'es', 'es.id = sse.enrolled_student_id');
-			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
-		}
-
-		if (filters.programId || schoolId) {
-			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = cs.course_id');
-			qb.innerJoin(
-				StudyPlanAcademicPeriodEntity,
-				'spap',
-				'spap.id = spc.study_plan_academic_period_id',
-			);
-			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
-		}
-
-		if (filters.programId) {
-			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
-		}
-
-		if (schoolId) {
-			qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
-				schoolProgramFilterParams(schoolId),
-			);
-		}
-
-		const { entities, raw } = await qb.getRawAndEntities();
-
-		return entities.map((project) => {
+		const items = entities.map((project) => {
 			const projectRaws = raw.filter((r) => r.project_id === project.id);
 			const hasEvaluations =
 				projectRaws[0]?.project_has_evaluations === true ||
@@ -148,6 +195,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			return {
 				...project,
 				hasEvaluations,
+				courseName: projectRaws[0]?.course_enrich_name ?? null,
 				students: project.students.map((student) => {
 					const studentRaw = projectRaws.find((r) => r.ps_id === student.id);
 					return {
@@ -180,6 +228,8 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 				}),
 			};
 		});
+
+		return toPaginated(items, total, page, pageSize);
 	}
 
 	async deleteWithChildren(id: number) {
