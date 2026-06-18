@@ -162,10 +162,15 @@ export class LcfcNotificationService {
 
 						if (existingNotif?.[0]) {
 							if (dto.resend) {
-								// Reset to scheduled and push the new deadline so the reused token is valid again.
+								// Reset to scheduled and refresh the deadline so the reused token is valid again.
+								// sent_date / max_register_date are NOT NULL, so keep the existing deadline
+								// when no new one was resolved, and never null out sent_date (it's re-stamped
+								// to NOW() by markAsSentBySurveyId once the email goes out).
 								await manager.query(
 									`UPDATE survey.notifications
-									 SET notification_status_type_id = $1, max_register_date = $2, sent_date = NULL, updated_at = NOW()
+									 SET notification_status_type_id = $1,
+									     max_register_date = COALESCE($2, max_register_date),
+									     updated_at = NOW()
 									 WHERE id = $3`,
 									[scheduledStatusId, maxRegisterDate, existingNotif[0].id],
 								);
@@ -201,9 +206,11 @@ export class LcfcNotificationService {
 						const surveyId = inserted[0].id;
 						const token = uuidv4();
 
+						// max_register_date is NOT NULL; fall back to the column default when no
+						// deadline is configured yet (it can be set later from Configuration).
 						await manager.query(
 							`INSERT INTO survey.notifications (survey_id, notification_status_type_id, token, max_register_date)
-							 VALUES ($1, $2, $3, $4)`,
+							 VALUES ($1, $2, $3, COALESCE($4, NOW()))`,
 							[surveyId, scheduledStatusId, token, maxRegisterDate],
 						);
 
