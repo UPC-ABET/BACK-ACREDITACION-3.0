@@ -27,7 +27,7 @@ export class ProjectService extends BaseService<ProjectRepository> {
 		return await this.repository.deleteWithChildren(id);
 	}
 
-	async getByFilters(filters: FilterProjectDto & ScopeFilters) {
+	override async getByFilters(filters: FilterProjectDto & ScopeFilters): Promise<any> {
 		return await this.repository.getByFilters(filters);
 	}
 }

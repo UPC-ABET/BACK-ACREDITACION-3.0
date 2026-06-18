@@ -372,7 +372,15 @@ export class GetProjectsByProfessorQueryDto extends PaginationQueryDto {
 	search?: string;
 }
 
-export class FilterProjectDto {
+export class FilterProjectDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'García',
+		description: 'Busca por código, nombre del proyecto o nombre del estudiante',
+	})
+	search?: string;
+
 	@IsOptional()
 	@IsString()
 	@ApiProperty({ example: 'codeExample', required: false })
