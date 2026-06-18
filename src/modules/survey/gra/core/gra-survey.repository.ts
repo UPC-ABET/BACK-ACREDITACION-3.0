@@ -84,6 +84,46 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		);
 	}
 
+	/** Rows of completed GRA surveys with their outcome scores, for the Excel export. */
+	async getCompletedSurveysForExport(
+		academicPeriodId: number,
+		programId?: number,
+	): Promise<
+		{
+			studentCode: string;
+			studentName: string;
+			programName: string;
+			outcomeCode: string;
+			outcomeName: string;
+			score: number;
+			commentaries: unknown;
+			completedAt: string;
+		}[]
+	> {
+		const rows = await this.dataSource.query(
+			`SELECT
+				st.code                              AS "studentCode",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				p.name->>'es'                        AS "programName",
+				o.outcome_code                       AS "outcomeCode",
+				o.outcome_name->>'es'                AS "outcomeName",
+				sc.score                             AS "score",
+				sc.commentaries                      AS "commentaries",
+				s.updated_at                         AS "completedAt"
+			FROM evidence.surveys s
+			INNER JOIN survey.scores sc ON sc.survey_id = s.id
+			INNER JOIN accreditation.outcomes o ON o.id = sc.outcome_id
+			INNER JOIN academic.students st ON st.id = s.student_id
+			INNER JOIN academic.programs p ON p.id = s.program_id
+			WHERE s.survey_type_id = (SELECT id FROM core.types WHERE code = $1)
+			  AND s.academic_period_id = $2
+			  AND ($3::int IS NULL OR s.program_id = $3)
+			ORDER BY st.code ASC, o.outcome_code ASC`,
+			[TYPE_CODES.SURVEY_TYPE.GRA, academicPeriodId, programId ?? null],
+		);
+		return rows ?? [];
+	}
+
 	async getDashboardData(
 		graSurveyTypeId: number,
 		activeStatusId: number,

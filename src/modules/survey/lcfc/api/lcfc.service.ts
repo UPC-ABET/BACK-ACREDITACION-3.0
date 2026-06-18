@@ -88,4 +88,8 @@ export class LcfcService {
 	getDashboard(dto: DashboardLcfcDto) {
 		return this.notifService.getDashboard(dto);
 	}
+
+	exportSurveys(academicPeriodId: number, programId?: number) {
+		return this.notifService.exportSurveys(academicPeriodId, programId);
+	}
 }

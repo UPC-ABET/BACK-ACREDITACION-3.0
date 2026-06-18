@@ -97,3 +97,9 @@ export const SwaggerLcfcSurveyComplete = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.complete, body: CompleteLcfcSurveyDto });
 export const SwaggerLcfcDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.get, body: DashboardLcfcDto });
+export const SwaggerLcfcExport = () =>
+	applyDecorators(
+		HttpMethodWithSwagger(cfg.dashboard.export),
+		ApiQuery({ name: 'academicPeriodId', description: 'Academic period ID', type: Number, required: true }),
+		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: false }),
+	);

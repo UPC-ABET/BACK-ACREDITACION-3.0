@@ -98,5 +98,10 @@ export const lcfcRoutes = {
 			route: 'dashboard',
 			summary: 'LCFC dashboard: completed vs pending survey progress',
 		},
+		export: {
+			method: 'GET',
+			route: 'export',
+			summary: 'Download completed LCFC surveys with scores as an Excel file',
+		},
 	},
 };

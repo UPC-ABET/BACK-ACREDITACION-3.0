@@ -485,4 +485,49 @@ export class GraNotificationService {
 			filters: dto,
 		};
 	}
+
+	/** Builds an Excel workbook of the completed GRA surveys for a period/program. */
+	async exportSurveys(
+		academicPeriodId: number,
+		programId?: number,
+	): Promise<{ buffer: Buffer; fileName: string }> {
+		const rows = await this.surveyRepo.getCompletedSurveysForExport(academicPeriodId, programId);
+
+		const workbook = new ExcelJS.Workbook();
+		const sheet = workbook.addWorksheet('Encuestas GRA');
+		sheet.columns = [
+			{ header: 'Código alumno', key: 'studentCode', width: 16 },
+			{ header: 'Alumno', key: 'studentName', width: 32 },
+			{ header: 'Carrera', key: 'programName', width: 30 },
+			{ header: 'Outcome', key: 'outcomeCode', width: 14 },
+			{ header: 'Descripción outcome', key: 'outcomeName', width: 40 },
+			{ header: 'Puntaje', key: 'score', width: 10 },
+			{ header: 'Comentario', key: 'commentaries', width: 40 },
+			{ header: 'Fecha', key: 'completedAt', width: 22 },
+		];
+		sheet.getRow(1).font = { bold: true };
+
+		for (const r of rows) {
+			const comment =
+				r.commentaries && typeof r.commentaries === 'object'
+					? ((r.commentaries as Record<string, unknown>).commentaries ?? '')
+					: (r.commentaries ?? '');
+			sheet.addRow({
+				studentCode: r.studentCode,
+				studentName: r.studentName,
+				programName: r.programName,
+				outcomeCode: r.outcomeCode,
+				outcomeName: r.outcomeName,
+				score: r.score,
+				commentaries: String(comment ?? ''),
+				completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : '',
+			});
+		}
+
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		const fileName = programId
+			? `encuestas_gra_${programId}_${academicPeriodId}.xlsx`
+			: `encuestas_gra_${academicPeriodId}.xlsx`;
+		return { buffer, fileName };
+	}
 }
