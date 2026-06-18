@@ -80,24 +80,30 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		// Filter outcomes by the student's own program AND (when the config specifies one)
 		// the commission selected in the LCFC config. This ensures each survey shows only
 		// the outcomes relevant to the student's career and the configured commission.
+		// The DISTINCT set is wrapped so we can sort by the Spanish commission name: an
+		// expression like cm.name->>'es' is not allowed in ORDER BY alongside SELECT DISTINCT
+		// unless it is part of the select list, so we order in the outer query instead.
 		const rows = await this.dataSource.query(
-			`SELECT DISTINCT
-				o.id                   AS "outcomeId",
-				o.outcome_name         AS "name",
-				o.outcome_code         AS "code",
-				o.outcome_description  AS "description",
-				pc.commission_id       AS "commissionId",
-				cm.name                AS "commissionName"
-			FROM accreditation.outcomes o
-			INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
-			INNER JOIN accreditation.commissions cm ON cm.id = pc.commission_id
-			INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
-			INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
-			INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
-			WHERE cs.id = $1
-			  AND ($2::int IS NULL OR pc.program_id = $2)
-			  AND ($3::int IS NULL OR pc.commission_id = $3)
-			ORDER BY cm.name->>'es' ASC, o.outcome_code ASC`,
+			`SELECT "outcomeId", "name", "code", "description", "commissionId", "commissionName"
+			FROM (
+				SELECT DISTINCT
+					o.id                   AS "outcomeId",
+					o.outcome_name         AS "name",
+					o.outcome_code         AS "code",
+					o.outcome_description  AS "description",
+					pc.commission_id       AS "commissionId",
+					cm.name                AS "commissionName"
+				FROM accreditation.outcomes o
+				INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+				INNER JOIN accreditation.commissions cm ON cm.id = pc.commission_id
+				INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
+				INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
+				INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
+				WHERE cs.id = $1
+				  AND ($2::int IS NULL OR pc.program_id = $2)
+				  AND ($3::int IS NULL OR pc.commission_id = $3)
+			) t
+			ORDER BY t."commissionName"->>'es' ASC, t."code" ASC`,
 			[courseSectionId, programId ?? null, commissionId ?? null],
 		);
 		return rows ?? [];

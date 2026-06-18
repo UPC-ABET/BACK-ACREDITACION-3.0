@@ -213,20 +213,26 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		courseSectionId: number,
 		programId?: number | null,
 	): Promise<{ commissionId: number; code: string; name: unknown }[]> {
+		// The DISTINCT set is wrapped so we can sort by the Spanish commission name: an
+		// expression like cm.name->>'es' is not allowed in ORDER BY alongside SELECT DISTINCT
+		// unless it is part of the select list, so we order in the outer query instead.
 		return await this.dataSource.query(
-			`SELECT DISTINCT
-				pc.commission_id AS "commissionId",
-				cm.code          AS "code",
-				cm.name          AS "name"
-			FROM accreditation.program_commissions pc
-			INNER JOIN accreditation.commissions cm ON cm.id = pc.commission_id
-			INNER JOIN accreditation.outcomes o ON o.program_commission_id = pc.id
-			INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
-			INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
-			INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
-			WHERE cs.id = $1
-			  AND ($2::int IS NULL OR pc.program_id = $2)
-			ORDER BY cm.name->>'es' ASC`,
+			`SELECT "commissionId", "code", "name"
+			FROM (
+				SELECT DISTINCT
+					pc.commission_id AS "commissionId",
+					cm.code          AS "code",
+					cm.name          AS "name"
+				FROM accreditation.program_commissions pc
+				INNER JOIN accreditation.commissions cm ON cm.id = pc.commission_id
+				INNER JOIN accreditation.outcomes o ON o.program_commission_id = pc.id
+				INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
+				INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
+				INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
+				WHERE cs.id = $1
+				  AND ($2::int IS NULL OR pc.program_id = $2)
+			) t
+			ORDER BY t."name"->>'es' ASC`,
 			[courseSectionId, programId ?? null],
 		);
 	}
