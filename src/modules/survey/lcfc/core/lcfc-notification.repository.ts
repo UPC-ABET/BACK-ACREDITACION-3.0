@@ -48,8 +48,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 	}
 
 	/**
-	 * Lists every LCFC survey of the student that owns the given token (same period),
-	 * so the survey page can show a "my surveys" list with each one's status + link.
+	 * Lists ALL surveys (LCFC + GRA) of the student that owns the given token (same period).
+	 * The token may come from either an LCFC or GRA notification — both are resolved.
 	 */
 	async getStudentSurveysByToken(token: string): Promise<{
 		studentName: string;
@@ -61,6 +61,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			courseName: string;
 			sectionCode: string;
 			completed: boolean;
+			surveyType: string;
 		}[];
 	} | null> {
 		const rows = await this.dataSource.query(
@@ -77,9 +78,17 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				st.code                              AS "studentCode",
 				p.name->>'es'                        AS "programName",
 				ap.code                              AS "period",
-				c.name->>'es'                        AS "courseName",
+				CASE
+					WHEN s.survey_type_id = (SELECT id FROM core.types WHERE code = $4) THEN 'Encuesta de Graduandos'
+					ELSE COALESCE(c.name->>'es', 'Encuesta')
+				END                                  AS "courseName",
 				cs.section_code                      AS "sectionCode",
-				(stt.code = $3)                      AS "completed"
+				(stt.code = $3)                      AS "completed",
+				CASE s.survey_type_id
+					WHEN (SELECT id FROM core.types WHERE code = $2) THEN 'LCFC'
+					WHEN (SELECT id FROM core.types WHERE code = $4) THEN 'GRA'
+					ELSE 'UNKNOWN'
+				END                                  AS "surveyType"
 			FROM evidence.surveys s
 			INNER JOIN survey.notifications n ON n.survey_id = s.id
 			INNER JOIN academic.students st ON st.id = s.student_id
@@ -90,9 +99,16 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			LEFT JOIN academic.courses c ON c.id = cs.course_id
 			WHERE s.student_id = (SELECT student_id FROM src)
 			  AND s.academic_period_id = (SELECT academic_period_id FROM src)
-			  AND s.survey_type_id = (SELECT id FROM core.types WHERE code = $2)
-			ORDER BY c.name->>'es' ASC`,
-			[token, TYPE_CODES.SURVEY_TYPE.LCFC, TYPE_CODES.SURVEY_STATUS.CLOSED],
+			  AND s.survey_type_id IN (
+			      SELECT id FROM core.types WHERE code IN ($2, $4)
+			  )
+			ORDER BY "surveyType" ASC, c.name->>'es' ASC NULLS LAST`,
+			[
+				token,
+				TYPE_CODES.SURVEY_TYPE.LCFC,
+				TYPE_CODES.SURVEY_STATUS.CLOSED,
+				TYPE_CODES.SURVEY_TYPE.GRA,
+			],
 		);
 
 		if (!rows?.length) return null;
@@ -103,11 +119,18 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			programName: rows[0].programName,
 			period: rows[0].period,
 			surveys: rows.map(
-				(r: { token: string; courseName: string; sectionCode: string; completed: boolean }) => ({
+				(r: {
+					token: string;
+					courseName: string;
+					sectionCode: string;
+					completed: boolean;
+					surveyType: string;
+				}) => ({
 					token: r.token,
 					courseName: r.courseName,
 					sectionCode: r.sectionCode,
 					completed: r.completed,
+					surveyType: r.surveyType,
 				}),
 			),
 		};

@@ -29,9 +29,14 @@ export class GenerateLcfcConfigDto {
 	})
 	academicPeriodId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Program ID' })
-	programId: number;
+	@ApiProperty({
+		example: 1,
+		description: 'Program ID (optional; omit to generate for all active sections)',
+		required: false,
+	})
+	programId?: number;
 
 	@IsOptional()
 	@IsArray()
@@ -64,9 +69,14 @@ export class CloneLcfcConfigDto {
 	})
 	targetAcademicPeriodId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Program ID' })
-	programId: number;
+	@ApiProperty({
+		example: 1,
+		description: 'Program ID (optional; omit to clone for all programs)',
+		required: false,
+	})
+	programId?: number;
 }
 
 export class UpdateLcfcConfigDto {
@@ -93,6 +103,16 @@ export class UpdateLcfcConfigDto {
 		description: 'Outcome evaluated by this LCFC config (chosen in the edit modal).',
 	})
 	outcomeId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description:
+			'Commission selected for this LCFC config (survey shows outcomes of this commission filtered by student career).',
+	})
+	commissionId?: number;
 }
 
 export class FilterLcfcConfigDto {
@@ -117,9 +137,14 @@ export class SetLcfcDeadlineDto {
 	@ApiProperty({ example: 1, description: 'Academic period ID' })
 	academicPeriodId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Program ID' })
-	programId: number;
+	@ApiProperty({
+		example: 1,
+		description: 'Program ID (optional; omit to set deadline for all configs in the period)',
+		required: false,
+	})
+	programId?: number;
 
 	@IsString()
 	@ApiProperty({ example: '2026-06-30T23:59:59.000Z', description: 'Survey deadline (ISO date)' })

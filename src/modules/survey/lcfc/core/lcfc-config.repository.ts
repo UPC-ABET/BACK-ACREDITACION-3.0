@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -27,7 +27,28 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
-			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId });
+			// Show configs where either:
+			// 1. The config's extra.program_id matches, OR
+			// 2. The config's course section belongs to the program's non-elective study plan
+			qb.andWhere(
+				new Brackets((qb2) => {
+					qb2.where(`(oc.extra->>'program_id')::int = :programId`, { programId: filters.programId })
+						.orWhere(`EXISTS (
+							SELECT 1
+							FROM academic.course_sections cs
+							INNER JOIN academic.courses c ON c.id = cs.course_id
+							INNER JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+							INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+							INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+							WHERE cs.id = (oc.extra->>'course_section_id')::int
+							  AND sp.program_id = :programId
+							  AND spc.is_elective = false
+							  AND sp.is_active = true
+							  AND spap.is_active = true
+							  AND spc.is_active = true
+						)`);
+				}),
+			);
 		}
 		if (filters?.academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
@@ -106,75 +127,6 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return rows.length > 0;
 	}
 
-	/**
-	 * Sets the survey deadline for a program/period: stores it on each LCFC config (extra)
-	 * so future sends reuse it, and refreshes the deadline of already-created notifications
-	 * — without re-sending any email.
-	 */
-	async setDeadline(
-		programId: number,
-		academicPeriodId: number,
-		maxRegisterDate: string,
-	): Promise<{ updatedConfigs: number; updatedNotifications: number }> {
-		return await this.dataSource.transaction(async (manager) => {
-			const cfgResult = await manager.query(
-				`UPDATE survey.outcome_configs
-				 SET extra = jsonb_set(COALESCE(extra, '{}'::jsonb), '{max_register_date}', to_jsonb($3::text)),
-				     updated_at = NOW()
-				 WHERE extra->>'survey_type' = $4
-				   AND (extra->>'program_id')::int = $1
-				   AND (extra->>'academic_period_id')::int = $2`,
-				[programId, academicPeriodId, maxRegisterDate, LCFC_SURVEY_TYPE],
-			);
-
-			// Match by the config's course sections (not program): a shared course can have
-			// students from other programs, but the deadline applies to all its surveys.
-			// $4 = extra.survey_type tag ('LCFC'); $5 = core.types code ('TG601-T003').
-			const notifResult = await manager.query(
-				`UPDATE survey.notifications n
-				 SET max_register_date = $3, updated_at = NOW()
-				 FROM evidence.surveys s
-				 WHERE s.id = n.survey_id
-				   AND s.survey_type_id = (SELECT id FROM core.types WHERE code = $5)
-				   AND s.academic_period_id = $2
-				   AND s.course_section_id IN (
-				     SELECT (oc.extra->>'course_section_id')::int
-				     FROM survey.outcome_configs oc
-				     WHERE oc.extra->>'survey_type' = $4
-				       AND (oc.extra->>'program_id')::int = $1
-				       AND (oc.extra->>'academic_period_id')::int = $2
-				   )`,
-				[
-					programId,
-					academicPeriodId,
-					maxRegisterDate,
-					LCFC_SURVEY_TYPE,
-					TYPE_CODES.SURVEY_TYPE.LCFC,
-				],
-			);
-
-			return {
-				updatedConfigs: cfgResult?.[1] ?? 0,
-				updatedNotifications: notifResult?.[1] ?? 0,
-			};
-		});
-	}
-
-	/** Returns the stored survey deadline for a program/period, if any. */
-	async getDeadline(programId: number, academicPeriodId: number): Promise<string | null> {
-		const rows = await this.dataSource.query(
-			`SELECT extra->>'max_register_date' AS "maxRegisterDate"
-			 FROM survey.outcome_configs
-			 WHERE extra->>'survey_type' = $3
-			   AND (extra->>'program_id')::int = $1
-			   AND (extra->>'academic_period_id')::int = $2
-			   AND extra->>'max_register_date' IS NOT NULL
-			 LIMIT 1`,
-			[programId, academicPeriodId, LCFC_SURVEY_TYPE],
-		);
-		return rows?.[0]?.maxRegisterDate ?? null;
-	}
-
 	/** Outcomes mapped to a course section, scoped to one program (for the edit modal). */
 	async getSectionOutcomes(
 		courseSectionId: number,
@@ -196,27 +148,28 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		);
 	}
 
-	/** Gets first valid outcome_id for a program (required to satisfy FK constraint in outcome_configs) */
-	async findFirstProgramOutcomeId(programId: number): Promise<number | null> {
+	/** Gets first valid outcome_id for a program (or any program when null) — needed to satisfy the FK constraint in outcome_configs. */
+	async findFirstProgramOutcomeId(programId?: number | null): Promise<number | null> {
 		const rows = await this.dataSource.query(
 			`SELECT o.id
 			 FROM accreditation.outcomes o
 			 INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
-			 WHERE pc.program_id = $1
+			 WHERE ($1::int IS NULL OR pc.program_id = $1)
 			 ORDER BY o.id ASC
 			 LIMIT 1`,
-			[programId],
+			[programId ?? null],
 		);
 		return rows?.[0]?.id ?? null;
 	}
 
 	/**
-	 * Returns all non-elective course sections from the active study plan for a given program
-	 * and academic period. Used both for config generation and for the available-sections modal.
+	 * Returns all non-elective course sections for an academic period.
+	 * When programId is provided, restricts to sections in that program's active study plan.
+	 * When programId is omitted, returns ALL active sections for the period.
 	 */
 	async getCourseSectionsForPeriod(
 		academicPeriodId: number,
-		programId: number,
+		programId?: number | null,
 	): Promise<
 		{
 			courseSectionId: number;
@@ -237,7 +190,7 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			INNER JOIN academic.courses c ON c.id = cs.course_id
 			WHERE cs.academic_period_id = $1
 			  AND c.is_active = true
-			  AND EXISTS (
+			  AND ($2::int IS NULL OR EXISTS (
 				  SELECT 1
 				  FROM academic.study_plans sp
 				  INNER JOIN academic.study_plan_academic_periods spap ON spap.study_plan_id = sp.id
@@ -249,9 +202,96 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				    AND sp.is_active = true
 				    AND spap.is_active = true
 				    AND spc.is_active = true
-			  )
+			  ))
 			ORDER BY c.name ASC, cs.section_code ASC`,
-			[academicPeriodId, programId],
+			[academicPeriodId, programId ?? null],
 		);
+	}
+
+	/** Returns all commissions linked to a course section via course-outcome mappings. */
+	async getSectionCommissions(
+		courseSectionId: number,
+		programId?: number | null,
+	): Promise<{ commissionId: number; code: string; name: unknown }[]> {
+		return await this.dataSource.query(
+			`SELECT DISTINCT
+				pc.commission_id AS "commissionId",
+				cm.code          AS "code",
+				cm.name          AS "name"
+			FROM accreditation.program_commissions pc
+			INNER JOIN accreditation.commissions cm ON cm.id = pc.commission_id
+			INNER JOIN accreditation.outcomes o ON o.program_commission_id = pc.id
+			INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
+			INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
+			INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
+			WHERE cs.id = $1
+			  AND ($2::int IS NULL OR pc.program_id = $2)
+			ORDER BY cm.name->>'es' ASC`,
+			[courseSectionId, programId ?? null],
+		);
+	}
+
+	async setDeadline(
+		programId: number | null | undefined,
+		academicPeriodId: number,
+		maxRegisterDate: string,
+	): Promise<{ updatedConfigs: number; updatedNotifications: number }> {
+		return await this.dataSource.transaction(async (manager) => {
+			const cfgResult = await manager.query(
+				`UPDATE survey.outcome_configs
+				 SET extra = jsonb_set(COALESCE(extra, '{}'::jsonb), '{max_register_date}', to_jsonb($3::text)),
+				     updated_at = NOW()
+				 WHERE extra->>'survey_type' = $4
+				   AND (extra->>'academic_period_id')::int = $2
+				   AND ($1::int IS NULL OR (extra->>'program_id')::int = $1)`,
+				[programId ?? null, academicPeriodId, maxRegisterDate, LCFC_SURVEY_TYPE],
+			);
+
+			const notifResult = await manager.query(
+				`UPDATE survey.notifications n
+				 SET max_register_date = $3, updated_at = NOW()
+				 FROM evidence.surveys s
+				 WHERE s.id = n.survey_id
+				   AND s.survey_type_id = (SELECT id FROM core.types WHERE code = $5)
+				   AND s.academic_period_id = $2
+				   AND s.course_section_id IN (
+				     SELECT (oc.extra->>'course_section_id')::int
+				     FROM survey.outcome_configs oc
+				     WHERE oc.extra->>'survey_type' = $4
+				       AND (oc.extra->>'academic_period_id')::int = $2
+				       AND ($1::int IS NULL OR (oc.extra->>'program_id')::int = $1)
+				   )`,
+				[
+					programId ?? null,
+					academicPeriodId,
+					maxRegisterDate,
+					LCFC_SURVEY_TYPE,
+					TYPE_CODES.SURVEY_TYPE.LCFC,
+				],
+			);
+
+			return {
+				updatedConfigs: cfgResult?.[1] ?? 0,
+				updatedNotifications: notifResult?.[1] ?? 0,
+			};
+		});
+	}
+
+	/** Returns the stored survey deadline for a program/period, if any. */
+	async getDeadline(
+		programId: number | null | undefined,
+		academicPeriodId: number,
+	): Promise<string | null> {
+		const rows = await this.dataSource.query(
+			`SELECT extra->>'max_register_date' AS "maxRegisterDate"
+			 FROM survey.outcome_configs
+			 WHERE extra->>'survey_type' = $3
+			   AND (extra->>'academic_period_id')::int = $2
+			   AND ($1::int IS NULL OR (extra->>'program_id')::int = $1)
+			   AND extra->>'max_register_date' IS NOT NULL
+			 LIMIT 1`,
+			[programId ?? null, academicPeriodId, LCFC_SURVEY_TYPE],
+		);
+		return rows?.[0]?.maxRegisterDate ?? null;
 	}
 }
