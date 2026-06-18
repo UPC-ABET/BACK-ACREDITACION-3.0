@@ -15,6 +15,7 @@ import {
 	SwaggerLcfcConfigDelete,
 	SwaggerLcfcConfigAvailableSections,
 	SwaggerLcfcConfigSectionOutcomes,
+	SwaggerLcfcConfigSectionCommissions,
 	SwaggerLcfcConfigSetDeadline,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
@@ -96,9 +97,10 @@ export class LcfcController {
 	@SwaggerLcfcConfigAvailableSections()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async configAvailableSections(
-		@Query('programId', ParseIntPipe) programId: number,
 		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@Query('programId') programIdRaw?: string,
 	) {
+		const programId = programIdRaw && Number(programIdRaw) > 0 ? Number(programIdRaw) : undefined;
 		return parseSuccessResponse(
 			await this.lcfcService.getAvailableSections(programId, academicPeriodId),
 		);
@@ -112,6 +114,18 @@ export class LcfcController {
 	) {
 		return parseSuccessResponse(
 			await this.lcfcService.getSectionOutcomes(courseSectionId, programId),
+		);
+	}
+
+	@SwaggerLcfcConfigSectionCommissions()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async configSectionCommissions(
+		@Query('courseSectionId', ParseIntPipe) courseSectionId: number,
+		@Query('programId') programIdRaw?: string,
+	) {
+		const programId = programIdRaw && Number(programIdRaw) > 0 ? Number(programIdRaw) : undefined;
+		return parseSuccessResponse(
+			await this.lcfcService.getSectionCommissions(courseSectionId, programId),
 		);
 	}
 

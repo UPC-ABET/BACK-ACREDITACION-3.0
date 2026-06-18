@@ -21,12 +21,11 @@ export class LcfcConfigService {
 	) {}
 
 	/**
-	 * Generates LCFC configs for the given program/period. Only enforces "must be the latest
-	 * period" and school ownership at the public entry point (generateConfigs); cloneConfig
-	 * reuses this for an arbitrary target period.
+	 * Generates LCFC configs for the given period (and optional program).
+	 * School ownership is NOT checked — school filter is disabled for LCFC.
 	 */
 	private async generateForPeriod(
-		programId: number,
+		programId: number | null | undefined,
 		academicPeriodId: number,
 		courseSectionIds?: number[],
 	): Promise<{ created: number; skipped: number; configs: any[] }> {
@@ -61,16 +60,16 @@ export class LcfcConfigService {
 				continue;
 			}
 
-			const extra = {
+			const extra: Record<string, unknown> = {
 				survey_type: LCFC_SURVEY_TYPE,
 				course_section_id: section.courseSectionId,
 				course_id: section.courseId,
 				course_name: section.courseName,
 				section_code: section.sectionCode,
 				academic_period_id: academicPeriodId,
-				program_id: programId,
 				campus_id: section.campusId,
 			};
+			if (programId != null) extra.program_id = programId;
 
 			const config = await this.configRepo.create({
 				outcomeId,
@@ -89,13 +88,9 @@ export class LcfcConfigService {
 
 	async generateConfigs(
 		dto: GenerateLcfcConfigDto,
-		schoolId: number,
+		_schoolId: number,
 	): Promise<{ created: number; skipped: number; configs: any[] }> {
-		const inSchool = await this.configRepo.isProgramInSchool(dto.programId, schoolId);
-		if (!inSchool) {
-			throw new BadRequestException(lcfcValidationStrings.error.programNotInSchool);
-		}
-
+		// School ownership check removed — LCFC does not filter by school.
 		const latestPeriodId = await this.configRepo.findLatestAcademicPeriodId(dto.modalityTypeId);
 		if (!latestPeriodId || latestPeriodId !== dto.academicPeriodId) {
 			throw new BadRequestException(lcfcValidationStrings.error.notLatestPeriod);
@@ -104,7 +99,7 @@ export class LcfcConfigService {
 		return this.generateForPeriod(dto.programId, dto.academicPeriodId, dto.courseSectionIds);
 	}
 
-	async getAvailableSections(programId: number, academicPeriodId: number) {
+	async getAvailableSections(programId: number | null | undefined, academicPeriodId: number) {
 		return this.configRepo.getCourseSectionsForPeriod(academicPeriodId, programId);
 	}
 
@@ -112,11 +107,19 @@ export class LcfcConfigService {
 		return this.configRepo.getSectionOutcomes(courseSectionId, programId);
 	}
 
-	async setDeadline(programId: number, academicPeriodId: number, maxRegisterDate: string) {
+	async getSectionCommissions(courseSectionId: number, programId?: number | null) {
+		return this.configRepo.getSectionCommissions(courseSectionId, programId);
+	}
+
+	async setDeadline(
+		programId: number | null | undefined,
+		academicPeriodId: number,
+		maxRegisterDate: string,
+	) {
 		return this.configRepo.setDeadline(programId, academicPeriodId, maxRegisterDate);
 	}
 
-	async getDeadline(programId: number, academicPeriodId: number) {
+	async getDeadline(programId: number | null | undefined, academicPeriodId: number) {
 		return this.configRepo.getDeadline(programId, academicPeriodId);
 	}
 
@@ -148,11 +151,11 @@ export class LcfcConfigService {
 		const [sourceConfigs, targetConfigs] = await Promise.all([
 			this.configRepo.findAllLcfc({
 				academicPeriodId: sourcePeriodId,
-				programId: dto.programId,
+				programId: dto.programId ?? undefined,
 			}),
 			this.configRepo.findAllLcfc({
 				academicPeriodId: dto.targetAcademicPeriodId,
-				programId: dto.programId,
+				programId: dto.programId ?? undefined,
 			}),
 		]);
 
@@ -229,7 +232,26 @@ export class LcfcConfigService {
 	}
 
 	async updateConfig(id: number, dto: UpdateLcfcConfigDto) {
-		await this.findLcfcConfigOrFail(id);
+		const existing = await this.findLcfcConfigOrFail(id);
+
+		// Store commissionId in the extra JSON so the survey endpoint can filter by it.
+		if (dto.commissionId != null) {
+			const currentExtra = (existing.extra as Record<string, unknown>) ?? {};
+			await this.dataSource.query(
+				`UPDATE survey.outcome_configs
+				 SET extra = jsonb_set(COALESCE(extra, '{}'::jsonb), '{commission_id}', to_jsonb($1::int)),
+				     updated_at = NOW()
+				 WHERE id = $2`,
+				[dto.commissionId, id],
+			);
+			// Remove commissionId from the DTO before passing to the base update
+			const { commissionId: _removed, ...rest } = dto;
+			if (Object.keys(rest).length > 0) {
+				return await this.configRepo.update(id, rest);
+			}
+			return { ...existing, extra: { ...currentExtra, commission_id: dto.commissionId } };
+		}
+
 		return await this.configRepo.update(id, dto);
 	}
 
