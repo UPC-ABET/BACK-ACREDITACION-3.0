@@ -87,20 +87,24 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('pe.professor_id = :professorId', { professorId: filters.professorId });
 		}
 
-		const needsStudentJoin = !!(
+		const needsSseJoin = !!(
 			filters.studentId ||
 			filters.courseId ||
 			academicPeriodId ||
 			filters.programId ||
 			schoolId
 		);
+		const needsCsJoin = !!(filters.courseId || academicPeriodId || schoolId);
 
-		if (needsStudentJoin) {
+		if (needsSseJoin) {
 			qb.innerJoin(
 				StudentSectionEnrollmentEntity,
 				'sse',
 				'sse.id = ps.student_section_enrollment_id',
 			);
+		}
+
+		if (needsCsJoin) {
 			qb.innerJoin(CourseSectionEntity, 'cs', 'cs.id = sse.course_section_id');
 		}
 
@@ -117,7 +121,13 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('es.student_id = :studentId', { studentId: filters.studentId });
 		}
 
-		if (filters.programId || schoolId) {
+		if (filters.programId) {
+			qb.innerJoin(EnrolledStudentEntity, 'es_prog', 'es_prog.id = sse.enrolled_student_id');
+			qb.innerJoin(StudentEntity, 'st_prog', 'st_prog.id = es_prog.student_id');
+			qb.andWhere('st_prog.program_id = :programId', { programId: filters.programId });
+		}
+
+		if (schoolId) {
 			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = cs.course_id');
 			qb.innerJoin(
 				StudyPlanAcademicPeriodEntity,
@@ -125,13 +135,6 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 				'spap.id = spc.study_plan_academic_period_id',
 			);
 			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
-		}
-
-		if (filters.programId) {
-			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
-		}
-
-		if (schoolId) {
 			qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
 				schoolProgramFilterParams(schoolId),
 			);
