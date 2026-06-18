@@ -6,10 +6,10 @@ import { CourseOutcomeMappingRepository } from './core/course-outcome-mappings.r
 import { CourseOutcomeMappingService } from './api/course-outcome-mappings.service';
 import { ArticulationReportService } from './api/articulation-report.service';
 import { CourseOutcomeMappingController } from './api/course-outcome-mappings.controller';
-import { PdfModule } from 'src/libs/pdf.module';
+import { ReportModule } from 'src/libs/reporting/report.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([CourseOutcomeMappingEntity]), PdfModule],
+	imports: [TypeOrmModule.forFeature([CourseOutcomeMappingEntity]), ReportModule],
 	controllers: [CourseOutcomeMappingController],
 	providers: [
 		CourseOutcomeMappingService,

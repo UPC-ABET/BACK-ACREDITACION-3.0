@@ -1,38 +1,38 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
-import { TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IfcStatusReportDto } from '../model/ifcs.dtos';
-import { PdfRendererService, UPC_LOGO_DATA_URI } from 'src/libs/pdf-renderer.service';
-import { PDF_LABELS, PDF_STYLES } from './ifc-pdf.theme';
+import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
+import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
+import { escapeHtml, localize } from 'src/libs/reporting/report.utils';
+import { PDF_LABELS } from './ifc-pdf.theme';
 import { IfcViewService } from './ifc-view.service';
-import { REPORT_CODES_SQL, STATUS_REPORT_SQL } from './ifcs.sql';
 import { IFC_INSTRUMENT_CODE } from './ifcs.constants';
 import * as ExcelJS from 'exceljs';
 import { XLSX_THEME } from './pdf-theme';
+import { IfcRepository, IfcStatusReportRow } from '../core/ifcs.repository';
 
-interface StatusReportRow {
-	courseName: string;
-	areaLabel: string;
-	programLabel: string;
-	coordinatorName: string | null;
-	coordinatorEmail: string | null;
-	coordinatorCode: string | null;
-	statusCode: string | null;
-}
+const IFC_REPORT_STYLES = `
+	section { break-inside: avoid; margin-top: 18px; }
+	section h3 { color: #e30613; text-decoration: underline; font-size: 12pt; margin: 0 0 10px; }
+	section h4 { font-size: 11pt; margin: 10px 0 6px; }
+	thead th { background: #e30613; color: #fff; text-align: left; }
+	tbody tr:nth-child(even) td { background: #fafafa; }
+	ul { padding-left: 18px; }
+	li { margin-bottom: 6px; }
+`;
 
 @Injectable()
 export class IfcReportService {
 	private readonly logger = new Logger(IfcReportService.name);
 
 	constructor(
-		private readonly dataSource: DataSource,
-		private readonly pdfRenderer: PdfRendererService,
+		private readonly repository: IfcRepository,
+		private readonly reportGenerator: ReportGeneratorService,
 		private readonly view: IfcViewService,
 	) {}
 
-	async generatePdf(ifcId: number, userId: number, schoolId: number, lang: 'es' | 'en') {
+	async generatePdf(ifcId: number, userId: number, schoolId: number, lang: ReportLanguage) {
 		const data = await this.view.getView(ifcId, userId, schoolId);
 
 		if (data.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED) {
@@ -45,13 +45,13 @@ export class IfcReportService {
 			);
 		}
 
-		const html = this.buildIfcHtml(data, lang);
-		const pdf = await this.pdfRenderer.htmlToPdf(html);
-		const filename = this.buildPdfFilename(data, lang);
-		return { pdf, filename };
+		return this.reportGenerator.generateDocument(
+			this.buildIfcDocument(data, lang),
+			this.buildPdfFilename(data, lang),
+		);
 	}
 
-	async generatePdfBulk(ifcIds: number[], userId: number, schoolId: number, lang: 'es' | 'en') {
+	async generatePdfBulk(ifcIds: number[], userId: number, schoolId: number, lang: ReportLanguage) {
 		const pLimitMod = await import('p-limit');
 		const pLimit = (pLimitMod.default ?? pLimitMod) as (
 			concurrency: number,
@@ -75,51 +75,42 @@ export class IfcReportService {
 
 		const files = await Promise.all(
 			payloads.map((data) =>
-				renderLimit(async () => ({
-					filename: this.buildPdfFilename(data, lang),
-					pdf: await this.pdfRenderer.htmlToPdf(this.buildIfcHtml(data, lang)),
-				})),
+				renderLimit(async () =>
+					this.reportGenerator.generateDocument(
+						this.buildIfcDocument(data, lang),
+						this.buildPdfFilename(data, lang),
+					),
+				),
 			),
 		);
 
-		const zip = await this.pdfRenderer.filesToZip(files);
 		const filename = `ZIP_${IFC_INSTRUMENT_CODE}_${lang.toUpperCase()}.zip`;
-		return { zip, filename };
+		return this.reportGenerator.archivePdfFiles(files, filename);
 	}
 
 	async generateStatusReport(dto: IfcStatusReportDto, schoolId: number, academicPeriodId: number) {
-		const codeRow = await this.dataSource.query(REPORT_CODES_SQL, [
-			dto.chartIds,
-			schoolId,
-			TYPE_CODES.ENTITY_TYPE.SCHOOL,
-		]);
-		const schoolCode: string | undefined = codeRow[0]?.schoolCode;
+		const reportCodes = await this.repository.getReportCodes(dto.chartIds, schoolId);
+		const schoolCode = reportCodes?.schoolCode ?? undefined;
 		if (!schoolCode) {
 			this.logger.warn(
 				`generateStatusReport: REPORT_CODES_SQL returned no school_code for schoolId=${schoolId}`,
 			);
 		}
-		const programCodes: string[] = codeRow[0]?.programCodes ?? [];
+		const programCodes = reportCodes?.programCodes ?? [];
 		const codePrefix = schoolCode ?? IFC_INSTRUMENT_CODE;
 		const suffix = programCodes.length === 1 ? `${codePrefix}_${programCodes[0]}` : codePrefix;
 
-		const statusTypes: Array<{ code: string; name: { es?: string; en?: string } }> =
-			await this.dataSource.query(
-				`SELECT t.code, t.name FROM core.types t JOIN core.type_groups g ON g.id = t.type_group_id WHERE g.code = $1`,
-				[TYPE_GROUP_CODES.IFC_STATUS],
-			);
+		const statusTypes = await this.repository.getStatusTypes();
 		const statusLabelByCode: Record<string, string> = Object.fromEntries(
 			statusTypes.map((s) => [s.code, s.name?.[dto.lang] ?? s.name?.es ?? s.code]),
 		);
 
-		const rows: StatusReportRow[] = await this.dataSource.query(STATUS_REPORT_SQL, [
+		const rows = await this.repository.getStatusReportRows(
 			dto.chartIds,
-			academicPeriodId,
 			schoolId,
-			TYPE_CODES.ENTITY_TYPE.COURSE,
-			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			academicPeriodId,
 			dto.lang,
-		]);
+		);
 
 		const xlsx = await this.buildStatusReportXlsx(rows, statusLabelByCode, dto.lang);
 		const filename =
@@ -131,7 +122,7 @@ export class IfcReportService {
 		return { xlsx, filename };
 	}
 
-	private buildPdfFilename(data: any, lang: 'es' | 'en'): string {
+	private buildPdfFilename(data: any, lang: ReportLanguage): string {
 		const ifc = data.ifc;
 		const courseCode = ifc.courseCode ?? '';
 		const courseName = (ifc.courseName?.[lang] ?? ifc.courseName?.es ?? '').replace(/\s+/g, '_');
@@ -140,7 +131,7 @@ export class IfcReportService {
 		return `${IFC_INSTRUMENT_CODE}_${courseCode}_${courseName}_${period}_${profCode}.pdf`;
 	}
 
-	private buildIfcHtml(data: any, lang: 'es' | 'en'): string {
+	private buildIfcDocument(data: any, lang: ReportLanguage): ReportDocument {
 		const L = PDF_LABELS[lang];
 		const ifc = data.ifc;
 
@@ -151,8 +142,8 @@ export class IfcReportService {
 						c.outcomes.map(
 							(o: any) => `
 							<li><strong>Student Outcome</strong>
-								(${esc(p.programName?.[lang])} - ${esc(c.commissionName?.[lang])} - ${esc(o.outcomeName?.[lang])})
-								"${esc(o.outcomeDescription?.[lang])}"
+								(${escapeHtml(p.programName?.[lang])} - ${escapeHtml(c.commissionName?.[lang])} - ${escapeHtml(o.outcomeName?.[lang])})
+								"${escapeHtml(o.outcomeDescription?.[lang])}"
 							</li>`,
 						),
 					),
@@ -161,96 +152,81 @@ export class IfcReportService {
 
 		const findingRows =
 			data.findings
-				.map((f: any) => `<tr><td>${esc(f.code)}</td><td>${esc(f.description?.[lang])}</td></tr>`)
-				.join('') || `<tr><td colspan="2" class="empty">—</td></tr>`;
+				.map(
+					(f: any) =>
+						`<tr><td>${escapeHtml(f.code)}</td><td>${escapeHtml(f.description?.[lang])}</td></tr>`,
+				)
+				.join('') || `<tr><td colspan="2" class="report-empty">—</td></tr>`;
 
 		const previousActionRows =
 			data.previousActions
 				.map(
 					(a: any) =>
-						`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(a.completeness?.name?.[lang])}</td></tr>`,
+						`<tr><td>${escapeHtml(a.code)}</td><td>${escapeHtml(a.description?.[lang])}</td><td>${escapeHtml(a.completeness?.name?.[lang])}</td></tr>`,
 				)
-				.join('') || `<tr><td colspan="3" class="empty">${esc(L.s2Empty)}</td></tr>`;
+				.join('') || `<tr><td colspan="3" class="report-empty">${escapeHtml(L.s2Empty)}</td></tr>`;
 
 		const actionRows =
 			data.findings
 				.flatMap((f: any) =>
 					f.actions.map(
 						(a: any) =>
-							`<tr><td>${esc(a.code)}</td><td>${esc(a.description?.[lang])}</td><td>${esc(f.code)}</td></tr>`,
+							`<tr><td>${escapeHtml(a.code)}</td><td>${escapeHtml(a.description?.[lang])}</td><td>${escapeHtml(f.code)}</td></tr>`,
 					),
 				)
-				.join('') || `<tr><td colspan="3" class="empty">—</td></tr>`;
+				.join('') || `<tr><td colspan="3" class="report-empty">—</td></tr>`;
 
-		const logoTag = UPC_LOGO_DATA_URI
-			? `<img class="logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
-			: '';
-
-		return `
-			<!doctype html>
-			<html lang="${lang}">
-			<head>
-				<meta charset="utf-8" />
-				<title>${esc(L.reportTitle)}</title>
-				<style>${PDF_STYLES}</style>
-			</head>
-			<body>
-				<header>
-					${logoTag}
-					<h1 class="title">${esc(L.university)}</h1>
-					<h2 class="subtitle">${esc(ifc.programLabel?.[lang] ?? '')}</h2>
-					<hr class="rule" />
-					<h2 class="report-title">${esc(L.reportTitle)}</h2>
-					<p><strong>${esc(L.semester)}:</strong> ${esc(ifc.academicPeriodCode)}</p>
-					<p><strong>${esc(L.course)}:</strong> ${esc(ifc.courseCode ?? '')} - ${esc(ifc.courseName?.[lang])}</p>
-					<p><strong>${esc(L.coordinator)}:</strong> ${esc(ifc.coordinator?.name ?? '')}</p>
-				</header>
-
-				<hr class="rule" />
-
+		const bodyHtml = `
 				<section>
-					<h3>${esc(L.s1Title)}</h3>
+					<h3>${escapeHtml(L.s1Title)}</h3>
 					<ul>${outcomeBullets}</ul>
-					<h4>${esc(L.s11Title)}</h4>
-					<p>${esc(ifc.courseLearningOutcome?.[lang]) || '-'}</p>
+					<h4>${escapeHtml(L.s11Title)}</h4>
+					<p>${escapeHtml(ifc.courseLearningOutcome?.[lang]) || '-'}</p>
 				</section>
 
-				<hr class="rule" />
-
 				<section>
-					<h3>${esc(L.s2Title)}</h3>
+					<h3>${escapeHtml(L.s2Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s2ColCode)}</th><th>${esc(L.s2ColDesc)}</th><th>${esc(L.s2ColState)}</th></tr></thead>
+						<thead><tr><th>${escapeHtml(L.s2ColCode)}</th><th>${escapeHtml(L.s2ColDesc)}</th><th>${escapeHtml(L.s2ColState)}</th></tr></thead>
 						<tbody>${previousActionRows}</tbody>
 					</table>
 				</section>
 
-				<hr class="rule" />
-
 				<section>
-					<h3>${esc(L.s3Title)}</h3>
+					<h3>${escapeHtml(L.s3Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s3ColCode)}</th><th>${esc(L.s3ColDesc)}</th></tr></thead>
+						<thead><tr><th>${escapeHtml(L.s3ColCode)}</th><th>${escapeHtml(L.s3ColDesc)}</th></tr></thead>
 						<tbody>${findingRows}</tbody>
 					</table>
 				</section>
 
-				<hr class="rule" />
-
 				<section>
-					<h3>${esc(L.s4Title)}</h3>
+					<h3>${escapeHtml(L.s4Title)}</h3>
 					<table>
-						<thead><tr><th>${esc(L.s4ColCode)}</th><th>${esc(L.s4ColDesc)}</th><th>${esc(L.s4ColFinding)}</th></tr></thead>
+						<thead><tr><th>${escapeHtml(L.s4ColCode)}</th><th>${escapeHtml(L.s4ColDesc)}</th><th>${escapeHtml(L.s4ColFinding)}</th></tr></thead>
 						<tbody>${actionRows}</tbody>
 					</table>
 				</section>
-			</body>
-			</html>
 		`;
+
+		const course = [ifc.courseCode, localize(ifc.courseName, lang)].filter(Boolean).join(' - ');
+
+		return {
+			language: lang,
+			reportName: L.reportTitle,
+			programName: localize(ifc.programLabel, lang),
+			metadata: [
+				{ label: L.semester, value: ifc.academicPeriodCode },
+				{ label: L.course, value: course },
+				{ label: L.coordinator, value: ifc.coordinator?.name },
+			],
+			bodyHtml,
+			additionalStyles: IFC_REPORT_STYLES,
+		};
 	}
 
 	private async buildStatusReportXlsx(
-		rows: StatusReportRow[],
+		rows: IfcStatusReportRow[],
 		statusLabelByCode: Record<string, string>,
 		lang: 'es' | 'en',
 	): Promise<Buffer> {
@@ -311,24 +287,4 @@ export class IfcReportService {
 
 		return Buffer.from(await wb.xlsx.writeBuffer());
 	}
-}
-
-function esc(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	return String(value).replace(/[<>&"']/g, (ch) => {
-		switch (ch) {
-			case '<':
-				return '&lt;';
-			case '>':
-				return '&gt;';
-			case '&':
-				return '&amp;';
-			case '"':
-				return '&quot;';
-			case "'":
-				return '&#39;';
-			default:
-				return ch;
-		}
-	});
 }
