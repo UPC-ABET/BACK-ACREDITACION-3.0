@@ -13,6 +13,7 @@ import {
 	SwaggerLcfcConfigDelete,
 	SwaggerLcfcConfigAvailableSections,
 	SwaggerLcfcConfigSectionOutcomes,
+	SwaggerLcfcConfigSetDeadline,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcTokenValidate,
 	SwaggerLcfcSurveyGetByToken,
@@ -25,6 +26,7 @@ import {
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
+	SetLcfcDeadlineDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
@@ -107,6 +109,12 @@ export class LcfcController {
 		return parseSuccessResponse(
 			await this.lcfcService.getSectionOutcomes(courseSectionId, programId),
 		);
+	}
+
+	@SwaggerLcfcConfigSetDeadline()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async configSetDeadline(@Body() dto: SetLcfcDeadlineDto) {
+		return parseSuccessResponse(await this.lcfcService.setDeadline(dto));
 	}
 
 	@SwaggerLcfcNotificationSend()

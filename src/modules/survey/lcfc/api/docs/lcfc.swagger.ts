@@ -9,6 +9,7 @@ import {
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
+	SetLcfcDeadlineDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
@@ -74,6 +75,8 @@ export const SwaggerLcfcConfigSectionOutcomes = () =>
 		}),
 		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: true }),
 	);
+export const SwaggerLcfcConfigSetDeadline = () =>
+	HttpMethodWithSwagger({ ...cfg.config.setDeadline, body: SetLcfcDeadlineDto });
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 export const SwaggerLcfcTokenValidate = () =>

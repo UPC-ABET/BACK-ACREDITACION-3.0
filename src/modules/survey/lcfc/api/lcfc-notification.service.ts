@@ -106,7 +106,13 @@ export class LcfcNotificationService {
 		if (enrolledStudents.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
-		const maxRegisterDate = dto.maxRegisterDate ?? null;
+		// Deadline is configured in the Configuration tab; fall back to it when the send
+		// request doesn't carry one of its own.
+		const maxRegisterDate =
+			dto.maxRegisterDate ??
+			(dto.programId
+				? await this.configRepo.getDeadline(dto.programId, dto.academicPeriodId)
+				: null);
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
 		const pendingNotifications: {
@@ -126,7 +132,10 @@ export class LcfcNotificationService {
 					const config = activeConfigs.find(
 						(c) => c.extra?.course_section_id === student.courseSectionId,
 					);
-					const programId = dto.programId ?? student.programId ?? config?.extra?.program_id ?? null;
+					// Use the STUDENT's own program (a shared course can enrol students from other
+					// programs), so the survey shows the student's career and their own outcomes —
+					// not the program the config was created for.
+					const programId = student.programId ?? dto.programId ?? config?.extra?.program_id ?? null;
 					const campusId = dto.campusId ?? student.campusId ?? config?.extra?.campus_id ?? null;
 
 					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(

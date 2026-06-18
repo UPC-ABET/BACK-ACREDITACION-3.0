@@ -7,6 +7,7 @@ import {
 	FilterLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
+	SetLcfcDeadlineDto,
 	SendLcfcNotificationDto,
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
@@ -54,6 +55,14 @@ export class LcfcService {
 
 	getSectionOutcomes(courseSectionId: number, programId: number) {
 		return this.configService.getSectionOutcomes(courseSectionId, programId);
+	}
+
+	setDeadline(dto: SetLcfcDeadlineDto) {
+		return this.configService.setDeadline(dto.programId, dto.academicPeriodId, dto.maxRegisterDate);
+	}
+
+	getDeadline(programId: number, academicPeriodId: number) {
+		return this.configService.getDeadline(programId, academicPeriodId);
 	}
 
 	sendNotifications(dto: SendLcfcNotificationDto) {

@@ -54,6 +54,12 @@ export const lcfcRoutes = {
 			route: 'config/section-outcomes',
 			summary: "List a course section's outcomes for the given program (for config editing)",
 		},
+		setDeadline: {
+			method: 'POST',
+			route: 'config/set-deadline',
+			summary:
+				'Set the survey deadline for a program/period: stored on the config and applied to existing notifications (no resend)',
+		},
 	},
 	notification: {
 		send: {

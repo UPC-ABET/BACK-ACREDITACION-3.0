@@ -112,6 +112,20 @@ export class FilterLcfcConfigDto {
 	isActive?: boolean;
 }
 
+export class SetLcfcDeadlineDto {
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Academic period ID' })
+	academicPeriodId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Program ID' })
+	programId: number;
+
+	@IsString()
+	@ApiProperty({ example: '2026-06-30T23:59:59.000Z', description: 'Survey deadline (ISO date)' })
+	maxRegisterDate: string;
+}
+
 export class LcfcConfigStatusItemDto {
 	@IsNumber()
 	@ApiProperty({

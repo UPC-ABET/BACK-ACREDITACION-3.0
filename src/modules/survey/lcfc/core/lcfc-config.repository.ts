@@ -106,6 +106,75 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return rows.length > 0;
 	}
 
+	/**
+	 * Sets the survey deadline for a program/period: stores it on each LCFC config (extra)
+	 * so future sends reuse it, and refreshes the deadline of already-created notifications
+	 * — without re-sending any email.
+	 */
+	async setDeadline(
+		programId: number,
+		academicPeriodId: number,
+		maxRegisterDate: string,
+	): Promise<{ updatedConfigs: number; updatedNotifications: number }> {
+		return await this.dataSource.transaction(async (manager) => {
+			const cfgResult = await manager.query(
+				`UPDATE survey.outcome_configs
+				 SET extra = jsonb_set(COALESCE(extra, '{}'::jsonb), '{max_register_date}', to_jsonb($3::text)),
+				     updated_at = NOW()
+				 WHERE extra->>'survey_type' = $4
+				   AND (extra->>'program_id')::int = $1
+				   AND (extra->>'academic_period_id')::int = $2`,
+				[programId, academicPeriodId, maxRegisterDate, LCFC_SURVEY_TYPE],
+			);
+
+			// Match by the config's course sections (not program): a shared course can have
+			// students from other programs, but the deadline applies to all its surveys.
+			// $4 = extra.survey_type tag ('LCFC'); $5 = core.types code ('TG601-T003').
+			const notifResult = await manager.query(
+				`UPDATE survey.notifications n
+				 SET max_register_date = $3, updated_at = NOW()
+				 FROM evidence.surveys s
+				 WHERE s.id = n.survey_id
+				   AND s.survey_type_id = (SELECT id FROM core.types WHERE code = $5)
+				   AND s.academic_period_id = $2
+				   AND s.course_section_id IN (
+				     SELECT (oc.extra->>'course_section_id')::int
+				     FROM survey.outcome_configs oc
+				     WHERE oc.extra->>'survey_type' = $4
+				       AND (oc.extra->>'program_id')::int = $1
+				       AND (oc.extra->>'academic_period_id')::int = $2
+				   )`,
+				[
+					programId,
+					academicPeriodId,
+					maxRegisterDate,
+					LCFC_SURVEY_TYPE,
+					TYPE_CODES.SURVEY_TYPE.LCFC,
+				],
+			);
+
+			return {
+				updatedConfigs: cfgResult?.[1] ?? 0,
+				updatedNotifications: notifResult?.[1] ?? 0,
+			};
+		});
+	}
+
+	/** Returns the stored survey deadline for a program/period, if any. */
+	async getDeadline(programId: number, academicPeriodId: number): Promise<string | null> {
+		const rows = await this.dataSource.query(
+			`SELECT extra->>'max_register_date' AS "maxRegisterDate"
+			 FROM survey.outcome_configs
+			 WHERE extra->>'survey_type' = $3
+			   AND (extra->>'program_id')::int = $1
+			   AND (extra->>'academic_period_id')::int = $2
+			   AND extra->>'max_register_date' IS NOT NULL
+			 LIMIT 1`,
+			[programId, academicPeriodId, LCFC_SURVEY_TYPE],
+		);
+		return rows?.[0]?.maxRegisterDate ?? null;
+	}
+
 	/** Outcomes mapped to a course section, scoped to one program (for the edit modal). */
 	async getSectionOutcomes(
 		courseSectionId: number,
