@@ -330,7 +330,7 @@ export class NotificationDispatcherService {
 					subs[key] = await this.lookupUserName(notifierUserId);
 					break;
 				case '{{ifc_link}}':
-					subs[key] = this.buildIfcLink(ctx.ifcId);
+					subs[key] = this.buildIfcLink(ctx);
 					break;
 				case '{{observer_name}}':
 					subs[key] = await this.lookupLatestStatusUserName(
@@ -416,10 +416,12 @@ export class NotificationDispatcherService {
 		return (comment.es ?? comment.en ?? '') as string;
 	}
 
-	private buildIfcLink(ifcId: number | null): string {
+	private buildIfcLink(ctx: ResolvedContext): string {
 		const base = this.configService.get<string>('APP_FRONTEND_URL');
-		if (ifcId === null) return `${base}/ifcs`;
-		return `${base}/ifcs/${ifcId}`;
+		if (ctx.ifcId === null) {
+			return `${base}/ifcs/new?chartId=${ctx.courseChartId}&periodId=${ctx.periodId}`;
+		}
+		return `${base}/ifcs/${ctx.ifcId}`;
 	}
 
 	private async writeLog(
