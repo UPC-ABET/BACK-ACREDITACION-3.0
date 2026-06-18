@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PdfRendererService, UPC_LOGO_DATA_URI } from 'src/libs/pdf-renderer.service';
-import type { I18nText } from 'src/shared/types/i18n';
+import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
+import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
+import { escapeHtml, localize } from 'src/libs/reporting/report.utils';
 import { CourseOutcomeMappingService } from './course-outcome-mappings.service';
 import type {
 	MaintenanceCourse,
@@ -45,19 +46,7 @@ const LABELS = {
 } as const;
 
 const STYLES = `
-	@page { size: A4 landscape; margin: 14mm; }
-	body { font-family: -apple-system, system-ui, sans-serif; color: #18181b; font-size: 10pt; }
-	header { text-align: center; }
-	.logo { width: 50px; margin: 0 auto 8px; display: block; }
-	.title { color: #C8102E; margin: 0; font-weight: 700; font-size: 13pt; }
-	.subtitle { color: #C8102E; margin: 4px 0 0; font-weight: 700; font-size: 12pt; }
-	.report-title { color: #C8102E; text-decoration: underline; font-size: 14pt; margin: 12px 0; }
-	.rule { border: 0; border-top: 1px solid #C8102E; margin: 12px 0; }
-	.info { margin: 6px 0; }
-	.info p { margin: 2px 0; }
-	.info .label { color: #C8102E; font-weight: 700; display: inline-block; min-width: 90px; }
 	.section-title { color: #C8102E; font-weight: 700; font-size: 12pt; margin: 16px 0 6px; border-bottom: 1px solid #C8102E; padding-bottom: 2px; }
-	table { width: 100%; border-collapse: collapse; margin-top: 4px; }
 	th, td { border: 1px solid #94a3b8; padding: 3px 5px; font-size: 9pt; }
 	thead th { background: #dbeafe; color: #18181b; text-align: center; font-weight: 700; }
 	td.code { white-space: nowrap; font-weight: 600; }
@@ -75,70 +64,43 @@ const STYLES = `
 export class ArticulationReportService {
 	constructor(
 		private readonly mappingService: CourseOutcomeMappingService,
-		private readonly pdfRenderer: PdfRendererService,
+		private readonly reportGenerator: ReportGeneratorService,
 	) {}
 
-	async generatePdf(programCommissionId: number, lang: 'es' | 'en') {
+	async generatePdf(programCommissionId: number, lang: ReportLanguage) {
 		const view = await this.mappingService.getMaintenanceView(programCommissionId);
-		const html = this.buildHtml(view, lang);
-		const pdf = await this.pdfRenderer.htmlToPdf(html);
-		const filename = this.buildFilename(view, lang);
-		return { pdf, filename };
+		return this.reportGenerator.generateDocument(
+			this.buildDocument(view, lang),
+			this.buildFilename(view, lang),
+		);
 	}
 
-	private buildFilename(view: MaintenanceView, lang: 'es' | 'en'): string {
+	private buildFilename(view: MaintenanceView, lang: ReportLanguage): string {
 		const { accreditorCode, commissionCode, academicPeriodCode } = view.header;
 		return `${LABELS[lang].filePrefix}_${accreditorCode}-${commissionCode}_${academicPeriodCode}.pdf`;
 	}
 
-	private buildHtml(view: MaintenanceView, lang: 'es' | 'en'): string {
+	private buildDocument(view: MaintenanceView, lang: ReportLanguage): ReportDocument {
 		const L = LABELS[lang];
 		const { header, outcomeTypes, outcomes, levels, electives } = view;
 
 		const typeById = new Map(outcomeTypes.map((t) => [t.id, t]));
 		const formationType = outcomeTypes.find((t) => t.code === FORMATION_TYPE_CODE) ?? null;
-
-		const logoTag = UPC_LOGO_DATA_URI
-			? `<img class="logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
-			: '';
-
-		const commissionLabel = `${esc(header.accreditorCode)}-${esc(header.commissionCode)}`;
+		const commissionLabel = `${header.accreditorCode}-${header.commissionCode}`;
 		const colSpan = 3 + outcomes.length;
 
-		return `
-			<!doctype html>
-			<html lang="${lang}">
-			<head>
-				<meta charset="utf-8" />
-				<title>${esc(L.reportTitle)}</title>
-				<style>${STYLES}</style>
-			</head>
-			<body>
-				<header>
-					${logoTag}
-					<h1 class="title">${esc(L.university)}</h1>
-					<h2 class="subtitle">${esc(i18n(header.programName, lang))}</h2>
-				</header>
-
-				<h2 class="report-title" style="text-align:center;">${esc(L.reportTitle)}</h2>
-
-				<div class="info">
-					<p><span class="label">${esc(L.commission)}:</span> ${commissionLabel}</p>
-					<p><span class="label">${esc(L.career)}:</span> ${esc(i18n(header.programName, lang))}</p>
-					<p><span class="label">${esc(L.cycle)}:</span> ${esc(header.academicPeriodCode)}</p>
-				</div>
-
-				<div class="section-title">${esc(L.legend)}</div>
+		const bodyHtml = `
+				<div class="section-title">${escapeHtml(L.legend)}</div>
 				${this.buildLegend(outcomeTypes, lang)}
 
-				<div class="section-title">${esc(L.plan)}</div>
+				<div class="section-title">${escapeHtml(L.plan)}</div>
 				<table>
 					${this.buildMatrixHead(L, outcomes)}
 					<tbody>
 						${levels
 							.map(
 								(lvl) => `
-							<tr class="level"><td colspan="${colSpan}">${esc(i18n(lvl.levelName, lang))}</td></tr>
+							<tr class="level"><td colspan="${colSpan}">${escapeHtml(localize(lvl.levelName, lang))}</td></tr>
 							${lvl.courses
 								.map((c) => this.buildCourseRow(c, outcomes, typeById, formationType, lang))
 								.join('')}`,
@@ -147,7 +109,7 @@ export class ArticulationReportService {
 					</tbody>
 				</table>
 
-				<div class="section-title">${esc(L.electives)}</div>
+				<div class="section-title">${escapeHtml(L.electives)}</div>
 				<table>
 					${this.buildMatrixHead(L, outcomes)}
 					<tbody>
@@ -160,17 +122,29 @@ export class ArticulationReportService {
 						}
 					</tbody>
 				</table>
-			</body>
-			</html>
 		`;
+
+		return {
+			language: lang,
+			reportName: L.reportTitle,
+			programName: localize(header.programName, lang),
+			metadata: [
+				{ label: L.commission, value: commissionLabel },
+				{ label: L.career, value: localize(header.programName, lang) },
+				{ label: L.cycle, value: header.academicPeriodCode },
+			],
+			bodyHtml,
+			orientation: 'landscape',
+			additionalStyles: STYLES,
+		};
 	}
 
-	private buildLegend(outcomeTypes: MaintenanceOutcomeType[], lang: 'es' | 'en'): string {
+	private buildLegend(outcomeTypes: MaintenanceOutcomeType[], lang: ReportLanguage): string {
 		const ordered = [...outcomeTypes].sort((a, b) => b.code.localeCompare(a.code));
 		const rows = ordered
 			.map(
 				(t) =>
-					`<tr><td class="legend-glyph">${glyphCell(t)}</td><td>${esc(i18n(t.name, lang))}</td></tr>`,
+					`<tr><td class="legend-glyph">${glyphCell(t)}</td><td>${escapeHtml(localize(t.name, lang))}</td></tr>`,
 			)
 			.join('');
 		return `<table class="legend-table"><tbody>${rows}</tbody></table>`;
@@ -184,10 +158,10 @@ export class ArticulationReportService {
 		return `
 			<thead>
 				<tr>
-					<th rowspan="2">${esc(L.colCode)}</th>
-					<th rowspan="2">${esc(L.colCourse)}</th>
-					<th rowspan="2">${esc(L.colCf)}</th>
-					<th colspan="${outcomes.length}">${esc(L.outcomes)}</th>
+					<th rowspan="2">${escapeHtml(L.colCode)}</th>
+					<th rowspan="2">${escapeHtml(L.colCourse)}</th>
+					<th rowspan="2">${escapeHtml(L.colCf)}</th>
+					<th colspan="${outcomes.length}">${escapeHtml(L.outcomes)}</th>
 				</tr>
 				<tr>${outcomeCols}</tr>
 			</thead>`;
@@ -198,7 +172,7 @@ export class ArticulationReportService {
 		outcomes: MaintenanceOutcome[],
 		typeById: Map<number, MaintenanceOutcomeType>,
 		formationType: MaintenanceOutcomeType | null,
-		lang: 'es' | 'en',
+		lang: ReportLanguage,
 	): string {
 		const typeByOutcome = new Map(course.mappings.map((m) => [m.outcomeId, m.outcomeTypeId]));
 
@@ -213,8 +187,8 @@ export class ArticulationReportService {
 			.join('');
 
 		return `<tr>
-			<td class="code">${esc(course.courseCode)}</td>
-			<td class="course">${esc(i18n(course.courseName, lang))}</td>
+			<td class="code">${escapeHtml(course.courseCode)}</td>
+			<td class="course">${escapeHtml(localize(course.courseName, lang))}</td>
 			<td class="mark">${cfCell}</td>
 			${outcomeCells}
 		</tr>`;
@@ -229,36 +203,12 @@ function glyphCell(type: MaintenanceOutcomeType): string {
 
 // Drawn as SVG because headless Chromium lacks fonts covering the unicode marker glyphs (◆, ✓).
 function markerSvg(glyph: string, color: string): string {
-	const fill = esc(color);
+	const fill = escapeHtml(color);
 	if (glyph === '✓' || glyph === '✔') {
 		return `<svg class="marker" viewBox="0 0 14 14" width="12" height="12"><path d="M2 7.5 L5.5 11 L12 3" stroke="${fill}" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 	}
 	if (glyph === '◆' || glyph === '◇' || glyph === '♦') {
 		return `<svg class="marker" viewBox="0 0 14 14" width="12" height="12"><polygon points="7,1 13,7 7,13 1,7" fill="${fill}"/></svg>`;
 	}
-	return `<span class="glyph" style="color:${fill};">${esc(glyph)}</span>`;
-}
-
-function i18n(value: I18nText, lang: 'es' | 'en'): string {
-	return value?.[lang] ?? value?.es ?? '';
-}
-
-function esc(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	return String(value).replace(/[<>&"']/g, (ch) => {
-		switch (ch) {
-			case '<':
-				return '&lt;';
-			case '>':
-				return '&gt;';
-			case '&':
-				return '&amp;';
-			case '"':
-				return '&quot;';
-			case "'":
-				return '&#39;';
-			default:
-				return ch;
-		}
-	});
+	return `<span class="glyph" style="color:${fill};">${escapeHtml(glyph)}</span>`;
 }

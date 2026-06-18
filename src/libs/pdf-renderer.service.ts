@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -48,11 +49,13 @@ export class PdfRendererService implements OnModuleDestroy {
 	private readonly logger = new Logger(PdfRendererService.name);
 	private browser: PuppeteerBrowser | null = null;
 
+	constructor(private readonly configService: ConfigService) {}
+
 	private async getBrowser(): Promise<PuppeteerBrowser> {
 		if (this.browser && this.browser.connected) return this.browser;
 		const puppeteerMod: any = await import('puppeteer');
 		const puppeteer = puppeteerMod.default ?? puppeteerMod;
-		const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+		const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
 		this.browser = await puppeteer.launch({
 			headless: true,
 			...(executablePath ? { executablePath } : {}),

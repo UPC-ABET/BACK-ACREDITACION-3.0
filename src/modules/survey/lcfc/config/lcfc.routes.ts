@@ -54,6 +54,12 @@ export const lcfcRoutes = {
 			route: 'config/section-outcomes',
 			summary: "List a course section's outcomes for the given program (for config editing)",
 		},
+		sectionCommissions: {
+			method: 'GET',
+			route: 'config/section-commissions',
+			summary:
+				"List a course section's commissions (for config editing — select commission instead of outcome)",
+		},
 		setDeadline: {
 			method: 'POST',
 			route: 'config/set-deadline',

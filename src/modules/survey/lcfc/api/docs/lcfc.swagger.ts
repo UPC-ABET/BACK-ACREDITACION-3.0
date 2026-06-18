@@ -56,7 +56,12 @@ export const SwaggerLcfcConfigDelete = () =>
 export const SwaggerLcfcConfigAvailableSections = () =>
 	applyDecorators(
 		HttpMethodWithSwagger(cfg.config.availableSections),
-		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: true }),
+		ApiQuery({
+			name: 'programId',
+			description: 'Program ID (optional)',
+			type: Number,
+			required: false,
+		}),
 		ApiQuery({
 			name: 'academicPeriodId',
 			description: 'Academic period ID',
@@ -74,6 +79,22 @@ export const SwaggerLcfcConfigSectionOutcomes = () =>
 			required: true,
 		}),
 		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: true }),
+	);
+export const SwaggerLcfcConfigSectionCommissions = () =>
+	applyDecorators(
+		HttpMethodWithSwagger(cfg.config.sectionCommissions),
+		ApiQuery({
+			name: 'courseSectionId',
+			description: 'Course section ID',
+			type: Number,
+			required: true,
+		}),
+		ApiQuery({
+			name: 'programId',
+			description: 'Program ID (optional)',
+			type: Number,
+			required: false,
+		}),
 	);
 export const SwaggerLcfcConfigSetDeadline = () =>
 	HttpMethodWithSwagger({ ...cfg.config.setDeadline, body: SetLcfcDeadlineDto });
@@ -100,6 +121,11 @@ export const SwaggerLcfcDashboard = () =>
 export const SwaggerLcfcExport = () =>
 	applyDecorators(
 		HttpMethodWithSwagger(cfg.dashboard.export),
-		ApiQuery({ name: 'academicPeriodId', description: 'Academic period ID', type: Number, required: true }),
+		ApiQuery({
+			name: 'academicPeriodId',
+			description: 'Academic period ID',
+			type: Number,
+			required: true,
+		}),
 		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: false }),
 	);

@@ -111,9 +111,7 @@ export class LcfcNotificationService {
 		// request doesn't carry one of its own.
 		const maxRegisterDate =
 			dto.maxRegisterDate ??
-			(dto.programId
-				? await this.configRepo.getDeadline(dto.programId, dto.academicPeriodId)
-				: null);
+			(await this.configRepo.getDeadline(dto.programId ?? null, dto.academicPeriodId));
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
 		const pendingNotifications: {
@@ -320,16 +318,12 @@ export class LcfcNotificationService {
 			{ header: 'Outcome', key: 'outcomeCode', width: 14 },
 			{ header: 'Descripción outcome', key: 'outcomeName', width: 40 },
 			{ header: 'Puntaje', key: 'score', width: 10 },
-			{ header: 'Comentario', key: 'commentaries', width: 40 },
+			{ header: 'Comentario', key: 'generalComment', width: 50 },
 			{ header: 'Fecha', key: 'completedAt', width: 22 },
 		];
 		sheet.getRow(1).font = { bold: true };
 
 		for (const r of rows) {
-			const comment =
-				r.commentaries && typeof r.commentaries === 'object'
-					? ((r.commentaries as Record<string, unknown>).commentaries ?? '')
-					: (r.commentaries ?? '');
 			sheet.addRow({
 				studentCode: r.studentCode,
 				studentName: r.studentName,
@@ -339,7 +333,7 @@ export class LcfcNotificationService {
 				outcomeCode: r.outcomeCode,
 				outcomeName: r.outcomeName,
 				score: r.score,
-				commentaries: String(comment ?? ''),
+				generalComment: r.generalComment ?? '',
 				completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : '',
 			});
 		}
@@ -362,19 +356,32 @@ export class LcfcNotificationService {
 	async getSurveyByToken(dto: GetLcfcSurveyByTokenDto) {
 		const tokenData = await this.notifRepo.findByTokenWithDetails(dto.token);
 		LcfcValidation.validateToken(tokenData);
-		// Show only the outcomes of the student's own program (a shared course can be
-		// mapped to outcomes of several programs).
+
+		// Look up the commission configured for this section so the survey only shows
+		// outcomes of that commission, filtered by the student's own program.
+		const config = await this.configRepo.findByCourseSection(
+			tokenData.courseSectionId,
+			tokenData.academicPeriodId,
+		);
+		const commissionId =
+			((config?.extra as Record<string, unknown>)?.commission_id as number | null) ?? null;
+
 		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
 			tokenData.courseSectionId,
 			tokenData.programId,
+			commissionId,
 		);
 		const language = dto.language ?? 'es';
 
+		// Return outcomes grouped by commission so the survey form can render each
+		// commission as a labelled section (already expected by the frontend adapter).
 		const outcomeList = outcomes.map((o) => ({
 			outcomeId: o.outcomeId,
 			code: o.code,
 			name: o.name,
 			description: o.description ?? null,
+			commissionId: o.commissionId,
+			commissionName: o.commissionName,
 		}));
 
 		return {

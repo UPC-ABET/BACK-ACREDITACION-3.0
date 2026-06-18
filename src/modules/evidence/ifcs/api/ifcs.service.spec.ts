@@ -6,9 +6,13 @@ import { IfcContentService } from './ifc-content.service';
 import { IfcViewService } from './ifc-view.service';
 import { IfcReportService } from './ifc-report.service';
 
-const pdfRenderer = {
-	htmlToPdf: jest.fn().mockResolvedValue(Buffer.from('%PDF-')),
-	filesToZip: jest.fn().mockResolvedValue(Buffer.from('zip')),
+const reportGenerator = {
+	generateDocument: jest
+		.fn()
+		.mockResolvedValue({ pdf: Buffer.from('%PDF-'), filename: 'report.pdf' }),
+	archivePdfFiles: jest
+		.fn()
+		.mockResolvedValue({ zip: Buffer.from('zip'), filename: 'reports.zip' }),
 };
 const dispatcher = {
 	dispatch: jest
@@ -18,16 +22,36 @@ const dispatcher = {
 import { IfcRepository } from '../core/ifcs.repository';
 import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
-import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
 
 function buildServices(dataSource: any) {
-	const repository = {} as IfcRepository;
 	const ds = dataSource as unknown as DataSource;
+	const repository = {
+		getReportCodes: async (chartIds: number[], schoolId: number) => {
+			const rows = await ds.query('', [chartIds, schoolId, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
+			return rows[0] ?? null;
+		},
+		getStatusTypes: () => ds.query('', [TYPE_GROUP_CODES.IFC_STATUS]),
+		getStatusReportRows: (
+			chartIds: number[],
+			schoolId: number,
+			academicPeriodId: number,
+			language: 'es' | 'en',
+		) =>
+			ds.query('', [
+				chartIds,
+				academicPeriodId,
+				schoolId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				language,
+			]),
+	} as IfcRepository;
 	const stateMachine = new IfcStateMachineService(ds, dispatcher as any);
 	const view = new IfcViewService(ds);
 	const content = new IfcContentService(ds, stateMachine, dispatcher as any);
-	const report = new IfcReportService(ds, pdfRenderer as any, view);
+	const report = new IfcReportService(repository, reportGenerator as any, view);
 	const schoolsRepository = { findUserSchools: jest.fn() };
 	const service = new IfcService(
 		repository,

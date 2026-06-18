@@ -49,7 +49,7 @@ export class LcfcService {
 		return this.configService.deleteConfig(id);
 	}
 
-	getAvailableSections(programId: number, academicPeriodId: number) {
+	getAvailableSections(programId: number | null | undefined, academicPeriodId: number) {
 		return this.configService.getAvailableSections(programId, academicPeriodId);
 	}
 
@@ -57,11 +57,19 @@ export class LcfcService {
 		return this.configService.getSectionOutcomes(courseSectionId, programId);
 	}
 
-	setDeadline(dto: SetLcfcDeadlineDto) {
-		return this.configService.setDeadline(dto.programId, dto.academicPeriodId, dto.maxRegisterDate);
+	getSectionCommissions(courseSectionId: number, programId?: number | null) {
+		return this.configService.getSectionCommissions(courseSectionId, programId);
 	}
 
-	getDeadline(programId: number, academicPeriodId: number) {
+	setDeadline(dto: SetLcfcDeadlineDto) {
+		return this.configService.setDeadline(
+			dto.programId ?? null,
+			dto.academicPeriodId,
+			dto.maxRegisterDate,
+		);
+	}
+
+	getDeadline(programId: number | null | undefined, academicPeriodId: number) {
 		return this.configService.getDeadline(programId, academicPeriodId);
 	}
 
