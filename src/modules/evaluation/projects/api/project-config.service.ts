@@ -14,10 +14,12 @@ import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/mo
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 import {
 	CreateProjectDto,
+	GetProjectsByProfessorQueryDto,
 	ProjectEvaluatorResponseDto,
 	ProjectDetailsResponseDto,
 	ProjectRubricEntryDto,
 } from '../model/projects.dtos';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
 import { projectsValidationStrings } from '../config/strings/projects.validation';
@@ -561,14 +563,20 @@ export class ProjectConfigService {
 		professorId: number,
 		academicPeriodId?: number,
 		schoolId?: number,
-		gradeTypeCode?: string,
-	): Promise<ProjectEvaluatorResponseDto[]> {
+		query?: GetProjectsByProfessorQueryDto,
+	): Promise<PaginatedResult<ProjectEvaluatorResponseDto>> {
+		const { page, pageSize, skip, take } = resolvePagination(query ?? {});
+		const search = query?.search?.trim() || undefined;
+		const gradeTypeCode = query?.gradeTypeCode;
+
 		const gradeTypeId = gradeTypeCode
 			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
 			: undefined;
-		let filterSql = `
-    SELECT DISTINCT pe.project_id AS "projectId"
+
+		// Base FROM/WHERE shared between count and paginated queries
+		let filterFromWhere = `
     FROM evaluation.project_evaluators pe
+    INNER JOIN evaluation.projects p_filter ON p_filter.id = pe.project_id
     INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
     INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
     INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
@@ -576,15 +584,22 @@ export class ProjectConfigService {
     INNER JOIN academic.study_plan_courses spc ON spc.course_id = c.id
     INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
     INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
-    INNER JOIN academic.programs program ON program.id = sp.program_id
-    WHERE pe.professor_id = $1 AND pe.is_active = true
-  `;
+    INNER JOIN academic.programs program ON program.id = sp.program_id`;
+
+		if (search) {
+			filterFromWhere += `
+    INNER JOIN academic.enrolled_students es_s ON es_s.id = sse.enrolled_student_id
+    INNER JOIN academic.students stu_s ON stu_s.id = es_s.student_id`;
+		}
+
+		filterFromWhere += `
+    WHERE pe.professor_id = $1 AND pe.is_active = true`;
 
 		const params: any[] = [professorId];
 		let paramIdx = 2;
 
 		if (gradeTypeId) {
-			filterSql += `
+			filterFromWhere += `
       AND EXISTS (
         SELECT 1
         FROM evaluation.rubrics r
@@ -604,33 +619,53 @@ export class ProjectConfigService {
           )
         )
         AND r.grade_type_id = $${paramIdx}
-      )
-    `;
+      )`;
 			params.push(gradeTypeId);
 			paramIdx++;
 		}
 
 		if (academicPeriodId) {
-			filterSql += ` AND cs.academic_period_id = $${paramIdx}`;
+			filterFromWhere += ` AND cs.academic_period_id = $${paramIdx}`;
 			params.push(academicPeriodId);
 			paramIdx++;
 		}
 
-		const programIdsPromise = schoolId
-			? this.resolveProgramIdsBySchoolId(schoolId)
-			: Promise.resolve(null);
-		const programIds = await programIdsPromise;
+		const programIds = schoolId ? await this.resolveProgramIdsBySchoolId(schoolId) : null;
 
 		if (programIds !== null) {
-			if (programIds.length === 0) return [];
-			filterSql += ` AND program.id = ANY($${paramIdx}::int[])`;
+			if (programIds.length === 0) return toPaginated([], 0, page, pageSize);
+			filterFromWhere += ` AND program.id = ANY($${paramIdx}::int[])`;
 			params.push(programIds);
+			paramIdx++;
 		}
 
-		const rows = (await this.dataSource.query(filterSql, params)) as { projectId: number }[];
+		if (search) {
+			filterFromWhere += `
+      AND (
+        p_filter.code ILIKE $${paramIdx}
+        OR p_filter.name->>'es' ILIKE $${paramIdx}
+        OR p_filter.name->>'en' ILIKE $${paramIdx}
+        OR CONCAT(stu_s.first_name, ' ', stu_s.last_name) ILIKE $${paramIdx}
+      )`;
+			params.push(`%${search}%`);
+			paramIdx++;
+		}
+
+		const [countRow] = (await this.dataSource.query(
+			`SELECT COUNT(DISTINCT pe.project_id) AS "total" ${filterFromWhere}`,
+			params,
+		)) as [{ total: string }];
+		const total = Number(countRow?.total ?? 0);
+
+		if (total === 0) return toPaginated([], 0, page, pageSize);
+
+		const rows = (await this.dataSource.query(
+			`SELECT DISTINCT pe.project_id AS "projectId" ${filterFromWhere} ORDER BY pe.project_id LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+			[...params, take, skip],
+		)) as { projectId: number }[];
 
 		const projectIds = rows.map((r) => r.projectId);
-		if (projectIds.length === 0) return [];
+		if (projectIds.length === 0) return toPaginated([], total, page, pageSize);
 
 		// Todo en SQL nativo para evitar el producto cartesiano
 		const raw = (await this.dataSource.query(
@@ -732,7 +767,7 @@ export class ProjectConfigService {
 			}
 		}
 
-		return Array.from(projectMap.values());
+		return toPaginated(Array.from(projectMap.values()), total, page, pageSize);
 	}
 
 	async exportProjectGrades(

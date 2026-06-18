@@ -1,4 +1,14 @@
-import { Body, HttpStatus, Param, Post, Get, ParseIntPipe, Query, Res } from '@nestjs/common';
+import {
+	Body,
+	HttpStatus,
+	Param,
+	Post,
+	Get,
+	ParseIntPipe,
+	Query,
+	Res,
+	ValidationPipe,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
@@ -18,7 +28,7 @@ import {
 	CreateProjectDto,
 	UpdateProjectDto,
 	FilterProjectDto,
-	ProjectEvaluatorResponseDto,
+	GetProjectsByProfessorQueryDto,
 	ProjectDetailsResponseDto,
 } from '../model/projects.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -51,45 +61,43 @@ export class ProjectController extends BaseController<ProjectService> {
 	}
 
 	@Get('professor/:professorId')
-	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
 	@ApiAcademicPeriodHeader(false)
 	@ApiSchoolHeader(false)
-	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectsByProfessor(
 		@Param('professorId', ParseIntPipe) professorId: number,
 		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
 		@SchoolId({ optional: true }) schoolId: number | null,
-		@Query('gradeTypeCode') gradeTypeCode?: string,
+		@Query(new ValidationPipe({ transform: true, whitelist: true }))
+		query: GetProjectsByProfessorQueryDto,
 	) {
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectsByProfessor(
 				professorId,
 				academicPeriodId ?? undefined,
 				schoolId ?? undefined,
-				gradeTypeCode,
+				query,
 			),
 		);
 	}
 
 	@Get('evaluator/:evaluatorId')
-	@ApiOkResponse({ type: [ProjectEvaluatorResponseDto] })
 	@ApiAcademicPeriodHeader(false)
 	@ApiSchoolHeader(false)
-	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectsByEvaluatorId(
 		@Param('evaluatorId', ParseIntPipe) evaluatorId: number,
 		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
 		@SchoolId({ optional: true }) schoolId: number | null,
-		@Query('gradeTypeCode') gradeTypeCode?: string,
+		@Query(new ValidationPipe({ transform: true, whitelist: true }))
+		query: GetProjectsByProfessorQueryDto,
 	) {
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectsByProfessor(
 				evaluatorId,
 				academicPeriodId ?? undefined,
 				schoolId ?? undefined,
-				gradeTypeCode,
+				query,
 			),
 		);
 	}
