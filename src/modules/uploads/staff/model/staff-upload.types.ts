@@ -3,6 +3,7 @@ export interface StaffRow {
 	professorCode: string;
 	lastName: string;
 	firstName: string;
+	email: string;
 }
 
 export interface UploadRowError {

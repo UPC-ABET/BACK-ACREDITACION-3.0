@@ -161,5 +161,6 @@ export interface ProfessorLookupItem {
 	code: string | null;
 	firstName: string;
 	lastName: string;
+	staffEmail: string | null;
 	user: ProfessorLookupUser | null;
 }

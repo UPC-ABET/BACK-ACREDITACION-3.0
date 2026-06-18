@@ -14,7 +14,7 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Professor', 'Last name', 'First name'];
+const HEADER = ['Professor', 'Last name', 'First name', 'Email'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -44,7 +44,7 @@ describe('StaffUploadService — positional parsing', () => {
 		]);
 		const service = new StaffUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['DOC-001', 'Doe', 'Jane']]);
+		const buffer = await makeXlsx([['DOC-001', 'Doe', 'Jane', 'jane.doe@example.com']]);
 		const result = await service.processUpload(buffer, 'staff.xlsx', 7, 1, {} as any);
 
 		expect(result.success).toBe(true);
@@ -57,6 +57,7 @@ describe('StaffUploadService — positional parsing', () => {
 			professorCode: 'DOC-001',
 			lastName: 'Doe',
 			firstName: 'Jane',
+			email: 'jane.doe@example.com',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);

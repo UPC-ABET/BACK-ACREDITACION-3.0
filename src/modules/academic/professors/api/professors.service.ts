@@ -97,6 +97,7 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 			code: professor.code ?? null,
 			firstName: professor.staff.firstName,
 			lastName: professor.staff.lastName,
+			staffEmail: professor.staff.staffEmail ?? null,
 			user: professor.staff.user
 				? {
 						id: professor.staff.user.id,
