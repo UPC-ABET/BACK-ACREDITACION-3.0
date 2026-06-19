@@ -18,6 +18,7 @@ const dispatcher = {
 	dispatch: jest
 		.fn()
 		.mockResolvedValue({ sent: false, recipientsCount: 0, ccCount: 0, reason: 'no_config' }),
+	dispatchStatusChangeAsync: jest.fn(),
 };
 import { IfcRepository } from '../core/ifcs.repository';
 import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto } from '../model/ifcs.dtos';
@@ -366,7 +367,8 @@ describe('IfcService status transitions', () => {
 				}),
 			)
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // higher-level check finds an ancestor
-			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T003' }]);
+			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T003' }])
+			.mockResolvedValueOnce([{ academicPeriodId: 5 }]); // fetch period for dispatch
 
 		const result = await service.approve(42, 99, 9);
 
@@ -376,6 +378,14 @@ describe('IfcService status transitions', () => {
 		const [, insertParams] = em.query.mock.calls[3];
 		expect(insertParams[1]).toBe(TYPE_CODES.IFC_STATUS.APPROVED);
 		expect(insertParams[3]).toBeNull();
+
+		// Auto status-change is dispatched with the status actually written (not a hardcoded one).
+		const dispatchArg = (dispatcher.dispatchStatusChangeAsync as jest.Mock).mock.lastCall[0];
+		expect(dispatchArg).toMatchObject({
+			chartId: 500,
+			ifcStatusCode: TYPE_CODES.IFC_STATUS.APPROVED,
+			ifcId: 42,
+		});
 	});
 
 	it('approve: succeeds when the course coordinator also holds a higher level', async () => {
@@ -388,7 +398,8 @@ describe('IfcService status transitions', () => {
 				}),
 			)
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // higher-level check finds requester on an ancestor
-			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T003' }]);
+			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T003' }])
+			.mockResolvedValueOnce([{ academicPeriodId: 5 }]); // fetch period for dispatch
 
 		const result = await service.approve(42, 99, 9);
 
@@ -406,7 +417,8 @@ describe('IfcService status transitions', () => {
 				}),
 			)
 			.mockResolvedValueOnce([{ '?column?': 1 }]) // higher-level check finds an ancestor
-			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T004', comment: dto.comment }]);
+			.mockResolvedValueOnce([{ ...insertedRow, code: 'TG701-T004', comment: dto.comment }])
+			.mockResolvedValueOnce([{ academicPeriodId: 5 }]); // fetch period for dispatch
 
 		const result = await service.reject(42, 99, 9, dto);
 
@@ -414,6 +426,13 @@ describe('IfcService status transitions', () => {
 		const [, insertParams] = em.query.mock.calls[3];
 		expect(insertParams[1]).toBe(TYPE_CODES.IFC_STATUS.OBSERVED);
 		expect(JSON.parse(insertParams[3])).toEqual(dto.comment);
+
+		// OBSERVED now triggers the auto status-change dispatch (previously it did not).
+		const dispatchArg = (dispatcher.dispatchStatusChangeAsync as jest.Mock).mock.lastCall[0];
+		expect(dispatchArg).toMatchObject({
+			ifcStatusCode: TYPE_CODES.IFC_STATUS.OBSERVED,
+			ifcId: 42,
+		});
 	});
 
 	it('throws 404 when the IFC is not in the requester school', async () => {

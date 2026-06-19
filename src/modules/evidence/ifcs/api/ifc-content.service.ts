@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
@@ -16,8 +16,6 @@ import {
 
 @Injectable()
 export class IfcContentService {
-	private readonly logger = new Logger(IfcContentService.name);
-
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly stateMachine: IfcStateMachineService,
@@ -27,7 +25,7 @@ export class IfcContentService {
 	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number, academicPeriodId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
-		const { id: ifcId } = await this.dataSource.transaction(async (em) => {
+		const { id: ifcId, statusCode } = await this.dataSource.transaction(async (em) => {
 			const chartRows = await em.query(CHART_RESOLUTION_SQL, [
 				dto.chartId,
 				academicPeriodId,
@@ -87,26 +85,24 @@ export class IfcContentService {
 			const newStatusCode = dto.submit
 				? TYPE_CODES.IFC_STATUS.SUBMITTED
 				: TYPE_CODES.IFC_STATUS.SAVED;
-			await this.stateMachine.insertStatus(em, ifcId, requesterStaffId!, newStatusCode, null);
+			const status = await this.stateMachine.insertStatus(
+				em,
+				ifcId,
+				requesterStaffId!,
+				newStatusCode,
+				null,
+			);
 
-			return { id: ifcId };
+			return { id: ifcId, statusCode: status.code };
 		});
 
-		if (dto.submit && Number.isFinite(dto.chartId) && Number.isFinite(academicPeriodId)) {
-			setImmediate(() => {
-				this.dispatcher
-					.dispatch({
-						chartId: dto.chartId,
-						periodId: academicPeriodId,
-						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
-						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
-						notifierUserId: userId,
-					})
-					.catch((err) =>
-						this.logger.error(`dispatch.failed ifcId=${ifcId}: ${(err as Error).message}`),
-					);
-			});
-		}
+		this.dispatcher.dispatchStatusChangeAsync({
+			chartId: dto.chartId,
+			periodId: academicPeriodId,
+			ifcStatusCode: statusCode,
+			notifierUserId: userId,
+			ifcId,
+		});
 
 		return { id: ifcId };
 	}
@@ -114,77 +110,77 @@ export class IfcContentService {
 	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.PATCH;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
-		const { courseChartId, periodId } = await this.dataSource.transaction(async (em) => {
-			const ctx = await this.stateMachine.loadTransitionContext(id, userId, schoolId, op, em);
-			await IfcValidation.assertIsInCourseChain(em, ctx, op);
-			IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
+		const { courseChartId, periodId, statusCode } = await this.dataSource.transaction(
+			async (em) => {
+				const ctx = await this.stateMachine.loadTransitionContext(id, userId, schoolId, op, em);
+				await IfcValidation.assertIsInCourseChain(em, ctx, op);
+				IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
 
-			const ifcRows = await em.query(
-				`SELECT course_id AS "courseId", academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1`,
-				[id],
-			);
-			const courseId = Number(ifcRows[0].courseId);
-			const periodId = Number(ifcRows[0].academicPeriodId);
+				const ifcRows = await em.query(
+					`SELECT course_id AS "courseId", academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1`,
+					[id],
+				);
+				const courseId = Number(ifcRows[0].courseId);
+				const periodId = Number(ifcRows[0].academicPeriodId);
 
-			const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
-				courseId,
-				periodId,
-				TYPE_CODES.ENTITY_TYPE.COURSE,
-			]);
-			const programId =
-				programRows[0]?.programId === undefined || programRows[0]?.programId === null
-					? null
-					: Number(programRows[0].programId);
+				const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
+					courseId,
+					periodId,
+					TYPE_CODES.ENTITY_TYPE.COURSE,
+				]);
+				const programId =
+					programRows[0]?.programId === undefined || programRows[0]?.programId === null
+						? null
+						: Number(programRows[0].programId);
 
-			await em.query(
-				`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`,
-				[JSON.stringify(dto.information ?? {}), id],
-			);
+				await em.query(
+					`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+					[JSON.stringify(dto.information ?? {}), id],
+				);
 
-			await this.resolveFindingsAndActions(em, {
-				ifcId: id,
-				courseId,
-				periodId,
-				programId,
-				requesterStaffId: ctx.requesterStaffId!,
-				op,
-				findings: dto.findings,
-				actions: dto.actions,
-				deletedFindingIds: dto.deletedFindingIds,
-				deletedActionIds: dto.deletedActionIds,
-			});
+				await this.resolveFindingsAndActions(em, {
+					ifcId: id,
+					courseId,
+					periodId,
+					programId,
+					requesterStaffId: ctx.requesterStaffId!,
+					op,
+					findings: dto.findings,
+					actions: dto.actions,
+					deletedFindingIds: dto.deletedFindingIds,
+					deletedActionIds: dto.deletedActionIds,
+				});
 
-			await this.applyPreviousActionEvidences(em, {
-				courseId,
-				periodId,
-				excludeIfcId: id,
-				items: dto.previousActions,
-				op,
-			});
+				await this.applyPreviousActionEvidences(em, {
+					courseId,
+					periodId,
+					excludeIfcId: id,
+					items: dto.previousActions,
+					op,
+				});
 
-			const newStatusCode = dto.submit
-				? TYPE_CODES.IFC_STATUS.SUBMITTED
-				: TYPE_CODES.IFC_STATUS.SAVED;
-			await this.stateMachine.insertStatus(em, id, ctx.requesterStaffId!, newStatusCode, null);
+				const newStatusCode = dto.submit
+					? TYPE_CODES.IFC_STATUS.SUBMITTED
+					: TYPE_CODES.IFC_STATUS.SAVED;
+				const status = await this.stateMachine.insertStatus(
+					em,
+					id,
+					ctx.requesterStaffId!,
+					newStatusCode,
+					null,
+				);
 
-			return { courseChartId: ctx.courseChartId, periodId };
+				return { courseChartId: ctx.courseChartId, periodId, statusCode: status.code };
+			},
+		);
+
+		this.dispatcher.dispatchStatusChangeAsync({
+			chartId: courseChartId,
+			periodId,
+			ifcStatusCode: statusCode,
+			notifierUserId: userId,
+			ifcId: id,
 		});
-
-		if (dto.submit && courseChartId !== null && Number.isFinite(periodId)) {
-			setImmediate(() => {
-				this.dispatcher
-					.dispatch({
-						chartId: courseChartId,
-						periodId,
-						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
-						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
-						notifierUserId: userId,
-					})
-					.catch((err) =>
-						this.logger.error(`dispatch.failed ifcId=${id}: ${(err as Error).message}`),
-					);
-			});
-		}
 
 		return { id };
 	}

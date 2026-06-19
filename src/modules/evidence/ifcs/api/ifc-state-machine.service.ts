@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
@@ -13,8 +13,6 @@ type PeriodRow = { academicPeriodId: number };
 
 @Injectable()
 export class IfcStateMachineService {
-	private readonly logger = new Logger(IfcStateMachineService.name);
-
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly dispatcher: NotificationDispatcherService,
@@ -39,7 +37,7 @@ export class IfcStateMachineService {
 	}
 
 	async submit(ifcId: number, userId: number, schoolId: number) {
-		const { ctx, periodId } = await this.dataSource.transaction(async (em) => {
+		const { ctx, periodId, statusCode } = await this.dataSource.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT, em);
 			await IfcValidation.assertIsInCourseChain(em, ctx, IFC_OPS.SUBMIT);
@@ -48,7 +46,7 @@ export class IfcStateMachineService {
 				[null, TYPE_CODES.IFC_STATUS.SAVED],
 				IFC_OPS.SUBMIT,
 			);
-			await this.insertStatus(
+			const status = await this.insertStatus(
 				em,
 				ctx.ifcId,
 				ctx.requesterStaffId,
@@ -60,31 +58,22 @@ export class IfcStateMachineService {
 				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
 				[ifcId],
 			);
-			return { ctx, periodId: Number(periodRows[0]?.academicPeriodId) };
+			return { ctx, periodId: Number(periodRows[0]?.academicPeriodId), statusCode: status.code };
 		});
 
-		const courseChartId = ctx.courseChartId;
-		if (courseChartId !== null && Number.isFinite(periodId)) {
-			setImmediate(() => {
-				this.dispatcher
-					.dispatch({
-						chartId: courseChartId,
-						periodId,
-						triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
-						ifcStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED,
-						notifierUserId: userId,
-					})
-					.catch((err) =>
-						this.logger.error(`dispatch.failed ifcId=${ifcId}: ${(err as Error).message}`),
-					);
-			});
-		}
+		this.dispatcher.dispatchStatusChangeAsync({
+			chartId: ctx.courseChartId,
+			periodId,
+			ifcStatusCode: statusCode,
+			notifierUserId: userId,
+			ifcId,
+		});
 
 		return { id: ifcId };
 	}
 
 	async approve(ifcId: number, userId: number, schoolId: number) {
-		return await this.dataSource.transaction(async (em) => {
+		const { courseChartId, periodId, status } = await this.dataSource.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE, em);
 			await IfcValidation.assertHasHigherLevel(em, ctx, IFC_OPS.APPROVE);
@@ -93,18 +82,37 @@ export class IfcStateMachineService {
 				[TYPE_CODES.IFC_STATUS.SUBMITTED],
 				IFC_OPS.APPROVE,
 			);
-			return await this.insertStatus(
+			const status = await this.insertStatus(
 				em,
 				ctx.ifcId,
 				ctx.requesterStaffId,
 				TYPE_CODES.IFC_STATUS.APPROVED,
 				null,
 			);
+			const periodRows: PeriodRow[] = await em.query(
+				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
+				[ifcId],
+			);
+			return {
+				courseChartId: ctx.courseChartId,
+				periodId: Number(periodRows[0]?.academicPeriodId),
+				status,
+			};
 		});
+
+		this.dispatcher.dispatchStatusChangeAsync({
+			chartId: courseChartId,
+			periodId,
+			ifcStatusCode: status.code,
+			notifierUserId: userId,
+			ifcId,
+		});
+
+		return status;
 	}
 
 	async reject(ifcId: number, userId: number, schoolId: number, dto: RejectIfcDto) {
-		return await this.dataSource.transaction(async (em) => {
+		const { courseChartId, periodId, status } = await this.dataSource.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT, em);
 			await IfcValidation.assertHasHigherLevel(em, ctx, IFC_OPS.REJECT);
@@ -113,14 +121,33 @@ export class IfcStateMachineService {
 				[TYPE_CODES.IFC_STATUS.SUBMITTED],
 				IFC_OPS.REJECT,
 			);
-			return await this.insertStatus(
+			const status = await this.insertStatus(
 				em,
 				ctx.ifcId,
 				ctx.requesterStaffId,
 				TYPE_CODES.IFC_STATUS.OBSERVED,
 				dto.comment,
 			);
+			const periodRows: PeriodRow[] = await em.query(
+				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
+				[ifcId],
+			);
+			return {
+				courseChartId: ctx.courseChartId,
+				periodId: Number(periodRows[0]?.academicPeriodId),
+				status,
+			};
 		});
+
+		this.dispatcher.dispatchStatusChangeAsync({
+			chartId: courseChartId,
+			periodId,
+			ifcStatusCode: status.code,
+			notifierUserId: userId,
+			ifcId,
+		});
+
+		return status;
 	}
 
 	private async lockIfc(em: EntityManager, ifcId: number) {

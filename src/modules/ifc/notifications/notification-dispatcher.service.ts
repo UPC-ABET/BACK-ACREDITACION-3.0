@@ -147,6 +147,40 @@ export class NotificationDispatcherService {
 		}
 	}
 
+	/**
+	 * Fire-and-forget auto status-change notification, dispatched after the caller's
+	 * transaction has committed. The status code is whatever the transition actually
+	 * wrote — the config table decides whether anything is sent, so no status is ever
+	 * hardcoded here. No-ops silently when no matching config exists.
+	 */
+	dispatchStatusChangeAsync(input: {
+		chartId: number | null;
+		periodId: number;
+		ifcStatusCode: string;
+		notifierUserId: number;
+		ifcId?: number | null;
+	}): void {
+		if (
+			input.chartId === null ||
+			!Number.isFinite(input.chartId) ||
+			!Number.isFinite(input.periodId)
+		) {
+			return;
+		}
+		const chartId = input.chartId;
+		setImmediate(() => {
+			this.dispatch({
+				chartId,
+				periodId: input.periodId,
+				triggerCode: TYPE_CODES.NOTIFICATION_TRIGGER.AUTO_STATUS_CHANGE,
+				ifcStatusCode: input.ifcStatusCode,
+				notifierUserId: input.notifierUserId,
+			}).catch((err) =>
+				this.logger.error(`dispatch.failed ifcId=${input.ifcId ?? '?'}: ${(err as Error).message}`),
+			);
+		});
+	}
+
 	private async resolveContext(input: DispatchInput): Promise<ResolvedContext | null> {
 		const rows = await this.dataSource.query(
 			`
