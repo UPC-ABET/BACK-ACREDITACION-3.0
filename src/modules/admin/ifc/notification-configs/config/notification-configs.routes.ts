@@ -33,9 +33,9 @@ export const notificationConfigsRoutes = {
 				route: '/get-by-filters',
 				summary: 'Buscar configuraciones de notificacion IFC',
 			},
-			byPeriod: {
+			list: {
 				method: 'GET',
-				route: '/by-period',
+				route: '/list',
 				summary: 'Listar todas las configuraciones de notificación IFC',
 			},
 			upsert: {

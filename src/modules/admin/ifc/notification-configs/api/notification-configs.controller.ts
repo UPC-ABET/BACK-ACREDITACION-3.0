@@ -9,7 +9,7 @@ import {
 	SwaggerNotificationConfigGetAll,
 	SwaggerNotificationConfigGetById,
 	SwaggerNotificationConfigGetByFilters,
-	SwaggerNotificationConfigsByPeriod,
+	SwaggerNotificationConfigsList,
 	SwaggerNotificationConfigsUpsert,
 	SwaggerNotificationConfigsSoftDelete,
 } from './docs/notification-configs.swagger';
@@ -65,9 +65,9 @@ export class NotificationConfigController extends BaseController<NotificationCon
 		return await super.getByFilters(dto);
 	}
 
-	@SwaggerNotificationConfigsByPeriod()
+	@SwaggerNotificationConfigsList()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
-	async byPeriod() {
+	async list() {
 		const rows = await this.service.listConfigs();
 		return parseSuccessResponse(rows);
 	}

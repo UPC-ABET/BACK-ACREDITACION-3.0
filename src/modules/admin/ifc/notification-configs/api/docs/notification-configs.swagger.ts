@@ -28,9 +28,9 @@ export const SwaggerNotificationConfigGetById = () => HttpMethodWithSwagger(cfg.
 export const SwaggerNotificationConfigGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.getByFilters, body: FilterNotificationConfigDto });
 
-export const SwaggerNotificationConfigsByPeriod = () =>
+export const SwaggerNotificationConfigsList = () =>
 	HttpMethodWithSwagger({
-		...cfg.operation.byPeriod,
+		...cfg.operation.list,
 		responseType: NotificationConfigViewDto,
 	});
 
