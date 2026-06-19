@@ -101,4 +101,45 @@ export const REPORT_BASE_STYLES = `
 		font-style: italic;
 		text-align: center;
 	}
+	.report-chart {
+		width: 100%;
+		margin: 12px 0 20px;
+		break-inside: avoid;
+	}
+	.report-chart svg {
+		display: block;
+		width: 100%;
+		height: auto;
+		overflow: visible;
+	}
+	.report-chart__title {
+		margin: 0 0 4px;
+		text-align: center;
+		font-size: 11pt;
+	}
+	.report-chart__grid {
+		stroke: ${REPORT_THEME.border};
+		stroke-width: 1;
+	}
+	.report-chart__axis {
+		stroke: ${REPORT_THEME.text};
+		stroke-width: 1.2;
+	}
+	.report-chart__axis-label,
+	.report-chart__axis-title,
+	.report-chart__category,
+	.report-chart__legend {
+		fill: ${REPORT_THEME.text};
+		font-size: 12px;
+	}
+	.report-chart__value {
+		fill: ${REPORT_THEME.text};
+		font-size: 11px;
+		font-weight: 700;
+	}
+	.report-chart--empty {
+		padding: 24px;
+		color: ${REPORT_THEME.mutedText};
+		text-align: center;
+	}
 `;

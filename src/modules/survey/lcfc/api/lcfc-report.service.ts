@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ReportChartService } from 'src/libs/reporting/report-chart.service';
 import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
 import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
@@ -15,6 +16,7 @@ const LCFC_REPORT_STYLES = `
 	thead th { background: #e30613; color: #fff; text-align: left; }
 	tbody tr:nth-child(even) td { background: #fafafa; }
 	td.num, th.num { text-align: right; }
+	.report-chart + table { margin-top: 8px; }
 `;
 
 interface CountRow {
@@ -36,6 +38,7 @@ const LABELS = {
 		completed: 'Completadas',
 		pending: 'Pendientes',
 		completionRate: 'Avance',
+		surveyCount: 'Cantidad de encuestas',
 		byProgram: 'Encuestas por programa',
 		byCourse: 'Encuestas por curso',
 		program: 'Programa',
@@ -52,6 +55,7 @@ const LABELS = {
 		completed: 'Completed',
 		pending: 'Pending',
 		completionRate: 'Progress',
+		surveyCount: 'Survey count',
 		byProgram: 'Surveys by program',
 		byCourse: 'Surveys by course',
 		program: 'Program',
@@ -65,6 +69,7 @@ const LABELS = {
 export class LcfcReportService {
 	constructor(
 		private readonly notifService: LcfcNotificationService,
+		private readonly reportChart: ReportChartService,
 		private readonly reportGenerator: ReportGeneratorService,
 	) {}
 
@@ -138,6 +143,13 @@ export class LcfcReportService {
 			? `
 			<section>
 				<h3>${escapeHtml(L.byProgram)}</h3>
+				${this.buildCharts(
+					byProgram,
+					(row) => localizeName(row.programName, lang),
+					L.byProgram,
+					L.surveyCount,
+					L,
+				)}
 				<table>
 					<thead><tr>
 						<th>${escapeHtml(L.program)}</th>
@@ -160,6 +172,14 @@ export class LcfcReportService {
 			? `
 			<section>
 				<h3>${escapeHtml(L.byCourse)}</h3>
+				${this.buildCharts(
+					byCourse,
+					(row) =>
+						[row.sectionCode, localizeName(row.courseName, lang)].filter(Boolean).join(' - '),
+					L.byCourse,
+					L.surveyCount,
+					L,
+				)}
 				<table>
 					<thead><tr>
 						<th>${escapeHtml(L.course)}</th>
@@ -188,10 +208,49 @@ export class LcfcReportService {
 			additionalStyles: LCFC_REPORT_STYLES,
 		};
 	}
+
+	private buildCharts(
+		rows: CountRow[],
+		category: (row: CountRow) => string,
+		title: string,
+		yAxisLabel: string,
+		labels: (typeof LABELS)[ReportLanguage],
+	): string {
+		return chunk(rows, 6)
+			.map((group, index, groups) =>
+				this.reportChart.buildGroupedBarChart({
+					title: groups.length > 1 ? `${title} (${index + 1}/${groups.length})` : title,
+					categories: group.map(category),
+					series: [
+						{
+							label: labels.completed,
+							color: '#16a34a',
+							values: group.map((row) => row.completed),
+						},
+						{
+							label: labels.pending,
+							color: '#e30613',
+							values: group.map((row) => row.pending),
+						},
+					],
+					yAxisLabel,
+					emptyLabel: labels.empty,
+				}),
+			)
+			.join('');
+	}
 }
 
 function localizeName(value: I18nText | string | undefined, lang: ReportLanguage): string {
 	if (value == null) return '';
 	if (typeof value === 'string') return value;
 	return localize(value, lang);
+}
+
+function chunk<T>(values: T[], size: number): T[][] {
+	const groups: T[][] = [];
+	for (let index = 0; index < values.length; index += size) {
+		groups.push(values.slice(index, index + size));
+	}
+	return groups;
 }
