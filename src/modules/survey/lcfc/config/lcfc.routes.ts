@@ -109,5 +109,10 @@ export const lcfcRoutes = {
 			route: 'export',
 			summary: 'Download completed LCFC surveys with scores as an Excel file',
 		},
+		reportPdf: {
+			method: 'GET',
+			route: 'report-pdf',
+			summary: 'Download the LCFC results report (completion by program/course) as a PDF',
+		},
 	},
 };

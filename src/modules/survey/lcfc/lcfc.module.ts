@@ -8,8 +8,10 @@ import { LcfcSurveyRepository } from './core/lcfc-survey.repository';
 import { LcfcNotificationRepository } from './core/lcfc-notification.repository';
 import { MailModule } from 'src/modules/mail/mail.module';
 import { SurveySharedModule } from 'src/modules/survey/shared/survey-shared.module';
+import { ReportModule } from 'src/libs/reporting/report.module';
 import { LcfcConfigService } from './api/lcfc-config.service';
 import { LcfcNotificationService } from './api/lcfc-notification.service';
+import { LcfcReportService } from './api/lcfc-report.service';
 import { LcfcService } from './api/lcfc.service';
 import { LcfcController } from './api/lcfc.controller';
 
@@ -18,12 +20,14 @@ import { LcfcController } from './api/lcfc.controller';
 		TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, NotificationEntity]),
 		MailModule,
 		SurveySharedModule,
+		ReportModule,
 	],
 	controllers: [LcfcController],
 	providers: [
 		LcfcService,
 		LcfcConfigService,
 		LcfcNotificationService,
+		LcfcReportService,
 		LcfcConfigRepository,
 		LcfcSurveyRepository,
 		LcfcNotificationRepository,

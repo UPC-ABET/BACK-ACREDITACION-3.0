@@ -71,7 +71,7 @@ export class LcfcNotificationService {
 	}
 
 	async sendNotifications(dto: SendLcfcNotificationDto) {
-		const { lcfcSurveyTypeId, activeStatusId, scheduledStatusId, sentStatusId } =
+		const { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId } =
 			await this.getTypeIds();
 		const activeConfigs = await this.configRepo.findAllLcfc({
 			academicPeriodId: dto.academicPeriodId,
@@ -145,6 +145,11 @@ export class LcfcNotificationService {
 
 					if (existingSurvey) {
 						alreadyExisted++;
+						// Never (re)send to a student who already completed this survey — even on resend.
+						// If all of a student's surveys are completed, they receive no email.
+						if (existingSurvey.surveyStatusTypeId === closedStatusId) {
+							continue;
+						}
 						// Default behaviour only (re)sends notifications still scheduled (never sent),
 						// so pressing "send" twice does not spam students. On resend we reuse the
 						// latest existing notification regardless of status and refresh its deadline.
@@ -476,6 +481,8 @@ export class LcfcNotificationService {
 				completionRatePct: completionRate,
 			},
 			byCourse: data.byCourse,
+			// Per-program breakdown — the frontend only renders it when no program is filtered.
+			byProgram: data.byProgram,
 			filters: dto,
 		};
 	}

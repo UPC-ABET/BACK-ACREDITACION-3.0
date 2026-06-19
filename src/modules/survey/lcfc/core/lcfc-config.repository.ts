@@ -212,25 +212,33 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	async getSectionCommissions(
 		courseSectionId: number,
 		programId?: number | null,
-	): Promise<{ commissionId: number; code: string; name: unknown }[]> {
-		// The DISTINCT set is wrapped so we can sort by the Spanish commission name: an
-		// expression like cm.name->>'es' is not allowed in ORDER BY alongside SELECT DISTINCT
-		// unless it is part of the select list, so we order in the outer query instead.
+	): Promise<
+		{ commissionId: number; code: string; name: unknown; typeCode: string; typeName: unknown }[]
+	> {
+		// DISTINCT ON keeps one row per base commission while exposing its accreditation
+		// commission type (EAC/CAC/…) so the UI can default to EAC. When a commission appears
+		// under several types we prefer the EAC one. The outer query then sorts by the Spanish
+		// commission name (not allowed directly alongside DISTINCT ON's required ORDER BY).
 		return await this.dataSource.query(
-			`SELECT "commissionId", "code", "name"
+			`SELECT "commissionId", "code", "name", "typeCode", "typeName"
 			FROM (
-				SELECT DISTINCT
+				SELECT DISTINCT ON (pc.commission_id)
 					pc.commission_id AS "commissionId",
 					cm.code          AS "code",
-					cm.name          AS "name"
+					cm.name          AS "name",
+					ct.code          AS "typeCode",
+					ct.name          AS "typeName"
 				FROM accreditation.program_commissions pc
 				INNER JOIN accreditation.commissions cm ON cm.id = pc.commission_id
+				LEFT JOIN core.types ct ON ct.id = pc.commission_type_id
 				INNER JOIN accreditation.outcomes o ON o.program_commission_id = pc.id
 				INNER JOIN academic.course_outcome_mappings com ON com.outcome_id = o.id
 				INNER JOIN academic.study_plan_courses spc ON spc.id = com.study_plan_course_id
 				INNER JOIN academic.course_sections cs ON cs.course_id = spc.course_id
 				WHERE cs.id = $1
 				  AND ($2::int IS NULL OR pc.program_id = $2)
+				ORDER BY pc.commission_id,
+					(COALESCE(ct.code, '') ILIKE '%EAC%' OR COALESCE(ct.name->>'es', '') ILIKE '%EAC%') DESC
 			) t
 			ORDER BY t."name"->>'es' ASC`,
 			[courseSectionId, programId ?? null],
