@@ -162,7 +162,13 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		activeStatusId: number,
 		closedStatusId: number,
 		filters: { academicPeriodId?: number; programId?: number; campusId?: number },
-	): Promise<{ completed: number; pending: number; total: number; byCourse: any[] }> {
+	): Promise<{
+		completed: number;
+		pending: number;
+		total: number;
+		byCourse: any[];
+		byProgram: any[];
+	}> {
 		let whereClause = `s.survey_type_id = $1`;
 		const params: any[] = [lcfcSurveyTypeId];
 
@@ -179,7 +185,7 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 			params.push(filters.campusId);
 		}
 
-		const [summary, byCourse] = await Promise.all([
+		const [summary, byCourse, byProgram] = await Promise.all([
 			this.dataSource.query(
 				`SELECT
 					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int AS "completed",
@@ -204,6 +210,20 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 				ORDER BY c.name ASC, cs.section_code ASC`,
 				[...params, closedStatusId, activeStatusId],
 			),
+			this.dataSource.query(
+				`SELECT
+					s.program_id                                                                        AS "programId",
+					p.name                                                                              AS "programName",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int       AS "completed",
+					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int       AS "pending",
+					COUNT(*)::int                                                                       AS "total"
+				FROM evidence.surveys s
+				INNER JOIN academic.programs p ON p.id = s.program_id
+				WHERE ${whereClause}
+				GROUP BY s.program_id, p.name
+				ORDER BY p.name->>'es' ASC`,
+				[...params, closedStatusId, activeStatusId],
+			),
 		]);
 
 		return {
@@ -211,6 +231,7 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 			pending: summary[0]?.pending ?? 0,
 			total: summary[0]?.total ?? 0,
 			byCourse,
+			byProgram,
 		};
 	}
 }

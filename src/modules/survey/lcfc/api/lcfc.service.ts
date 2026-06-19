@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import type { ReportLanguage } from 'src/libs/reporting/report.types';
 import { LcfcConfigService } from './lcfc-config.service';
 import { LcfcNotificationService } from './lcfc-notification.service';
+import { LcfcReportService } from './lcfc-report.service';
 import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
@@ -19,7 +21,12 @@ export class LcfcService {
 	constructor(
 		private readonly configService: LcfcConfigService,
 		private readonly notifService: LcfcNotificationService,
+		private readonly reportService: LcfcReportService,
 	) {}
+
+	generateReportPdf(academicPeriodId: number, programId: number | undefined, lang: ReportLanguage) {
+		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang);
+	}
 
 	generateConfigs(dto: GenerateLcfcConfigDto, schoolId: number) {
 		return this.configService.generateConfigs(dto, schoolId);

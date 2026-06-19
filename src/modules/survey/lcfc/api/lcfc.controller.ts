@@ -24,6 +24,7 @@ import {
 	SwaggerLcfcSurveyComplete,
 	SwaggerLcfcDashboard,
 	SwaggerLcfcExport,
+	SwaggerLcfcReportPdf,
 } from './docs/lcfc.swagger';
 import {
 	GenerateLcfcConfigDto,
@@ -189,5 +190,31 @@ export class LcfcController {
 		);
 		res.setHeader('Content-Length', buffer.length.toString());
 		res.end(buffer);
+	}
+
+	@SwaggerLcfcReportPdf()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async reportPdf(
+		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@Res() res: Response,
+		@Query('programId') programIdRaw?: string,
+		@Query('lang') langRaw?: string,
+	) {
+		const programId =
+			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
+		const lang = langRaw === 'en' ? 'en' : 'es';
+		const { pdf, filename } = await this.lcfcService.generateReportPdf(
+			academicPeriodId,
+			programId,
+			lang,
+		);
+		const encoded = encodeURIComponent(filename);
+		res.setHeader('Content-Type', 'application/pdf');
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${filename}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', pdf.length.toString());
+		res.end(pdf);
 	}
 }
