@@ -14,13 +14,11 @@ export class NotificationConfigRepository extends BaseRepository<NotificationCon
 		super(repository, dataSource);
 	}
 
-	async findByPeriod(schoolId: number, periodId: number) {
+	async findAllConfigs() {
 		return await this.dataSource.query(
 			`
 			SELECT
 				nc.id::int                       AS "id",
-				nc.school_id::int                AS "schoolId",
-				nc.academic_period_id::int       AS "academicPeriodId",
 				nc.trigger_type_id::int          AS "triggerTypeId",
 				nc.ifc_status_type_id::int       AS "ifcStatusTypeId",
 				nc.email_template_id::int        AS "emailTemplateId",
@@ -38,23 +36,19 @@ export class NotificationConfigRepository extends BaseRepository<NotificationCon
 			JOIN core.types ct_trigger ON ct_trigger.id = nc.trigger_type_id
 			JOIN core.types ct_status  ON ct_status.id  = nc.ifc_status_type_id
 			JOIN core.email_templates et ON et.id = nc.email_template_id
-			WHERE nc.school_id          = $1
-			  AND nc.academic_period_id = $2
-			  AND nc.is_active          = true
 			ORDER BY ct_trigger.code, ct_status.code
 			`,
-			[schoolId, periodId],
 		);
 	}
 
 	/*
 	 * Creates/updates the IFC email template AND the notification config in a single
 	 * transaction. The template is keyed by a deterministic code derived from the config
-	 * scope, so re-saving the same config updates its template in place (1:1).
+	 * (trigger + status), so re-saving the same config updates its template in place (1:1).
 	 */
-	async upsertWithTemplate(schoolId: number, dto: UpsertNotificationConfigDto) {
+	async upsertWithTemplate(dto: UpsertNotificationConfigDto) {
 		return await this.dataSource.transaction(async (manager) => {
-			const templateCode = `IFC_${schoolId}_${dto.academicPeriodId}_${dto.triggerTypeId}_${dto.ifcStatusTypeId}`;
+			const templateCode = `IFC_${dto.triggerTypeId}_${dto.ifcStatusTypeId}`;
 
 			const tplRows = await manager.query(
 				`
@@ -79,18 +73,16 @@ export class NotificationConfigRepository extends BaseRepository<NotificationCon
 			const rows = await manager.query(
 				`
 				INSERT INTO ifc.notification_configs
-					(school_id, academic_period_id, trigger_type_id, ifc_status_type_id,
+					(trigger_type_id, ifc_status_type_id,
 					 email_template_id, to_chart_entity_type_ids, cc_chart_entity_type_ids, is_active)
-				VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8)
-				ON CONFLICT ON CONSTRAINT "UQ_notification_configs_school_period_trigger_status" DO UPDATE
+				VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)
+				ON CONFLICT ON CONSTRAINT "UQ_notification_configs_trigger_status" DO UPDATE
 				SET email_template_id         = EXCLUDED.email_template_id,
 					to_chart_entity_type_ids   = EXCLUDED.to_chart_entity_type_ids,
 					cc_chart_entity_type_ids   = EXCLUDED.cc_chart_entity_type_ids,
 					is_active                 = EXCLUDED.is_active,
 					updated_at                = NOW()
 				RETURNING id::int                       AS "id",
-						  school_id::int                AS "schoolId",
-						  academic_period_id::int       AS "academicPeriodId",
 						  trigger_type_id::int          AS "triggerTypeId",
 						  ifc_status_type_id::int       AS "ifcStatusTypeId",
 						  email_template_id::int        AS "emailTemplateId",
@@ -99,8 +91,6 @@ export class NotificationConfigRepository extends BaseRepository<NotificationCon
 						  is_active                     AS "isActive"
 				`,
 				[
-					schoolId,
-					dto.academicPeriodId,
 					dto.triggerTypeId,
 					dto.ifcStatusTypeId,
 					emailTemplateId,
@@ -114,10 +104,10 @@ export class NotificationConfigRepository extends BaseRepository<NotificationCon
 		});
 	}
 
-	async softDeleteForSchool(schoolId: number, id: number) {
+	async softDelete(id: number) {
 		await this.dataSource.query(
-			`UPDATE ifc.notification_configs SET is_active = false, updated_at = NOW() WHERE id = $1 AND school_id = $2`,
-			[id, schoolId],
+			`UPDATE ifc.notification_configs SET is_active = false, updated_at = NOW() WHERE id = $1`,
+			[id],
 		);
 	}
 }

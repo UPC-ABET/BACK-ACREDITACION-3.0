@@ -5,6 +5,7 @@ const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
 	findDeleteBlockerCounts: jest.fn(),
+	checkStudyPlanEligibility: jest.fn(),
 };
 
 const noBlockers = {
@@ -16,6 +17,10 @@ const noBlockers = {
 describe('StudentSectionEnrollmentValidation', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+			periodMatches: true,
+			courseInPlan: true,
+		});
 	});
 
 	describe('validateCreate', () => {
@@ -31,6 +36,43 @@ describe('StudentSectionEnrollmentValidation', () => {
 			await expect(
 				StudentSectionEnrollmentValidation.validateCreate(mockRepo as any, { name: 'test' }),
 			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the section course is not in the student study plan', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+				periodMatches: true,
+				courseInPlan: false,
+			});
+			await expect(
+				StudentSectionEnrollmentValidation.validateCreate(mockRepo as any, {
+					enrolledStudentId: 4,
+					courseSectionId: 3,
+				}),
+			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the section period does not match the student study plan', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+				periodMatches: false,
+				courseInPlan: false,
+			});
+
+			let caught: HttpException | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateCreate(mockRepo as any, {
+					enrolledStudentId: 4,
+					courseSectionId: 3,
+				});
+			} catch (e) {
+				caught = e as HttpException;
+			}
+
+			expect(caught).toBeInstanceOf(HttpException);
+			const body = caught!.getResponse() as { errors: string[] };
+			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
+			expect(body.errors).not.toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
 		});
 	});
 
@@ -84,6 +126,44 @@ describe('StudentSectionEnrollmentValidation', () => {
 				StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto),
 			).rejects.toThrow(HttpException);
 		});
+
+		it('throws when the section course is not in the student study plan', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+				periodMatches: true,
+				courseInPlan: false,
+			});
+
+			let caught: HttpException | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto);
+			} catch (e) {
+				caught = e as HttpException;
+			}
+
+			expect(caught).toBeInstanceOf(HttpException);
+			const body = caught!.getResponse() as { errors: string[] };
+			expect(body.errors).toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
+		});
+
+		it('throws when the section period does not match the student study plan', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+				periodMatches: false,
+				courseInPlan: false,
+			});
+
+			let caught: HttpException | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto);
+			} catch (e) {
+				caught = e as HttpException;
+			}
+
+			expect(caught).toBeInstanceOf(HttpException);
+			const body = caught!.getResponse() as { errors: string[] };
+			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
+		});
 	});
 
 	describe('validateMaintenanceUpdate', () => {
@@ -126,6 +206,50 @@ describe('StudentSectionEnrollmentValidation', () => {
 					enrolledStudentId: 11,
 				}),
 			).rejects.toThrow(HttpException);
+		});
+
+		it('throws when the new pair course is not in the student study plan', async () => {
+			mockRepo.findOneById.mockResolvedValue(existing);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+				periodMatches: true,
+				courseInPlan: false,
+			});
+
+			let caught: HttpException | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
+					courseSectionId: 21,
+				});
+			} catch (e) {
+				caught = e as HttpException;
+			}
+
+			expect(caught).toBeInstanceOf(HttpException);
+			const body = caught!.getResponse() as { errors: string[] };
+			expect(body.errors).toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
+		});
+
+		it('throws when the new pair period does not match the student study plan', async () => {
+			mockRepo.findOneById.mockResolvedValue(existing);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.checkStudyPlanEligibility.mockResolvedValue({
+				periodMatches: false,
+				courseInPlan: false,
+			});
+
+			let caught: HttpException | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
+					courseSectionId: 21,
+				});
+			} catch (e) {
+				caught = e as HttpException;
+			}
+
+			expect(caught).toBeInstanceOf(HttpException);
+			const body = caught!.getResponse() as { errors: string[] };
+			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
 		});
 	});
 

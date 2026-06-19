@@ -31,15 +31,15 @@ export class NotificationConfigService extends BaseService<NotificationConfigRep
 		return await super.delete(id, manager);
 	}
 
-	async byPeriod(schoolId: number, periodId: number) {
-		return await this.repository.findByPeriod(schoolId, periodId);
+	async listConfigs() {
+		return await this.repository.findAllConfigs();
 	}
 
-	async upsert(schoolId: number, dto: UpsertNotificationConfigDto) {
-		return await this.repository.upsertWithTemplate(schoolId, dto);
+	async upsert(dto: UpsertNotificationConfigDto) {
+		return await this.repository.upsertWithTemplate(dto);
 	}
 
-	async softDelete(schoolId: number, id: number) {
-		return await this.repository.softDeleteForSchool(schoolId, id);
+	async softDelete(id: number) {
+		return await this.repository.softDelete(id);
 	}
 }

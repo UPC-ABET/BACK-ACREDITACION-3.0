@@ -5,7 +5,6 @@ import {
 	UpdateNotificationConfigDto,
 	FilterNotificationConfigDto,
 	UpsertNotificationConfigDto,
-	NotificationConfigsByPeriodQueryDto,
 	NotificationConfigViewDto,
 } from '../../model/notification-configs.dtos';
 
@@ -32,7 +31,6 @@ export const SwaggerNotificationConfigGetByFilters = () =>
 export const SwaggerNotificationConfigsByPeriod = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.byPeriod,
-		query: NotificationConfigsByPeriodQueryDto,
 		responseType: NotificationConfigViewDto,
 	});
 

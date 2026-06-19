@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, Param, ParseIntPipe } from '@nestjs/common';
 import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
@@ -19,13 +19,8 @@ import {
 	UpdateNotificationConfigDto,
 	FilterNotificationConfigDto,
 	UpsertNotificationConfigDto,
-	NotificationConfigsByPeriodQueryDto,
 } from '../model/notification-configs.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-import {
-	SchoolId,
-	ApiSchoolHeader,
-} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerNotificationConfigController()
@@ -71,26 +66,23 @@ export class NotificationConfigController extends BaseController<NotificationCon
 	}
 
 	@SwaggerNotificationConfigsByPeriod()
-	@ApiSchoolHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
-	async byPeriod(@Query() q: NotificationConfigsByPeriodQueryDto, @SchoolId() schoolId: number) {
-		const rows = await this.service.byPeriod(schoolId, q.periodId);
+	async byPeriod() {
+		const rows = await this.service.listConfigs();
 		return parseSuccessResponse(rows);
 	}
 
 	@SwaggerNotificationConfigsUpsert()
-	@ApiSchoolHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
-	async upsert(@Body() dto: UpsertNotificationConfigDto, @SchoolId() schoolId: number) {
-		const row = await this.service.upsert(schoolId, dto);
+	async upsert(@Body() dto: UpsertNotificationConfigDto) {
+		const row = await this.service.upsert(dto);
 		return parseSuccessResponse(row);
 	}
 
 	@SwaggerNotificationConfigsSoftDelete()
-	@ApiSchoolHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.DELETE })
-	async softDelete(@Param('id', ParseIntPipe) id: number, @SchoolId() schoolId: number) {
-		await this.service.softDelete(schoolId, id);
+	async softDelete(@Param('id', ParseIntPipe) id: number) {
+		await this.service.softDelete(id);
 		return parseSuccessResponse(null);
 	}
 }

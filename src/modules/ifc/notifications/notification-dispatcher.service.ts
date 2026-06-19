@@ -219,14 +219,12 @@ export class NotificationDispatcherService {
 				nc.cc_chart_entity_type_ids     AS "ccChartEntityTypeIds"
 			FROM ifc.notification_configs nc
 			JOIN core.email_templates et ON et.id = nc.email_template_id
-			WHERE nc.school_id          = $1
-			  AND nc.academic_period_id = $2
-			  AND nc.trigger_type_id    = $3
-			  AND nc.ifc_status_type_id = $4
+			WHERE nc.trigger_type_id    = $1
+			  AND nc.ifc_status_type_id = $2
 			  AND nc.is_active          = true
 			LIMIT 1
 			`,
-			[ctx.schoolId, ctx.periodId, ctx.triggerTypeId, ctx.ifcStatusTypeId],
+			[ctx.triggerTypeId, ctx.ifcStatusTypeId],
 		);
 		return (rows[0] as LoadedConfig | undefined) ?? null;
 	}

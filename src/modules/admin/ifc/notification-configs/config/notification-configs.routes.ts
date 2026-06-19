@@ -36,7 +36,7 @@ export const notificationConfigsRoutes = {
 			byPeriod: {
 				method: 'GET',
 				route: '/by-period',
-				summary: 'Listar configuraciones de notificación de la escuela del usuario para un período',
+				summary: 'Listar todas las configuraciones de notificación IFC',
 			},
 			upsert: {
 				method: 'POST',

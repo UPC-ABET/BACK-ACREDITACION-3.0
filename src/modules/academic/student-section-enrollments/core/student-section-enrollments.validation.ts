@@ -22,6 +22,24 @@ const DELETE_BLOCKER_KEYS: Array<[keyof StudentSectionEnrollmentDeleteBlockerCou
 ];
 
 export class StudentSectionEnrollmentValidation {
+	private static async studyPlanEligibilityError(
+		repo: StudentSectionEnrollmentRepository,
+		enrolledStudentId: number,
+		courseSectionId: number,
+	): Promise<string | null> {
+		const { periodMatches, courseInPlan } = await repo.checkStudyPlanEligibility(
+			enrolledStudentId,
+			courseSectionId,
+		);
+		if (!periodMatches) {
+			return studentSectionEnrollmentsValidationStrings.error.studyPlanPeriodMismatch;
+		}
+		if (!courseInPlan) {
+			return studentSectionEnrollmentsValidationStrings.error.courseNotInStudyPlan;
+		}
+		return null;
+	}
+
 	static async validateCreate(repo: StudentSectionEnrollmentRepository, data: any) {
 		const errors: Array<string> = [];
 
@@ -33,6 +51,15 @@ export class StudentSectionEnrollmentValidation {
 		});
 
 		if (exists) errors.push(studentSectionEnrollmentsValidationStrings.error.enrollmentExists);
+
+		if (data.enrolledStudentId && data.courseSectionId) {
+			const eligibilityError = await this.studyPlanEligibilityError(
+				repo,
+				data.enrolledStudentId,
+				data.courseSectionId,
+			);
+			if (eligibilityError) errors.push(eligibilityError);
+		}
 
 		if (errors.length > 0) {
 			throw new HttpException(
@@ -61,6 +88,24 @@ export class StudentSectionEnrollmentValidation {
 
 			if (exists && exists.id !== id) {
 				errors.push(studentSectionEnrollmentsValidationStrings.error.enrollmentExists);
+			}
+		}
+
+		if (entity) {
+			const enrolledStudentId = data.enrolledStudentId ?? entity.enrolledStudentId;
+			const courseSectionId = data.courseSectionId ?? entity.courseSectionId;
+			const pairChanged =
+				(data.enrolledStudentId !== undefined &&
+					data.enrolledStudentId !== entity.enrolledStudentId) ||
+				(data.courseSectionId !== undefined && data.courseSectionId !== entity.courseSectionId);
+
+			if (pairChanged) {
+				const eligibilityError = await this.studyPlanEligibilityError(
+					repo,
+					enrolledStudentId,
+					courseSectionId,
+				);
+				if (eligibilityError) errors.push(eligibilityError);
 			}
 		}
 
@@ -99,6 +144,13 @@ export class StudentSectionEnrollmentValidation {
 			},
 		});
 		if (exists) errors.push(studentSectionEnrollmentsValidationStrings.error.enrollmentExists);
+
+		const eligibilityError = await this.studyPlanEligibilityError(
+			repo,
+			data.enrolledStudentId,
+			data.courseSectionId,
+		);
+		if (eligibilityError) errors.push(eligibilityError);
 
 		if (errors.length > 0) {
 			throw new HttpException(
@@ -143,6 +195,21 @@ export class StudentSectionEnrollmentValidation {
 					{
 						message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
 						errors: [studentSectionEnrollmentsValidationStrings.error.enrollmentExists],
+					},
+					HttpStatus.BAD_REQUEST,
+				);
+			}
+
+			const eligibilityError = await this.studyPlanEligibilityError(
+				repo,
+				enrolledStudentId,
+				courseSectionId,
+			);
+			if (eligibilityError) {
+				throw new HttpException(
+					{
+						message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
+						errors: [eligibilityError],
 					},
 					HttpStatus.BAD_REQUEST,
 				);

@@ -23,14 +23,6 @@ export class CreateNotificationConfigDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	schoolId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academicPeriodId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
 	triggerTypeId: number;
 
 	@IsNumber()
@@ -61,16 +53,6 @@ export class UpdateNotificationConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	schoolId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -107,14 +89,6 @@ export class FilterNotificationConfigDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	schoolId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
 	triggerTypeId?: number;
 
 	@IsOptional()
@@ -137,12 +111,6 @@ export class FilterNotificationConfigDto {
 // %% OTHER DTOS
 
 export class UpsertNotificationConfigDto {
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@IsPositive()
-	@Type(() => Number)
-	academicPeriodId: number;
-
 	@ApiProperty({
 		example: 1,
 		required: true,
@@ -200,18 +168,8 @@ export class UpsertNotificationConfigDto {
 	isActive?: boolean;
 }
 
-export class NotificationConfigsByPeriodQueryDto {
-	@ApiProperty({ example: 1, required: true })
-	@IsInt()
-	@IsPositive()
-	@Type(() => Number)
-	periodId: number;
-}
-
 export class NotificationConfigViewDto {
 	@ApiProperty({ example: 1 }) id: number;
-	@ApiProperty({ example: 1 }) schoolId: number;
-	@ApiProperty({ example: 1 }) academicPeriodId: number;
 	@ApiProperty({ example: 1 }) triggerTypeId: number;
 	@ApiProperty({ example: 'triggerCodeExample' }) triggerCode: string;
 	@ApiProperty({ example: { es: 'triggerNameEs', en: 'triggerNameEn' }, type: Object })

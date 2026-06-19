@@ -23,7 +23,8 @@ export const studentSectionsErrorMessages: Record<string, Record<string, string>
 		studentCodeEmpty: 'El código del alumno es obligatorio.',
 		studentNotFound: 'No existe un alumno con ese código.',
 		studyPlanPeriodMismatch:
-			'El alumno no está matriculado en el mismo plan de estudios y período que la sección.',
+			'El alumno no está matriculado en la misma malla curricular y período que la sección.',
+		courseNotInStudyPlan: 'El curso de la sección no pertenece a la malla curricular del alumno.',
 	},
 	en: {
 		duplicateRowInFile: 'Duplicate row in the file (same section and student).',
@@ -33,6 +34,7 @@ export const studentSectionsErrorMessages: Record<string, Record<string, string>
 		studentNotFound: 'No student exists with that code.',
 		studyPlanPeriodMismatch:
 			'The student is not enrolled in the same study plan and period as the section.',
+		courseNotInStudyPlan: "The section's course does not belong to the student's study plan.",
 	},
 };
 

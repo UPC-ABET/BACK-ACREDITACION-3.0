@@ -9,6 +9,11 @@ export interface StudentSectionEnrollmentDeleteBlockerCounts {
 	studentCourseOutcomeGrades: number;
 }
 
+export interface StudentSectionStudyPlanEligibility {
+	periodMatches: boolean;
+	courseInPlan: boolean;
+}
+
 export class StudentSectionEnrollmentRepository extends BaseRepository<StudentSectionEnrollmentEntity> {
 	constructor(
 		@InjectRepository(StudentSectionEnrollmentEntity)
@@ -66,6 +71,37 @@ export class StudentSectionEnrollmentRepository extends BaseRepository<StudentSe
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async checkStudyPlanEligibility(
+		enrolledStudentId: number,
+		courseSectionId: number,
+	): Promise<StudentSectionStudyPlanEligibility> {
+		const [row] = await this.dataSource.query(
+			`SELECT
+				EXISTS (
+					SELECT 1
+					FROM academic.enrolled_students es
+					JOIN academic.course_sections cs ON cs.id = $2
+					JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period
+					WHERE es.id = $1 AND spap.academic_period_id = cs.academic_period_id
+				) AS "periodMatches",
+				EXISTS (
+					SELECT 1
+					FROM academic.enrolled_students es
+					JOIN academic.course_sections cs ON cs.id = $2
+					JOIN academic.study_plan_courses spc
+						ON spc.study_plan_academic_period_id = es.study_plan_academic_period
+					   AND spc.course_id = cs.course_id
+					WHERE es.id = $1
+				) AS "courseInPlan"`,
+			[enrolledStudentId, courseSectionId],
+		);
+
+		return {
+			periodMatches: row.periodMatches === true,
+			courseInPlan: row.courseInPlan === true,
+		};
 	}
 
 	async findDeleteBlockerCounts(id: number): Promise<StudentSectionEnrollmentDeleteBlockerCounts> {

@@ -1,7 +1,7 @@
 export const articulationTemplateLabels: Record<string, Record<string, string>> = {
 	es: {
 		outcomeCode: 'Código del outcome',
-		studyPlanCode: 'Código del plan de estudios',
+		studyPlanCode: 'Código de la malla curricular',
 		courseCode: 'Código del curso',
 		outcomeTypeCode: 'Código del tipo de outcome',
 		legendSheet: 'Tipos de outcome',
@@ -27,12 +27,12 @@ export const articulationTemplateLabels: Record<string, Record<string, string>> 
 
 export const articulationErrorMessages: Record<string, Record<string, string>> = {
 	es: {
-		duplicateRowInFile: 'Fila duplicada en el archivo (mismo outcome, plan y curso).',
+		duplicateRowInFile: 'Fila duplicada en el archivo (mismo outcome, malla y curso).',
 		outcomeCodeEmpty: 'El código del outcome es obligatorio.',
 		outcomeNotFound: 'No existe un outcome con ese código.',
-		studyPlanCodeEmpty: 'El código del plan de estudios es obligatorio.',
+		studyPlanCodeEmpty: 'El código de la malla curricular es obligatorio.',
 		courseCodeEmpty: 'El código del curso es obligatorio.',
-		studyPlanCourseNotFound: 'No existe el curso en ese plan de estudios para el período.',
+		studyPlanCourseNotFound: 'No existe el curso en esa malla curricular para el período.',
 		outcomeTypeInvalid: 'El código del tipo de outcome no es válido.',
 	},
 	en: {

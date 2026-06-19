@@ -28,10 +28,10 @@ export const outcomesErrorMessages: Record<string, Record<string, string>> = {
 		outcomeCodeTooLong:
 			'El código del outcome (comisión-carrera-outcome) supera el largo máximo permitido (50 caracteres).',
 		outcomeNameEmpty: 'El nombre del outcome es obligatorio.',
-		programNotFound: 'No existe un programa con ese código.',
+		programNotFound: 'No existe una carrera con ese código.',
 		programModalityMismatch: 'La carrera no corresponde a la modalidad del período académico.',
 		commissionNotFound: 'No existe una comisión con ese código.',
-		programCommissionNotFound: 'No existe una comisión asignada al programa en este período.',
+		programCommissionNotFound: 'No existe una comisión asignada a la carrera en este período.',
 		outcomeCodeConflict: 'El código del outcome ya está asignado a otra comisión.',
 	},
 	en: {

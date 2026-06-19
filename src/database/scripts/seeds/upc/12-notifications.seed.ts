@@ -6,9 +6,6 @@ const i18nJson = (es: string, en?: string) => JSON.stringify({ es, en: en ?? es 
 const EMAIL_TEMPLATE_CATEGORY_CODE = 'TG1004-T002';
 
 runSeed('ifc notification configs', async (tenantDataSource) => {
-	const SCHOOL_CODE = 'EISCB';
-	const ACADEMIC_PERIOD_CODE = '202502';
-
 	const rows = [
 		{
 			triggerCode: 'TG1002-T001', // MANUAL
@@ -100,23 +97,6 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 		},
 	];
 
-	const idsRow = await tenantDataSource.query(
-		`
-		SELECT
-			(SELECT id FROM "organization"."schools"    WHERE code = $1)              AS "schoolId",
-			(SELECT id FROM "academic"."academic_periods" WHERE code = $2)            AS "academicPeriodId"
-`,
-		[SCHOOL_CODE, ACADEMIC_PERIOD_CODE],
-	);
-
-	const schoolId = idsRow[0]?.schoolId;
-	const academicPeriodId = idsRow[0]?.academicPeriodId;
-	if (!schoolId || !academicPeriodId) {
-		throw new Error(
-			`School code='${SCHOOL_CODE}' or period code='${ACADEMIC_PERIOD_CODE}' not found. (school_id=${schoolId}, academic_period_id=${academicPeriodId})`,
-		);
-	}
-
 	for (const r of rows) {
 		const templateRow = await tenantDataSource.query(
 			`
@@ -141,43 +121,33 @@ runSeed('ifc notification configs', async (tenantDataSource) => {
 		await tenantDataSource.query(
 			`
 			INSERT INTO "ifc"."notification_configs"
-				(school_id, academic_period_id, trigger_type_id, ifc_status_type_id,
+				(trigger_type_id, ifc_status_type_id,
 				 email_template_id, to_chart_entity_type_ids, cc_chart_entity_type_ids, is_active)
 			SELECT
-				$1::int,
-				$2::int,
-				(SELECT id FROM "core"."types" WHERE code = $3),
-				(SELECT id FROM "core"."types" WHERE code = $4),
-				$5::int,
+				(SELECT id FROM "core"."types" WHERE code = $1),
+				(SELECT id FROM "core"."types" WHERE code = $2),
+				$3::int,
 				COALESCE(
 					(SELECT to_jsonb(array_agg(id))
 					 FROM "core"."types"
-					 WHERE code = ANY($6::text[])),
+					 WHERE code = ANY($4::text[])),
 					'[]'::jsonb
 				),
 				COALESCE(
 					(SELECT to_jsonb(array_agg(id))
 					 FROM "core"."types"
-					 WHERE code = ANY($7::text[])),
+					 WHERE code = ANY($5::text[])),
 					'[]'::jsonb
 				),
 				true
-			ON CONFLICT ON CONSTRAINT "UQ_notification_configs_school_period_trigger_status" DO UPDATE
+			ON CONFLICT ON CONSTRAINT "UQ_notification_configs_trigger_status" DO UPDATE
 			SET email_template_id        = EXCLUDED.email_template_id,
 				to_chart_entity_type_ids = EXCLUDED.to_chart_entity_type_ids,
 				cc_chart_entity_type_ids = EXCLUDED.cc_chart_entity_type_ids,
 				is_active                = true,
 				updated_at               = NOW();
 			`,
-			[
-				schoolId,
-				academicPeriodId,
-				r.triggerCode,
-				r.statusCode,
-				emailTemplateId,
-				r.toCodes,
-				r.ccCodes,
-			],
+			[r.triggerCode, r.statusCode, emailTemplateId, r.toCodes, r.ccCodes],
 		);
 	}
 });
