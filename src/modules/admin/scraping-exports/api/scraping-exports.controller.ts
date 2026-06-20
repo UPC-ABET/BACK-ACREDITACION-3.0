@@ -3,6 +3,10 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	ApiSchoolHeader,
+	SchoolId,
+} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
@@ -19,33 +23,53 @@ export class ScrapingExportsController {
 	@Get(routes.operation.docentes.route)
 	@ApiOperation({ summary: routes.operation.docentes.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiSchoolHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async docentes(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateDocentes(lang));
+	async docentes(
+		@Query('lang') lang: string,
+		@SchoolId({ optional: true }) schoolId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateDocentes(schoolId, lang));
 	}
 
 	@Get(routes.operation.secciones.route)
 	@ApiOperation({ summary: routes.operation.secciones.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiSchoolHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async secciones(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateSecciones(lang));
+	async secciones(
+		@Query('lang') lang: string,
+		@SchoolId({ optional: true }) schoolId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateSecciones(schoolId, lang));
 	}
 
 	@Get(routes.operation.alumnosMatriculados.route)
 	@ApiOperation({ summary: routes.operation.alumnosMatriculados.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiSchoolHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async alumnosMatriculados(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateAlumnosMatriculados(lang));
+	async alumnosMatriculados(
+		@Query('lang') lang: string,
+		@SchoolId({ optional: true }) schoolId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateAlumnosMatriculados(schoolId, lang));
 	}
 
 	@Get(routes.operation.alumnosSecciones.route)
 	@ApiOperation({ summary: routes.operation.alumnosSecciones.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiSchoolHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async alumnosSecciones(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateAlumnosSecciones(lang));
+	async alumnosSecciones(
+		@Query('lang') lang: string,
+		@SchoolId({ optional: true }) schoolId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateAlumnosSecciones(schoolId, lang));
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {
