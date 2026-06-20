@@ -8,7 +8,7 @@ import {
 } from './docs/org-scope.swagger';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import { isAdmin } from 'src/modules/auth/model/authorization.functions';
 import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
@@ -43,8 +43,7 @@ export class OrgScopeController {
 		@CurrentUser() user: RequestUser,
 	) {
 		const userId = user.userId;
-		const isAdmin = isAdminRole(user.activeRole);
-		const result = await this.service.getScope(userId, schoolId, academicPeriodId, isAdmin);
+		const result = await this.service.getScope(userId, schoolId, academicPeriodId, isAdmin(user));
 		return parseSuccessResponse(result);
 	}
 
@@ -52,8 +51,11 @@ export class OrgScopeController {
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
 	async getUserSchools(@Body() dto: GetUserSchoolsDto, @CurrentUser() user: RequestUser) {
 		const userId = user.userId;
-		const isAdmin = isAdminRole(user.activeRole);
-		const result = await this.userSchoolsService.getUserSchools(userId, dto.modalityCode, isAdmin);
+		const result = await this.userSchoolsService.getUserSchools(
+			userId,
+			dto.modalityCode,
+			isAdmin(user),
+		);
 		return parseSuccessResponse(result);
 	}
 }

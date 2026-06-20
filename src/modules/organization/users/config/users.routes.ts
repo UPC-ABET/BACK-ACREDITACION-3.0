@@ -15,6 +15,5 @@ export const usersRoutes = {
 		},
 		me: { method: 'GET', route: '/me', summary: 'Get current user profile' },
 		logout: { method: 'POST', route: '/logout', summary: 'Cerrar Sesión Usuario' },
-		changeRole: { method: 'POST', route: '/change-role', summary: 'Cambiar rol activo de usuario' },
 	},
 };

@@ -65,11 +65,11 @@ describe('PermissionsGuard', () => {
 		expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
 	});
 
-	it('allows admin active role to access any endpoint', () => {
+	it('allows a user with an admin role to access any endpoint', () => {
 		requiredPermission = undefined;
 		const context = createContext({
 			user: {
-				activeRole: { id: 1, code: 'ADMIN', name: { en: 'Admin', es: 'Administrador' } },
+				roles: [{ id: 1, code: 'ADMIN', name: { en: 'Admin', es: 'Administrador' } }],
 				permissions: [],
 			},
 		});
@@ -80,7 +80,7 @@ describe('PermissionsGuard', () => {
 	it('does not allow admin bypass by magic numeric id alone', () => {
 		const context = createContext({
 			user: {
-				activeRole: { id: 1, name: { en: 'Admin', es: 'Administrador' } },
+				roles: [{ id: 1, name: { en: 'Admin', es: 'Administrador' } }],
 				permissions: [],
 			},
 		});

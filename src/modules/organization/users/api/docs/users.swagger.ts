@@ -6,7 +6,6 @@ import {
 	FilterUserDto,
 	ListUsersQueryDto,
 	LoginUserByCredentialsDto,
-	ChangeRoleDto,
 } from '../../model/users.dtos';
 
 const cfg = usersRoutes;
@@ -35,6 +34,3 @@ export const SwaggerUserLoginByCredentials = () =>
 export const SwaggerUserMe = () => HttpMethodWithSwagger(cfg.operation.me);
 
 export const SwaggerUserLogout = () => HttpMethodWithSwagger({ ...cfg.operation.logout });
-
-export const SwaggerUserChangeRole = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.changeRole, body: ChangeRoleDto });

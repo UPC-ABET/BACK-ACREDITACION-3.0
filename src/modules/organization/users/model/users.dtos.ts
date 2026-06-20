@@ -193,12 +193,6 @@ export class LoginUserByCredentialsDto {
 	password: string;
 }
 
-export class ChangeRoleDto {
-	@IsNumber()
-	@ApiProperty({ example: 1 })
-	newRole: number;
-}
-
 export class GetMeDto {
 	@IsString()
 	@IsNotEmpty()

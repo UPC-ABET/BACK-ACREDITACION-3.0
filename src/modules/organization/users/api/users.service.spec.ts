@@ -31,8 +31,7 @@ describe('UserService - login', () => {
 	let emailTemplateService: { findByCode: jest.Mock };
 	const dataSource = {} as DataSource;
 	const authorizationProfile = {
-		activeRole: { id: 2, name: { en: 'Coordinator', es: 'Coordinador' } },
-		allowedRoles: [{ id: 2, name: { en: 'Coordinator', es: 'Coordinador' } }],
+		roles: [{ id: 2, name: { en: 'Coordinator', es: 'Coordinador' } }],
 		permissions: [
 			{ id: 6, code: 'TG2001-T002', module: 'IFCS', route: '/ifcs', permissions: ['GET', 'POST'] },
 		],
@@ -94,7 +93,7 @@ describe('UserService - login', () => {
 			expect(jwtService.sign).not.toHaveBeenCalled();
 		});
 
-		it('signs a slim JWT with userId and activeRoleId', async () => {
+		it('signs a slim JWT with only the userId', async () => {
 			userRepository.findForLogin.mockResolvedValueOnce(baseUser);
 			(bcrypt.compare as unknown as jest.Mock).mockResolvedValueOnce(true);
 
@@ -106,16 +105,10 @@ describe('UserService - login', () => {
 				expiresIn: JWT_EXPIRES_IN_SECONDS,
 			});
 			expect(result.user.password).toBeUndefined();
-			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(
-				42,
-				undefined,
-			);
+			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42);
 
 			const payload = jwtService.sign.mock.calls[0][0];
-			expect(payload).toEqual({
-				userId: baseUser.id,
-				activeRoleId: authorizationProfile.activeRole.id,
-			});
+			expect(payload).toEqual({ userId: baseUser.id });
 		});
 
 		it('throws UnauthorizedException when password is wrong', async () => {
@@ -128,35 +121,30 @@ describe('UserService - login', () => {
 		});
 	});
 
-	describe('signJWTWithAuthorization', () => {
-		it('signs a slim payload with only userId and activeRoleId', async () => {
-			const token = await service.signJWTWithAuthorization(baseUser, authorizationProfile);
+	describe('signJWT', () => {
+		it('signs a slim payload with only the userId', async () => {
+			const token = await service.signJWT(baseUser);
 
 			expect(token).toBe('signed-jwt-token');
-			expect(jwtService.sign).toHaveBeenCalledWith({
-				userId: baseUser.id,
-				activeRoleId: authorizationProfile.activeRole.id,
-			});
+			expect(jwtService.sign).toHaveBeenCalledWith({ userId: baseUser.id });
 		});
 
 		it('throws UnauthorizedException when there are no roles', async () => {
 			userAuthorizationService.buildAuthorizationProfile.mockResolvedValueOnce({
-				activeRole: null,
-				allowedRoles: [],
+				roles: [],
 				permissions: [],
 			});
-			await expect(service.createUserLogin(baseUser, null, undefined)).rejects.toBeInstanceOf(
+			await expect(service.createUserLogin(baseUser, null)).rejects.toBeInstanceOf(
 				UnauthorizedException,
 			);
 		});
 
-		it('throws UnauthorizedException when the role has no permissions', async () => {
+		it('throws UnauthorizedException when the roles have no permissions', async () => {
 			userAuthorizationService.buildAuthorizationProfile.mockResolvedValueOnce({
-				activeRole: authorizationProfile.activeRole,
-				allowedRoles: authorizationProfile.allowedRoles,
+				roles: authorizationProfile.roles,
 				permissions: [],
 			});
-			await expect(service.createUserLogin(baseUser, null, undefined)).rejects.toBeInstanceOf(
+			await expect(service.createUserLogin(baseUser, null)).rejects.toBeInstanceOf(
 				UnauthorizedException,
 			);
 		});
@@ -191,26 +179,6 @@ describe('UserService - login', () => {
 			expect(result).toBeNull();
 			expect(userRepository.findActiveByEmail).not.toHaveBeenCalled();
 			expect(userRepository.findOneByCondition).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('loginById', () => {
-		it('signs a slim JWT for an existing user', async () => {
-			userRepository.findOneByCondition.mockResolvedValueOnce(baseUser);
-
-			const result = await service.loginById(baseUser.id, 2);
-
-			expect(result).toEqual({
-				user: { id: baseUser.id, email: baseUser.email },
-				accessToken: 'signed-jwt-token',
-				expiresIn: JWT_EXPIRES_IN_SECONDS,
-			});
-			expect(result.user.password).toBeUndefined();
-			expect(userAuthorizationService.buildAuthorizationProfile).toHaveBeenCalledWith(42, 2);
-			expect(jwtService.sign).toHaveBeenCalledWith({
-				userId: baseUser.id,
-				activeRoleId: authorizationProfile.activeRole.id,
-			});
 		});
 	});
 
@@ -274,8 +242,7 @@ describe('UserService - login', () => {
 			const result = await service.getMe(
 				{
 					userId: baseUser.id,
-					activeRole: authorizationProfile.activeRole,
-					allowedRoles: authorizationProfile.allowedRoles,
+					roles: authorizationProfile.roles,
 					permissions: authorizationProfile.permissions,
 				},
 				'TG102-T001',
@@ -284,8 +251,7 @@ describe('UserService - login', () => {
 			expect(orgScopeService.getUserSchools).toHaveBeenCalledWith(baseUser.id, 'TG102-T001', false);
 			expect(result).toEqual({
 				user: { id: baseUser.id, email: baseUser.email },
-				activeRole: authorizationProfile.activeRole,
-				allowedRoles: authorizationProfile.allowedRoles,
+				roles: authorizationProfile.roles,
 				permissions: authorizationProfile.permissions,
 				userSchools,
 			});

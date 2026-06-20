@@ -25,17 +25,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 	}
 
-	async validate(payload: { userId: number; activeRoleId?: number }) {
+	async validate(payload: { userId: number }) {
 		try {
 			const profile = await this.userAuthorizationService.buildAuthorizationProfile(
 				Number(payload.userId),
-				payload.activeRoleId,
 			);
 
 			return {
 				userId: payload.userId,
-				activeRole: profile.activeRole,
-				allowedRoles: profile.allowedRoles,
+				roles: profile.roles,
 				permissions: profile.permissions,
 			};
 		} catch {

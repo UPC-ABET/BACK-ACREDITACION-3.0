@@ -36,7 +36,7 @@ describe('AuthService — MSAL login', () => {
 
 			expect(acquireSpy).toHaveBeenCalledWith('auth-code');
 			expect(userService.getUser).toHaveBeenCalledWith(null, 'jane.doe@example.com');
-			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null, undefined);
+			expect(userService.createUserLogin).toHaveBeenCalledWith(fakeUser, null);
 			expect(result).toEqual({
 				user: fakeUser,
 				microsoftProfile: { email: 'jane.doe@example.com', name: 'Jane Doe' },

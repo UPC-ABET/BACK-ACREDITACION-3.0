@@ -8,7 +8,7 @@ import {
 	REQUIRED_PERMISSION_KEY,
 	RequiredPermission,
 } from '../decorators/require-permission.decorator';
-import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import { isAdmin } from 'src/modules/auth/model/authorization.functions';
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 
 @Injectable()
@@ -31,7 +31,7 @@ export class PermissionsGuard implements CanActivate {
 
 		const request = context.switchToHttp().getRequest<Request & { user?: RequestUser }>();
 
-		if (isAdminRole(request.user?.activeRole)) {
+		if (isAdmin(request.user)) {
 			return true;
 		}
 

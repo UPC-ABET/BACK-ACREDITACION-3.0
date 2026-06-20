@@ -37,7 +37,7 @@ import {
 } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
-import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import { isAdmin } from 'src/modules/auth/model/authorization.functions';
 import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
@@ -118,9 +118,8 @@ export class IfcController extends BaseController<IfcService> {
 	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
 	async schools(@AcademicPeriodId() academicPeriodId: number, @CurrentUser() user: RequestUser) {
-		const isAdmin = isAdminRole(user.activeRole);
 		return parseSuccessResponse(
-			await this.service.userSchools(user.userId, academicPeriodId, isAdmin),
+			await this.service.userSchools(user.userId, academicPeriodId, isAdmin(user)),
 		);
 	}
 

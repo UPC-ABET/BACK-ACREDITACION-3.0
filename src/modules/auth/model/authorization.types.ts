@@ -18,8 +18,7 @@ export type AuthorizationPermission = {
 };
 
 export type AuthorizationProfile = {
-	activeRole: AuthorizationRole;
-	allowedRoles: AuthorizationRole[];
+	roles: AuthorizationRole[];
 	permissions: AuthorizationPermission[];
 };
 

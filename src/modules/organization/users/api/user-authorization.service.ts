@@ -16,34 +16,27 @@ export class UserAuthorizationService {
 		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {}
 
-	async buildAuthorizationProfile(
-		userId: number,
-		activeRoleId?: number,
-	): Promise<AuthorizationProfile> {
-		const key = `authz:${userId}:${activeRoleId ?? 'default'}`;
+	async buildAuthorizationProfile(userId: number): Promise<AuthorizationProfile> {
+		const key = `authz:${userId}`;
 		const cached = await this.cache.get<AuthorizationProfile>(key);
 		if (cached) return cached;
 
-		const profile = await this.computeAuthorizationProfile(userId, activeRoleId);
+		const profile = await this.computeAuthorizationProfile(userId);
 		await this.cache.set(key, profile, 30_000);
 		return profile;
 	}
 
-	private async computeAuthorizationProfile(
-		userId: number,
-		activeRoleId?: number,
-	): Promise<AuthorizationProfile> {
+	private async computeAuthorizationProfile(userId: number): Promise<AuthorizationProfile> {
 		await this.ensureActiveUser(userId);
 
-		const allowedRoles = await this.findUserRoles(userId);
-		if (allowedRoles.length === 0) {
+		const roles = await this.findUserRoles(userId);
+		if (roles.length === 0) {
 			throw new UnauthorizedException(usersValidationStrings.error.noRolesAssigned);
 		}
 
-		const activeRole = allowedRoles.find((role) => role.id === activeRoleId) ?? allowedRoles[0];
-		const permissions = await this.findRolePermissions(activeRole.id);
+		const permissions = await this.findRolesPermissions(roles.map((role) => role.id));
 
-		return { activeRole, allowedRoles, permissions };
+		return { roles, permissions };
 	}
 
 	private async ensureActiveUser(userId: number): Promise<void> {
@@ -84,7 +77,7 @@ export class UserAuthorizationService {
 		}));
 	}
 
-	private async findRolePermissions(roleId: number): Promise<AuthorizationPermission[]> {
+	private async findRolesPermissions(roleIds: number[]): Promise<AuthorizationPermission[]> {
 		const rows = await this.dataSource.query(
 			`
 				SELECT
@@ -96,12 +89,12 @@ export class UserAuthorizationService {
 				FROM core.role_module_permissions rmp
 				INNER JOIN core.types mt ON mt.id = rmp.module_type_id
 				INNER JOIN core.types pt ON pt.id = rmp.permission_type_id
-				WHERE rmp.role_id = $1
+				WHERE rmp.role_id = ANY($1)
 				  AND rmp.is_active = TRUE
 				GROUP BY mt.id, mt.code, mt.extra, mt.name
 				ORDER BY MIN(rmp.id) ASC;
 			`,
-			[roleId],
+			[roleIds],
 		);
 
 		return rows.map((row) => ({

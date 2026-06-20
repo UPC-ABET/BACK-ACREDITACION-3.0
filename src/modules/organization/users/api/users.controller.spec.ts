@@ -3,12 +3,11 @@ import { UserService } from './users.service';
 
 describe('UserController', () => {
 	let controller: UserController;
-	let service: { loginByCredentials: jest.Mock; loginById: jest.Mock; getMe: jest.Mock };
+	let service: { loginByCredentials: jest.Mock; getMe: jest.Mock };
 
 	beforeEach(() => {
 		service = {
 			loginByCredentials: jest.fn(),
-			loginById: jest.fn(),
 			getMe: jest.fn(),
 		};
 		controller = new UserController(service as unknown as UserService);
@@ -40,20 +39,6 @@ describe('UserController', () => {
 			}),
 		);
 		expect(response.data.user).toEqual(loginResult.user);
-	});
-
-	it('sets accessToken cookie when active role changes', async () => {
-		const res = fakeResponse();
-		service.loginById.mockResolvedValueOnce({ user: { id: 8 }, accessToken: 'role-token' });
-
-		await controller.changeRole({ newRole: 2 }, { userId: 8 } as never, res as never);
-
-		expect(service.loginById).toHaveBeenCalledWith(8, 2);
-		expect(res.cookie).toHaveBeenCalledWith(
-			'accessToken',
-			'role-token',
-			expect.objectContaining({ httpOnly: true, path: '/' }),
-		);
 	});
 
 	it('returns getMe profile', async () => {

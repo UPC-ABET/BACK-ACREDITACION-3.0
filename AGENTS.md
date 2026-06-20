@@ -401,12 +401,15 @@ Default (no decorator): JWT required + permissions required. If endpoint has no 
 ```typescript
 req.user = {
   userId: number,
-  activeRole: { id, code, name },
-  allowedRoles: [{ id, code, name }],
+  roles: [{ id, code, name }],
   permissions: [{ id, code, module, route, permissions: string[] }],
   school_id: number,
 };
 ```
+
+A user holds one or more `roles`, and `permissions` is the **union** of every role's
+permissions (merged per module). There is no "active role" — access is the combination of all
+assigned roles.
 
 JWT is extracted from `Authorization: Bearer <token>` header OR `access_token` httpOnly cookie.
 
@@ -423,9 +426,9 @@ async getMyAccess(@CurrentUser() user: RequestUser) {
 }
 ```
 
-`RequestUser` (`{ userId, activeRole, allowedRoles, permissions }`) is the single shape for the request user. A service that needs the user accepts `RequestUser` (or just the `userId`/role it needs) — never an inline or `any` payload. The **only** place allowed to touch the raw `request.user` is a guard (param decorators don't work there), and it must still type it as `Request & { user?: RequestUser }`.
+`RequestUser` (`{ userId, roles, permissions }`) is the single shape for the request user. A service that needs the user accepts `RequestUser` (or just the `userId`/roles it needs) — never an inline or `any` payload. The **only** place allowed to touch the raw `request.user` is a guard (param decorators don't work there), and it must still type it as `Request & { user?: RequestUser }`.
 
-**Admin / role checks:** never compare a role code against a string literal (`activeRole.code === 'ADMIN'`). Use `isAdminRole(activeRole)` / `isAdmin(user)` from `src/modules/auth/model/authorization.functions.ts`, which compare against `ROLE_CODES` in `src/shared/constants/role-codes.ts`. Access control (who may call an endpoint) still belongs in `@RequirePermission`; `isAdmin*` is only for data-scoping or UI-hint decisions, not for gating endpoints.
+**Admin / role checks:** never compare a role code against a string literal (`role.code === 'ADMIN'`). Use `isAdmin(user)` (true when **any** of the user's `roles` is admin) or `isAdminRole(role)` for a single role, both from `src/modules/auth/model/authorization.functions.ts`, which compare against `ROLE_CODES` in `src/shared/constants/role-codes.ts`. Access control (who may call an endpoint) still belongs in `@RequirePermission`; `isAdmin*` is only for data-scoping or UI-hint decisions, not for gating endpoints.
 
 ## Scope Headers (School / Modality / Academic Period)
 
@@ -645,7 +648,7 @@ These are acknowledged and intentionally not fixed:
 - **Don't use `synchronize: true` — use migrations.**
 - **Don't hand-pick a migration filename or timestamp — run `pnpm migration:create src/database/migrations/<kebab-case-name>` so the timestamp is current and monotonic.**
 - **Don't read `req.user` via `@Req()`/`@Request()` or type the user as `any` — use the typed `@CurrentUser()` decorator with `RequestUser` (guards are the only exception).**
-- **Don't compare role codes against string literals (e.g. `activeRole.code === 'ADMIN'`) — use `isAdminRole`/`isAdmin` with `ROLE_CODES`.**
+- **Don't compare role codes against string literals (e.g. `role.code === 'ADMIN'`) — use `isAdmin`/`isAdminRole` with `ROLE_CODES`.**
 - **Don't write FK/index names with lowercase prefix — use `FK_` and `IDX_`.**
 - **Don't skip `@IsOptional()` on Update DTO fields** (unless the field is intentionally required like `id`).
 - **Don't add `@nestjs/schedule` — it was removed as unused.**

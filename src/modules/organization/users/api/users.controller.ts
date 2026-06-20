@@ -12,7 +12,6 @@ import {
 	SwaggerUserLoginByCredentials,
 	SwaggerUserMe,
 	SwaggerUserLogout,
-	SwaggerUserChangeRole,
 } from './docs/users.swagger';
 import {
 	CreateUserDto,
@@ -20,7 +19,6 @@ import {
 	FilterUserDto,
 	ListUsersQueryDto,
 	LoginUserByCredentialsDto,
-	ChangeRoleDto,
 	GetMeDto,
 } from '../model/users.dtos';
 import type { Response } from 'express';
@@ -97,17 +95,5 @@ export class UserController extends BaseController<UserService> {
 	async logout(@Res({ passthrough: true }) res: Response) {
 		removeAccessCookie(res);
 		return parseSuccessResponse({ message: 'success.ok' });
-	}
-
-	@SkipPermissions()
-	@SwaggerUserChangeRole()
-	async changeRole(
-		@Body() dto: ChangeRoleDto,
-		@CurrentUser() user: RequestUser,
-		@Res({ passthrough: true }) res: Response,
-	) {
-		const result = await this.service.loginById(user.userId, dto.newRole);
-		saveAccessCookie(res, result);
-		return parseSuccessResponse(result);
 	}
 }

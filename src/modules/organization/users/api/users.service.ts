@@ -24,7 +24,7 @@ import { OrgScopeService } from '../../org-scope/api/org-scope.service';
 import { MailService } from 'src/modules/mail/mail.service';
 import { EmailTemplateService } from 'src/modules/core/email-templates/api/email-templates.service';
 import type { I18nText } from 'src/shared/types/i18n';
-import { isAdminRole } from 'src/modules/auth/model/authorization.functions';
+import { isAdmin } from 'src/modules/auth/model/authorization.functions';
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 
 const USER_WELCOME_TEMPLATE_CODE = 'USER_WELCOME';
@@ -46,20 +46,11 @@ export class UserService extends BaseService<UserRepository> {
 		super(repository);
 	}
 
-	async signJWTWithAuthorization(user: any, authorization: AuthorizationProfile): Promise<string> {
-		const payload = {
-			userId: user.id,
-			activeRoleId: authorization.activeRole.id,
-		};
-
-		return this.jwtService.sign(payload);
+	async signJWT(user: any): Promise<string> {
+		return this.jwtService.sign({ userId: user.id });
 	}
 
-	async createUserLogin(
-		user: any,
-		passToValidate: string | null,
-		activeRoleId: number | undefined,
-	): Promise<string> {
+	async createUserLogin(user: any, passToValidate: string | null): Promise<string> {
 		if (!user) {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
 		}
@@ -68,8 +59,8 @@ export class UserService extends BaseService<UserRepository> {
 			throw new UnauthorizedException(usersValidationStrings.error.invalidCredentials);
 		}
 
-		const authorization = await this.getAuthorizationProfile(user.id, activeRoleId);
-		return await this.signJWTWithAuthorization(user, authorization);
+		await this.getAuthorizationProfile(user.id);
+		return await this.signJWT(user);
 	}
 
 	async getUser(userId?: number | null, email?: string | null) {
@@ -89,20 +80,9 @@ export class UserService extends BaseService<UserRepository> {
 		return null;
 	}
 
-	async loginById(userId: number, activeRoleId: number | undefined) {
-		const user = await this.getUser(userId);
-		const accessToken = await this.createUserLogin(user, null, activeRoleId);
-
-		return {
-			user: this.sanitizeUser(user),
-			accessToken,
-			expiresIn: JWT_EXPIRES_IN_SECONDS,
-		};
-	}
-
-	async loginByCredentials(email: string, password: string, activeRoleId?: number) {
+	async loginByCredentials(email: string, password: string) {
 		const user = await this.repository.findForLogin(email);
-		const accessToken = await this.createUserLogin(user, password, activeRoleId);
+		const accessToken = await this.createUserLogin(user, password);
 
 		return {
 			user: this.sanitizeUser(user),
@@ -111,22 +91,15 @@ export class UserService extends BaseService<UserRepository> {
 		};
 	}
 
-	private async getAuthorizationProfile(
-		userId: number,
-		activeRoleId?: number,
-	): Promise<AuthorizationProfile> {
-		const profile = await this.userAuthorizationService.buildAuthorizationProfile(
-			userId,
-			activeRoleId,
-		);
+	private async getAuthorizationProfile(userId: number): Promise<AuthorizationProfile> {
+		const profile = await this.userAuthorizationService.buildAuthorizationProfile(userId);
 		return this.validateAuthorizationProfile(profile);
 	}
 
 	private validateAuthorizationProfile(profile: AuthorizationProfile): AuthorizationProfile {
 		if (
-			!profile?.activeRole ||
-			!Array.isArray(profile.allowedRoles) ||
-			profile.allowedRoles.length === 0 ||
+			!Array.isArray(profile?.roles) ||
+			profile.roles.length === 0 ||
 			!Array.isArray(profile.permissions)
 		) {
 			throw new UnauthorizedException(usersValidationStrings.error.noRolesAssigned);
@@ -145,17 +118,15 @@ export class UserService extends BaseService<UserRepository> {
 			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
 
-		const isAdmin = isAdminRole(currentUser.activeRole);
 		const userSchools = await this.orgScopeService.getUserSchools(
 			currentUser.userId,
 			modalityCode,
-			isAdmin,
+			isAdmin(currentUser),
 		);
 
 		return {
 			user: this.sanitizeUser(user),
-			activeRole: currentUser.activeRole,
-			allowedRoles: currentUser.allowedRoles,
+			roles: currentUser.roles,
 			permissions: currentUser.permissions,
 			userSchools,
 		};
