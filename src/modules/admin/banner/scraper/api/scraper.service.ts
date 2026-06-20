@@ -92,6 +92,16 @@ export class ScraperService {
 			throw new HttpException(scraperValidationStrings.error.noDepartments, HttpStatus.BAD_REQUEST);
 		}
 
+		const courseCodes = new Set(
+			await this.departmentSourceRepository.findPeriodCourseCodes(academicPeriodId),
+		);
+		if (courseCodes.size === 0) {
+			throw new HttpException(
+				scraperValidationStrings.error.noPeriodCourses,
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
 		const runId = randomUUID();
 		await this.scrapeRunRepository.createRun({
 			id: runId,
@@ -102,7 +112,7 @@ export class ScraperService {
 		});
 
 		this.running = true;
-		void this.execute(runId, nivel, periodo, departamentos).finally(() => {
+		void this.execute(runId, nivel, periodo, departamentos, courseCodes).finally(() => {
 			this.running = false;
 		});
 
@@ -144,6 +154,7 @@ export class ScraperService {
 		nivel: string,
 		periodo: string,
 		departamentos: string[],
+		courseCodes: Set<string>,
 	): Promise<void> {
 		const stats: ScrapeStats = {
 			departments: { requested: departamentos, succeeded: [], failed: [] },
@@ -158,6 +169,7 @@ export class ScraperService {
 				nivel,
 				periodo,
 				departamentos,
+				courseCodes,
 				stats,
 			);
 			const { codigos, enrollments } = await this.scrapeMatricula(
@@ -203,6 +215,7 @@ export class ScraperService {
 		nivel: string,
 		periodo: string,
 		departamentos: string[],
+		courseCodes: Set<string>,
 		stats: ScrapeStats,
 	): Promise<{ nrcs: string[]; courseByNrc: Map<string, string> }> {
 		const nrcs = new Set<string>();
@@ -218,14 +231,19 @@ export class ScraperService {
 					codigoDepartamento: departamento,
 				});
 				const sections = asArray<Record<string, unknown>>(json.detalle);
-				const rows: RawHorarioInsert[] = sections.map((section) => {
+				const rows: RawHorarioInsert[] = [];
+				for (const section of sections) {
+					// Scope the scrape to courses tracked in the period's study plans. Sections whose
+					// derived code (materia.codigo + numeroCurso) isn't one of ours are dropped here, so
+					// they never reach raw_horario nor the downstream matricula/alumnos/notas steps.
+					const cursoCodigo = courseCodeOf(section);
+					if (!courseCodes.has(cursoCodigo)) continue;
 					const nrc = toStringOrNull(section.nrc);
 					if (nrc) {
 						nrcs.add(nrc);
-						const cursoCodigo = courseCodeOf(section);
-						if (cursoCodigo) courseByNrc.set(nrc, cursoCodigo);
+						courseByNrc.set(nrc, cursoCodigo);
 					}
-					return {
+					rows.push({
 						runId,
 						nivel,
 						periodo,
@@ -233,8 +251,8 @@ export class ScraperService {
 						nrc,
 						payload: section,
 						payloadHash: hashPayload(section),
-					};
-				});
+					});
+				}
 				await this.rawHorarioRepository.bulkInsert(rows);
 				stats.counts.horario += rows.length;
 				stats.departments.succeeded.push(departamento);
