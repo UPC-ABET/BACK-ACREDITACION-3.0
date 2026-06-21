@@ -28,6 +28,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
 import { projectsValidationStrings } from '../config/strings/projects.validation';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
+import type { I18nText } from 'src/shared/types/i18n';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { GradeExportRow, ProjectRepository } from '../core/projects.repository';
@@ -605,33 +606,32 @@ export class ProjectConfigService {
 				projectMap.set(row.projectId, {
 					projectId: row.projectId,
 					projectCode: row.projectCode || '',
-					projectName: row.projectName,
-					evaluationDate: row.evaluationDate,
+					// projectName is the project's I18nText jsonb; evaluationDate is always set for evaluable rows.
+					projectName: row.projectName as I18nText,
+					evaluationDate: row.evaluationDate as Date,
 					courseName: resolvedCourseName,
 					evaluators: [],
 					students: [],
-				} as any);
+				});
 			}
 
 			const project = projectMap.get(row.projectId)!;
 
-			if (row.evalId && !(project.evaluators as any[]).find((e: any) => e.id === row.evalId)) {
-				(project.evaluators as any[]).push({
+			if (row.evalId && !project.evaluators.find((e) => e.id === row.evalId)) {
+				project.evaluators.push({
 					id: row.evalId,
-					professorId: row.evalProfessorId,
+					professorId: row.evalProfessorId ?? 0,
 					firstName: row.evalFirstName || '',
 					lastName: row.evalLastName || '',
 					email: row.evalEmail || '',
-					evaluatorType: row.evalTypeName || '',
+					// EvaluatorInfoDto.evaluatorType is declared string for Swagger but is I18nText at runtime.
+					evaluatorType: (row.evalTypeName || '') as string,
 					evaluatorTypeCode: row.evalTypeCode || '',
 				});
 			}
 
-			if (
-				row.studentPsId &&
-				!(project.students as any[]).find((s: any) => s.id === row.studentPsId)
-			) {
-				(project.students as any[]).push({
+			if (row.studentPsId && !project.students.find((s) => s.id === row.studentPsId)) {
+				project.students.push({
 					id: row.studentPsId,
 					studentId: row.studentId || 0,
 					firstName: row.stuFirstName || '',

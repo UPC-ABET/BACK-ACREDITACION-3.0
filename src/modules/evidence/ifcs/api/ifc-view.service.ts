@@ -12,6 +12,48 @@ import {
 	IfcOutcomeCourseRow,
 } from '../core/ifcs.repository';
 
+export interface IfcViewOutcome {
+	outcomeCode: string;
+	outcomeName: I18nText;
+	outcomeDescription: I18nText;
+}
+
+export interface IfcViewCommissionGroup {
+	commissionCode: string;
+	commissionName: I18nText;
+	outcomes: IfcViewOutcome[];
+}
+
+export interface IfcViewProgramGroup {
+	programCode: string;
+	programName: I18nText;
+	commissions: IfcViewCommissionGroup[];
+}
+
+export interface IfcViewFindingOutcome extends IfcViewOutcome {
+	commission: { code: string; name: I18nText };
+}
+
+export interface IfcViewFindingAction {
+	id: number;
+	code: string;
+	description: I18nText;
+	correlative: number;
+	completeness: { code: string; name: I18nText; color: string | null };
+}
+
+export interface IfcViewPreviousAction {
+	id: number;
+	findingActionId: number;
+	finding: { id: number; code: string };
+	code: string;
+	correlative: number;
+	description: I18nText;
+	evidences: I18nText | null;
+	completeness: { code: string; name: I18nText; color: string | null };
+	source: 'plan' | 'direct' | 'both';
+}
+
 @Injectable()
 export class IfcViewService {
 	private readonly logger = new Logger(IfcViewService.name);
@@ -116,10 +158,14 @@ export class IfcViewService {
 		};
 	}
 
-	groupOutcomeRows(rows: IfcOutcomeCourseRow[]) {
+	groupOutcomeRows(rows: IfcOutcomeCourseRow[]): IfcViewProgramGroup[] {
 		const programIndex = new Map<
 			string,
-			{ programCode: string; programName: I18nText; commissions: Map<string, any> }
+			{
+				programCode: string;
+				programName: I18nText;
+				commissions: Map<string, IfcViewCommissionGroup>;
+			}
 		>();
 		for (const row of rows) {
 			let pg = programIndex.get(row.programCode);
@@ -136,7 +182,7 @@ export class IfcViewService {
 				cm = {
 					commissionCode: row.commissionCode,
 					commissionName: row.commissionName,
-					outcomes: [] as any[],
+					outcomes: [],
 				};
 				pg.commissions.set(row.commissionCode, cm);
 			}
@@ -153,7 +199,11 @@ export class IfcViewService {
 		}));
 	}
 
-	async loadPreviousActions(courseId: number, activePeriodId: number, excludeIfcId: number | null) {
+	async loadPreviousActions(
+		courseId: number,
+		activePeriodId: number,
+		excludeIfcId: number | null,
+	): Promise<IfcViewPreviousAction[]> {
 		const rows = await this.repository.findPreviousActionRows(
 			courseId,
 			activePeriodId,
@@ -189,7 +239,7 @@ export class IfcViewService {
 		outcomeCourseRows: IfcOutcomeCourseRow[];
 		findingOutcomeRows: IfcFindingOutcomeRow[];
 		findingActionRows: IfcFindingActionRow[];
-		previousActions: any[];
+		previousActions: IfcViewPreviousAction[];
 	}) {
 		const {
 			header,
@@ -231,7 +281,7 @@ export class IfcViewService {
 			requesterHasHigherLevel: Boolean(header.requesterHasHigherLevel),
 		};
 
-		const outcomesByFinding = new Map<number, any[]>();
+		const outcomesByFinding = new Map<number, IfcViewFindingOutcome[]>();
 		for (const row of findingOutcomeRows) {
 			const fid = Number(row.findingId);
 			const arr = outcomesByFinding.get(fid) ?? [];
@@ -244,7 +294,7 @@ export class IfcViewService {
 			outcomesByFinding.set(fid, arr);
 		}
 
-		const actionsByFinding = new Map<number, any[]>();
+		const actionsByFinding = new Map<number, IfcViewFindingAction[]>();
 		for (const row of findingActionRows) {
 			const fid = Number(row.findingId);
 			const arr = actionsByFinding.get(fid) ?? [];

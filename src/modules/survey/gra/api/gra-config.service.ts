@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { GraConfigRepository, GRA_SURVEY_TYPE } from '../core/gra-config.repository';
+import type { GraOutcomeRow } from '../core/gra-config.repository';
 import {
 	CreateGraConfigDto,
 	UpdateGraConfigDto,
@@ -10,6 +11,7 @@ import {
 import { PerformanceLevelService } from 'src/modules/academic/performance-levels/api/performance-levels.service';
 import { camelizeKeys } from 'src/libs/case.functions';
 import { graValidationStrings } from '../config/strings/gra.validation';
+import type { I18nText } from 'src/shared/types/i18n';
 
 @Injectable()
 export class GraConfigService {
@@ -32,8 +34,10 @@ export class GraConfigService {
 
 		return await this.configRepo.create({
 			outcomeId: dto.outcomeId,
-			userOutcomeName: dto.nameEs as any,
-			userOutcomeDescription: (dto.descriptionEs ?? null) as any,
+			// user_outcome_name/description are I18nText jsonb columns but store the bare ES string;
+			// the EN variant lives in extra.name_en (mirrored on the read side, e.g. ppp-survey.service).
+			userOutcomeName: dto.nameEs as unknown as I18nText,
+			userOutcomeDescription: (dto.descriptionEs ?? null) as unknown as I18nText,
 			extra,
 			isActive: true,
 		});
@@ -145,8 +149,12 @@ export class GraConfigService {
 			academicPeriodId,
 		);
 
-		const grouped: Record<number, { commissionId: number; commissionName: any; outcomes: any[] }> =
-			{};
+		type GroupedCommission = {
+			commissionId: number;
+			commissionName: GraOutcomeRow['commissionName'];
+			outcomes: Omit<GraOutcomeRow, 'commissionId' | 'commissionName'>[];
+		};
+		const grouped: Record<number, GroupedCommission> = {};
 		for (const row of rows) {
 			const cid = row.commissionId;
 			if (!grouped[cid]) {

@@ -9,6 +9,16 @@ import {
 } from '../model/lcfc.dtos';
 import { camelizeKeys } from 'src/libs/case.functions';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
+import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
+import type { I18nText } from 'src/shared/types/i18n';
+
+export type GeneratedLcfcConfig = OutcomeConfigEntity & { _status: 'created' | 'skipped' };
+
+export interface GenerateLcfcResult {
+	created: number;
+	skipped: number;
+	configs: GeneratedLcfcConfig[];
+}
 
 @Injectable()
 export class LcfcConfigService {
@@ -22,7 +32,7 @@ export class LcfcConfigService {
 		programId: number | null | undefined,
 		academicPeriodId: number,
 		courseSectionIds?: number[],
-	): Promise<{ created: number; skipped: number; configs: any[] }> {
+	): Promise<GenerateLcfcResult> {
 		let sections = await this.configRepo.getCourseSectionsForPeriod(academicPeriodId, programId);
 
 		if (courseSectionIds && courseSectionIds.length > 0) {
@@ -40,7 +50,7 @@ export class LcfcConfigService {
 
 		let created = 0;
 		let skipped = 0;
-		const configs: any[] = [];
+		const configs: GeneratedLcfcConfig[] = [];
 
 		for (const section of sections) {
 			const existing = await this.configRepo.findByCourseSection(
@@ -67,8 +77,9 @@ export class LcfcConfigService {
 
 			const config = await this.configRepo.create({
 				outcomeId,
-				userOutcomeName: section.courseName as any,
-				userOutcomeDescription: section.sectionCode as any,
+				// user_outcome_name/description are I18nText jsonb columns but LCFC stores bare strings here.
+				userOutcomeName: section.courseName as unknown as I18nText,
+				userOutcomeDescription: section.sectionCode as unknown as I18nText,
 				extra,
 				isActive: true,
 			});
@@ -84,7 +95,7 @@ export class LcfcConfigService {
 		dto: GenerateLcfcConfigDto,
 		_schoolId: number,
 		academicPeriodId: number,
-	): Promise<{ created: number; skipped: number; configs: any[] }> {
+	): Promise<GenerateLcfcResult> {
 		// School ownership check removed — LCFC does not filter by school.
 		const latestPeriodId = await this.configRepo.findLatestAcademicPeriodId(dto.modalityTypeId);
 		if (!latestPeriodId || latestPeriodId !== academicPeriodId) {

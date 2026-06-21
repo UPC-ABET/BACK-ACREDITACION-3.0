@@ -3,8 +3,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
+import type { I18nText } from 'src/shared/types/i18n';
 
 export const GRA_SURVEY_TYPE = 'GRA';
+
+export interface GraOutcomeRow {
+	programCommissionId: number;
+	commissionId: number;
+	commissionName: I18nText;
+	outcomeId: number;
+	outcomeCode: string;
+	outcomeName: I18nText;
+	outcomeDescription: I18nText;
+}
 
 @Injectable()
 export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
@@ -97,7 +108,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	async findOutcomesGroupedByCommission(
 		programId: number,
 		academicPeriodId: number,
-	): Promise<Record<string, any>[]> {
+	): Promise<GraOutcomeRow[]> {
 		return await this.dataSource.query(
 			`SELECT
 				pc.id          AS "programCommissionId",
