@@ -14,16 +14,12 @@ import {
 	ProfessorLookupQueryDto,
 	ProfessorLookupItem,
 } from '../model/professors.dtos';
-import { DataSource, EntityManager } from 'typeorm';
-import { ProfessorEntity } from '../model/professors.entity';
+import { EntityManager } from 'typeorm';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class ProfessorService extends BaseService<ProfessorRepository> {
-	constructor(
-		protected readonly repository: ProfessorRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ProfessorRepository) {
 		super(repository);
 	}
 
@@ -43,39 +39,7 @@ export class ProfessorService extends BaseService<ProfessorRepository> {
 	}
 
 	async getByFilters(filters: FilterProfessorDto) {
-		const { search, ...otherFilters } = filters;
-
-		const qb = this.dataSource
-			.getRepository(ProfessorEntity)
-			.createQueryBuilder('professor')
-			.leftJoinAndSelect('professor.staff', 'staff')
-			.leftJoinAndSelect('staff.user', 'user');
-
-		if (otherFilters.staffId !== undefined) {
-			qb.andWhere('professor.staff_id = :staffId', { staffId: otherFilters.staffId });
-		}
-
-		if (otherFilters.isActive !== undefined) {
-			qb.andWhere('professor.is_active = :isActive', { isActive: otherFilters.isActive });
-		}
-
-		if (otherFilters.extra !== undefined) {
-			qb.andWhere('professor.extra = :extra', { extra: otherFilters.extra });
-		}
-
-		if (otherFilters.unassigned === true) {
-			qb.andWhere('staff.user_id IS NULL');
-		}
-
-		if (search && search.trim()) {
-			const searchTerm = `%${search.trim()}%`;
-			qb.andWhere(
-				'(professor.code ILIKE :searchTerm OR staff.first_name ILIKE :searchTerm OR staff.last_name ILIKE :searchTerm)',
-				{ searchTerm },
-			);
-		}
-
-		return await qb.getMany();
+		return await this.repository.getByFilters(filters);
 	}
 
 	async getByUserId(userId: number) {

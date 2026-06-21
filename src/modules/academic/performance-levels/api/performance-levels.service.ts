@@ -8,16 +8,13 @@ import {
 	UpdatePerformanceLevelDto,
 	FilterPerformanceLevelDto,
 } from '../model/performance-levels.dtos';
-import { DataSource, EntityManager, FindManyOptions } from 'typeorm';
+import { EntityManager, FindManyOptions } from 'typeorm';
 
 const PERFORMANCE_LEVEL_RELATIONS = ['instrumentType', 'academicPeriod'];
 
 @Injectable()
 export class PerformanceLevelService extends BaseService<PerformanceLevelRepository> {
-	constructor(
-		protected readonly repository: PerformanceLevelRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: PerformanceLevelRepository) {
 		super(repository);
 	}
 

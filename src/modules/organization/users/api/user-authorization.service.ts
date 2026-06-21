@@ -1,18 +1,18 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { DataSource } from 'typeorm';
 import {
 	AuthorizationPermission,
 	AuthorizationProfile,
 	AuthorizationRole,
 } from 'src/modules/auth/model/authorization.types';
 import { usersValidationStrings } from '../config/strings/users.validation';
+import { UserRepository } from '../core/users.repository';
 
 @Injectable()
 export class UserAuthorizationService {
 	constructor(
-		private readonly dataSource: DataSource,
+		private readonly userRepository: UserRepository,
 		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {}
 
@@ -40,35 +40,14 @@ export class UserAuthorizationService {
 	}
 
 	private async ensureActiveUser(userId: number): Promise<void> {
-		const users = await this.dataSource.query(
-			`
-				SELECT u.id, u.is_active AS "isActive"
-				FROM organization.users u
-				WHERE u.id = $1
-				LIMIT 1;
-			`,
-			[userId],
-		);
-
-		const user = users?.[0];
+		const user = await this.userRepository.findActiveFlag(userId);
 		if (!user || !this.toBoolean(user.isActive)) {
 			throw new UnauthorizedException(usersValidationStrings.error.inactiveOrNotFound);
 		}
 	}
 
 	private async findUserRoles(userId: number): Promise<AuthorizationRole[]> {
-		const rows = await this.dataSource.query(
-			`
-				SELECT DISTINCT r.id, r.code, r.name
-				FROM core.user_roles ur
-				INNER JOIN core.roles r ON r.id = ur.role_id
-				WHERE ur.user_id = $1
-				  AND ur.is_active = TRUE
-				  AND r.is_active = TRUE
-				ORDER BY r.id ASC;
-			`,
-			[userId],
-		);
+		const rows = await this.userRepository.findAuthorizationRoles(userId);
 
 		return rows.map((row) => ({
 			id: Number(row.id),
@@ -78,24 +57,7 @@ export class UserAuthorizationService {
 	}
 
 	private async findRolesPermissions(roleIds: number[]): Promise<AuthorizationPermission[]> {
-		const rows = await this.dataSource.query(
-			`
-				SELECT
-				  MIN(rmp.id) AS id,
-				  mt.code AS code,
-				  COALESCE(mt.extra->>'module', mt.name->>'en', '') AS module,
-				  COALESCE(mt.extra->>'route', '') AS route,
-				  COALESCE(array_agg(DISTINCT (pt.name->>'en')) FILTER (WHERE pt.name->>'en' IS NOT NULL), ARRAY[]::text[]) AS permissions
-				FROM core.role_module_permissions rmp
-				INNER JOIN core.types mt ON mt.id = rmp.module_type_id
-				INNER JOIN core.types pt ON pt.id = rmp.permission_type_id
-				WHERE rmp.role_id = ANY($1)
-				  AND rmp.is_active = TRUE
-				GROUP BY mt.id, mt.code, mt.extra, mt.name
-				ORDER BY MIN(rmp.id) ASC;
-			`,
-			[roleIds],
-		);
+		const rows = await this.userRepository.findAuthorizationPermissions(roleIds);
 
 		return rows.map((row) => ({
 			id: Number(row.id),

@@ -9,13 +9,12 @@ import {
 	UpdateProgramCommissionDto,
 	FilterProgramCommissionDetailedDto,
 } from '../model/program-commissions.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProgramCommissionService extends BaseService<ProgramCommissionRepository> {
 	constructor(
 		protected readonly repository: ProgramCommissionRepository,
-		protected readonly dataSource: DataSource,
 		private readonly outcomeRepository: OutcomeRepository,
 	) {
 		super(repository);

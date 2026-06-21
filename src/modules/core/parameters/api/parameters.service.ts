@@ -4,14 +4,11 @@ import { ParameterRepository } from '../core/parameters.repository';
 import { ParameterValidation } from '../core/parameters.validation';
 
 import { CreateParameterDto, UpdateParameterDto } from '../model/parameters.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ParameterService extends BaseService<ParameterRepository> {
-	constructor(
-		protected readonly repository: ParameterRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ParameterRepository) {
 		super(repository);
 	}
 

@@ -1,12 +1,12 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { RubricEntity } from '../model/rubrics.entity';
 import { CreateRubricDto } from '../model/rubrics.dtos';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
-import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
+import { RubricConfigRepository } from '../core/rubric-config.repository';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { toI18n } from 'src/shared/types/i18n';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -44,7 +44,7 @@ export class RubricConfigService {
 		private readonly programCommissionRepo: Repository<ProgramCommissionEntity>,
 		@InjectRepository(OutcomeEntity)
 		private readonly outcomeRepo: Repository<OutcomeEntity>,
-		private readonly dataSource: DataSource,
+		private readonly rubricConfigRepository: RubricConfigRepository,
 	) {}
 
 	private async resolveRubricTypeIdByCode(code: string): Promise<number | null> {
@@ -105,10 +105,9 @@ export class RubricConfigService {
 			.map((q) => q.outcomeId)
 			.filter((id): id is number => id != null);
 		if (outcomeIds.length > 0) {
-			const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
-				where: { studyPlanCourseId: dto.studyPlanCourseId },
-			});
-			const validOutcomeIds = mappings.map((m) => m.outcomeId);
+			const validOutcomeIds = await this.rubricConfigRepository.getOutcomeIdsByCourse(
+				dto.studyPlanCourseId,
+			);
 			const invalidOutcomes = outcomeIds.filter((id) => !validOutcomeIds.includes(id));
 			if (invalidOutcomes.length > 0) {
 				throw new BadRequestException({
@@ -142,46 +141,28 @@ export class RubricConfigService {
 			this.validateCriteriaScores(dto.questions);
 		}
 
-		const savedRubric = await this.dataSource.transaction(async (manager) => {
-			const rubric = manager.create(RubricEntity, {
+		const questionInputs = dto.questions.map((questionDto) => ({
+			outcomeId: questionDto.outcomeId,
+			question: toI18n(questionDto.question),
+			criterias: [...questionDto.criterias]
+				.sort((a, b) => a.minValue - b.minValue)
+				.map((criteriaDto) => ({
+					criteria: toI18n(criteriaDto.criteria),
+					minValue: criteriaDto.minValue,
+					maxValue: criteriaDto.maxValue,
+				})),
+		}));
+
+		const savedRubric = await this.rubricConfigRepository.createWithChildren(
+			{
 				rubricTypeId: dto.rubricTypeId,
 				gradeTypeId: dto.gradeTypeId,
 				studyPlanCourseId: dto.studyPlanCourseId,
 				isActive: dto.isActive ?? true,
 				extra: dto.extra,
-			});
-
-			const txSavedRubric = await manager.save(rubric);
-
-			const questionEntities: RubricQuestionEntity[] = [];
-			for (const questionDto of dto.questions) {
-				const question = manager.create(RubricQuestionEntity, {
-					rubricId: txSavedRubric.id,
-					outcomeId: questionDto.outcomeId,
-					question: toI18n(questionDto.question),
-					isActive: true,
-				});
-				const savedQuestion = await manager.save(question);
-
-				const sortedCriterias = [...questionDto.criterias].sort((a, b) => a.minValue - b.minValue);
-				const criteriaEntities = sortedCriterias.map((criteriaDto) =>
-					manager.create(RubricQuestionCriteriaEntity, {
-						rubricQuestionId: savedQuestion.id,
-						criteria: toI18n(criteriaDto.criteria),
-						minValue: criteriaDto.minValue,
-						maxValue: criteriaDto.maxValue,
-						isActive: true,
-					}),
-				);
-
-				await manager.save(criteriaEntities);
-				savedQuestion.criterias = criteriaEntities;
-				questionEntities.push(savedQuestion);
-			}
-
-			txSavedRubric.questions = questionEntities;
-			return txSavedRubric;
-		});
+			},
+			questionInputs,
+		);
 
 		try {
 			await this.recalculateMaxScore(savedRubric.id);
@@ -211,14 +192,10 @@ export class RubricConfigService {
 			gradeType.code === TYPE_CODES.GRADE_TYPE.EA || gradeType.code === TYPE_CODES.GRADE_TYPE.EB;
 
 		if (isEaOrEb && verificationOutcomeType) {
-			const hasVerificationOutcome = await this.dataSource
-				.getRepository(CourseOutcomeMappingEntity)
-				.exists({
-					where: {
-						studyPlanCourseId,
-						outcomeTypeId: verificationOutcomeType.id,
-					},
-				});
+			const hasVerificationOutcome = await this.rubricConfigRepository.hasVerificationOutcome(
+				studyPlanCourseId,
+				verificationOutcomeType.id,
+			);
 
 			if (hasVerificationOutcome) {
 				return { id: capstoneType.id, code: capstoneType.code, name: capstoneType.name };

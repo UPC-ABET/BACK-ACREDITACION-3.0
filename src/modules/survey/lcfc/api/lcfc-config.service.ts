@@ -1,7 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { LcfcConfigRepository, LCFC_SURVEY_TYPE } from '../core/lcfc-config.repository';
-import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
@@ -10,15 +8,11 @@ import {
 	UpdateLcfcConfigDto,
 } from '../model/lcfc.dtos';
 import { camelizeKeys } from 'src/libs/case.functions';
-import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 
 @Injectable()
 export class LcfcConfigService {
-	constructor(
-		private readonly configRepo: LcfcConfigRepository,
-		private readonly dataSource: DataSource,
-	) {}
+	constructor(private readonly configRepo: LcfcConfigRepository) {}
 
 	/**
 	 * Generates LCFC configs for the given period (and optional program).
@@ -199,21 +193,10 @@ export class LcfcConfigService {
 	}
 
 	async updateStatus(dto: UpdateLcfcConfigStatusDto): Promise<{ updated: number }> {
-		return await this.dataSource.transaction(async (manager) => {
-			let updated = 0;
-			for (const item of dto.updates) {
-				const existing = await manager.findOne(OutcomeConfigEntity, {
-					where: { id: item.configId },
-				});
-				const extra = (existing?.extra as Record<string, any>) ?? {};
-				if (!existing || extra.survey_type !== LCFC_SURVEY_TYPE) {
-					throw new NotFoundException(lcfcValidationStrings.error.configNotFound);
-				}
-				await manager.update(OutcomeConfigEntity, item.configId, { isActive: item.isActive });
-				updated++;
-			}
-			return { updated };
+		const updated = await this.configRepo.updateStatuses(dto.updates, () => {
+			throw new NotFoundException(lcfcValidationStrings.error.configNotFound);
 		});
+		return { updated };
 	}
 
 	private async findLcfcConfigOrFail(id: number) {
@@ -237,13 +220,7 @@ export class LcfcConfigService {
 		// Store commissionId in the extra JSON so the survey endpoint can filter by it.
 		if (dto.commissionId != null) {
 			const currentExtra = (existing.extra as Record<string, unknown>) ?? {};
-			await this.dataSource.query(
-				`UPDATE survey.outcome_configs
-				 SET extra = jsonb_set(COALESCE(extra, '{}'::jsonb), '{commission_id}', to_jsonb($1::int)),
-				     updated_at = NOW()
-				 WHERE id = $2`,
-				[dto.commissionId, id],
-			);
+			await this.configRepo.setCommissionId(id, dto.commissionId);
 			// Remove commissionId from the DTO before passing to the base update
 			const { commissionId: _removed, ...rest } = dto;
 			if (Object.keys(rest).length > 0) {
@@ -261,28 +238,6 @@ export class LcfcConfigService {
 		const courseSectionId = extra.course_section_id ?? extra.courseSectionId ?? null;
 		const academicPeriodId = extra.academic_period_id ?? extra.academicPeriodId ?? null;
 
-		return await this.dataSource.transaction(async (manager) => {
-			// Remove the surveys generated for this section (and their notifications/scores)
-			// so the course section can later be deleted; otherwise the FKs from
-			// evidence.surveys keep the section "in use" even after its config is gone.
-			if (courseSectionId && academicPeriodId) {
-				const surveys = await manager.query(
-					`SELECT s.id FROM evidence.surveys s
-					 WHERE s.survey_type_id = (SELECT id FROM core.types WHERE code = $1)
-					   AND s.course_section_id = $2
-					   AND s.academic_period_id = $3`,
-					[TYPE_CODES.SURVEY_TYPE.LCFC, courseSectionId, academicPeriodId],
-				);
-				const surveyIds = surveys.map((r: { id: number }) => r.id);
-				if (surveyIds.length > 0) {
-					await manager.query(`DELETE FROM survey.scores WHERE survey_id = ANY($1)`, [surveyIds]);
-					await manager.query(`DELETE FROM survey.notifications WHERE survey_id = ANY($1)`, [
-						surveyIds,
-					]);
-					await manager.query(`DELETE FROM evidence.surveys WHERE id = ANY($1)`, [surveyIds]);
-				}
-			}
-			return await manager.delete(OutcomeConfigEntity, id);
-		});
+		return await this.configRepo.deleteConfigWithSurveys(id, courseSectionId, academicPeriodId);
 	}
 }

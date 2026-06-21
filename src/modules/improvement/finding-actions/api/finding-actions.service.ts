@@ -4,14 +4,11 @@ import { FindingActionRepository } from '../core/finding-actions.repository';
 import { FindingActionValidation } from '../core/finding-actions.validation';
 
 import { CreateFindingActionDto, UpdateFindingActionDto } from '../model/finding-actions.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class FindingActionService extends BaseService<FindingActionRepository> {
-	constructor(
-		protected readonly repository: FindingActionRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: FindingActionRepository) {
 		super(repository);
 	}
 

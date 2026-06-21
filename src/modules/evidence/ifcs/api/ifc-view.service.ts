@@ -1,37 +1,30 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
 import {
-	HEADER_SQL,
-	FINDINGS_SQL,
-	FINDING_OUTCOMES_SQL,
-	FINDING_ACTIONS_SQL,
-	OUTCOME_COURSE_BY_IFC_SQL,
-	PREVIOUS_ACTIONS_SQL,
-} from './ifcs.sql';
+	IfcRepository,
+	IfcViewHeaderRow,
+	IfcFindingRow,
+	IfcFindingOutcomeRow,
+	IfcFindingActionRow,
+	IfcOutcomeCourseRow,
+} from '../core/ifcs.repository';
 
 @Injectable()
 export class IfcViewService {
 	private readonly logger = new Logger(IfcViewService.name);
 
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(private readonly repository: IfcRepository) {}
 
 	async getView(id: number, userId: number, schoolId: number) {
 		const errors: string[] = [];
 
 		const [headerResult, findingsResult, outcomeCourseResult] = await Promise.allSettled([
-			this.dataSource.query(HEADER_SQL, [
-				id,
-				schoolId,
-				TYPE_CODES.ENTITY_TYPE.COURSE,
-				TYPE_CODES.ENTITY_TYPE.SCHOOL,
-				userId,
-			]),
-			this.dataSource.query(FINDINGS_SQL, [id, IFCS_PARAMETER_KEYS.FINDING_PREFIX]),
-			this.dataSource.query(OUTCOME_COURSE_BY_IFC_SQL, [id]),
+			this.repository.findViewHeaderRows(id, schoolId, userId),
+			this.repository.findFindingRows(id, IFCS_PARAMETER_KEYS.FINDING_PREFIX),
+			this.repository.findOutcomeCourseRowsByIfc(id),
 		]);
 
 		if (headerResult.status === 'rejected') throw headerResult.reason;
@@ -64,22 +57,22 @@ export class IfcViewService {
 			errors.push('outcome_course');
 		}
 
-		const findingIds = findingRows.map((r: any) => Number(r.findingId));
+		const findingIds = findingRows.map((r) => Number(r.findingId));
 		const header = headerRows[0];
 
 		const [findingOutcomeResult, findingActionResult, previousActionsResult] =
 			await Promise.allSettled([
 				findingIds.length
-					? this.dataSource.query(FINDING_OUTCOMES_SQL, [findingIds])
-					: Promise.resolve([]),
+					? this.repository.findFindingOutcomeRows(findingIds)
+					: Promise.resolve<IfcFindingOutcomeRow[]>([]),
 				findingIds.length
-					? this.dataSource.query(FINDING_ACTIONS_SQL, [
+					? this.repository.findFindingActionRows(
 							findingIds,
 							IFCS_PARAMETER_KEYS.ACTION_PREFIX,
 							TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 							TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
-						])
-					: Promise.resolve([]),
+						)
+					: Promise.resolve<IfcFindingActionRow[]>([]),
 				this.loadPreviousActions(Number(header.courseId), Number(header.academicPeriodId), id),
 			]);
 
@@ -123,7 +116,7 @@ export class IfcViewService {
 		};
 	}
 
-	groupOutcomeRows(rows: any[]) {
+	groupOutcomeRows(rows: IfcOutcomeCourseRow[]) {
 		const programIndex = new Map<
 			string,
 			{ programCode: string; programName: I18nText; commissions: Map<string, any> }
@@ -161,7 +154,7 @@ export class IfcViewService {
 	}
 
 	async loadPreviousActions(courseId: number, activePeriodId: number, excludeIfcId: number | null) {
-		const rows = await this.dataSource.query(PREVIOUS_ACTIONS_SQL, [
+		const rows = await this.repository.findPreviousActionRows(
 			courseId,
 			activePeriodId,
 			excludeIfcId,
@@ -169,8 +162,8 @@ export class IfcViewService {
 			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
 			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
-		]);
-		return rows.map((r: any) => ({
+		);
+		return rows.map((r) => ({
 			id: Number(r.id),
 			findingActionId: Number(r.findingActionId),
 			finding: {
@@ -191,11 +184,11 @@ export class IfcViewService {
 	}
 
 	private assembleViewResponse(input: {
-		header: any;
-		findingRows: any[];
-		outcomeCourseRows: any[];
-		findingOutcomeRows: any[];
-		findingActionRows: any[];
+		header: IfcViewHeaderRow;
+		findingRows: IfcFindingRow[];
+		outcomeCourseRows: IfcOutcomeCourseRow[];
+		findingOutcomeRows: IfcFindingOutcomeRow[];
+		findingActionRows: IfcFindingActionRow[];
 		previousActions: any[];
 	}) {
 		const {
@@ -269,7 +262,7 @@ export class IfcViewService {
 			actionsByFinding.set(fid, arr);
 		}
 
-		const findings = findingRows.map((row: any) => {
+		const findings = findingRows.map((row) => {
 			const fid = Number(row.findingId);
 			return {
 				id: fid,

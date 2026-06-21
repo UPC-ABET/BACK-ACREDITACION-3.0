@@ -1,7 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
 
 jest.mock('bcryptjs', () => ({
 	__esModule: true,
@@ -29,7 +28,6 @@ describe('UserService - login', () => {
 	let orgScopeService: { getUserSchools: jest.Mock };
 	let mailService: { sendRawEmail: jest.Mock };
 	let emailTemplateService: { findByCode: jest.Mock };
-	const dataSource = {} as DataSource;
 	const authorizationProfile = {
 		roles: [{ id: 2, name: { en: 'Coordinator', es: 'Coordinador' } }],
 		permissions: [
@@ -71,7 +69,6 @@ describe('UserService - login', () => {
 
 		service = new UserService(
 			userRepository as unknown as UserRepository,
-			dataSource,
 			jwtService as unknown as JwtService,
 			userAuthorizationService as unknown as UserAuthorizationService,
 			orgScopeService as unknown as OrgScopeService,

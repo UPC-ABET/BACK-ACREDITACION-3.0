@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
 import { IfcValidation } from '../core/ifcs.validation';
@@ -8,16 +8,12 @@ import { IFCS_PARAMETER_KEYS, IFC_INSTRUMENT_CODE, IFC_OPS, IfcOp } from './ifcs
 import { CreateIfcDto, IfcContentDto } from '../model/ifcs-content.dtos';
 import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
 import { IfcStateMachineService } from './ifc-state-machine.service';
-import {
-	CHART_RESOLUTION_SQL,
-	PROGRAM_BY_COURSE_PERIOD_SQL,
-	PREVIOUS_ACTIONS_SQL,
-} from './ifcs.sql';
+import { IfcRepository } from '../core/ifcs.repository';
 
 @Injectable()
 export class IfcContentService {
 	constructor(
-		private readonly dataSource: DataSource,
+		private readonly repository: IfcRepository,
 		private readonly stateMachine: IfcStateMachineService,
 		private readonly dispatcher: NotificationDispatcherService,
 	) {}
@@ -25,15 +21,14 @@ export class IfcContentService {
 	async createIfc(dto: CreateIfcDto, userId: number, schoolId: number, academicPeriodId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.CREATE;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
-		const { id: ifcId, statusCode } = await this.dataSource.transaction(async (em) => {
-			const chartRows = await em.query(CHART_RESOLUTION_SQL, [
+		const { id: ifcId, statusCode } = await this.repository.transaction(async (em) => {
+			const chartRows = await this.repository.resolveChart(
 				dto.chartId,
 				academicPeriodId,
 				schoolId,
-				TYPE_CODES.ENTITY_TYPE.COURSE,
-				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
-			]);
+				em,
+			);
 			IfcValidation.assertChartFound(chartRows, op);
 
 			const row = chartRows[0];
@@ -55,11 +50,12 @@ export class IfcContentService {
 
 			await IfcValidation.assertNoIfcExists(em, courseId, academicPeriodId, op);
 
-			const ifcInsert = await em.query(
-				`INSERT INTO evidence.ifcs (course_id, academic_period_id, information, extra, is_active) VALUES ($1, $2, $3::jsonb, '{}'::jsonb, true) RETURNING id`,
-				[courseId, academicPeriodId, JSON.stringify(dto.information ?? {})],
+			const ifcId = await this.repository.insertIfc(
+				courseId,
+				academicPeriodId,
+				dto.information ?? {},
+				em,
 			);
-			const ifcId = Number(ifcInsert[0].id);
 
 			await this.resolveFindingsAndActions(em, {
 				ifcId,
@@ -110,33 +106,23 @@ export class IfcContentService {
 	async patch(id: number, dto: IfcContentDto, userId: number, schoolId: number) {
 		const op: IfcOp = dto.submit ? IFC_OPS.SUBMIT : IFC_OPS.PATCH;
 		IfcValidation.assertFindingsAndActionsPresent(dto.findings, dto.actions, op);
-		const { courseChartId, periodId, statusCode } = await this.dataSource.transaction(
+		const { courseChartId, periodId, statusCode } = await this.repository.transaction(
 			async (em) => {
 				const ctx = await this.stateMachine.loadTransitionContext(id, userId, schoolId, op, em);
 				await IfcValidation.assertIsInCourseChain(em, ctx, op);
 				IfcValidation.assertCurrentStatusEditable(ctx.currentStatusCode, op);
 
-				const ifcRows = await em.query(
-					`SELECT course_id AS "courseId", academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1`,
-					[id],
-				);
-				const courseId = Number(ifcRows[0].courseId);
-				const periodId = Number(ifcRows[0].academicPeriodId);
+				const coursePeriod = await this.repository.findCoursePeriod(id, em);
+				const courseId = Number(coursePeriod!.courseId);
+				const periodId = Number(coursePeriod!.academicPeriodId);
 
-				const programRows = await em.query(PROGRAM_BY_COURSE_PERIOD_SQL, [
-					courseId,
-					periodId,
-					TYPE_CODES.ENTITY_TYPE.COURSE,
-				]);
+				const programRows = await this.repository.findProgramByCoursePeriod(courseId, periodId, em);
 				const programId =
 					programRows[0]?.programId === undefined || programRows[0]?.programId === null
 						? null
 						: Number(programRows[0].programId);
 
-				await em.query(
-					`UPDATE evidence.ifcs SET information = $1::jsonb, updated_at = NOW() WHERE id = $2`,
-					[JSON.stringify(dto.information ?? {}), id],
-				);
+				await this.repository.updateIfcInformation(id, dto.information ?? {}, em);
 
 				await this.resolveFindingsAndActions(em, {
 					ifcId: id,
@@ -216,11 +202,7 @@ export class IfcContentService {
 			input.deletedActionIds ?? [],
 		);
 
-		const instrumentRows = await em.query(
-			`SELECT id::int AS id FROM evidence.instruments WHERE code = $1 AND is_active = true LIMIT 1`,
-			[IFC_INSTRUMENT_CODE],
-		);
-		const ifcInstrumentId: number | undefined = instrumentRows[0]?.id;
+		const ifcInstrumentId = await this.repository.findIfcInstrumentId(IFC_INSTRUMENT_CODE, em);
 		if (!ifcInstrumentId) {
 			throw new HttpException(
 				{
@@ -233,25 +215,20 @@ export class IfcContentService {
 
 		const criticalityCodes = Array.from(new Set(input.findings.map((f) => f.criticalityCode)));
 		const criticalityRows = criticalityCodes.length
-			? await em.query(`SELECT id::int AS id, code FROM core.types WHERE code = ANY($1::text[])`, [
-					criticalityCodes,
-				])
+			? await this.repository.findCriticalityTypes(criticalityCodes, em)
 			: [];
 		const criticalityByCode = new Map<string, number>(
-			criticalityRows.map((r: any) => [r.code, Number(r.id)]),
+			criticalityRows.map((r) => [r.code, Number(r.id)]),
 		);
 
 		const hasNewFinding = input.findings.some((f) => f.id === null);
 		let nextFindingCorrelative = 0;
 		if (hasNewFinding) {
-			const base = await em.query(
-				`SELECT COALESCE(MAX(correlative), 0)::int AS c
-				 FROM improvement.findings
-				 WHERE instrument_id = $1
-				   AND ((course_id IS NULL AND $2::int IS NULL) OR course_id = $2)`,
-				[ifcInstrumentId, input.courseId],
+			nextFindingCorrelative = await this.repository.maxFindingCorrelative(
+				ifcInstrumentId,
+				input.courseId,
+				em,
 			);
-			nextFindingCorrelative = Number(base[0]?.c ?? 0);
 		}
 
 		const tempIdToId = new Map<string, number>();
@@ -270,33 +247,22 @@ export class IfcContentService {
 			let realId: number;
 			if (f.id === null) {
 				nextFindingCorrelative += 1;
-				const insertRow = await em.query(
-					`INSERT INTO improvement.findings (criticality_type_id, instrument_id, staff_id, correlative, description, course_id, academic_period_id, campus_id, is_automatic, is_active)
-					 VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NULL, false, true)
-					 RETURNING id`,
-					[
-						critId,
-						ifcInstrumentId,
-						input.requesterStaffId,
-						nextFindingCorrelative,
-						JSON.stringify(f.description),
-						input.courseId,
-						input.periodId,
-					],
+				realId = await this.repository.insertFinding(
+					{
+						criticalityTypeId: critId,
+						instrumentId: ifcInstrumentId,
+						requesterStaffId: input.requesterStaffId,
+						correlative: nextFindingCorrelative,
+						description: f.description,
+						courseId: input.courseId,
+						periodId: input.periodId,
+					},
+					em,
 				);
-				realId = Number(insertRow[0].id);
 
-				await em.query(
-					`INSERT INTO ifc.ifc_findings (ifc_id, finding_id, is_active)
-					 SELECT $1, $2, true
-					 WHERE NOT EXISTS (SELECT 1 FROM ifc.ifc_findings WHERE ifc_id = $1 AND finding_id = $2)`,
-					[input.ifcId, realId],
-				);
+				await this.repository.linkIfcFinding(input.ifcId, realId, em);
 			} else {
-				await em.query(
-					`UPDATE improvement.findings SET description = $1::jsonb, criticality_type_id = $2, updated_at = NOW() WHERE id = $3`,
-					[JSON.stringify(f.description), critId, f.id],
-				);
+				await this.repository.updateFinding(f.id, f.description, critId, em);
 				realId = f.id;
 			}
 			tempIdToId.set(f.tempId, realId);
@@ -305,16 +271,11 @@ export class IfcContentService {
 		const hasNewAction = input.actions.some((a) => a.id === null);
 		let nextActionCorrelative = 0;
 		if (hasNewAction) {
-			const base = await em.query(
-				`SELECT COALESCE(MAX(a.correlative), 0)::int AS c
-				 FROM improvement.actions a
-				 JOIN improvement.finding_actions fa ON fa.action_id = a.id
-				 JOIN improvement.findings f         ON f.id          = fa.finding_id
-				 WHERE f.instrument_id = $1
-				   AND ((f.course_id IS NULL AND $2::int IS NULL) OR f.course_id = $2)`,
-				[ifcInstrumentId, input.courseId],
+			nextActionCorrelative = await this.repository.maxActionCorrelative(
+				ifcInstrumentId,
+				input.courseId,
+				em,
 			);
-			nextActionCorrelative = Number(base[0]?.c ?? 0);
 		}
 
 		for (const a of input.actions) {
@@ -323,28 +284,20 @@ export class IfcContentService {
 
 			if (a.id === null) {
 				nextActionCorrelative += 1;
-				const insertedAction = await em.query(
-					`INSERT INTO improvement.actions (description, correlative, program_id, academic_period_id, is_active)
-					 VALUES ($1::jsonb, $2, $3, $4, true)
-					 RETURNING id`,
-					[JSON.stringify(a.description), nextActionCorrelative, input.programId, input.periodId],
+				const actionId = await this.repository.insertAction(
+					{
+						description: a.description,
+						correlative: nextActionCorrelative,
+						programId: input.programId,
+						periodId: input.periodId,
+					},
+					em,
 				);
-				const actionId = Number(insertedAction[0].id);
 
-				await em.query(
-					`INSERT INTO improvement.finding_actions (finding_id, action_id, in_plan_required, evidences, is_active)
-					 VALUES ($1, $2, false, NULL, true)`,
-					[findingId, actionId],
-				);
+				await this.repository.linkFindingAction(findingId!, actionId, em);
 			} else {
-				await em.query(
-					`UPDATE improvement.actions SET description = $1::jsonb, updated_at = NOW() WHERE id = $2`,
-					[JSON.stringify(a.description), a.id],
-				);
-				await em.query(
-					`UPDATE improvement.finding_actions SET finding_id = $1 WHERE action_id = $2 AND finding_id <> $1`,
-					[findingId, a.id],
-				);
+				await this.repository.updateAction(a.id, a.description, em);
+				await this.repository.relinkFindingAction(findingId!, a.id, em);
 			}
 		}
 	}
@@ -362,7 +315,7 @@ export class IfcContentService {
 		const items = input.items ?? [];
 		if (items.length === 0) return;
 
-		const rows = await em.query(PREVIOUS_ACTIONS_SQL, [
+		const rows = await this.repository.findPreviousActionRows(
 			input.courseId,
 			input.periodId,
 			input.excludeIfcId,
@@ -370,8 +323,9 @@ export class IfcContentService {
 			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
 			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
-		]);
-		const allowed = new Set<number>(rows.map((r: any) => Number(r.findingActionId)));
+			em,
+		);
+		const allowed = new Set<number>(rows.map((r) => Number(r.findingActionId)));
 
 		for (const item of items) {
 			if (!allowed.has(item.findingActionId)) {
@@ -386,10 +340,7 @@ export class IfcContentService {
 					HttpStatus.BAD_REQUEST,
 				);
 			}
-			await em.query(
-				`UPDATE improvement.finding_actions SET evidences = $1::jsonb, updated_at = NOW() WHERE id = $2`,
-				[item.evidences === null ? null : JSON.stringify(item.evidences), item.findingActionId],
-			);
+			await this.repository.updateFindingActionEvidences(item.findingActionId, item.evidences, em);
 		}
 	}
 
@@ -399,14 +350,10 @@ export class IfcContentService {
 		actionIds: number[],
 	) {
 		for (const actionId of actionIds) {
-			await em.query(`DELETE FROM improvement.finding_actions WHERE action_id = $1`, [actionId]);
-			await em.query(`DELETE FROM improvement.actions WHERE id = $1`, [actionId]);
+			await this.repository.deleteAction(actionId, em);
 		}
 		for (const findingId of findingIds) {
-			await em.query(`DELETE FROM improvement.finding_outcomes WHERE finding_id = $1`, [findingId]);
-			await em.query(`DELETE FROM improvement.finding_actions WHERE finding_id = $1`, [findingId]);
-			await em.query(`DELETE FROM ifc.ifc_findings WHERE finding_id = $1`, [findingId]);
-			await em.query(`DELETE FROM improvement.findings WHERE id = $1`, [findingId]);
+			await this.repository.deleteFinding(findingId, em);
 		}
 	}
 }

@@ -1,7 +1,7 @@
-import { DataSource } from 'typeorm';
 import { BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
+import { NotificationDispatcherRepository } from './core/notification-dispatcher.repository';
 import { MailService } from 'src/modules/mail/mail.service';
 import { NotificationLogService } from 'src/modules/core/notification-logs/api/notification-logs.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -38,23 +38,33 @@ const baseInput = {
 };
 
 function makeDispatcher() {
-	const dataSource = { query: jest.fn() };
+	const repository = {
+		loadNotificationVars: jest.fn().mockResolvedValue([]),
+		resolveContext: jest.fn().mockResolvedValue(null),
+		loadConfig: jest.fn().mockResolvedValue(null),
+		resolveRecipients: jest.fn().mockResolvedValue([]),
+		lookupStatusCode: jest.fn().mockResolvedValue(TYPE_CODES.IFC_STATUS.SUBMITTED),
+		lookupUserName: jest.fn().mockResolvedValue(''),
+		lookupLatestStatusUserName: jest.fn().mockResolvedValue(''),
+		lookupLatestStatusComment: jest.fn().mockResolvedValue(null),
+		lookupTypeIdByCode: jest.fn().mockResolvedValue(1),
+	};
 	const mailService = { sendRawEmail: jest.fn() };
 	const configService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
 	const notificationLogService = { create: jest.fn().mockResolvedValue({}) };
 	const dispatcher = new NotificationDispatcherService(
-		dataSource as unknown as DataSource,
+		repository as unknown as NotificationDispatcherRepository,
 		mailService as unknown as MailService,
 		configService as unknown as ConfigService,
 		notificationLogService as unknown as NotificationLogService,
 	);
-	return { dispatcher, dataSource, mailService, configService, notificationLogService };
+	return { dispatcher, repository, mailService, configService, notificationLogService };
 }
 
 describe('NotificationDispatcherService.dispatch', () => {
 	it('returns no_course_chart when the chart cannot be resolved', async () => {
-		const { dispatcher, dataSource } = makeDispatcher();
-		dataSource.query.mockResolvedValueOnce([]);
+		const { dispatcher, repository } = makeDispatcher();
+		repository.resolveContext.mockResolvedValueOnce(null);
 
 		const result = await dispatcher.dispatch(baseInput);
 
@@ -67,8 +77,9 @@ describe('NotificationDispatcherService.dispatch', () => {
 	});
 
 	it('returns no_config when the UNIQUE lookup misses', async () => {
-		const { dispatcher, dataSource } = makeDispatcher();
-		dataSource.query.mockResolvedValueOnce([ctxRow()]).mockResolvedValueOnce([]);
+		const { dispatcher, repository } = makeDispatcher();
+		repository.resolveContext.mockResolvedValueOnce(ctxRow());
+		repository.loadConfig.mockResolvedValueOnce(null);
 
 		const result = await dispatcher.dispatch(baseInput);
 
@@ -76,11 +87,10 @@ describe('NotificationDispatcherService.dispatch', () => {
 	});
 
 	it('returns no_recipients when the chain has no matching staff emails', async () => {
-		const { dispatcher, dataSource } = makeDispatcher();
-		dataSource.query
-			.mockResolvedValueOnce([ctxRow()]) // ctx
-			.mockResolvedValueOnce([configRow()]) // config
-			.mockResolvedValueOnce([]); // recipients walk
+		const { dispatcher, repository } = makeDispatcher();
+		repository.resolveContext.mockResolvedValueOnce(ctxRow());
+		repository.loadConfig.mockResolvedValueOnce(configRow());
+		repository.resolveRecipients.mockResolvedValueOnce([]);
 
 		const result = await dispatcher.dispatch(baseInput);
 
@@ -93,13 +103,13 @@ describe('NotificationDispatcherService.dispatch', () => {
 	});
 
 	it('returns send_failed and does not throw when sendRawEmail rejects', async () => {
-		const { dispatcher, dataSource, mailService } = makeDispatcher();
-		dataSource.query
-			.mockResolvedValueOnce([ctxRow()]) // ctx
-			.mockResolvedValueOnce([configRow()]) // config
-			.mockResolvedValueOnce([{ entityTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }]) // recipients
-			.mockResolvedValueOnce([{ value: [] }]) // parameter vars (empty list)
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]); // lookupStatusCode
+		const { dispatcher, repository, mailService } = makeDispatcher();
+		repository.resolveContext.mockResolvedValueOnce(ctxRow());
+		repository.loadConfig.mockResolvedValueOnce(configRow());
+		repository.resolveRecipients.mockResolvedValueOnce([
+			{ entityTypeId: 19, staffId: 1, staffEmail: 'a@x.com' },
+		]);
+		repository.loadNotificationVars.mockResolvedValueOnce([]);
 		(mailService.sendRawEmail as jest.Mock).mockRejectedValueOnce(new BadGatewayException('boom'));
 
 		const result = await dispatcher.dispatch(baseInput);
@@ -109,17 +119,15 @@ describe('NotificationDispatcherService.dispatch', () => {
 	});
 
 	it('dedupes To/Cc: emails in to are removed from cc', async () => {
-		const { dispatcher, dataSource, mailService } = makeDispatcher();
-		dataSource.query
-			.mockResolvedValueOnce([ctxRow()])
-			.mockResolvedValueOnce([configRow()])
-			.mockResolvedValueOnce([
-				{ entityTypeId: 19, staffId: 1, staffEmail: 'shared@x.com' },
-				{ entityTypeId: 18, staffId: 1, staffEmail: 'shared@x.com' },
-				{ entityTypeId: 18, staffId: 2, staffEmail: 'cc-only@x.com' },
-			])
-			.mockResolvedValueOnce([{ value: [] }])
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]);
+		const { dispatcher, repository, mailService } = makeDispatcher();
+		repository.resolveContext.mockResolvedValueOnce(ctxRow());
+		repository.loadConfig.mockResolvedValueOnce(configRow());
+		repository.resolveRecipients.mockResolvedValueOnce([
+			{ entityTypeId: 19, staffId: 1, staffEmail: 'shared@x.com' },
+			{ entityTypeId: 18, staffId: 1, staffEmail: 'shared@x.com' },
+			{ entityTypeId: 18, staffId: 2, staffEmail: 'cc-only@x.com' },
+		]);
+		repository.loadNotificationVars.mockResolvedValueOnce([]);
 		(mailService.sendRawEmail as jest.Mock).mockResolvedValueOnce({ messageId: 'msg-1' });
 
 		const result = await dispatcher.dispatch(baseInput);
@@ -133,28 +141,25 @@ describe('NotificationDispatcherService.dispatch', () => {
 	});
 
 	it('variable substitution: vars whose valid_status_codes do not include the current status code are replaced with empty', async () => {
-		const { dispatcher, dataSource, mailService } = makeDispatcher();
-		dataSource.query
-			.mockResolvedValueOnce([ctxRow()])
-			.mockResolvedValueOnce([
-				configRow({
-					subject: {
-						es: '[{{observer_name}}] {{course_name}}',
-						en: '[{{observer_name}}] {{course_name}}',
-					},
-					body: { es: '<p>{{course_name}}</p>', en: '<p>{{course_name}}</p>' },
-				}),
-			])
-			.mockResolvedValueOnce([{ entityTypeId: 19, staffId: 1, staffEmail: 'a@x.com' }])
-			.mockResolvedValueOnce([
-				{
-					value: [
-						{ var: '{{course_name}}', valid_status_codes: null },
-						{ var: '{{observer_name}}', valid_status_codes: [TYPE_CODES.IFC_STATUS.OBSERVED] },
-					],
+		const { dispatcher, repository, mailService } = makeDispatcher();
+		repository.resolveContext.mockResolvedValueOnce(ctxRow());
+		repository.loadConfig.mockResolvedValueOnce(
+			configRow({
+				subject: {
+					es: '[{{observer_name}}] {{course_name}}',
+					en: '[{{observer_name}}] {{course_name}}',
 				},
-			])
-			.mockResolvedValueOnce([{ code: TYPE_CODES.IFC_STATUS.SUBMITTED }]); // status code lookup
+				body: { es: '<p>{{course_name}}</p>', en: '<p>{{course_name}}</p>' },
+			}),
+		);
+		repository.resolveRecipients.mockResolvedValueOnce([
+			{ entityTypeId: 19, staffId: 1, staffEmail: 'a@x.com' },
+		]);
+		repository.loadNotificationVars.mockResolvedValueOnce([
+			{ var: '{{course_name}}', validStatusCodes: null },
+			{ var: '{{observer_name}}', validStatusCodes: [TYPE_CODES.IFC_STATUS.OBSERVED] },
+		]);
+		repository.lookupStatusCode.mockResolvedValueOnce(TYPE_CODES.IFC_STATUS.SUBMITTED);
 		(mailService.sendRawEmail as jest.Mock).mockResolvedValueOnce({ messageId: 'msg-1' });
 
 		await dispatcher.dispatch(baseInput);

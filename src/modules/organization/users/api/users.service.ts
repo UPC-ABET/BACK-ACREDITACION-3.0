@@ -16,7 +16,7 @@ import { UserEntity } from '../model/users.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { usersValidationStrings } from '../config/strings/users.validation';
 import { JwtService } from '@nestjs/jwt';
-import { DataSource, EntityManager, FindOneOptions } from 'typeorm';
+import { EntityManager, FindOneOptions } from 'typeorm';
 import { AuthorizationProfile } from 'src/modules/auth/model/authorization.types';
 import { UserAuthorizationService } from './user-authorization.service';
 import { JWT_EXPIRES_IN_SECONDS } from 'src/modules/auth/protocols/jwt/jwt.config';
@@ -35,7 +35,6 @@ export class UserService extends BaseService<UserRepository> {
 
 	constructor(
 		protected readonly repository: UserRepository,
-		protected readonly dataSource: DataSource,
 		private readonly jwtService: JwtService,
 		private readonly userAuthorizationService: UserAuthorizationService,
 		private readonly orgScopeService: OrgScopeService,
@@ -163,26 +162,16 @@ export class UserService extends BaseService<UserRepository> {
 	) {
 		if (staffId === undefined) return;
 
-		const m = manager ?? this.dataSource.manager;
-		await m.query(
-			`UPDATE organization.staff SET user_id = NULL, updated_at = NOW() WHERE user_id = $1`,
-			[userId],
-		);
+		await this.repository.releaseStaffFromUser(userId, manager);
 
 		if (staffId === null) return;
 
-		const found: Array<{ id: number }> = await m.query(
-			`SELECT id FROM organization.staff WHERE id = $1 LIMIT 1`,
-			[staffId],
-		);
-		if (found.length === 0) {
+		const found = await this.repository.findStaffId(staffId, manager);
+		if (found === null) {
 			throw new NotFoundException(usersValidationStrings.error.staffNotFound);
 		}
 
-		await m.query(`UPDATE organization.staff SET user_id = $1, updated_at = NOW() WHERE id = $2`, [
-			userId,
-			staffId,
-		]);
+		await this.repository.linkStaffToUser(userId, staffId, manager);
 	}
 
 	// Best-effort welcome email; a mail failure (or a missing/inactive template) must never
@@ -248,28 +237,16 @@ export class UserService extends BaseService<UserRepository> {
 		const list = (Array.isArray(users) ? users : []) as Array<Record<string, any>>;
 		if (list.length === 0) return users;
 
-		const rows: Array<{
-			user_id: number;
-			staff_id: number;
-			code: string | null;
-			first_name: string;
-			last_name: string;
-		}> = await this.dataSource.query(
-			`SELECT s.user_id, s.id AS staff_id, p.code, s.first_name, s.last_name
-			 FROM organization.staff s
-			 LEFT JOIN academic.professors p ON p.staff_id = s.id
-			 WHERE s.user_id = ANY($1)`,
-			[list.map((u) => u.id)],
-		);
+		const rows = await this.repository.findLinkedTeachers(list.map((u) => u.id));
 
 		const byUser = new Map<number, Record<string, unknown>>();
 		for (const r of rows) {
-			if (!byUser.has(r.user_id)) {
-				byUser.set(r.user_id, {
-					id: r.staff_id,
+			if (!byUser.has(r.userId)) {
+				byUser.set(r.userId, {
+					id: r.staffId,
 					code: r.code,
-					firstName: r.first_name,
-					lastName: r.last_name,
+					firstName: r.firstName,
+					lastName: r.lastName,
 				});
 			}
 		}
@@ -285,25 +262,15 @@ export class UserService extends BaseService<UserRepository> {
 
 		const run = async (m: EntityManager) => {
 			await this.assertUserDeletable(id, m);
-			await m.query(`DELETE FROM core.user_roles WHERE user_id = $1`, [id]);
+			await this.repository.deleteUserRoles(id, m);
 			return await super.delete(id, m);
 		};
 
-		return manager ? run(manager) : this.dataSource.transaction(run);
+		return manager ? run(manager) : this.repository.runInTransaction(run);
 	}
 
 	private async assertUserDeletable(id: number, manager: EntityManager) {
-		const [refs]: Array<{
-			hasStaff: boolean;
-			hasUploads: boolean;
-			hasNotifications: boolean;
-		}> = await manager.query(
-			`SELECT
-				EXISTS(SELECT 1 FROM organization.staff WHERE user_id = $1) AS "hasStaff",
-				EXISTS(SELECT 1 FROM audit.upload_logs WHERE user_id = $1) AS "hasUploads",
-				EXISTS(SELECT 1 FROM core.notification_logs WHERE notifier_user_id = $1) AS "hasNotifications"`,
-			[id],
-		);
+		const refs = await this.repository.findDeleteBlockerRefs(id, manager);
 
 		if (refs.hasStaff) {
 			throw new ConflictException(usersValidationStrings.error.linkedToStaff);

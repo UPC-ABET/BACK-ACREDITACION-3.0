@@ -4,14 +4,11 @@ import { CommissionRepository } from '../core/commissions.repository';
 import { CommissionValidation } from '../core/commissions.validation';
 
 import { CreateCommissionDto, UpdateCommissionDto } from '../model/commissions.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class CommissionService extends BaseService<CommissionRepository> {
-	constructor(
-		protected readonly repository: CommissionRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: CommissionRepository) {
 		super(repository);
 	}
 

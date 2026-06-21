@@ -6,12 +6,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as ExcelJS from 'exceljs';
-import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
-import { DataSource } from 'typeorm';
-import { LcfcNotificationRepository } from '../core/lcfc-notification.repository';
+import {
+	LcfcNotificationRepository,
+	LcfcSendCandidate,
+} from '../core/lcfc-notification.repository';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
 import { LcfcConfigRepository } from '../core/lcfc-config.repository';
 import { LcfcValidation } from '../core/lcfc.validation';
@@ -33,7 +34,6 @@ export class LcfcNotificationService {
 		private readonly notifRepo: LcfcNotificationRepository,
 		private readonly surveyRepo: LcfcSurveyRepository,
 		private readonly configRepo: LcfcConfigRepository,
-		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
@@ -112,130 +112,43 @@ export class LcfcNotificationService {
 		const maxRegisterDate =
 			dto.maxRegisterDate ??
 			(await this.configRepo.getDeadline(dto.programId ?? null, dto.academicPeriodId));
-		let surveysCreated = 0;
-		let alreadyExisted = 0;
-		const pendingNotifications: {
-			studentId: number;
-			studentName: string;
-			studentCode: string;
-			studentEmail: string;
-			surveyId: number;
-			token: string;
-			courseName: string;
-			programName: string;
-		}[] = [];
 
-		try {
-			await this.dataSource.transaction(async (manager) => {
-				for (const student of enrolledStudents) {
-					const config = activeConfigs.find(
-						(c) => c.extra?.course_section_id === student.courseSectionId,
-					);
-					// Use the STUDENT's own program (a shared course can enrol students from other
-					// programs), so the survey shows the student's career and their own outcomes —
-					// not the program the config was created for.
-					const programId = student.programId ?? dto.programId ?? config?.extra?.program_id ?? null;
-					const campusId = dto.campusId ?? student.campusId ?? config?.extra?.campus_id ?? null;
+		// Use the STUDENT's own program (a shared course can enrol students from other programs),
+		// so the survey shows the student's career and their own outcomes — not the program the
+		// config was created for.
+		const candidates: LcfcSendCandidate[] = enrolledStudents.map((student) => {
+			const config = activeConfigs.find(
+				(c) => c.extra?.course_section_id === student.courseSectionId,
+			);
+			return {
+				studentId: student.studentId,
+				studentName: student.studentName,
+				studentCode: student.studentCode,
+				studentEmail: student.studentEmail,
+				courseSectionId: student.courseSectionId,
+				courseName: student.courseName,
+				programName: student.programName,
+				programId: student.programId ?? dto.programId ?? config?.extra?.program_id ?? null,
+				campusId: dto.campusId ?? student.campusId ?? config?.extra?.campus_id ?? null,
+			};
+		});
 
-					const existingSurvey = await this.surveyRepo.findExistingLcfcSurvey(
-						lcfcSurveyTypeId,
-						student.studentId,
-						student.courseSectionId,
-					);
-
-					if (existingSurvey) {
-						alreadyExisted++;
-						// Never (re)send to a student who already completed this survey — even on resend.
-						// If all of a student's surveys are completed, they receive no email.
-						if (existingSurvey.surveyStatusTypeId === closedStatusId) {
-							continue;
-						}
-						// Default behaviour only (re)sends notifications still scheduled (never sent),
-						// so pressing "send" twice does not spam students. On resend we reuse the
-						// latest existing notification regardless of status and refresh its deadline.
-						const existingNotif = dto.resend
-							? await manager.query(
-									`SELECT id, token FROM survey.notifications WHERE survey_id = $1 ORDER BY id DESC LIMIT 1`,
-									[existingSurvey.id],
-								)
-							: await manager.query(
-									`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
-									[existingSurvey.id, scheduledStatusId],
-								);
-
-						if (existingNotif?.[0]) {
-							if (dto.resend) {
-								// Reset to scheduled and refresh the deadline so the reused token is valid again.
-								// sent_date / max_register_date are NOT NULL, so keep the existing deadline
-								// when no new one was resolved, and never null out sent_date (it's re-stamped
-								// to NOW() by markAsSentBySurveyId once the email goes out).
-								await manager.query(
-									`UPDATE survey.notifications
-									 SET notification_status_type_id = $1,
-									     max_register_date = COALESCE($2, max_register_date),
-									     updated_at = NOW()
-									 WHERE id = $3`,
-									[scheduledStatusId, maxRegisterDate, existingNotif[0].id],
-								);
-							}
-							pendingNotifications.push({
-								studentId: student.studentId,
-								studentName: student.studentName,
-								studentCode: student.studentCode,
-								studentEmail: student.studentEmail,
-								surveyId: existingSurvey.id,
-								token: existingNotif[0].token,
-								courseName: student.courseName,
-								programName: student.programName,
-							});
-						}
-					} else {
-						const inserted = await manager.query(
-							`INSERT INTO evidence.surveys
-							 (survey_type_id, survey_status_type_id, student_id, academic_period_id, campus_id, program_id, course_section_id)
-							 VALUES ($1, $2, $3, $4, $5, $6, $7)
-							 RETURNING id`,
-							[
-								lcfcSurveyTypeId,
-								activeStatusId,
-								student.studentId,
-								dto.academicPeriodId,
-								campusId,
-								programId,
-								student.courseSectionId,
-							],
-						);
-
-						const surveyId = inserted[0].id;
-						const token = uuidv4();
-
-						// max_register_date is NOT NULL; fall back to the column default when no
-						// deadline is configured yet (it can be set later from Configuration).
-						await manager.query(
-							`INSERT INTO survey.notifications (survey_id, notification_status_type_id, token, max_register_date)
-							 VALUES ($1, $2, $3, COALESCE($4, NOW()))`,
-							[surveyId, scheduledStatusId, token, maxRegisterDate],
-						);
-
-						surveysCreated++;
-						pendingNotifications.push({
-							studentId: student.studentId,
-							studentName: student.studentName,
-							studentCode: student.studentCode,
-							studentEmail: student.studentEmail,
-							surveyId,
-							token,
-							courseName: student.courseName,
-							programName: student.programName,
-						});
-					}
-				}
+		const { surveysCreated, alreadyExisted, pendingNotifications } = await this.notifRepo
+			.processSendNotifications({
+				lcfcSurveyTypeId,
+				activeStatusId,
+				closedStatusId,
+				scheduledStatusId,
+				resend: dto.resend ?? false,
+				academicPeriodId: dto.academicPeriodId,
+				maxRegisterDate,
+				candidates,
+			})
+			.catch((err) => {
+				throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
+					description: (err as Error).message,
+				});
 			});
-		} catch (err) {
-			throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
-				description: (err as Error).message,
-			});
-		}
 		const surveyBaseUrl =
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
@@ -409,40 +322,17 @@ export class LcfcNotificationService {
 		const surveyId = tokenData.surveyId;
 
 		try {
-			await this.dataSource.transaction(async (manager) => {
-				for (const item of dto.scores) {
-					const commentaries = i18nText(item.commentaries);
-					const existing = await manager.query(
-						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[surveyId, item.outcomeId],
-					);
-
-					if (existing?.length > 0) {
-						await manager.query(
-							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, commentaries, surveyId, item.outcomeId],
-						);
-					} else {
-						await manager.query(
-							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[surveyId, item.outcomeId, item.score, commentaries],
-						);
-					}
-				}
-
-				const commentariesJson = dto.commentaries
-					? JSON.stringify({ commentaries: dto.commentaries })
-					: null;
-				await manager.query(
-					`UPDATE evidence.surveys
-					 SET survey_status_type_id = $1, updated_at = NOW()
-					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
-					 WHERE id = $2`,
-					commentariesJson
-						? [closedStatusId, surveyId, commentariesJson]
-						: [closedStatusId, surveyId],
-				);
-			});
+			const scoreItems = dto.scores.map((item) => ({
+				outcomeId: item.outcomeId,
+				score: item.score,
+				commentaries: i18nText(item.commentaries),
+			}));
+			await this.notifRepo.saveScoresAndCloseSurvey(
+				surveyId,
+				closedStatusId,
+				scoreItems,
+				dto.commentaries,
+			);
 
 			return {
 				success: true,

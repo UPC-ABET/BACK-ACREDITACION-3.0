@@ -12,7 +12,6 @@ import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
-import { DataSource } from 'typeorm';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { GraNotificationRepository } from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
@@ -40,7 +39,6 @@ export class GraNotificationService {
 		private readonly notifRepo: GraNotificationRepository,
 		private readonly surveyRepo: GraSurveyRepository,
 		private readonly configRepo: GraConfigRepository,
-		private readonly dataSource: DataSource,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
@@ -157,10 +155,7 @@ export class GraNotificationService {
 		// Resolve every student code up front in a single query to avoid an N+1 lookup per row.
 		const codeByRow = rows.map((row) =>
 			normalizeCellText(
-				row['Codigo Alumno'] ??
-					row['Código Alumno'] ??
-					row['CODIGO_ALUMNO'] ??
-					row['student_code'],
+				row['Codigo Alumno'] ?? row['Código Alumno'] ?? row['CODIGO_ALUMNO'] ?? row['student_code'],
 			),
 		);
 		const uniqueCodes = [...new Set(codeByRow.filter((code) => code !== ''))];
@@ -401,49 +396,17 @@ export class GraNotificationService {
 		const surveyId = tokenData.surveyId;
 
 		try {
-			await this.dataSource.transaction(async (manager) => {
-				for (const item of dto.scores) {
-					const configRows = await manager.query(
-						`SELECT outcome_id AS "outcomeId" FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
-						[item.outcomeConfigId],
-					);
-
-					if (!configRows?.[0]) continue;
-
-					const outcomeId = configRows[0].outcomeId;
-					const commentaries = i18nText(item.commentaries);
-
-					const existing = await manager.query(
-						`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
-						[surveyId, outcomeId],
-					);
-
-					if (existing?.length > 0) {
-						await manager.query(
-							`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
-							[item.score, commentaries, surveyId, outcomeId],
-						);
-					} else {
-						await manager.query(
-							`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
-							[surveyId, outcomeId, item.score, commentaries],
-						);
-					}
-				}
-
-				const commentariesJson = dto.commentaries
-					? JSON.stringify({ commentaries: dto.commentaries })
-					: null;
-				await manager.query(
-					`UPDATE evidence.surveys
-					 SET survey_status_type_id = $1, updated_at = NOW()
-					     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
-					 WHERE id = $2`,
-					commentariesJson
-						? [closedStatusId, surveyId, commentariesJson]
-						: [closedStatusId, surveyId],
-				);
-			});
+			const scoreItems = dto.scores.map((item) => ({
+				outcomeConfigId: item.outcomeConfigId,
+				score: item.score,
+				commentaries: i18nText(item.commentaries),
+			}));
+			await this.notifRepo.saveScoresAndCloseSurvey(
+				surveyId,
+				closedStatusId,
+				scoreItems,
+				dto.commentaries,
+			);
 
 			return {
 				success: true,

@@ -29,6 +29,7 @@ import { IFCS_PARAMETER_KEYS } from './ifcs.constants';
 function buildServices(dataSource: any) {
 	const ds = dataSource as unknown as DataSource;
 	const repository = {
+		transaction: <T>(work: (manager: any) => Promise<T>) => ds.transaction(work as any),
 		getReportCodes: async (chartIds: number[], schoolId: number) => {
 			const rows = await ds.query('', [chartIds, schoolId, TYPE_CODES.ENTITY_TYPE.SCHOOL]);
 			return rows[0] ?? null;
@@ -48,15 +49,203 @@ function buildServices(dataSource: any) {
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				language,
 			]),
-	} as IfcRepository;
-	const stateMachine = new IfcStateMachineService(ds, dispatcher as any);
-	const view = new IfcViewService(ds);
-	const content = new IfcContentService(ds, stateMachine, dispatcher as any);
+		findIfcListRows: (chartIds: number[], academicPeriodId: number) =>
+			ds.query('', [chartIds, academicPeriodId, TYPE_CODES.ENTITY_TYPE.COURSE]),
+		findViewHeaderRows: (ifcId: number, schoolId: number, userId: number) =>
+			ds.query('', [
+				ifcId,
+				schoolId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
+			]),
+		findFindingRows: (ifcId: number, findingPrefixKey: string) =>
+			ds.query('', [ifcId, findingPrefixKey]),
+		findOutcomeCourseRowsByIfc: (ifcId: number) => ds.query('', [ifcId]),
+		findOutcomeCourseRowsByChart: (chartId: number) => ds.query('', [chartId]),
+		findFindingOutcomeRows: (findingIds: number[]) => ds.query('', [findingIds]),
+		findFindingActionRows: (
+			findingIds: number[],
+			actionPrefixKey: string,
+			pendingCode: string,
+			implementedCode: string,
+		) => ds.query('', [findingIds, actionPrefixKey, pendingCode, implementedCode]),
+		findPreviousActionRows: (
+			courseId: number,
+			activePeriodId: number,
+			excludeIfcId: number | null,
+			actionPrefixKey: string,
+			pendingCode: string,
+			implementedCode: string,
+			findingPrefixKey: string,
+			manager?: any,
+		) =>
+			(manager ?? ds).query('', [
+				courseId,
+				activePeriodId,
+				excludeIfcId,
+				actionPrefixKey,
+				pendingCode,
+				implementedCode,
+				findingPrefixKey,
+			]),
+		findPrefillHeaderRows: (chartId: number, academicPeriodId: number, schoolId: number) =>
+			ds.query('', [
+				chartId,
+				academicPeriodId,
+				schoolId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			]),
+		resolveCurrentStatusCode: async (chartId: number, periodId: number, fallback: string) => {
+			const rows = await ds.query('', [chartId, periodId, fallback]);
+			return rows[0]?.code ?? null;
+		},
+		lockIfc: (ifcId: number, manager: any) =>
+			manager.query('SELECT id FROM evidence.ifcs WHERE id = $1 FOR UPDATE', [ifcId]),
+		findIfcPeriodId: async (ifcId: number, manager?: any) => {
+			const rows = await (manager ?? ds).query('', [ifcId]);
+			return rows[0]?.academicPeriodId === undefined ? undefined : Number(rows[0].academicPeriodId);
+		},
+		findCoursePeriod: async (ifcId: number, manager?: any) => {
+			const rows = await (manager ?? ds).query('', [ifcId]);
+			return rows[0];
+		},
+		findTransitionContextRows: (ifcId: number, schoolId: number, userId: number, manager?: any) =>
+			(manager ?? ds).query('', [
+				ifcId,
+				schoolId,
+				userId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			]),
+		insertStatus: async (
+			ifcId: number,
+			newStatusCode: string,
+			requesterStaffId: number | null,
+			comment: any,
+			manager?: any,
+		) => {
+			const rows = await (manager ?? ds).query('', [
+				ifcId,
+				newStatusCode,
+				requesterStaffId,
+				comment ? JSON.stringify(comment) : null,
+			]);
+			return rows[0];
+		},
+		resolveChart: (
+			chartId: number,
+			academicPeriodId: number,
+			schoolId: number,
+			userId: number,
+			manager?: any,
+		) =>
+			(manager ?? ds).query('', [
+				chartId,
+				academicPeriodId,
+				schoolId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
+			]),
+		findProgramByCoursePeriod: (courseId: number, periodId: number, manager?: any) =>
+			(manager ?? ds).query('', [courseId, periodId, TYPE_CODES.ENTITY_TYPE.COURSE]),
+		insertIfc: async (
+			courseId: number,
+			academicPeriodId: number,
+			information: any,
+			manager: any,
+		) => {
+			const rows = await manager.query('', [
+				courseId,
+				academicPeriodId,
+				JSON.stringify(information),
+			]);
+			return Number(rows[0].id);
+		},
+		updateIfcInformation: async (ifcId: number, information: any, manager: any) => {
+			await manager.query('', [JSON.stringify(information), ifcId]);
+		},
+		findIfcInstrumentId: async (instrumentCode: string, manager: any) => {
+			const rows = await manager.query('', [instrumentCode]);
+			return rows[0]?.id;
+		},
+		findCriticalityTypes: (criticalityCodes: string[], manager: any) =>
+			manager.query('', [criticalityCodes]),
+		maxFindingCorrelative: async (instrumentId: number, courseId: number, manager: any) => {
+			const rows = await manager.query('', [instrumentId, courseId]);
+			return Number(rows[0]?.c ?? 0);
+		},
+		insertFinding: async (input: any, manager: any) => {
+			const rows = await manager.query('', [
+				input.criticalityTypeId,
+				input.instrumentId,
+				input.requesterStaffId,
+				input.correlative,
+				JSON.stringify(input.description),
+				input.courseId,
+				input.periodId,
+			]);
+			return Number(rows[0].id);
+		},
+		linkIfcFinding: async (ifcId: number, findingId: number, manager: any) => {
+			await manager.query('', [ifcId, findingId]);
+		},
+		updateFinding: async (
+			findingId: number,
+			description: any,
+			criticalityTypeId: number,
+			manager: any,
+		) => {
+			await manager.query('', [JSON.stringify(description), criticalityTypeId, findingId]);
+		},
+		maxActionCorrelative: async (instrumentId: number, courseId: number, manager: any) => {
+			const rows = await manager.query('', [instrumentId, courseId]);
+			return Number(rows[0]?.c ?? 0);
+		},
+		insertAction: async (input: any, manager: any) => {
+			const rows = await manager.query('', [
+				JSON.stringify(input.description),
+				input.correlative,
+				input.programId,
+				input.periodId,
+			]);
+			return Number(rows[0].id);
+		},
+		linkFindingAction: async (findingId: number, actionId: number, manager: any) => {
+			await manager.query('', [findingId, actionId]);
+		},
+		updateAction: async (actionId: number, description: any, manager: any) => {
+			await manager.query('', [JSON.stringify(description), actionId]);
+		},
+		relinkFindingAction: async (findingId: number, actionId: number, manager: any) => {
+			await manager.query('', [findingId, actionId]);
+		},
+		updateFindingActionEvidences: async (findingActionId: number, evidences: any, manager: any) => {
+			await manager.query('', [
+				evidences === null ? null : JSON.stringify(evidences),
+				findingActionId,
+			]);
+		},
+		deleteAction: async (actionId: number, manager: any) => {
+			await manager.query('', [actionId]);
+			await manager.query('', [actionId]);
+		},
+		deleteFinding: async (findingId: number, manager: any) => {
+			await manager.query('', [findingId]);
+			await manager.query('', [findingId]);
+			await manager.query('', [findingId]);
+			await manager.query('', [findingId]);
+		},
+	} as unknown as IfcRepository;
+	const stateMachine = new IfcStateMachineService(repository, dispatcher as any);
+	const view = new IfcViewService(repository);
+	const content = new IfcContentService(repository, stateMachine, dispatcher as any);
 	const report = new IfcReportService(repository, reportGenerator as any, view);
 	const schoolsRepository = { findUserSchools: jest.fn() };
 	const service = new IfcService(
 		repository,
-		ds,
 		stateMachine,
 		content,
 		view,

@@ -4,14 +4,11 @@ import { FacultyRepository } from '../core/faculties.repository';
 import { FacultyValidation } from '../core/faculties.validation';
 
 import { CreateFacultyDto, UpdateFacultyDto } from '../model/faculties.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class FacultyService extends BaseService<FacultyRepository> {
-	constructor(
-		protected readonly repository: FacultyRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: FacultyRepository) {
 		super(repository);
 	}
 

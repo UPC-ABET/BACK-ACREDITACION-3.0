@@ -4,14 +4,11 @@ import { NotificationRepository } from '../core/notifications.repository';
 import { NotificationValidation } from '../core/notifications.validation';
 
 import { CreateNotificationDto, UpdateNotificationDto } from '../model/notifications.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class NotificationService extends BaseService<NotificationRepository> {
-	constructor(
-		protected readonly repository: NotificationRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: NotificationRepository) {
 		super(repository);
 	}
 

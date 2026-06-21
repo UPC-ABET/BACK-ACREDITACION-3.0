@@ -11,16 +11,13 @@ import {
 	CreateCourseSectionMaintenanceDto,
 	CourseSectionMaintenanceItem,
 } from '../model/course-sections.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { CourseSectionEntity } from '../model/course-sections.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class CourseSectionService extends BaseService<CourseSectionRepository> {
-	constructor(
-		protected readonly repository: CourseSectionRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: CourseSectionRepository) {
 		super(repository);
 	}
 

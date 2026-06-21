@@ -10,18 +10,14 @@ import {
 	CourseEnrolledStudentDto,
 	CourseLookupItem,
 } from '../model/courses.dtos';
-import { EntityManager, DataSource } from 'typeorm';
-import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
+import { EntityManager } from 'typeorm';
 import { LookupQueryDto } from 'src/commons/lookup.dtos';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { ScopeFilters } from 'src/commons/scope.dtos';
 
 @Injectable()
 export class CourseService extends BaseService<CourseRepository> {
-	constructor(
-		protected readonly repository: CourseRepository,
-		private readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: CourseRepository) {
 		super(repository);
 	}
 
@@ -59,40 +55,7 @@ export class CourseService extends BaseService<CourseRepository> {
 		courseId: number,
 		filters?: FilterCourseEnrolledStudentsDto,
 	): Promise<CourseEnrolledStudentDto[]> {
-		const qb = this.dataSource
-			.getRepository(StudentSectionEnrollmentEntity)
-			.createQueryBuilder('sse')
-			.innerJoinAndSelect('sse.courseSection', 'cs')
-			.innerJoinAndSelect('sse.enrolledStudent', 'es')
-			.innerJoinAndSelect('es.student', 's')
-			.innerJoinAndSelect('cs.professor', 'p')
-			.innerJoinAndSelect('p.staff', 'st')
-			.leftJoinAndSelect('st.user', 'prof_user')
-			.where('cs.course_id = :courseId', { courseId });
-
-		if (filters?.isActive !== undefined) {
-			qb.andWhere('sse.is_active = :sseIsActive', { sseIsActive: filters.isActive });
-			qb.andWhere('es.is_active = :esIsActive', { esIsActive: filters.isActive });
-		}
-
-		if (filters?.academicPeriodId !== undefined) {
-			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
-				academicPeriodId: filters.academicPeriodId,
-			});
-		}
-
-		if (filters?.campusId !== undefined) {
-			qb.andWhere('cs.campus_id = :campusId', { campusId: filters.campusId });
-		}
-
-		if (filters?.studyPlanAcademicPeriodId !== undefined) {
-			qb.andWhere(
-				`cs.course_id IN (SELECT spc_filter.course_id FROM academic.study_plan_courses spc_filter WHERE spc_filter.study_plan_academic_period_id = :studyPlanAcademicPeriodId)`,
-				{ studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId },
-			);
-		}
-
-		const results = await qb.getMany();
+		const results = await this.repository.findEnrolledStudents(courseId, filters);
 
 		return results.map(
 			(item) =>

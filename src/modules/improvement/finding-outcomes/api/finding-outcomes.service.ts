@@ -4,14 +4,11 @@ import { FindingOutcomeRepository } from '../core/finding-outcomes.repository';
 import { FindingOutcomeValidation } from '../core/finding-outcomes.validation';
 
 import { CreateFindingOutcomeDto, UpdateFindingOutcomeDto } from '../model/finding-outcomes.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class FindingOutcomeService extends BaseService<FindingOutcomeRepository> {
-	constructor(
-		protected readonly repository: FindingOutcomeRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: FindingOutcomeRepository) {
 		super(repository);
 	}
 

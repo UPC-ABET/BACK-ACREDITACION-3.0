@@ -8,16 +8,13 @@ import {
 	UpdateCourseOutcomeMappingDto,
 	BulkSaveCourseOutcomeMappingDto,
 } from '../model/course-outcome-mappings.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { courseOutcomeMappingsValidationStrings } from '../config/strings/course-outcome-mappings.validation';
 
 @Injectable()
 export class CourseOutcomeMappingService extends BaseService<CourseOutcomeMappingRepository> {
-	constructor(
-		protected readonly repository: CourseOutcomeMappingRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: CourseOutcomeMappingRepository) {
 		super(repository);
 	}
 

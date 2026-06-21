@@ -4,14 +4,11 @@ import { SchoolRepository } from '../core/schools.repository';
 import { SchoolValidation } from '../core/schools.validation';
 
 import { CreateSchoolDto, UpdateSchoolDto } from '../model/schools.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class SchoolService extends BaseService<SchoolRepository> {
-	constructor(
-		protected readonly repository: SchoolRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: SchoolRepository) {
 		super(repository);
 	}
 

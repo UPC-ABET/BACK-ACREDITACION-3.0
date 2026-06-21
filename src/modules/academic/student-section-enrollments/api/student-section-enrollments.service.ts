@@ -11,16 +11,13 @@ import {
 	CreateStudentSectionEnrollmentMaintenanceDto,
 	StudentSectionEnrollmentMaintenanceItem,
 } from '../model/student-section-enrollments.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { StudentSectionEnrollmentEntity } from '../model/student-section-enrollments.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class StudentSectionEnrollmentService extends BaseService<StudentSectionEnrollmentRepository> {
-	constructor(
-		protected readonly repository: StudentSectionEnrollmentRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StudentSectionEnrollmentRepository) {
 		super(repository);
 	}
 

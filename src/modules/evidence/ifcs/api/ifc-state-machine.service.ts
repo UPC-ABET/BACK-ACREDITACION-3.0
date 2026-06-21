@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { I18nText } from 'src/shared/types/i18n';
 import { IfcValidation, IfcTransitionContext } from '../core/ifcs.validation';
@@ -7,37 +7,26 @@ import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IFC_OPS, IfcOp } from './ifcs.constants';
 import { RejectIfcDto } from '../model/ifcs.dtos';
 import { NotificationDispatcherService } from 'src/modules/ifc/notifications/notification-dispatcher.service';
-import { TRANSITION_CONTEXT_SQL, INSERT_STATUS_SQL } from './ifcs.sql';
-
-type PeriodRow = { academicPeriodId: number };
+import { IfcRepository } from '../core/ifcs.repository';
 
 @Injectable()
 export class IfcStateMachineService {
 	constructor(
-		private readonly dataSource: DataSource,
+		private readonly repository: IfcRepository,
 		private readonly dispatcher: NotificationDispatcherService,
 	) {}
 
 	async resolveCurrentStatusCode(chartId: number, periodId: number): Promise<string> {
-		const rows = await this.dataSource.query(
-			`
-			SELECT COALESCE(
-				(SELECT t.code FROM ifc.statuses s
-				   JOIN core.types t ON t.id = s.status_type_id
-				   JOIN evidence.ifcs i ON i.id = s.ifc_id
-				   JOIN organization.charts c ON c.entity_code = i.course_id AND c.academic_period_id = i.academic_period_id
-				   WHERE c.id = $1 AND i.academic_period_id = $2
-				   ORDER BY s.created_at DESC LIMIT 1),
-				$3
-			) AS code
-			`,
-			[chartId, periodId, TYPE_CODES.IFC_STATUS.UNREGISTERED],
+		const code = await this.repository.resolveCurrentStatusCode(
+			chartId,
+			periodId,
+			TYPE_CODES.IFC_STATUS.UNREGISTERED,
 		);
-		return rows[0]?.code ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
+		return code ?? TYPE_CODES.IFC_STATUS.UNREGISTERED;
 	}
 
 	async submit(ifcId: number, userId: number, schoolId: number) {
-		const { ctx, periodId, statusCode } = await this.dataSource.transaction(async (em) => {
+		const { ctx, periodId, statusCode } = await this.repository.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.SUBMIT, em);
 			await IfcValidation.assertIsInCourseChain(em, ctx, IFC_OPS.SUBMIT);
@@ -54,11 +43,8 @@ export class IfcStateMachineService {
 				null,
 			);
 
-			const periodRows: PeriodRow[] = await em.query(
-				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
-				[ifcId],
-			);
-			return { ctx, periodId: Number(periodRows[0]?.academicPeriodId), statusCode: status.code };
+			const periodId = await this.repository.findIfcPeriodId(ifcId, em);
+			return { ctx, periodId: Number(periodId), statusCode: status.code };
 		});
 
 		this.dispatcher.dispatchStatusChangeAsync({
@@ -73,7 +59,7 @@ export class IfcStateMachineService {
 	}
 
 	async approve(ifcId: number, userId: number, schoolId: number) {
-		const { courseChartId, periodId, status } = await this.dataSource.transaction(async (em) => {
+		const { courseChartId, periodId, status } = await this.repository.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.APPROVE, em);
 			await IfcValidation.assertHasHigherLevel(em, ctx, IFC_OPS.APPROVE);
@@ -89,13 +75,10 @@ export class IfcStateMachineService {
 				TYPE_CODES.IFC_STATUS.APPROVED,
 				null,
 			);
-			const periodRows: PeriodRow[] = await em.query(
-				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
-				[ifcId],
-			);
+			const periodId = await this.repository.findIfcPeriodId(ifcId, em);
 			return {
 				courseChartId: ctx.courseChartId,
-				periodId: Number(periodRows[0]?.academicPeriodId),
+				periodId: Number(periodId),
 				status,
 			};
 		});
@@ -112,7 +95,7 @@ export class IfcStateMachineService {
 	}
 
 	async reject(ifcId: number, userId: number, schoolId: number, dto: RejectIfcDto) {
-		const { courseChartId, periodId, status } = await this.dataSource.transaction(async (em) => {
+		const { courseChartId, periodId, status } = await this.repository.transaction(async (em) => {
 			await this.lockIfc(em, ifcId);
 			const ctx = await this.loadTransitionContext(ifcId, userId, schoolId, IFC_OPS.REJECT, em);
 			await IfcValidation.assertHasHigherLevel(em, ctx, IFC_OPS.REJECT);
@@ -128,13 +111,10 @@ export class IfcStateMachineService {
 				TYPE_CODES.IFC_STATUS.OBSERVED,
 				dto.comment,
 			);
-			const periodRows: PeriodRow[] = await em.query(
-				`SELECT academic_period_id AS "academicPeriodId" FROM evidence.ifcs WHERE id = $1 LIMIT 1`,
-				[ifcId],
-			);
+			const periodId = await this.repository.findIfcPeriodId(ifcId, em);
 			return {
 				courseChartId: ctx.courseChartId,
-				periodId: Number(periodRows[0]?.academicPeriodId),
+				periodId: Number(periodId),
 				status,
 			};
 		});
@@ -151,7 +131,7 @@ export class IfcStateMachineService {
 	}
 
 	private async lockIfc(em: EntityManager, ifcId: number) {
-		const rows = await em.query(`SELECT id FROM evidence.ifcs WHERE id = $1 FOR UPDATE`, [ifcId]);
+		const rows = await this.repository.lockIfc(ifcId, em);
 		if (rows.length === 0) {
 			throw new HttpException(
 				{
@@ -170,16 +150,7 @@ export class IfcStateMachineService {
 		op: IfcOp,
 		em?: EntityManager,
 	): Promise<IfcTransitionContext> {
-		const params = [
-			ifcId,
-			schoolId,
-			userId,
-			TYPE_CODES.ENTITY_TYPE.COURSE,
-			TYPE_CODES.ENTITY_TYPE.SCHOOL,
-		];
-		const rows = em
-			? await em.query(TRANSITION_CONTEXT_SQL, params)
-			: await this.dataSource.query(TRANSITION_CONTEXT_SQL, params);
+		const rows = await this.repository.findTransitionContextRows(ifcId, schoolId, userId, em);
 
 		if (rows.length === 0) {
 			throw new HttpException(
@@ -210,15 +181,6 @@ export class IfcStateMachineService {
 		newStatusCode: string,
 		comment: I18nText | null,
 	) {
-		const params = [
-			ifcId,
-			newStatusCode,
-			requesterStaffId,
-			comment ? JSON.stringify(comment) : null,
-		];
-		const rows = em
-			? await em.query(INSERT_STATUS_SQL, params)
-			: await this.dataSource.query(INSERT_STATUS_SQL, params);
-		return rows[0];
+		return this.repository.insertStatus(ifcId, newStatusCode, requesterStaffId, comment, em);
 	}
 }

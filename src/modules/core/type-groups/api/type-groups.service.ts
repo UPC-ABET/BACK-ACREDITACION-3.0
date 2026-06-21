@@ -4,14 +4,11 @@ import { TypeGroupRepository } from '../core/type-groups.repository';
 import { TypeGroupValidation } from '../core/type-groups.validation';
 
 import { CreateTypeGroupDto, UpdateTypeGroupDto } from '../model/type-groups.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class TypeGroupService extends BaseService<TypeGroupRepository> {
-	constructor(
-		protected readonly repository: TypeGroupRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: TypeGroupRepository) {
 		super(repository);
 	}
 

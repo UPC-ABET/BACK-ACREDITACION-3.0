@@ -4,14 +4,11 @@ import { AccreditorRepository } from '../core/accreditors.repository';
 import { AccreditorValidation } from '../core/accreditors.validation';
 
 import { CreateAccreditorDto, UpdateAccreditorDto } from '../model/accreditors.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class AccreditorService extends BaseService<AccreditorRepository> {
-	constructor(
-		protected readonly repository: AccreditorRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: AccreditorRepository) {
 		super(repository);
 	}
 

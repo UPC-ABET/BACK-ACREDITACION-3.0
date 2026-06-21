@@ -4,14 +4,11 @@ import { SurveyRepository } from '../core/surveys.repository';
 import { SurveyValidation } from '../core/surveys.validation';
 
 import { CreateSurveyDto, UpdateSurveyDto } from '../model/surveys.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class SurveyService extends BaseService<SurveyRepository> {
-	constructor(
-		protected readonly repository: SurveyRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: SurveyRepository) {
 		super(repository);
 	}
 

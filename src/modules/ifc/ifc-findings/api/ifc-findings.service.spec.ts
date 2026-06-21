@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { IfcFindingService } from './ifc-findings.service';
 import { IfcFindingRepository } from '../core/ifc-findings.repository';
@@ -9,12 +9,17 @@ import { IFCS_PARAMETER_KEYS } from 'src/modules/evidence/ifcs/api/ifcs.constant
 
 describe('IfcFindingService.getDetail', () => {
 	let service: IfcFindingService;
-	let dataSource: { query: jest.Mock };
-	const repository = {} as IfcFindingRepository;
+	let repository: {
+		getFindingHeader: jest.Mock;
+		getFindingActions: jest.Mock;
+	};
 
 	beforeEach(() => {
-		dataSource = { query: jest.fn() };
-		service = new IfcFindingService(repository, dataSource as unknown as DataSource);
+		repository = {
+			getFindingHeader: jest.fn(),
+			getFindingActions: jest.fn(),
+		};
+		service = new IfcFindingService(repository as unknown as IfcFindingRepository);
 	});
 
 	const headerRow = {
@@ -35,32 +40,30 @@ describe('IfcFindingService.getDetail', () => {
 		completenessColor: '#71717A',
 	};
 
-	it('issues both queries with the expected positional params and TYPE_CODES constants', async () => {
-		dataSource.query.mockResolvedValueOnce([headerRow]).mockResolvedValueOnce([actionRow]);
+	it('issues both queries with the expected params and TYPE_CODES constants', async () => {
+		repository.getFindingHeader.mockResolvedValueOnce([headerRow]);
+		repository.getFindingActions.mockResolvedValueOnce([actionRow]);
 
 		await service.getDetail(201, 9);
 
-		expect(dataSource.query).toHaveBeenCalledTimes(2);
-
-		const [, headerParams] = dataSource.query.mock.calls[0];
-		expect(headerParams).toEqual([
+		expect(repository.getFindingHeader).toHaveBeenCalledWith(
 			201,
 			9,
 			IFCS_PARAMETER_KEYS.FINDING_PREFIX,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
-		]);
+		);
 
-		const [, actionParams] = dataSource.query.mock.calls[1];
-		expect(actionParams).toEqual([
+		expect(repository.getFindingActions).toHaveBeenCalledWith(
 			201,
 			IFCS_PARAMETER_KEYS.ACTION_PREFIX,
 			TYPE_CODES.ACTION_COMPLETENESS.PENDING,
 			TYPE_CODES.ACTION_COMPLETENESS.IMPLEMENTED,
-		]);
+		);
 	});
 
 	it('shapes the response with the finding header + criticality + actions[]', async () => {
-		dataSource.query.mockResolvedValueOnce([headerRow]).mockResolvedValueOnce([actionRow]);
+		repository.getFindingHeader.mockResolvedValueOnce([headerRow]);
+		repository.getFindingActions.mockResolvedValueOnce([actionRow]);
 
 		const result = await service.getDetail(201, 9);
 
@@ -92,7 +95,8 @@ describe('IfcFindingService.getDetail', () => {
 	});
 
 	it('throws 404 when findingRows is empty (including cross-school)', async () => {
-		dataSource.query.mockResolvedValue([]);
+		repository.getFindingHeader.mockResolvedValue([]);
+		repository.getFindingActions.mockResolvedValue([]);
 
 		await expect(service.getDetail(201, 9)).rejects.toBeInstanceOf(HttpException);
 		await expect(service.getDetail(201, 9)).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
@@ -101,21 +105,26 @@ describe('IfcFindingService.getDetail', () => {
 
 describe('IfcFindingService.patch', () => {
 	let service: IfcFindingService;
-	let dataSource: { query: jest.Mock; transaction: jest.Mock };
-	let em: { query: jest.Mock };
-	const repository = {} as IfcFindingRepository;
+	let repository: {
+		runInTransaction: jest.Mock;
+		findRequesterStaffId: jest.Mock;
+		isFindingInSchool: jest.Mock;
+		updateFindingDescription: jest.Mock;
+	};
+	const em = {} as EntityManager;
 
 	let assertFindingExistsSpy: jest.SpyInstance;
 	let resolveCourseChartSpy: jest.SpyInstance;
 	let assertIsInCourseChainSpy: jest.SpyInstance;
 
 	beforeEach(() => {
-		em = { query: jest.fn() };
-		dataSource = {
-			query: jest.fn(),
-			transaction: jest.fn(async (fn: any) => fn(em)),
+		repository = {
+			runInTransaction: jest.fn(async (fn: (manager: EntityManager) => Promise<unknown>) => fn(em)),
+			findRequesterStaffId: jest.fn(),
+			isFindingInSchool: jest.fn(),
+			updateFindingDescription: jest.fn(),
 		};
-		service = new IfcFindingService(repository, dataSource as unknown as DataSource);
+		service = new IfcFindingService(repository as unknown as IfcFindingRepository);
 
 		assertFindingExistsSpy = jest
 			.spyOn(IfcFindingValidation, 'assertFindingExists')
@@ -135,26 +144,21 @@ describe('IfcFindingService.patch', () => {
 	const dto = { description: { es: 'Nueva', en: 'New' } };
 
 	it('happy path: runs the UPDATE inside a single transaction and returns { id }', async () => {
-		em.query
-			.mockResolvedValueOnce([{ id: 11 }]) // staff lookup
-			.mockResolvedValueOnce([{ '?column?': 1 }]) // school check
-			.mockResolvedValueOnce(undefined); // UPDATE
+		repository.findRequesterStaffId.mockResolvedValue(11);
+		repository.isFindingInSchool.mockResolvedValue(true);
+		repository.updateFindingDescription.mockResolvedValue(undefined);
 
 		const result = await service.patch(201, dto, 7, 9);
 
 		expect(result).toEqual({ id: 201 });
-		expect(dataSource.transaction).toHaveBeenCalledTimes(1);
-
-		const updateCall = em.query.mock.calls[2];
-		expect(updateCall[0]).toMatch(/UPDATE improvement\.findings/);
-		expect(updateCall[1]).toEqual([JSON.stringify(dto.description), 201]);
+		expect(repository.runInTransaction).toHaveBeenCalledTimes(1);
+		expect(repository.updateFindingDescription).toHaveBeenCalledWith(em, 201, dto.description);
 	});
 
 	it('passes the resolved courseChartId + requester staff_id to assertIsInCourseChain', async () => {
-		em.query
-			.mockResolvedValueOnce([{ id: 11 }])
-			.mockResolvedValueOnce([{ '?column?': 1 }])
-			.mockResolvedValueOnce(undefined);
+		repository.findRequesterStaffId.mockResolvedValue(11);
+		repository.isFindingInSchool.mockResolvedValue(true);
+		repository.updateFindingDescription.mockResolvedValue(undefined);
 
 		await service.patch(201, dto, 7, 9);
 
@@ -167,7 +171,7 @@ describe('IfcFindingService.patch', () => {
 	});
 
 	it('rejects 403 when the requester has no staff record', async () => {
-		em.query.mockResolvedValueOnce([]); // staff lookup returns no rows
+		repository.findRequesterStaffId.mockResolvedValue(null);
 
 		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({
 			status: HttpStatus.FORBIDDEN,
@@ -175,25 +179,21 @@ describe('IfcFindingService.patch', () => {
 	});
 
 	it('rejects 404 when the finding is in a different school (school check fails)', async () => {
-		em.query
-			.mockResolvedValueOnce([{ id: 11 }]) // staff lookup
-			.mockResolvedValueOnce([]); // school check empty
+		repository.findRequesterStaffId.mockResolvedValue(11);
+		repository.isFindingInSchool.mockResolvedValue(false);
 
 		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({
 			status: HttpStatus.NOT_FOUND,
 		});
-		expect(
-			em.query.mock.calls.find((c) => /UPDATE improvement\.findings/.test(c[0])),
-		).toBeUndefined();
+		expect(repository.updateFindingDescription).not.toHaveBeenCalled();
 	});
 
-	it('rolls back the transaction when any inner em.query throws', async () => {
-		em.query
-			.mockResolvedValueOnce([{ id: 11 }])
-			.mockResolvedValueOnce([{ '?column?': 1 }])
-			.mockRejectedValueOnce(new Error('DB explosion'));
+	it('rolls back the transaction when an inner repository call throws', async () => {
+		repository.findRequesterStaffId.mockResolvedValue(11);
+		repository.isFindingInSchool.mockResolvedValue(true);
+		repository.updateFindingDescription.mockRejectedValue(new Error('DB explosion'));
 
 		await expect(service.patch(201, dto, 7, 9)).rejects.toThrow('DB explosion');
-		expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+		expect(repository.runInTransaction).toHaveBeenCalledTimes(1);
 	});
 });

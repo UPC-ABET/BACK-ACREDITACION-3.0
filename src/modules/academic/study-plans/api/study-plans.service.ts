@@ -14,16 +14,13 @@ import {
 	StudyPlanLevelGroup,
 	StudyPlanCoursesView,
 } from '../model/study-plans.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { StudyPlanEntity } from '../model/study-plans.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class StudyPlanService extends BaseService<StudyPlanRepository> {
-	constructor(
-		protected readonly repository: StudyPlanRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StudyPlanRepository) {
 		super(repository);
 	}
 

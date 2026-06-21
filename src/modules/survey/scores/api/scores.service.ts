@@ -4,14 +4,11 @@ import { ScoreRepository } from '../core/scores.repository';
 import { ScoreValidation } from '../core/scores.validation';
 
 import { CreateScoreDto, UpdateScoreDto } from '../model/scores.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ScoreService extends BaseService<ScoreRepository> {
-	constructor(
-		protected readonly repository: ScoreRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ScoreRepository) {
 		super(repository);
 	}
 

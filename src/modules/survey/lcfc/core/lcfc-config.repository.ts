@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, DeleteResult, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -307,5 +307,74 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			[programId ?? null, academicPeriodId, LCFC_SURVEY_TYPE],
 		);
 		return rows?.[0]?.maxRegisterDate ?? null;
+	}
+
+	/**
+	 * Sets is_active for a batch of LCFC config ids in a single transaction, verifying each
+	 * is an LCFC config first. Returns the count updated; throws when a config is missing or
+	 * not an LCFC config so the caller can surface the i18n error.
+	 */
+	async updateStatuses(
+		updates: { configId: number; isActive: boolean }[],
+		onInvalid: () => never,
+	): Promise<number> {
+		return await this.dataSource.transaction(async (manager) => {
+			let updated = 0;
+			for (const item of updates) {
+				const existing = await manager.findOne(OutcomeConfigEntity, {
+					where: { id: item.configId },
+				});
+				const extra = (existing?.extra as Record<string, unknown>) ?? {};
+				if (!existing || extra.survey_type !== LCFC_SURVEY_TYPE) {
+					onInvalid();
+				}
+				await manager.update(OutcomeConfigEntity, item.configId, { isActive: item.isActive });
+				updated++;
+			}
+			return updated;
+		});
+	}
+
+	/** Stores commissionId inside the config's extra JSON so the survey endpoint can filter by it. */
+	async setCommissionId(id: number, commissionId: number): Promise<void> {
+		await this.dataSource.query(
+			`UPDATE survey.outcome_configs
+			 SET extra = jsonb_set(COALESCE(extra, '{}'::jsonb), '{commission_id}', to_jsonb($1::int)),
+			     updated_at = NOW()
+			 WHERE id = $2`,
+			[commissionId, id],
+		);
+	}
+
+	/**
+	 * Removes an LCFC config and the surveys (plus their notifications/scores) generated for
+	 * its course section, so the section can later be deleted without dangling FKs from
+	 * evidence.surveys.
+	 */
+	async deleteConfigWithSurveys(
+		id: number,
+		courseSectionId: number | null,
+		academicPeriodId: number | null,
+	): Promise<DeleteResult> {
+		return await this.dataSource.transaction(async (manager) => {
+			if (courseSectionId && academicPeriodId) {
+				const surveys: { id: number }[] = await manager.query(
+					`SELECT s.id FROM evidence.surveys s
+					 WHERE s.survey_type_id = (SELECT id FROM core.types WHERE code = $1)
+					   AND s.course_section_id = $2
+					   AND s.academic_period_id = $3`,
+					[TYPE_CODES.SURVEY_TYPE.LCFC, courseSectionId, academicPeriodId],
+				);
+				const surveyIds = surveys.map((r) => r.id);
+				if (surveyIds.length > 0) {
+					await manager.query(`DELETE FROM survey.scores WHERE survey_id = ANY($1)`, [surveyIds]);
+					await manager.query(`DELETE FROM survey.notifications WHERE survey_id = ANY($1)`, [
+						surveyIds,
+					]);
+					await manager.query(`DELETE FROM evidence.surveys WHERE id = ANY($1)`, [surveyIds]);
+				}
+			}
+			return await manager.delete(OutcomeConfigEntity, id);
+		});
 	}
 }

@@ -4,14 +4,11 @@ import { ProjectStudentRepository } from '../core/project-students.repository';
 import { ProjectStudentValidation } from '../core/project-students.validation';
 
 import { CreateProjectStudentDto, UpdateProjectStudentDto } from '../model/project-students.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProjectStudentService extends BaseService<ProjectStudentRepository> {
-	constructor(
-		protected readonly repository: ProjectStudentRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ProjectStudentRepository) {
 		super(repository);
 	}
 

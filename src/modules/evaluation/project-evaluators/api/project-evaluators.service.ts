@@ -7,14 +7,11 @@ import {
 	CreateProjectEvaluatorDto,
 	UpdateProjectEvaluatorDto,
 } from '../model/project-evaluators.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ProjectEvaluatorService extends BaseService<ProjectEvaluatorRepository> {
-	constructor(
-		protected readonly repository: ProjectEvaluatorRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ProjectEvaluatorRepository) {
 		super(repository);
 	}
 

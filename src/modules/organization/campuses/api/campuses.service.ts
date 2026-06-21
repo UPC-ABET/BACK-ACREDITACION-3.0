@@ -4,14 +4,11 @@ import { CampusRepository } from '../core/campuses.repository';
 import { CampusValidation } from '../core/campuses.validation';
 
 import { CreateCampusDto, UpdateCampusDto } from '../model/campuses.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class CampusService extends BaseService<CampusRepository> {
-	constructor(
-		protected readonly repository: CampusRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: CampusRepository) {
 		super(repository);
 	}
 

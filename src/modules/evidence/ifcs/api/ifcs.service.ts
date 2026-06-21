@@ -5,7 +5,7 @@ import { IfcValidation } from '../core/ifcs.validation';
 
 import { IfcStatusReportDto, ListIfcsDto, RejectIfcDto, UpdateIfcDto } from '../model/ifcs.dtos';
 import { CreateIfcDto, IfcContentDto, IfcPrefillQueryDto } from '../model/ifcs-content.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	NotificationDispatcherService,
@@ -15,7 +15,6 @@ import { IfcStateMachineService } from './ifc-state-machine.service';
 import { IfcContentService } from './ifc-content.service';
 import { IfcViewService } from './ifc-view.service';
 import { IfcReportService } from './ifc-report.service';
-import { LIST_SQL, PREFILL_HEADER_SQL, OUTCOME_COURSE_BY_CHART_SQL } from './ifcs.sql';
 import {
 	USER_SCHOOLS_REPOSITORY,
 	type UserSchoolsRepository,
@@ -25,7 +24,6 @@ import {
 export class IfcService extends BaseService<IfcRepository> {
 	constructor(
 		protected readonly repository: IfcRepository,
-		protected readonly dataSource: DataSource,
 		private readonly stateMachine: IfcStateMachineService,
 		private readonly content: IfcContentService,
 		private readonly view: IfcViewService,
@@ -88,23 +86,13 @@ export class IfcService extends BaseService<IfcRepository> {
 	}
 
 	async list(dto: ListIfcsDto, academicPeriodId: number) {
-		return await this.dataSource.query(LIST_SQL, [
-			dto.chartIds,
-			academicPeriodId,
-			TYPE_CODES.ENTITY_TYPE.COURSE,
-		]);
+		return await this.repository.findIfcListRows(dto.chartIds, academicPeriodId);
 	}
 
 	async prefill(query: IfcPrefillQueryDto, schoolId: number, academicPeriodId: number) {
 		const [headerRows, outcomeRows] = await Promise.all([
-			this.dataSource.query(PREFILL_HEADER_SQL, [
-				query.chartId,
-				academicPeriodId,
-				schoolId,
-				TYPE_CODES.ENTITY_TYPE.COURSE,
-				TYPE_CODES.ENTITY_TYPE.SCHOOL,
-			]),
-			this.dataSource.query(OUTCOME_COURSE_BY_CHART_SQL, [query.chartId]),
+			this.repository.findPrefillHeaderRows(query.chartId, academicPeriodId, schoolId),
+			this.repository.findOutcomeCourseRowsByChart(query.chartId),
 		]);
 
 		IfcValidation.assertChartFound(headerRows, 'prefill');

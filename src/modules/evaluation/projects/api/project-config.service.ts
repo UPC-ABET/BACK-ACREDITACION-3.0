@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ProjectEntity } from '../model/projects.entity';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
@@ -24,17 +24,13 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
 import { projectsValidationStrings } from '../config/strings/projects.validation';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
-import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
-import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
-import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
+import { GradeExportRow, ProjectRepository } from '../core/projects.repository';
 
 @Injectable()
 export class ProjectConfigService {
 	constructor(
-		@InjectRepository(ProjectEntity)
-		private readonly projectRepo: Repository<ProjectEntity>,
 		@InjectRepository(ProjectStudentEntity)
 		private readonly projectStudentRepo: Repository<ProjectStudentEntity>,
 		@InjectRepository(ProjectEvaluatorEntity)
@@ -47,7 +43,7 @@ export class ProjectConfigService {
 		private readonly enrollmentRepo: Repository<StudentSectionEnrollmentEntity>,
 		@Inject(forwardRef(() => RubricConfigService))
 		private readonly rubricConfigService: RubricConfigService,
-		private readonly dataSource: DataSource,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	private async resolveGradeTypeIdByCode(code: string): Promise<number> {
@@ -62,42 +58,11 @@ export class ProjectConfigService {
 		academicPeriodId: number,
 		rubricId: number,
 	): Promise<number> {
-		const [[levelRow], [questionRow]] = await Promise.all([
-			this.dataSource.query(
-				`SELECT MAX(pl.max_value) AS "maxValue"
-				 FROM academic.performance_levels pl
-				 INNER JOIN core.types t ON t.id = pl.instrument_type_id
-				 WHERE t.code = $1
-				   AND pl.academic_period_id = $2`,
-				[TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE, academicPeriodId],
-			),
-			this.dataSource.query(
-				`SELECT COUNT(*) AS "questionCount"
-				 FROM evaluation.rubric_questions
-				 WHERE rubric_id = $1`,
-				[rubricId],
-			),
-		]);
-		const maxPerQuestion = Number(levelRow?.maxValue ?? 0);
-		const questionCount = Number(questionRow?.questionCount ?? 0);
-		return maxPerQuestion * questionCount;
+		return await this.projectRepository.getCapstoneMaxLevelValue(academicPeriodId, rubricId);
 	}
 
 	private async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
-		const raw = await this.dataSource.query(
-			`
-				SELECT DISTINCT c_child.entity_code AS "programId"
-				FROM organization.charts c_school
-				INNER JOIN organization.charts c_child 
-				ON c_child.root_chart_id = c_school.id
-				WHERE c_school.entity_type_id = (SELECT id FROM core.types WHERE code = $1)
-				AND c_school.entity_code = $2
-				AND c_child.entity_type_id = (SELECT id FROM core.types WHERE code = $3)
-				AND c_child.entity_code IS NOT NULL
-			`,
-			[TYPE_CODES.ENTITY_TYPE.SCHOOL, schoolId, TYPE_CODES.ENTITY_TYPE.PROGRAM],
-		);
-		return raw.map((row: { programId: number }) => row.programId);
+		return await this.projectRepository.getProgramIdsBySchoolId(schoolId);
 	}
 
 	/**
@@ -131,33 +96,20 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.noAcademicPeriod);
 		}
 
-		const duplicateCode = await this.dataSource.query(
-			`
-			SELECT p.id FROM evaluation.projects p
-			INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
-			INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-			WHERE p.code = $1 AND cs.academic_period_id = $2
-			LIMIT 1
-			`,
-			[dto.code, academicPeriodId],
+		const duplicateCode = await this.projectRepository.existsProjectWithCodeInPeriod(
+			dto.code,
+			academicPeriodId,
 		);
-		if (duplicateCode.length > 0) {
+		if (duplicateCode) {
 			throw new BadRequestException(projectsValidationStrings.error.duplicateCode);
 		}
 
-		const duplicateName = await this.dataSource.query(
-			`
-			SELECT p.id FROM evaluation.projects p
-			INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
-			INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-			WHERE (p.name->>'es' = $1 OR p.name->>'en' = $2) AND cs.academic_period_id = $3
-			LIMIT 1
-			`,
-			[dto.name?.es, dto.name?.en, academicPeriodId],
+		const duplicateName = await this.projectRepository.existsProjectWithNameInPeriod(
+			dto.name?.es,
+			dto.name?.en,
+			academicPeriodId,
 		);
-		if (duplicateName.length > 0) {
+		if (duplicateName) {
 			throw new BadRequestException(projectsValidationStrings.error.duplicateName);
 		}
 
@@ -197,22 +149,11 @@ export class ProjectConfigService {
 				});
 			}
 
-			const alreadyInProject = await this.dataSource.query(
-				`
-				SELECT ps.id FROM evaluation.project_students ps
-				INNER JOIN evaluation.projects p ON p.id = ps.project_id
-				INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-				INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-				WHERE sse.enrolled_student_id = (
-					SELECT enrolled_student_id FROM academic.student_section_enrollments WHERE id = $1
-				)
-				AND cs.academic_period_id = $2
-				AND p.is_active = true
-				LIMIT 1
-				`,
-				[enrollmentId, academicPeriodId],
+			const alreadyInProject = await this.projectRepository.existsStudentInActiveProject(
+				enrollmentId,
+				academicPeriodId,
 			);
-			if (alreadyInProject.length > 0) {
+			if (alreadyInProject) {
 				throw new BadRequestException({
 					message: projectsValidationStrings.error.studentAlreadyInProject,
 					errors: [String(enrollmentId)],
@@ -238,37 +179,14 @@ export class ProjectConfigService {
 			}
 		}
 
-		return await this.dataSource.transaction(async (manager) => {
-			const project = manager.create(ProjectEntity, {
-				code: dto.code,
-				name: dto.name,
-				description: dto.description,
-				isActive: dto.isActive ?? true,
-				extra: dto.extra,
-			});
-
-			const savedProject = await manager.save(project);
-
-			const projectStudents = dto.studentSectionEnrollmentIds.map((enrollmentId) =>
-				manager.create(ProjectStudentEntity, {
-					projectId: savedProject.id,
-					studentSectionEnrollmentId: enrollmentId,
-					isActive: true,
-				}),
-			);
-			await manager.save(projectStudents);
-
-			const projectEvaluators = dto.evaluators.map((ev) =>
-				manager.create(ProjectEvaluatorEntity, {
-					projectId: savedProject.id,
-					professorId: ev.professorId,
-					evaluatorTypeId: ev.evaluatorTypeId,
-					isActive: true,
-				}),
-			);
-			await manager.save(projectEvaluators);
-
-			return savedProject;
+		return await this.projectRepository.createProjectWithChildren({
+			code: dto.code,
+			name: dto.name,
+			description: dto.description,
+			isActive: dto.isActive ?? true,
+			extra: dto.extra,
+			studentSectionEnrollmentIds: dto.studentSectionEnrollmentIds,
+			evaluators: dto.evaluators,
 		});
 	}
 
@@ -282,20 +200,7 @@ export class ProjectConfigService {
 			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
 			: undefined;
 
-		const project = await this.projectRepo
-			.createQueryBuilder('p')
-			.leftJoinAndSelect('p.students', 's')
-			.leftJoinAndSelect('s.studentSectionEnrollment', 'sse')
-			.leftJoinAndSelect('sse.enrolledStudent', 'es')
-			.leftJoinAndSelect('es.student', 'stu')
-			.leftJoinAndSelect('sse.courseSection', 'cs')
-			.leftJoinAndSelect('cs.academicPeriod', 'ap')
-			.leftJoinAndSelect('p.evaluators', 'pe', 'pe.is_active = true')
-			.leftJoinAndSelect('pe.professor', 'prof')
-			.leftJoinAndSelect('prof.staff', 'staff')
-			.leftJoinAndSelect('staff.user', 'puser')
-			.where('p.id = :projectId', { projectId })
-			.getOne();
+		const project = await this.projectRepository.getProjectDetailEntity(projectId);
 
 		if (!project) {
 			throw new NotFoundException(projectsValidationStrings.error.notFound);
@@ -315,11 +220,7 @@ export class ProjectConfigService {
 
 		const academicPeriod = courseSection?.academicPeriod;
 
-		const [courseRow] = await this.dataSource.query(
-			`SELECT id, name, description, learning_outcome AS "learningOutcome"
-			 FROM "academic"."courses" WHERE id = $1`,
-			[courseId],
-		);
+		const courseRow = await this.projectRepository.getCourseBasicById(courseId);
 		const courseData = courseRow
 			? {
 					id: courseRow.id,
@@ -329,40 +230,18 @@ export class ProjectConfigService {
 				}
 			: null;
 
-		// Resolve study_plan_course_id per student via their enrolled_student → study_plan_academic_period
-		const spcRows = (await this.dataSource.query(
-			`SELECT
-				sse.id AS "sseId",
-				spc.id AS "studyPlanCourseId"
-			 FROM academic.student_section_enrollments sse
-			 JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-			 JOIN academic.study_plan_courses spc
-			      ON spc.study_plan_academic_period_id = es.study_plan_academic_period
-			      AND spc.course_id = $1
-			 WHERE sse.id = ANY($2::int[])`,
-			[
-				courseId,
-				(project.students || [])
-					.map((s) => s.studentSectionEnrollment?.id)
-					.filter((id) => id != null),
-			],
-		)) as { sseId: number; studyPlanCourseId: number }[];
+		const sseIds = (project.students || [])
+			.map((s) => s.studentSectionEnrollment?.id)
+			.filter((id): id is number => id != null);
+		const spcRows = await this.projectRepository.getSseToStudyPlanCourse(courseId, sseIds);
 
 		const sseToSpc = new Map<number, number>(spcRows.map((r) => [r.sseId, r.studyPlanCourseId]));
 
 		// Unique study_plan_course_ids across all students
 		const uniqueSpcIds = [...new Set(spcRows.map((r) => r.studyPlanCourseId))];
 
-		// Resolve program name per study_plan_course_id
-		const programRows = (await this.dataSource.query(
-			`SELECT spc.id AS "spcId", prog.name AS "programName"
-			 FROM academic.study_plan_courses spc
-			 JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
-			 JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
-			 JOIN academic.programs prog ON prog.id = sp.program_id
-			 WHERE spc.id = ANY($1::int[])`,
-			[uniqueSpcIds],
-		)) as { spcId: number; programName: any }[];
+		const programRows =
+			await this.projectRepository.getProgramNamesByStudyPlanCourseIds(uniqueSpcIds);
 
 		const spcToProgramName = new Map<number, any>(programRows.map((r) => [r.spcId, r.programName]));
 
@@ -370,16 +249,11 @@ export class ProjectConfigService {
 		const rubricEntries: ProjectRubricEntryDto[] = [];
 
 		for (const spcId of uniqueSpcIds) {
-			const rubric = await this.dataSource
-				.getRepository(RubricEntity)
-				.createQueryBuilder('r')
-				.leftJoinAndSelect('r.rubricType', 'rt')
-				.leftJoinAndSelect('r.gradeType', 'gt')
-				.where('r.study_plan_course_id = :spcId', { spcId })
-				.andWhere('r.is_active = :isActive', { isActive: true })
-				.andWhere(gradeTypeId ? 'r.grade_type_id = :gradeTypeId' : '1=1', { gradeTypeId })
-				.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
-				.getOne();
+			const rubric = await this.projectRepository.getActiveRubricForStudyPlanCourse(
+				spcId,
+				gradeTypeId,
+				rubricTypeId,
+			);
 
 			if (!rubric) {
 				rubricEntries.push({
@@ -419,21 +293,11 @@ export class ProjectConfigService {
 									.catch(() => ({ totalMaxScore: 0 }))
 							).totalMaxScore || 0;
 
-					evaluations = await this.dataSource
-						.getRepository(EvaluationEntity)
-						.createQueryBuilder('ev')
-						.leftJoinAndSelect('ev.scores', 'score')
-						.innerJoin('ev.projectStudent', 'ps')
-						.innerJoin(
-							RubricQuestionCriteriaEntity,
-							'rqc',
-							'rqc.id = score.rubric_question_criteria_id',
-						)
-						.innerJoin(RubricQuestionEntity, 'rq', 'rq.id = rqc.rubric_question_id')
-						.where('ps.project_id = :projectId', { projectId })
-						.andWhere('ps.id = ANY(:psIds)', { psIds: psIdsForSpc })
-						.andWhere('rq.rubric_id = :rubricId', { rubricId: rubric.id })
-						.getMany();
+					evaluations = await this.projectRepository.getEvaluationsForProjectStudents(
+						projectId,
+						psIdsForSpc,
+						rubric.id,
+					);
 
 					// Build a map of the latest evaluation per student
 					const latestEvalByStudent = new Map<number, EvaluationEntity>();
@@ -599,151 +463,30 @@ export class ProjectConfigService {
 			? await this.resolveGradeTypeIdByCode(gradeTypeCode)
 			: undefined;
 
-		// Base FROM/WHERE shared between count and paginated queries
-		let filterFromWhere = `
-    FROM evaluation.project_evaluators pe
-    INNER JOIN evaluation.projects p_filter ON p_filter.id = pe.project_id
-    INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
-    INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-    INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-    INNER JOIN academic.courses c ON c.id = cs.course_id
-    INNER JOIN academic.study_plan_courses spc ON spc.course_id = c.id
-    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
-    INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
-    INNER JOIN academic.programs program ON program.id = sp.program_id`;
-
-		if (search) {
-			filterFromWhere += `
-    INNER JOIN academic.enrolled_students es_s ON es_s.id = sse.enrolled_student_id
-    INNER JOIN academic.students stu_s ON stu_s.id = es_s.student_id`;
-		}
-
-		filterFromWhere += `
-    WHERE pe.professor_id = $1 AND pe.is_active = true`;
-
-		const params: any[] = [professorId];
-		let paramIdx = 2;
-
-		if (gradeTypeId) {
-			filterFromWhere += `
-      AND EXISTS (
-        SELECT 1
-        FROM evaluation.rubrics r
-        WHERE r.study_plan_course_id IN (
-          SELECT spc2.id
-          FROM academic.study_plan_courses spc2
-          INNER JOIN academic.study_plan_academic_periods spap2
-                  ON spap2.id = spc2.study_plan_academic_period_id
-          WHERE (spc2.course_id, spap2.academic_period_id) IN (
-            SELECT cs2.course_id, cs2.academic_period_id
-            FROM evaluation.project_students ps2
-            INNER JOIN academic.student_section_enrollments sse2
-                    ON sse2.id = ps2.student_section_enrollment_id
-            INNER JOIN academic.course_sections cs2
-                    ON cs2.id = sse2.course_section_id
-            WHERE ps2.project_id = pe.project_id
-          )
-        )
-        AND r.grade_type_id = $${paramIdx}
-      )`;
-			params.push(gradeTypeId);
-			paramIdx++;
-		}
-
-		if (academicPeriodId) {
-			filterFromWhere += ` AND cs.academic_period_id = $${paramIdx}`;
-			params.push(academicPeriodId);
-			paramIdx++;
-		}
-
 		const programIds = schoolId ? await this.resolveProgramIdsBySchoolId(schoolId) : null;
-
-		if (programIds !== null) {
-			if (programIds.length === 0) return toPaginated([], 0, page, pageSize);
-			filterFromWhere += ` AND program.id = ANY($${paramIdx}::int[])`;
-			params.push(programIds);
-			paramIdx++;
+		if (programIds !== null && programIds.length === 0) {
+			return toPaginated([], 0, page, pageSize);
 		}
 
-		if (search) {
-			filterFromWhere += `
-      AND (
-        p_filter.code ILIKE $${paramIdx}
-        OR p_filter.name->>'es' ILIKE $${paramIdx}
-        OR p_filter.name->>'en' ILIKE $${paramIdx}
-        OR CONCAT(stu_s.first_name, ' ', stu_s.last_name) ILIKE $${paramIdx}
-      )`;
-			params.push(`%${search}%`);
-			paramIdx++;
-		}
+		const filterArgs = {
+			professorId,
+			gradeTypeId,
+			academicPeriodId,
+			programIds,
+			search,
+		};
 
-		const [countRow] = (await this.dataSource.query(
-			`SELECT COUNT(DISTINCT pe.project_id) AS "total" ${filterFromWhere}`,
-			params,
-		)) as [{ total: string }];
-		const total = Number(countRow?.total ?? 0);
-
+		const total = await this.projectRepository.countProjectsByProfessor(filterArgs);
 		if (total === 0) return toPaginated([], 0, page, pageSize);
 
-		const rows = (await this.dataSource.query(
-			`SELECT DISTINCT pe.project_id AS "projectId" ${filterFromWhere} ORDER BY pe.project_id LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-			[...params, take, skip],
-		)) as { projectId: number }[];
-
-		const projectIds = rows.map((r) => r.projectId);
+		const projectIds = await this.projectRepository.getProjectIdsByProfessor(
+			filterArgs,
+			take,
+			skip,
+		);
 		if (projectIds.length === 0) return toPaginated([], total, page, pageSize);
 
-		// Todo en SQL nativo para evitar el producto cartesiano
-		const raw = (await this.dataSource.query(
-			`
-    SELECT
-      p.id              AS "projectId",
-      p.code            AS "projectCode",
-      p.name            AS "projectName",
-      (
-        SELECT MAX(ev.register_at)
-        FROM evidence.evaluations ev
-        INNER JOIN evaluation.project_students ev_ps ON ev_ps.id = ev.project_student_id
-        INNER JOIN evaluation.rubric_scores rs ON rs.evaluation_id = ev.id
-        INNER JOIN evaluation.rubric_question_criterias rqc ON rqc.id = rs.rubric_question_criteria_id
-        INNER JOIN evaluation.rubric_questions rq ON rq.id = rqc.rubric_question_id
-        INNER JOIN evaluation.rubrics r ON r.id = rq.rubric_id
-        WHERE ev_ps.project_id = p.id
-        AND ($2::int IS NULL OR r.grade_type_id = $2)
-      )                 AS "evaluationDate",
-      -- evaluadores
-      all_pe.id         AS "evalId",
-      all_pe.professor_id AS "evalProfessorId",
-      COALESCE(all_u.first_name, all_st.first_name, '') AS "evalFirstName",
-      COALESCE(all_u.last_name, all_st.last_name, '')   AS "evalLastName",
-      all_u.email       AS "evalEmail",
-      all_et.name       AS "evalTypeName",
-      all_et.code       AS "evalTypeCode",
-      -- estudiantes
-      ps.id             AS "studentPsId",
-      stu.id            AS "studentId",
-      COALESCE(stu.first_name, '') AS "stuFirstName",
-      COALESCE(stu.last_name, '')  AS "stuLastName",
-      stu.email         AS "stuEmail",
-      COALESCE(stu.code, '') AS "stuCode",
-      -- curso
-      c.name            AS "courseName"
-    FROM evaluation.projects p
-    LEFT JOIN evaluation.project_evaluators all_pe ON all_pe.project_id = p.id AND all_pe.is_active = true
-    LEFT JOIN academic.professors all_prof         ON all_prof.id = all_pe.professor_id
-    LEFT JOIN organization.staff all_st            ON all_st.id = all_prof.staff_id
-    LEFT JOIN organization.users all_u             ON all_u.id = all_st.user_id
-    LEFT JOIN core.types all_et                    ON all_et.id = all_pe.evaluator_type_id
-    LEFT JOIN evaluation.project_students ps       ON ps.project_id = p.id
-    LEFT JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-    LEFT JOIN academic.enrolled_students es        ON es.id = sse.enrolled_student_id
-    LEFT JOIN academic.students stu                ON stu.id = es.student_id
-    LEFT JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
-    LEFT JOIN academic.courses c                   ON c.id = cs.course_id
-    WHERE p.id = ANY($1::int[])
-  `,
-			[projectIds, gradeTypeId ?? null],
-		)) as any[];
+		const raw = await this.projectRepository.getProjectsByProfessorDetail(projectIds, gradeTypeId);
 
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
 
@@ -806,51 +549,11 @@ export class ProjectConfigService {
 		const programIds = await this.resolveProgramIdsBySchoolId(schoolId);
 		if (programIds.length === 0) return this.buildGradesExcel([]);
 
-		const rows = (await this.dataSource.query(
-			`
-      SELECT
-        cs.section_code                           AS "sectionCode",
-        c.code                                    AS "courseCode",
-        stu.code                                  AS "studentCode",
-        CONCAT(stu.first_name, ' ', stu.last_name) AS "studentName",
-        r.id                                      AS "rubricId",
-        r.rubric_type_id                          AS "rubricTypeId",
-        rt.code                                   AS "rubricTypeCode",
-        gt.code                                   AS "gradeTypeCode",
-        SUM(rs.score)                             AS "totalScore"
-      FROM evaluation.projects p
-      INNER JOIN evaluation.project_students ps       ON ps.project_id = p.id
-      INNER JOIN (
-        SELECT DISTINCT ON (ev2.project_student_id) ev2.id, ev2.project_student_id
-        FROM evidence.evaluations ev2
-        INNER JOIN evaluation.rubric_scores rs2          ON rs2.evaluation_id = ev2.id
-        INNER JOIN evaluation.rubric_question_criterias rqc2 ON rqc2.id = rs2.rubric_question_criteria_id
-        INNER JOIN evaluation.rubric_questions rq2       ON rq2.id = rqc2.rubric_question_id
-        INNER JOIN evaluation.rubrics r2                 ON r2.id = rq2.rubric_id
-        WHERE r2.grade_type_id = $2
-        ORDER BY ev2.project_student_id, ev2.updated_at DESC NULLS LAST
-      ) ev                                            ON ev.project_student_id = ps.id
-      INNER JOIN evaluation.rubric_scores rs          ON rs.evaluation_id = ev.id
-      INNER JOIN evaluation.rubric_question_criterias rqc ON rqc.id = rs.rubric_question_criteria_id
-      INNER JOIN evaluation.rubric_questions rq       ON rq.id = rqc.rubric_question_id
-      INNER JOIN evaluation.rubrics r                 ON r.id = rq.rubric_id
-      INNER JOIN core.types rt                        ON rt.id = r.rubric_type_id
-      INNER JOIN core.types gt                        ON gt.id = r.grade_type_id
-      INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-      INNER JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
-      INNER JOIN academic.courses c                   ON c.id = cs.course_id
-      INNER JOIN academic.enrolled_students es        ON es.id = sse.enrolled_student_id
-      INNER JOIN academic.students stu                ON stu.id = es.student_id
-      WHERE cs.academic_period_id = $1
-        AND r.grade_type_id = $2
-        AND stu.program_id = ANY($3::int[])
-      GROUP BY
-        cs.section_code, c.code, stu.code, stu.first_name, stu.last_name,
-        r.id, r.rubric_type_id, rt.code, gt.code
-      ORDER BY c.code, cs.section_code, stu.last_name, stu.first_name
-      `,
-			[academicPeriodId, gradeTypeId, programIds],
-		)) as GradeExportRow[];
+		const rows = await this.projectRepository.getProjectGradesForExport(
+			academicPeriodId,
+			gradeTypeId,
+			programIds,
+		);
 
 		const isCapstoneEbExport = gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
 
@@ -943,16 +646,4 @@ export class ProjectConfigService {
 
 		return Buffer.from(await wb.xlsx.writeBuffer());
 	}
-}
-
-interface GradeExportRow {
-	sectionCode: string;
-	courseCode: string;
-	studentCode: string;
-	studentName: string;
-	rubricId: number;
-	rubricTypeId: number;
-	rubricTypeCode: string;
-	gradeTypeCode: string;
-	totalScore: string;
 }

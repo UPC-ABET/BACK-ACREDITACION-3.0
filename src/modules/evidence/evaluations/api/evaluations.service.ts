@@ -4,14 +4,11 @@ import { EvaluationRepository } from '../core/evaluations.repository';
 import { EvaluationValidation } from '../core/evaluations.validation';
 
 import { CreateEvaluationDto, UpdateEvaluationDto } from '../model/evaluations.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class EvaluationService extends BaseService<EvaluationRepository> {
-	constructor(
-		protected readonly repository: EvaluationRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: EvaluationRepository) {
 		super(repository);
 	}
 

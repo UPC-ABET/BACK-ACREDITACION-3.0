@@ -11,15 +11,12 @@ import {
 	CreateStudyPlanCourseMaintenanceDto,
 	StudyPlanCourseMaintenanceItem,
 } from '../model/study-plan-courses.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { ScopeFilters } from 'src/commons/scope.dtos';
 
 @Injectable()
 export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepository> {
-	constructor(
-		protected readonly repository: StudyPlanCourseRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StudyPlanCourseRepository) {
 		super(repository);
 	}
 

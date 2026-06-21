@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
 import { MailService } from 'src/modules/mail/mail.service';
 import { NotificationLogService } from 'src/modules/core/notification-logs/api/notification-logs.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
-import { IFCS_PARAMETER_KEYS } from 'src/modules/evidence/ifcs/api/ifcs.constants';
 import type { I18nText } from 'src/shared/types/i18n';
+import { NotificationDispatcherRepository } from './core/notification-dispatcher.repository';
 
 export type DispatchInput = {
 	chartId: number;
@@ -60,21 +59,14 @@ export class NotificationDispatcherService {
 	private readonly logger = new Logger(NotificationDispatcherService.name);
 
 	constructor(
-		private readonly dataSource: DataSource,
+		private readonly notificationDispatcherRepository: NotificationDispatcherRepository,
 		private readonly mailService: MailService,
 		private readonly configService: ConfigService,
 		private readonly notificationLogService: NotificationLogService,
 	) {}
 
 	async loadNotificationVars(): Promise<NotificationVar[]> {
-		const paramRow = await this.dataSource.query(
-			`SELECT value FROM core.parameters WHERE code = $1 LIMIT 1`,
-			[IFCS_PARAMETER_KEYS.IFC_NOTIFICATION_VARS],
-		);
-		const rows: Array<{ var: string; valid_status_codes: string[] | null }> =
-			paramRow[0]?.value ?? [];
-		// JSONB content stays snake_case in the DB; map to camelCase at the boundary.
-		return rows.map((r) => ({ var: r.var, validStatusCodes: r.valid_status_codes }));
+		return this.notificationDispatcherRepository.loadNotificationVars();
 	}
 
 	async dispatch(
@@ -182,85 +174,16 @@ export class NotificationDispatcherService {
 	}
 
 	private async resolveContext(input: DispatchInput): Promise<ResolvedContext | null> {
-		const rows = await this.dataSource.query(
-			`
-			WITH RECURSIVE course_chart AS (
-				SELECT c.id, c.staff_id, c.entity_code AS course_id, c.root_chart_id
-				FROM organization.charts c
-				JOIN core.types ct                ON ct.id = c.entity_type_id
-				WHERE c.id        = $1
-				  AND ct.code     = $4
-				  AND c.academic_period_id = $2
-				  AND c.is_active = true
-				LIMIT 1
-			),
-			school_walk AS (
-				SELECT cc.root_chart_id AS id, 1 AS depth
-				FROM course_chart cc
-
-				UNION ALL
-
-				SELECT c.root_chart_id, sw.depth + 1
-				FROM organization.charts c
-				JOIN school_walk sw ON c.id = sw.id
-				WHERE c.is_active = true AND sw.depth < 20
-			),
-			school_chart AS (
-				SELECT c.entity_code AS school_id
-				FROM school_walk sw
-				JOIN organization.charts c  ON c.id = sw.id
-				JOIN core.types ct          ON ct.id = c.entity_type_id
-				WHERE ct.code = $6
-				LIMIT 1
-			)
-			SELECT
-				cc.id::int                                                                            AS "courseChartId",
-				(SELECT school_id FROM school_chart)::int                                             AS "schoolId",
-				$2::int                                                                               AS "periodId",
-				(SELECT id::int FROM core.types WHERE code = $3)                                      AS "triggerTypeId",
-				(SELECT id::int FROM core.types WHERE code = $5)                                      AS "ifcStatusTypeId",
-				(SELECT i.id::int FROM evidence.ifcs i WHERE i.course_id = cc.course_id AND i.academic_period_id = $2 LIMIT 1) AS "ifcId",
-				(SELECT ap.code FROM academic.academic_periods ap WHERE ap.id = $2)                   AS "periodCode",
-				(SELECT ac.name FROM academic.courses ac WHERE ac.id = cc.course_id)                  AS "courseName",
-				(SELECT u.first_name || ' ' || u.last_name
-					 FROM organization.staff s JOIN organization.users u ON u.id = s.user_id
-					 WHERE s.id = cc.staff_id)                                                        AS "coordinatorName"
-			FROM course_chart cc
-			`,
-			[
-				input.chartId,
-				input.periodId,
-				input.triggerCode,
-				TYPE_CODES.ENTITY_TYPE.COURSE,
-				input.ifcStatusCode,
-				TYPE_CODES.ENTITY_TYPE.SCHOOL,
-			],
-		);
-
-		if (rows.length === 0 || rows[0].schoolId == null) return null;
-		return rows[0] as ResolvedContext;
+		return this.notificationDispatcherRepository.resolveContext({
+			chartId: input.chartId,
+			periodId: input.periodId,
+			triggerCode: input.triggerCode,
+			ifcStatusCode: input.ifcStatusCode,
+		});
 	}
 
 	private async loadConfig(ctx: ResolvedContext): Promise<LoadedConfig | null> {
-		const rows = await this.dataSource.query(
-			`
-			SELECT
-				nc.id::int                     AS "id",
-				nc.email_template_id::int      AS "emailTemplateId",
-				et.subject                     AS "subject",
-				et.body                        AS "body",
-				nc.to_chart_entity_type_ids     AS "toChartEntityTypeIds",
-				nc.cc_chart_entity_type_ids     AS "ccChartEntityTypeIds"
-			FROM ifc.notification_configs nc
-			JOIN core.email_templates et ON et.id = nc.email_template_id
-			WHERE nc.trigger_type_id    = $1
-			  AND nc.ifc_status_type_id = $2
-			  AND nc.is_active          = true
-			LIMIT 1
-			`,
-			[ctx.triggerTypeId, ctx.ifcStatusTypeId],
-		);
-		return (rows[0] as LoadedConfig | undefined) ?? null;
+		return this.notificationDispatcherRepository.loadConfig(ctx.triggerTypeId, ctx.ifcStatusTypeId);
 	}
 
 	private async resolveRecipients(courseChartId: number, config: LoadedConfig) {
@@ -269,29 +192,9 @@ export class NotificationDispatcherService {
 		const wanted = [...toIds, ...ccIds];
 		if (wanted.length === 0) return { toEmails: [], ccEmails: [], toStaffIds: [], ccStaffIds: [] };
 
-		const rows = await this.dataSource.query(
-			`
-			WITH RECURSIVE chain_up AS (
-				SELECT c.id, c.root_chart_id, c.entity_type_id, c.staff_id, 1 AS depth
-				FROM organization.charts c
-				WHERE c.id = $1 AND c.is_active = true
-
-				UNION ALL
-
-				SELECT c.id, c.root_chart_id, c.entity_type_id, c.staff_id, cu.depth + 1
-				FROM organization.charts c
-				JOIN chain_up cu ON c.id = cu.root_chart_id
-				WHERE c.is_active = true AND cu.depth < 20
-			)
-			SELECT cu.entity_type_id::int AS "entityTypeId", s.id::int AS "staffId",
-				COALESCE(u.email, s.staff_email) AS "staffEmail"
-			FROM chain_up cu
-			JOIN organization.staff s         ON s.id  = cu.staff_id
-			LEFT JOIN organization.users u    ON u.id  = s.user_id
-			WHERE cu.entity_type_id = ANY($2::int[])
-			  AND COALESCE(u.email, s.staff_email) IS NOT NULL
-			`,
-			[courseChartId, wanted],
+		const rows = await this.notificationDispatcherRepository.resolveRecipients(
+			courseChartId,
+			wanted,
 		);
 
 		const toSet = new Set(toIds);
@@ -301,7 +204,7 @@ export class NotificationDispatcherService {
 		const ccPairs: Array<{ email: string; staffId: number }> = [];
 		for (const r of rows) {
 			const entityTypeId = Number(r.entityTypeId);
-			const pair = { email: r.staffEmail as string, staffId: Number(r.staffId) };
+			const pair = { email: r.staffEmail, staffId: Number(r.staffId) };
 			if (toSet.has(entityTypeId)) toPairs.push(pair);
 			else if (ccSet.has(entityTypeId)) ccPairs.push(pair);
 		}
@@ -390,19 +293,12 @@ export class NotificationDispatcherService {
 	}
 
 	private async lookupStatusCode(statusTypeId: number): Promise<string> {
-		const rows = await this.dataSource.query(`SELECT code FROM core.types WHERE id = $1 LIMIT 1`, [
-			statusTypeId,
-		]);
-		return rows[0]?.code ?? '';
+		return this.notificationDispatcherRepository.lookupStatusCode(statusTypeId);
 	}
 
 	private async lookupUserName(userId: number | null): Promise<string> {
 		if (userId === null) return '';
-		const rows = await this.dataSource.query(
-			`SELECT first_name || ' ' || last_name AS name FROM organization.users WHERE id = $1 LIMIT 1`,
-			[userId],
-		);
-		return rows[0]?.name ?? '';
+		return this.notificationDispatcherRepository.lookupUserName(userId);
 	}
 
 	private async lookupLatestStatusUserName(
@@ -410,20 +306,7 @@ export class NotificationDispatcherService {
 		statusCode: string,
 	): Promise<string> {
 		if (ifcId === null) return '';
-		const rows = await this.dataSource.query(
-			`
-			SELECT u.first_name || ' ' || u.last_name AS name
-			FROM ifc.statuses s
-			JOIN core.types t              ON t.id = s.status_type_id
-			LEFT JOIN organization.staff st ON st.id = s.staff_id
-			LEFT JOIN organization.users u  ON u.id = st.user_id
-			WHERE s.ifc_id = $1 AND t.code = $2
-			ORDER BY s.register_at DESC
-			LIMIT 1
-			`,
-			[ifcId, statusCode],
-		);
-		return rows[0]?.name ?? '';
+		return this.notificationDispatcherRepository.lookupLatestStatusUserName(ifcId, statusCode);
 	}
 
 	private async lookupLatestStatusComment(
@@ -431,21 +314,13 @@ export class NotificationDispatcherService {
 		statusCode: string,
 	): Promise<string> {
 		if (ifcId === null) return '';
-		const rows = await this.dataSource.query(
-			`
-			SELECT s.comment AS comment
-			FROM ifc.statuses s
-			JOIN core.types t ON t.id = s.status_type_id
-			WHERE s.ifc_id = $1 AND t.code = $2
-			ORDER BY s.register_at DESC
-			LIMIT 1
-			`,
-			[ifcId, statusCode],
+		const comment = await this.notificationDispatcherRepository.lookupLatestStatusComment(
+			ifcId,
+			statusCode,
 		);
-		const comment = rows[0]?.comment;
 		if (!comment) return '';
 		if (typeof comment === 'string') return comment;
-		return (comment.es ?? comment.en ?? '') as string;
+		return comment.es ?? comment.en ?? '';
 	}
 
 	private buildIfcLink(ctx: ResolvedContext): string {
@@ -491,11 +366,7 @@ export class NotificationDispatcherService {
 	}
 
 	private async lookupTypeIdByCode(code: string): Promise<number | null> {
-		const rows =
-			(await this.dataSource.query(`SELECT id::int AS id FROM core.types WHERE code = $1 LIMIT 1`, [
-				code,
-			])) ?? [];
-		return rows[0]?.id ?? null;
+		return this.notificationDispatcherRepository.lookupTypeIdByCode(code);
 	}
 }
 

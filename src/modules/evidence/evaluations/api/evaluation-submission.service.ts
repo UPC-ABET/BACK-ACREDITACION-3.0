@@ -5,8 +5,9 @@ import {
 	ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, In } from 'typeorm';
+import { Repository, EntityManager, In } from 'typeorm';
 import { EvaluationEntity } from '../model/evaluations.entity';
+import { EvaluationRepository } from '../core/evaluations.repository';
 import {
 	SubmitEvaluationDto,
 	SaveObservationDto,
@@ -79,7 +80,7 @@ export class EvaluationSubmissionService {
 		private readonly performanceLevelRepo: Repository<PerformanceLevelEntity>,
 		@InjectRepository(StudyPlanCourseEntity)
 		private readonly studyPlanCourseRepo: Repository<StudyPlanCourseEntity>,
-		private readonly dataSource: DataSource,
+		private readonly evaluationRepository: EvaluationRepository,
 	) {}
 
 	private computeLevel(score: number, maxValue: number): number {
@@ -465,7 +466,7 @@ export class EvaluationSubmissionService {
 					}))
 				: dto.scores;
 
-		const { evaluationId, finalOutcomeGrades } = await this.dataSource.transaction(
+		const { evaluationId, finalOutcomeGrades } = await this.evaluationRepository.runInTransaction(
 			async (manager) => {
 				const evaluation = await this.saveEvaluationScores(
 					manager,
@@ -557,7 +558,7 @@ export class EvaluationSubmissionService {
 		);
 		const nrStatusTypeId = await this.resolveStatusTypeIdByCode(TYPE_CODES.QUALIFICATION_STATUS.NR);
 
-		await this.dataSource.transaction(async (manager) => {
+		await this.evaluationRepository.runInTransaction(async (manager) => {
 			let evaluation = await manager.findOne(EvaluationEntity, {
 				where: {
 					projectStudentId: dto.projectStudentId,
@@ -632,7 +633,7 @@ export class EvaluationSubmissionService {
 			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
 		);
 
-		await this.dataSource.transaction(async (manager) => {
+		await this.evaluationRepository.runInTransaction(async (manager) => {
 			for (const ps of project.students) {
 				const evaluation = await manager.findOne(EvaluationEntity, {
 					where: {

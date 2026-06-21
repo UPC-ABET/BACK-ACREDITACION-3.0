@@ -10,13 +10,12 @@ import {
 	OpenPeriodInput,
 	UpdateAcademicPeriodDto,
 } from '../model/academic-periods.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class AcademicPeriodService extends BaseService<AcademicPeriodRepository> {
 	constructor(
 		protected readonly repository: AcademicPeriodRepository,
-		protected readonly dataSource: DataSource,
 		private readonly typeService: TypeService,
 	) {
 		super(repository);
@@ -53,12 +52,7 @@ export class AcademicPeriodService extends BaseService<AcademicPeriodRepository>
 			where: { modalityTypeId: target.modalityTypeId, isActive: true },
 		});
 
-		return await this.dataSource.transaction(async (manager) => {
-			if (currentActive && currentActive.id !== id) {
-				await this.repository.update(currentActive.id, { isActive: false }, manager);
-			}
-			return await this.repository.update(id, { isActive: true }, manager);
-		});
+		return await this.repository.activate(id, currentActive?.id ?? null);
 	}
 
 	async listAllPeriods() {

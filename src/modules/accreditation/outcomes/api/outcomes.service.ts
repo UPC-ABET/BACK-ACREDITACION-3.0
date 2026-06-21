@@ -11,16 +11,13 @@ import {
 	CreateOutcomeMaintenanceDto,
 	OutcomeMaintenanceItem,
 } from '../model/outcomes.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { OutcomeEntity } from '../model/outcomes.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class OutcomeService extends BaseService<OutcomeRepository> {
-	constructor(
-		protected readonly repository: OutcomeRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: OutcomeRepository) {
 		super(repository);
 	}
 

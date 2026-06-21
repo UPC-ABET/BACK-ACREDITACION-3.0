@@ -7,14 +7,11 @@ import {
 	CreateStudyPlanAcademicPeriodDto,
 	UpdateStudyPlanAcademicPeriodDto,
 } from '../model/study-plan-academic-periods.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class StudyPlanAcademicPeriodService extends BaseService<StudyPlanAcademicPeriodRepository> {
-	constructor(
-		protected readonly repository: StudyPlanAcademicPeriodRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StudyPlanAcademicPeriodRepository) {
 		super(repository);
 	}
 

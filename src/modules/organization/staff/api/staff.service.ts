@@ -4,16 +4,13 @@ import { StaffRepository } from '../core/staff.repository';
 import { StaffValidation } from '../core/staff.validation';
 
 import { CreateStaffDto, UpdateStaffDto, StaffLookupItem } from '../model/staff.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { LookupQueryDto } from 'src/commons/lookup.dtos';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
 export class StaffService extends BaseService<StaffRepository> {
-	constructor(
-		protected readonly repository: StaffRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StaffRepository) {
 		super(repository);
 	}
 

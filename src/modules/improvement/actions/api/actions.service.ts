@@ -4,14 +4,11 @@ import { ActionRepository } from '../core/actions.repository';
 import { ActionValidation } from '../core/actions.validation';
 
 import { CreateActionDto, UpdateActionDto } from '../model/actions.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ActionService extends BaseService<ActionRepository> {
-	constructor(
-		protected readonly repository: ActionRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ActionRepository) {
 		super(repository);
 	}
 

@@ -10,6 +10,7 @@ import { ProgramCommissionEntity } from 'src/modules/accreditation/program-commi
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 
 import { RubricRepository } from './core/rubrics.repository';
+import { RubricConfigRepository } from './core/rubric-config.repository';
 import { RubricService } from './api/rubrics.service';
 import { RubricController } from './api/rubrics.controller';
 import { RubricConfigService } from './api/rubric-config.service';
@@ -27,7 +28,7 @@ import { RubricConfigService } from './api/rubric-config.service';
 		]),
 	],
 	controllers: [RubricController],
-	providers: [RubricService, RubricRepository, RubricConfigService],
+	providers: [RubricService, RubricRepository, RubricConfigRepository, RubricConfigService],
 	exports: [RubricService, RubricRepository, RubricConfigService],
 })
 export class RubricModule {}

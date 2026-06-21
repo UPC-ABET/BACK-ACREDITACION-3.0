@@ -10,14 +10,11 @@ import {
 	CreateChartNodeDto,
 	UpdateChartNodeDto,
 } from '../model/charts.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ChartService extends BaseService<ChartRepository> {
-	constructor(
-		protected readonly repository: ChartRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: ChartRepository) {
 		super(repository);
 	}
 

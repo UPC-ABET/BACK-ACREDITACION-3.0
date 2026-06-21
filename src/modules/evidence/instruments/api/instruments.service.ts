@@ -4,14 +4,11 @@ import { InstrumentRepository } from '../core/instruments.repository';
 import { InstrumentValidation } from '../core/instruments.validation';
 
 import { CreateInstrumentDto, UpdateInstrumentDto } from '../model/instruments.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class InstrumentService extends BaseService<InstrumentRepository> {
-	constructor(
-		protected readonly repository: InstrumentRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: InstrumentRepository) {
 		super(repository);
 	}
 

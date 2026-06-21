@@ -2,7 +2,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { ProjectEntity } from '../model/projects.entity';
-import { FilterProjectDto } from '../model/projects.dtos';
+import { CreateProjectDto, FilterProjectDto } from '../model/projects.dtos';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/model/enrolled-students.entity';
 import { StudentEntity } from 'src/modules/academic/students/model/students.entity';
@@ -23,6 +23,109 @@ import {
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
+import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
+import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
+import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
+import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import type { I18nText } from 'src/shared/types/i18n';
+import {
+	CAPSTONE_MAX_LEVEL_VALUE_SQL,
+	COURSE_BASIC_BY_ID_SQL,
+	PROGRAM_IDS_BY_SCHOOL_SQL,
+	PROGRAM_NAMES_BY_STUDY_PLAN_COURSE_SQL,
+	PROJECTS_BY_PROFESSOR_DETAIL_SQL,
+	PROJECT_DUPLICATE_CODE_SQL,
+	PROJECT_DUPLICATE_NAME_SQL,
+	PROJECT_GRADES_EXPORT_SQL,
+	RUBRIC_QUESTION_COUNT_SQL,
+	SSE_TO_STUDY_PLAN_COURSE_SQL,
+	STUDENT_ALREADY_IN_PROJECT_SQL,
+} from './project-config.sql';
+
+export interface CapstoneMaxValueRow {
+	maxValue: string | null;
+}
+
+export interface RubricQuestionCountRow {
+	questionCount: string | null;
+}
+
+export interface ProgramIdRow {
+	programId: number;
+}
+
+export interface ProjectIdRow {
+	id: number;
+}
+
+export interface CourseBasicRow {
+	id: number;
+	name: unknown;
+	description: unknown;
+	learningOutcome: unknown;
+}
+
+export interface SseToStudyPlanCourseRow {
+	sseId: number;
+	studyPlanCourseId: number;
+}
+
+export interface ProgramNameRow {
+	spcId: number;
+	programName: unknown;
+}
+
+export interface CreateProjectArgs {
+	code: string;
+	name: CreateProjectDto['name'];
+	description: CreateProjectDto['description'];
+	isActive: boolean;
+	extra: CreateProjectDto['extra'];
+	studentSectionEnrollmentIds: number[];
+	evaluators: CreateProjectDto['evaluators'];
+}
+
+export interface ProjectsByProfessorFilterArgs {
+	professorId: number;
+	gradeTypeId?: number;
+	academicPeriodId?: number;
+	programIds: number[] | null;
+	search?: string;
+}
+
+export interface ProjectsByProfessorRawRow {
+	projectId: number;
+	projectCode: string | null;
+	projectName: I18nText | string | null;
+	evaluationDate: Date | null;
+	evalId: number | null;
+	evalProfessorId: number | null;
+	evalFirstName: string | null;
+	evalLastName: string | null;
+	evalEmail: string | null;
+	evalTypeName: I18nText | string | null;
+	evalTypeCode: string | null;
+	studentPsId: number | null;
+	studentId: number | null;
+	stuFirstName: string | null;
+	stuLastName: string | null;
+	stuEmail: string | null;
+	stuCode: string | null;
+	courseName: I18nText | string | null;
+}
+
+export interface GradeExportRow {
+	sectionCode: string;
+	courseCode: string;
+	studentCode: string;
+	studentName: string;
+	rubricId: number;
+	rubricTypeId: number;
+	rubricTypeCode: string;
+	gradeTypeCode: string;
+	totalScore: string;
+}
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	constructor(
@@ -251,5 +354,298 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			[projectId],
 		);
 		return result.length > 0;
+	}
+
+	async getCapstoneMaxLevelValue(academicPeriodId: number, rubricId: number): Promise<number> {
+		const [[levelRow], [questionRow]] = (await Promise.all([
+			this.dataSource.query(CAPSTONE_MAX_LEVEL_VALUE_SQL, [
+				TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
+				academicPeriodId,
+			]),
+			this.dataSource.query(RUBRIC_QUESTION_COUNT_SQL, [rubricId]),
+		])) as [CapstoneMaxValueRow[], RubricQuestionCountRow[]];
+
+		const maxPerQuestion = Number(levelRow?.maxValue ?? 0);
+		const questionCount = Number(questionRow?.questionCount ?? 0);
+		return maxPerQuestion * questionCount;
+	}
+
+	async getProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
+		const rows = (await this.dataSource.query(PROGRAM_IDS_BY_SCHOOL_SQL, [
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			schoolId,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+		])) as ProgramIdRow[];
+		return rows.map((row) => row.programId);
+	}
+
+	async existsProjectWithCodeInPeriod(code: string, academicPeriodId: number): Promise<boolean> {
+		const rows = (await this.dataSource.query(PROJECT_DUPLICATE_CODE_SQL, [
+			code,
+			academicPeriodId,
+		])) as ProjectIdRow[];
+		return rows.length > 0;
+	}
+
+	async existsProjectWithNameInPeriod(
+		nameEs: string | undefined,
+		nameEn: string | undefined,
+		academicPeriodId: number,
+	): Promise<boolean> {
+		const rows = (await this.dataSource.query(PROJECT_DUPLICATE_NAME_SQL, [
+			nameEs,
+			nameEn,
+			academicPeriodId,
+		])) as ProjectIdRow[];
+		return rows.length > 0;
+	}
+
+	async existsStudentInActiveProject(
+		enrollmentId: number,
+		academicPeriodId: number,
+	): Promise<boolean> {
+		const rows = (await this.dataSource.query(STUDENT_ALREADY_IN_PROJECT_SQL, [
+			enrollmentId,
+			academicPeriodId,
+		])) as ProjectIdRow[];
+		return rows.length > 0;
+	}
+
+	async createProjectWithChildren(args: CreateProjectArgs): Promise<ProjectEntity> {
+		return await this.dataSource.transaction(async (manager) => {
+			const project = manager.create(ProjectEntity, {
+				code: args.code,
+				name: args.name,
+				description: args.description,
+				isActive: args.isActive,
+				extra: args.extra,
+			});
+
+			const savedProject = await manager.save(project);
+
+			const projectStudents = args.studentSectionEnrollmentIds.map((enrollmentId) =>
+				manager.create(ProjectStudentEntity, {
+					projectId: savedProject.id,
+					studentSectionEnrollmentId: enrollmentId,
+					isActive: true,
+				}),
+			);
+			await manager.save(projectStudents);
+
+			const projectEvaluators = args.evaluators.map((ev) =>
+				manager.create(ProjectEvaluatorEntity, {
+					projectId: savedProject.id,
+					professorId: ev.professorId,
+					evaluatorTypeId: ev.evaluatorTypeId,
+					isActive: true,
+				}),
+			);
+			await manager.save(projectEvaluators);
+
+			return savedProject;
+		});
+	}
+
+	async getProjectDetailEntity(projectId: number): Promise<ProjectEntity | null> {
+		return await this.repository
+			.createQueryBuilder('p')
+			.leftJoinAndSelect('p.students', 's')
+			.leftJoinAndSelect('s.studentSectionEnrollment', 'sse')
+			.leftJoinAndSelect('sse.enrolledStudent', 'es')
+			.leftJoinAndSelect('es.student', 'stu')
+			.leftJoinAndSelect('sse.courseSection', 'cs')
+			.leftJoinAndSelect('cs.academicPeriod', 'ap')
+			.leftJoinAndSelect('p.evaluators', 'pe', 'pe.is_active = true')
+			.leftJoinAndSelect('pe.professor', 'prof')
+			.leftJoinAndSelect('prof.staff', 'staff')
+			.leftJoinAndSelect('staff.user', 'puser')
+			.where('p.id = :projectId', { projectId })
+			.getOne();
+	}
+
+	async getCourseBasicById(courseId: number): Promise<CourseBasicRow | null> {
+		const [row] = (await this.dataSource.query(COURSE_BASIC_BY_ID_SQL, [
+			courseId,
+		])) as CourseBasicRow[];
+		return row ?? null;
+	}
+
+	async getSseToStudyPlanCourse(
+		courseId: number,
+		sseIds: number[],
+	): Promise<SseToStudyPlanCourseRow[]> {
+		return (await this.dataSource.query(SSE_TO_STUDY_PLAN_COURSE_SQL, [
+			courseId,
+			sseIds,
+		])) as SseToStudyPlanCourseRow[];
+	}
+
+	async getProgramNamesByStudyPlanCourseIds(spcIds: number[]): Promise<ProgramNameRow[]> {
+		return (await this.dataSource.query(PROGRAM_NAMES_BY_STUDY_PLAN_COURSE_SQL, [
+			spcIds,
+		])) as ProgramNameRow[];
+	}
+
+	async getActiveRubricForStudyPlanCourse(
+		studyPlanCourseId: number,
+		gradeTypeId?: number,
+		rubricTypeId?: number,
+	): Promise<RubricEntity | null> {
+		return await this.dataSource
+			.getRepository(RubricEntity)
+			.createQueryBuilder('r')
+			.leftJoinAndSelect('r.rubricType', 'rt')
+			.leftJoinAndSelect('r.gradeType', 'gt')
+			.where('r.study_plan_course_id = :spcId', { spcId: studyPlanCourseId })
+			.andWhere('r.is_active = :isActive', { isActive: true })
+			.andWhere(gradeTypeId ? 'r.grade_type_id = :gradeTypeId' : '1=1', { gradeTypeId })
+			.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
+			.getOne();
+	}
+
+	async getEvaluationsForProjectStudents(
+		projectId: number,
+		projectStudentIds: number[],
+		rubricId: number,
+	): Promise<EvaluationEntity[]> {
+		return await this.dataSource
+			.getRepository(EvaluationEntity)
+			.createQueryBuilder('ev')
+			.leftJoinAndSelect('ev.scores', 'score')
+			.innerJoin('ev.projectStudent', 'ps')
+			.innerJoin(RubricQuestionCriteriaEntity, 'rqc', 'rqc.id = score.rubric_question_criteria_id')
+			.innerJoin(RubricQuestionEntity, 'rq', 'rq.id = rqc.rubric_question_id')
+			.where('ps.project_id = :projectId', { projectId })
+			.andWhere('ps.id = ANY(:psIds)', { psIds: projectStudentIds })
+			.andWhere('rq.rubric_id = :rubricId', { rubricId })
+			.getMany();
+	}
+
+	private buildProjectsByProfessorFilter(args: ProjectsByProfessorFilterArgs): {
+		filterFromWhere: string;
+		params: unknown[];
+		nextParamIdx: number;
+	} {
+		const { professorId, gradeTypeId, academicPeriodId, programIds, search } = args;
+
+		let filterFromWhere = `
+    FROM evaluation.project_evaluators pe
+    INNER JOIN evaluation.projects p_filter ON p_filter.id = pe.project_id
+    INNER JOIN evaluation.project_students ps ON ps.project_id = pe.project_id
+    INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+    INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+    INNER JOIN academic.courses c ON c.id = cs.course_id
+    INNER JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+    INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
+    INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
+    INNER JOIN academic.programs program ON program.id = sp.program_id`;
+
+		if (search) {
+			filterFromWhere += `
+    INNER JOIN academic.enrolled_students es_s ON es_s.id = sse.enrolled_student_id
+    INNER JOIN academic.students stu_s ON stu_s.id = es_s.student_id`;
+		}
+
+		filterFromWhere += `
+    WHERE pe.professor_id = $1 AND pe.is_active = true`;
+
+		const params: unknown[] = [professorId];
+		let paramIdx = 2;
+
+		if (gradeTypeId) {
+			filterFromWhere += `
+      AND EXISTS (
+        SELECT 1
+        FROM evaluation.rubrics r
+        WHERE r.study_plan_course_id IN (
+          SELECT spc2.id
+          FROM academic.study_plan_courses spc2
+          INNER JOIN academic.study_plan_academic_periods spap2
+                  ON spap2.id = spc2.study_plan_academic_period_id
+          WHERE (spc2.course_id, spap2.academic_period_id) IN (
+            SELECT cs2.course_id, cs2.academic_period_id
+            FROM evaluation.project_students ps2
+            INNER JOIN academic.student_section_enrollments sse2
+                    ON sse2.id = ps2.student_section_enrollment_id
+            INNER JOIN academic.course_sections cs2
+                    ON cs2.id = sse2.course_section_id
+            WHERE ps2.project_id = pe.project_id
+          )
+        )
+        AND r.grade_type_id = $${paramIdx}
+      )`;
+			params.push(gradeTypeId);
+			paramIdx++;
+		}
+
+		if (academicPeriodId) {
+			filterFromWhere += ` AND cs.academic_period_id = $${paramIdx}`;
+			params.push(academicPeriodId);
+			paramIdx++;
+		}
+
+		if (programIds !== null) {
+			filterFromWhere += ` AND program.id = ANY($${paramIdx}::int[])`;
+			params.push(programIds);
+			paramIdx++;
+		}
+
+		if (search) {
+			filterFromWhere += `
+      AND (
+        p_filter.code ILIKE $${paramIdx}
+        OR p_filter.name->>'es' ILIKE $${paramIdx}
+        OR p_filter.name->>'en' ILIKE $${paramIdx}
+        OR CONCAT(stu_s.first_name, ' ', stu_s.last_name) ILIKE $${paramIdx}
+      )`;
+			params.push(`%${search}%`);
+			paramIdx++;
+		}
+
+		return { filterFromWhere, params, nextParamIdx: paramIdx };
+	}
+
+	async countProjectsByProfessor(args: ProjectsByProfessorFilterArgs): Promise<number> {
+		const { filterFromWhere, params } = this.buildProjectsByProfessorFilter(args);
+		const [countRow] = (await this.dataSource.query(
+			`SELECT COUNT(DISTINCT pe.project_id) AS "total" ${filterFromWhere}`,
+			params,
+		)) as [{ total: string }];
+		return Number(countRow?.total ?? 0);
+	}
+
+	async getProjectIdsByProfessor(
+		args: ProjectsByProfessorFilterArgs,
+		take: number,
+		skip: number,
+	): Promise<number[]> {
+		const { filterFromWhere, params, nextParamIdx } = this.buildProjectsByProfessorFilter(args);
+		const rows = (await this.dataSource.query(
+			`SELECT DISTINCT pe.project_id AS "projectId" ${filterFromWhere} ORDER BY pe.project_id LIMIT $${nextParamIdx} OFFSET $${nextParamIdx + 1}`,
+			[...params, take, skip],
+		)) as { projectId: number }[];
+		return rows.map((r) => r.projectId);
+	}
+
+	async getProjectsByProfessorDetail(
+		projectIds: number[],
+		gradeTypeId?: number,
+	): Promise<ProjectsByProfessorRawRow[]> {
+		return (await this.dataSource.query(PROJECTS_BY_PROFESSOR_DETAIL_SQL, [
+			projectIds,
+			gradeTypeId ?? null,
+		])) as ProjectsByProfessorRawRow[];
+	}
+
+	async getProjectGradesForExport(
+		academicPeriodId: number,
+		gradeTypeId: number,
+		programIds: number[],
+	): Promise<GradeExportRow[]> {
+		return (await this.dataSource.query(PROJECT_GRADES_EXPORT_SQL, [
+			academicPeriodId,
+			gradeTypeId,
+			programIds,
+		])) as GradeExportRow[];
 	}
 }

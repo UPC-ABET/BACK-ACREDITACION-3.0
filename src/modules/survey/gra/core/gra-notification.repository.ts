@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
 import { GraTokenData } from './gra.validation';
+
+export interface GraScoreItem {
+	outcomeConfigId: number;
+	score: number;
+	commentaries: unknown;
+}
 
 @Injectable()
 export class GraNotificationRepository extends BaseRepository<NotificationEntity> {
@@ -213,5 +219,61 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			[params.code, params.name, params.subject, params.body, params.categoryCode],
 		);
 		return rows?.[0] ?? null;
+	}
+
+	/**
+	 * Upserts the outcome scores for a GRA survey (resolving each outcome from its
+	 * outcome_config) and marks the survey closed, optionally merging a general comment into
+	 * evidence.surveys.information — all in one transaction. Score items whose outcome_config
+	 * cannot be resolved are skipped.
+	 */
+	async saveScoresAndCloseSurvey(
+		surveyId: number,
+		closedStatusId: number,
+		scores: GraScoreItem[],
+		generalComment?: string,
+	): Promise<void> {
+		await this.dataSource.transaction(async (manager: EntityManager) => {
+			for (const item of scores) {
+				const configRows: { outcomeId: number }[] = await manager.query(
+					`SELECT outcome_id AS "outcomeId" FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
+					[item.outcomeConfigId],
+				);
+
+				if (!configRows?.[0]) continue;
+
+				const outcomeId = configRows[0].outcomeId;
+
+				const existing: { id: number }[] = await manager.query(
+					`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
+					[surveyId, outcomeId],
+				);
+
+				if (existing?.length > 0) {
+					await manager.query(
+						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
+						[item.score, item.commentaries, surveyId, outcomeId],
+					);
+				} else {
+					await manager.query(
+						`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
+						[surveyId, outcomeId, item.score, item.commentaries],
+					);
+				}
+			}
+
+			const commentariesJson = generalComment
+				? JSON.stringify({ commentaries: generalComment })
+				: null;
+			await manager.query(
+				`UPDATE evidence.surveys
+				 SET survey_status_type_id = $1, updated_at = NOW()
+				     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
+				 WHERE id = $2`,
+				commentariesJson
+					? [closedStatusId, surveyId, commentariesJson]
+					: [closedStatusId, surveyId],
+			);
+		});
 	}
 }

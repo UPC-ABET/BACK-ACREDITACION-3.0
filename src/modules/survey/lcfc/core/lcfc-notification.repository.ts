@@ -1,10 +1,40 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from 'src/commons/base.repository';
 import { NotificationEntity } from 'src/modules/survey/notifications/model/notifications.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { LcfcTokenData } from './lcfc.validation';
+
+export interface LcfcSendCandidate {
+	studentId: number;
+	studentName: string;
+	studentCode: string;
+	studentEmail: string;
+	courseSectionId: number;
+	courseName: string;
+	programName: string;
+	programId: number | null;
+	campusId: number | null;
+}
+
+export interface LcfcPendingNotification {
+	studentId: number;
+	studentName: string;
+	studentCode: string;
+	studentEmail: string;
+	surveyId: number;
+	token: string;
+	courseName: string;
+	programName: string;
+}
+
+export interface LcfcScoreItem {
+	outcomeId: number;
+	score: number;
+	commentaries: unknown;
+}
 
 @Injectable()
 export class LcfcNotificationRepository extends BaseRepository<NotificationEntity> {
@@ -250,5 +280,188 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 	async existsForSurvey(surveyId: number): Promise<boolean> {
 		const count = await this.repository.count({ where: { surveyId: surveyId } });
 		return count > 0;
+	}
+
+	/**
+	 * Creates (or reuses) the LCFC survey + notification for each candidate in one transaction.
+	 * Students whose survey is already closed are skipped entirely. On resend, the latest
+	 * existing notification is reset to scheduled and its deadline refreshed. Returns the list
+	 * of notifications still pending an email plus create/skip counters.
+	 */
+	async processSendNotifications(params: {
+		lcfcSurveyTypeId: number;
+		activeStatusId: number;
+		closedStatusId: number;
+		scheduledStatusId: number;
+		resend: boolean;
+		academicPeriodId: number;
+		maxRegisterDate: string | null;
+		candidates: LcfcSendCandidate[];
+	}): Promise<{
+		surveysCreated: number;
+		alreadyExisted: number;
+		pendingNotifications: LcfcPendingNotification[];
+	}> {
+		const {
+			lcfcSurveyTypeId,
+			activeStatusId,
+			closedStatusId,
+			scheduledStatusId,
+			resend,
+			academicPeriodId,
+			maxRegisterDate,
+			candidates,
+		} = params;
+
+		let surveysCreated = 0;
+		let alreadyExisted = 0;
+		const pendingNotifications: LcfcPendingNotification[] = [];
+
+		await this.dataSource.transaction(async (manager) => {
+			for (const candidate of candidates) {
+				const existingSurveyRows: { id: number; surveyStatusTypeId: number }[] =
+					await manager.query(
+						`SELECT id AS "id", survey_status_type_id AS "surveyStatusTypeId"
+						 FROM evidence.surveys
+						 WHERE survey_type_id = $1 AND student_id = $2 AND course_section_id = $3
+						 LIMIT 1`,
+						[lcfcSurveyTypeId, candidate.studentId, candidate.courseSectionId],
+					);
+				const existingSurvey = existingSurveyRows?.[0] ?? null;
+
+				if (existingSurvey) {
+					alreadyExisted++;
+					// Never (re)send to a student who already completed this survey — even on resend.
+					if (existingSurvey.surveyStatusTypeId === closedStatusId) {
+						continue;
+					}
+					// Default behaviour only (re)sends notifications still scheduled (never sent), so
+					// pressing "send" twice does not spam students. On resend we reuse the latest
+					// existing notification regardless of status and refresh its deadline.
+					const existingNotif: { id: number; token: string }[] = resend
+						? await manager.query(
+								`SELECT id, token FROM survey.notifications WHERE survey_id = $1 ORDER BY id DESC LIMIT 1`,
+								[existingSurvey.id],
+							)
+						: await manager.query(
+								`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
+								[existingSurvey.id, scheduledStatusId],
+							);
+
+					if (existingNotif?.[0]) {
+						if (resend) {
+							// Reset to scheduled and refresh the deadline so the reused token is valid again.
+							// sent_date / max_register_date are NOT NULL, so keep the existing deadline when
+							// no new one was resolved, and never null out sent_date (it's re-stamped to
+							// NOW() by markAsSentBySurveyId once the email goes out).
+							await manager.query(
+								`UPDATE survey.notifications
+								 SET notification_status_type_id = $1,
+								     max_register_date = COALESCE($2, max_register_date),
+								     updated_at = NOW()
+								 WHERE id = $3`,
+								[scheduledStatusId, maxRegisterDate, existingNotif[0].id],
+							);
+						}
+						pendingNotifications.push({
+							studentId: candidate.studentId,
+							studentName: candidate.studentName,
+							studentCode: candidate.studentCode,
+							studentEmail: candidate.studentEmail,
+							surveyId: existingSurvey.id,
+							token: existingNotif[0].token,
+							courseName: candidate.courseName,
+							programName: candidate.programName,
+						});
+					}
+				} else {
+					const inserted: { id: number }[] = await manager.query(
+						`INSERT INTO evidence.surveys
+						 (survey_type_id, survey_status_type_id, student_id, academic_period_id, campus_id, program_id, course_section_id)
+						 VALUES ($1, $2, $3, $4, $5, $6, $7)
+						 RETURNING id`,
+						[
+							lcfcSurveyTypeId,
+							activeStatusId,
+							candidate.studentId,
+							academicPeriodId,
+							candidate.campusId,
+							candidate.programId,
+							candidate.courseSectionId,
+						],
+					);
+
+					const surveyId = inserted[0].id;
+					const token = uuidv4();
+
+					// max_register_date is NOT NULL; fall back to the column default when no deadline is
+					// configured yet (it can be set later from Configuration).
+					await manager.query(
+						`INSERT INTO survey.notifications (survey_id, notification_status_type_id, token, max_register_date)
+						 VALUES ($1, $2, $3, COALESCE($4, NOW()))`,
+						[surveyId, scheduledStatusId, token, maxRegisterDate],
+					);
+
+					surveysCreated++;
+					pendingNotifications.push({
+						studentId: candidate.studentId,
+						studentName: candidate.studentName,
+						studentCode: candidate.studentCode,
+						studentEmail: candidate.studentEmail,
+						surveyId,
+						token,
+						courseName: candidate.courseName,
+						programName: candidate.programName,
+					});
+				}
+			}
+		});
+
+		return { surveysCreated, alreadyExisted, pendingNotifications };
+	}
+
+	/**
+	 * Upserts the outcome scores for a survey and marks it closed, optionally merging a
+	 * general comment into evidence.surveys.information — all in one transaction.
+	 */
+	async saveScoresAndCloseSurvey(
+		surveyId: number,
+		closedStatusId: number,
+		scores: LcfcScoreItem[],
+		generalComment?: string,
+	): Promise<void> {
+		await this.dataSource.transaction(async (manager: EntityManager) => {
+			for (const item of scores) {
+				const existing: { id: number }[] = await manager.query(
+					`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
+					[surveyId, item.outcomeId],
+				);
+
+				if (existing?.length > 0) {
+					await manager.query(
+						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
+						[item.score, item.commentaries, surveyId, item.outcomeId],
+					);
+				} else {
+					await manager.query(
+						`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
+						[surveyId, item.outcomeId, item.score, item.commentaries],
+					);
+				}
+			}
+
+			const commentariesJson = generalComment
+				? JSON.stringify({ commentaries: generalComment })
+				: null;
+			await manager.query(
+				`UPDATE evidence.surveys
+				 SET survey_status_type_id = $1, updated_at = NOW()
+				     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
+				 WHERE id = $2`,
+				commentariesJson
+					? [closedStatusId, surveyId, commentariesJson]
+					: [closedStatusId, surveyId],
+			);
+		});
 	}
 }

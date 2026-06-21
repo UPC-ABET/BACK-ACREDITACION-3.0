@@ -4,14 +4,11 @@ import { StatusRepository } from '../core/statuses.repository';
 import { StatusValidation } from '../core/statuses.validation';
 
 import { CreateStatusDto, UpdateStatusDto } from '../model/statuses.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class StatusService extends BaseService<StatusRepository> {
-	constructor(
-		protected readonly repository: StatusRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StatusRepository) {
 		super(repository);
 	}
 

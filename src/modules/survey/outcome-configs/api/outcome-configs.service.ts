@@ -4,14 +4,11 @@ import { OutcomeConfigRepository } from '../core/outcome-configs.repository';
 import { OutcomeConfigValidation } from '../core/outcome-configs.validation';
 
 import { CreateOutcomeConfigDto, UpdateOutcomeConfigDto } from '../model/outcome-configs.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class OutcomeConfigService extends BaseService<OutcomeConfigRepository> {
-	constructor(
-		protected readonly repository: OutcomeConfigRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: OutcomeConfigRepository) {
 		super(repository);
 	}
 

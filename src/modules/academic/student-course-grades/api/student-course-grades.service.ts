@@ -7,14 +7,11 @@ import {
 	CreateStudentCourseGradeDto,
 	UpdateStudentCourseGradeDto,
 } from '../model/student-course-grades.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class StudentCourseGradeService extends BaseService<StudentCourseGradeRepository> {
-	constructor(
-		protected readonly repository: StudentCourseGradeRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: StudentCourseGradeRepository) {
 		super(repository);
 	}
 

@@ -4,14 +4,11 @@ import { PlanRepository } from '../core/plans.repository';
 import { PlanValidation } from '../core/plans.validation';
 
 import { CreatePlanDto, UpdatePlanDto } from '../model/plans.dtos';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class PlanService extends BaseService<PlanRepository> {
-	constructor(
-		protected readonly repository: PlanRepository,
-		protected readonly dataSource: DataSource,
-	) {
+	constructor(protected readonly repository: PlanRepository) {
 		super(repository);
 	}
 
