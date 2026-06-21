@@ -86,9 +86,6 @@ import { LcfcModule } from './modules/survey/lcfc/lcfc.module';
 
 import { UploadsModule } from './modules/uploads/uploads.module';
 
-import { PortfolioModule } from './modules/portfolio/portfolio.module';
-import { S3Module } from './modules/s3/s3.module';
-
 import { BannerModule } from './modules/admin/banner/banner.module';
 import { PlannerModule } from './modules/admin/planner/planner.module';
 import { ScrapingExportsModule } from './modules/admin/scraping-exports/scraping-exports.module';
@@ -216,8 +213,6 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 		RoleModule,
 		UserRoleModule,
 		RoleModulePermissionModule,
-		PortfolioModule,
-		S3Module,
 		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule, ScrapingExportsModule] : []),
 	],
 	controllers: [AppController],

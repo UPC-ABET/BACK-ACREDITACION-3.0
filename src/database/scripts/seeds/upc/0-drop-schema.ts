@@ -18,7 +18,6 @@ const APP_SCHEMAS = [
 	'evaluation',
 	'core',
 	'audit',
-	'portfolio',
 ];
 
 async function run() {
