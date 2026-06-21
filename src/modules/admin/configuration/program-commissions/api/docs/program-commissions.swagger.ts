@@ -1,9 +1,6 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { programCommissionsRoutes } from '../../config/program-commissions.routes';
-import {
-	AssociateProgramCommissionDto,
-	ListProgramCommissionQueryDto,
-} from '../../model/program-commissions.dtos';
+import { AssociateProgramCommissionDto } from '../../model/program-commissions.dtos';
 
 const cfg = programCommissionsRoutes.programCommissions;
 
@@ -16,5 +13,4 @@ export const SwaggerProgramCommissionsAssociate = () =>
 export const SwaggerProgramCommissionsUnassociate = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.unassociate, param: { name: 'id', type: Number } });
 
-export const SwaggerProgramCommissionsList = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.list, query: ListProgramCommissionQueryDto });
+export const SwaggerProgramCommissionsList = () => HttpMethodWithSwagger(cfg.operation.list);

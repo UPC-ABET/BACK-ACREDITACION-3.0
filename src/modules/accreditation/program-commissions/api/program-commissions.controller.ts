@@ -43,9 +43,13 @@ export class ProgramCommissionController extends BaseController<ProgramCommissio
 	}
 
 	@SwaggerProgramCommissionGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterProgramCommissionDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterProgramCommissionDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerProgramCommissionCommissionOptions()

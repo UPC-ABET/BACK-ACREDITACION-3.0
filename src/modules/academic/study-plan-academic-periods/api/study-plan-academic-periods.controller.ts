@@ -9,6 +9,10 @@ import {
 import { StudyPlanAcademicPeriodService } from './study-plan-academic-periods.service';
 import { FilterStudyPlanAcademicPeriodDto } from '../model/study-plan-academic-periods.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerStudyPlanAcademicPeriodController()
@@ -30,8 +34,12 @@ export class StudyPlanAcademicPeriodController extends BaseController<StudyPlanA
 	}
 
 	@SwaggerStudyPlanAcademicPeriodGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterStudyPlanAcademicPeriodDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterStudyPlanAcademicPeriodDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters(academicPeriodId == null ? dto : { ...dto, academicPeriodId });
 	}
 }

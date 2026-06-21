@@ -10,7 +10,7 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { CollaborationType } from '../enums/collaboration-type.enum';
 import { PortfolioProjectEntity } from '../model/portfolio-project.entity';
-import { FilterPortfolioProjectDto, PageDto, PaginationResultDto } from '../model/portfolio.dtos';
+import { PageDto, PaginationResultDto, PortfolioProjectFilters } from '../model/portfolio.dtos';
 import { PortfolioValidation } from './portfolio.validation';
 import { PortfolioProjectApplicationEntity } from '../model/portfolio-project-application.entity';
 
@@ -154,7 +154,7 @@ export class PortfolioRepository extends BaseRepository<PortfolioProjectEntity> 
 	// ── Filters + pagination ──────────────────────────────────────────────────
 
 	async findAllWithFilters(
-		filters: FilterPortfolioProjectDto,
+		filters: PortfolioProjectFilters,
 		page: PageDto,
 		programIds?: number[],
 	): Promise<PaginationResultDto<PortfolioProjectEntity>> {

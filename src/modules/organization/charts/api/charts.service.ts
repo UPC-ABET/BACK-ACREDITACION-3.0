@@ -7,6 +7,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 import {
 	CreateChartDto,
 	UpdateChartDto,
+	FilterChartDto,
 	CreateChartNodeDto,
 	UpdateChartNodeDto,
 } from '../model/charts.dtos';
@@ -31,6 +32,14 @@ export class ChartService extends BaseService<ChartRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await ChartValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getByFilters(filters: FilterChartDto & { academicPeriodId?: number | null }) {
+		const { academicPeriodId, ...rest } = filters;
+		return await super.getByFilters({
+			...rest,
+			...(academicPeriodId != null ? { academicPeriodId } : {}),
+		});
 	}
 
 	async getMaintenanceTree(academicPeriodId: number, schoolId: number) {

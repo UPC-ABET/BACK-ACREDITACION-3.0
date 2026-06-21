@@ -16,10 +16,6 @@ export class CreatePerformanceLevelDto {
 	@ApiProperty({ example: 1, required: true })
 	instrumentTypeId: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academicPeriodId: number;
-
 	@IsObject()
 	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
 	name: I18nText;
@@ -60,11 +56,6 @@ export class UpdatePerformanceLevelDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	instrumentTypeId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsObject()
@@ -110,10 +101,6 @@ export class FilterPerformanceLevelDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	instrumentTypeId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })

@@ -79,10 +79,6 @@ export class FilterProgramCommissionDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
 	commissionTypeId?: number;
 }
 

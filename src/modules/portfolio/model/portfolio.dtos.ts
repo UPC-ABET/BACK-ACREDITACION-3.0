@@ -248,12 +248,6 @@ export class FilterPortfolioProjectDto {
 	@IsOptional()
 	@IsInt()
 	@IsPositive()
-	academicPeriodId?: number;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsInt()
-	@IsPositive()
 	programId?: number;
 
 	@ApiPropertyOptional({ isArray: true, type: Number })
@@ -307,6 +301,11 @@ export class FilterPortfolioProjectDto {
 	@IsPositive()
 	schoolId?: number;
 }
+
+// Filter DTO plus the academic-period scope injected from the X-Academic-Period-Id header.
+export type PortfolioProjectFilters = FilterPortfolioProjectDto & {
+	academicPeriodId?: number | null;
+};
 
 export class GetAllPortfolioDto {
 	@ApiProperty({ type: PageDto })

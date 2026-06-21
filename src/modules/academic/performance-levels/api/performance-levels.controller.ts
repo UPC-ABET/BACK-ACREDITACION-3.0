@@ -16,6 +16,10 @@ import {
 	FilterPerformanceLevelDto,
 } from '../model/performance-levels.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerPerformanceLevelController()
@@ -25,9 +29,13 @@ export class PerformanceLevelController extends BaseController<PerformanceLevelS
 	}
 
 	@SwaggerPerformanceLevelCreate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
-	async create(@Body() dto: CreatePerformanceLevelDto) {
-		return await super.create(dto);
+	async create(
+		@Body() dto: CreatePerformanceLevelDto,
+		@AcademicPeriodId() academicPeriodId?: number,
+	) {
+		return await super.create({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerPerformanceLevelUpdate()
@@ -55,8 +63,12 @@ export class PerformanceLevelController extends BaseController<PerformanceLevelS
 	}
 
 	@SwaggerPerformanceLevelGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterPerformanceLevelDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterPerformanceLevelDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 }

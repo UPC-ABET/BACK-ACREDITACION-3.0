@@ -53,7 +53,7 @@ export class CourseService extends BaseService<CourseRepository> {
 
 	async getEnrolledStudentsByCourseId(
 		courseId: number,
-		filters?: FilterCourseEnrolledStudentsDto,
+		filters?: FilterCourseEnrolledStudentsDto & ScopeFilters,
 	): Promise<CourseEnrolledStudentDto[]> {
 		const results = await this.repository.findEnrolledStudents(courseId, filters);
 

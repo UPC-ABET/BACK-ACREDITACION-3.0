@@ -130,10 +130,6 @@ export class FilterSurveyDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
 
 	@IsOptional()

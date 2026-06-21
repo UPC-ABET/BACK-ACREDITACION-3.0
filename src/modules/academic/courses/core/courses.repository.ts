@@ -80,7 +80,7 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 	async findEnrolledStudents(
 		courseId: number,
-		filters?: FilterCourseEnrolledStudentsDto,
+		filters?: FilterCourseEnrolledStudentsDto & ScopeFilters,
 	): Promise<StudentSectionEnrollmentEntity[]> {
 		const qb = this.dataSource
 			.getRepository(StudentSectionEnrollmentEntity)
@@ -98,7 +98,7 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 			qb.andWhere('es.is_active = :esIsActive', { esIsActive: filters.isActive });
 		}
 
-		if (filters?.academicPeriodId !== undefined) {
+		if (filters?.academicPeriodId !== undefined && filters?.academicPeriodId !== null) {
 			qb.andWhere('cs.academic_period_id = :academicPeriodId', {
 				academicPeriodId: filters.academicPeriodId,
 			});

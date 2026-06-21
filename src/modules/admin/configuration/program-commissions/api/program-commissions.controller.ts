@@ -1,12 +1,13 @@
-import { Body, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { ProgramCommissionService } from 'src/modules/accreditation/program-commissions/api/program-commissions.service';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 
-import {
-	AssociateProgramCommissionDto,
-	ListProgramCommissionQueryDto,
-} from '../model/program-commissions.dtos';
+import { AssociateProgramCommissionDto } from '../model/program-commissions.dtos';
 import {
 	SwaggerProgramCommissionsController,
 	SwaggerProgramCommissionsAssociate,
@@ -32,8 +33,9 @@ export class ProgramCommissionsController {
 	}
 
 	@SwaggerProgramCommissionsList()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
-	async list(@Query() query: ListProgramCommissionQueryDto) {
-		return parseSuccessResponse(await this.service.listByPeriod(query.academicPeriodId));
+	async list(@AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.service.listByPeriod(academicPeriodId));
 	}
 }

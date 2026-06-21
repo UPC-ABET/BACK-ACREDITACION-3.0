@@ -84,11 +84,6 @@ export class OutcomeMaintenanceQueryDto extends PaginationQueryDto {
 	@ApiProperty({ example: 1, required: true, description: 'Program (carrera) id, from header' })
 	programId: number;
 
-	@Type(() => Number)
-	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period id, from header' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({

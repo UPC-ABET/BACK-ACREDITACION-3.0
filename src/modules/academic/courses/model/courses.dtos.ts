@@ -123,15 +123,6 @@ export class FilterCourseEnrolledStudentsDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del período académico',
-	})
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: false,
 		description: 'ID del campus',
 	})
 	campusId?: number;

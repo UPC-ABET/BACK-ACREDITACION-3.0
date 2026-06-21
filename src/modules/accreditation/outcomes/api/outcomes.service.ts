@@ -42,11 +42,12 @@ export class OutcomeService extends BaseService<OutcomeRepository> {
 
 	async getMaintenanceList(
 		query: OutcomeMaintenanceQueryDto,
+		academicPeriodId: number,
 	): Promise<PaginatedResult<OutcomeMaintenanceItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
 		const [outcomes, total] = await this.repository.findMaintenancePage(
 			query.programId,
-			query.academicPeriodId,
+			academicPeriodId,
 			query.search,
 			skip,
 			take,

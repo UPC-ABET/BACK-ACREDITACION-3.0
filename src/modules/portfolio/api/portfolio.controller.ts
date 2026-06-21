@@ -12,6 +12,10 @@ import { ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { BaseController } from 'src/commons/base.controller';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { PortfolioService } from './portfolio.service';
@@ -91,9 +95,15 @@ export class PortfolioController extends BaseController<PortfolioService> {
 	}
 
 	@SwaggerPortfolioGetAll()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.PORTFOLIO, action: PERMISSION_ACTIONS.GET })
-	async getAllProjects(@Body() dto: GetAllPortfolioDto) {
-		return parseSuccessResponse(await this.service.getAllWithFilters(dto.body, dto.page));
+	async getAllProjects(
+		@Body() dto: GetAllPortfolioDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(
+			await this.service.getAllWithFilters({ ...dto.body, academicPeriodId }, dto.page),
+		);
 	}
 
 	@SwaggerPortfolioGetById()
@@ -278,9 +288,14 @@ export class PortfolioController extends BaseController<PortfolioService> {
 	// ── Export ────────────────────────────────────────────────────────────────
 
 	@SwaggerPortfolioExport()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.PORTFOLIO, action: PERMISSION_ACTIONS.POST })
-	async export(@Body() dto: GetAllPortfolioDto, @Res() res: Response) {
-		const { bytes, fileName } = await this.service.exportToExcel(dto.body);
+	async export(
+		@Body() dto: GetAllPortfolioDto,
+		@Res() res: Response,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		const { bytes, fileName } = await this.service.exportToExcel({ ...dto.body, academicPeriodId });
 		res.setHeader(
 			'Content-Type',
 			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

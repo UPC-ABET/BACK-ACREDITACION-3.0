@@ -89,9 +89,13 @@ export class OutcomeController extends BaseController<OutcomeService> {
 	}
 
 	@SwaggerOutcomeMaintenanceList()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ACCREDITATION, action: PERMISSION_ACTIONS.GET })
-	async maintenanceList(@Query() query: OutcomeMaintenanceQueryDto) {
-		return parseSuccessResponse(await this.service.getMaintenanceList(query));
+	async maintenanceList(
+		@Query() query: OutcomeMaintenanceQueryDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.service.getMaintenanceList(query, academicPeriodId));
 	}
 
 	@SwaggerOutcomeMaintenanceUpdate()

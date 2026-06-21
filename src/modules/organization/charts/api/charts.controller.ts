@@ -70,9 +70,13 @@ export class ChartController extends BaseController<ChartService> {
 	}
 
 	@SwaggerChartGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterChartDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterChartDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerChartMaintenanceTree()

@@ -26,13 +26,3 @@ export class AssociateProgramCommissionDto {
 	@ApiProperty({ example: 1, required: true, description: 'core.types id of the commission type' })
 	commissionTypeId: number;
 }
-
-export class ListProgramCommissionQueryDto {
-	@IsInt()
-	@ApiProperty({
-		example: 3,
-		required: true,
-		description: 'academic.academic_periods.id to list associations for',
-	})
-	academicPeriodId: number;
-}

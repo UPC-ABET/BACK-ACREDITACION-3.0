@@ -67,9 +67,13 @@ export class CourseSectionController extends BaseController<CourseSectionService
 	}
 
 	@SwaggerCourseSectionGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterCourseSectionDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterCourseSectionDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters(academicPeriodId == null ? dto : { ...dto, academicPeriodId });
 	}
 
 	@SwaggerCourseSectionMaintenanceCreate()

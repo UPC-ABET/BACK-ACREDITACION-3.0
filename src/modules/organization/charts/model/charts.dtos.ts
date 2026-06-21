@@ -149,10 +149,6 @@ export class FilterChartDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
 	rootChartId?: number;
 
 	@IsOptional()

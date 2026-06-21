@@ -90,13 +90,18 @@ export class CourseController extends BaseController<CourseService> {
 
 	@Post(':courseId/enrolled-students')
 	@ApiOkResponse({ type: [CourseEnrolledStudentDto] })
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async getEnrolledStudents(
 		@Param('courseId', ParseIntPipe) courseId: number,
 		@Body() filters?: FilterCourseEnrolledStudentsDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
 	) {
 		return parseSuccessResponse(
-			await this.service.getEnrolledStudentsByCourseId(courseId, filters),
+			await this.service.getEnrolledStudentsByCourseId(courseId, {
+				...filters,
+				academicPeriodId,
+			}),
 		);
 	}
 }

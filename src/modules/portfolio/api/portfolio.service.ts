@@ -20,11 +20,11 @@ import { portfolioValidationStrings } from '../config/strings/portfolio.validati
 import {
 	AutoAssignPartnerDto,
 	CreatePortfolioProjectDto,
-	FilterPortfolioProjectDto,
 	ManagementAssignDto,
 	MigratePortfolioProjectsDto,
 	PageDto,
 	PaginationResultDto,
+	PortfolioProjectFilters,
 	UpdatePortfolioManagerDto,
 	UpdatePortfolioProjectDto,
 } from '../model/portfolio.dtos';
@@ -97,7 +97,7 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 	// ── Queries ───────────────────────────────────────────────────────────────
 
 	async getAllWithFilters(
-		filters: FilterPortfolioProjectDto,
+		filters: PortfolioProjectFilters,
 		page: PageDto,
 	): Promise<PaginationResultDto<PortfolioProjectEntity>> {
 		let programIds: number[] | undefined;
@@ -664,7 +664,7 @@ export class PortfolioService extends BaseService<PortfolioRepository> {
 	// ── Export ────────────────────────────────────────────────────────────────
 
 	async exportToExcel(
-		filters: FilterPortfolioProjectDto,
+		filters: PortfolioProjectFilters,
 	): Promise<{ bytes: Buffer; fileName: string }> {
 		const all = await this.getAllWithFilters(filters, { pageNumber: 1, pageSize: 10_000 });
 		const workbook = new ExcelJS.Workbook();
