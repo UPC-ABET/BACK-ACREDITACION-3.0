@@ -29,6 +29,7 @@ import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/mo
 import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { I18nText } from 'src/shared/types/i18n';
+import { camelizeKeys } from 'src/libs/case.functions';
 import {
 	CAPSTONE_MAX_LEVEL_VALUE_SQL,
 	COURSE_BASIC_BY_ID_SQL,
@@ -316,6 +317,12 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 				}),
 				evaluators: project.evaluators.map((evaluator) => {
 					const evalRaw = projectRaws.find((r) => r.pe_id === evaluator.id);
+					// Raw query result: the selected extra blob keeps snake_case keys (column
+					// transformers don't run on raw rows), so camelize it to the wire convention.
+					const evalTypeExtra = (camelizeKeys(evalRaw?.eval_type_enrich_extra) ?? {}) as Record<
+						string,
+						any
+					>;
 					return {
 						...evaluator,
 						professorFirstName:
@@ -325,8 +332,8 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 						professorCode: evalRaw?.prof_enrich_code || '',
 						evaluatorTypeName: evalRaw?.eval_type_enrich_name ?? null,
 						evaluatorTypeCode: evalRaw?.eval_type_enrich_code ?? null,
-						canEvaluate: evalRaw?.eval_type_enrich_extra?.can_evaluate === true,
-						maxEvaluators: evalRaw?.eval_type_enrich_extra?.max_evaluators ?? null,
+						canEvaluate: evalTypeExtra.canEvaluate === true,
+						maxEvaluators: evalTypeExtra.maxEvaluators ?? null,
 					};
 				}),
 			};

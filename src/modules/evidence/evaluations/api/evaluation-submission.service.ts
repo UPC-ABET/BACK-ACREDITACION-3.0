@@ -103,7 +103,7 @@ export class EvaluationSubmissionService {
 
 	private async canEvaluatorTypeGrade(evaluatorTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: evaluatorTypeId } });
-		return type?.extra?.can_evaluate === true;
+		return type?.extra?.canEvaluate === true;
 	}
 
 	private async resolveStatusTypeIdByCode(code: string): Promise<number> {

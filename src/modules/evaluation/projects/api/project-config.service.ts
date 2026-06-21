@@ -79,7 +79,7 @@ export class ProjectConfigService {
 	 * Crea un proyecto completo con sus estudiantes y evaluadores de forma transaccional.
 	 *
 	 * Validaciones previas:
-	 * - study_plan_course debe existir y tener extra.is_evaluable = true
+	 * - study_plan_course debe existir y tener extra.isEvaluable = true
 	 * - código y nombre únicos en el mismo periodo académico
 	 * - alumnos activos, matriculados en el curso, sin proyecto en el mismo periodo
 	 * - evaluadores sin duplicados de profesor+tipo, con límites por tipo
@@ -97,7 +97,7 @@ export class ProjectConfigService {
 			});
 		}
 
-		if (studyPlanCourse.extra?.is_evaluable !== true) {
+		if (studyPlanCourse.extra?.isEvaluable !== true) {
 			throw new BadRequestException(projectsValidationStrings.error.notEvaluateRubric);
 		}
 
@@ -548,8 +548,8 @@ export class ProjectConfigService {
 				evaluatorTypeId: e.evaluatorTypeId,
 				evaluatorTypeName: evaluatorType?.name || '',
 				evaluatorTypeCode: evaluatorType?.code || '',
-				canEvaluate: evaluatorType?.extra?.can_evaluate === true,
-				maxEvaluators: evaluatorType?.extra?.max_evaluators ?? null,
+				canEvaluate: evaluatorType?.extra?.canEvaluate === true,
+				maxEvaluators: evaluatorType?.extra?.maxEvaluators ?? null,
 			};
 		});
 

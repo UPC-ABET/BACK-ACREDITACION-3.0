@@ -1,16 +1,16 @@
 import { Column, Index, ColumnOptions } from 'typeorm';
-import { snakeizeKeys } from 'src/libs/case.functions';
+import { camelizeKeys, snakeizeKeys } from 'src/libs/case.functions';
 
 /**
- * JSONB write boundary: persist content in the DB's snake_case convention. The frontend/backend
- * speak camelCase (see CamelCaseInterceptor on the read side), so we snake-ize keys on the way in.
- * `from` is identity — loaded entities keep snake_case keys for internal service code; the response
- * interceptor camelizes on output. Applied on the persistence (save) path; `BaseRepository.update`
- * snake-izes explicitly since `repository.update()` bypasses column transformers.
+ * JSONB case boundary: the DB stores snake_case (Postgres convention) while the backend works in
+ * camelCase. `to` snake-izes on the way in (persistence/save path); `from` camelizes on load so
+ * `entity.extra.*` is camelCase in service code, just like aliased SQL columns. `BaseRepository.update`
+ * snake-izes explicitly since `repository.update()` bypasses column transformers, and raw queries that
+ * select the `extra` blob must camelize it themselves (transformers don't run on raw results).
  */
-const jsonbSnakeizeTransformer = {
+const jsonbCaseTransformer = {
 	to: (value: unknown) => snakeizeKeys(value),
-	from: (value: unknown) => value,
+	from: (value: unknown) => camelizeKeys(value),
 };
 
 export const DB_LENGTH_EMAIL = 254;
@@ -319,7 +319,7 @@ export function JsonColumn(options?: BaseOptions): PropertyDecorator {
 			{
 				type: 'jsonb',
 				nullable,
-				transformer: jsonbSnakeizeTransformer,
+				transformer: jsonbCaseTransformer,
 				...(withDefault && { default: DB_DEFAULT_JSON }),
 				unique: false,
 			},

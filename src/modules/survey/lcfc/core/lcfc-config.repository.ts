@@ -325,7 +325,7 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 					where: { id: item.configId },
 				});
 				const extra = (existing?.extra as Record<string, unknown>) ?? {};
-				if (!existing || extra.survey_type !== LCFC_SURVEY_TYPE) {
+				if (!existing || extra.surveyType !== LCFC_SURVEY_TYPE) {
 					onInvalid();
 				}
 				await manager.update(OutcomeConfigEntity, item.configId, { isActive: item.isActive });

@@ -7,7 +7,6 @@ import {
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
 } from '../model/lcfc.dtos';
-import { camelizeKeys } from 'src/libs/case.functions';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -65,15 +64,15 @@ export class LcfcConfigService {
 			}
 
 			const extra: Record<string, unknown> = {
-				survey_type: LCFC_SURVEY_TYPE,
-				course_section_id: section.courseSectionId,
-				course_id: section.courseId,
-				course_name: section.courseName,
-				section_code: section.sectionCode,
-				academic_period_id: academicPeriodId,
-				campus_id: section.campusId,
+				surveyType: LCFC_SURVEY_TYPE,
+				courseSectionId: section.courseSectionId,
+				courseId: section.courseId,
+				courseName: section.courseName,
+				sectionCode: section.sectionCode,
+				academicPeriodId,
+				campusId: section.campusId,
 			};
-			if (programId != null) extra.program_id = programId;
+			if (programId != null) extra.programId = programId;
 
 			const config = await this.configRepo.create({
 				outcomeId,
@@ -167,8 +166,8 @@ export class LcfcConfigService {
 
 		const sectionKey = (config: { extra?: unknown }): string | null => {
 			const extra = (config.extra as Record<string, any>) ?? {};
-			const cid = extra.course_id ?? extra.courseId;
-			const scode = extra.section_code ?? extra.sectionCode;
+			const cid = extra.courseId;
+			const scode = extra.sectionCode;
 			return cid != null && scode != null ? `${cid}:${scode}` : null;
 		};
 
@@ -204,7 +203,6 @@ export class LcfcConfigService {
 			academicPeriodId: filters?.academicPeriodId ?? undefined,
 			isActive: filters?.isActive,
 		});
-		for (const config of configs) config.extra = camelizeKeys(config.extra);
 		return configs;
 	}
 
@@ -218,16 +216,14 @@ export class LcfcConfigService {
 	private async findLcfcConfigOrFail(id: number) {
 		const existing = await this.configRepo.findOneById(id);
 		const extra = (existing?.extra as Record<string, any>) ?? {};
-		if (!existing || extra.survey_type !== LCFC_SURVEY_TYPE) {
+		if (!existing || extra.surveyType !== LCFC_SURVEY_TYPE) {
 			throw new NotFoundException(lcfcValidationStrings.error.configNotFound);
 		}
 		return existing;
 	}
 
 	async getConfigById(id: number) {
-		const existing = await this.findLcfcConfigOrFail(id);
-		existing.extra = camelizeKeys(existing.extra);
-		return existing;
+		return await this.findLcfcConfigOrFail(id);
 	}
 
 	async updateConfig(id: number, dto: UpdateLcfcConfigDto) {
@@ -242,7 +238,7 @@ export class LcfcConfigService {
 			if (Object.keys(rest).length > 0) {
 				return await this.configRepo.update(id, rest);
 			}
-			return { ...existing, extra: { ...currentExtra, commission_id: dto.commissionId } };
+			return { ...existing, extra: { ...currentExtra, commissionId: dto.commissionId } };
 		}
 
 		return await this.configRepo.update(id, dto);
@@ -251,8 +247,8 @@ export class LcfcConfigService {
 	async deleteConfig(id: number) {
 		const config = await this.findLcfcConfigOrFail(id);
 		const extra = (config.extra as Record<string, any>) ?? {};
-		const courseSectionId = extra.course_section_id ?? extra.courseSectionId ?? null;
-		const academicPeriodId = extra.academic_period_id ?? extra.academicPeriodId ?? null;
+		const courseSectionId = extra.courseSectionId ?? null;
+		const academicPeriodId = extra.academicPeriodId ?? null;
 
 		return await this.configRepo.deleteConfigWithSurveys(id, courseSectionId, academicPeriodId);
 	}

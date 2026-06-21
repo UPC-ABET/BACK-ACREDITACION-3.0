@@ -83,14 +83,14 @@ export class LcfcNotificationService {
 			throw new BadRequestException(lcfcValidationStrings.error.noActiveCourses);
 		}
 		let courseSectionIds = activeConfigs
-			.map((c) => c.extra?.course_section_id)
+			.map((c) => c.extra?.courseSectionId)
 			.filter((id): id is number => typeof id === 'number');
 
 		if (dto.campusId) {
 			const campusId = dto.campusId;
 			courseSectionIds = courseSectionIds.filter((id) => {
-				const cfg = activeConfigs.find((c) => c.extra?.course_section_id === id);
-				return cfg?.extra?.campus_id === campusId;
+				const cfg = activeConfigs.find((c) => c.extra?.courseSectionId === id);
+				return cfg?.extra?.campusId === campusId;
 			});
 		}
 
@@ -118,7 +118,7 @@ export class LcfcNotificationService {
 		// config was created for.
 		const candidates: LcfcSendCandidate[] = enrolledStudents.map((student) => {
 			const config = activeConfigs.find(
-				(c) => c.extra?.course_section_id === student.courseSectionId,
+				(c) => c.extra?.courseSectionId === student.courseSectionId,
 			);
 			return {
 				studentId: student.studentId,
@@ -128,8 +128,8 @@ export class LcfcNotificationService {
 				courseSectionId: student.courseSectionId,
 				courseName: student.courseName,
 				programName: student.programName,
-				programId: student.programId ?? dto.programId ?? config?.extra?.program_id ?? null,
-				campusId: dto.campusId ?? student.campusId ?? config?.extra?.campus_id ?? null,
+				programId: student.programId ?? dto.programId ?? config?.extra?.programId ?? null,
+				campusId: dto.campusId ?? student.campusId ?? config?.extra?.campusId ?? null,
 			};
 		});
 
