@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, LogLevel, Logger, ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
+import { CamelCaseInterceptor } from './shared/interceptors/camel-case.interceptor';
 import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
 import { API_GLOBAL_PREFIX } from './shared/constants/app.constants';
@@ -34,7 +35,13 @@ async function bootstrap() {
 	app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
 
 	app.useGlobalFilters(new AllExceptionsFilter());
-	app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+	// CamelCaseInterceptor is registered first so on the response path it runs last — after
+	// ClassSerializerInterceptor has turned entities into plain objects — letting it camelize
+	// JSONB `extra` content and nested relations across every endpoint.
+	app.useGlobalInterceptors(
+		new CamelCaseInterceptor(),
+		new ClassSerializerInterceptor(app.get(Reflector)),
+	);
 
 	const corsRaw = configService.get<string>('CORS_ALLOWED_ORIGINS', '');
 	const frontendUrl = configService.get<string>('APP_FRONTEND_URL', '');
