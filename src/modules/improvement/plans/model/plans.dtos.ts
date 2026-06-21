@@ -16,10 +16,6 @@ export class CreatePlanDto {
 	@ApiProperty({ example: 1, required: true })
 	programId: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academicPeriodId: number;
-
 	@IsObject()
 	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: true })
 	name: I18nText;
@@ -50,11 +46,6 @@ export class UpdatePlanDto {
 	programId?: number;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
 	@IsObject()
 	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })
 	name?: I18nText;
@@ -82,10 +73,6 @@ export class FilterPlanDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	programId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { es: 'nameEs', en: 'nameEn' }, required: false })

@@ -47,11 +47,6 @@ export class CreateGraConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID', required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
 	@ApiProperty({
 		example: 1,
 		description: 'Commission ID (WASC, non-WASC, etc.)',
@@ -103,11 +98,6 @@ export class UpdateGraConfigDto {
 
 	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Commission ID', required: false })
 	commissionId?: number;
 
@@ -127,11 +117,6 @@ export class FilterGraConfigDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	programId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -172,10 +157,6 @@ export class ListGraSurveyOutcomesDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID' })
-	academicPeriodId: number;
 }
 
 export class SaveGraNotificationDto {
@@ -186,10 +167,6 @@ export class SaveGraNotificationDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID' })
-	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Campus ID' })
@@ -211,10 +188,6 @@ export class BulkUploadGraNotificationDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID' })
-	academicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Campus ID' })
@@ -258,11 +231,6 @@ export class ListStudentsGraDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
 
 	@IsOptional()
@@ -276,10 +244,6 @@ export class ListStudentsGraDto {
 }
 
 export class SendGraEmailDto {
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
@@ -368,11 +332,6 @@ export class CompleteGraSurveyDto {
 }
 
 export class DashboardGraDto {
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })

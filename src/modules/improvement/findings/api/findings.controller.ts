@@ -12,6 +12,10 @@ import {
 import { FindingService } from './findings.service';
 import { CreateFindingDto, UpdateFindingDto, FilterFindingDto } from '../model/findings.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerFindingController()
@@ -21,9 +25,10 @@ export class FindingController extends BaseController<FindingService> {
 	}
 
 	@SwaggerFindingCreate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
-	async create(@Body() dto: CreateFindingDto) {
-		return await super.create(dto);
+	async create(@Body() dto: CreateFindingDto, @AcademicPeriodId() academicPeriodId?: number) {
+		return await super.create({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerFindingUpdate()
@@ -51,8 +56,12 @@ export class FindingController extends BaseController<FindingService> {
 	}
 
 	@SwaggerFindingGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterFindingDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterFindingDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 }

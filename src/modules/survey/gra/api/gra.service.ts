@@ -24,11 +24,11 @@ export class GraService {
 		private readonly notifService: GraNotificationService,
 	) {}
 
-	createConfig(dto: CreateGraConfigDto) {
-		return this.configService.create(dto);
+	createConfig(dto: CreateGraConfigDto, academicPeriodId: number) {
+		return this.configService.create(dto, academicPeriodId);
 	}
 
-	getAllConfigs(filters?: FilterGraConfigDto) {
+	getAllConfigs(filters?: FilterGraConfigDto & { academicPeriodId?: number | null }) {
 		return this.configService.getAll(filters);
 	}
 
@@ -48,32 +48,32 @@ export class GraService {
 		return this.configService.replicate(dto);
 	}
 
-	listOutcomesForSurvey(dto: ListGraSurveyOutcomesDto) {
-		return this.configService.listOutcomesForSurvey(dto);
+	listOutcomesForSurvey(dto: ListGraSurveyOutcomesDto, academicPeriodId: number) {
+		return this.configService.listOutcomesForSurvey(dto, academicPeriodId);
 	}
 
-	saveNotification(dto: SaveGraNotificationDto) {
-		return this.notifService.saveNotification(dto);
+	saveNotification(dto: SaveGraNotificationDto, academicPeriodId: number) {
+		return this.notifService.saveNotification(dto, academicPeriodId);
 	}
 
 	generateNotificationTemplate() {
 		return this.notifService.generateNotificationTemplate();
 	}
 
-	bulkUploadNotifications(dto: BulkUploadGraNotificationDto) {
-		return this.notifService.bulkUploadNotifications(dto);
+	bulkUploadNotifications(dto: BulkUploadGraNotificationDto, academicPeriodId: number) {
+		return this.notifService.bulkUploadNotifications(dto, academicPeriodId);
 	}
 
-	listStudents(dto: ListStudentsGraDto) {
-		return this.notifService.listStudents(dto);
+	listStudents(dto: ListStudentsGraDto, academicPeriodId?: number | null) {
+		return this.notifService.listStudents(dto, academicPeriodId);
 	}
 
 	deleteNotification(id: number) {
 		return this.notifService.deleteNotification(id);
 	}
 
-	sendEmails(dto: SendGraEmailDto) {
-		return this.notifService.sendEmails(dto);
+	sendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
+		return this.notifService.sendEmails(dto, academicPeriodId);
 	}
 
 	getEmailTemplateConfig() {
@@ -96,8 +96,8 @@ export class GraService {
 		return this.notifService.completeSurvey(dto);
 	}
 
-	getDashboard(dto: DashboardGraDto) {
-		return this.notifService.getDashboard(dto);
+	getDashboard(dto: DashboardGraDto, academicPeriodId?: number | null) {
+		return this.notifService.getDashboard(dto, academicPeriodId);
 	}
 
 	exportSurveys(academicPeriodId: number, programId?: number) {

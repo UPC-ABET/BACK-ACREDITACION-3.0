@@ -62,12 +62,6 @@ export const SwaggerLcfcConfigAvailableSections = () =>
 			type: Number,
 			required: false,
 		}),
-		ApiQuery({
-			name: 'academicPeriodId',
-			description: 'Academic period ID',
-			type: Number,
-			required: true,
-		}),
 	);
 export const SwaggerLcfcConfigSectionOutcomes = () =>
 	applyDecorators(
@@ -121,23 +115,11 @@ export const SwaggerLcfcDashboard = () =>
 export const SwaggerLcfcExport = () =>
 	applyDecorators(
 		HttpMethodWithSwagger(cfg.dashboard.export),
-		ApiQuery({
-			name: 'academicPeriodId',
-			description: 'Academic period ID',
-			type: Number,
-			required: true,
-		}),
 		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: false }),
 	);
 export const SwaggerLcfcReportPdf = () =>
 	applyDecorators(
 		HttpMethodWithSwagger(cfg.dashboard.reportPdf),
-		ApiQuery({
-			name: 'academicPeriodId',
-			description: 'Academic period ID',
-			type: Number,
-			required: true,
-		}),
 		ApiQuery({ name: 'programId', description: 'Program ID', type: Number, required: false }),
 		ApiQuery({
 			name: 'lang',

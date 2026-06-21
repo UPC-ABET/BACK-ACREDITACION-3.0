@@ -23,10 +23,6 @@ export class CreateActionDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	programId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academicPeriodId: number;
 }
 
 export class UpdateActionDto {
@@ -53,11 +49,6 @@ export class UpdateActionDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	programId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 }
 
 export class FilterActionDto {
@@ -80,8 +71,4 @@ export class FilterActionDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	programId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 }

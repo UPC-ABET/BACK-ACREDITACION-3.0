@@ -75,13 +75,13 @@ export class GraNotificationService {
 		};
 	}
 
-	async saveNotification(dto: SaveGraNotificationDto) {
+	async saveNotification(dto: SaveGraNotificationDto, academicPeriodId: number) {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		let survey = await this.surveyRepo.findExistingGraSurvey(
 			graSurveyTypeId,
 			dto.studentId,
-			dto.academicPeriodId,
+			academicPeriodId,
 			dto.programId,
 		);
 
@@ -91,7 +91,7 @@ export class GraNotificationService {
 				surveyTypeId: graSurveyTypeId,
 				surveyStatusTypeId: activeStatusId,
 				studentId: dto.studentId,
-				academicPeriodId: dto.academicPeriodId,
+				academicPeriodId,
 				campusId: dto.campusId,
 				programId: dto.programId,
 				courseSectionId,
@@ -133,7 +133,7 @@ export class GraNotificationService {
 	}
 
 	/** Bulk version of saveNotification: adds every student code in the Excel to the GRA list. */
-	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto) {
+	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto, academicPeriodId: number) {
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		const workbook = new ExcelJS.Workbook();
@@ -192,7 +192,7 @@ export class GraNotificationService {
 			let survey = await this.surveyRepo.findExistingGraSurvey(
 				graSurveyTypeId,
 				studentId,
-				dto.academicPeriodId,
+				academicPeriodId,
 				dto.programId,
 			);
 			if (!survey) {
@@ -200,7 +200,7 @@ export class GraNotificationService {
 					surveyTypeId: graSurveyTypeId,
 					surveyStatusTypeId: activeStatusId,
 					studentId,
-					academicPeriodId: dto.academicPeriodId,
+					academicPeriodId,
 					campusId: dto.campusId,
 					programId: dto.programId,
 					courseSectionId,
@@ -237,10 +237,10 @@ export class GraNotificationService {
 		return courseSectionId;
 	}
 
-	async listStudents(dto: ListStudentsGraDto) {
+	async listStudents(dto: ListStudentsGraDto, academicPeriodId?: number | null) {
 		const { graSurveyTypeId } = await this.getTypeIds();
 		return await this.notifRepo.listStudentsGra(graSurveyTypeId, {
-			academicPeriodId: dto.academicPeriodId,
+			academicPeriodId: academicPeriodId ?? undefined,
 			programId: dto.programId,
 			campusId: dto.campusId,
 			studentCode: dto.studentCode,
@@ -257,11 +257,11 @@ export class GraNotificationService {
 		return { deleted: true, notificationId: id };
 	}
 
-	async sendEmails(dto: SendGraEmailDto) {
+	async sendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
 		const { graSurveyTypeId, scheduledStatusId, sentStatusId } = await this.getTypeIds();
 
 		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
-			academicPeriodId: dto.academicPeriodId,
+			academicPeriodId,
 			programId: dto.programId,
 		});
 
@@ -421,7 +421,7 @@ export class GraNotificationService {
 		}
 	}
 
-	async getDashboard(dto: DashboardGraDto) {
+	async getDashboard(dto: DashboardGraDto, academicPeriodId?: number | null) {
 		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
 
 		const data = await this.surveyRepo.getDashboardData(
@@ -429,7 +429,7 @@ export class GraNotificationService {
 			activeStatusId,
 			closedStatusId,
 			{
-				academicPeriodId: dto.academicPeriodId,
+				academicPeriodId: academicPeriodId ?? undefined,
 				programId: dto.programId,
 				campusId: dto.campusId,
 			},
@@ -445,7 +445,7 @@ export class GraNotificationService {
 				completionRatePct: completionRate,
 			},
 			byProgram: data.byProgram,
-			filters: dto,
+			filters: { ...dto, academicPeriodId: academicPeriodId ?? null },
 		};
 	}
 

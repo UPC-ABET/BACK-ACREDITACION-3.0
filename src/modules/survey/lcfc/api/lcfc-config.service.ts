@@ -83,14 +83,15 @@ export class LcfcConfigService {
 	async generateConfigs(
 		dto: GenerateLcfcConfigDto,
 		_schoolId: number,
+		academicPeriodId: number,
 	): Promise<{ created: number; skipped: number; configs: any[] }> {
 		// School ownership check removed — LCFC does not filter by school.
 		const latestPeriodId = await this.configRepo.findLatestAcademicPeriodId(dto.modalityTypeId);
-		if (!latestPeriodId || latestPeriodId !== dto.academicPeriodId) {
+		if (!latestPeriodId || latestPeriodId !== academicPeriodId) {
 			throw new BadRequestException(lcfcValidationStrings.error.notLatestPeriod);
 		}
 
-		return this.generateForPeriod(dto.programId, dto.academicPeriodId, dto.courseSectionIds);
+		return this.generateForPeriod(dto.programId, academicPeriodId, dto.courseSectionIds);
 	}
 
 	async getAvailableSections(programId: number | null | undefined, academicPeriodId: number) {
@@ -186,8 +187,12 @@ export class LcfcConfigService {
 		};
 	}
 
-	async getAll(filters?: FilterLcfcConfigDto) {
-		const configs = await this.configRepo.findAllLcfc(filters);
+	async getAll(filters?: FilterLcfcConfigDto & { academicPeriodId?: number | null }) {
+		const configs = await this.configRepo.findAllLcfc({
+			programId: filters?.programId,
+			academicPeriodId: filters?.academicPeriodId ?? undefined,
+			isActive: filters?.isActive,
+		});
 		for (const config of configs) config.extra = camelizeKeys(config.extra);
 		return configs;
 	}

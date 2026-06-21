@@ -12,6 +12,10 @@ import {
 import { PlanService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto, FilterPlanDto } from '../model/plans.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerPlanController()
@@ -21,9 +25,10 @@ export class PlanController extends BaseController<PlanService> {
 	}
 
 	@SwaggerPlanCreate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
-	async create(@Body() dto: CreatePlanDto) {
-		return await super.create(dto);
+	async create(@Body() dto: CreatePlanDto, @AcademicPeriodId() academicPeriodId?: number) {
+		return await super.create({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerPlanUpdate()
@@ -51,8 +56,12 @@ export class PlanController extends BaseController<PlanService> {
 	}
 
 	@SwaggerPlanGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterPlanDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterPlanDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 }

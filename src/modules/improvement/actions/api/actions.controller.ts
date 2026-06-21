@@ -12,6 +12,10 @@ import {
 import { ActionService } from './actions.service';
 import { CreateActionDto, UpdateActionDto, FilterActionDto } from '../model/actions.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
 @SwaggerActionController()
@@ -21,9 +25,10 @@ export class ActionController extends BaseController<ActionService> {
 	}
 
 	@SwaggerActionCreate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
-	async create(@Body() dto: CreateActionDto) {
-		return await super.create(dto);
+	async create(@Body() dto: CreateActionDto, @AcademicPeriodId() academicPeriodId?: number) {
+		return await super.create({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerActionUpdate()
@@ -51,8 +56,12 @@ export class ActionController extends BaseController<ActionService> {
 	}
 
 	@SwaggerActionGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.IMPROVEMENT, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterActionDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterActionDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 }

@@ -40,10 +40,6 @@ export class CreateFindingDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	academicPeriodId: number;
-
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
 	campusId: number;
 
 	@IsBoolean()
@@ -94,11 +90,6 @@ export class UpdateFindingDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
 
 	@IsOptional()
@@ -139,10 +130,6 @@ export class FilterFindingDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	courseId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

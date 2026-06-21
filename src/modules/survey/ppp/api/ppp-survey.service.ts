@@ -39,7 +39,7 @@ export class PppSurveyService {
 		return id;
 	}
 
-	async create(dto: CreatePppSurveyDto) {
+	async create(dto: CreatePppSurveyDto, academicPeriodId: number) {
 		PppValidation.validateCreateSurvey(dto);
 
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
@@ -60,7 +60,7 @@ export class PppSurveyService {
 			surveyTypeId: typeId,
 			surveyStatusTypeId: statusId,
 			studentId: dto.studentId,
-			academicPeriodId: dto.academicPeriodId,
+			academicPeriodId,
 			campusId: dto.campusId,
 			programId: dto.programId,
 			surveyNumber: dto.practiceNumber,
@@ -96,9 +96,12 @@ export class PppSurveyService {
 		return { ...survey, scores };
 	}
 
-	async getByFilters(dto: FilterPppSurveyDto) {
+	async getByFilters(dto: FilterPppSurveyDto & { academicPeriodId?: number | null }) {
 		const typeId = await this.getPppTypeId();
-		return await this.surveyRepo.findAllPpp(typeId, dto);
+		return await this.surveyRepo.findAllPpp(typeId, {
+			...dto,
+			academicPeriodId: dto.academicPeriodId ?? undefined,
+		});
 	}
 
 	/**
@@ -149,12 +152,12 @@ export class PppSurveyService {
 		return { buffer, fileName };
 	}
 
-	async uploadExcel(dto: UploadPppExcelDto) {
+	async uploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
 		const configs = await this.configRepo.findAllPpp({
 			programId: dto.programId,
-			academicPeriodId: dto.academicPeriodId,
+			academicPeriodId,
 			isActive: true,
 		});
 
@@ -279,7 +282,7 @@ export class PppSurveyService {
 					surveyTypeId: typeId,
 					surveyStatusTypeId: statusId,
 					studentId: student.id,
-					academicPeriodId: dto.academicPeriodId,
+					academicPeriodId,
 					campusId: resolvedCampusId,
 					programId: dto.programId,
 					surveyNumber: Number(normalizedRow.practiceNumber),
@@ -301,12 +304,14 @@ export class PppSurveyService {
 		return results;
 	}
 
-	async getDashboard(dto: DashboardPppDto) {
+	async getDashboard(dto: DashboardPppDto & { academicPeriodId?: number | null }) {
 		const typeId = await this.getPppTypeId();
 
+		const filters = { ...dto, academicPeriodId: dto.academicPeriodId ?? undefined };
+
 		const [surveyCount, dashboardData] = await Promise.all([
-			this.surveyRepo.findAllPpp(typeId, dto).then((r) => r.length),
-			this.surveyRepo.getDashboardData(typeId, dto),
+			this.surveyRepo.findAllPpp(typeId, filters).then((r) => r.length),
+			this.surveyRepo.getDashboardData(typeId, filters),
 		]);
 
 		const outcomeResults = dashboardData.map((row) => ({
@@ -325,15 +330,15 @@ export class PppSurveyService {
 			verde: outcomeResults.filter((o) => o.color === 'VERDE').length,
 		};
 
-		return { summary, outcomes: outcomeResults, filters: dto };
+		return { summary, outcomes: outcomeResults, filters };
 	}
 
-	async generateFindings(dto: GenerateFindingsPppDto) {
+	async generateFindings(dto: GenerateFindingsPppDto, academicPeriodId: number) {
 		const typeId = await this.getPppTypeId();
 
 		const dashboardData = await this.surveyRepo.getDashboardData(typeId, {
 			programId: dto.programId,
-			academicPeriodId: dto.academicPeriodId,
+			academicPeriodId,
 			campusId: dto.campusId,
 			practiceNumber: dto.practiceNumber,
 		});

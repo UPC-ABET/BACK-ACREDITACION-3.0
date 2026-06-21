@@ -70,11 +70,11 @@ export class LcfcNotificationService {
 		};
 	}
 
-	async sendNotifications(dto: SendLcfcNotificationDto) {
+	async sendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
 		const { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId } =
 			await this.getTypeIds();
 		const activeConfigs = await this.configRepo.findAllLcfc({
-			academicPeriodId: dto.academicPeriodId,
+			academicPeriodId,
 			programId: dto.programId,
 			isActive: true,
 		});
@@ -111,7 +111,7 @@ export class LcfcNotificationService {
 		// request doesn't carry one of its own.
 		const maxRegisterDate =
 			dto.maxRegisterDate ??
-			(await this.configRepo.getDeadline(dto.programId ?? null, dto.academicPeriodId));
+			(await this.configRepo.getDeadline(dto.programId ?? null, academicPeriodId));
 
 		// Use the STUDENT's own program (a shared course can enrol students from other programs),
 		// so the survey shows the student's career and their own outcomes — not the program the
@@ -140,7 +140,7 @@ export class LcfcNotificationService {
 				closedStatusId,
 				scheduledStatusId,
 				resend: dto.resend ?? false,
-				academicPeriodId: dto.academicPeriodId,
+				academicPeriodId,
 				maxRegisterDate,
 				candidates,
 			})
@@ -347,7 +347,7 @@ export class LcfcNotificationService {
 		}
 	}
 
-	async getDashboard(dto: DashboardLcfcDto) {
+	async getDashboard(dto: DashboardLcfcDto & { academicPeriodId?: number | null }) {
 		const { lcfcSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
 
 		const data = await this.surveyRepo.getDashboardData(
@@ -355,7 +355,7 @@ export class LcfcNotificationService {
 			activeStatusId,
 			closedStatusId,
 			{
-				academicPeriodId: dto.academicPeriodId,
+				academicPeriodId: dto.academicPeriodId ?? undefined,
 				programId: dto.programId,
 				campusId: dto.campusId,
 			},

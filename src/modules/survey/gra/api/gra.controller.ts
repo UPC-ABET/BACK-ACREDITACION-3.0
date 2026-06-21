@@ -43,6 +43,10 @@ import {
 	ListGraSurveyOutcomesDto,
 } from '../model/gra.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 
@@ -51,9 +55,16 @@ export class GraController {
 	constructor(private readonly graService: GraService) {}
 
 	@SwaggerGraConfigCreate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configCreate(@Body() dto: CreateGraConfigDto) {
-		return parseSuccessResponse(await this.graService.createConfig(dto), HttpStatus.CREATED);
+	async configCreate(
+		@Body() dto: CreateGraConfigDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.graService.createConfig(dto, academicPeriodId),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerGraConfigGetAll()
@@ -63,9 +74,13 @@ export class GraController {
 	}
 
 	@SwaggerGraConfigGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configGetByFilters(@Body() dto: FilterGraConfigDto) {
-		return parseSuccessResponse(await this.graService.getAllConfigs(dto));
+	async configGetByFilters(
+		@Body() dto: FilterGraConfigDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.graService.getAllConfigs({ ...dto, academicPeriodId }));
 	}
 
 	@SwaggerGraConfigGetById()
@@ -93,9 +108,13 @@ export class GraController {
 	}
 
 	@SwaggerGraNotificationSave()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async notificationSave(@Body() dto: SaveGraNotificationDto) {
-		return parseSuccessResponse(await this.graService.saveNotification(dto));
+	async notificationSave(
+		@Body() dto: SaveGraNotificationDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.graService.saveNotification(dto, academicPeriodId));
 	}
 
 	@SwaggerGraNotificationTemplate()
@@ -113,15 +132,25 @@ export class GraController {
 	}
 
 	@SwaggerGraNotificationUploadExcel()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async notificationUploadExcel(@Body() dto: BulkUploadGraNotificationDto) {
-		return parseSuccessResponse(await this.graService.bulkUploadNotifications(dto));
+	async notificationUploadExcel(
+		@Body() dto: BulkUploadGraNotificationDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.graService.bulkUploadNotifications(dto, academicPeriodId),
+		);
 	}
 
 	@SwaggerGraNotificationListStudents()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async notificationListStudents(@Body() dto: ListStudentsGraDto) {
-		return parseSuccessResponse(await this.graService.listStudents(dto));
+	async notificationListStudents(
+		@Body() dto: ListStudentsGraDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.graService.listStudents(dto, academicPeriodId));
 	}
 
 	@SwaggerGraNotificationDelete()
@@ -131,9 +160,10 @@ export class GraController {
 	}
 
 	@SwaggerGraEmailSend()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async emailSend(@Body() dto: SendGraEmailDto) {
-		return parseSuccessResponse(await this.graService.sendEmails(dto));
+	async emailSend(@Body() dto: SendGraEmailDto, @AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.graService.sendEmails(dto, academicPeriodId));
 	}
 
 	@SwaggerGraEmailGetTemplate()
@@ -167,15 +197,23 @@ export class GraController {
 	}
 
 	@SwaggerGraOutcomesList()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async outcomesList(@Body() dto: ListGraSurveyOutcomesDto) {
-		return parseSuccessResponse(await this.graService.listOutcomesForSurvey(dto));
+	async outcomesList(
+		@Body() dto: ListGraSurveyOutcomesDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.graService.listOutcomesForSurvey(dto, academicPeriodId));
 	}
 
 	@SwaggerGraDashboard()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async dashboardGet(@Body() dto: DashboardGraDto) {
-		return parseSuccessResponse(await this.graService.getDashboard(dto));
+	async dashboardGet(
+		@Body() dto: DashboardGraDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.graService.getDashboard(dto, academicPeriodId));
 	}
 
 	@SwaggerGraExport()

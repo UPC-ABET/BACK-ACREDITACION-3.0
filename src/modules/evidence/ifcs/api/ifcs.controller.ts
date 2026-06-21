@@ -102,9 +102,13 @@ export class IfcController extends BaseController<IfcService> {
 	}
 
 	@SwaggerIfcGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.POST })
-	async getByFilters(@Body() dto: FilterIfcDto) {
-		return await super.getByFilters(dto);
+	async getByFilters(
+		@Body() dto: FilterIfcDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return await super.getByFilters({ ...dto, academicPeriodId });
 	}
 
 	@SwaggerIfcList()

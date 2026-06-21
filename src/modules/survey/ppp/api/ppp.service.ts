@@ -20,11 +20,11 @@ export class PppService {
 		private readonly surveyService: PppSurveyService,
 	) {}
 
-	createConfig(dto: CreatePppConfigDto) {
-		return this.configService.create(dto);
+	createConfig(dto: CreatePppConfigDto, academicPeriodId?: number | null) {
+		return this.configService.create(dto, academicPeriodId);
 	}
 
-	getAllConfigs(filters?: FilterPppConfigDto) {
+	getAllConfigs(filters?: FilterPppConfigDto & { academicPeriodId?: number | null }) {
 		return this.configService.getAll(filters);
 	}
 
@@ -44,15 +44,15 @@ export class PppService {
 		return this.configService.replicate(dto);
 	}
 
-	createSurvey(dto: CreatePppSurveyDto) {
-		return this.surveyService.create(dto);
+	createSurvey(dto: CreatePppSurveyDto, academicPeriodId: number) {
+		return this.surveyService.create(dto, academicPeriodId);
 	}
 
 	getAllSurveys() {
 		return this.surveyService.getAll();
 	}
 
-	getSurveysByFilters(dto: FilterPppSurveyDto) {
+	getSurveysByFilters(dto: FilterPppSurveyDto & { academicPeriodId?: number | null }) {
 		return this.surveyService.getByFilters(dto);
 	}
 
@@ -60,19 +60,19 @@ export class PppService {
 		return this.surveyService.getById(id);
 	}
 
-	uploadExcel(dto: UploadPppExcelDto) {
-		return this.surveyService.uploadExcel(dto);
+	uploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
+		return this.surveyService.uploadExcel(dto, academicPeriodId);
 	}
 
 	generateTemplate(academicPeriodId: number, programId?: number) {
 		return this.surveyService.generateTemplate(academicPeriodId, programId);
 	}
 
-	getDashboard(dto: DashboardPppDto) {
+	getDashboard(dto: DashboardPppDto & { academicPeriodId?: number | null }) {
 		return this.surveyService.getDashboard(dto);
 	}
 
-	generateFindings(dto: GenerateFindingsPppDto) {
-		return this.surveyService.generateFindings(dto);
+	generateFindings(dto: GenerateFindingsPppDto, academicPeriodId: number) {
+		return this.surveyService.generateFindings(dto, academicPeriodId);
 	}
 }

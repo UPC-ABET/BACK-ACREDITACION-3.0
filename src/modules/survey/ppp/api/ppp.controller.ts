@@ -35,15 +35,26 @@ import {
 } from '../model/ppp.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 @SwaggerPppController()
 export class PppController {
 	constructor(private readonly pppService: PppService) {}
 
 	@SwaggerPppConfigCreate()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configCreate(@Body() dto: CreatePppConfigDto) {
-		return parseSuccessResponse(await this.pppService.createConfig(dto), HttpStatus.CREATED);
+	async configCreate(
+		@Body() dto: CreatePppConfigDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(
+			await this.pppService.createConfig(dto, academicPeriodId),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerPppConfigGetAll()
@@ -53,9 +64,13 @@ export class PppController {
 	}
 
 	@SwaggerPppConfigGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configGetByFilters(@Body() dto: FilterPppConfigDto) {
-		return parseSuccessResponse(await this.pppService.getAllConfigs(dto));
+	async configGetByFilters(
+		@Body() dto: FilterPppConfigDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.pppService.getAllConfigs({ ...dto, academicPeriodId }));
 	}
 
 	@SwaggerPppConfigGetById()
@@ -83,9 +98,16 @@ export class PppController {
 	}
 
 	@SwaggerPppSurveyCreate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async surveyCreate(@Body() dto: CreatePppSurveyDto) {
-		return parseSuccessResponse(await this.pppService.createSurvey(dto), HttpStatus.CREATED);
+	async surveyCreate(
+		@Body() dto: CreatePppSurveyDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.pppService.createSurvey(dto, academicPeriodId),
+			HttpStatus.CREATED,
+		);
 	}
 
 	@SwaggerPppSurveyGetAll()
@@ -95,9 +117,15 @@ export class PppController {
 	}
 
 	@SwaggerPppSurveyGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async surveyGetByFilters(@Body() dto: FilterPppSurveyDto) {
-		return parseSuccessResponse(await this.pppService.getSurveysByFilters(dto));
+	async surveyGetByFilters(
+		@Body() dto: FilterPppSurveyDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(
+			await this.pppService.getSurveysByFilters({ ...dto, academicPeriodId }),
+		);
 	}
 
 	@SwaggerPppSurveyGetById()
@@ -107,17 +135,21 @@ export class PppController {
 	}
 
 	@SwaggerPppSurveyUploadExcel()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async surveyUploadExcel(@Body() dto: UploadPppExcelDto) {
-		return parseSuccessResponse(await this.pppService.uploadExcel(dto));
+	async surveyUploadExcel(
+		@Body() dto: UploadPppExcelDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.pppService.uploadExcel(dto, academicPeriodId));
 	}
 
 	@SwaggerPppSurveyTemplate()
 	@ApiQuery({ name: 'programId', type: Number, example: 1, required: false })
-	@ApiQuery({ name: 'academicPeriodId', type: Number, example: 1 })
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async surveyTemplate(
-		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Res() res: Response,
 		@Query('programId') programIdRaw?: string,
 	) {
@@ -138,14 +170,22 @@ export class PppController {
 	}
 
 	@SwaggerPppSurveyDashboard()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async surveyDashboard(@Body() dto: DashboardPppDto) {
-		return parseSuccessResponse(await this.pppService.getDashboard(dto));
+	async surveyDashboard(
+		@Body() dto: DashboardPppDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.pppService.getDashboard({ ...dto, academicPeriodId }));
 	}
 
 	@SwaggerPppSurveyGenerateFindings()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async surveyGenerateFindings(@Body() dto: GenerateFindingsPppDto) {
-		return parseSuccessResponse(await this.pppService.generateFindings(dto));
+	async surveyGenerateFindings(
+		@Body() dto: GenerateFindingsPppDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.pppService.generateFindings(dto, academicPeriodId));
 	}
 }

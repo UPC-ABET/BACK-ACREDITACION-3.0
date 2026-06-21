@@ -21,14 +21,6 @@ export class GenerateLcfcConfigDto {
 	})
 	modalityTypeId: number;
 
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		description:
-			'Academic period ID for which configurations are generated. Must be the latest period for the given modality',
-	})
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
@@ -119,11 +111,6 @@ export class FilterLcfcConfigDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
 	programId?: number;
 
 	@IsOptional()
@@ -133,10 +120,6 @@ export class FilterLcfcConfigDto {
 }
 
 export class SetLcfcDeadlineDto {
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({
@@ -177,10 +160,6 @@ export class UpdateLcfcConfigStatusDto {
 }
 
 export class SendLcfcNotificationDto {
-	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Academic period ID' })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, description: 'Filter by program (optional)', required: false })
@@ -298,11 +277,6 @@ export class CompleteLcfcSurveyDto {
 }
 
 export class DashboardLcfcDto {
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })

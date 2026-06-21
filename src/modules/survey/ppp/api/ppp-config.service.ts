@@ -18,8 +18,8 @@ export class PppConfigService {
 		private readonly acceptanceLevelService: PerformanceLevelService,
 	) {}
 
-	async create(dto: CreatePppConfigDto) {
-		await PppValidation.validateCreateConfig(this.configRepo, dto);
+	async create(dto: CreatePppConfigDto, academicPeriodId?: number | null) {
+		await PppValidation.validateCreateConfig(this.configRepo, dto, academicPeriodId);
 
 		const extra = {
 			survey_type: PPP_SURVEY_TYPE,
@@ -27,7 +27,7 @@ export class PppConfigService {
 			description_en: dto.descriptionEn ?? null,
 			order: dto.order ?? null,
 			program_id: dto.programId ?? null,
-			academic_period_id: dto.academicPeriodId ?? null,
+			academic_period_id: academicPeriodId ?? null,
 			is_visible: dto.isVisible ?? true,
 		};
 
@@ -40,8 +40,10 @@ export class PppConfigService {
 		});
 	}
 
-	async getAll(filters?: FilterPppConfigDto) {
-		const configs = await this.configRepo.findAllPpp(filters);
+	async getAll(filters?: FilterPppConfigDto & { academicPeriodId?: number | null }) {
+		const configs = await this.configRepo.findAllPpp(
+			filters && { ...filters, academicPeriodId: filters.academicPeriodId ?? undefined },
+		);
 		for (const config of configs) config.extra = camelizeKeys(config.extra);
 		return configs;
 	}
@@ -65,7 +67,6 @@ export class PppConfigService {
 			...(dto.descriptionEn !== undefined && { description_en: dto.descriptionEn }),
 			...(dto.order !== undefined && { order: dto.order }),
 			...(dto.programId !== undefined && { program_id: dto.programId }),
-			...(dto.academicPeriodId !== undefined && { academic_period_id: dto.academicPeriodId }),
 			...(dto.isVisible !== undefined && { is_visible: dto.isVisible }),
 		};
 

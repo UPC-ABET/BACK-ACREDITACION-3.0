@@ -30,10 +30,6 @@ export class CreateIfcDto {
 	@ApiProperty({ example: 1, required: true })
 	courseId: number;
 
-	@IsNumber()
-	@ApiProperty({ example: 1, required: true })
-	academicPeriodId: number;
-
 	@IsOptional()
 	@ApiProperty({ example: { key: 'informationValue' }, required: false })
 	information?: any;
@@ -55,11 +51,6 @@ export class UpdateIfcDto {
 	courseId?: number;
 
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
-
-	@IsOptional()
 	@ApiProperty({ example: { key: 'informationValue' }, required: false })
 	information?: any;
 }
@@ -76,10 +67,6 @@ export class FilterIfcDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	courseId?: number;
-
-	@IsOptional()
-	@ApiProperty({ example: 1, required: false })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: { key: 'informationValue' }, required: false })

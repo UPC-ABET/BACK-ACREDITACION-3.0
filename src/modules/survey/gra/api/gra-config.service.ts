@@ -18,14 +18,14 @@ export class GraConfigService {
 		private readonly acceptanceLevelService: PerformanceLevelService,
 	) {}
 
-	async create(dto: CreateGraConfigDto) {
+	async create(dto: CreateGraConfigDto, academicPeriodId: number) {
 		const extra = {
 			survey_type: GRA_SURVEY_TYPE,
 			name_en: dto.nameEn ?? null,
 			description_en: dto.descriptionEn ?? null,
 			order: dto.order ?? null,
 			program_id: dto.programId ?? null,
-			academic_period_id: dto.academicPeriodId ?? null,
+			academic_period_id: academicPeriodId,
 			commission_id: dto.commissionId ?? null,
 			is_visible: dto.isVisible ?? true,
 		};
@@ -39,8 +39,11 @@ export class GraConfigService {
 		});
 	}
 
-	async getAll(filters?: FilterGraConfigDto) {
-		const configs = await this.configRepo.findAllGra(filters);
+	async getAll(filters?: FilterGraConfigDto & { academicPeriodId?: number | null }) {
+		const configs = await this.configRepo.findAllGra({
+			...filters,
+			academicPeriodId: filters?.academicPeriodId ?? undefined,
+		});
 		for (const config of configs) config.extra = camelizeKeys(config.extra);
 		return configs;
 	}
@@ -64,7 +67,6 @@ export class GraConfigService {
 			...(dto.descriptionEn !== undefined && { description_en: dto.descriptionEn }),
 			...(dto.order !== undefined && { order: dto.order }),
 			...(dto.programId !== undefined && { program_id: dto.programId }),
-			...(dto.academicPeriodId !== undefined && { academic_period_id: dto.academicPeriodId }),
 			...(dto.commissionId !== undefined && { commission_id: dto.commissionId }),
 			...(dto.isVisible !== undefined && { is_visible: dto.isVisible }),
 		};
@@ -137,10 +139,10 @@ export class GraConfigService {
 		};
 	}
 
-	async listOutcomesForSurvey(dto: ListGraSurveyOutcomesDto) {
+	async listOutcomesForSurvey(dto: ListGraSurveyOutcomesDto, academicPeriodId: number) {
 		const rows = await this.configRepo.findOutcomesGroupedByCommission(
 			dto.programId,
-			dto.academicPeriodId,
+			academicPeriodId,
 		);
 
 		const grouped: Record<number, { commissionId: number; commissionName: any; outcomes: any[] }> =

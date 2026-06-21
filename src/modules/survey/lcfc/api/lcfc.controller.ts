@@ -42,15 +42,26 @@ import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/req
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 import { SchoolId } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 @SwaggerLcfcController()
 export class LcfcController {
 	constructor(private readonly lcfcService: LcfcService) {}
 
 	@SwaggerLcfcConfigGenerate()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configGenerate(@Body() dto: GenerateLcfcConfigDto, @SchoolId() schoolId: number) {
-		return parseSuccessResponse(await this.lcfcService.generateConfigs(dto, schoolId));
+	async configGenerate(
+		@Body() dto: GenerateLcfcConfigDto,
+		@SchoolId() schoolId: number,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.lcfcService.generateConfigs(dto, schoolId, academicPeriodId),
+		);
 	}
 
 	@SwaggerLcfcConfigGetAll()
@@ -60,9 +71,13 @@ export class LcfcController {
 	}
 
 	@SwaggerLcfcConfigGetByFilters()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configGetByFilters(@Body() dto: FilterLcfcConfigDto) {
-		return parseSuccessResponse(await this.lcfcService.getAllConfigs(dto));
+	async configGetByFilters(
+		@Body() dto: FilterLcfcConfigDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.lcfcService.getAllConfigs({ ...dto, academicPeriodId }));
 	}
 
 	@SwaggerLcfcConfigGetById()
@@ -96,9 +111,10 @@ export class LcfcController {
 	}
 
 	@SwaggerLcfcConfigAvailableSections()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async configAvailableSections(
-		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Query('programId') programIdRaw?: string,
 	) {
 		const programId = programIdRaw && Number(programIdRaw) > 0 ? Number(programIdRaw) : undefined;
@@ -131,15 +147,23 @@ export class LcfcController {
 	}
 
 	@SwaggerLcfcConfigSetDeadline()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async configSetDeadline(@Body() dto: SetLcfcDeadlineDto) {
-		return parseSuccessResponse(await this.lcfcService.setDeadline(dto));
+	async configSetDeadline(
+		@Body() dto: SetLcfcDeadlineDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.lcfcService.setDeadline(dto, academicPeriodId));
 	}
 
 	@SwaggerLcfcNotificationSend()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async notificationSend(@Body() dto: SendLcfcNotificationDto) {
-		return parseSuccessResponse(await this.lcfcService.sendNotifications(dto));
+	async notificationSend(
+		@Body() dto: SendLcfcNotificationDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.lcfcService.sendNotifications(dto, academicPeriodId));
 	}
 
 	@SwaggerLcfcTokenValidate()
@@ -167,16 +191,21 @@ export class LcfcController {
 	}
 
 	@SwaggerLcfcDashboard()
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async dashboardGet(@Body() dto: DashboardLcfcDto) {
-		return parseSuccessResponse(await this.lcfcService.getDashboard(dto));
+	async dashboardGet(
+		@Body() dto: DashboardLcfcDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(await this.lcfcService.getDashboard({ ...dto, academicPeriodId }));
 	}
 
 	@SwaggerLcfcExport()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async exportSurveys(
-		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
 		@Res() res: Response,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Query('programId') programIdRaw?: string,
 	) {
 		const programId =
@@ -193,10 +222,11 @@ export class LcfcController {
 	}
 
 	@SwaggerLcfcReportPdf()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async reportPdf(
-		@Query('academicPeriodId', ParseIntPipe) academicPeriodId: number,
 		@Res() res: Response,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Query('programId') programIdRaw?: string,
 		@Query('lang') langRaw?: string,
 	) {

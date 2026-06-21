@@ -28,11 +28,11 @@ export class LcfcService {
 		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang);
 	}
 
-	generateConfigs(dto: GenerateLcfcConfigDto, schoolId: number) {
-		return this.configService.generateConfigs(dto, schoolId);
+	generateConfigs(dto: GenerateLcfcConfigDto, schoolId: number, academicPeriodId: number) {
+		return this.configService.generateConfigs(dto, schoolId, academicPeriodId);
 	}
 
-	getAllConfigs(filters?: FilterLcfcConfigDto) {
+	getAllConfigs(filters?: FilterLcfcConfigDto & { academicPeriodId?: number | null }) {
 		return this.configService.getAll(filters);
 	}
 
@@ -68,10 +68,10 @@ export class LcfcService {
 		return this.configService.getSectionCommissions(courseSectionId, programId);
 	}
 
-	setDeadline(dto: SetLcfcDeadlineDto) {
+	setDeadline(dto: SetLcfcDeadlineDto, academicPeriodId: number) {
 		return this.configService.setDeadline(
 			dto.programId ?? null,
-			dto.academicPeriodId,
+			academicPeriodId,
 			dto.maxRegisterDate,
 		);
 	}
@@ -80,8 +80,8 @@ export class LcfcService {
 		return this.configService.getDeadline(programId, academicPeriodId);
 	}
 
-	sendNotifications(dto: SendLcfcNotificationDto) {
-		return this.notifService.sendNotifications(dto);
+	sendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
+		return this.notifService.sendNotifications(dto, academicPeriodId);
 	}
 
 	validateToken(token: string) {
@@ -100,7 +100,7 @@ export class LcfcService {
 		return this.notifService.completeSurvey(dto);
 	}
 
-	getDashboard(dto: DashboardLcfcDto) {
+	getDashboard(dto: DashboardLcfcDto & { academicPeriodId?: number | null }) {
 		return this.notifService.getDashboard(dto);
 	}
 

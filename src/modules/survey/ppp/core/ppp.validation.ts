@@ -7,8 +7,13 @@ export class PppValidation {
 	static async validateCreateConfig(
 		repo: PppConfigRepository,
 		dto: CreatePppConfigDto,
+		academicPeriodId?: number | null,
 	): Promise<void> {
-		const exists = await repo.existsPpp(dto.outcomeId, dto.programId, dto.academicPeriodId);
+		const exists = await repo.existsPpp(
+			dto.outcomeId,
+			dto.programId,
+			academicPeriodId ?? undefined,
+		);
 		if (exists) {
 			throw new HttpException(
 				{ message: pppValidationStrings.error.configExists },
