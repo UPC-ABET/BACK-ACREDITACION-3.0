@@ -60,7 +60,7 @@ Inside `dataSource.query(...)`, `createQueryBuilder().getRawMany()` / `getRawOne
 - **Runtime:** Node.js + NestJS 10
 - **Database:** PostgreSQL with TypeORM 0.3
 - **Auth:** JWT (passport-jwt) + Microsoft Entra ID (MSAL)
-- **Mail:** Postmark (`MailService`) — all email goes through this single service
+- **Mail:** SMTP via nodemailer (`MailService`) — all email goes through this single service
 - **Validation:** class-validator + class-transformer on DTOs, custom validation classes for business rules
 - **Environment:** Zod-validated env schema (`src/commons/configs/env.config.ts`)
 - **Package manager:** pnpm
@@ -556,7 +556,7 @@ Always export Service + Repository for cross-module consumption.
 
 ## Mail
 
-All email goes through `MailService` (`src/modules/mail/mail.service.ts`) which uses Postmark:
+All email goes through `MailService` (`src/modules/mail/mail.service.ts`) which uses SMTP via nodemailer:
 
 ```typescript
 await this.mailService.sendRawEmail({
@@ -615,8 +615,8 @@ Key groups:
 - **Database:** `DB_TYPE`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL`, `DB_POOL_*`
 - **Auth:** `JWT_SECRET`, `APP_SECRET`, `COOKIE_SECRET`
 - **Microsoft OAuth:** `ID_DIRECTORY_TENANT`, `ID_APPLICATION_CLIENT`, `MICROSOFT_SECRET`, `MICROSOFT_BASE_URL`, `URL_REDIRECT`
-- **Mail:** `POSTMARK_API_KEY`, `POSTMARK_FROM_EMAIL`, `POSTMARK_MESSAGE_STREAM`
-- **Survey:** `SURVEY_BASE_URL`, `SMTP_*` (legacy, being migrated)
+- **Mail:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`, `SMTP_REQUIRE_TLS`
+- **Survey:** `SURVEY_BASE_URL`
 - **Other:** `PUPPETEER_EXECUTABLE_PATH`
 
 Use `configService.get<T>('KEY')` to read. Use `configService.getOrThrow<T>('KEY')` when the var is guaranteed to exist (avoids `!` assertions).
