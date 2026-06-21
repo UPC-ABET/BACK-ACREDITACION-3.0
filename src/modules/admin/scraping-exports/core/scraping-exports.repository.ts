@@ -26,9 +26,7 @@ function splitTeacherName(name: string | null): { lastName: string; firstName: s
  */
 @Injectable()
 export class ScrapingExportsRepository {
-	constructor(
-		@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly dataSource: DataSource,
-	) {}
+	constructor(@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly dataSource: DataSource) {}
 
 	// Distinct teachers from the latest Planner run. The professor code is the scraped teacherCode.
 	// The email is the real institutional one pulled from Banner's raw_horario: Banner has no short
@@ -36,8 +34,8 @@ export class ScrapingExportsRepository {
 	// case/space-insensitive). Blank when there is no Banner match (Banner only scraped some depts).
 	async getDocentes(): Promise<DocenteExportRow[]> {
 		const rows: Array<{
-			professor_code: string;
-			teacher_name: string | null;
+			professorCode: string;
+			teacherName: string | null;
 			email: string | null;
 		}> = await this.dataSource.query(`
 			WITH banner_email AS (
@@ -51,9 +49,9 @@ export class ScrapingExportsRepository {
 				GROUP BY 1
 			)
 			SELECT DISTINCT ON (t->>'teacherCode')
-				t->>'teacherCode' AS professor_code,
-				t->>'teacherName' AS teacher_name,
-				be.correo         AS email
+				t->>'teacherCode' AS "professorCode",
+				t->>'teacherName' AS "teacherName",
+				be.correo         AS "email"
 			FROM raw_planner_seccion s
 			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(s.payload->'teachers', '[]'::jsonb)) t
 			LEFT JOIN banner_email be ON be.name_key = lower(btrim(t->>'teacherName'))
@@ -63,9 +61,9 @@ export class ScrapingExportsRepository {
 		`);
 
 		return rows.map((row) => {
-			const { lastName, firstName } = splitTeacherName(row.teacher_name);
+			const { lastName, firstName } = splitTeacherName(row.teacherName);
 			return {
-				professorCode: row.professor_code,
+				professorCode: row.professorCode,
 				lastName,
 				firstName,
 				email: row.email ?? '',
@@ -78,18 +76,18 @@ export class ScrapingExportsRepository {
 	// sectionName (most recent first); left blank when there is no Banner match.
 	async getSecciones(): Promise<SeccionExportRow[]> {
 		const rows: Array<{
-			course_code: string | null;
-			section_code: string | null;
-			professor_code: string | null;
-			campus_code: string | null;
-			modality_code: string | null;
+			courseCode: string | null;
+			sectionCode: string | null;
+			professorCode: string | null;
+			campusCode: string | null;
+			modalityCode: string | null;
 		}> = await this.dataSource.query(`
 			SELECT DISTINCT ON (s.payload->>'sectionName')
-				s.payload->'courses'->0->>'courseCode' AS course_code,
-				s.payload->>'sectionName'              AS section_code,
-				prof.teacher_code                      AS professor_code,
-				h.campus_code,
-				h.modality_code
+				s.payload->'courses'->0->>'courseCode' AS "courseCode",
+				s.payload->>'sectionName'              AS "sectionCode",
+				prof.teacher_code                      AS "professorCode",
+				h.campus_code                          AS "campusCode",
+				h.modality_code                        AS "modalityCode"
 			FROM raw_planner_seccion s
 			LEFT JOIN LATERAL (
 				SELECT t->>'teacherCode' AS teacher_code
@@ -113,11 +111,11 @@ export class ScrapingExportsRepository {
 		`);
 
 		return rows.map((row) => ({
-			courseCode: row.course_code ?? '',
-			sectionCode: row.section_code ?? '',
-			professorCode: row.professor_code ?? '',
-			campusCode: row.campus_code ?? '',
-			sectionModalityTypeCode: row.modality_code ?? '',
+			courseCode: row.courseCode ?? '',
+			sectionCode: row.sectionCode ?? '',
+			professorCode: row.professorCode ?? '',
+			campusCode: row.campusCode ?? '',
+			sectionModalityTypeCode: row.modalityCode ?? '',
 		}));
 	}
 
@@ -125,18 +123,18 @@ export class ScrapingExportsRepository {
 	// the Banner student payload, so it is left blank.
 	async getAlumnosMatriculados(): Promise<AlumnoMatriculadoExportRow[]> {
 		const rows: Array<{
-			student_code: string;
-			last_name: string | null;
-			first_name: string | null;
-			program_code: string | null;
-			campus_code: string | null;
+			studentCode: string;
+			lastName: string | null;
+			firstName: string | null;
+			programCode: string | null;
+			campusCode: string | null;
 		}> = await this.dataSource.query(`
 			SELECT DISTINCT ON (a.codigo_alumno)
-				a.codigo_alumno                   AS student_code,
-				a.payload->>'apellidos'           AS last_name,
-				a.payload->>'nombres'             AS first_name,
-				a.payload->'programa'->>'codigo'  AS program_code,
-				a.payload->'campus'->>'codigo'    AS campus_code
+				a.codigo_alumno                   AS "studentCode",
+				a.payload->>'apellidos'           AS "lastName",
+				a.payload->>'nombres'             AS "firstName",
+				a.payload->'programa'->>'codigo'  AS "programCode",
+				a.payload->'campus'->>'codigo'    AS "campusCode"
 			FROM raw_alumno a
 			WHERE a.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
 			  AND NULLIF(trim(a.codigo_alumno), '') IS NOT NULL
@@ -144,11 +142,11 @@ export class ScrapingExportsRepository {
 		`);
 
 		return rows.map((row) => ({
-			studentCode: row.student_code,
-			lastName: row.last_name ?? '',
-			firstName: row.first_name ?? '',
-			programCode: row.program_code ?? '',
-			campusCode: row.campus_code ?? '',
+			studentCode: row.studentCode,
+			lastName: row.lastName ?? '',
+			firstName: row.firstName ?? '',
+			programCode: row.programCode ?? '',
+			campusCode: row.campusCode ?? '',
 			enrollmentModalityTypeCode: '',
 		}));
 	}
@@ -157,9 +155,8 @@ export class ScrapingExportsRepository {
 	// section code (same namespace as the Planner sectionName used by the sections export), and the
 	// student code matches the enrolled-students export (both Banner).
 	async getAlumnosSecciones(): Promise<AlumnoSeccionExportRow[]> {
-		const rows: Array<{ section_code: string; student_code: string }> =
-			await this.dataSource.query(`
-				SELECT DISTINCT m.nrc AS section_code, m.codigo_alumno AS student_code
+		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(`
+				SELECT DISTINCT m.nrc AS "sectionCode", m.codigo_alumno AS "studentCode"
 				FROM raw_matricula m
 				WHERE m.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
 				  AND NULLIF(trim(m.nrc), '') IS NOT NULL
@@ -167,6 +164,6 @@ export class ScrapingExportsRepository {
 				ORDER BY m.nrc, m.codigo_alumno
 			`);
 
-		return rows.map((row) => ({ sectionCode: row.section_code, studentCode: row.student_code }));
+		return rows.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
 	}
 }
