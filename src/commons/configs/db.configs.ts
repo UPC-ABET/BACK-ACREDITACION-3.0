@@ -1,4 +1,17 @@
 import { Column, Index, ColumnOptions } from 'typeorm';
+import { snakeizeKeys } from 'src/libs/case.functions';
+
+/**
+ * JSONB write boundary: persist content in the DB's snake_case convention. The frontend/backend
+ * speak camelCase (see CamelCaseInterceptor on the read side), so we snake-ize keys on the way in.
+ * `from` is identity — loaded entities keep snake_case keys for internal service code; the response
+ * interceptor camelizes on output. Applied on the persistence (save) path; `BaseRepository.update`
+ * snake-izes explicitly since `repository.update()` bypasses column transformers.
+ */
+const jsonbSnakeizeTransformer = {
+	to: (value: unknown) => snakeizeKeys(value),
+	from: (value: unknown) => value,
+};
 
 export const DB_LENGTH_EMAIL = 254;
 export const DB_LENGTH_NAME = 255;
@@ -306,6 +319,7 @@ export function JsonColumn(options?: BaseOptions): PropertyDecorator {
 			{
 				type: 'jsonb',
 				nullable,
+				transformer: jsonbSnakeizeTransformer,
 				...(withDefault && { default: DB_DEFAULT_JSON }),
 				unique: false,
 			},

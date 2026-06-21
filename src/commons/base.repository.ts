@@ -13,6 +13,7 @@ import { NotFoundException } from '@nestjs/common';
 import { IBaseRepository } from './ibase.repository';
 import { BaseEntity } from './base.entity';
 import { sharedStrings } from '../shared/strings/shared.strings';
+import { snakeizeKeys } from '../libs/case.functions';
 
 export abstract class BaseRepository<
 	E extends BaseEntity = BaseEntity,
@@ -45,7 +46,12 @@ export abstract class BaseRepository<
 	public async update(id: number, partial: DeepPartial<E>, manager?: EntityManager) {
 		const repository = this.resolveRepository(manager);
 
-		const result = await repository.update(id, partial as Parameters<Repository<E>['update']>[1]);
+		// `repository.update()` builds a raw UPDATE and bypasses column transformers, so snake-ize
+		// JSONB content here to keep the DB's snake_case convention (mirrors JsonColumn's `to`).
+		const result = await repository.update(
+			id,
+			this.snakeizeJsonbColumns(partial) as Parameters<Repository<E>['update']>[1],
+		);
 		if (result.affected === 0) {
 			throw new NotFoundException(sharedStrings.error.notFound);
 		}
@@ -84,6 +90,21 @@ export abstract class BaseRepository<
 
 	private resolveRepository(manager?: EntityManager): Repository<E> {
 		return manager ? manager.getRepository(this.repository.target) : this.repository;
+	}
+
+	private snakeizeJsonbColumns<T extends Record<string, any>>(data: T): T {
+		if (data === null || typeof data !== 'object') return data;
+
+		const jsonbColumns = this.getJsonbColumnNames();
+		if (jsonbColumns.length === 0) return data;
+
+		const clone: Record<string, any> = { ...data };
+		for (const column of jsonbColumns) {
+			if (clone[column] !== null && clone[column] !== undefined) {
+				clone[column] = snakeizeKeys(clone[column]);
+			}
+		}
+		return clone as T;
 	}
 
 	private normalizeFindManyOptions(

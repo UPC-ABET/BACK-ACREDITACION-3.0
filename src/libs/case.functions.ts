@@ -10,9 +10,14 @@
  */
 
 const SNAKE_SEGMENT = /_+([a-z0-9])/g;
+const CAMEL_SEGMENT = /[A-Z]/g;
 
 export function snakeToCamel(key: string): string {
 	return key.replace(SNAKE_SEGMENT, (_match, char: string) => char.toUpperCase());
+}
+
+export function camelToSnake(key: string): string {
+	return key.replace(CAMEL_SEGMENT, (char) => `_${char.toLowerCase()}`);
 }
 
 /**
@@ -31,6 +36,31 @@ export function camelizeKeys<T = unknown>(value: T): T {
 		const result: Record<string, unknown> = {};
 		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
 			result[snakeToCamel(key)] = camelizeKeys(nested);
+		}
+		return result as unknown as T;
+	}
+
+	return value;
+}
+
+/**
+ * Recursively convert every object key from camelCase to snake_case — the inverse of
+ * {@link camelizeKeys}. Used at the write boundary so JSONB content is persisted in the DB's
+ * snake_case convention regardless of the camelCase keys the frontend sends.
+ *
+ * - Arrays are mapped element-wise.
+ * - Plain objects have their keys converted and their values recursed into.
+ * - Primitives, `Date`, and class instances (non-plain objects) are returned untouched.
+ */
+export function snakeizeKeys<T = unknown>(value: T): T {
+	if (Array.isArray(value)) {
+		return value.map((item) => snakeizeKeys(item)) as unknown as T;
+	}
+
+	if (isPlainObject(value)) {
+		const result: Record<string, unknown> = {};
+		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+			result[camelToSnake(key)] = snakeizeKeys(nested);
 		}
 		return result as unknown as T;
 	}

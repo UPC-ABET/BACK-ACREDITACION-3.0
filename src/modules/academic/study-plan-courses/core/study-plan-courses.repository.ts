@@ -10,6 +10,7 @@ import {
 	schoolProgramFilterParams,
 } from 'src/libs/school-program.functions';
 import { CourseEntity } from '../../courses/model/courses.entity';
+import { camelToSnake } from 'src/libs/case.functions';
 import {
 	FilterStudyPlanCourseDto,
 	CreateStudyPlanCourseMaintenanceDto,
@@ -98,8 +99,10 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 		if (filters.extra && typeof filters.extra === 'object') {
 			for (const [key, value] of Object.entries(filters.extra)) {
 				if (value === null || value === undefined) continue;
-				qb.andWhere(`spc.extra->>'${key}' = :extra_${key}`, {
-					[`extra_${key}`]: String(value),
+				// Frontend sends camelCase keys; the JSONB content is stored snake_case.
+				const snakeKey = camelToSnake(key);
+				qb.andWhere(`spc.extra->>'${snakeKey}' = :extra_${snakeKey}`, {
+					[`extra_${snakeKey}`]: String(value),
 				});
 			}
 		}
