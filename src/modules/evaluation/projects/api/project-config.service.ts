@@ -18,6 +18,10 @@ import {
 	ProjectEvaluatorResponseDto,
 	ProjectDetailsResponseDto,
 	ProjectRubricEntryDto,
+	ProjectDetailsStudentWithSpcDto,
+	ProjectEvaluatorDetailDto,
+	RubricQuestionDetailsDto,
+	StudentEvaluationStatusDto,
 } from '../model/projects.dtos';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
@@ -27,6 +31,11 @@ import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluat
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { GradeExportRow, ProjectRepository } from '../core/projects.repository';
+
+interface StudentGradeInfo {
+	totalGrade: number;
+	evaluationStatuses: StudentEvaluationStatusDto[];
+}
 
 @Injectable()
 export class ProjectConfigService {
@@ -206,7 +215,9 @@ export class ProjectConfigService {
 			throw new NotFoundException(projectsValidationStrings.error.notFound);
 		}
 
-		const studentWithChain = project.students?.find(
+		const students = project.students || [];
+
+		const studentWithChain = students.find(
 			(s) => s.studentSectionEnrollment?.courseSection?.courseId != null,
 		);
 
@@ -220,8 +231,59 @@ export class ProjectConfigService {
 
 		const academicPeriod = courseSection?.academicPeriod;
 
+		const courseData = await this.buildCourseData(courseId);
+
+		const { sseToSpc, uniqueSpcIds, spcToProgramName } = await this.resolveStudyPlanCourseMaps(
+			courseId,
+			students,
+		);
+
+		const rubricEntries: ProjectRubricEntryDto[] = [];
+		const studentGrades = new Map<number, StudentGradeInfo>();
+
+		for (const spcId of uniqueSpcIds) {
+			const { entry, grades } = await this.buildRubricEntryForSpc({
+				spcId,
+				projectId,
+				programName: spcToProgramName.get(spcId) ?? null,
+				students,
+				sseToSpc,
+				isEvaluationMode,
+				gradeTypeCode,
+				gradeTypeId,
+				rubricTypeId,
+				sectionAcademicPeriodId,
+			});
+
+			rubricEntries.push(entry);
+			grades.forEach((value, psId) => studentGrades.set(psId, value));
+		}
+
+		const studentDtos = this.buildStudentDtos(students, sseToSpc, studentGrades, isEvaluationMode);
+		const evaluatorDtos = await this.buildEvaluatorDtos(project.evaluators || []);
+
+		return {
+			project: {
+				id: project.id,
+				code: project.code || '',
+				name: project.name,
+				description: project.description || { es: '', en: '' },
+			},
+			academicPeriod: {
+				id: academicPeriod?.id,
+				modalityTypeId: academicPeriod?.modalityTypeId,
+				code: academicPeriod?.code,
+			},
+			students: studentDtos,
+			evaluators: evaluatorDtos,
+			course: courseData,
+			rubrics: rubricEntries,
+		};
+	}
+
+	private async buildCourseData(courseId: number): Promise<ProjectDetailsResponseDto['course']> {
 		const courseRow = await this.projectRepository.getCourseBasicById(courseId);
-		const courseData = courseRow
+		return courseRow
 			? {
 					id: courseRow.id,
 					name: courseRow.name,
@@ -229,166 +291,221 @@ export class ProjectConfigService {
 					learningOutcome: courseRow.learningOutcome,
 				}
 			: null;
+	}
 
-		const sseIds = (project.students || [])
+	private async resolveStudyPlanCourseMaps(
+		courseId: number,
+		students: ProjectStudentEntity[],
+	): Promise<{
+		sseToSpc: Map<number, number>;
+		uniqueSpcIds: number[];
+		spcToProgramName: Map<number, unknown>;
+	}> {
+		const sseIds = students
 			.map((s) => s.studentSectionEnrollment?.id)
 			.filter((id): id is number => id != null);
 		const spcRows = await this.projectRepository.getSseToStudyPlanCourse(courseId, sseIds);
 
 		const sseToSpc = new Map<number, number>(spcRows.map((r) => [r.sseId, r.studyPlanCourseId]));
-
-		// Unique study_plan_course_ids across all students
 		const uniqueSpcIds = [...new Set(spcRows.map((r) => r.studyPlanCourseId))];
 
 		const programRows =
 			await this.projectRepository.getProgramNamesByStudyPlanCourseIds(uniqueSpcIds);
+		const spcToProgramName = new Map<number, unknown>(
+			programRows.map((r) => [r.spcId, r.programName]),
+		);
 
-		const spcToProgramName = new Map<number, any>(programRows.map((r) => [r.spcId, r.programName]));
+		return { sseToSpc, uniqueSpcIds, spcToProgramName };
+	}
 
-		// Fetch rubric per study_plan_course_id
-		const rubricEntries: ProjectRubricEntryDto[] = [];
+	private async buildRubricEntryForSpc(params: {
+		spcId: number;
+		projectId: number;
+		programName: unknown;
+		students: ProjectStudentEntity[];
+		sseToSpc: Map<number, number>;
+		isEvaluationMode: boolean;
+		gradeTypeCode?: string;
+		gradeTypeId?: number;
+		rubricTypeId?: number;
+		sectionAcademicPeriodId: number;
+	}): Promise<{ entry: ProjectRubricEntryDto; grades: Map<number, StudentGradeInfo> }> {
+		const { spcId, projectId, programName, students, sseToSpc, isEvaluationMode } = params;
 
-		for (const spcId of uniqueSpcIds) {
-			const rubric = await this.projectRepository.getActiveRubricForStudyPlanCourse(
-				spcId,
-				gradeTypeId,
-				rubricTypeId,
-			);
+		const rubric = await this.projectRepository.getActiveRubricForStudyPlanCourse(
+			spcId,
+			params.gradeTypeId,
+			params.rubricTypeId,
+		);
 
-			if (!rubric) {
-				rubricEntries.push({
+		if (!rubric) {
+			return {
+				entry: {
 					studyPlanCourseId: spcId,
-					programName: spcToProgramName.get(spcId) ?? null,
+					programName,
 					rubric: null,
 					commissions: [],
 					outcomes: [],
 					questions: [],
-				});
-				continue;
-			}
+				},
+				grades: new Map(),
+			};
+		}
 
-			const rubricContext = await this.rubricConfigService
-				.getRubricWithContextData(rubric.id)
-				.catch(() => null);
+		const rubricContext = await this.rubricConfigService
+			.getRubricWithContextData(rubric.id)
+			.catch(() => null);
 
-			let evaluations: EvaluationEntity[] = [];
+		let evaluations: EvaluationEntity[] = [];
+		let grades = new Map<number, StudentGradeInfo>();
 
-			if (isEvaluationMode) {
-				const isCapstoneEb =
-					rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
-					gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+		if (isEvaluationMode) {
+			const isCapstoneEb =
+				rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+				params.gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
 
-				// Only load evaluations for students that belong to this spcId
-				const studentsForSpc = (project.students || []).filter(
-					(s) => sseToSpc.get(s.studentSectionEnrollment?.id!) === spcId,
+			const studentsForSpc = students.filter(
+				(s) => sseToSpc.get(s.studentSectionEnrollment?.id!) === spcId,
+			);
+			const psIdsForSpc = studentsForSpc.map((s) => s.id);
+
+			if (psIdsForSpc.length > 0) {
+				const totalMaxScore = isCapstoneEb
+					? await this.resolveCapstoneMaxScore(params.sectionAcademicPeriodId, rubric.id)
+					: (
+							await this.rubricConfigService
+								.recalculateMaxScore(rubric.id)
+								.catch(() => ({ totalMaxScore: 0 }))
+						).totalMaxScore || 0;
+
+				evaluations = await this.projectRepository.getEvaluationsForProjectStudents(
+					projectId,
+					psIdsForSpc,
+					rubric.id,
 				);
-				const psIdsForSpc = studentsForSpc.map((s) => s.id);
 
-				if (psIdsForSpc.length > 0) {
-					const totalMaxScore = isCapstoneEb
-						? await this.resolveCapstoneMaxScore(sectionAcademicPeriodId, rubric.id)
-						: (
-								await this.rubricConfigService
-									.recalculateMaxScore(rubric.id)
-									.catch(() => ({ totalMaxScore: 0 }))
-							).totalMaxScore || 0;
-
-					evaluations = await this.projectRepository.getEvaluationsForProjectStudents(
-						projectId,
-						psIdsForSpc,
-						rubric.id,
-					);
-
-					// Build a map of the latest evaluation per student
-					const latestEvalByStudent = new Map<number, EvaluationEntity>();
-					for (const s of studentsForSpc) {
-						const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
-						if (evals.length > 0) {
-							const latestEval = evals.reduce((latest, ev) =>
-								new Date(ev.updatedAt) > new Date(latest.updatedAt) ? ev : latest,
-							);
-							latestEvalByStudent.set(s.id, latestEval);
-						}
-					}
-
-					// Attach totalGrade to students of this spc
-					for (const s of studentsForSpc) {
-						const latestEval = latestEvalByStudent.get(s.id);
-						if (latestEval) {
-							const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
-							const sumScores = (latestEval.scores || []).reduce(
-								(sSum, score) => sSum + Number(score.score),
-								0,
-							);
-							(s as any).__totalGrade = isCapstoneEb
-								? this.computeGrade(sumScores, totalMaxScore)
-								: sumScores;
-							(s as any).__evaluationStatuses = evals.map((ev) => ({
-								evaluatorId: ev.projectEvaluatorId,
-								qualificationStatusTypeId: ev.qualificationStatusTypeId,
-							}));
-						}
-					}
-				}
+				grades = this.computeStudentGrades(
+					studentsForSpc,
+					evaluations,
+					isCapstoneEb,
+					totalMaxScore,
+				);
 			}
+		}
 
-			const latestEvalByStudent: Map<number, EvaluationEntity> =
-				isEvaluationMode && (project.students || []).length > 0
-					? (() => {
-							const map = new Map<number, EvaluationEntity>();
-							evaluations.forEach((ev) => {
-								const current = map.get(ev.projectStudentId);
-								if (!current || new Date(ev.updatedAt) > new Date(current.updatedAt)) {
-									map.set(ev.projectStudentId, ev);
-								}
-							});
-							return map;
-						})()
-					: new Map();
+		const latestEvalByStudent =
+			isEvaluationMode && students.length > 0
+				? this.buildLatestEvalByStudent(evaluations)
+				: new Map<number, EvaluationEntity>();
 
-			const questions = (rubricContext?.questions || []).map((q: any) => ({
-				id: q.id,
-				text: q.text,
-				outcomeId: q.outcomeId,
-				criterias: (q.criterias || []).map((c: any) => {
-					let criteriaScores: any[] | null = null;
-					if (isEvaluationMode) {
-						criteriaScores = [];
-						latestEvalByStudent.forEach((ev) => {
-							const scoreObj = (ev.scores || []).find((sc) => sc.rubricQuestionCriteriaId === c.id);
-							if (scoreObj) {
-								criteriaScores!.push({
-									studentId: ev.projectStudentId,
-									evaluatorId: ev.projectEvaluatorId,
-									score: Number(scoreObj.score),
-									commentaries: scoreObj.commentaries || '',
-								});
-							}
-						});
-					}
-					return {
-						id: c.id,
-						text: c.text,
-						minValue: c.minValue,
-						maxValue: c.maxValue,
-						scores: criteriaScores,
-					};
-				}),
-			}));
+		const questions = this.buildRubricQuestions(
+			rubricContext,
+			latestEvalByStudent,
+			isEvaluationMode,
+		);
 
-			rubricEntries.push({
+		return {
+			entry: {
 				studyPlanCourseId: spcId,
-				programName: spcToProgramName.get(spcId) ?? null,
+				programName,
 				rubric: rubricContext?.rubric ?? null,
 				commissions: rubricContext?.commissions ?? [],
 				outcomes: rubricContext?.outcomes ?? [],
 				questions,
+			},
+			grades,
+		};
+	}
+
+	private buildLatestEvalByStudent(evaluations: EvaluationEntity[]): Map<number, EvaluationEntity> {
+		const map = new Map<number, EvaluationEntity>();
+		for (const ev of evaluations) {
+			const current = map.get(ev.projectStudentId);
+			if (!current || new Date(ev.updatedAt) > new Date(current.updatedAt)) {
+				map.set(ev.projectStudentId, ev);
+			}
+		}
+		return map;
+	}
+
+	private computeStudentGrades(
+		studentsForSpc: ProjectStudentEntity[],
+		evaluations: EvaluationEntity[],
+		isCapstoneEb: boolean,
+		totalMaxScore: number,
+	): Map<number, StudentGradeInfo> {
+		const grades = new Map<number, StudentGradeInfo>();
+		const latestEvalByStudent = this.buildLatestEvalByStudent(evaluations);
+
+		for (const s of studentsForSpc) {
+			const latestEval = latestEvalByStudent.get(s.id);
+			if (!latestEval) continue;
+
+			const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
+			const sumScores = (latestEval.scores || []).reduce(
+				(sSum, score) => sSum + Number(score.score),
+				0,
+			);
+
+			grades.set(s.id, {
+				totalGrade: isCapstoneEb ? this.computeGrade(sumScores, totalMaxScore) : sumScores,
+				evaluationStatuses: evals.map((ev) => ({
+					evaluatorId: ev.projectEvaluatorId,
+					qualificationStatusTypeId: ev.qualificationStatusTypeId,
+				})),
 			});
 		}
 
-		const studentDtos = (project.students || []).map((s) => {
+		return grades;
+	}
+
+	private buildRubricQuestions(
+		rubricContext: any,
+		latestEvalByStudent: Map<number, EvaluationEntity>,
+		isEvaluationMode: boolean,
+	): RubricQuestionDetailsDto[] {
+		return (rubricContext?.questions || []).map((q: any) => ({
+			id: q.id,
+			text: q.text,
+			outcomeId: q.outcomeId,
+			criterias: (q.criterias || []).map((c: any) => {
+				// CriteriaScoreDto.commentaries is declared string for Swagger but is I18nText at runtime.
+				let criteriaScores: any[] | null = null;
+				if (isEvaluationMode) {
+					criteriaScores = [];
+					latestEvalByStudent.forEach((ev) => {
+						const scoreObj = (ev.scores || []).find((sc) => sc.rubricQuestionCriteriaId === c.id);
+						if (scoreObj) {
+							criteriaScores!.push({
+								studentId: ev.projectStudentId,
+								evaluatorId: ev.projectEvaluatorId,
+								score: Number(scoreObj.score),
+								commentaries: scoreObj.commentaries || '',
+							});
+						}
+					});
+				}
+				return {
+					id: c.id,
+					text: c.text,
+					minValue: c.minValue,
+					maxValue: c.maxValue,
+					scores: criteriaScores,
+				};
+			}),
+		}));
+	}
+
+	private buildStudentDtos(
+		students: ProjectStudentEntity[],
+		sseToSpc: Map<number, number>,
+		studentGrades: Map<number, StudentGradeInfo>,
+		isEvaluationMode: boolean,
+	): ProjectDetailsStudentWithSpcDto[] {
+		return students.map((s) => {
 			const stu = s.studentSectionEnrollment?.enrolledStudent?.student;
 			const sseId = s.studentSectionEnrollment?.id;
+			const grade = studentGrades.get(s.id);
 			return {
 				id: s.id,
 				studentId: s.studentSectionEnrollment?.enrolledStudent?.studentId || 0,
@@ -397,12 +514,17 @@ export class ProjectConfigService {
 				email: stu?.email || '',
 				studentCode: stu?.code || '',
 				studyPlanCourseId: sseId != null ? (sseToSpc.get(sseId) ?? null) : null,
-				totalGrade: isEvaluationMode ? ((s as any).__totalGrade ?? null) : null,
-				evaluations: isEvaluationMode ? ((s as any).__evaluationStatuses ?? []) : [],
+				totalGrade: isEvaluationMode ? (grade?.totalGrade ?? null) : null,
+				evaluations: isEvaluationMode ? (grade?.evaluationStatuses ?? []) : [],
 			};
 		});
+	}
 
-		const evaluatorTypeIds = [...new Set((project.evaluators || []).map((e) => e.evaluatorTypeId))];
+	private async buildEvaluatorDtos(
+		evaluators: ProjectEvaluatorEntity[],
+	): Promise<ProjectEvaluatorDetailDto[]> {
+		const evaluatorTypeIds = [...new Set(evaluators.map((e) => e.evaluatorTypeId))];
+		// TypeEntity.name is I18nText at runtime; the DTO declares it as string for Swagger.
 		const evaluatorTypesMap = new Map<number, any>();
 
 		if (evaluatorTypeIds.length > 0) {
@@ -410,7 +532,7 @@ export class ProjectConfigService {
 			types.forEach((t) => evaluatorTypesMap.set(t.id, t));
 		}
 
-		const evaluatorDtos = (project.evaluators || []).map((e) => {
+		const dtos = evaluators.map((e) => {
 			const staff = e.professor?.staff;
 			const professorUser = staff?.user;
 			const evaluatorType = evaluatorTypesMap.get(e.evaluatorTypeId);
@@ -430,23 +552,7 @@ export class ProjectConfigService {
 			};
 		});
 
-		return {
-			project: {
-				id: project.id,
-				code: project.code || '',
-				name: project.name,
-				description: project.description || { es: '', en: '' },
-			},
-			academicPeriod: {
-				id: academicPeriod?.id,
-				modalityTypeId: academicPeriod?.modalityTypeId,
-				code: academicPeriod?.code,
-			},
-			students: studentDtos,
-			evaluators: evaluatorDtos,
-			course: courseData,
-			rubrics: rubricEntries,
-		};
+		return dtos;
 	}
 
 	async getProjectsByProfessor(
