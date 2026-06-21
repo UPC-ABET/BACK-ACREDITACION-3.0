@@ -1,0 +1,117 @@
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
+import { RubricConfigService } from 'src/modules/evaluation/rubrics/api/rubric-config.service';
+import { GradeExportRow, ProjectRepository } from '../core/projects.repository';
+import { ProjectGradeSupportService } from './project-grade-support.service';
+
+@Injectable()
+export class ProjectGradeExportService {
+	constructor(
+		@Inject(forwardRef(() => RubricConfigService))
+		private readonly rubricConfigService: RubricConfigService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly gradeSupport: ProjectGradeSupportService,
+	) {}
+
+	async exportProjectGrades(
+		academicPeriodId: number,
+		schoolId: number,
+		gradeTypeCode: string,
+	): Promise<Buffer> {
+		const gradeTypeId = await this.gradeSupport.resolveGradeTypeIdByCode(gradeTypeCode);
+
+		const programIds = await this.gradeSupport.resolveProgramIdsBySchoolId(schoolId);
+		if (programIds.length === 0) return this.buildGradesExcel([]);
+
+		const rows = await this.projectRepository.getProjectGradesForExport(
+			academicPeriodId,
+			gradeTypeId,
+			programIds,
+		);
+
+		const isCapstoneEbExport = gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+
+		const rubricIds = [...new Set(rows.map((r) => r.rubricId))];
+		const maxScoreByRubricId = new Map<number, number>();
+		await Promise.all(
+			rubricIds.map(async (rubricId) => {
+				if (isCapstoneEbExport) {
+					const max = await this.gradeSupport.resolveCapstoneMaxScore(academicPeriodId, rubricId);
+					maxScoreByRubricId.set(rubricId, max);
+				} else {
+					const data = await this.rubricConfigService
+						.recalculateMaxScore(rubricId)
+						.catch(() => ({ totalMaxScore: 0 }));
+					maxScoreByRubricId.set(rubricId, data.totalMaxScore || 0);
+				}
+			}),
+		);
+
+		const graded = rows.map((row) => ({
+			...row,
+			grade: this.calculateGrade(row, maxScoreByRubricId.get(row.rubricId) ?? 0),
+		}));
+
+		return this.buildGradesExcel(graded);
+	}
+
+	private calculateGrade(row: GradeExportRow, totalMaxScore: number): number {
+		const isCapstoneAndEb =
+			row.rubricTypeCode === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+			row.gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+
+		const sumScores = Number(row.totalScore);
+
+		if (isCapstoneAndEb) {
+			return this.gradeSupport.computeGrade(sumScores, totalMaxScore);
+		}
+
+		return sumScores;
+	}
+
+	private async buildGradesExcel(rows: (GradeExportRow & { grade: number })[]): Promise<Buffer> {
+		const wb = new ExcelJS.Workbook();
+		const ws = wb.addWorksheet('Notas');
+
+		const HEADERS = [
+			'Código de curso',
+			'Código de sección',
+			'Código de alumno',
+			'Nombre del alumno',
+			'Nota',
+		];
+
+		ws.columns = [
+			{ key: 'courseCode', width: 20 },
+			{ key: 'sectionCode', width: 20 },
+			{ key: 'studentCode', width: 20 },
+			{ key: 'studentName', width: 36 },
+			{ key: 'grade', width: 12 },
+		];
+
+		const headerRow = ws.getRow(1);
+		HEADERS.forEach((h, i) => {
+			const cell = headerRow.getCell(i + 1);
+			cell.value = h;
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCC0000' } };
+			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+			cell.alignment = { vertical: 'middle', horizontal: 'center' };
+			cell.border = {
+				top: { style: 'thin' },
+				left: { style: 'thin' },
+				right: { style: 'thin' },
+				bottom: { style: 'thin' },
+			};
+		});
+		headerRow.height = 22;
+
+		for (const row of rows) {
+			ws.addRow([row.courseCode, row.sectionCode, row.studentCode, row.studentName, row.grade]);
+		}
+
+		ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+		return Buffer.from(await wb.xlsx.writeBuffer());
+	}
+}

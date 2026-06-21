@@ -25,6 +25,8 @@ import {
 } from './docs/projects.swagger';
 import { ProjectService } from './projects.service';
 import { ProjectConfigService } from './project-config.service';
+import { ProjectDetailsService } from './project-details.service';
+import { ProjectGradeExportService } from './project-grade-export.service';
 import {
 	CreateProjectDto,
 	UpdateProjectDto,
@@ -48,6 +50,8 @@ export class ProjectController extends BaseController<ProjectService> {
 	constructor(
 		private readonly service: ProjectService,
 		private readonly projectConfigService: ProjectConfigService,
+		private readonly projectDetailsService: ProjectDetailsService,
+		private readonly projectGradeExportService: ProjectGradeExportService,
 	) {
 		super(service);
 	}
@@ -115,7 +119,7 @@ export class ProjectController extends BaseController<ProjectService> {
 		@Query('rubricTypeId', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		return parseSuccessResponse(
-			await this.projectConfigService.getProjectWithDetails(
+			await this.projectDetailsService.getProjectWithDetails(
 				projectId,
 				isEvaluationMode ?? false,
 				gradeTypeCode,
@@ -179,7 +183,7 @@ export class ProjectController extends BaseController<ProjectService> {
 		@Query('gradeTypeCode') gradeTypeCode: string,
 		@Res() res: Response,
 	) {
-		const xlsx = await this.projectConfigService.exportProjectGrades(
+		const xlsx = await this.projectGradeExportService.exportProjectGrades(
 			academicPeriodId,
 			schoolId,
 			gradeTypeCode,

@@ -8,6 +8,9 @@ import { ProjectRepository } from './core/projects.repository';
 import { ProjectService } from './api/projects.service';
 import { ProjectController } from './api/projects.controller';
 import { ProjectConfigService } from './api/project-config.service';
+import { ProjectDetailsService } from './api/project-details.service';
+import { ProjectGradeExportService } from './api/project-grade-export.service';
+import { ProjectGradeSupportService } from './api/project-grade-support.service';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricModule } from 'src/modules/evaluation/rubrics/rubrics.module';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
@@ -26,7 +29,20 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 		forwardRef(() => RubricModule),
 	],
 	controllers: [ProjectController],
-	providers: [ProjectService, ProjectRepository, ProjectConfigService],
-	exports: [ProjectService, ProjectRepository, ProjectConfigService],
+	providers: [
+		ProjectService,
+		ProjectRepository,
+		ProjectConfigService,
+		ProjectDetailsService,
+		ProjectGradeExportService,
+		ProjectGradeSupportService,
+	],
+	exports: [
+		ProjectService,
+		ProjectRepository,
+		ProjectConfigService,
+		ProjectDetailsService,
+		ProjectGradeExportService,
+	],
 })
 export class ProjectModule {}
