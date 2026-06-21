@@ -225,6 +225,7 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 - Use `@Unique('UQ_<table>_<column(s)>', ['propertyA', 'propertyB'])` for unique constraints — readable names, never hash. The array contains **TS property names** (camelCase); the strategy resolves them to columns.
 - For per-table PK names, pass `{ primaryKeyConstraintName: 'PK_<table>' }` to `@PrimaryGeneratedColumn(...)` on the entity (overrides `BaseEntity.id`). Without an override, TypeORM auto-generates a hash-style name.
 - Computed/generated columns use `@Column({ type: '...', insert: false, update: false })`.
+- **Exception — RAW-mirror entities under `admin/*/raw/model/`** (e.g. `admin/banner/raw/`, `admin/planner/raw/`) are exempt from the `extends BaseEntity` and "never raw `@Column()`" rules. They are intentional 1:1 mirrors of an external scraping RAW database on a **separate connection**, so `BaseEntity`'s `id`/`extra`/`is_active`/`created_at`/`updated_at` semantics and the custom domain decorators don't apply; they map external shapes verbatim (raw `@Column({ type: ... })`, `char(64)` content hashes, raw `jsonb` payloads). Naming conventions (`PK_`/`FK_`/`UQ_`/`IDX_`) still apply.
 
 ### Custom Column Decorators
 
