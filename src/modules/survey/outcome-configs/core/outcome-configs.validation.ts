@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { OutcomeConfigRepository } from './outcome-configs.repository';
 import { outcomeConfigsValidationStrings } from '../config/strings/outcome-configs.validation';
 
@@ -15,13 +15,10 @@ export class OutcomeConfigValidation {
 		if (exists) errors.push(outcomeConfigsValidationStrings.error.configExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: outcomeConfigsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: outcomeConfigsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -44,24 +41,18 @@ export class OutcomeConfigValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: outcomeConfigsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: outcomeConfigsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: OutcomeConfigRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: outcomeConfigsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: outcomeConfigsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { StaffValidation } from './staff.validation';
 
 const mockRepo = {
@@ -23,7 +23,7 @@ describe('StaffValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				StaffValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -38,7 +38,7 @@ describe('StaffValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(StaffValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -52,7 +52,7 @@ describe('StaffValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(StaffValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});

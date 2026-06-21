@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { CourseRepository } from './courses.repository';
 import { coursesValidationStrings } from '../config/strings/courses.validation';
 
@@ -13,13 +13,10 @@ export class CourseValidation {
 		if (exists) errors.push(coursesValidationStrings.error.nameExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: coursesValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: coursesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,24 +37,18 @@ export class CourseValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: coursesValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: coursesValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: CourseRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: coursesValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: coursesValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

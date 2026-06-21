@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { StudentCourseOutcomeGradeRepository } from './student-course-outcome-grades.repository';
 import { studentCourseOutcomeGradesValidationStrings } from '../config/strings/student-course-outcome-grades.validation';
 
@@ -20,13 +20,10 @@ export class StudentCourseOutcomeGradeValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studentCourseOutcomeGradesValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentCourseOutcomeGradesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -56,24 +53,18 @@ export class StudentCourseOutcomeGradeValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studentCourseOutcomeGradesValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentCourseOutcomeGradesValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: StudentCourseOutcomeGradeRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studentCourseOutcomeGradesValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentCourseOutcomeGradesValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

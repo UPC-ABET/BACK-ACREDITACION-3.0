@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { CourseSectionValidation } from './course-sections.validation';
 
 const mockRepo = {
@@ -26,7 +26,7 @@ describe('CourseSectionValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				CourseSectionValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -44,7 +44,7 @@ describe('CourseSectionValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				CourseSectionValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -59,7 +59,7 @@ describe('CourseSectionValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(CourseSectionValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -84,7 +84,7 @@ describe('CourseSectionValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
 			await expect(
 				CourseSectionValidation.validateMaintenanceCreate(mockRepo as any, 10, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -115,7 +115,7 @@ describe('CourseSectionValidation', () => {
 				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 999, {
 					sectionCode: 'S2',
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new (course, period, code) collides with another section', async () => {
@@ -125,7 +125,7 @@ describe('CourseSectionValidation', () => {
 				CourseSectionValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
 					sectionCode: 'S2',
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -142,7 +142,7 @@ describe('CourseSectionValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				CourseSectionValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 naming the exact blocking relations', async () => {
@@ -152,16 +152,16 @@ describe('CourseSectionValidation', () => {
 				surveys: 0,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await CourseSectionValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.courseSection.inUse');
 			expect(body.errors).toEqual(['error.courseSection.usedInStudentSectionEnrollments']);
 		});

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { InstrumentRepository } from './instruments.repository';
 import { instrumentsValidationStrings } from '../config/strings/instruments.validation';
 
@@ -13,13 +13,10 @@ export class InstrumentValidation {
 		if (exists) errors.push(instrumentsValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: instrumentsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: instrumentsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,24 +37,18 @@ export class InstrumentValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: instrumentsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: instrumentsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: InstrumentRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: instrumentsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: instrumentsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

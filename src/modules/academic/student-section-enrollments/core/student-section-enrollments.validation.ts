@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, ConflictError, NotFoundError } from 'src/commons/domain-error';
 import {
 	StudentSectionEnrollmentRepository,
 	StudentSectionEnrollmentDeleteBlockerCounts,
@@ -62,13 +62,10 @@ export class StudentSectionEnrollmentValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentSectionEnrollmentsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -110,24 +107,18 @@ export class StudentSectionEnrollmentValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: StudentSectionEnrollmentRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentSectionEnrollmentsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -153,13 +144,10 @@ export class StudentSectionEnrollmentValidation {
 		if (eligibilityError) errors.push(eligibilityError);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studentSectionEnrollmentsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -170,13 +158,10 @@ export class StudentSectionEnrollmentValidation {
 	) {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
-					errors: [studentSectionEnrollmentsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
+				errors: [studentSectionEnrollmentsValidationStrings.error.notFound],
+			});
 		}
 
 		const enrolledStudentId = data.enrolledStudentId ?? entity.enrolledStudentId;
@@ -191,13 +176,10 @@ export class StudentSectionEnrollmentValidation {
 				where: { enrolledStudentId, courseSectionId },
 			});
 			if (exists && exists.id !== id) {
-				throw new HttpException(
-					{
-						message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
-						errors: [studentSectionEnrollmentsValidationStrings.error.enrollmentExists],
-					},
-					HttpStatus.BAD_REQUEST,
-				);
+				throw new BadRequestError({
+					message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
+					errors: [studentSectionEnrollmentsValidationStrings.error.enrollmentExists],
+				});
 			}
 
 			const eligibilityError = await this.studyPlanEligibilityError(
@@ -206,39 +188,30 @@ export class StudentSectionEnrollmentValidation {
 				courseSectionId,
 			);
 			if (eligibilityError) {
-				throw new HttpException(
-					{
-						message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
-						errors: [eligibilityError],
-					},
-					HttpStatus.BAD_REQUEST,
-				);
+				throw new BadRequestError({
+					message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
+					errors: [eligibilityError],
+				});
 			}
 		}
 	}
 
 	static async validateMaintenanceDelete(repo: StudentSectionEnrollmentRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.result.deleteFailed,
-					errors: [studentSectionEnrollmentsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: studentSectionEnrollmentsValidationStrings.result.deleteFailed,
+				errors: [studentSectionEnrollmentsValidationStrings.error.notFound],
+			});
 		}
 
 		const counts = await repo.findDeleteBlockerCounts(id);
 		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
 
 		if (blockers.length > 0) {
-			throw new HttpException(
-				{
-					message: studentSectionEnrollmentsValidationStrings.error.inUse,
-					errors: blockers,
-				},
-				HttpStatus.CONFLICT,
-			);
+			throw new ConflictError({
+				message: studentSectionEnrollmentsValidationStrings.error.inUse,
+				errors: blockers,
+			});
 		}
 	}
 }

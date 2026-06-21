@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { FacultyRepository } from './faculties.repository';
 import { facultiesValidationStrings } from '../config/strings/faculties.validation';
 
@@ -13,13 +13,10 @@ export class FacultyValidation {
 		if (exists) errors.push(facultiesValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: facultiesValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: facultiesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,24 +37,18 @@ export class FacultyValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: facultiesValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: facultiesValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: FacultyRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: facultiesValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: facultiesValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

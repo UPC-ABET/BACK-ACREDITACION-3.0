@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { PppValidation } from './ppp.validation';
 
 const mockRepo = {
@@ -24,7 +24,7 @@ describe('PppValidation', () => {
 		it('throws when a config already exists', async () => {
 			mockRepo.existsPpp.mockResolvedValue(true);
 			await expect(PppValidation.validateCreateConfig(mockRepo as any, dto)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -37,14 +37,14 @@ describe('PppValidation', () => {
 
 		it('throws 404 when the config does not exist', async () => {
 			mockRepo.findOnePpp.mockResolvedValue(null);
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await PppValidation.validateUpdateConfig(mockRepo as any, 999);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.NOT_FOUND);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('notFound');
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('PppValidation', () => {
 		it('throws 404 when the config does not exist', async () => {
 			mockRepo.findOnePpp.mockResolvedValue(null);
 			await expect(PppValidation.validateDeleteConfig(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -77,13 +77,13 @@ describe('PppValidation', () => {
 
 		it('throws when the practice number is not 1 or 2', () => {
 			expect(() => PppValidation.validateCreateSurvey({ ...validDto, practiceNumber: 3 })).toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
 		it('throws when the scores list is empty', () => {
 			expect(() => PppValidation.validateCreateSurvey({ ...validDto, scores: [] })).toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -93,12 +93,12 @@ describe('PppValidation', () => {
 					...validDto,
 					scores: [{ outcomeId: 1, score: 6 }],
 				}),
-			).toThrow(HttpException);
+			).toThrow(DomainError);
 		});
 
 		it('throws when the RUC is malformed', () => {
 			expect(() => PppValidation.validateCreateSurvey({ ...validDto, ruc: '123' })).toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});

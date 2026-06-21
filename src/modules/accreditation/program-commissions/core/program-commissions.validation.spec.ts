@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { ProgramCommissionValidation } from './program-commissions.validation';
 
 const mockRepo = {
@@ -23,7 +23,7 @@ describe('ProgramCommissionValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				ProgramCommissionValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -41,7 +41,7 @@ describe('ProgramCommissionValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				ProgramCommissionValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('ProgramCommissionValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				ProgramCommissionValidation.validateDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 });

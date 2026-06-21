@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { EnrolledStudentValidation } from './enrolled-students.validation';
 
 const mockRepo = {
@@ -26,7 +26,7 @@ describe('EnrolledStudentValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				EnrolledStudentValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -44,7 +44,7 @@ describe('EnrolledStudentValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				EnrolledStudentValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -59,7 +59,7 @@ describe('EnrolledStudentValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(EnrolledStudentValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -83,14 +83,14 @@ describe('EnrolledStudentValidation', () => {
 		it('throws when no study plan period exists for the program and period', async () => {
 			await expect(
 				EnrolledStudentValidation.validateMaintenanceCreate(mockRepo as any, null, null, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the student is already enrolled in that study plan period', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
 			await expect(
 				EnrolledStudentValidation.validateMaintenanceCreate(mockRepo as any, 100, 50, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -124,7 +124,7 @@ describe('EnrolledStudentValidation', () => {
 				EnrolledStudentValidation.validateMaintenanceUpdate(mockRepo as any, 999, {
 					studentCode: 'STU-2',
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new student code is taken by another student', async () => {
@@ -134,7 +134,7 @@ describe('EnrolledStudentValidation', () => {
 				EnrolledStudentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
 					studentCode: 'STU-2',
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -151,23 +151,23 @@ describe('EnrolledStudentValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				EnrolledStudentValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 naming the blocking relation', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
 			mockRepo.findDeleteBlockerCounts.mockResolvedValue({ studentSectionEnrollments: 4 });
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await EnrolledStudentValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.enrolledStudent.inUse');
 			expect(body.errors).toEqual(['error.enrolledStudent.usedInStudentSectionEnrollments']);
 		});

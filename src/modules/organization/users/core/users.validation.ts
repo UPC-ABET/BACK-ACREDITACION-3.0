@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { UserRepository } from './users.repository';
 import { usersValidationStrings } from '../config/strings/users.validation';
 import { BaseValidation } from 'src/commons/base.validation';
@@ -10,10 +10,7 @@ export class UserValidation extends BaseValidation {
 		});
 
 		if (exists) {
-			throw new HttpException(
-				{ message: usersValidationStrings.error.emailExists },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: usersValidationStrings.error.emailExists });
 		}
 	}
 
@@ -21,10 +18,7 @@ export class UserValidation extends BaseValidation {
 		const entity = await repo.findOneById(id);
 
 		if (!entity) {
-			throw new HttpException(
-				{ message: usersValidationStrings.result.updateFailed },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: usersValidationStrings.result.updateFailed });
 		}
 	}
 
@@ -32,10 +26,7 @@ export class UserValidation extends BaseValidation {
 		const entity = await repo.findOneById(id);
 
 		if (!entity) {
-			throw new HttpException(
-				{ message: usersValidationStrings.result.deleteFailed },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: usersValidationStrings.result.deleteFailed });
 		}
 	}
 }

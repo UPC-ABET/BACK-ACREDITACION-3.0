@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { ProfessorValidation } from './professors.validation';
 
 const mockRepo = {
@@ -33,7 +33,7 @@ describe('ProfessorValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				ProfessorValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -50,7 +50,7 @@ describe('ProfessorValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(ProfessorValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -64,7 +64,7 @@ describe('ProfessorValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(ProfessorValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -83,7 +83,7 @@ describe('ProfessorValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9, code: 'P1' });
 			await expect(
 				ProfessorValidation.validateMaintenanceCreate(mockRepo as any, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -108,7 +108,7 @@ describe('ProfessorValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				ProfessorValidation.validateMaintenanceUpdate(mockRepo as any, 999, { code: 'P2' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new code belongs to another professor', async () => {
@@ -116,7 +116,7 @@ describe('ProfessorValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2, code: 'P2' });
 			await expect(
 				ProfessorValidation.validateMaintenanceUpdate(mockRepo as any, 1, { code: 'P2' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -133,7 +133,7 @@ describe('ProfessorValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				ProfessorValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 naming the exact blocking relations', async () => {
@@ -144,16 +144,16 @@ describe('ProfessorValidation', () => {
 				charts: 1,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await ProfessorValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.professor.inUse');
 			expect(body.errors).toEqual([
 				'error.professor.usedInCourseSections',

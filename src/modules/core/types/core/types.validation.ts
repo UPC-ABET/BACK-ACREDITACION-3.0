@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, NotFoundError } from 'src/commons/domain-error';
 import { TypeRepository } from './types.repository';
 import { typesValidationStrings } from '../config/strings/types.validation';
 
@@ -16,13 +16,10 @@ export class TypeValidation {
 		if (exists) errors.push(typesValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: typesValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: typesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -46,33 +43,24 @@ export class TypeValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: typesValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: typesValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateExists(repo: TypeRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{ message: typesValidationStrings.error.notFound },
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({ message: typesValidationStrings.error.notFound });
 		}
 	}
 
 	static async validateDelete(repo: TypeRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: typesValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: typesValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

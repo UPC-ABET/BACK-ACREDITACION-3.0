@@ -331,7 +331,7 @@ export const coursesValidationStrings = {
 
 ### Rule
 
-The global exception filter (`AllExceptionsFilter`) checks every exception message against `/^(error|success|warning)\./`. If it matches, the key passes through. If not, it's replaced with a status-based default and the original message is logged server-side at `warn` level.
+The global exception filter (`AllExceptionsFilter`) maps domain errors (`src/commons/domain-error.ts`) to HTTP via their `kind`, and also handles NestJS `HttpException`s. For both, it checks the message/key against `/^(error|success|warning)\./`. If it matches, the key passes through. If not, it's replaced with a status-based default and the original message is logged server-side at `warn` level.
 
 **Never throw exceptions with raw text messages.** Always use i18n keys from validation strings.
 
@@ -339,21 +339,28 @@ The global exception filter (`AllExceptionsFilter`) checks every exception messa
 
 ### Business Rule Validation (in `core/<module>.validation.ts`)
 
+Validation classes belong to the domain layer and **must not couple to HTTP**. Throw the domain
+errors from `src/commons/domain-error.ts` (`BadRequestError`, `NotFoundError`, `ConflictError`,
+`ForbiddenError`, `UnauthorizedError`) — never `HttpException`/`HttpStatus` or the NestJS sugar
+exceptions. `AllExceptionsFilter` maps each error's `kind` to the HTTP status and i18n response.
+
 ```typescript
+import { BadRequestError } from 'src/commons/domain-error';
+
 export class CourseValidation {
 	static async validateCreate(repo: CourseRepository, data: any) {
 		const errors: string[] = [];
 		const exists = await repo.findOneByCondition({ where: { name: data.name } });
 		if (exists) errors.push(coursesValidationStrings.error.nameExists);
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: coursesValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: coursesValidationStrings.result.createFailed, errors });
 		}
 	}
 }
 ```
+
+Each domain error accepts either an i18n key string or `{ message, errors }`. Services (the
+application layer) may still throw NestJS `HttpException`s for transport-level concerns.
 
 ### DTO Validation (in `model/<module>.dtos.ts`)
 
@@ -567,6 +574,8 @@ await this.mailService.sendRawEmail({
 - Mock pattern for validation tests:
 
 ```typescript
+import { DomainError } from 'src/commons/domain-error';
+
 const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
@@ -587,7 +596,7 @@ describe('CourseValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				CourseValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 });
@@ -643,6 +652,7 @@ These are acknowledged and intentionally not fixed:
 - **Don't create barrel/index.ts files.**
 - **Don't use raw `@Column()` — use custom decorators.**
 - **Don't throw exceptions with raw text — use i18n keys.**
+- **Don't couple domain validation to HTTP — `core/*.validation.ts` throws domain errors from `src/commons/domain-error.ts`, never `HttpException`/`HttpStatus`.**
 - **Don't use nodemailer directly — use `MailService`.**
 - **Don't use `any` in base class signatures.**
 - **Don't use `process.env` directly — use `ConfigService`.**

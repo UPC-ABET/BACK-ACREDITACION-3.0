@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, ConflictError, NotFoundError } from 'src/commons/domain-error';
 import {
 	CourseSectionRepository,
 	CourseSectionDeleteBlockerCounts,
@@ -32,13 +32,10 @@ export class CourseSectionValidation {
 		if (exists) errors.push(courseSectionsValidationStrings.error.sectionExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: courseSectionsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseSectionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -63,24 +60,18 @@ export class CourseSectionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: courseSectionsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseSectionsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: CourseSectionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: courseSectionsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseSectionsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -101,10 +92,10 @@ export class CourseSectionValidation {
 		if (exists) errors.push(courseSectionsValidationStrings.error.sectionExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: courseSectionsValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseSectionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -115,13 +106,10 @@ export class CourseSectionValidation {
 	) {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
-			throw new HttpException(
-				{
-					message: courseSectionsValidationStrings.result.updateFailed,
-					errors: [courseSectionsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: courseSectionsValidationStrings.result.updateFailed,
+				errors: [courseSectionsValidationStrings.error.notFound],
+			});
 		}
 
 		const courseId = data.courseId ?? entity.courseId;
@@ -139,39 +127,30 @@ export class CourseSectionValidation {
 				},
 			});
 			if (exists && exists.id !== id) {
-				throw new HttpException(
-					{
-						message: courseSectionsValidationStrings.result.updateFailed,
-						errors: [courseSectionsValidationStrings.error.sectionExists],
-					},
-					HttpStatus.BAD_REQUEST,
-				);
+				throw new BadRequestError({
+					message: courseSectionsValidationStrings.result.updateFailed,
+					errors: [courseSectionsValidationStrings.error.sectionExists],
+				});
 			}
 		}
 	}
 
 	static async validateMaintenanceDelete(repo: CourseSectionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: courseSectionsValidationStrings.result.deleteFailed,
-					errors: [courseSectionsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: courseSectionsValidationStrings.result.deleteFailed,
+				errors: [courseSectionsValidationStrings.error.notFound],
+			});
 		}
 
 		const counts = await repo.findDeleteBlockerCounts(id);
 		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
 
 		if (blockers.length > 0) {
-			throw new HttpException(
-				{
-					message: courseSectionsValidationStrings.error.inUse,
-					errors: blockers,
-				},
-				HttpStatus.CONFLICT,
-			);
+			throw new ConflictError({
+				message: courseSectionsValidationStrings.error.inUse,
+				errors: blockers,
+			});
 		}
 	}
 }

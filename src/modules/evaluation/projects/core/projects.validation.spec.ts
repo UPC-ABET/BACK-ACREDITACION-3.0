@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { ProjectValidation } from './projects.validation';
 
 const mockRepo = {
@@ -24,7 +24,7 @@ describe('ProjectValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				ProjectValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -41,7 +41,7 @@ describe('ProjectValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(ProjectValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -56,7 +56,7 @@ describe('ProjectValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(ProjectValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -64,7 +64,7 @@ describe('ProjectValidation', () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
 			mockRepo.hasRubricScores.mockResolvedValue(true);
 			await expect(ProjectValidation.validateDelete(mockRepo as any, 1)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});

@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestError, NotFoundError } from 'src/commons/domain-error';
 import { graValidationStrings } from '../config/strings/gra.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
@@ -17,30 +17,30 @@ export type GraTokenData = {
 export class GraValidation {
 	static validateToken(tokenData: GraTokenData | null): asserts tokenData is GraTokenData {
 		if (!tokenData) {
-			throw new NotFoundException(graValidationStrings.error.tokenNotFound);
+			throw new NotFoundError(graValidationStrings.error.tokenNotFound);
 		}
 		if (tokenData.maxRegisterDate && new Date(tokenData.maxRegisterDate) < new Date()) {
-			throw new BadRequestException(graValidationStrings.error.tokenExpired);
+			throw new BadRequestError(graValidationStrings.error.tokenExpired);
 		}
 		if (tokenData.surveyStatusCode === TYPE_CODES.SURVEY_STATUS.CLOSED) {
-			throw new BadRequestException(graValidationStrings.error.alreadyCompleted);
+			throw new BadRequestError(graValidationStrings.error.alreadyCompleted);
 		}
 	}
 
 	static validateCompleteScores(scores: { outcomeConfigId: number; score: number }[]): void {
 		if (!scores || scores.length === 0) {
-			throw new BadRequestException(graValidationStrings.error.noScores);
+			throw new BadRequestError(graValidationStrings.error.noScores);
 		}
 		for (const item of scores) {
 			if (item.score < 1 || item.score > 5) {
-				throw new BadRequestException(graValidationStrings.error.invalidScore);
+				throw new BadRequestError(graValidationStrings.error.invalidScore);
 			}
 		}
 	}
 
 	static validateSendEmailRequest(pendingCount: number): void {
 		if (pendingCount === 0) {
-			throw new BadRequestException(graValidationStrings.error.noPending);
+			throw new BadRequestError(graValidationStrings.error.noPending);
 		}
 	}
 }

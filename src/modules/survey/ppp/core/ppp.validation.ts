@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, NotFoundError } from 'src/commons/domain-error';
 import { PppConfigRepository } from './ppp-config.repository';
 import { CreatePppConfigDto, CreatePppSurveyDto } from '../model/ppp.dtos';
 import { pppValidationStrings } from '../config/strings/ppp.validation';
@@ -15,61 +15,40 @@ export class PppValidation {
 			academicPeriodId ?? undefined,
 		);
 		if (exists) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.configExists },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: pppValidationStrings.error.configExists });
 		}
 	}
 
 	static async validateUpdateConfig(repo: PppConfigRepository, id: number): Promise<void> {
 		const exists = await repo.findOnePpp(id);
 		if (!exists) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.configNotFound },
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({ message: pppValidationStrings.error.configNotFound });
 		}
 	}
 
 	static async validateDeleteConfig(repo: PppConfigRepository, id: number): Promise<void> {
 		const exists = await repo.findOnePpp(id);
 		if (!exists) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.configNotFound },
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({ message: pppValidationStrings.error.configNotFound });
 		}
 	}
 
 	static validateCreateSurvey(dto: CreatePppSurveyDto): void {
 		if (dto.practiceNumber !== 1 && dto.practiceNumber !== 2) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.invalidPracticeNumber },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: pppValidationStrings.error.invalidPracticeNumber });
 		}
 
 		if (dto.scores?.length === 0) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.noScores },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: pppValidationStrings.error.noScores });
 		}
 
 		const hasInvalidScore = dto.scores?.some((s) => s.score < 1 || s.score > 5);
 		if (hasInvalidScore) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.invalidScore },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: pppValidationStrings.error.invalidScore });
 		}
 
 		if (dto.ruc && !/^\d{11}$/.test(dto.ruc)) {
-			throw new HttpException(
-				{ message: pppValidationStrings.error.invalidRuc },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: pppValidationStrings.error.invalidRuc });
 		}
 	}
 

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, ConflictError, NotFoundError } from 'src/commons/domain-error';
 import { StudyPlanRepository, StudyPlanDeleteBlockerCounts } from './study-plans.repository';
 import { studyPlansValidationStrings } from '../config/strings/study-plans.validation';
 import {
@@ -24,13 +24,10 @@ export class StudyPlanValidation {
 		if (exists) errors.push(studyPlansValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlansValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlansValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -54,24 +51,18 @@ export class StudyPlanValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlansValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlansValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: StudyPlanRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studyPlansValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlansValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -92,10 +83,10 @@ export class StudyPlanValidation {
 		if (exists) errors.push(studyPlansValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: studyPlansValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlansValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -106,13 +97,10 @@ export class StudyPlanValidation {
 	) {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
-			throw new HttpException(
-				{
-					message: studyPlansValidationStrings.result.updateFailed,
-					errors: [studyPlansValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: studyPlansValidationStrings.result.updateFailed,
+				errors: [studyPlansValidationStrings.error.notFound],
+			});
 		}
 
 		const programId = data.programId ?? entity.programId;
@@ -124,39 +112,30 @@ export class StudyPlanValidation {
 		if (codeOrProgramChanged) {
 			const exists = await repo.findOneByCondition({ where: { programId, code } });
 			if (exists && exists.id !== id) {
-				throw new HttpException(
-					{
-						message: studyPlansValidationStrings.result.updateFailed,
-						errors: [studyPlansValidationStrings.error.codeExists],
-					},
-					HttpStatus.BAD_REQUEST,
-				);
+				throw new BadRequestError({
+					message: studyPlansValidationStrings.result.updateFailed,
+					errors: [studyPlansValidationStrings.error.codeExists],
+				});
 			}
 		}
 	}
 
 	static async validateMaintenanceDelete(repo: StudyPlanRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studyPlansValidationStrings.result.deleteFailed,
-					errors: [studyPlansValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: studyPlansValidationStrings.result.deleteFailed,
+				errors: [studyPlansValidationStrings.error.notFound],
+			});
 		}
 
 		const counts = await repo.findDeleteBlockerCounts(id);
 		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
 
 		if (blockers.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlansValidationStrings.error.inUse,
-					errors: blockers,
-				},
-				HttpStatus.CONFLICT,
-			);
+			throw new ConflictError({
+				message: studyPlansValidationStrings.error.inUse,
+				errors: blockers,
+			});
 		}
 	}
 }

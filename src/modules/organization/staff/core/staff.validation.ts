@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { StaffRepository } from './staff.repository';
 import { staffValidationStrings } from '../config/strings/staff.validation';
 
@@ -19,13 +19,10 @@ export class StaffValidation {
 		if (staffEmailExists) errors.push(staffValidationStrings.error.staffEmailExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: staffValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: staffValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -56,24 +53,18 @@ export class StaffValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: staffValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: staffValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: StaffRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: staffValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: staffValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

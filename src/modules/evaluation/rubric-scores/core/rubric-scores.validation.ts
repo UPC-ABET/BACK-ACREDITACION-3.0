@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { RubricScoreRepository } from './rubric-scores.repository';
 import { rubricScoresValidationStrings } from '../config/strings/rubric-scores.validation';
 
@@ -20,13 +20,10 @@ export class RubricScoreValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: rubricScoresValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricScoresValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -57,24 +54,18 @@ export class RubricScoreValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: rubricScoresValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricScoresValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: RubricScoreRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: rubricScoresValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricScoresValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

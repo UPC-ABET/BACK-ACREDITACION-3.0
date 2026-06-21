@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { StudyPlanValidation } from './study-plans.validation';
 
 const mockRepo = {
@@ -25,7 +25,7 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				StudyPlanValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -42,7 +42,7 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(StudyPlanValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -56,7 +56,7 @@ describe('StudyPlanValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(StudyPlanValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -77,7 +77,7 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the (program, code) already exists', async () => {
@@ -85,7 +85,7 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
 			await expect(
 				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -112,7 +112,7 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				StudyPlanValidation.validateMaintenanceUpdate(mockRepo as any, 999, { code: 'SP-2' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new (program, code) collides', async () => {
@@ -120,7 +120,7 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
 			await expect(
 				StudyPlanValidation.validateMaintenanceUpdate(mockRepo as any, 1, { code: 'SP-2' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -137,22 +137,22 @@ describe('StudyPlanValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				StudyPlanValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 when academic periods reference it', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
 			mockRepo.findDeleteBlockerCounts.mockResolvedValue({ academicPeriods: 3 });
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudyPlanValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.studyPlan.inUse');
 			expect(body.errors).toEqual(['error.studyPlan.usedInAcademicPeriods']);
 		});

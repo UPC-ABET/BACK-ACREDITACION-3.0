@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { StudentSectionEnrollmentValidation } from './student-section-enrollments.validation';
 
 const mockRepo = {
@@ -35,7 +35,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				StudentSectionEnrollmentValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the section course is not in the student study plan', async () => {
@@ -49,7 +49,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 					enrolledStudentId: 4,
 					courseSectionId: 3,
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the section period does not match the student study plan', async () => {
@@ -59,18 +59,18 @@ describe('StudentSectionEnrollmentValidation', () => {
 				courseInPlan: false,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudentSectionEnrollmentValidation.validateCreate(mockRepo as any, {
 					enrolledStudentId: 4,
 					courseSectionId: 3,
 				});
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			const body = caught!.getResponse() as { errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			const body = caught!;
 			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
 			expect(body.errors).not.toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
 		});
@@ -90,7 +90,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				StudentSectionEnrollmentValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -106,7 +106,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				StudentSectionEnrollmentValidation.validateDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -124,7 +124,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
 			await expect(
 				StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the section course is not in the student study plan', async () => {
@@ -134,15 +134,15 @@ describe('StudentSectionEnrollmentValidation', () => {
 				courseInPlan: false,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			const body = caught!.getResponse() as { errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			const body = caught!;
 			expect(body.errors).toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
 		});
 
@@ -153,15 +153,15 @@ describe('StudentSectionEnrollmentValidation', () => {
 				courseInPlan: false,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			const body = caught!.getResponse() as { errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			const body = caught!;
 			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
 		});
 	});
@@ -195,7 +195,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 				StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 999, {
 					courseSectionId: 21,
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new (student, section) pair already exists', async () => {
@@ -205,7 +205,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 				StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
 					enrolledStudentId: 11,
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new pair course is not in the student study plan', async () => {
@@ -216,17 +216,17 @@ describe('StudentSectionEnrollmentValidation', () => {
 				courseInPlan: false,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
 					courseSectionId: 21,
 				});
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			const body = caught!.getResponse() as { errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			const body = caught!;
 			expect(body.errors).toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
 		});
 
@@ -238,17 +238,17 @@ describe('StudentSectionEnrollmentValidation', () => {
 				courseInPlan: false,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
 					courseSectionId: 21,
 				});
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			const body = caught!.getResponse() as { errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			const body = caught!;
 			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
 		});
 	});
@@ -266,7 +266,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				StudentSectionEnrollmentValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 naming the exact blocking relations', async () => {
@@ -277,16 +277,16 @@ describe('StudentSectionEnrollmentValidation', () => {
 				studentCourseOutcomeGrades: 1,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudentSectionEnrollmentValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.studentSectionEnrollment.inUse');
 			expect(body.errors).toEqual([
 				'error.studentSectionEnrollment.usedInStudentCourseGrades',

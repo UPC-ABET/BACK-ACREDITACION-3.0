@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { SurveyRepository } from './surveys.repository';
 import { surveysValidationStrings } from '../config/strings/surveys.validation';
 
@@ -17,13 +17,10 @@ export class SurveyValidation {
 		if (exists) errors.push(surveysValidationStrings.error.surveyExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: surveysValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: surveysValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -50,24 +47,18 @@ export class SurveyValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: surveysValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: surveysValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: SurveyRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: surveysValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: surveysValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

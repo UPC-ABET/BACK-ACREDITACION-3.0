@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ResponseDto } from '../../commons/response.dtos';
+import { DomainError, DomainErrorKind } from '../../commons/domain-error';
 import { sharedStrings } from '../strings/shared.strings';
 
 const I18N_KEY_PATTERN = /^(error|success|warning)\./;
@@ -20,6 +21,14 @@ const STATUS_I18N_KEYS: Record<number, string> = {
 	[HttpStatus.CONFLICT]: 'error.conflict',
 };
 
+const DOMAIN_ERROR_STATUS: Record<DomainErrorKind, number> = {
+	badRequest: HttpStatus.BAD_REQUEST,
+	unauthorized: HttpStatus.UNAUTHORIZED,
+	forbidden: HttpStatus.FORBIDDEN,
+	notFound: HttpStatus.NOT_FOUND,
+	conflict: HttpStatus.CONFLICT,
+};
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
 	private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -30,7 +39,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
 		let response: ResponseDto;
 
-		if (exception instanceof HttpException) {
+		if (exception instanceof DomainError) {
+			const status = DOMAIN_ERROR_STATUS[exception.kind];
+			let message: string;
+
+			if (I18N_KEY_PATTERN.test(exception.messageKey)) {
+				message = exception.messageKey;
+			} else {
+				message = STATUS_I18N_KEYS[status] ?? sharedStrings.error.internalServer;
+				this.logger.warn(`Suppressed non-i18n domain error message: ${exception.message}`);
+			}
+
+			response = { code: status, message, data: exception.errors ?? null };
+		} else if (exception instanceof HttpException) {
 			const status = exception.getStatus();
 			const body = exception.getResponse();
 

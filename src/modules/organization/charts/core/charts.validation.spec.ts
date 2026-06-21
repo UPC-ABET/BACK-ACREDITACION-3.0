@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ChartValidation } from './charts.validation';
 
@@ -31,7 +31,7 @@ describe('ChartValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				ChartValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -46,7 +46,7 @@ describe('ChartValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(ChartValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -60,7 +60,7 @@ describe('ChartValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(ChartValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -91,7 +91,7 @@ describe('ChartValidation', () => {
 			mockRepo.entityExists.mockResolvedValue(true);
 			await expect(
 				ChartValidation.validateMaintenanceCreate(mockRepo as any, 100, courseDto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when a coded entity type is missing its entityCode', async () => {
@@ -106,7 +106,7 @@ describe('ChartValidation', () => {
 					...courseDto,
 					entityCode: undefined,
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when creating a read-only (school) type', async () => {
@@ -118,7 +118,7 @@ describe('ChartValidation', () => {
 			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.SCHOOL);
 			await expect(
 				ChartValidation.validateMaintenanceCreate(mockRepo as any, 100, courseDto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -134,7 +134,7 @@ describe('ChartValidation', () => {
 			mockRepo.getNodeWithType.mockResolvedValue({ id: 5, entityTypeCode: ENTITY.SCHOOL });
 			await expect(
 				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { title: {} }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -151,7 +151,7 @@ describe('ChartValidation', () => {
 			mockRepo.getNodeWithType.mockResolvedValue({ id: 5, entityTypeCode: ENTITY.PROGRAM });
 			mockRepo.countCourseIfcInSubtree.mockResolvedValue(2);
 			await expect(ChartValidation.validateMaintenanceDelete(mockRepo as any, 5)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -159,7 +159,7 @@ describe('ChartValidation', () => {
 			mockRepo.getNodeWithType.mockResolvedValue({ id: 5, entityTypeCode: ENTITY.SCHOOL });
 			mockRepo.countCourseIfcInSubtree.mockResolvedValue(0);
 			await expect(ChartValidation.validateMaintenanceDelete(mockRepo as any, 5)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});

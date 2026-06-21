@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { GraValidation, GraTokenData } from './gra.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
@@ -27,13 +27,13 @@ describe('GraValidation', () => {
 		});
 
 		it('throws NotFound when the token is missing', () => {
-			expect(() => GraValidation.validateToken(null)).toThrow(NotFoundException);
+			expect(() => GraValidation.validateToken(null)).toThrow(DomainError);
 		});
 
 		it('throws BadRequest when the deadline has passed', () => {
 			expect(() =>
 				GraValidation.validateToken({ ...baseToken, maxRegisterDate: '2000-01-01' }),
-			).toThrow(BadRequestException);
+			).toThrow(DomainError);
 		});
 
 		it('throws BadRequest when the survey is already closed', () => {
@@ -42,7 +42,7 @@ describe('GraValidation', () => {
 					...baseToken,
 					surveyStatusCode: TYPE_CODES.SURVEY_STATUS.CLOSED,
 				}),
-			).toThrow(BadRequestException);
+			).toThrow(DomainError);
 		});
 	});
 
@@ -57,13 +57,13 @@ describe('GraValidation', () => {
 		});
 
 		it('throws when there are no scores', () => {
-			expect(() => GraValidation.validateCompleteScores([])).toThrow(BadRequestException);
+			expect(() => GraValidation.validateCompleteScores([])).toThrow(DomainError);
 		});
 
 		it('throws when a score is out of range', () => {
 			expect(() =>
 				GraValidation.validateCompleteScores([{ outcomeConfigId: 1, score: 6 }]),
-			).toThrow(BadRequestException);
+			).toThrow(DomainError);
 		});
 	});
 
@@ -73,7 +73,7 @@ describe('GraValidation', () => {
 		});
 
 		it('throws when there are no pending recipients', () => {
-			expect(() => GraValidation.validateSendEmailRequest(0)).toThrow(BadRequestException);
+			expect(() => GraValidation.validateSendEmailRequest(0)).toThrow(DomainError);
 		});
 	});
 });

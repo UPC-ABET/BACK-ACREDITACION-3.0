@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, NotFoundError } from 'src/commons/domain-error';
 import { EntityManager } from 'typeorm';
 import { IfcFindingRepository } from './ifc-findings.repository';
 import { ifcFindingsValidationStrings } from '../config/strings/ifc-findings.validation';
@@ -17,13 +17,10 @@ export class IfcFindingValidation {
 		if (exists) errors.push(ifcFindingsValidationStrings.error.relationExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: ifcFindingsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: ifcFindingsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -48,24 +45,18 @@ export class IfcFindingValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: ifcFindingsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: ifcFindingsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: IfcFindingRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: ifcFindingsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: ifcFindingsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -75,13 +66,10 @@ export class IfcFindingValidation {
 			[id],
 		);
 		if (rows.length === 0) {
-			throw new HttpException(
-				{
-					message: ifcFindingsValidationStrings.result.deleteFailed,
-					errors: [ifcFindingsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: ifcFindingsValidationStrings.result.deleteFailed,
+				errors: [ifcFindingsValidationStrings.error.notFound],
+			});
 		}
 		return rows[0];
 	}
@@ -104,13 +92,10 @@ export class IfcFindingValidation {
 			[courseId, periodId, courseLevelCode],
 		);
 		if (rows.length === 0) {
-			throw new HttpException(
-				{
-					message: ifcFindingsValidationStrings.result.deleteFailed,
-					errors: [ifcFindingsValidationStrings.error.courseChartNotFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: ifcFindingsValidationStrings.result.deleteFailed,
+				errors: [ifcFindingsValidationStrings.error.courseChartNotFound],
+			});
 		}
 		return rows[0];
 	}

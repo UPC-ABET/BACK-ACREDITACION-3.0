@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { CommissionRepository } from './commissions.repository';
 import { commissionsValidationStrings } from '../config/strings/commissions.validation';
 
@@ -16,13 +16,10 @@ export class CommissionValidation {
 		if (exists) errors.push(commissionsValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: commissionsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: commissionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -46,24 +43,18 @@ export class CommissionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: commissionsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: commissionsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: CommissionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: commissionsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: commissionsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

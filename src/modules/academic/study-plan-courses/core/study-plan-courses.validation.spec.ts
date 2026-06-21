@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { StudyPlanCourseValidation } from './study-plan-courses.validation';
 
 const mockRepo = {
@@ -24,7 +24,7 @@ describe('StudyPlanCourseValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				StudyPlanCourseValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -42,7 +42,7 @@ describe('StudyPlanCourseValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				StudyPlanCourseValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('StudyPlanCourseValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(StudyPlanCourseValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -91,7 +91,7 @@ describe('StudyPlanCourseValidation', () => {
 					null,
 					linkDto as any,
 				),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when both courseId and newCourse are provided', async () => {
@@ -100,7 +100,7 @@ describe('StudyPlanCourseValidation', () => {
 					...linkDto,
 					newCourse: { code: 'C1', name: { es: 'a', en: 'b' } },
 				} as any),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when neither courseId nor newCourse is provided', async () => {
@@ -110,7 +110,7 @@ describe('StudyPlanCourseValidation', () => {
 					isElective: false,
 					levelTypeId: 2,
 				} as any),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the course is already in the plan for that period', async () => {
@@ -122,7 +122,7 @@ describe('StudyPlanCourseValidation', () => {
 					5,
 					linkDto as any,
 				),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -139,22 +139,22 @@ describe('StudyPlanCourseValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				StudyPlanCourseValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 naming the exact blocking relations', async () => {
 			mockRepo.findOneById.mockResolvedValue({ id: 1 });
 			mockRepo.findDeleteBlockerCounts.mockResolvedValue({ rubrics: 1, courseOutcomeMappings: 2 });
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await StudyPlanCourseValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.studyPlanCourse.inUse');
 			expect(body.errors).toEqual([
 				'error.studyPlanCourse.usedInRubrics',

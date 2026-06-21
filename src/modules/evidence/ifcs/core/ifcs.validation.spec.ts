@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { IfcValidation } from './ifcs.validation';
 import { IFC_OPS } from '../api/ifcs.constants';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -28,7 +28,7 @@ describe('IfcValidation', () => {
 		it('throws when an IFC already exists for the course', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(IfcValidation.validateCreate(mockRepo as any, { courseId: 1 })).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -50,7 +50,7 @@ describe('IfcValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(IfcValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -59,7 +59,7 @@ describe('IfcValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
 			await expect(
 				IfcValidation.validateUpdate(mockRepo as any, 1, { courseId: 9 }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -71,9 +71,7 @@ describe('IfcValidation', () => {
 
 		it('throws when the entity is not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(IfcValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
-			);
+			await expect(IfcValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -89,14 +87,14 @@ describe('IfcValidation', () => {
 		});
 
 		it('throws 409 when the current status is not allowed', () => {
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				IfcValidation.assertCurrentStatus('other', [TYPE_CODES.IFC_STATUS.SAVED], IFC_OPS.SUBMIT);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.CONFLICT);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
 		});
 	});
 
@@ -106,14 +104,14 @@ describe('IfcValidation', () => {
 		});
 
 		it('throws 403 when no staff id is present', () => {
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				IfcValidation.assertRequesterIsStaff(null, IFC_OPS.SUBMIT);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.FORBIDDEN);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('forbidden');
 		});
 	});
 
@@ -134,7 +132,7 @@ describe('IfcValidation', () => {
 					{ ...ctx, courseChartId: null },
 					IFC_OPS.APPROVE,
 				),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 			expect(mockRunner.query).not.toHaveBeenCalled();
 		});
 
@@ -142,7 +140,7 @@ describe('IfcValidation', () => {
 			mockRunner.query.mockResolvedValue([]);
 			await expect(
 				IfcValidation.assertHasHigherLevel(mockRunner as any, ctx, IFC_OPS.APPROVE),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -157,14 +155,14 @@ describe('IfcValidation', () => {
 		});
 
 		it('throws 409 when the status is not editable', () => {
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				IfcValidation.assertCurrentStatusEditable('other', IFC_OPS.PATCH);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.CONFLICT);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
 		});
 	});
 
@@ -180,7 +178,7 @@ describe('IfcValidation', () => {
 			mockRunner.query.mockResolvedValue([{ '?column?': 1 }]);
 			await expect(
 				IfcValidation.assertNoIfcExists(mockRunner as any, 1, 2, IFC_OPS.CREATE),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -190,14 +188,14 @@ describe('IfcValidation', () => {
 		});
 
 		it('throws 404 when no rows are found', () => {
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				IfcValidation.assertChartFound([], 'prefill');
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.NOT_FOUND);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('notFound');
 		});
 	});
 
@@ -218,7 +216,7 @@ describe('IfcValidation', () => {
 					{ ...ctx, requesterStaffId: null },
 					IFC_OPS.SUBMIT,
 				),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 			expect(mockRunner.query).not.toHaveBeenCalled();
 		});
 
@@ -226,7 +224,7 @@ describe('IfcValidation', () => {
 			mockRunner.query.mockResolvedValue([]);
 			await expect(
 				IfcValidation.assertIsInCourseChain(mockRunner as any, ctx, IFC_OPS.SUBMIT),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -243,7 +241,7 @@ describe('IfcValidation', () => {
 
 		it('throws when there are no findings', () => {
 			expect(() => IfcValidation.assertFindingsAndActionsPresent([], [], IFC_OPS.SUBMIT)).toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -254,7 +252,7 @@ describe('IfcValidation', () => {
 					[{ findingTempId: 'f1' }],
 					IFC_OPS.SUBMIT,
 				),
-			).toThrow(HttpException);
+			).toThrow(DomainError);
 		});
 	});
 
@@ -265,7 +263,7 @@ describe('IfcValidation', () => {
 
 		it('throws when the real id is undefined', () => {
 			expect(() => IfcValidation.assertFindingTempIdResolved(undefined, IFC_OPS.CREATE)).toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});

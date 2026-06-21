@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { FindingOutcomeRepository } from './finding-outcomes.repository';
 import { findingOutcomesValidationStrings } from '../config/strings/finding-outcomes.validation';
 
@@ -16,13 +16,10 @@ export class FindingOutcomeValidation {
 		if (exists) errors.push(findingOutcomesValidationStrings.error.relationExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: findingOutcomesValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingOutcomesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -47,24 +44,18 @@ export class FindingOutcomeValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: findingOutcomesValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingOutcomesValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: FindingOutcomeRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: findingOutcomesValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingOutcomesValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

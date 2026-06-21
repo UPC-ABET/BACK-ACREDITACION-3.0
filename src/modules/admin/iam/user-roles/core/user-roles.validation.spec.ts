@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { UserRoleValidation } from './user-roles.validation';
 
 const mockRepo = {
@@ -21,7 +21,7 @@ describe('UserRoleValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 5 });
 			await expect(
 				UserRoleValidation.validateCreate(mockRepo as any, { userId: 1, roleId: 2 }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -36,7 +36,7 @@ describe('UserRoleValidation', () => {
 		it('throws when assignment not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(UserRoleValidation.validateUpdate(mockRepo as any, 99, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -45,7 +45,7 @@ describe('UserRoleValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
 			await expect(
 				UserRoleValidation.validateUpdate(mockRepo as any, 1, { roleId: 3 }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -58,7 +58,7 @@ describe('UserRoleValidation', () => {
 		it('throws when assignment not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(UserRoleValidation.validateDelete(mockRepo as any, 99)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});

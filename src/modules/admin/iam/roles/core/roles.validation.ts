@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { RoleRepository } from './roles.repository';
 import { rolesValidationStrings } from '../config/strings/roles.validation';
 
@@ -10,10 +10,7 @@ export class RoleValidation {
 		if (exists) errors.push(rolesValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: rolesValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: rolesValidationStrings.result.createFailed, errors });
 		}
 	}
 
@@ -29,19 +26,13 @@ export class RoleValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: rolesValidationStrings.result.updateFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: rolesValidationStrings.result.updateFailed, errors });
 		}
 	}
 
 	static async validateDelete(repo: RoleRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{ message: rolesValidationStrings.result.deleteFailed },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({ message: rolesValidationStrings.result.deleteFailed });
 		}
 	}
 }

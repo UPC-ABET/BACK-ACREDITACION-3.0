@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ProjectRepository } from './projects.repository';
 import { projectsValidationStrings } from '../config/strings/projects.validation';
 
@@ -13,13 +13,10 @@ export class ProjectValidation {
 		if (exists) errors.push(projectsValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: projectsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,35 +37,26 @@ export class ProjectValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: projectsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ProjectRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: projectsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectsValidationStrings.result.deleteFailed,
+			});
 		}
 
 		const hasScores = await repo.hasRubricScores(id);
 		if (hasScores) {
-			throw new HttpException(
-				{
-					message: projectsValidationStrings.result.deleteFailed,
-					errors: [projectsValidationStrings.error.hasEvaluations],
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectsValidationStrings.result.deleteFailed,
+				errors: [projectsValidationStrings.error.hasEvaluations],
+			});
 		}
 	}
 }

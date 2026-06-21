@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, ConflictError } from 'src/commons/domain-error';
 import { ProgramCommissionRepository } from './program-commissions.repository';
 import { OutcomeRepository } from 'src/modules/accreditation/outcomes/core/outcomes.repository';
 import { programCommissionsValidationStrings } from '../config/strings/program-commissions.validation';
@@ -18,13 +18,10 @@ export class ProgramCommissionValidation {
 		if (exists) errors.push(programCommissionsValidationStrings.error.programCommissionExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: programCommissionsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: programCommissionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -49,24 +46,18 @@ export class ProgramCommissionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: programCommissionsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: programCommissionsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ProgramCommissionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: programCommissionsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: programCommissionsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -87,13 +78,10 @@ export class ProgramCommissionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: programCommissionsValidationStrings.result.unassociateFailed,
-					errors,
-				},
-				HttpStatus.CONFLICT,
-			);
+			throw new ConflictError({
+				message: programCommissionsValidationStrings.result.unassociateFailed,
+				errors,
+			});
 		}
 	}
 }

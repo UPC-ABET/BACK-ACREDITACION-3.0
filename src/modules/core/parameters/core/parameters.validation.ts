@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ParameterRepository } from './parameters.repository';
 import { parametersValidationStrings } from '../config/strings/parameters.validation';
 
@@ -13,13 +13,10 @@ export class ParameterValidation {
 		if (exists) errors.push(parametersValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: parametersValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: parametersValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,24 +37,18 @@ export class ParameterValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: parametersValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: parametersValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ParameterRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: parametersValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: parametersValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

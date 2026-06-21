@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { IfcFindingValidation } from './ifc-findings.validation';
 
 const mockRepo = {
@@ -27,7 +27,7 @@ describe('IfcFindingValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				IfcFindingValidation.validateCreate(mockRepo as any, { ifcId: 1, findingId: 2 }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -52,7 +52,7 @@ describe('IfcFindingValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(IfcFindingValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -61,7 +61,7 @@ describe('IfcFindingValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
 			await expect(
 				IfcFindingValidation.validateUpdate(mockRepo as any, 1, { findingId: 9 }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -76,7 +76,7 @@ describe('IfcFindingValidation', () => {
 		it('throws when the entity is not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(IfcFindingValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -92,14 +92,14 @@ describe('IfcFindingValidation', () => {
 
 		it('throws 404 when the finding does not exist', async () => {
 			mockEm.query.mockResolvedValue([]);
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await IfcFindingValidation.assertFindingExists(mockEm as any, 999);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.NOT_FOUND);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('notFound');
 		});
 	});
 
@@ -114,14 +114,14 @@ describe('IfcFindingValidation', () => {
 
 		it('throws 404 when no course chart is found', async () => {
 			mockEm.query.mockResolvedValue([]);
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await IfcFindingValidation.resolveCourseChart(mockEm as any, 10, 7, 'COURSE');
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(HttpStatus.NOT_FOUND);
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('notFound');
 		});
 	});
 });

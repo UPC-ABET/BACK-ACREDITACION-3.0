@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { RubricQuestionRepository } from './rubric-questions.repository';
 import { rubricQuestionsValidationStrings } from '../config/strings/rubric-questions.validation';
 import { IsNull } from 'typeorm';
@@ -18,13 +18,10 @@ export class RubricQuestionValidation {
 		if (exists) errors.push(rubricQuestionsValidationStrings.error.questionExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: rubricQuestionsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricQuestionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -51,24 +48,18 @@ export class RubricQuestionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: rubricQuestionsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricQuestionsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: RubricQuestionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: rubricQuestionsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricQuestionsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

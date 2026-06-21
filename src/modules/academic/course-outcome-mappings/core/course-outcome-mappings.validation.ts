@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { CourseOutcomeMappingRepository } from './course-outcome-mappings.repository';
 import { BulkSaveCourseOutcomeMappingDto } from '../model/course-outcome-mappings.dtos';
 import { courseOutcomeMappingsValidationStrings } from '../config/strings/course-outcome-mappings.validation';
@@ -17,13 +17,10 @@ export class CourseOutcomeMappingValidation {
 		if (exists) errors.push(courseOutcomeMappingsValidationStrings.error.mappingExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: courseOutcomeMappingsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseOutcomeMappingsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -47,24 +44,18 @@ export class CourseOutcomeMappingValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: courseOutcomeMappingsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseOutcomeMappingsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: CourseOutcomeMappingRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: courseOutcomeMappingsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseOutcomeMappingsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -76,13 +67,10 @@ export class CourseOutcomeMappingValidation {
 
 		const scope = await repo.getProgramCommissionScope(data.programCommissionId);
 		if (!scope) {
-			throw new HttpException(
-				{
-					message: courseOutcomeMappingsValidationStrings.result.bulkSaveFailed,
-					errors: [courseOutcomeMappingsValidationStrings.error.programCommissionNotFound],
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseOutcomeMappingsValidationStrings.result.bulkSaveFailed,
+				errors: [courseOutcomeMappingsValidationStrings.error.programCommissionNotFound],
+			});
 		}
 
 		const [scopedCourseIds, scopedOutcomeIds, assignableTypeIds] = await Promise.all([
@@ -122,13 +110,10 @@ export class CourseOutcomeMappingValidation {
 			errors.push(courseOutcomeMappingsValidationStrings.error.duplicateCourseOutcome);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: courseOutcomeMappingsValidationStrings.result.bulkSaveFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: courseOutcomeMappingsValidationStrings.result.bulkSaveFailed,
+				errors,
+			});
 		}
 	}
 }

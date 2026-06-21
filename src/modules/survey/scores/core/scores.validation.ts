@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ScoreRepository } from './scores.repository';
 import { scoresValidationStrings } from '../config/strings/scores.validation';
 
@@ -20,13 +20,10 @@ export class ScoreValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: scoresValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: scoresValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -56,24 +53,18 @@ export class ScoreValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: scoresValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: scoresValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ScoreRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: scoresValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: scoresValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

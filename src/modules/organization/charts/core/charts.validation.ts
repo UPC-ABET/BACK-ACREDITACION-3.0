@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ChartRepository } from './charts.repository';
 import { chartsValidationStrings } from '../config/strings/charts.validation';
@@ -35,13 +35,10 @@ export class ChartValidation {
 		if (exists) errors.push(chartsValidationStrings.error.chartExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: chartsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -66,24 +63,18 @@ export class ChartValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: chartsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ChartRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: chartsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -119,10 +110,10 @@ export class ChartValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: chartsValidationStrings.result.maintenanceCreateFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.maintenanceCreateFailed,
+				errors,
+			});
 		}
 	}
 
@@ -133,13 +124,10 @@ export class ChartValidation {
 	) {
 		const node = await repo.getNodeWithType(id);
 		if (!node) {
-			throw new HttpException(
-				{
-					message: chartsValidationStrings.result.maintenanceUpdateFailed,
-					errors: [chartsValidationStrings.error.notFound],
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.maintenanceUpdateFailed,
+				errors: [chartsValidationStrings.error.notFound],
+			});
 		}
 
 		const errors: Array<string> = [];
@@ -175,23 +163,20 @@ export class ChartValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: chartsValidationStrings.result.maintenanceUpdateFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.maintenanceUpdateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateMaintenanceDelete(repo: ChartRepository, id: number) {
 		const node = await repo.getNodeWithType(id);
 		if (!node) {
-			throw new HttpException(
-				{
-					message: chartsValidationStrings.result.maintenanceDeleteFailed,
-					errors: [chartsValidationStrings.error.notFound],
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.maintenanceDeleteFailed,
+				errors: [chartsValidationStrings.error.notFound],
+			});
 		}
 
 		const errors: Array<string> = [];
@@ -205,10 +190,10 @@ export class ChartValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: chartsValidationStrings.result.maintenanceDeleteFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartsValidationStrings.result.maintenanceDeleteFailed,
+				errors,
+			});
 		}
 	}
 }

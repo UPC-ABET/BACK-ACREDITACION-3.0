@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { RubricQuestionCriteriaRepository } from './rubric-question-criterias.repository';
 import { rubricQuestionCriteriasValidationStrings } from '../config/strings/rubric-question-criterias.validation';
 
@@ -20,13 +20,10 @@ export class RubricQuestionCriteriaValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: rubricQuestionCriteriasValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricQuestionCriteriasValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -57,24 +54,18 @@ export class RubricQuestionCriteriaValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: rubricQuestionCriteriasValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricQuestionCriteriasValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: RubricQuestionCriteriaRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: rubricQuestionCriteriasValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: rubricQuestionCriteriasValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

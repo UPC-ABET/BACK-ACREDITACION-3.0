@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { RoleModulePermissionValidation } from './role-module-permissions.validation';
 
 const mockRepo = {
@@ -23,7 +23,7 @@ describe('RoleModulePermissionValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 7 });
 			await expect(
 				RoleModulePermissionValidation.validateCreate(mockRepo as any, basePayload),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -39,7 +39,7 @@ describe('RoleModulePermissionValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				RoleModulePermissionValidation.validateUpdate(mockRepo as any, 99, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new triple collides with another row', async () => {
@@ -49,7 +49,7 @@ describe('RoleModulePermissionValidation', () => {
 				RoleModulePermissionValidation.validateUpdate(mockRepo as any, 1, {
 					permissionTypeId: 200,
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -65,7 +65,7 @@ describe('RoleModulePermissionValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				RoleModulePermissionValidation.validateDelete(mockRepo as any, 99),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { CourseOutcomeMappingValidation } from './course-outcome-mappings.validation';
 
 const mockRepo = {
@@ -27,7 +27,7 @@ describe('CourseOutcomeMappingValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				CourseOutcomeMappingValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -45,7 +45,7 @@ describe('CourseOutcomeMappingValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				CourseOutcomeMappingValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -61,7 +61,7 @@ describe('CourseOutcomeMappingValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				CourseOutcomeMappingValidation.validateDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -93,7 +93,7 @@ describe('CourseOutcomeMappingValidation', () => {
 					programCommissionId: 999,
 					courses: [],
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when a course is out of scope', async () => {
@@ -103,7 +103,7 @@ describe('CourseOutcomeMappingValidation', () => {
 					programCommissionId: 5,
 					courses: [{ studyPlanCourseId: 999, outcomes: [] }],
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when an outcome is out of scope', async () => {
@@ -113,7 +113,7 @@ describe('CourseOutcomeMappingValidation', () => {
 					programCommissionId: 5,
 					courses: [{ studyPlanCourseId: 10, outcomes: [{ outcomeId: 999, outcomeTypeId: 1000 }] }],
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the outcome type is not assignable (e.g. formation)', async () => {
@@ -123,7 +123,7 @@ describe('CourseOutcomeMappingValidation', () => {
 					programCommissionId: 5,
 					courses: [{ studyPlanCourseId: 10, outcomes: [{ outcomeId: 100, outcomeTypeId: 9999 }] }],
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the same outcome is set twice on one course', async () => {
@@ -141,7 +141,7 @@ describe('CourseOutcomeMappingValidation', () => {
 						},
 					],
 				}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 });

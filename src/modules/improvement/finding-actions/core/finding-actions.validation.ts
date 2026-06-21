@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { FindingActionRepository } from './finding-actions.repository';
 import { findingActionsValidationStrings } from '../config/strings/finding-actions.validation';
 
@@ -16,13 +16,10 @@ export class FindingActionValidation {
 		if (exists) errors.push(findingActionsValidationStrings.error.relationExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: findingActionsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingActionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -47,24 +44,18 @@ export class FindingActionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: findingActionsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingActionsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: FindingActionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: findingActionsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingActionsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

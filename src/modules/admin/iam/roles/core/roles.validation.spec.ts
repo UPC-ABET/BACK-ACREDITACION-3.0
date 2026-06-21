@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { RoleValidation } from './roles.validation';
 
 const mockRepo = {
@@ -21,7 +21,7 @@ describe('RoleValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				RoleValidation.validateCreate(mockRepo as any, { code: 'COORDINATOR' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -34,7 +34,7 @@ describe('RoleValidation', () => {
 		it('throws when role not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(RoleValidation.validateUpdate(mockRepo as any, 99, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -43,7 +43,7 @@ describe('RoleValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2 });
 			await expect(
 				RoleValidation.validateUpdate(mockRepo as any, 1, { code: 'ADMIN' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -55,9 +55,7 @@ describe('RoleValidation', () => {
 
 		it('throws when role not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			await expect(RoleValidation.validateDelete(mockRepo as any, 99)).rejects.toThrow(
-				HttpException,
-			);
+			await expect(RoleValidation.validateDelete(mockRepo as any, 99)).rejects.toThrow(DomainError);
 		});
 	});
 });

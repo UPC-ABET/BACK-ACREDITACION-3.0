@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 
 import { ChartHeadsValidation } from './chart-heads.validation';
 import type { ConfigureChartHeadsDto } from '../model/chart-heads.dtos';
@@ -39,7 +39,7 @@ describe('ChartHeadsValidation', () => {
 			mockRepo.academicPeriodExists.mockResolvedValue(false);
 			await expect(
 				ChartHeadsValidation.validateConfigure(mockRepo as any, makeDto()),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the payload repeats a school id', async () => {
@@ -50,7 +50,7 @@ describe('ChartHeadsValidation', () => {
 				],
 			});
 			await expect(ChartHeadsValidation.validateConfigure(mockRepo as any, dto)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 
@@ -58,21 +58,21 @@ describe('ChartHeadsValidation', () => {
 			mockRepo.findMissingSchoolIds.mockResolvedValue([99]);
 			await expect(
 				ChartHeadsValidation.validateConfigure(mockRepo as any, makeDto()),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when a referenced staff does not exist', async () => {
 			mockRepo.findMissingStaffIds.mockResolvedValue([9]);
 			await expect(
 				ChartHeadsValidation.validateConfigure(mockRepo as any, makeDto()),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when a referenced user does not exist', async () => {
 			mockRepo.findMissingUserIds.mockResolvedValue([12]);
 			await expect(
 				ChartHeadsValidation.validateConfigure(mockRepo as any, makeDto()),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('skips the user check when no userId is provided', async () => {

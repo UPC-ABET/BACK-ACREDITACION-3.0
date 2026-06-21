@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, NotFoundError } from 'src/commons/domain-error';
 import { AcademicPeriodRepository } from './academic-periods.repository';
 import { academicPeriodsValidationStrings } from '../config/strings/academic-periods.validation';
 
@@ -17,13 +17,10 @@ export class AcademicPeriodValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: academicPeriodsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: academicPeriodsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -33,13 +30,10 @@ export class AcademicPeriodValidation {
 		validModalityTypeIds: Array<number>,
 	) {
 		if (!validModalityTypeIds.includes(data.modalityTypeId)) {
-			throw new HttpException(
-				{
-					message: academicPeriodsValidationStrings.result.createFailed,
-					errors: [academicPeriodsValidationStrings.error.modalityInvalid],
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: academicPeriodsValidationStrings.result.createFailed,
+				errors: [academicPeriodsValidationStrings.error.modalityInvalid],
+			});
 		}
 
 		await this.validateCreate(repo, data);
@@ -48,13 +42,10 @@ export class AcademicPeriodValidation {
 	static async validateActivate(repo: AcademicPeriodRepository, id: number) {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
-			throw new HttpException(
-				{
-					message: academicPeriodsValidationStrings.result.activateFailed,
-					errors: [academicPeriodsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: academicPeriodsValidationStrings.result.activateFailed,
+				errors: [academicPeriodsValidationStrings.error.notFound],
+			});
 		}
 		return entity;
 	}
@@ -80,24 +71,18 @@ export class AcademicPeriodValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: academicPeriodsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: academicPeriodsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: AcademicPeriodRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: academicPeriodsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: academicPeriodsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

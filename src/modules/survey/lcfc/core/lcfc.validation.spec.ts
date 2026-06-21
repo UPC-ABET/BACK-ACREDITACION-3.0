@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { LcfcValidation, LcfcTokenData } from './lcfc.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
@@ -29,13 +29,13 @@ describe('LcfcValidation', () => {
 		});
 
 		it('throws NotFound when the token is missing', () => {
-			expect(() => LcfcValidation.validateToken(null)).toThrow(NotFoundException);
+			expect(() => LcfcValidation.validateToken(null)).toThrow(DomainError);
 		});
 
 		it('throws BadRequest when the deadline has passed', () => {
 			expect(() =>
 				LcfcValidation.validateToken({ ...baseToken, maxRegisterDate: '2000-01-01' }),
-			).toThrow(BadRequestException);
+			).toThrow(DomainError);
 		});
 
 		it('throws BadRequest when the survey is already closed', () => {
@@ -44,7 +44,7 @@ describe('LcfcValidation', () => {
 					...baseToken,
 					surveyStatusCode: TYPE_CODES.SURVEY_STATUS.CLOSED,
 				}),
-			).toThrow(BadRequestException);
+			).toThrow(DomainError);
 		});
 	});
 
@@ -59,12 +59,12 @@ describe('LcfcValidation', () => {
 		});
 
 		it('throws when there are no scores', () => {
-			expect(() => LcfcValidation.validateCompleteScores([])).toThrow(BadRequestException);
+			expect(() => LcfcValidation.validateCompleteScores([])).toThrow(DomainError);
 		});
 
 		it('throws when a score is out of range', () => {
 			expect(() => LcfcValidation.validateCompleteScores([{ outcomeId: 1, score: 11 }])).toThrow(
-				BadRequestException,
+				DomainError,
 			);
 		});
 	});
@@ -75,7 +75,7 @@ describe('LcfcValidation', () => {
 		});
 
 		it('throws when there are no pending recipients', () => {
-			expect(() => LcfcValidation.validateSendRequest(0)).toThrow(BadRequestException);
+			expect(() => LcfcValidation.validateSendRequest(0)).toThrow(DomainError);
 		});
 	});
 });

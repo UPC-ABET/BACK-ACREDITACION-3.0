@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { PerformanceLevelRepository } from './performance-levels.repository';
 import { performanceLevelsValidationStrings } from '../config/strings/performance-levels.validation';
 
@@ -19,13 +19,10 @@ export class PerformanceLevelValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: performanceLevelsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: performanceLevelsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -53,24 +50,18 @@ export class PerformanceLevelValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: performanceLevelsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: performanceLevelsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: PerformanceLevelRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: performanceLevelsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: performanceLevelsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

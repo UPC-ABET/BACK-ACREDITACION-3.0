@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { NotificationRepository } from './notifications.repository';
 import { notificationsValidationStrings } from '../config/strings/notifications.validation';
 
@@ -17,13 +17,10 @@ export class NotificationValidation {
 		if (exists) errors.push(notificationsValidationStrings.error.notificationExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: notificationsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: notificationsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -50,24 +47,18 @@ export class NotificationValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: notificationsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: notificationsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: NotificationRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: notificationsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: notificationsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

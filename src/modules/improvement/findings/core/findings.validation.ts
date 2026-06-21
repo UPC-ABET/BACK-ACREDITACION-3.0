@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { FindingRepository } from './findings.repository';
 import { findingsValidationStrings } from '../config/strings/findings.validation';
 
@@ -18,13 +18,10 @@ export class FindingValidation {
 		if (exists) errors.push(findingsValidationStrings.error.findingExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: findingsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -53,24 +50,18 @@ export class FindingValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: findingsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: FindingRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: findingsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: findingsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

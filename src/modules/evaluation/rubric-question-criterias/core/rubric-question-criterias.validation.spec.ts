@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { RubricQuestionCriteriaValidation } from './rubric-question-criterias.validation';
 
 const mockRepo = {
@@ -23,7 +23,7 @@ describe('RubricQuestionCriteriaValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				RubricQuestionCriteriaValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -41,7 +41,7 @@ describe('RubricQuestionCriteriaValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				RubricQuestionCriteriaValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('RubricQuestionCriteriaValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				RubricQuestionCriteriaValidation.validateDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 });

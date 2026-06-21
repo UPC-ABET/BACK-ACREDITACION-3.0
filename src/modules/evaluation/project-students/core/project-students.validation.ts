@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ProjectStudentRepository } from './project-students.repository';
 import { projectStudentsValidationStrings } from '../config/strings/project-students.validation';
 
@@ -16,13 +16,10 @@ export class ProjectStudentValidation {
 		if (exists) errors.push(projectStudentsValidationStrings.error.projectStudentExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: projectStudentsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectStudentsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -47,24 +44,18 @@ export class ProjectStudentValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: projectStudentsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectStudentsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ProjectStudentRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: projectStudentsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectStudentsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

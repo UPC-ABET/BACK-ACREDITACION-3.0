@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { StudyPlanAcademicPeriodValidation } from './study-plan-academic-periods.validation';
 
 const mockRepo = {
@@ -23,7 +23,7 @@ describe('StudyPlanAcademicPeriodValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				StudyPlanAcademicPeriodValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -41,7 +41,7 @@ describe('StudyPlanAcademicPeriodValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
 				StudyPlanAcademicPeriodValidation.validateUpdate(mockRepo as any, 999, {}),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('StudyPlanAcademicPeriodValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				StudyPlanAcademicPeriodValidation.validateDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { StudyPlanAcademicPeriodRepository } from './study-plan-academic-periods.repository';
 import { studyPlanAcademicPeriodsValidationStrings } from '../config/strings/study-plan-academic-periods.validation';
 
@@ -17,13 +17,10 @@ export class StudyPlanAcademicPeriodValidation {
 			errors.push(studyPlanAcademicPeriodsValidationStrings.error.studyPlanAcademicPeriodExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlanAcademicPeriodsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanAcademicPeriodsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -47,24 +44,18 @@ export class StudyPlanAcademicPeriodValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlanAcademicPeriodsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanAcademicPeriodsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: StudyPlanAcademicPeriodRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studyPlanAcademicPeriodsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanAcademicPeriodsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { RoleModulePermissionRepository } from './role-module-permissions.repository';
 import { roleModulePermissionsValidationStrings } from '../config/strings/role-module-permissions.validation';
 
@@ -16,10 +16,10 @@ export class RoleModulePermissionValidation {
 		if (exists) errors.push(roleModulePermissionsValidationStrings.error.alreadyAssigned);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: roleModulePermissionsValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: roleModulePermissionsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -43,19 +43,18 @@ export class RoleModulePermissionValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: roleModulePermissionsValidationStrings.result.updateFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: roleModulePermissionsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: RoleModulePermissionRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{ message: roleModulePermissionsValidationStrings.result.deleteFailed },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: roleModulePermissionsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

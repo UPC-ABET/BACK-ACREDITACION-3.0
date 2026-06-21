@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 
 import { chartHeadsValidationStrings } from '../config/strings/chart-heads.validation';
 import type { ConfigureChartHeadsDto } from '../model/chart-heads.dtos';
@@ -40,10 +40,10 @@ export class ChartHeadsValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: chartHeadsValidationStrings.result.configureFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: chartHeadsValidationStrings.result.configureFailed,
+				errors,
+			});
 		}
 	}
 }

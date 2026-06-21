@@ -505,7 +505,7 @@ describe('IfcService status transitions', () => {
 			.mockResolvedValueOnce(ctxRow({ currentStatusCode: TYPE_CODES.IFC_STATUS.SUBMITTED }))
 			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes; status fails
 
-		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ kind: 'conflict' });
 	});
 
 	it('submit: rejects with 403 when requester is not in the course chain', async () => {
@@ -514,7 +514,7 @@ describe('IfcService status transitions', () => {
 			.mockResolvedValueOnce(ctxRow({ requesterStaffId: 11, currentStatusCode: null }))
 			.mockResolvedValueOnce([]); // chain check returns no rows
 
-		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ kind: 'forbidden' });
 	});
 
 	it('submit: an ancestor (not own coord) is allowed by the chain check', async () => {
@@ -542,7 +542,7 @@ describe('IfcService status transitions', () => {
 			.mockResolvedValueOnce([]); // higher-level check finds no ancestor
 
 		await expect(service.approve(42, 99, 9)).rejects.toMatchObject({
-			status: HttpStatus.FORBIDDEN,
+			kind: 'forbidden',
 		});
 	});
 
@@ -648,7 +648,7 @@ describe('IfcService status transitions', () => {
 			.mockResolvedValueOnce([{ id: 42 }]) // lockIfc
 			.mockResolvedValueOnce(ctxRow({ requesterStaffId: null }));
 
-		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+		await expect(service.submit(42, 99, 9)).rejects.toMatchObject({ kind: 'forbidden' });
 	});
 });
 
@@ -708,7 +708,7 @@ describe('IfcService.prefill', () => {
 		dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
 		await expect(service.prefill({ chartId: 310 }, 9, 5)).rejects.toMatchObject({
-			status: HttpStatus.NOT_FOUND,
+			kind: 'notFound',
 		});
 	});
 
@@ -781,7 +781,7 @@ describe('IfcService.createIfc', () => {
 		em.query.mockResolvedValueOnce([]); // CHART_RESOLUTION_SQL → empty
 
 		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
-			status: HttpStatus.NOT_FOUND,
+			kind: 'notFound',
 		});
 	});
 
@@ -792,7 +792,7 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([{ '?column?': 1 }]); // assertNoIfcExists finds a row → throws
 
 		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
-			status: HttpStatus.CONFLICT,
+			kind: 'conflict',
 		});
 	});
 
@@ -802,7 +802,7 @@ describe('IfcService.createIfc', () => {
 			.mockResolvedValueOnce([]); // chain check returns no rows → 403
 
 		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
-			status: HttpStatus.FORBIDDEN,
+			kind: 'forbidden',
 		});
 	});
 
@@ -996,7 +996,7 @@ describe('IfcService.createIfc', () => {
 	it('rejects 400 when findings array is empty', async () => {
 		await expect(
 			service.createIfc(baseDto({ findings: [], actions: [] }), 99, 9, 5),
-		).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		).rejects.toMatchObject({ kind: 'badRequest' });
 		expect(em.query).not.toHaveBeenCalled();
 	});
 
@@ -1013,7 +1013,7 @@ describe('IfcService.createIfc', () => {
 			actions: [],
 		});
 		await expect(service.createIfc(dto, 99, 9, 5)).rejects.toMatchObject({
-			status: HttpStatus.BAD_REQUEST,
+			kind: 'badRequest',
 		});
 		expect(em.query).not.toHaveBeenCalled();
 	});
@@ -1070,7 +1070,7 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ '?column?': 1 }]); // chain check passes, status fails
 
 		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({
-			status: HttpStatus.CONFLICT,
+			kind: 'conflict',
 		});
 	});
 
@@ -1080,7 +1080,7 @@ describe('IfcService.patch', () => {
 			.mockResolvedValueOnce([{ '?column?': 1 }]);
 
 		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({
-			status: HttpStatus.CONFLICT,
+			kind: 'conflict',
 		});
 	});
 
@@ -1088,7 +1088,7 @@ describe('IfcService.patch', () => {
 		em.query.mockResolvedValueOnce(patchCtxRow({ requesterStaffId: 22 })).mockResolvedValueOnce([]); // chain check returns no rows
 
 		await expect(service.patch(42, baseDto(), 99, 9)).rejects.toMatchObject({
-			status: HttpStatus.FORBIDDEN,
+			kind: 'forbidden',
 		});
 	});
 
@@ -1163,7 +1163,7 @@ describe('IfcService.patch', () => {
 	it('rejects 400 when findings array is empty', async () => {
 		await expect(
 			service.patch(42, baseDto({ findings: [], actions: [] }), 99, 9),
-		).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+		).rejects.toMatchObject({ kind: 'badRequest' });
 		expect(em.query).not.toHaveBeenCalled();
 	});
 
@@ -1180,7 +1180,7 @@ describe('IfcService.patch', () => {
 			actions: [],
 		});
 		await expect(service.patch(42, dto, 99, 9)).rejects.toMatchObject({
-			status: HttpStatus.BAD_REQUEST,
+			kind: 'badRequest',
 		});
 		expect(em.query).not.toHaveBeenCalled();
 	});

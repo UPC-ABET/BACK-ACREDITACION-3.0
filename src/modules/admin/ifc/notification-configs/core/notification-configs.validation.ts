@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { NotificationConfigRepository } from './notification-configs.repository';
 import { notificationConfigsValidationStrings } from '../config/strings/notification-configs.validation';
 
@@ -16,13 +16,10 @@ export class NotificationConfigValidation {
 		if (exists) errors.push(notificationConfigsValidationStrings.error.targetExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: notificationConfigsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: notificationConfigsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -33,24 +30,18 @@ export class NotificationConfigValidation {
 		if (!entity) errors.push(notificationConfigsValidationStrings.error.notFound);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: notificationConfigsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: notificationConfigsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: NotificationConfigRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: notificationConfigsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: notificationConfigsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

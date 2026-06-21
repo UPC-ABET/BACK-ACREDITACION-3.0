@@ -174,7 +174,7 @@ describe('IfcFindingService.patch', () => {
 		repository.findRequesterStaffId.mockResolvedValue(null);
 
 		await expect(service.patch(201, dto, 7, 9)).rejects.toMatchObject({
-			status: HttpStatus.FORBIDDEN,
+			kind: 'forbidden',
 		});
 	});
 

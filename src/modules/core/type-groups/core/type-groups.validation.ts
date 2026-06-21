@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { TypeGroupRepository } from './type-groups.repository';
 import { typeGroupsValidationStrings } from '../config/strings/type-groups.validation';
 
@@ -13,13 +13,10 @@ export class TypeGroupValidation {
 		if (exists) errors.push(typeGroupsValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: typeGroupsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: typeGroupsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,24 +37,18 @@ export class TypeGroupValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: typeGroupsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: typeGroupsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: TypeGroupRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: typeGroupsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: typeGroupsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

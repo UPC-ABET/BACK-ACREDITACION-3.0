@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, ConflictError, NotFoundError } from 'src/commons/domain-error';
 import {
 	StudyPlanCourseRepository,
 	StudyPlanCourseDeleteBlockerCounts,
@@ -25,13 +25,10 @@ export class StudyPlanCourseValidation {
 		if (exists) errors.push(studyPlanCoursesValidationStrings.error.studyPlanCourseExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlanCoursesValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanCoursesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -55,36 +52,27 @@ export class StudyPlanCourseValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlanCoursesValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanCoursesValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateExists(repo: StudyPlanCourseRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studyPlanCoursesValidationStrings.result.enableEvaluationFailed,
-					errors: [studyPlanCoursesValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: studyPlanCoursesValidationStrings.result.enableEvaluationFailed,
+				errors: [studyPlanCoursesValidationStrings.error.notFound],
+			});
 		}
 	}
 
 	static async validateDelete(repo: StudyPlanCourseRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studyPlanCoursesValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanCoursesValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -114,35 +102,29 @@ export class StudyPlanCourseValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: studyPlanCoursesValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: studyPlanCoursesValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateMaintenanceDelete(repo: StudyPlanCourseRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: studyPlanCoursesValidationStrings.result.deleteFailed,
-					errors: [studyPlanCoursesValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: studyPlanCoursesValidationStrings.result.deleteFailed,
+				errors: [studyPlanCoursesValidationStrings.error.notFound],
+			});
 		}
 
 		const counts = await repo.findDeleteBlockerCounts(id);
 		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
 
 		if (blockers.length > 0) {
-			throw new HttpException(
-				{
-					message: studyPlanCoursesValidationStrings.error.inUse,
-					errors: blockers,
-				},
-				HttpStatus.CONFLICT,
-			);
+			throw new ConflictError({
+				message: studyPlanCoursesValidationStrings.error.inUse,
+				errors: blockers,
+			});
 		}
 	}
 }

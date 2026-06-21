@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError, ConflictError, NotFoundError } from 'src/commons/domain-error';
 import { ProfessorRepository, DeleteBlockerCounts } from './professors.repository';
 import { professorsValidationStrings } from '../config/strings/professors.validation';
 import {
@@ -28,13 +28,10 @@ export class ProfessorValidation {
 		if (exists) errors.push(professorsValidationStrings.error.staffExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: professorsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -57,24 +54,18 @@ export class ProfessorValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: professorsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ProfessorRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: professorsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 
@@ -88,10 +79,10 @@ export class ProfessorValidation {
 		if (codeOwner) errors.push(professorsValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{ message: professorsValidationStrings.result.createFailed, errors },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: professorsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -104,13 +95,10 @@ export class ProfessorValidation {
 
 		const entity = await repo.findOneById(id);
 		if (!entity) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.result.updateFailed,
-					errors: [professorsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: professorsValidationStrings.result.updateFailed,
+				errors: [professorsValidationStrings.error.notFound],
+			});
 		}
 
 		if (data.code !== undefined && data.code !== entity.code) {
@@ -121,39 +109,30 @@ export class ProfessorValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: professorsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateMaintenanceDelete(repo: ProfessorRepository, id: number) {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.result.deleteFailed,
-					errors: [professorsValidationStrings.error.notFound],
-				},
-				HttpStatus.NOT_FOUND,
-			);
+			throw new NotFoundError({
+				message: professorsValidationStrings.result.deleteFailed,
+				errors: [professorsValidationStrings.error.notFound],
+			});
 		}
 
 		const counts = await repo.findDeleteBlockerCounts(id, entity.staffId);
 		const blockers = DELETE_BLOCKER_KEYS.filter(([key]) => counts[key] > 0).map(([, msg]) => msg);
 
 		if (blockers.length > 0) {
-			throw new HttpException(
-				{
-					message: professorsValidationStrings.error.inUse,
-					errors: blockers,
-				},
-				HttpStatus.CONFLICT,
-			);
+			throw new ConflictError({
+				message: professorsValidationStrings.error.inUse,
+				errors: blockers,
+			});
 		}
 	}
 }

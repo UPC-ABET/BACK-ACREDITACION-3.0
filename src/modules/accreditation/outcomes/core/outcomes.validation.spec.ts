@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { DomainError } from 'src/commons/domain-error';
 import { OutcomeValidation } from './outcomes.validation';
 
 const mockRepo = {
@@ -33,7 +33,7 @@ describe('OutcomeValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
 			await expect(
 				OutcomeValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -50,7 +50,7 @@ describe('OutcomeValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(OutcomeValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -64,7 +64,7 @@ describe('OutcomeValidation', () => {
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(OutcomeValidation.validateDelete(mockRepo as any, 999)).rejects.toThrow(
-				HttpException,
+				DomainError,
 			);
 		});
 	});
@@ -87,14 +87,14 @@ describe('OutcomeValidation', () => {
 		it('throws when no program commission exists', async () => {
 			await expect(
 				OutcomeValidation.validateMaintenanceCreate(mockRepo as any, null, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the outcome code already exists in the program commission', async () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
 			await expect(
 				OutcomeValidation.validateMaintenanceCreate(mockRepo as any, 100, dto),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -119,7 +119,7 @@ describe('OutcomeValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				OutcomeValidation.validateMaintenanceUpdate(mockRepo as any, 999, { outcomeCode: 'O2' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws when the new code is taken by another outcome in the same program commission', async () => {
@@ -127,7 +127,7 @@ describe('OutcomeValidation', () => {
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 2, outcomeCode: 'O2' });
 			await expect(
 				OutcomeValidation.validateMaintenanceUpdate(mockRepo as any, 1, { outcomeCode: 'O2' }),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 	});
 
@@ -144,7 +144,7 @@ describe('OutcomeValidation', () => {
 			mockRepo.findOneById.mockResolvedValue(null);
 			await expect(
 				OutcomeValidation.validateMaintenanceDelete(mockRepo as any, 999),
-			).rejects.toThrow(HttpException);
+			).rejects.toThrow(DomainError);
 		});
 
 		it('throws 409 naming the exact blocking relations', async () => {
@@ -155,16 +155,16 @@ describe('OutcomeValidation', () => {
 				rubricQuestions: 1,
 			});
 
-			let caught: HttpException | undefined;
+			let caught: DomainError | undefined;
 			try {
 				await OutcomeValidation.validateMaintenanceDelete(mockRepo as any, 1);
 			} catch (e) {
-				caught = e as HttpException;
+				caught = e as DomainError;
 			}
 
-			expect(caught).toBeInstanceOf(HttpException);
-			expect(caught!.getStatus()).toBe(409);
-			const body = caught!.getResponse() as { message: string; errors: string[] };
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.kind).toBe('conflict');
+			const body = caught!;
 			expect(body.message).toBe('error.outcome.inUse');
 			expect(body.errors).toEqual([
 				'error.outcome.usedInRubricQuestions',

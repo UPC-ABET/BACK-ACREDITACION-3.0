@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ProjectEvaluatorRepository } from './project-evaluators.repository';
 import { projectEvaluatorsValidationStrings } from '../config/strings/project-evaluators.validation';
 
@@ -25,13 +25,10 @@ export class ProjectEvaluatorValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: projectEvaluatorsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectEvaluatorsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -66,23 +63,19 @@ export class ProjectEvaluatorValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: projectEvaluatorsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectEvaluatorsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: ProjectEvaluatorRepository, id: number) {
 		const entity = await repo.findOneById(id);
 		if (!entity || !entity.isActive) {
-			throw new HttpException(
-				{ message: projectEvaluatorsValidationStrings.result.deleteFailed },
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: projectEvaluatorsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }

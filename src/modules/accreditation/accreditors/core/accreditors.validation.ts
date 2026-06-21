@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { AccreditorRepository } from './accreditors.repository';
 import { accreditorsValidationStrings } from '../config/strings/accreditors.validation';
 
@@ -13,13 +13,10 @@ export class AccreditorValidation {
 		if (exists) errors.push(accreditorsValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: accreditorsValidationStrings.result.createFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: accreditorsValidationStrings.result.createFailed,
+				errors,
+			});
 		}
 	}
 
@@ -40,24 +37,18 @@ export class AccreditorValidation {
 		}
 
 		if (errors.length > 0) {
-			throw new HttpException(
-				{
-					message: accreditorsValidationStrings.result.updateFailed,
-					errors,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: accreditorsValidationStrings.result.updateFailed,
+				errors,
+			});
 		}
 	}
 
 	static async validateDelete(repo: AccreditorRepository, id: number) {
 		if (!(await repo.findOneById(id))) {
-			throw new HttpException(
-				{
-					message: accreditorsValidationStrings.result.deleteFailed,
-				},
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new BadRequestError({
+				message: accreditorsValidationStrings.result.deleteFailed,
+			});
 		}
 	}
 }
