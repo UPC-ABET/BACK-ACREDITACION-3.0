@@ -37,6 +37,9 @@ import {
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
 	DashboardLcfcDto,
+	LcfcProgramQueryDto,
+	LcfcSectionCommissionsQueryDto,
+	LcfcReportQueryDto,
 } from '../model/lcfc.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
@@ -115,11 +118,10 @@ export class LcfcController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async configAvailableSections(
 		@AcademicPeriodId() academicPeriodId: number,
-		@Query('programId') programIdRaw?: string,
+		@Query() query: LcfcProgramQueryDto,
 	) {
-		const programId = programIdRaw && Number(programIdRaw) > 0 ? Number(programIdRaw) : undefined;
 		return parseSuccessResponse(
-			await this.lcfcService.getAvailableSections(programId, academicPeriodId),
+			await this.lcfcService.getAvailableSections(query.programId, academicPeriodId),
 		);
 	}
 
@@ -136,13 +138,9 @@ export class LcfcController {
 
 	@SwaggerLcfcConfigSectionCommissions()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
-	async configSectionCommissions(
-		@Query('courseSectionId', ParseIntPipe) courseSectionId: number,
-		@Query('programId') programIdRaw?: string,
-	) {
-		const programId = programIdRaw && Number(programIdRaw) > 0 ? Number(programIdRaw) : undefined;
+	async configSectionCommissions(@Query() query: LcfcSectionCommissionsQueryDto) {
 		return parseSuccessResponse(
-			await this.lcfcService.getSectionCommissions(courseSectionId, programId),
+			await this.lcfcService.getSectionCommissions(query.courseSectionId, query.programId),
 		);
 	}
 
@@ -206,11 +204,12 @@ export class LcfcController {
 	async exportSurveys(
 		@Res() res: Response,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Query('programId') programIdRaw?: string,
+		@Query() query: LcfcProgramQueryDto,
 	) {
-		const programId =
-			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
-		const { buffer, fileName } = await this.lcfcService.exportSurveys(academicPeriodId, programId);
+		const { buffer, fileName } = await this.lcfcService.exportSurveys(
+			academicPeriodId,
+			query.programId,
+		);
 		const encoded = encodeURIComponent(fileName);
 		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
 		res.setHeader(
@@ -227,16 +226,12 @@ export class LcfcController {
 	async reportPdf(
 		@Res() res: Response,
 		@AcademicPeriodId() academicPeriodId: number,
-		@Query('programId') programIdRaw?: string,
-		@Query('lang') langRaw?: string,
+		@Query() query: LcfcReportQueryDto,
 	) {
-		const programId =
-			programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined;
-		const lang = langRaw === 'en' ? 'en' : 'es';
 		const { pdf, filename } = await this.lcfcService.generateReportPdf(
 			academicPeriodId,
-			programId,
-			lang,
+			query.programId,
+			query.lang ?? 'es',
 		);
 		const encoded = encodeURIComponent(filename);
 		res.setHeader('Content-Type', 'application/pdf');

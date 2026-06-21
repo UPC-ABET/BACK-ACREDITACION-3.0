@@ -199,7 +199,7 @@ export class IfcController extends BaseController<IfcService> {
 		@CurrentUser() user: RequestUser,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const lang = (query.lang ?? 'es') as 'es' | 'en';
+		const lang = query.lang ?? 'es';
 		const { pdf, filename } = await this.service.generatePdf(id, user.userId, schoolId, lang);
 		writeBinary(res, pdf, filename, 'application/pdf');
 	}

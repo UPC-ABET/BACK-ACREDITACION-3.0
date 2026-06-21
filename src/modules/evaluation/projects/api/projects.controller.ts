@@ -4,6 +4,7 @@ import {
 	Param,
 	Post,
 	Get,
+	ParseBoolPipe,
 	ParseIntPipe,
 	Query,
 	Res,
@@ -109,15 +110,14 @@ export class ProjectController extends BaseController<ProjectService> {
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectWithDetails(
 		@Param('projectId', ParseIntPipe) projectId: number,
-		@Query('isEvaluationMode') isEvaluationMode?: string,
+		@Query('isEvaluationMode', new ParseBoolPipe({ optional: true })) isEvaluationMode?: boolean,
 		@Query('gradeTypeCode') gradeTypeCode?: string,
 		@Query('rubricTypeId', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
-		const isEvalMode = isEvaluationMode === 'true';
 		return parseSuccessResponse(
 			await this.projectConfigService.getProjectWithDetails(
 				projectId,
-				isEvalMode,
+				isEvaluationMode ?? false,
 				gradeTypeCode,
 				rubricTypeId,
 			),

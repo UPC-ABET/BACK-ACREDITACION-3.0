@@ -1,6 +1,8 @@
 import {
 	IsArray,
 	IsBoolean,
+	IsInt,
+	IsIn,
 	IsNumber,
 	IsObject,
 	IsOptional,
@@ -9,9 +11,35 @@ import {
 	Min,
 	Max,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
+
+const toOptionalPositiveInt = ({ value }: { value: unknown }): number | undefined =>
+	Number(value) > 0 ? Number(value) : undefined;
+
+export class LcfcProgramQueryDto {
+	@IsOptional()
+	@IsInt()
+	@Transform(toOptionalPositiveInt)
+	@ApiPropertyOptional({ example: 1, type: Number, description: 'Program/Carrera ID' })
+	programId?: number;
+}
+
+export class LcfcSectionCommissionsQueryDto extends LcfcProgramQueryDto {
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Course section ID' })
+	courseSectionId: number;
+}
+
+export class LcfcReportQueryDto extends LcfcProgramQueryDto {
+	@IsOptional()
+	@IsIn(['es', 'en'])
+	@Transform(({ value }) => (value === 'en' ? 'en' : 'es'))
+	@ApiPropertyOptional({ example: 'es', enum: ['es', 'en'], description: 'Report language' })
+	lang?: 'es' | 'en';
+}
 
 export class GenerateLcfcConfigDto {
 	@IsNumber()
