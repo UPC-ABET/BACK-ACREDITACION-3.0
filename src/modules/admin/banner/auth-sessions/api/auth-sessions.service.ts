@@ -97,11 +97,18 @@ export class AuthSessionService {
 	}
 
 	consumeStreamToken(token: string | null): string {
-		if (!token) throw new HttpException('unauthorized', HttpStatus.UNAUTHORIZED);
+		if (!token)
+			throw new HttpException(
+				authSessionsValidationStrings.error.unauthorized,
+				HttpStatus.UNAUTHORIZED,
+			);
 		const sessionId = this.tokenService.verify(token);
 		const session = this.store.getById(sessionId);
 		if (!session || session.status !== 'active' || session.tokenUsed) {
-			throw new HttpException('unauthorized', HttpStatus.UNAUTHORIZED);
+			throw new HttpException(
+				authSessionsValidationStrings.error.unauthorized,
+				HttpStatus.UNAUTHORIZED,
+			);
 		}
 		this.store.update(sessionId, { tokenUsed: true });
 		return sessionId;

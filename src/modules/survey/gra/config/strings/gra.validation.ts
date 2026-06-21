@@ -1,5 +1,6 @@
 export const graValidationStrings = {
 	error: {
+		configNotFound: 'error.survey.gra.configNotFound',
 		tokenNotFound: 'error.survey.gra.tokenNotFound',
 		tokenExpired: 'error.survey.gra.tokenExpired',
 		alreadyCompleted: 'error.survey.gra.alreadyCompleted',

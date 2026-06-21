@@ -109,9 +109,7 @@ export class EvaluationSubmissionService {
 	private async resolveStatusTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
 		if (!type) {
-			throw new BadRequestException(
-				`Tipo de estado de calificación con código '${code}' no encontrado en core.types.`,
-			);
+			throw new BadRequestException(evaluationsValidationStrings.error.statusTypeNotFound);
 		}
 		return type.id;
 	}
@@ -381,7 +379,7 @@ export class EvaluationSubmissionService {
 			relations: ['questions', 'questions.criterias'],
 		});
 		if (!rubric) {
-			throw new NotFoundException(`Rúbrica con ID ${dto.rubricId} no encontrada.`);
+			throw new NotFoundException(evaluationsValidationStrings.error.rubricNotFound);
 		}
 
 		const statusCode = await this.resolveEvaluatorTypeCode(dto.qualificationStatusTypeId);
@@ -407,9 +405,7 @@ export class EvaluationSubmissionService {
 				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
 				if (missing.length > 0) {
-					throw new BadRequestException(
-						`Deben calificarse todos los criterios de la rúbrica. Faltan: ${missing.join(', ')}.`,
-					);
+					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
 				}
 			} else {
 				// Capstone parcial o no capstone: máximo 1 criterio por pregunta
@@ -419,10 +415,10 @@ export class EvaluationSubmissionService {
 					if (!questionId) continue;
 					countByQuestion.set(questionId, (countByQuestion.get(questionId) ?? 0) + 1);
 				}
-				for (const [questionId, count] of countByQuestion) {
+				for (const count of countByQuestion.values()) {
 					if (count > 1) {
 						throw new BadRequestException(
-							`La pregunta ${questionId} tiene ${count} criterios calificados. Solo se permite uno por pregunta.`,
+							evaluationsValidationStrings.error.oneCriteriaPerQuestion,
 						);
 					}
 				}
@@ -435,24 +431,18 @@ export class EvaluationSubmissionService {
 			for (const scoreDto of dto.scores) {
 				const criteria = criterias.find((c) => c.id === scoreDto.rubricQuestionCriteriaId);
 				if (!criteria) {
-					throw new NotFoundException(
-						`Criterio con ID ${scoreDto.rubricQuestionCriteriaId} no encontrado.`,
-					);
+					throw new NotFoundException(evaluationsValidationStrings.error.criteriaNotFound);
 				}
 				if (validPerfLevelValues) {
 					if (!validPerfLevelValues.has(Number(scoreDto.score))) {
-						throw new BadRequestException(
-							`Puntaje ${scoreDto.score} inválido para rúbrica capstone final. Valores permitidos: ${[...validPerfLevelValues].sort((a, b) => a - b).join(', ')}.`,
-						);
+						throw new BadRequestException(evaluationsValidationStrings.error.invalidScoreCapstone);
 					}
 				} else {
 					if (
 						Number(scoreDto.score) < Number(criteria.minValue) ||
 						Number(scoreDto.score) > Number(criteria.maxValue)
 					) {
-						throw new BadRequestException(
-							`Puntaje ${scoreDto.score} inválido. Rango: [${criteria.minValue} - ${criteria.maxValue}].`,
-						);
+						throw new BadRequestException(evaluationsValidationStrings.error.invalidScore);
 					}
 				}
 			}
@@ -645,15 +635,11 @@ export class EvaluationSubmissionService {
 				if (!ps.studentSectionEnrollment) continue;
 
 				if (!evaluation) {
-					throw new BadRequestException(
-						`Debe calificar al alumno con enrollment ${ps.studentSectionEnrollmentId}.`,
-					);
+					throw new BadRequestException(evaluationsValidationStrings.error.gradeAllStudents);
 				}
 
 				if (!dto.isPa && !i18nTrim(evaluation.observation)) {
-					throw new BadRequestException(
-						`Debe ingresar y guardar las observaciones para el alumno ${ps.studentSectionEnrollmentId}.`,
-					);
+					throw new BadRequestException(evaluationsValidationStrings.error.observationRequired);
 				}
 
 				const criteriaCount = await manager.count(RubricScoreEntity, {
@@ -661,9 +647,7 @@ export class EvaluationSubmissionService {
 				});
 
 				if (criteriaCount < totalCriteria) {
-					throw new BadRequestException(
-						`Debe calificar todos los criterios para el alumno ${ps.studentSectionEnrollmentId}.`,
-					);
+					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
 				}
 
 				evaluation.qualificationStatusTypeId = asistioStatusTypeId;
@@ -671,7 +655,7 @@ export class EvaluationSubmissionService {
 			}
 		});
 
-		return { success: true, message: 'Calificación guardada exitosamente.' };
+		return { success: true, message: evaluationsValidationStrings.result.finalized };
 	}
 
 	async getEvaluationById(id: number): Promise<EvaluationEntity> {

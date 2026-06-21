@@ -90,7 +90,7 @@ export class PppSurveyService {
 	async getById(id: number) {
 		const typeId = await this.getPppTypeId();
 		const survey = await this.surveyRepo.findOnePpp(id, typeId);
-		if (!survey) throw new NotFoundException(`PPP survey with ID ${id} not found`);
+		if (!survey) throw new NotFoundException(pppValidationStrings.error.surveyNotFound);
 
 		const scores = await this.scoreRepo.findBySurveyId(id);
 		return { ...survey, scores };

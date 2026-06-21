@@ -6,6 +6,7 @@ import {
 	NormalizedRubricQuestion,
 } from '../core/rubrics.repository';
 import { RubricValidation } from '../core/rubrics.validation';
+import { rubricsValidationStrings } from '../config/strings/rubrics.validation';
 import {
 	CreateRubricDto,
 	CreateRubricCriteriaDto,
@@ -100,19 +101,19 @@ export class RubricService extends BaseService<RubricRepository> {
 	): Promise<{ code: number; message: string; data: any }> {
 		const rubric = await this.repository.findOneById(id);
 		if (!rubric) {
-			return { code: 2, message: 'La rúbrica no existe.', data: null };
+			return { code: 2, message: rubricsValidationStrings.error.notFound, data: null };
 		}
 
 		if (await this.repository.isUsed(id)) {
 			return {
 				code: 1,
-				message: 'No se puede eliminar una rúbrica con calificaciones registradas.',
+				message: rubricsValidationStrings.error.rubricInUse,
 				data: null,
 			};
 		}
 
 		await this.repository.deleteWithChildren(id);
 
-		return { code: 0, message: 'Rúbrica eliminada exitosamente.', data: null };
+		return { code: 0, message: rubricsValidationStrings.result.deleted, data: null };
 	}
 }

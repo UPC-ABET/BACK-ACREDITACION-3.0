@@ -1,6 +1,8 @@
 import { InjectRepository } from '@nestjs/typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { DataSource, DeepPartial, EntityManager, In, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
+import { rubricsValidationStrings } from '../config/strings/rubrics.validation';
 import { RubricEntity } from '../model/rubrics.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
@@ -100,7 +102,7 @@ export class RubricRepository extends BaseRepository<RubricEntity> {
 		await this.dataSource.transaction(async (txManager) => {
 			const rubricRepo = txManager.getRepository(RubricEntity);
 			const entity = await rubricRepo.findOne({ where: { id }, relations: [] });
-			if (!entity) throw new Error(`No se encontró la rúbrica con ID: ${id}`);
+			if (!entity) throw new NotFoundException(rubricsValidationStrings.error.notFound);
 			Object.assign(entity, rubricData);
 			await rubricRepo.save(entity);
 

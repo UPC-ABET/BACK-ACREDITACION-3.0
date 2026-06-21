@@ -9,6 +9,7 @@ import {
 } from '../model/gra.dtos';
 import { PerformanceLevelService } from 'src/modules/academic/performance-levels/api/performance-levels.service';
 import { camelizeKeys } from 'src/libs/case.functions';
+import { graValidationStrings } from '../config/strings/gra.validation';
 
 @Injectable()
 export class GraConfigService {
@@ -46,14 +47,14 @@ export class GraConfigService {
 
 	async getById(id: number) {
 		const config = await this.configRepo.findOneGra(id);
-		if (!config) throw new NotFoundException(`GRA configuration with ID ${id} not found`);
+		if (!config) throw new NotFoundException(graValidationStrings.error.configNotFound);
 		config.extra = camelizeKeys(config.extra);
 		return config;
 	}
 
 	async update(id: number, dto: UpdateGraConfigDto) {
 		const current = await this.configRepo.findOneGra(id);
-		if (!current) throw new NotFoundException(`Configuración GRA con ID ${id} no encontrada`);
+		if (!current) throw new NotFoundException(graValidationStrings.error.configNotFound);
 
 		const currentExtra = (current?.extra as Record<string, any>) ?? {};
 
@@ -79,7 +80,7 @@ export class GraConfigService {
 
 	async delete(id: number) {
 		const config = await this.configRepo.findOneGra(id);
-		if (!config) throw new NotFoundException(`GRA configuration with ID ${id} not found`);
+		if (!config) throw new NotFoundException(graValidationStrings.error.configNotFound);
 		return await this.configRepo.update(id, { isActive: false });
 	}
 

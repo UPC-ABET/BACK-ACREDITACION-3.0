@@ -3,5 +3,6 @@ export const authSessionsValidationStrings = {
 		sessionInProgress: 'error.banner.authSessionInProgress',
 		notFound: 'error.banner.authSessionNotFound',
 		browserAuthUnavailable: 'error.banner.browserAuthUnavailable',
+		unauthorized: 'error.banner.authUnauthorized',
 	},
 };

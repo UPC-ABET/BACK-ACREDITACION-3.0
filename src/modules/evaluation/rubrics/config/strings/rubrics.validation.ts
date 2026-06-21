@@ -14,10 +14,12 @@ export const rubricsValidationStrings = {
 		criteriaOverlap: 'error.rubric.criteriaOverlap',
 		criteriaInvalidRange: 'error.rubric.criteriaInvalidRange',
 		criteriaTotalNot20: 'error.rubric.criteriaTotalNot20',
+		rubricInUse: 'error.rubric.rubricInUse',
 	},
 	result: {
 		createFailed: 'error.rubric.createFailed',
 		updateFailed: 'error.rubric.updateFailed',
 		deleteFailed: 'error.rubric.deleteFailed',
+		deleted: 'success.rubric.deleted',
 	},
 };
