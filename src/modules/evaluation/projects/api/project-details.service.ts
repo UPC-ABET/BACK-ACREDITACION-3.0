@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluators/model/project-evaluators.entity';
 import {
+	CriteriaScoreDto,
 	ProjectDetailsResponseDto,
 	ProjectRubricEntryDto,
 	ProjectDetailsStudentWithSpcDto,
@@ -24,10 +25,37 @@ import { projectsValidationStrings } from '../config/strings/projects.validation
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
 import { ProjectRepository } from '../core/projects.repository';
 import { ProjectGradeSupportService } from './project-grade-support.service';
+import type { I18nText } from 'src/shared/types/i18n';
 
 interface StudentGradeInfo {
 	totalGrade: number;
 	evaluationStatuses: StudentEvaluationStatusDto[];
+}
+
+interface RubricContextCriteria {
+	id: number;
+	text: I18nText;
+	minValue: string;
+	maxValue: string;
+}
+
+interface RubricContextQuestion {
+	id: number;
+	text: I18nText;
+	outcomeId: number | null;
+	criterias: RubricContextCriteria[];
+}
+
+/**
+ * Shape consumed from RubricConfigService.getRubricWithContextData(). Only the fields read
+ * here are modelled; rubric/commissions/outcomes are passed through verbatim to the (untyped
+ * by design) ProjectRubricEntryDto Swagger fields, hence `unknown`.
+ */
+interface RubricContext {
+	rubric: unknown;
+	commissions: unknown[];
+	outcomes: unknown[];
+	questions: RubricContextQuestion[];
 }
 
 @Injectable()
@@ -194,7 +222,7 @@ export class ProjectDetailsService {
 			};
 		}
 
-		const rubricContext = await this.rubricConfigService
+		const rubricContext: RubricContext | null = await this.rubricConfigService
 			.getRubricWithContextData(rubric.id)
 			.catch(() => null);
 
@@ -307,27 +335,27 @@ export class ProjectDetailsService {
 	}
 
 	private buildRubricQuestions(
-		rubricContext: any,
+		rubricContext: RubricContext | null,
 		latestEvalByStudent: Map<number, EvaluationEntity>,
 		isEvaluationMode: boolean,
 	): RubricQuestionDetailsDto[] {
-		return (rubricContext?.questions || []).map((q: any) => ({
+		return (rubricContext?.questions ?? []).map((q) => ({
 			id: q.id,
 			text: q.text,
 			outcomeId: q.outcomeId,
-			criterias: (q.criterias || []).map((c: any) => {
-				// CriteriaScoreDto.commentaries is declared string for Swagger but is I18nText at runtime.
-				let criteriaScores: any[] | null = null;
+			criterias: q.criterias.map((c) => {
+				let criteriaScores: CriteriaScoreDto[] | null = null;
 				if (isEvaluationMode) {
 					criteriaScores = [];
 					latestEvalByStudent.forEach((ev) => {
-						const scoreObj = (ev.scores || []).find((sc) => sc.rubricQuestionCriteriaId === c.id);
+						const scoreObj = (ev.scores ?? []).find((sc) => sc.rubricQuestionCriteriaId === c.id);
 						if (scoreObj) {
 							criteriaScores!.push({
 								studentId: ev.projectStudentId,
 								evaluatorId: ev.projectEvaluatorId,
 								score: Number(scoreObj.score),
-								commentaries: scoreObj.commentaries || '',
+								// CriteriaScoreDto.commentaries is declared string for Swagger but is I18nText at runtime.
+								commentaries: (scoreObj.commentaries ?? '') as unknown as string,
 							});
 						}
 					});
@@ -371,8 +399,7 @@ export class ProjectDetailsService {
 		evaluators: ProjectEvaluatorEntity[],
 	): Promise<ProjectEvaluatorDetailDto[]> {
 		const evaluatorTypeIds = [...new Set(evaluators.map((e) => e.evaluatorTypeId))];
-		// TypeEntity.name is I18nText at runtime; the DTO declares it as string for Swagger.
-		const evaluatorTypesMap = new Map<number, any>();
+		const evaluatorTypesMap = new Map<number, TypeEntity>();
 
 		if (evaluatorTypeIds.length > 0) {
 			const types = await this.typeRepo.findByIds(evaluatorTypeIds);
@@ -392,7 +419,8 @@ export class ProjectDetailsService {
 				professorLastName: professorUser?.lastName || staff?.lastName || '',
 				professorEmail: professorUser?.email || '',
 				evaluatorTypeId: e.evaluatorTypeId,
-				evaluatorTypeName: evaluatorType?.name || '',
+				// TypeEntity.name is I18nText at runtime; the DTO declares it as string for Swagger.
+				evaluatorTypeName: (evaluatorType?.name ?? '') as unknown as string,
 				evaluatorTypeCode: evaluatorType?.code || '',
 				canEvaluate: evaluatorType?.extra?.canEvaluate === true,
 				maxEvaluators: evaluatorType?.extra?.maxEvaluators ?? null,
