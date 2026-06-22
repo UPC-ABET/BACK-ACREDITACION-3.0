@@ -3,10 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PlannerSessionExpiredError } from '../model/session-expired.error';
-import {
-	PlannerSessionStatus,
-	PlannerTokenSession,
-} from '../model/planner-session.types';
+import { PlannerSessionStatus, PlannerTokenSession } from '../model/planner-session.types';
 
 const REFRESH_SKEW_MS = 60_000;
 // After a failed login/refresh (dead credentials or u-planner down), don't relaunch
@@ -98,7 +95,11 @@ export class PlannerTokenService {
 
 	private async resolveSession(forceRefresh: boolean): Promise<PlannerTokenSession> {
 		const existing = this.readStore();
-		if (existing && !forceRefresh && this.remaining(existing.accessTokenExpiresAt) > REFRESH_SKEW_MS) {
+		if (
+			existing &&
+			!forceRefresh &&
+			this.remaining(existing.accessTokenExpiresAt) > REFRESH_SKEW_MS
+		) {
 			return existing;
 		}
 		if (existing && this.remaining(existing.refreshTokenExpiresAt) > REFRESH_SKEW_MS) {
@@ -218,7 +219,9 @@ export class PlannerTokenService {
 
 	private decodeJwt(jwt: string): Record<string, unknown> {
 		const payload = jwt.split('.')[1] ?? '';
-		const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+		const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(
+			'utf-8',
+		);
 		return JSON.parse(json) as Record<string, unknown>;
 	}
 

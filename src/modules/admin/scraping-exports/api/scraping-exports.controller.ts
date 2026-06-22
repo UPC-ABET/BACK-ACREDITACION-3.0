@@ -36,7 +36,10 @@ export class ScrapingExportsController {
 	@ApiOperation({ summary: routes.operation.alumnosMatriculados.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async alumnosMatriculados(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
+	async alumnosMatriculados(
+		@Query('lang') lang: string,
+		@Res({ passthrough: false }) res: Response,
+	) {
 		this.send(res, await this.service.generateAlumnosMatriculados(lang));
 	}
 

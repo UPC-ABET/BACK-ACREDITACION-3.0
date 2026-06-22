@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-	PlannerScrapeRunEntity,
-	PlannerScrapeRunStatus,
-} from '../model/planner-scrape-run.entity';
+import { PlannerScrapeRunEntity, PlannerScrapeRunStatus } from '../model/planner-scrape-run.entity';
 
 export interface CreatePlannerScrapeRunData {
 	id: string;

@@ -307,10 +307,10 @@ export class PlannerScraperService {
 			pairs.map((pair) =>
 				limit(async () => {
 					try {
-						const results = await this.http.get<Record<string, unknown>>(
-							'/api/class-api/grades',
-							{ evalComponentId: pair.evalComponentId, sectionId: pair.sectionId },
-						);
+						const results = await this.http.get<Record<string, unknown>>('/api/class-api/grades', {
+							evalComponentId: pair.evalComponentId,
+							sectionId: pair.sectionId,
+						});
 						const root = results[0];
 						if (!root) return;
 
