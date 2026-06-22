@@ -50,13 +50,20 @@ export class AddProjectsUpload1781665812764 implements MigrationInterface {
 
 		// ── 2. Upload type seed ─────────────────────────────────────────────
 		await queryRunner.query(`
-			INSERT INTO core.types (type_group_id, extra, is_active, created_at, code, name)
+			INSERT INTO core.type_groups (code, name, description, extra, is_active, created_at, updated_at)
 			VALUES (
-				(SELECT id FROM core.type_groups WHERE code = 'TG1101'),
-				'{}'::jsonb, true, NOW(),
-				'TG1101-T011',
-				'{"es": "Proyectos académicos", "en": "Academic projects"}'::jsonb
-			)
+				'TG1101',
+				'{"es": "Tipo de carga", "en": "Upload type"}'::jsonb,
+				'{"es": "Tipos de carga masiva por Excel", "en": "Bulk Excel upload types"}'::jsonb,
+				'{}'::jsonb, true, NOW(), NOW())
+			ON CONFLICT (code) DO NOTHING
+		`);
+		await queryRunner.query(`
+			INSERT INTO core.types (type_group_id, code, name, extra, is_active, created_at, updated_at)
+			SELECT tg.id, 'TG1101-T011',
+				'{"es": "Proyectos académicos", "en": "Academic projects"}'::jsonb,
+				'{}'::jsonb, true, NOW(), NOW()
+			FROM core.type_groups tg WHERE tg.code = 'TG1101'
 			ON CONFLICT (code) DO NOTHING
 		`);
 
