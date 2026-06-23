@@ -10,4 +10,4 @@ import { ClassRepresentativesRepository } from 'src/modules/uploads/class-repres
 	providers: [ClassRepresentativesService, ClassRepresentativesRepository],
 	exports: [ClassRepresentativesService],
 })
-export class ClassRepresentativesModule {}
+export class ClassRepresentativesUploadModule {}
