@@ -95,6 +95,7 @@ import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart
 import { RoleModule } from './modules/admin/iam/roles/roles.module';
 import { UserRoleModule } from './modules/admin/iam/user-roles/user-roles.module';
 import { RoleModulePermissionModule } from './modules/admin/iam/role-module-permissions/role-module-permissions.module';
+import { ClassRepresentativesModule } from 'src/modules/uploads/class-representatives/class-representatives.module';
 
 @Module({
 	imports: [
@@ -159,6 +160,7 @@ import { RoleModulePermissionModule } from './modules/admin/iam/role-module-perm
 		ProgramModule,
 		StudentCourseGradeModule,
 		StudentSectionEnrollmentModule,
+		ClassRepresentativesModule,
 		StudentModule,
 		StudyPlanAcademicPeriodModule,
 		StudyPlanCourseModule,
