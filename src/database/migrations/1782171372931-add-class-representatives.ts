@@ -18,15 +18,15 @@ export class AddClassRepresentatives1782171372931 implements MigrationInterface 
 				updated_at
 			)
 			VALUES (
-							 'TG1101',
-				       '{"en":"Upload Types","es":"Tipos de Carga"}'::jsonb,
-				       '{}'::jsonb,
-				       '{}'::jsonb,
-				       true,
-				       NOW(),
-				       NULL
-						 )
-				ON CONFLICT (code) DO NOTHING
+				'TG1101',
+				'{"en":"Upload Types","es":"Tipos de Carga"}'::jsonb,
+				'{}'::jsonb,
+				'{}'::jsonb,
+				true,
+				NOW(),
+				NULL
+			)
+			ON CONFLICT (code) DO NOTHING
 		`);
 
 		await queryRunner.query(`
@@ -51,11 +51,11 @@ export class AddClassRepresentatives1782171372931 implements MigrationInterface 
 				NULL
 			FROM core.type_groups tg
 			WHERE tg.code = 'TG1101'
-				AND NOT EXISTS (
+			  AND NOT EXISTS (
 				SELECT 1
 				FROM core.types t
 				WHERE t.code = 'TG1101-T013'
-			)
+			  )
 		`);
 
 		await queryRunner.query(`
@@ -74,7 +74,7 @@ DECLARE
 	v_log_id integer;
 	r record;
 BEGIN
-	-- duplicate rows in file
+
 	FOR r IN
 		SELECT (e->>'rowNumber')::int AS rn
 		FROM jsonb_array_elements(p_rows) e
@@ -90,9 +90,8 @@ BEGIN
 			HAVING count(*) > 1
 		)
 	LOOP
-			v_has_errors := true;
-			RETURN QUERY
-			SELECT r.rn, 'duplicateRowInFile'::text, NULL::integer;
+		v_has_errors := true;
+		RETURN QUERY SELECT r.rn, 'duplicateRowInFile', NULL::integer;
 	END LOOP;
 
 	FOR r IN
@@ -103,65 +102,46 @@ BEGIN
 		FROM jsonb_array_elements(p_rows) e
 	LOOP
 
-			IF r.section_code IS NULL THEN
-				v_has_errors := true;
-				RETURN QUERY
-				SELECT r.row_number, 'sectionCodeEmpty', NULL::integer;
+		IF r.section_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'sectionCodeEmpty', NULL::integer;
 
-			ELSIF NOT EXISTS (
-				SELECT 1
-				FROM academic.course_sections
-				WHERE section_code = r.section_code
-			) THEN
-				v_has_errors := true;
-				RETURN QUERY
-				SELECT r.row_number, 'sectionNotFound', NULL::integer;
-			END IF;
+		ELSIF NOT EXISTS (
+			SELECT 1 FROM academic.course_sections
+			WHERE section_code = r.section_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'sectionNotFound', NULL::integer;
+		END IF;
 
-			IF r.student_code IS NULL THEN
-				v_has_errors := true;
-				RETURN QUERY
-				SELECT r.row_number, 'studentCodeEmpty', NULL::integer;
+		IF r.student_code IS NULL THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studentCodeEmpty', NULL::integer;
 
-			ELSIF NOT EXISTS (
-				SELECT 1
-				FROM academic.students
-				WHERE code = r.student_code
-			) THEN
-				v_has_errors := true;
-				RETURN QUERY
-				SELECT r.row_number, 'studentNotFound', NULL::integer;
-			END IF;
+		ELSIF NOT EXISTS (
+			SELECT 1 FROM academic.students
+			WHERE code = r.student_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studentNotFound', NULL::integer;
+		END IF;
 
-			IF NOT EXISTS (
-				SELECT 1
-				FROM academic.student_section_enrollments sse
-				JOIN academic.enrolled_students es
-					ON es.id = sse.enrolled_student_id
-				JOIN academic.students st
-					ON st.id = es.student_id
-				JOIN academic.course_sections cs
-					ON cs.id = sse.course_section_id
-				WHERE cs.section_code = r.section_code
-				  AND st.code = r.student_code
-			) THEN
-				v_has_errors := true;
-				RETURN QUERY
-				SELECT r.row_number, 'studentNotEnrolledInSection', NULL::integer;
-			END IF;
+		IF NOT EXISTS (
+			SELECT 1
+			FROM academic.student_section_enrollments sse
+			JOIN academic.enrolled_students es
+				ON es.id = sse.enrolled_student_id
+			JOIN academic.students st
+				ON st.id = es.student_id
+			JOIN academic.course_sections cs
+				ON cs.id = sse.course_section_id
+			WHERE cs.section_code = r.section_code
+			  AND st.code = r.student_code
+		) THEN
+			v_has_errors := true;
+			RETURN QUERY SELECT r.row_number, 'studentNotEnrolledInSection', NULL::integer;
+		END IF;
 
-			IF EXISTS (
-				SELECT 1
-				FROM academic.student_section_enrollments sse
-				JOIN academic.course_sections cs
-					ON cs.id = sse.course_section_id
-				WHERE cs.section_code = r.section_code
-				  AND sse.is_class_representative = true
-			) THEN
-				v_has_errors := true;
-				RETURN QUERY
-				SELECT r.row_number, 'sectionAlreadyHasRepresentative', NULL::integer;
-			END IF;
 	END LOOP;
 
 	IF v_has_errors THEN
@@ -198,7 +178,6 @@ BEGIN
 	)
 	RETURNING id INTO v_log_id;
 
-	-- clear existing representatives for affected sections
 	UPDATE academic.student_section_enrollments sse
 	SET
 		is_class_representative = false,
@@ -211,33 +190,78 @@ BEGIN
 	) sections
 	WHERE sse.course_section_id = sections.id;
 
-	-- assign representative
 	UPDATE academic.student_section_enrollments sse
 	SET
 		is_class_representative = true,
 		upload_log_id = v_log_id,
 		updated_at = NOW()
-	FROM academic.enrolled_students es
+	FROM (
+		SELECT
+			trim(e->>'sectionCode') AS section_code,
+			trim(e->>'studentCode') AS student_code
+		FROM jsonb_array_elements(p_rows) e
+	) data
+	JOIN academic.course_sections cs
+		ON cs.section_code = data.section_code
+	JOIN academic.enrolled_students es
+		ON TRUE
 	JOIN academic.students st
 		ON st.id = es.student_id
-	JOIN academic.course_sections cs
-		ON cs.section_code = trim((SELECT e->>'sectionCode'
-			FROM jsonb_array_elements(p_rows) e
-			LIMIT 1))
-	WHERE sse.enrolled_student_id = es.id
-	  AND sse.course_section_id = cs.id
-	  AND st.code = trim((SELECT e->>'studentCode'
-			FROM jsonb_array_elements(p_rows) e
-			LIMIT 1));
+		AND st.code = data.student_code
+	WHERE sse.course_section_id = cs.id
+	  AND sse.enrolled_student_id = es.id;
 
 	RETURN QUERY
 	SELECT NULL::integer, NULL::text, v_log_id;
 END;
 $fn$;
-`);
+		`);
+
+		await queryRunner.query(`
+CREATE OR REPLACE FUNCTION audit.fn_rollback_class_representatives(
+	p_upload_log_id integer
+)
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+
+	IF NOT EXISTS (
+		SELECT 1 FROM audit.upload_logs WHERE id = p_upload_log_id
+	) THEN
+		RAISE EXCEPTION 'uploadLogNotFound';
+	END IF;
+
+	-- revert all affected enrollments
+	UPDATE academic.student_section_enrollments
+	SET
+		is_class_representative = false,
+		upload_log_id = NULL,
+		updated_at = NOW()
+	WHERE upload_log_id = p_upload_log_id;
+
+	-- mark rollback
+	UPDATE audit.upload_logs
+	SET
+		status_type_id = (
+			SELECT id FROM core.types WHERE code = 'TG1102-T002'
+		),
+		rollback_at = NOW(),
+		updated_at = NOW()
+	WHERE id = p_upload_log_id;
+
+	RETURN 'ok';
+
+END;
+$fn$;
+		`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`
+			DROP FUNCTION IF EXISTS audit.fn_rollback_class_representatives(integer)
+		`);
+
 		await queryRunner.query(`
 			DROP FUNCTION IF EXISTS audit.fn_upload_class_representatives(
 				jsonb,
@@ -248,8 +272,8 @@ $fn$;
 		`);
 
 		await queryRunner.query(`
-			DELETE FROM core.types
-			WHERE code = 'TG1101-T013'
+        DELETE FROM core.types
+        WHERE code = 'TG1101-T013'
 		`);
 
 		await queryRunner.query(`
