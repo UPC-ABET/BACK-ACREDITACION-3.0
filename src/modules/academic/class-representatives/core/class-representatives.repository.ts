@@ -6,31 +6,31 @@ import { StudentSectionEnrollmentEntity } from '../model/class-representatives.e
 
 // Interfaz actualizada con toda la información detallada del delegado
 export interface ClassRepresentativeRow {
-    id: number;
-    isClassRepresentative: boolean;
-    courseCode: string;
-    courseName: string;
-    sectionCode: string;
-    studentCode: string;
-    studentFullName: string;
+	id: number;
+	isClassRepresentative: boolean;
+	courseCode: string;
+	courseName: string;
+	sectionCode: string;
+	studentCode: string;
+	studentFullName: string;
 }
 
 @Injectable()
 export class ClassRepresentativesRepository extends BaseRepository<StudentSectionEnrollmentEntity> {
-    constructor(
-        @InjectRepository(StudentSectionEnrollmentEntity)
-        repository: Repository<StudentSectionEnrollmentEntity>,
-        dataSource: DataSource,
-    ) {
-        super(repository, dataSource);
-    }
+	constructor(
+		@InjectRepository(StudentSectionEnrollmentEntity)
+		repository: Repository<StudentSectionEnrollmentEntity>,
+		dataSource: DataSource,
+	) {
+		super(repository, dataSource);
+	}
 
-    /**
-     * Obtiene el listado detallado de todos los delegados activos con la información
-     * de sus respectivos cursos, secciones y datos personales.
-     */
-    async findAllRepresentatives(): Promise<ClassRepresentativeRow[]> {
-        return await this.dataSource.query(`
+	/**
+	 * Obtiene el listado detallado de todos los delegados activos con la información
+	 * de sus respectivos cursos, secciones y datos personales.
+	 */
+	async findAllRepresentatives(): Promise<ClassRepresentativeRow[]> {
+		return await this.dataSource.query(`
             SELECT 
                 sse.id AS "id",
                 sse.is_class_representative AS "isClassRepresentative",
@@ -50,13 +50,17 @@ export class ClassRepresentativesRepository extends BaseRepository<StudentSectio
               AND c.is_active = true
             ORDER BY c.code ASC, cs.section_code ASC
         `);
-    }
+	}
 
-    /**
-     * Busca el registro de matrícula cruzando el código del alumno y de la sección.
-     */
-    async findEnrollmentByCodes(studentCode: string, sectionCode: string): Promise<StudentSectionEnrollmentEntity | null> {
-        const rows = await this.dataSource.query(`
+	/**
+	 * Busca el registro de matrícula cruzando el código del alumno y de la sección.
+	 */
+	async findEnrollmentByCodes(
+		studentCode: string,
+		sectionCode: string,
+	): Promise<StudentSectionEnrollmentEntity | null> {
+		const rows = await this.dataSource.query(
+			`
             SELECT sse.id AS "id"
             FROM academic.student_section_enrollments sse
             INNER JOIN academic.enrolled_students es ON sse.enrolled_student_id = es.id
@@ -65,8 +69,78 @@ export class ClassRepresentativesRepository extends BaseRepository<StudentSectio
             WHERE s.code = $1 
               AND cs.section_code = $2
               AND sse.is_active = true
-        `, [studentCode, sectionCode]);
+        `,
+			[studentCode, sectionCode],
+		);
 
-        return rows[0] || null;
-    }
+		return rows[0] || null;
+	}
+
+	async findMaintenancePage(
+		academicPeriodId: number,
+		search: string | undefined,
+		skip: number,
+		take: number,
+	): Promise<[ClassRepresentativeRow[], number]> {
+		const searchParam = search ? `%${search.toLowerCase()}%` : null;
+
+		const rows: ClassRepresentativeRow[] = await this.dataSource.query(
+			`
+		SELECT
+			sse.id                                 AS "id",
+			sse.is_class_representative            AS "isClassRepresentative",
+			c.code                                 AS "courseCode",
+			c.name->>'es'                          AS "courseName",
+			cs.section_code                        AS "sectionCode",
+			s.code                                 AS "studentCode",
+			CONCAT(s.first_name, ' ', s.last_name) AS "studentFullName"
+		FROM academic.student_section_enrollments sse
+		INNER JOIN academic.course_sections cs   ON sse.course_section_id = cs.id
+		INNER JOIN academic.courses c            ON cs.course_id = c.id
+		INNER JOIN academic.enrolled_students es ON sse.enrolled_student_id = es.id
+		INNER JOIN academic.students s           ON es.student_id = s.id
+		WHERE sse.is_class_representative = true
+		  AND sse.is_active  = true
+		  AND cs.is_active   = true
+		  AND c.is_active    = true
+		  AND cs.academic_period_id = $1
+		  AND (
+			$2::text IS NULL
+			OR lower(s.code)          LIKE $2
+			OR lower(s.first_name)    LIKE $2
+			OR lower(s.last_name)     LIKE $2
+			OR lower(cs.section_code) LIKE $2
+		  )
+		ORDER BY c.code ASC, cs.section_code ASC
+		LIMIT $3 OFFSET $4
+	`,
+			[academicPeriodId, searchParam, take, skip],
+		);
+
+		const [{ total }]: [{ total: string }] = await this.dataSource.query(
+			`
+		SELECT COUNT(*) AS total
+		FROM academic.student_section_enrollments sse
+		INNER JOIN academic.course_sections cs   ON sse.course_section_id = cs.id
+		INNER JOIN academic.courses c            ON cs.course_id = c.id
+		INNER JOIN academic.enrolled_students es ON sse.enrolled_student_id = es.id
+		INNER JOIN academic.students s           ON es.student_id = s.id
+		WHERE sse.is_class_representative = true
+		  AND sse.is_active  = true
+		  AND cs.is_active   = true
+		  AND c.is_active    = true
+		  AND cs.academic_period_id = $1
+		  AND (
+			$2::text IS NULL
+			OR lower(s.code)          LIKE $2
+			OR lower(s.first_name)    LIKE $2
+			OR lower(s.last_name)     LIKE $2
+			OR lower(cs.section_code) LIKE $2
+		  )
+	`,
+			[academicPeriodId, searchParam],
+		);
+
+		return [rows, Number(total)];
+	}
 }

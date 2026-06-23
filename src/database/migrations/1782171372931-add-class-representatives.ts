@@ -137,6 +137,7 @@ BEGIN
 				ON cs.id = sse.course_section_id
 			WHERE cs.section_code = r.section_code
 			  AND st.code = r.student_code
+			  AND cs.academic_period_id = p_academic_period_id
 		) THEN
 			v_has_errors := true;
 			RETURN QUERY SELECT r.row_number, 'studentNotEnrolledInSection', NULL::integer;
