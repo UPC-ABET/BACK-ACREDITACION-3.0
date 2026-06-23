@@ -97,6 +97,9 @@ import { UserRoleModule } from './modules/admin/iam/user-roles/user-roles.module
 import { RoleModulePermissionModule } from './modules/admin/iam/role-module-permissions/role-module-permissions.module';
 import { ClassRepresentativesModule } from 'src/modules/uploads/class-representatives/class-representatives.module';
 
+import { ClassRepresentativesModule } from './modules/academic/class-representatives/class-representatives.module';
+
+
 @Module({
 	imports: [
 		ConfigModule.forRoot({
@@ -215,6 +218,7 @@ import { ClassRepresentativesModule } from 'src/modules/uploads/class-representa
 		RoleModule,
 		UserRoleModule,
 		RoleModulePermissionModule,
+		ClassRepresentativesModule,
 		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule, ScrapingExportsModule] : []),
 	],
 	controllers: [AppController],
