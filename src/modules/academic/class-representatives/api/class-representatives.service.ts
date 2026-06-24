@@ -1,75 +1,58 @@
 import { Injectable } from '@nestjs/common';
-import { BaseService } from 'src/commons/base.service';
-import { BadRequestError } from 'src/commons/domain-error';
+import { PaginatedResult } from 'src/commons/pagination.dtos';
 import {
-	ClassRepresentativeRow,
-	ClassRepresentativesRepository,
-} from '../core/class-representatives.repository';
+	StudentSectionEnrollmentMaintenanceItem,
+	toStudentSectionEnrollmentMaintenanceItem,
+} from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.dtos';
+import { StudentSectionEnrollmentRepository } from 'src/modules/academic/student-section-enrollments/core/student-section-enrollments.repository';
+import { StudentSectionEnrollmentService } from 'src/modules/academic/student-section-enrollments/api/student-section-enrollments.service';
+import { ClassRepresentativesValidation } from '../core/class-representatives.validation';
+import { classRepresentativesValidationStrings } from '../config/strings/class-representatives.validation';
 import {
 	AssignRepresentativeDto,
 	ClassRepresentativeMaintenanceQueryDto,
 } from '../model/class-representatives.dtos';
-import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos'; // Reutilizamos el DTO de códigos
 
 @Injectable()
-export class ClassRepresentativesService extends BaseService<ClassRepresentativesRepository> {
-	constructor(protected readonly repository: ClassRepresentativesRepository) {
-		super(repository);
+export class ClassRepresentativesService {
+	constructor(
+		private readonly enrollmentService: StudentSectionEnrollmentService,
+		private readonly enrollmentRepository: StudentSectionEnrollmentRepository,
+	) {}
+
+	async getAll(): Promise<StudentSectionEnrollmentMaintenanceItem[]> {
+		const rows = await this.enrollmentRepository.findByClassRepresentativeFlag(true);
+		return rows.map(toStudentSectionEnrollmentMaintenanceItem);
 	}
 
-	// 1. LISTAR: Mantiene el SQL crudo personalizado
-	async getAll() {
-		return await this.repository.findAllRepresentatives();
-	}
-
-	// 2. CREAR (Asignar): Cambia el flag a true
-	async assignRepresentative(dto: AssignRepresentativeDto) {
-		const enrollment = await this.repository.findEnrollmentByCodes(
-			dto.studentCode,
-			dto.sectionCode,
+	async assignRepresentative(dto: AssignRepresentativeDto, academicPeriodId: number) {
+		const enrollment = await ClassRepresentativesValidation.ensureEnrollmentExists(
+			this.enrollmentRepository,
+			dto,
+			academicPeriodId,
+			classRepresentativesValidationStrings.result.assignFailed,
 		);
-
-		if (!enrollment) {
-			throw new BadRequestError({
-				message: 'error.classRepresentative.enrollmentNotFound',
-				errors: ['error.classRepresentativeAssign.studentNotEnrolledInSection.'],
-			});
-		}
-
-		await this.repository.update(enrollment.id, { isClassRepresentative: true });
+		await this.enrollmentRepository.update(enrollment.id, { isClassRepresentative: true });
 		return { success: true };
 	}
 
-	// 3. ELIMINAR (Quitar): NUEVO FLUJO — Ahora también valida por códigos y cambia el flag a false
-	async removeRepresentative(dto: AssignRepresentativeDto) {
-		const enrollment = await this.repository.findEnrollmentByCodes(
-			dto.studentCode,
-			dto.sectionCode,
+	async removeRepresentative(dto: AssignRepresentativeDto, academicPeriodId: number) {
+		const enrollment = await ClassRepresentativesValidation.ensureEnrollmentExists(
+			this.enrollmentRepository,
+			dto,
+			academicPeriodId,
+			classRepresentativesValidationStrings.result.removeFailed,
 		);
-
-		if (!enrollment) {
-			throw new BadRequestError({
-				message: 'error.classRepresentative.enrollmentNotFound',
-				errors: ['The specified student is not enrolled in this course section.'],
-			});
-		}
-
-		// Modifica la columna 'isClassRepresentative' a false usando el ID encontrado
-		await this.repository.update(enrollment.id, { isClassRepresentative: false });
+		await this.enrollmentRepository.update(enrollment.id, { isClassRepresentative: false });
 		return { success: true };
 	}
 
 	async getMaintenanceList(
 		academicPeriodId: number,
 		query: ClassRepresentativeMaintenanceQueryDto,
-	): Promise<PaginatedResult<ClassRepresentativeRow>> {
-		const { page, pageSize, skip, take } = resolvePagination(query);
-		const [rows, total] = await this.repository.findMaintenancePage(
-			academicPeriodId,
-			query.search,
-			skip,
-			take,
-		);
-		return toPaginated(rows, total, page, pageSize);
+	): Promise<PaginatedResult<StudentSectionEnrollmentMaintenanceItem>> {
+		return await this.enrollmentService.getMaintenanceList(academicPeriodId, query, {
+			isClassRepresentative: true,
+		});
 	}
 }

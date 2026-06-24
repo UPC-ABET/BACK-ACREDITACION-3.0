@@ -1,5 +1,4 @@
 import { Body, HttpCode, HttpStatus, Query } from '@nestjs/common';
-import { BaseController } from 'src/commons/base.controller';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
@@ -21,10 +20,8 @@ import {
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
 @SwaggerClassRepresentativeController()
-export class ClassRepresentativesController extends BaseController<ClassRepresentativesService> {
-	constructor(private readonly service: ClassRepresentativesService) {
-		super(service);
-	}
+export class ClassRepresentativesController {
+	constructor(private readonly service: ClassRepresentativesService) {}
 
 	@SwaggerClassRepresentativeGetAll()
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
@@ -33,18 +30,19 @@ export class ClassRepresentativesController extends BaseController<ClassRepresen
 	}
 
 	@SwaggerClassRepresentativeAssign()
+	@ApiAcademicPeriodHeader()
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.PUT })
-	async assign(@Body() dto: AssignRepresentativeDto) {
-		return parseSuccessResponse(await this.service.assignRepresentative(dto));
+	async assign(@AcademicPeriodId() academicPeriodId: number, @Body() dto: AssignRepresentativeDto) {
+		return parseSuccessResponse(await this.service.assignRepresentative(dto, academicPeriodId));
 	}
 
 	@SwaggerClassRepresentativeRemove()
+	@ApiAcademicPeriodHeader()
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.PUT })
-	async remove(@Body() dto: AssignRepresentativeDto) {
-		// Cambiado a @Body para recibir los códigos del payload
-		return parseSuccessResponse(await this.service.removeRepresentative(dto));
+	async remove(@AcademicPeriodId() academicPeriodId: number, @Body() dto: AssignRepresentativeDto) {
+		return parseSuccessResponse(await this.service.removeRepresentative(dto, academicPeriodId));
 	}
 
 	@SwaggerClassRepresentativeMaintenance()

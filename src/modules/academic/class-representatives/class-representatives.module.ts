@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { StudentSectionEnrollmentEntity } from './model/class-representatives.entity';
-import { ClassRepresentativesRepository } from './core/class-representatives.repository';
+import { StudentSectionEnrollmentModule } from 'src/modules/academic/student-section-enrollments/student-section-enrollments.module';
 import { ClassRepresentativesService } from './api/class-representatives.service';
 import { ClassRepresentativesController } from './api/class-representatives.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([StudentSectionEnrollmentEntity])],
-    controllers: [ClassRepresentativesController],
-    providers: [ClassRepresentativesService, ClassRepresentativesRepository],
-    exports: [ClassRepresentativesService, ClassRepresentativesRepository],
+	imports: [StudentSectionEnrollmentModule],
+	controllers: [ClassRepresentativesController],
+	providers: [ClassRepresentativesService],
+	exports: [ClassRepresentativesService],
 })
 export class ClassRepresentativesModule {}

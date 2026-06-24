@@ -218,7 +218,6 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		RoleModule,
 		UserRoleModule,
 		RoleModulePermissionModule,
-		ClassRepresentativesModule,
 		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule, ScrapingExportsModule] : []),
 	],
 	controllers: [AppController],

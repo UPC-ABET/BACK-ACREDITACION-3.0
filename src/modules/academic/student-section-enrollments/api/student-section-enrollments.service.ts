@@ -10,9 +10,9 @@ import {
 	UpdateStudentSectionEnrollmentMaintenanceDto,
 	CreateStudentSectionEnrollmentMaintenanceDto,
 	StudentSectionEnrollmentMaintenanceItem,
+	toStudentSectionEnrollmentMaintenanceItem,
 } from '../model/student-section-enrollments.dtos';
 import { EntityManager } from 'typeorm';
-import { StudentSectionEnrollmentEntity } from '../model/student-section-enrollments.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 @Injectable()
@@ -39,6 +39,7 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 	async getMaintenanceList(
 		academicPeriodId: number,
 		query: StudentSectionEnrollmentMaintenanceQueryDto,
+		options?: { isClassRepresentative?: boolean },
 	): Promise<PaginatedResult<StudentSectionEnrollmentMaintenanceItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
 		const [rows, total] = await this.repository.findMaintenancePage(
@@ -47,14 +48,10 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 			query.search,
 			skip,
 			take,
+			options?.isClassRepresentative,
 		);
 
-		return toPaginated(
-			rows.map((row) => this.toMaintenanceItem(row)),
-			total,
-			page,
-			pageSize,
-		);
+		return toPaginated(rows.map(toStudentSectionEnrollmentMaintenanceItem), total, page, pageSize);
 	}
 
 	async createMaintenance(dto: CreateStudentSectionEnrollmentMaintenanceDto) {
@@ -82,22 +79,6 @@ export class StudentSectionEnrollmentService extends BaseService<StudentSectionE
 		id: number,
 	): Promise<StudentSectionEnrollmentMaintenanceItem | null> {
 		const row = await this.repository.findByIdWithRelations(id);
-		return row ? this.toMaintenanceItem(row) : null;
-	}
-
-	private toMaintenanceItem(
-		entity: StudentSectionEnrollmentEntity,
-	): StudentSectionEnrollmentMaintenanceItem {
-		return {
-			id: entity.id,
-			courseSectionId: entity.courseSectionId,
-			enrolledStudentId: entity.enrolledStudentId,
-			courseName: entity.courseSection.course.name,
-			courseCode: entity.courseSection.course.code,
-			sectionCode: entity.courseSection.sectionCode,
-			studentCode: entity.enrolledStudent.student.code,
-			studentFirstName: entity.enrolledStudent.student.firstName,
-			studentLastName: entity.enrolledStudent.student.lastName,
-		};
+		return row ? toStudentSectionEnrollmentMaintenanceItem(row) : null;
 	}
 }

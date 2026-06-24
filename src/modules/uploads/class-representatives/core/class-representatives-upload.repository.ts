@@ -8,7 +8,7 @@ export interface UploadFnRow {
 }
 
 @Injectable()
-export class ClassRepresentativesRepository {
+export class ClassRepresentativesUploadRepository {
 	constructor(private readonly dataSource: DataSource) {}
 
 	async callUploadFunction(

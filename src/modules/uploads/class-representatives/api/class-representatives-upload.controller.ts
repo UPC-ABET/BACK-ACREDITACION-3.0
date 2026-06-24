@@ -22,7 +22,7 @@ import {
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 
-import { ClassRepresentativesService } from './class-representatives.service';
+import { ClassRepresentativesUploadService } from './class-representatives-upload.service';
 import { classRepresentativesRoutes } from '../config/class-representatives.routes';
 import {
 	ClassRepresentativesUploadDto,
@@ -31,16 +31,16 @@ import {
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 
-const routes = classRepresentativesRoutes.class_representatives_upload;
+const routes = classRepresentativesRoutes;
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
 export class ClassRepresentativesUploadController {
-	constructor(private readonly service: ClassRepresentativesService) {}
+	constructor(private readonly service: ClassRepresentativesUploadService) {}
 
 	@Get(routes.operation.template.route)
 	@ApiOperation({ summary: routes.operation.template.summary })
-	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiQuery({ name: 'lang', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.GET })
 	async template(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
 		const { buffer, fileName } = await this.service.generateTemplate(lang);

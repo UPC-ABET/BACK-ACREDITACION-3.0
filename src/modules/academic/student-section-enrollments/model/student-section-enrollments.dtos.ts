@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
+import type { StudentSectionEnrollmentEntity } from './student-section-enrollments.entity';
 
 export class CreateStudentSectionEnrollmentDto {
 	@IsOptional()
@@ -104,10 +105,28 @@ export interface StudentSectionEnrollmentMaintenanceItem {
 	id: number;
 	courseSectionId: number;
 	enrolledStudentId: number;
+	isClassRepresentative: boolean;
 	courseName: I18nText;
 	courseCode: string;
 	sectionCode: string;
 	studentCode: string;
 	studentFirstName: string;
 	studentLastName: string;
+}
+
+export function toStudentSectionEnrollmentMaintenanceItem(
+	entity: StudentSectionEnrollmentEntity,
+): StudentSectionEnrollmentMaintenanceItem {
+	return {
+		id: entity.id,
+		courseSectionId: entity.courseSectionId,
+		enrolledStudentId: entity.enrolledStudentId,
+		isClassRepresentative: entity.isClassRepresentative,
+		courseName: entity.courseSection.course.name,
+		courseCode: entity.courseSection.course.code,
+		sectionCode: entity.courseSection.sectionCode,
+		studentCode: entity.enrolledStudent.student.code,
+		studentFirstName: entity.enrolledStudent.student.firstName,
+		studentLastName: entity.enrolledStudent.student.lastName,
+	};
 }

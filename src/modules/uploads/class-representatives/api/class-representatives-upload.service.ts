@@ -14,13 +14,13 @@ import {
 	classRepresentativesErrorMessages,
 	classRepresentativesTemplateLabels,
 } from '../model/class-representatives-template.labels';
-import { ClassRepresentativesRepository } from '../core/class-representatives.repository';
+import { ClassRepresentativesUploadRepository } from '../core/class-representatives-upload.repository';
 import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
 @Injectable()
-export class ClassRepresentativesService {
+export class ClassRepresentativesUploadService {
 	constructor(
-		private readonly repository: ClassRepresentativesRepository,
+		private readonly repository: ClassRepresentativesUploadRepository,
 		private readonly uploadLogService: UploadLogService,
 	) {}
 

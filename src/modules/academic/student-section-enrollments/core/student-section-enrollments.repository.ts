@@ -36,16 +36,47 @@ export class StudentSectionEnrollmentRepository extends BaseRepository<StudentSe
 		return await this.maintenanceQuery().where('sse.id = :id', { id }).getOne();
 	}
 
+	async findByStudentAndSectionCode(
+		studentCode: string,
+		sectionCode: string,
+		academicPeriodId?: number,
+	): Promise<StudentSectionEnrollmentEntity | null> {
+		const qb = this.maintenanceQuery()
+			.where('student.code = :studentCode', { studentCode })
+			.andWhere('section.sectionCode = :sectionCode', { sectionCode });
+
+		if (academicPeriodId !== undefined) {
+			qb.andWhere('section.academicPeriodId = :academicPeriodId', { academicPeriodId });
+		}
+
+		return await qb.getOne();
+	}
+
+	async findByClassRepresentativeFlag(
+		isClassRepresentative = true,
+	): Promise<StudentSectionEnrollmentEntity[]> {
+		return await this.maintenanceQuery()
+			.where('sse.isClassRepresentative = :flag', { flag: isClassRepresentative })
+			.orderBy('course.code', 'ASC')
+			.addOrderBy('section.sectionCode', 'ASC')
+			.getMany();
+	}
+
 	async findMaintenancePage(
 		academicPeriodId: number,
 		programId: number | undefined,
 		search: string | undefined,
 		skip: number,
 		take: number,
+		isClassRepresentative?: boolean,
 	): Promise<[StudentSectionEnrollmentEntity[], number]> {
 		const qb = this.maintenanceQuery().where('section.academic_period_id = :academicPeriodId', {
 			academicPeriodId,
 		});
+
+		if (isClassRepresentative !== undefined) {
+			qb.andWhere('sse.isClassRepresentative = :isClassRepresentative', { isClassRepresentative });
+		}
 
 		if (programId !== undefined) {
 			qb.andWhere('student.program_id = :programId', { programId });

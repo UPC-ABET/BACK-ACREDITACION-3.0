@@ -1,43 +1,25 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class AssignRepresentativeDto {
 	@IsString()
 	@IsNotEmpty()
-	@ApiProperty({ example: '20231A456', description: 'Código del alumno en la tabla students' })
+	@ApiProperty({ example: '20231A456', description: 'Student code in the students table' })
 	studentCode: string;
 
 	@IsString()
 	@IsNotEmpty()
-	@ApiProperty({
-		example: 'SOFT-INT-2026-2-A',
-		description: 'Código de la sección en course_sections',
-	})
+	@ApiProperty({ example: 'SOFT-INT-2026-2-A', description: 'Section code in course_sections' })
 	sectionCode: string;
 }
 
-export class ClassRepresentativeMaintenanceQueryDto {
+export class ClassRepresentativeMaintenanceQueryDto extends PaginationQueryDto {
 	@IsOptional()
 	@IsString()
-	@ApiProperty({
+	@ApiPropertyOptional({
 		example: 'Juan',
-		required: false,
-		description: 'Filtra por nombre, apellido o código del alumno, o código de sección',
+		description: 'Filter by student name, student code, or section code',
 	})
 	search?: string;
-
-	@IsOptional()
-	@Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
-	@IsInt()
-	@Min(1)
-	@ApiProperty({ example: 1, required: false, description: 'Número de página' })
-	page?: number;
-
-	@IsOptional()
-	@Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
-	@IsInt()
-	@Min(1)
-	@ApiProperty({ example: 10, required: false, description: 'Tamaño de página' })
-	pageSize?: number;
 }

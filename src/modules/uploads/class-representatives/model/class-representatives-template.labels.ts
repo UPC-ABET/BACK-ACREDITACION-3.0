@@ -22,7 +22,7 @@ export const classRepresentativesErrorMessages: Record<string, Record<string, st
 		sectionNotFound: 'No existe una sección con ese código.',
 		studentCodeEmpty: 'El código del alumno es obligatorio.',
 		studentNotFound: 'No existe un alumno con ese código.',
-		sectionAlreadyHasRepresentative: 'La sección ya tiene un delegado.',
+		studentNotEnrolledInSection: 'El alumno no está matriculado en esta sección.',
 	},
 	en: {
 		duplicateRowInFile: 'Duplicate row in the file (same section and student).',
@@ -30,7 +30,7 @@ export const classRepresentativesErrorMessages: Record<string, Record<string, st
 		sectionNotFound: 'No section exists with that code.',
 		studentCodeEmpty: 'Student code is required.',
 		studentNotFound: 'No student exists with that code.',
-		sectionAlreadyHasRepresentative: 'This section already has a class representative.',
+		studentNotEnrolledInSection: 'The student is not enrolled in this section.',
 	},
 };
 
