@@ -19,8 +19,9 @@ export function mapCampus(bannerCampusCode: string | null | undefined): string {
 // Banner program code -> academic.programs.code (the "career" code, e.g. SW / CC). The export only
 // covers engineering programs (the accreditation scope), so any program not in this map returns
 // null and the caller drops the row.
-// NOTE: Civil and Industrial have two accreditation variants (FC/AC) in academic.programs; FC is
-// used here as the default — pending confirmation.
+// NOTE: Banner has a single program code for Civil and Industrial (no separate EPE code), so each
+// maps to its regular (AC) variant in academic.programs — CIVAC / INDAC (the EPE FC variants are
+// not what Banner scrapes here).
 const PROGRAM_CAREER_MAP: Record<string, string> = {
 	UAC_ISOF_SP1: 'SW', // Ingeniería de Software
 	UAC_COMP_SP1: 'CC', // Ciencias de la Computación
@@ -32,8 +33,8 @@ const PROGRAM_CAREER_MAP: Record<string, string> = {
 	UAC_IELE_SP1: 'ELE', // Ingeniería Electrónica
 	UAC_ICIB_SP1: 'CB', // Ingeniería de Ciberseguridad
 	UAC_IGMI_SP1: 'IGM', // Ingeniería de Gestión Minera
-	UAC_ICIV_SP1: 'CIV FC', // Ingeniería Civil (FC/AC variants — confirm)
-	UAC_IIND_SP1: 'IND FC', // Ingeniería Industrial (FC/AC variants — confirm)
+	UAC_ICIV_SP1: 'CIVAC', // Ingeniería Civil (regular)
+	UAC_IIND_SP1: 'INDAC', // Ingeniería Industrial (regular)
 };
 
 // Returns the engineering career code, or null when the program is out of scope (non-engineering).
@@ -45,6 +46,6 @@ export function mapProgramToCareer(bannerProgramCode: string | null | undefined)
 // Sections whose Banner modality is missing default to "P" (presencial), per the original system.
 export const DEFAULT_SECTION_MODALITY = 'P';
 
-// Enrollment "modality" column is not really known yet; the original system carries the enrollment
-// state, which is "MRE" for every active row, so it is hardcoded for now.
-export const DEFAULT_ENROLLMENT_STATUS = 'MRE';
+// Enrollment "modality" column (P/V/S = presencial/virtual/semipresencial). There is no reliable
+// per-enrollment source for it yet, so it is hardcoded to "P" for now (pending a real mapping).
+export const DEFAULT_ENROLLMENT_STATUS = 'P';

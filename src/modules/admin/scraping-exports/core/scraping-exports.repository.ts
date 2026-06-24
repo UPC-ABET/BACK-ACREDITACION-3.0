@@ -152,7 +152,7 @@ export class ScrapingExportsRepository {
 
 	// Distinct enrolled students from the latest Banner run. The program is mapped to its academic
 	// career code (SW/CC/…), the campus to the short code (CS/MO/SI/VL), and the enrollment column is
-	// hardcoded to "MRE" for now. Scoped by the school's careers when a school is active; otherwise
+	// hardcoded to "P" for now. Scoped by the school's careers when a school is active; otherwise
 	// every engineering student is kept (non-engineering programs are always dropped).
 	async getAlumnosMatriculados(schoolId: number | null): Promise<AlumnoMatriculadoExportRow[]> {
 		const scope = await this.resolveScope(schoolId);
