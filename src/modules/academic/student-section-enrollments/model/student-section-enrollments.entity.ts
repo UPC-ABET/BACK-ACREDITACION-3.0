@@ -1,6 +1,6 @@
 import { Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
+import { BooleanColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/course-sections.entity';
 import { EnrolledStudentEntity } from 'src/modules/academic/enrolled-students/model/enrolled-students.entity';
 
@@ -16,6 +16,9 @@ export class StudentSectionEnrollmentEntity extends BaseEntity {
 
 	@IntegerFKIDColumn({ nullable: true })
 	uploadLogId: number;
+
+	@BooleanColumn({ nullable: false })
+	isClassRepresentative: boolean;
 
 	// %% RELATIONS
 
