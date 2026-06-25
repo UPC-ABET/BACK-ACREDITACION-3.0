@@ -71,17 +71,17 @@ export class ScrapingExportsRepository {
 		const { clause, params } = this.sectionScopeFilter(scope);
 
 		const rows: Array<{
-			professor_code: string;
-			last_name: string | null;
-			first_name: string | null;
+			professorCode: string;
+			lastName: string | null;
+			firstName: string | null;
 			email: string | null;
 		}> = await this.dataSource.query(
 			`
 			SELECT DISTINCT ON (d->>'idBanner')
-				d->>'idBanner'  AS professor_code,
-				d->>'apellidos' AS last_name,
-				d->>'nombres'   AS first_name,
-				d->>'correo'    AS email
+				d->>'idBanner'  AS "professorCode",
+				d->>'apellidos' AS "lastName",
+				d->>'nombres'   AS "firstName",
+				d->>'correo'    AS "email"
 			FROM raw_horario h
 			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(h.payload->'horarios', '[]'::jsonb)) hr
 			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(hr->'docentes', '[]'::jsonb)) d
@@ -94,9 +94,9 @@ export class ScrapingExportsRepository {
 		);
 
 		return rows.map((row) => ({
-			professorCode: row.professor_code,
-			lastName: row.last_name ?? '',
-			firstName: row.first_name ?? '',
+			professorCode: row.professorCode,
+			lastName: row.lastName ?? '',
+			firstName: row.firstName ?? '',
 			email: row.email ?? '',
 		}));
 	}
@@ -111,19 +111,19 @@ export class ScrapingExportsRepository {
 		const { clause, params } = this.sectionScopeFilter(scope);
 
 		const rows: Array<{
-			course_code: string | null;
-			section_code: string;
-			professor_code: string | null;
-			campus_code: string | null;
-			modality_code: string | null;
+			courseCode: string | null;
+			sectionCode: string;
+			professorCode: string | null;
+			campusCode: string | null;
+			modalityCode: string | null;
 		}> = await this.dataSource.query(
 			`
 			SELECT DISTINCT ON (h.nrc)
-				(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS course_code,
-				h.nrc                                                            AS section_code,
-				prof.idb                                                         AS professor_code,
-				h.payload->'horarios'->0->'campus'->>'codigo'                    AS campus_code,
-				h.payload->'horarios'->0->'metodoEducativo'->>'codigo'           AS modality_code
+				(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS "courseCode",
+				h.nrc                                                            AS "sectionCode",
+				prof.idb                                                         AS "professorCode",
+				h.payload->'horarios'->0->'campus'->>'codigo'                    AS "campusCode",
+				h.payload->'horarios'->0->'metodoEducativo'->>'codigo'           AS "modalityCode"
 			FROM raw_horario h
 			LEFT JOIN LATERAL (
 				SELECT d->>'idBanner' AS idb
@@ -142,11 +142,11 @@ export class ScrapingExportsRepository {
 		);
 
 		return rows.map((row) => ({
-			courseCode: row.course_code ?? '',
-			sectionCode: row.section_code,
-			professorCode: row.professor_code ?? '',
-			campusCode: mapCampus(row.campus_code),
-			sectionModalityTypeCode: row.modality_code ?? DEFAULT_SECTION_MODALITY,
+			courseCode: row.courseCode ?? '',
+			sectionCode: row.sectionCode,
+			professorCode: row.professorCode ?? '',
+			campusCode: mapCampus(row.campusCode),
+			sectionModalityTypeCode: row.modalityCode ?? DEFAULT_SECTION_MODALITY,
 		}));
 	}
 
@@ -160,19 +160,19 @@ export class ScrapingExportsRepository {
 		const params = scope ? [scope.bannerPrograms] : [];
 
 		const rows: Array<{
-			student_code: string;
-			last_name: string | null;
-			first_name: string | null;
-			program_code: string | null;
-			campus_code: string | null;
+			studentCode: string;
+			lastName: string | null;
+			firstName: string | null;
+			programCode: string | null;
+			campusCode: string | null;
 		}> = await this.dataSource.query(
 			`
 			SELECT DISTINCT ON (a.codigo_alumno)
-				a.codigo_alumno                   AS student_code,
-				a.payload->>'apellidos'           AS last_name,
-				a.payload->>'nombres'             AS first_name,
-				a.payload->'programa'->>'codigo'  AS program_code,
-				a.payload->'campus'->>'codigo'    AS campus_code
+				a.codigo_alumno                   AS "studentCode",
+				a.payload->>'apellidos'           AS "lastName",
+				a.payload->>'nombres'             AS "firstName",
+				a.payload->'programa'->>'codigo'  AS "programCode",
+				a.payload->'campus'->>'codigo'    AS "campusCode"
 			FROM raw_alumno a
 			WHERE a.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
 			  AND NULLIF(trim(a.codigo_alumno), '') IS NOT NULL
@@ -183,15 +183,15 @@ export class ScrapingExportsRepository {
 		);
 
 		return rows.flatMap((row) => {
-			const career = mapProgramToCareer(row.program_code);
+			const career = mapProgramToCareer(row.programCode);
 			if (career === null) return [];
 			return [
 				{
-					studentCode: row.student_code,
-					lastName: row.last_name ?? '',
-					firstName: row.first_name ?? '',
+					studentCode: row.studentCode,
+					lastName: row.lastName ?? '',
+					firstName: row.firstName ?? '',
 					programCode: career,
-					campusCode: mapCampus(row.campus_code),
+					campusCode: mapCampus(row.campusCode),
 					enrollmentModalityTypeCode: DEFAULT_ENROLLMENT_STATUS,
 				},
 			];
@@ -206,9 +206,9 @@ export class ScrapingExportsRepository {
 		const progFilter = scope ? `AND m.payload->'programa'->>'codigo' = ANY($1)` : '';
 		const params = scope ? [scope.bannerPrograms] : [];
 
-		const rows: Array<{ section_code: string; student_code: string }> = await this.dataSource.query(
+		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(
 			`
-			SELECT DISTINCT m.nrc AS section_code, m.codigo_alumno AS student_code
+			SELECT DISTINCT m.nrc AS "sectionCode", m.codigo_alumno AS "studentCode"
 			FROM raw_matricula m
 			WHERE m.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
 			  AND NULLIF(trim(m.nrc), '') IS NOT NULL
@@ -219,6 +219,6 @@ export class ScrapingExportsRepository {
 			params,
 		);
 
-		return rows.map((row) => ({ sectionCode: row.section_code, studentCode: row.student_code }));
+		return rows.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
 	}
 }
