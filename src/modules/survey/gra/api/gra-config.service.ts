@@ -29,6 +29,7 @@ export class GraConfigService {
 			academicPeriodId,
 			commissionId: dto.commissionId ?? null,
 			isVisible: dto.isVisible ?? true,
+			isExternal: dto.isExternal ?? false,
 		};
 
 		return await this.configRepo.create({
@@ -70,6 +71,7 @@ export class GraConfigService {
 			...(dto.programId !== undefined && { programId: dto.programId }),
 			...(dto.commissionId !== undefined && { commissionId: dto.commissionId }),
 			...(dto.isVisible !== undefined && { isVisible: dto.isVisible }),
+			...(dto.isExternal !== undefined && { isExternal: dto.isExternal }),
 		};
 
 		const updatePayload: Record<string, any> = { extra };

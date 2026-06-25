@@ -21,6 +21,7 @@ import {
 	SwaggerPppSurveyTemplate,
 	SwaggerPppSurveyDashboard,
 	SwaggerPppSurveyGenerateFindings,
+	SwaggerPppReportPerception,
 } from './docs/ppp.swagger';
 import {
 	CreatePppConfigDto,
@@ -33,6 +34,7 @@ import {
 	DashboardPppDto,
 	GenerateFindingsPppDto,
 } from '../model/ppp.dtos';
+import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import {
@@ -187,5 +189,17 @@ export class PppController {
 		@AcademicPeriodId() academicPeriodId: number,
 	) {
 		return parseSuccessResponse(await this.pppService.generateFindings(dto, academicPeriodId));
+	}
+
+	@SwaggerPppReportPerception()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async reportPerception(
+		@Body() dto: PerceptionReportDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.pppService.generatePerceptionReport(dto, academicPeriodId),
+		);
 	}
 }

@@ -114,5 +114,10 @@ export const lcfcRoutes = {
 			route: 'report-pdf',
 			summary: 'Download the LCFC results report (completion by program/course) as a PDF',
 		},
+		reportPerception: {
+			method: 'POST',
+			route: 'report/perception',
+			summary: 'Generate the LCFC perception-by-outcome PDF report (all sedes + one per sede)',
+		},
 	},
 };

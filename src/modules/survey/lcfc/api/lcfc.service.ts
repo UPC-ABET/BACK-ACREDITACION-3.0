@@ -3,6 +3,9 @@ import type { ReportLanguage } from 'src/libs/reporting/report.types';
 import { LcfcConfigService } from './lcfc-config.service';
 import { LcfcNotificationService } from './lcfc-notification.service';
 import { LcfcReportService } from './lcfc-report.service';
+import { PerceptionReportService } from 'src/modules/survey/shared/perception-report.service';
+import type { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
@@ -22,10 +25,26 @@ export class LcfcService {
 		private readonly configService: LcfcConfigService,
 		private readonly notifService: LcfcNotificationService,
 		private readonly reportService: LcfcReportService,
+		private readonly perceptionReport: PerceptionReportService,
 	) {}
 
 	generateReportPdf(academicPeriodId: number, programId: number | undefined, lang: ReportLanguage) {
 		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang);
+	}
+
+	generatePerceptionReport(dto: PerceptionReportDto, academicPeriodId: number) {
+		return this.perceptionReport.generate({
+			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.LCFC,
+			fileLabel: 'LCFC',
+			reportName: 'Informe de Resultados LCFC',
+			academicPeriodId,
+			programId: dto.programId,
+			commissionId: dto.commissionId,
+			campusId: dto.campusId,
+			surveyNumbers: dto.surveyNumbers,
+			modalityLabel: dto.modalityLabel,
+			lang: dto.lang ?? 'es',
+		});
 	}
 
 	generateConfigs(dto: GenerateLcfcConfigDto, schoolId: number, academicPeriodId: number) {

@@ -108,4 +108,11 @@ export const graRoutes = {
 			summary: 'Download completed GRA surveys with scores as an Excel file',
 		},
 	},
+	report: {
+		perception: {
+			method: 'POST',
+			route: 'report/perception',
+			summary: 'Generate the GRA perception-by-outcome PDF report (all sedes + one per sede)',
+		},
+	},
 };

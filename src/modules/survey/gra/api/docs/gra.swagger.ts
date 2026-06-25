@@ -16,6 +16,7 @@ import {
 	ReplicateGraConfigDto,
 	ListGraSurveyOutcomesDto,
 } from '../../model/gra.dtos';
+import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 
 const cfg = graRoutes;
 
@@ -76,3 +77,5 @@ export const SwaggerGraDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.get, body: DashboardGraDto });
 export const SwaggerGraExport = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.export, produces: XLSX_CONTENT_TYPE });
+export const SwaggerGraReportPerception = () =>
+	HttpMethodWithSwagger({ ...cfg.report.perception, body: PerceptionReportDto });

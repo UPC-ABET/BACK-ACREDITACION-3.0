@@ -58,6 +58,15 @@ export class CreateGraConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, description: 'Visible in the survey', required: false })
 	isVisible?: boolean;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description: 'The competence belongs to another program',
+		required: false,
+	})
+	isExternal?: boolean;
 }
 
 export class UpdateGraConfigDto {
@@ -105,6 +114,15 @@ export class UpdateGraConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isVisible?: boolean;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description: 'The competence belongs to another program',
+		required: false,
+	})
+	isExternal?: boolean;
 
 	@IsOptional()
 	@IsBoolean()

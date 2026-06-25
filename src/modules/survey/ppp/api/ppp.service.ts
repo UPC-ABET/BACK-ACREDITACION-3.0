@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PppConfigService } from './ppp-config.service';
 import { PppSurveyService } from './ppp-survey.service';
+import { PerceptionReportService } from 'src/modules/survey/shared/perception-report.service';
+import type { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	CreatePppConfigDto,
 	UpdatePppConfigDto,
@@ -18,7 +21,23 @@ export class PppService {
 	constructor(
 		private readonly configService: PppConfigService,
 		private readonly surveyService: PppSurveyService,
+		private readonly perceptionReport: PerceptionReportService,
 	) {}
+
+	generatePerceptionReport(dto: PerceptionReportDto, academicPeriodId: number) {
+		return this.perceptionReport.generate({
+			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.PPP,
+			fileLabel: 'PPP',
+			reportName: 'Informe de Prácticas Pre Profesionales',
+			academicPeriodId,
+			programId: dto.programId,
+			commissionId: dto.commissionId,
+			campusId: dto.campusId,
+			surveyNumbers: dto.surveyNumbers,
+			modalityLabel: dto.modalityLabel,
+			lang: dto.lang ?? 'es',
+		});
+	}
 
 	createConfig(dto: CreatePppConfigDto, academicPeriodId?: number | null) {
 		return this.configService.create(dto, academicPeriodId);

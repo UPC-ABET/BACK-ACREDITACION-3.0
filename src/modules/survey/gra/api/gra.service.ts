@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { GraConfigService } from './gra-config.service';
 import { GraNotificationService } from './gra-notification.service';
+import { PerceptionReportService } from 'src/modules/survey/shared/perception-report.service';
+import type { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
 	CreateGraConfigDto,
 	UpdateGraConfigDto,
@@ -22,7 +25,23 @@ export class GraService {
 	constructor(
 		private readonly configService: GraConfigService,
 		private readonly notifService: GraNotificationService,
+		private readonly perceptionReport: PerceptionReportService,
 	) {}
+
+	generatePerceptionReport(dto: PerceptionReportDto, academicPeriodId: number) {
+		return this.perceptionReport.generate({
+			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.GRA,
+			fileLabel: 'GRA',
+			reportName: 'Informe de Encuesta de Graduandos',
+			academicPeriodId,
+			programId: dto.programId,
+			commissionId: dto.commissionId,
+			campusId: dto.campusId,
+			surveyNumbers: dto.surveyNumbers,
+			modalityLabel: dto.modalityLabel,
+			lang: dto.lang ?? 'es',
+		});
+	}
 
 	createConfig(dto: CreateGraConfigDto, academicPeriodId: number) {
 		return this.configService.create(dto, academicPeriodId);

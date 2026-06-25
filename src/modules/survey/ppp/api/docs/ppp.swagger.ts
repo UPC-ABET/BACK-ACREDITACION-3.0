@@ -12,6 +12,7 @@ import {
 	DashboardPppDto,
 	GenerateFindingsPppDto,
 } from '../../model/ppp.dtos';
+import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 
 const cfg = pppRoutes;
 
@@ -57,3 +58,5 @@ export const SwaggerPppSurveyDashboard = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.dashboard, body: DashboardPppDto });
 export const SwaggerPppSurveyGenerateFindings = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.generateFindings, body: GenerateFindingsPppDto });
+export const SwaggerPppReportPerception = () =>
+	HttpMethodWithSwagger({ ...cfg.report.perception, body: PerceptionReportDto });

@@ -68,4 +68,11 @@ export const pppRoutes = {
 			summary: 'Automatic PPP findings analysis (RED/YELLOW/GREEN)',
 		},
 	},
+	report: {
+		perception: {
+			method: 'POST',
+			route: 'report/perception',
+			summary: 'Generate the PPP perception-by-outcome PDF report (all sedes + one per sede)',
+		},
+	},
 };

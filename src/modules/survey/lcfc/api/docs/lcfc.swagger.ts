@@ -15,6 +15,7 @@ import {
 	CompleteLcfcSurveyDto,
 	DashboardLcfcDto,
 } from '../../model/lcfc.dtos';
+import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 
 const cfg = lcfcRoutes;
 
@@ -128,3 +129,5 @@ export const SwaggerLcfcReportPdf = () =>
 			required: false,
 		}),
 	);
+export const SwaggerLcfcReportPerception = () =>
+	HttpMethodWithSwagger({ ...cfg.dashboard.reportPerception, body: PerceptionReportDto });
