@@ -36,7 +36,7 @@ export class LcfcService {
 		return this.perceptionReport.generate({
 			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.LCFC,
 			fileLabel: 'LCFC',
-			reportName: 'Informe de Resultados LCFC',
+			reportName: { es: 'Informe de Resultados LCFC', en: 'LCFC Results Report' },
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,

@@ -12,7 +12,7 @@ import {
 export interface PerceptionReportRequest {
 	surveyTypeCode: string;
 	fileLabel: string;
-	reportName: string;
+	reportName: I18nText;
 	academicPeriodId: number;
 	programId?: number;
 	commissionId?: number;
@@ -43,6 +43,18 @@ interface AcceptanceBand {
 }
 
 const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
+
+const FALLBACK_BANDS: Array<{ order: number; name: I18nText; minScore: number; maxScore: number }> =
+	[
+		{
+			order: 1,
+			name: { es: 'Necesita mejora', en: 'Needs improvement' },
+			minScore: 0,
+			maxScore: 3.25,
+		},
+		{ order: 2, name: { es: 'Esperado', en: 'Expected' }, minScore: 3.25, maxScore: 4.25 },
+		{ order: 3, name: { es: 'Sobresaliente', en: 'Outstanding' }, minScore: 4.25, maxScore: 5 },
+	];
 
 const REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
@@ -120,7 +132,7 @@ export class PerceptionReportService {
 				campusId: request.campusId,
 				surveyNumbers: request.surveyNumbers,
 			}),
-			this.loadBands(surveyTypeId, request.academicPeriodId),
+			this.loadBands(surveyTypeId, request.academicPeriodId, request.lang),
 			request.programId ? this.repository.getProgramName(request.programId) : Promise.resolve(null),
 			this.repository.getPeriodCode(request.academicPeriodId),
 			request.commissionId
@@ -148,7 +160,7 @@ export class PerceptionReportService {
 				rows: section.rows,
 				bands,
 				request,
-				reportName: request.reportName,
+				reportName: this.localizeValue(request.reportName, request.lang),
 				programLabel: localizedProgram,
 				periodCode: periodCode ?? String(request.academicPeriodId),
 				campusLabel: section.campusName,
@@ -193,27 +205,29 @@ export class PerceptionReportService {
 	private async loadBands(
 		surveyTypeId: number,
 		academicPeriodId: number,
+		lang: ReportLanguage,
 	): Promise<AcceptanceBand[]> {
 		const levels = await this.repository.getAcceptanceLevels(surveyTypeId, academicPeriodId);
 
 		const bands: AcceptanceBand[] = (levels ?? [])
 			.map((level, index) => ({
 				order: Number(level.uniqueValue) || index + 1,
-				name: this.localizeValue(level.name, 'es'),
+				name: this.localizeValue(level.name, lang),
 				minScore: Number(level.minScore),
 				maxScore: Number(level.maxScore),
-				color: BAND_COLORS[index % BAND_COLORS.length],
 			}))
 			.sort((a, b) => a.minScore - b.minScore)
 			.map((band, index) => ({ ...band, color: BAND_COLORS[index % BAND_COLORS.length] }));
 
 		if (bands.length > 0) return bands;
 
-		return [
-			{ order: 1, name: 'Necesita mejora', minScore: 0, maxScore: 3.25, color: BAND_COLORS[0] },
-			{ order: 2, name: 'Esperado', minScore: 3.25, maxScore: 4.25, color: BAND_COLORS[1] },
-			{ order: 3, name: 'Sobresaliente', minScore: 4.25, maxScore: 5, color: BAND_COLORS[2] },
-		];
+		return FALLBACK_BANDS.map((band, index) => ({
+			order: band.order,
+			name: this.localizeValue(band.name, lang),
+			minScore: band.minScore,
+			maxScore: band.maxScore,
+			color: BAND_COLORS[index % BAND_COLORS.length],
+		}));
 	}
 
 	private buildCampusSections(
@@ -414,12 +428,9 @@ export class PerceptionReportService {
 			</section>`;
 	}
 
-	private bandPointsLabel(
-		band: AcceptanceBand,
-		labels: (typeof LABELS)[ReportLanguage],
-	): string {
+	private bandPointsLabel(band: AcceptanceBand, labels: (typeof LABELS)[ReportLanguage]): string {
 		const unit = band.order === 1 ? labels.point : labels.points;
-		return `${band.order} ${unit} (${band.order})`;
+		return `${band.order} ${unit}`;
 	}
 
 	private buildFilename(surveyTypeCode: string, campusLabel: string): string {

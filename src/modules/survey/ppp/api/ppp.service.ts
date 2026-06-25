@@ -28,7 +28,10 @@ export class PppService {
 		return this.perceptionReport.generate({
 			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.PPP,
 			fileLabel: 'PPP',
-			reportName: 'Informe de Prácticas Pre Profesionales',
+			reportName: {
+				es: 'Informe de Prácticas Pre Profesionales',
+				en: 'Pre-Professional Internship Report',
+			},
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,

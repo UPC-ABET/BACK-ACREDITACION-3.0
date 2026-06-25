@@ -32,7 +32,10 @@ export class GraService {
 		return this.perceptionReport.generate({
 			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.GRA,
 			fileLabel: 'GRA',
-			reportName: 'Informe de Encuesta de Graduandos',
+			reportName: {
+				es: 'Informe de Encuesta de Graduandos',
+				en: 'Graduating Students Survey Report',
+			},
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,

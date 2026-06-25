@@ -61,7 +61,7 @@ export class CreatePppConfigDto {
 	@IsBoolean()
 	@ApiProperty({
 		example: false,
-		description: 'La competencia pertenece a otro programa/carrera',
+		description: 'The competence belongs to another program',
 		required: false,
 	})
 	isExternal?: boolean;
@@ -112,7 +112,7 @@ export class UpdatePppConfigDto {
 	@IsBoolean()
 	@ApiProperty({
 		example: false,
-		description: 'La competencia pertenece a otro programa/carrera',
+		description: 'The competence belongs to another program',
 		required: false,
 	})
 	isExternal?: boolean;
