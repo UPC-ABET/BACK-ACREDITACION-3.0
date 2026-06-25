@@ -11,11 +11,13 @@ import { PppSurveyService } from './api/ppp-survey.service';
 import { PppService } from './api/ppp.service';
 import { PppController } from './api/ppp.controller';
 import { PerformanceLevelModule } from 'src/modules/academic/performance-levels/performance-levels.module';
+import { SurveySharedModule } from 'src/modules/survey/shared/survey-shared.module';
 
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([OutcomeConfigEntity, SurveyEntity, ScoreEntity]),
 		PerformanceLevelModule,
+		SurveySharedModule,
 	],
 	controllers: [PppController],
 	providers: [

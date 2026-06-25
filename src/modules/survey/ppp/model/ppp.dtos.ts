@@ -56,6 +56,15 @@ export class CreatePppConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, description: 'Visible en la encuesta', required: false })
 	isVisible?: boolean;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description: 'The competence belongs to another program',
+		required: false,
+	})
+	isExternal?: boolean;
 }
 
 export class UpdatePppConfigDto {
@@ -98,6 +107,15 @@ export class UpdatePppConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isVisible?: boolean;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description: 'The competence belongs to another program',
+		required: false,
+	})
+	isExternal?: boolean;
 
 	@IsOptional()
 	@IsBoolean()

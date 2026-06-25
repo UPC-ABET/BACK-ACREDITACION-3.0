@@ -29,6 +29,7 @@ export class PppConfigService {
 			programId: dto.programId ?? null,
 			academicPeriodId: academicPeriodId ?? null,
 			isVisible: dto.isVisible ?? true,
+			isExternal: dto.isExternal ?? false,
 		};
 
 		return await this.configRepo.create({
@@ -68,6 +69,7 @@ export class PppConfigService {
 			...(dto.order !== undefined && { order: dto.order }),
 			...(dto.programId !== undefined && { programId: dto.programId }),
 			...(dto.isVisible !== undefined && { isVisible: dto.isVisible }),
+			...(dto.isExternal !== undefined && { isExternal: dto.isExternal }),
 		};
 
 		const updatePayload: Record<string, any> = { extra };
