@@ -1,9 +1,9 @@
 // Row shapes produced by the scraping-export queries. Each one is built to line up, column for
 // column, with the matching uploads/* Excel template so a generated file can be re-uploaded as-is.
 
-// uploads/staff template: professorCode | lastName | firstName. The `email` column is appended as
-// an extra (the staff upload reads positionally and ignores it); it is the real institutional email
-// pulled from Banner's raw_horario, matched to the Planner teacher by name. Blank when unmatched.
+// uploads/staff template: professorCode | lastName | firstName. professorCode is the Banner
+// idBanner ("N0…"). The `email` column is appended as an extra (the staff upload reads positionally
+// and ignores it); it is the real institutional email from the same raw_horario docente record.
 export interface DocenteExportRow {
 	professorCode: string;
 	lastName: string;
@@ -12,8 +12,9 @@ export interface DocenteExportRow {
 }
 
 // uploads/sections template: courseCode | sectionCode | professorCode | campusCode |
-// sectionModalityTypeCode. campus/modality are best-effort: enriched from Banner's horario when the
-// Planner sectionName matches a Banner NRC, blank otherwise.
+// sectionModalityTypeCode. All sourced straight from Banner's raw_horario: campusCode is the mapped
+// Banner campus code and sectionModalityTypeCode is Banner's metodoEducativo (defaulting to "P" when
+// missing).
 export interface SeccionExportRow {
 	courseCode: string;
 	sectionCode: string;
@@ -23,8 +24,8 @@ export interface SeccionExportRow {
 }
 
 // uploads/enrolled-students template: studentCode | lastName | firstName | programCode |
-// campusCode | enrollmentModalityTypeCode. Modality is left blank (Banner's student payload does
-// not carry an enrollment modality; it is filled later if needed).
+// campusCode | enrollmentModalityTypeCode. programCode is the mapped career code; enrollment
+// modality is hardcoded to "P" for now (Banner's student payload carries no per-enrollment modality).
 export interface AlumnoMatriculadoExportRow {
 	studentCode: string;
 	lastName: string;

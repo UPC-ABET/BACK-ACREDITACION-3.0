@@ -16,14 +16,12 @@ export const scrapingExportsRoutes = {
 			alumnosMatriculados: {
 				method: 'GET',
 				route: '/alumnos-matriculados',
-				summary:
-					'Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape',
+				summary: 'Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape',
 			},
 			alumnosSecciones: {
 				method: 'GET',
 				route: '/alumnos-secciones',
-				summary:
-					'Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape',
+				summary: 'Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape',
 			},
 		},
 	},

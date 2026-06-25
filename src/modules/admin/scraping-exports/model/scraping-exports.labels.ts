@@ -35,13 +35,7 @@ export const seccionExportLabels: LangMap = {
 		fileName: 'Secciones.xlsx',
 	},
 	en: {
-		headers: [
-			'Course code',
-			'Section code',
-			'Professor code',
-			'Campus code',
-			'Section modality code',
-		],
+		headers: ['Course code', 'Section code', 'Professor code', 'Campus code', 'Section modality code'],
 		fileName: 'Sections.xlsx',
 	},
 };
@@ -52,21 +46,14 @@ export const alumnoMatriculadoExportLabels: LangMap = {
 			'Código del alumno',
 			'Apellidos',
 			'Nombres',
-			'Código de carrera',
+			'Código del programa',
 			'Código del campus',
 			'Código de modalidad de matrícula',
 		],
 		fileName: 'Matriculados.xlsx',
 	},
 	en: {
-		headers: [
-			'Student code',
-			'Last name',
-			'First name',
-			'Program code',
-			'Campus code',
-			'Enrollment modality code',
-		],
+		headers: ['Student code', 'Last name', 'First name', 'Program code', 'Campus code', 'Enrollment modality code'],
 		fileName: 'EnrolledStudents.xlsx',
 	},
 };
