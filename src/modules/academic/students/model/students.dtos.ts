@@ -76,7 +76,7 @@ export class FilterStudentDto {
 	@IsString()
 	@ApiProperty({
 		example: 'U2023',
-		description: 'Partial code search (case-insensitive prefix)',
+		description: 'Partial code search (case-insensitive substring match)',
 		required: false,
 	})
 	code?: string;

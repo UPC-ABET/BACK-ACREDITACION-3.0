@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ILike } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { BaseService } from 'src/commons/base.service';
 import { StudentRepository } from '../core/students.repository';
 import { StudentValidation } from '../core/students.validation';
-
 import { CreateStudentDto, UpdateStudentDto } from '../model/students.dtos';
-import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class StudentService extends BaseService<StudentRepository> {
@@ -29,13 +27,8 @@ export class StudentService extends BaseService<StudentRepository> {
 	}
 
 	async getByFilters(filters: Record<string, any>) {
-		const { code, ...rest } = filters;
-		if (code !== undefined) {
-			return this.normalizeJsonbColumns(
-				await this.repository.findByCondition({
-					where: { ...rest, code: ILike(`%${code}%`) },
-				} as any),
-			);
+		if (filters.code !== undefined) {
+			return this.normalizeJsonbColumns(await this.repository.findByPartialCode(filters));
 		}
 		return super.getByFilters(filters);
 	}
