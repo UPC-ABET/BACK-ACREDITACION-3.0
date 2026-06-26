@@ -37,8 +37,8 @@ export class SurveyEntity extends BaseEntity {
 	@IntegerColumn({ nullable: true })
 	surveyNumber: number;
 
-	@IntegerFKIDColumn({ nullable: false })
-	courseSectionId: number;
+	@IntegerFKIDColumn({ nullable: true })
+	courseSectionId: number | null;
 
 	// %% RELATIONS
 
