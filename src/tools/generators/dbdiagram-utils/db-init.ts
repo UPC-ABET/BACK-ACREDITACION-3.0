@@ -158,7 +158,7 @@ export class InitialMigration1700000000000 implements MigrationInterface {
 			`CREATE INDEX "IDX_notification_logs_chart_id" ON "ifc"."notification_logs" ("chart_id")`,
 		);
 		await queryRunner.query(
-			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_enrolled_students" PRIMARY KEY ("id"))`,
+			`CREATE TABLE "academic"."enrolled_students" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "student_id" integer NOT NULL, "study_plan_academic_period_id" integer NOT NULL, "campus_id" integer NOT NULL, "enrollement_modality_type_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_enrolled_students" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
 			`CREATE TABLE "academic"."student_section_enrollments" ("id" SERIAL NOT NULL, "extra" jsonb NOT NULL DEFAULT '{}'::jsonb, "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE, "enrolled_student_id" integer NOT NULL, "course_section_id" integer NOT NULL, "upload_log_id" integer, CONSTRAINT "PK_student_section_enrollments" PRIMARY KEY ("id"))`,
@@ -2089,7 +2089,7 @@ BEGIN
 
 	-- insert enrollments that do not exist yet (uniqueness = student + study_plan_academic_period)
 	INSERT INTO academic.enrolled_students
-		(student_id, study_plan_academic_period, campus_id, enrollement_modality_type_id, upload_log_id,
+		(student_id, study_plan_academic_period_id, campus_id, enrollement_modality_type_id, upload_log_id,
 		 extra, is_active, created_at, updated_at)
 	SELECT
 		s.id, spap.id, cam.id, tm.id, v_log_id, '{}'::jsonb, true, NOW(), NOW()
@@ -2103,7 +2103,7 @@ BEGIN
 	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
 	WHERE NOT EXISTS (
 		SELECT 1 FROM academic.enrolled_students es
-		WHERE es.student_id = s.id AND es.study_plan_academic_period = spap.id
+		WHERE es.student_id = s.id AND es.study_plan_academic_period_id = spap.id
 	);
 
 	-- update enrollments that already existed (push prior values onto the extra.upload_undo stack)
@@ -2124,7 +2124,7 @@ BEGIN
 	JOIN core.type_groups g ON g.code = 'TG103'
 	JOIN core.types tm ON tm.type_group_id = g.id AND tm.code = trim(e->>'enrollmentModalityTypeCode')
 	WHERE es.student_id = s.id
-	  AND es.study_plan_academic_period = spap.id
+	  AND es.study_plan_academic_period_id = spap.id
 	  AND es.upload_log_id IS DISTINCT FROM v_log_id;
 
 	RETURN QUERY SELECT NULL::integer, NULL::text, v_log_id;
@@ -2288,7 +2288,7 @@ BEGIN
 			JOIN academic.students st ON st.code = r.student_code
 			JOIN academic.enrolled_students es ON es.student_id = st.id
 			JOIN academic.study_plan_academic_periods spap_es
-				ON spap_es.id = es.study_plan_academic_period AND spap_es.academic_period_id = cs.academic_period_id
+				ON spap_es.id = es.study_plan_academic_period_id AND spap_es.academic_period_id = cs.academic_period_id
 			WHERE cs.section_code = r.section_code
 		) THEN
 			v_has_errors := true;
@@ -2319,7 +2319,7 @@ BEGIN
 	JOIN academic.students st ON st.code = trim(e->>'studentCode')
 	JOIN academic.enrolled_students es ON es.student_id = st.id
 	JOIN academic.study_plan_academic_periods spap_es
-		ON spap_es.id = es.study_plan_academic_period AND spap_es.academic_period_id = cs.academic_period_id
+		ON spap_es.id = es.study_plan_academic_period_id AND spap_es.academic_period_id = cs.academic_period_id
 	WHERE NOT EXISTS (
 		SELECT 1 FROM academic.student_section_enrollments sse
 		WHERE sse.enrolled_student_id = es.id AND sse.course_section_id = cs.id

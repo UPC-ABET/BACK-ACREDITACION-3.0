@@ -103,7 +103,7 @@ export class UpdateStudyPlanMaintenanceDto {
 
 export class CreateStudyPlanMaintenanceDto {
 	@IsString()
-	@Length(1, 10)
+	@Length(1, 20)
 	@ApiProperty({ example: 'SP-2026' })
 	code: string;
 

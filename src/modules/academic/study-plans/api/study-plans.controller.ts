@@ -79,13 +79,15 @@ export class StudyPlanController extends BaseController<StudyPlanService> {
 
 	@SwaggerStudyPlanMaintenanceCreate()
 	@ApiModalityTypeHeader()
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })
 	async maintenanceCreate(
 		@ModalityTypeId() modalityTypeId: number,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Body() dto: CreateStudyPlanMaintenanceDto,
 	) {
 		return parseSuccessResponse(
-			await this.service.createMaintenance(modalityTypeId, dto),
+			await this.service.createMaintenance(modalityTypeId, academicPeriodId, dto),
 			HttpStatus.CREATED,
 		);
 	}

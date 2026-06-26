@@ -47,7 +47,7 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 			.innerJoin(
 				StudyPlanAcademicPeriodEntity,
 				'spap',
-				'spap.id = enrolled.study_plan_academic_period',
+				'spap.id = enrolled.study_plan_academic_period_id',
 			)
 			.where('spap.academic_period_id = :academicPeriodId', { academicPeriodId });
 
@@ -117,7 +117,7 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 			const enrolled = await enrolledRepo.save(
 				enrolledRepo.create({
 					studentId: student.id,
-					studyPlanAcademicPeriod: studyPlanAcademicPeriodId,
+					studyPlanAcademicPeriodId: studyPlanAcademicPeriodId,
 					campusId: dto.campusId,
 					enrollementModalityTypeId: dto.enrollementModalityTypeId,
 				}),

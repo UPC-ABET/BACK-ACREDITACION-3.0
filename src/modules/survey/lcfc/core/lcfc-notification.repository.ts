@@ -195,7 +195,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.students st ON st.id = es.student_id
 			INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
 			INNER JOIN academic.courses c ON c.id = cs.course_id
-			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period
+			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)

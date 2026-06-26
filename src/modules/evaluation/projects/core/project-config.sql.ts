@@ -59,7 +59,7 @@ SELECT
 FROM academic.student_section_enrollments sse
 JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 JOIN academic.study_plan_courses spc
-     ON spc.study_plan_academic_period_id = es.study_plan_academic_period
+     ON spc.study_plan_academic_period_id = es.study_plan_academic_period_id
      AND spc.course_id = $1
 WHERE sse.id = ANY($2::int[])`;
 

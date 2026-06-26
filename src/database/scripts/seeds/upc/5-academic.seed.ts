@@ -416,7 +416,7 @@ runSeed('academic module', async (tenantDataSource) => {
 	await tenantDataSource.query(`
 		INSERT INTO "academic"."enrolled_students" (
 			student_id,
-			study_plan_academic_period,
+			study_plan_academic_period_id,
 			campus_id,
 			enrollement_modality_type_id
 		)
@@ -450,7 +450,7 @@ runSeed('academic module', async (tenantDataSource) => {
 			SELECT 1
 			FROM "academic"."enrolled_students" es
 			WHERE es.student_id = st.id
-				AND es.study_plan_academic_period = spap.id
+				AND es.study_plan_academic_period_id = spap.id
 				AND es.campus_id = campus.id
 		);
 	`);

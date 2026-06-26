@@ -69,6 +69,7 @@ export class StudyPlanValidation {
 	static async validateMaintenanceCreate(
 		repo: StudyPlanRepository,
 		modalityTypeId: number,
+		academicPeriodId: number,
 		data: CreateStudyPlanMaintenanceDto,
 	) {
 		const errors: Array<string> = [];
@@ -77,9 +78,12 @@ export class StudyPlanValidation {
 			errors.push(studyPlansValidationStrings.error.programNotInModality);
 		}
 
-		const exists = await repo.findOneByCondition({
-			where: { programId: data.programId, code: data.code },
-		});
+		if (await repo.existsForProgramAndPeriod(data.programId, academicPeriodId)) {
+			errors.push(studyPlansValidationStrings.error.periodExists);
+		}
+
+		// study_plans.code is globally unique, so a code already taken by any program/period conflicts.
+		const exists = await repo.findOneByCondition({ where: { code: data.code } });
 		if (exists) errors.push(studyPlansValidationStrings.error.codeExists);
 
 		if (errors.length > 0) {

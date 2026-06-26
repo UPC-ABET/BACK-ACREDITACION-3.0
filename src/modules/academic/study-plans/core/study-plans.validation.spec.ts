@@ -6,6 +6,7 @@ const mockRepo = {
 	findOneById: jest.fn(),
 	findDeleteBlockerCounts: jest.fn(),
 	isProgramInModality: jest.fn(),
+	existsForProgramAndPeriod: jest.fn(),
 };
 
 describe('StudyPlanValidation', () => {
@@ -64,27 +65,39 @@ describe('StudyPlanValidation', () => {
 	describe('validateMaintenanceCreate', () => {
 		const dto = { code: 'SP-1', programId: 5 };
 
-		it('passes when the program is in the modality and the code is free', async () => {
+		it('passes when the program is in the modality, has no plan for the period, and the code is free', async () => {
 			mockRepo.isProgramInModality.mockResolvedValue(true);
+			mockRepo.existsForProgramAndPeriod.mockResolvedValue(false);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
-				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, 7, dto),
 			).resolves.toBeUndefined();
 		});
 
 		it('throws when the program is not in the active modality', async () => {
 			mockRepo.isProgramInModality.mockResolvedValue(false);
+			mockRepo.existsForProgramAndPeriod.mockResolvedValue(false);
 			mockRepo.findOneByCondition.mockResolvedValue(null);
 			await expect(
-				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, 7, dto),
 			).rejects.toThrow(DomainError);
 		});
 
-		it('throws when the (program, code) already exists', async () => {
+		it('throws when the program already has a plan for the period', async () => {
 			mockRepo.isProgramInModality.mockResolvedValue(true);
+			mockRepo.existsForProgramAndPeriod.mockResolvedValue(true);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			await expect(
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, 7, dto),
+			).rejects.toThrow(DomainError);
+		});
+
+		it('throws when the code already exists', async () => {
+			mockRepo.isProgramInModality.mockResolvedValue(true);
+			mockRepo.existsForProgramAndPeriod.mockResolvedValue(false);
 			mockRepo.findOneByCondition.mockResolvedValue({ id: 9 });
 			await expect(
-				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, dto),
+				StudyPlanValidation.validateMaintenanceCreate(mockRepo as any, 2, 7, dto),
 			).rejects.toThrow(DomainError);
 		});
 	});

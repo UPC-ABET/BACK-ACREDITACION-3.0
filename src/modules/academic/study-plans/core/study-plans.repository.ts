@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { StudyPlanEntity } from '../model/study-plans.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 
 export interface StudyPlanDeleteBlockerCounts {
@@ -57,6 +58,38 @@ export class StudyPlanRepository extends BaseRepository<StudyPlanEntity> {
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async existsForProgramAndPeriod(programId: number, academicPeriodId: number): Promise<boolean> {
+		const plan = await this.dataSource
+			.createQueryBuilder(StudyPlanEntity, 'plan')
+			.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.study_plan_id = plan.id AND spap.academic_period_id = :academicPeriodId',
+				{ academicPeriodId },
+			)
+			.where('plan.program_id = :programId', { programId })
+			.getOne();
+		return plan !== null;
+	}
+
+	async createWithPeriod(
+		programId: number,
+		code: string,
+		academicPeriodId: number,
+	): Promise<StudyPlanEntity> {
+		return await this.dataSource.transaction(async (manager) => {
+			const planRepository = manager.getRepository(StudyPlanEntity);
+			const plan = await planRepository.save(planRepository.create({ programId, code }));
+
+			const periodRepository = manager.getRepository(StudyPlanAcademicPeriodEntity);
+			await periodRepository.save(
+				periodRepository.create({ studyPlanId: plan.id, academicPeriodId }),
+			);
+
+			return plan;
+		});
 	}
 
 	async isProgramInModality(programId: number, modalityTypeId: number): Promise<boolean> {

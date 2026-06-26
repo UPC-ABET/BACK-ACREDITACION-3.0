@@ -1,30 +1,8 @@
-import { Entity } from 'typeorm';
-import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerColumn, IntegerFKIDColumn } from 'src/commons/configs/db.configs';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, IsInt, Length } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
-
-@Entity({ name: 'enrolled_students', schema: 'academic' })
-export class EnrolledStudentEntity extends BaseEntity {
-	// %% ATTRIBUTES
-
-	@IntegerFKIDColumn({ nullable: false })
-	studentId: number;
-
-	@IntegerFKIDColumn({ nullable: false })
-	studyPlanAcademicPeriodId: number;
-
-	@IntegerFKIDColumn({ nullable: false })
-	campusId: number;
-
-	@IntegerColumn({ nullable: false })
-	enrollmentModalityTypeId: number;
-
-	// %% RELATIONS
-}
 
 export class CreateEnrolledStudentDto {
 	@IsOptional()
@@ -42,7 +20,7 @@ export class CreateEnrolledStudentDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	studyPlanAcademicPeriod: number;
+	studyPlanAcademicPeriodId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -71,7 +49,7 @@ export class UpdateEnrolledStudentDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	studyPlanAcademicPeriod?: number;
+	studyPlanAcademicPeriodId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -99,7 +77,7 @@ export class FilterEnrolledStudentDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	studyPlanAcademicPeriod?: number;
+	studyPlanAcademicPeriodId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

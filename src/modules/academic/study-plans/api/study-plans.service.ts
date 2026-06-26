@@ -60,9 +60,22 @@ export class StudyPlanService extends BaseService<StudyPlanRepository> {
 		);
 	}
 
-	async createMaintenance(modalityTypeId: number, dto: CreateStudyPlanMaintenanceDto) {
-		await StudyPlanValidation.validateMaintenanceCreate(this.repository, modalityTypeId, dto);
-		const created = await this.repository.create({ programId: dto.programId, code: dto.code });
+	async createMaintenance(
+		modalityTypeId: number,
+		academicPeriodId: number,
+		dto: CreateStudyPlanMaintenanceDto,
+	) {
+		await StudyPlanValidation.validateMaintenanceCreate(
+			this.repository,
+			modalityTypeId,
+			academicPeriodId,
+			dto,
+		);
+		const created = await this.repository.createWithPeriod(
+			dto.programId,
+			dto.code,
+			academicPeriodId,
+		);
 		return await this.getMaintenanceItem(created.id);
 	}
 

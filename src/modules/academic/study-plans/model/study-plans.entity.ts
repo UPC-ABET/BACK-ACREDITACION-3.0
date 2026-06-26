@@ -11,7 +11,7 @@ export class StudyPlanEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: false })
 	programId: number;
 
-	@CodeColumn({ nullable: false, length: 10 })
+	@CodeColumn({ nullable: false, length: 20 })
 	code: string;
 
 	@JsonColumn({ nullable: false })

@@ -460,7 +460,7 @@ Table "academic"."enrolled_students" {
   created_at timestamp [null]
   updated_at timestamp [null]
   student_id int
-  study_plan_academic_period int
+  study_plan_academic_period_id int
   campus_id int
   enrollement_modality_type_id int
 }

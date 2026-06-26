@@ -114,7 +114,7 @@ export class StudentSectionEnrollmentRepository extends BaseRepository<StudentSe
 					SELECT 1
 					FROM academic.enrolled_students es
 					JOIN academic.course_sections cs ON cs.id = $2
-					JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period
+					JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
 					WHERE es.id = $1 AND spap.academic_period_id = cs.academic_period_id
 				) AS "periodMatches",
 				EXISTS (
@@ -122,7 +122,7 @@ export class StudentSectionEnrollmentRepository extends BaseRepository<StudentSe
 					FROM academic.enrolled_students es
 					JOIN academic.course_sections cs ON cs.id = $2
 					JOIN academic.study_plan_courses spc
-						ON spc.study_plan_academic_period_id = es.study_plan_academic_period
+						ON spc.study_plan_academic_period_id = es.study_plan_academic_period_id
 					   AND spc.course_id = cs.course_id
 					WHERE es.id = $1
 				) AS "courseInPlan"`,

@@ -5,6 +5,7 @@ export const studyPlansValidationStrings = {
 		inUse: 'error.studyPlan.inUse',
 		usedInAcademicPeriods: 'error.studyPlan.usedInAcademicPeriods',
 		programNotInModality: 'error.studyPlan.programNotInModality',
+		periodExists: 'error.studyPlan.periodExists',
 	},
 	result: {
 		createFailed: 'error.studyPlan.createFailed',
