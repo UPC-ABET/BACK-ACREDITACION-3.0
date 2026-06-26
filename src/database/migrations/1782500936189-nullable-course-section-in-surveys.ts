@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class NullableCourseSection1782498800000 implements MigrationInterface {
-	name = 'NullableCourseSection1782498800000';
+export class NullableCourseSectionInSurveys1782500936189 implements MigrationInterface {
+	name = 'NullableCourseSectionInSurveys1782500936189';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// GRA surveys are graduate surveys — they don't belong to a specific course section.
@@ -13,9 +13,8 @@ export class NullableCourseSection1782498800000 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(
-			`UPDATE "evidence"."surveys" SET "course_section_id" = (SELECT id FROM "academic"."course_sections" ORDER BY id LIMIT 1) WHERE "course_section_id" IS NULL`,
-		);
+		// Honest inverse: restore the NOT NULL constraint. This intentionally fails if any survey
+		// has a null course_section_id, rather than silently back-filling an unrelated section.
 		await queryRunner.query(
 			`ALTER TABLE "evidence"."surveys" ALTER COLUMN "course_section_id" SET NOT NULL`,
 		);
