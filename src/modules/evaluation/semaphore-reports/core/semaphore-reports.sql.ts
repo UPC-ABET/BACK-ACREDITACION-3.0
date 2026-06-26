@@ -6,7 +6,7 @@ WITH weighted_grades AS (
 	FROM academic.student_course_grades scg
 	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
 	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-	WHERE cs.academic_period_id = $1
+	WHERE cs.academic_period_id = $1::int
 	GROUP BY sse.id
 	HAVING SUM(scg.grade * scg.grade_type_percentage / 100) IS NOT NULL
 ),
@@ -14,7 +14,7 @@ filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($6 IS NULL OR program_commission_id = $6)
+	  AND ($6::int IS NULL OR program_commission_id = $6::int)
 ),
 course_outcome_results AS (
 	SELECT
@@ -43,29 +43,29 @@ course_outcome_results AS (
 	JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc.id
 	JOIN filtered_outcomes o ON o.id = com.outcome_id
 	JOIN core.types ot ON ot.id = com.outcome_type_id
-	WHERE cs.academic_period_id = $1
+	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
-	  AND ($2 IS NULL OR o.id = $2)
-	  AND ($3 IS NULL OR camp.id = $3)
-	  AND ($4 IS NULL OR cs.section_modality_type_id = $4)
+	  AND ($2::int IS NULL OR o.id = $2::int)
+	  AND ($3::int IS NULL OR camp.id = $3::int)
+	  AND ($4::int IS NULL OR cs.section_modality_type_id = $4::int)
 	GROUP BY c.id, c.code, c.name, o.id, o.outcome_code, o.outcome_name, camp.name, ap.code
 )
 SELECT
 	cor.course_code        AS "courseCode",
-	COALESCE(cor.course_name->>$5, cor.course_name->>'es', '') AS "courseName",
+	COALESCE(cor.course_name->>$5::text, cor.course_name->>'es', '') AS "courseName",
 	cor.outcome_code       AS "outcomeCode",
-	COALESCE(cor.outcome_name->>$5, cor.outcome_name->>'es', '') AS "outcomeName",
+	COALESCE(cor.outcome_name->>$5::text, cor.outcome_name->>'es', '') AS "outcomeName",
 	cor.total_students     AS "totalStudents",
 	cor.students_achieved  AS "studentsAchieved",
 	cor.percentage_achieved AS "percentageAchieved",
-	cor.sede               AS "sede",
+	COALESCE(cor.sede->>$5::text, cor.sede->>'es', '') AS "sede",
 	cor.ciclo_academico    AS "cicloAcademico",
 	COALESCE(st.color, 'AMARILLO') AS "color"
 FROM course_outcome_results cor
 LEFT JOIN evaluation.semaphore_thresholds st
 	ON st.instrument_type_id = (SELECT id FROM core.types WHERE code = 'TG206-T003')
 	AND st.is_active = true
-	AND (st.academic_period_id IS NULL OR st.academic_period_id = $1)
+	AND (st.academic_period_id IS NULL OR st.academic_period_id = $1::int)
 	AND (st.program_id IS NULL)
 	AND cor.percentage_achieved >= st.min_percentage
 	AND cor.percentage_achieved <= st.max_percentage
@@ -77,7 +77,7 @@ WITH filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($6 IS NULL OR program_commission_id = $6)
+	  AND ($6::int IS NULL OR program_commission_id = $6::int)
 ),
 course_outcome_results AS (
 	SELECT
@@ -102,28 +102,28 @@ course_outcome_results AS (
 	JOIN academic.academic_periods ap ON ap.id = cs.academic_period_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = scog.outcome_id
-	WHERE cs.academic_period_id = $1
-	  AND ($2 IS NULL OR o.id = $2)
-	  AND ($3 IS NULL OR camp.id = $3)
-	  AND ($4 IS NULL OR cs.section_modality_type_id = $4)
+	WHERE cs.academic_period_id = $1::int
+	  AND ($2::int IS NULL OR o.id = $2::int)
+	  AND ($3::int IS NULL OR camp.id = $3::int)
+	  AND ($4::int IS NULL OR cs.section_modality_type_id = $4::int)
 	GROUP BY c.id, c.code, c.name, o.id, o.outcome_code, o.outcome_name, camp.name, ap.code
 )
 SELECT
 	cor.course_code        AS "courseCode",
-	COALESCE(cor.course_name->>$5, cor.course_name->>'es', '') AS "courseName",
+	COALESCE(cor.course_name->>$5::text, cor.course_name->>'es', '') AS "courseName",
 	cor.outcome_code       AS "outcomeCode",
-	COALESCE(cor.outcome_name->>$5, cor.outcome_name->>'es', '') AS "outcomeName",
+	COALESCE(cor.outcome_name->>$5::text, cor.outcome_name->>'es', '') AS "outcomeName",
 	cor.total_students     AS "totalStudents",
 	cor.students_achieved  AS "studentsAchieved",
 	cor.percentage_achieved AS "percentageAchieved",
-	cor.sede               AS "sede",
+	COALESCE(cor.sede->>$5::text, cor.sede->>'es', '') AS "sede",
 	cor.ciclo_academico    AS "cicloAcademico",
 	COALESCE(st.color, 'AMARILLO') AS "color"
 FROM course_outcome_results cor
 LEFT JOIN evaluation.semaphore_thresholds st
 	ON st.instrument_type_id = (SELECT id FROM core.types WHERE code = 'TG206-T004')
 	AND st.is_active = true
-	AND (st.academic_period_id IS NULL OR st.academic_period_id = $1)
+	AND (st.academic_period_id IS NULL OR st.academic_period_id = $1::int)
 	AND (st.program_id IS NULL)
 	AND cor.percentage_achieved >= st.min_percentage
 	AND cor.percentage_achieved <= st.max_percentage
@@ -134,11 +134,11 @@ export const SEMAPHORE_METADATA_SQL = `
 WITH target_pc AS (
 	SELECT pc.id, pc.program_id, pc.commission_id, pc.academic_period_id
 	FROM accreditation.program_commissions pc
-	WHERE pc.id = $1 AND pc.is_active = true
+	WHERE pc.id = $1::int AND pc.is_active = true
 )
 SELECT
-	COALESCE(p.name->>$3, p.name->>'es', '')   AS "programName",
-	COALESCE(c.name->>$3, c.name->>'es', '')    AS "commissionName",
+	COALESCE(p.name->>$3::text, p.name->>'es', '')   AS "programName",
+	COALESCE(c.name->>$3::text, c.name->>'es', '')    AS "commissionName",
 	ap.code                                      AS "academicPeriodCode",
 	COALESCE(acc.code, '')                       AS "accreditorCode"
 FROM target_pc tpc
@@ -153,7 +153,7 @@ SELECT
 	ap.code AS "academicPeriodCode",
 	'' AS "accreditorCode"
 FROM academic.academic_periods ap
-WHERE ap.id = $2
+WHERE ap.id = $2::int
   AND NOT EXISTS (SELECT 1 FROM target_pc)
 LIMIT 1
 `;
