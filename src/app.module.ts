@@ -50,6 +50,7 @@ import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-questi
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
 import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
+import { SemaphoreReportsModule } from './modules/evaluation/semaphore-reports/semaphore-reports.module';
 
 import { EvaluationModule } from './modules/evidence/evaluations/evaluations.module';
 import { IfcModule } from './modules/evidence/ifcs/ifcs.module';
@@ -180,6 +181,7 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		RubricQuestionModule,
 		RubricScoreModule,
 		RubricModule,
+		SemaphoreReportsModule,
 		EvaluationModule,
 		IfcModule,
 		InstrumentModule,
