@@ -151,14 +151,19 @@ export class PerceptionReportService {
 			? this.localizeValue(commissionName, request.lang)
 			: L.allCommissions;
 
-		// When a campus is selected but no commission: split by commission + general.
-		// When no campus is selected: split by campus + general (existing behaviour).
-		const sections =
-			request.campusId !== undefined && request.commissionId === undefined
-				? this.buildCommissionSections(rows, request, L)
-				: this.buildCampusSections(rows, request, L);
+		// When a campus is selected but no commission AND the data spans multiple commissions:
+		// split by commission + general. Otherwise fall back to the regular campus split.
+		const distinctCommissions = new Set(
+			rows.map((r) => r.commissionId).filter((id): id is number => id !== null && id !== undefined),
+		);
+		const useCommissionSplit =
+			request.campusId !== undefined &&
+			request.commissionId === undefined &&
+			distinctCommissions.size > 1;
 
-		const useCommissionSplit = request.campusId !== undefined && request.commissionId === undefined;
+		const sections = useCommissionSplit
+			? this.buildCommissionSections(rows, request, L)
+			: this.buildCampusSections(rows, request, L);
 
 		// In commission-split mode the campus is fixed; grab its localised name from the rows.
 		const fixedCampusLabel = useCommissionSplit
@@ -249,24 +254,29 @@ export class PerceptionReportService {
 		request: PerceptionReportRequest,
 		labels: (typeof LABELS)[ReportLanguage],
 	): Array<{ campusId: number | null; campusName: string; rows: PerceptionScoreRow[] }> {
-		// General report (all commissions) always comes first
+		const campusId = request.campusId ?? null;
+
+		// General report (all commissions) comes first
 		const sections: Array<{
 			campusId: number | null;
 			campusName: string;
 			rows: PerceptionScoreRow[];
-		}> = [{ campusId: null, campusName: labels.allCommissions, rows }];
+		}> = [{ campusId, campusName: labels.allCommissions, rows }];
 
 		const commissionIds = [
-			...new Set(rows.map((row) => row.commissionId).filter((id): id is number => id !== null)),
+			...new Set(
+				rows
+					.map((row) => row.commissionId)
+					.filter((id): id is number => id !== null && id !== undefined),
+			),
 		];
-		if (commissionIds.length > 1) {
-			for (const commissionId of commissionIds) {
-				const commRows = rows.filter((row) => row.commissionId === commissionId);
-				if (commRows.length === 0) continue;
-				const commName =
-					this.localizeValue(commRows[0].commissionName, request.lang) || String(commissionId);
-				sections.push({ campusId: null, campusName: commName, rows: commRows });
-			}
+
+		for (const commissionId of commissionIds) {
+			const commRows = rows.filter((row) => row.commissionId === commissionId);
+			if (commRows.length === 0) continue;
+			const commName =
+				this.localizeValue(commRows[0].commissionName, request.lang) || String(commissionId);
+			sections.push({ campusId, campusName: commName, rows: commRows });
 		}
 
 		return sections;
