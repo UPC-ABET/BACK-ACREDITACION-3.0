@@ -151,7 +151,21 @@ export class PerceptionReportService {
 			? this.localizeValue(commissionName, request.lang)
 			: L.allCommissions;
 
-		const sections = this.buildCampusSections(rows, request, L);
+		// When a campus is selected but no commission: split by commission + general.
+		// When no campus is selected: split by campus + general (existing behaviour).
+		const sections =
+			request.campusId !== undefined && request.commissionId === undefined
+				? this.buildCommissionSections(rows, request, L)
+				: this.buildCampusSections(rows, request, L);
+
+		const useCommissionSplit = request.campusId !== undefined && request.commissionId === undefined;
+
+		// In commission-split mode the campus is fixed; grab its localised name from the rows.
+		const fixedCampusLabel = useCommissionSplit
+			? rows.length > 0
+				? this.localizeValue(rows[0].campusName, request.lang)
+				: L.allCampuses
+			: undefined;
 
 		const documents = sections.map((section) => ({
 			campusId: section.campusId,
@@ -163,8 +177,8 @@ export class PerceptionReportService {
 				reportName: this.localizeValue(request.reportName, request.lang),
 				programLabel: localizedProgram,
 				periodCode: periodCode ?? String(request.academicPeriodId),
-				campusLabel: section.campusName,
-				commissionLabel: headerCommission,
+				campusLabel: useCommissionSplit ? (fixedCampusLabel ?? L.allCampuses) : section.campusName,
+				commissionLabel: useCommissionSplit ? section.campusName : headerCommission,
 				labels: L,
 			}),
 			filename: this.buildFilename(request.fileLabel, section.campusName),
@@ -228,6 +242,34 @@ export class PerceptionReportService {
 			maxScore: band.maxScore,
 			color: BAND_COLORS[index % BAND_COLORS.length],
 		}));
+	}
+
+	private buildCommissionSections(
+		rows: PerceptionScoreRow[],
+		request: PerceptionReportRequest,
+		labels: (typeof LABELS)[ReportLanguage],
+	): Array<{ campusId: number | null; campusName: string; rows: PerceptionScoreRow[] }> {
+		// General report (all commissions) always comes first
+		const sections: Array<{
+			campusId: number | null;
+			campusName: string;
+			rows: PerceptionScoreRow[];
+		}> = [{ campusId: null, campusName: labels.allCommissions, rows }];
+
+		const commissionIds = [
+			...new Set(rows.map((row) => row.commissionId).filter((id): id is number => id !== null)),
+		];
+		if (commissionIds.length > 1) {
+			for (const commissionId of commissionIds) {
+				const commRows = rows.filter((row) => row.commissionId === commissionId);
+				if (commRows.length === 0) continue;
+				const commName =
+					this.localizeValue(commRows[0].commissionName, request.lang) || String(commissionId);
+				sections.push({ campusId: null, campusName: commName, rows: commRows });
+			}
+		}
+
+		return sections;
 	}
 
 	private buildCampusSections(

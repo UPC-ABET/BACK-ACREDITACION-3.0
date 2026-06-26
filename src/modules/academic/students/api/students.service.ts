@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ILike } from 'typeorm';
 import { BaseService } from 'src/commons/base.service';
 import { StudentRepository } from '../core/students.repository';
 import { StudentValidation } from '../core/students.validation';
@@ -25,5 +26,17 @@ export class StudentService extends BaseService<StudentRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await StudentValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getByFilters(filters: Record<string, any>) {
+		const { code, ...rest } = filters;
+		if (code !== undefined) {
+			return this.normalizeJsonbColumns(
+				await this.repository.findByCondition({
+					where: { ...rest, code: ILike(`%${code}%`) },
+				} as any),
+			);
+		}
+		return super.getByFilters(filters);
 	}
 }

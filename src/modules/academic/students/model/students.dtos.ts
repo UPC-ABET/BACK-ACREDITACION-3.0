@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateStudentDto {
@@ -71,4 +71,13 @@ export class FilterStudentDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	graduationModalityTypeId?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'U2023',
+		description: 'Partial code search (case-insensitive prefix)',
+		required: false,
+	})
+	code?: string;
 }
