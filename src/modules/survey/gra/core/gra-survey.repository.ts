@@ -207,10 +207,10 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 	async resolveDefaultCampus(studentId?: number): Promise<number | null> {
 		if (studentId) {
 			const enrolled = await this.dataSource.query(
-				`SELECT es.campus_id FROM academic.enrolled_students es WHERE es.student_id = $1 ORDER BY es.id DESC LIMIT 1`,
+				`SELECT es.campus_id AS "campusId" FROM academic.enrolled_students es WHERE es.student_id = $1 ORDER BY es.id DESC LIMIT 1`,
 				[studentId],
 			);
-			if (enrolled?.[0]?.campus_id) return Number(enrolled[0].campus_id);
+			if (enrolled?.[0]?.campusId) return Number(enrolled[0].campusId);
 		}
 		const campus = await this.dataSource.query(
 			`SELECT id FROM organization.campuses WHERE is_active = true ORDER BY id LIMIT 1`,

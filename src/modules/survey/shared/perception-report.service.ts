@@ -174,7 +174,7 @@ export class PerceptionReportService {
 
 		const documents = sections.map((section) => ({
 			campusId: section.campusId,
-			campusName: section.campusName,
+			campusName: section.label,
 			document: this.buildDocument({
 				rows: section.rows,
 				bands,
@@ -182,11 +182,11 @@ export class PerceptionReportService {
 				reportName: this.localizeValue(request.reportName, request.lang),
 				programLabel: localizedProgram,
 				periodCode: periodCode ?? String(request.academicPeriodId),
-				campusLabel: useCommissionSplit ? (fixedCampusLabel ?? L.allCampuses) : section.campusName,
-				commissionLabel: useCommissionSplit ? section.campusName : headerCommission,
+				campusLabel: useCommissionSplit ? (fixedCampusLabel ?? L.allCampuses) : section.label,
+				commissionLabel: useCommissionSplit ? section.label : headerCommission,
 				labels: L,
 			}),
-			filename: this.buildFilename(request.fileLabel, section.campusName),
+			filename: this.buildFilename(request.fileLabel, section.label),
 		}));
 
 		const generated = await Promise.all(
@@ -253,15 +253,15 @@ export class PerceptionReportService {
 		rows: PerceptionScoreRow[],
 		request: PerceptionReportRequest,
 		labels: (typeof LABELS)[ReportLanguage],
-	): Array<{ campusId: number | null; campusName: string; rows: PerceptionScoreRow[] }> {
+	): Array<{ campusId: number | null; label: string; rows: PerceptionScoreRow[] }> {
 		const campusId = request.campusId ?? null;
 
 		// General report (all commissions) comes first
 		const sections: Array<{
 			campusId: number | null;
-			campusName: string;
+			label: string;
 			rows: PerceptionScoreRow[];
-		}> = [{ campusId, campusName: labels.allCommissions, rows }];
+		}> = [{ campusId, label: labels.allCommissions, rows }];
 
 		const commissionIds = [
 			...new Set(
@@ -276,7 +276,7 @@ export class PerceptionReportService {
 			if (commRows.length === 0) continue;
 			const commName =
 				this.localizeValue(commRows[0].commissionName, request.lang) || String(commissionId);
-			sections.push({ campusId, campusName: commName, rows: commRows });
+			sections.push({ campusId, label: commName, rows: commRows });
 		}
 
 		return sections;
@@ -286,27 +286,27 @@ export class PerceptionReportService {
 		rows: PerceptionScoreRow[],
 		request: PerceptionReportRequest,
 		labels: (typeof LABELS)[ReportLanguage],
-	): Array<{ campusId: number | null; campusName: string; rows: PerceptionScoreRow[] }> {
+	): Array<{ campusId: number | null; label: string; rows: PerceptionScoreRow[] }> {
 		if (request.campusId !== undefined) {
-			const campusName = rows.length
+			const label = rows.length
 				? this.localizeValue(rows[0].campusName, request.lang)
 				: labels.campus;
-			return [{ campusId: request.campusId, campusName, rows }];
+			return [{ campusId: request.campusId, label, rows }];
 		}
 
 		const campusIds = [...new Set(rows.map((row) => row.campusId))];
 		const sections: Array<{
 			campusId: number | null;
-			campusName: string;
+			label: string;
 			rows: PerceptionScoreRow[];
-		}> = [{ campusId: null, campusName: labels.allCampuses, rows }];
+		}> = [{ campusId: null, label: labels.allCampuses, rows }];
 
 		if (campusIds.length > 1) {
 			for (const campusId of campusIds) {
 				const campusRows = rows.filter((row) => row.campusId === campusId);
 				sections.push({
 					campusId,
-					campusName: this.localizeValue(campusRows[0]?.campusName, request.lang),
+					label: this.localizeValue(campusRows[0]?.campusName, request.lang),
 					rows: campusRows,
 				});
 			}

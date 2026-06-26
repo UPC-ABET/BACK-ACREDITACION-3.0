@@ -87,11 +87,9 @@ export class GraNotificationService {
 
 		if (!survey) {
 			const courseSectionId = await this.resolveDefaultCourseSectionId();
-			const campusId = dto.campusId || (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
+			const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
 			if (!campusId) {
-				throw new InternalServerErrorException(
-					graValidationStrings.error.defaultCourseSectionMissing,
-				);
+				throw new InternalServerErrorException(graValidationStrings.error.defaultCampusMissing);
 			}
 			survey = (await this.surveyRepo.create({
 				surveyTypeId: graSurveyTypeId,
@@ -202,12 +200,12 @@ export class GraNotificationService {
 				dto.programId,
 			);
 			if (!survey) {
-				const campusId = dto.campusId || (await this.surveyRepo.resolveDefaultCampus(studentId));
+				const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(studentId));
 				if (!campusId) {
 					results.failed++;
 					results.errors.push({
 						row: rowNum,
-						reason: graValidationStrings.error.defaultCourseSectionMissing,
+						reason: graValidationStrings.error.defaultCampusMissing,
 					});
 					continue;
 				}
