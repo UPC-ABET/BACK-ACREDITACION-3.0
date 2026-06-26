@@ -52,6 +52,7 @@ import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-sco
 import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
 
 import { EvaluationModule } from './modules/evidence/evaluations/evaluations.module';
+import { ArdModule } from './modules/evidence/ards/ards.module';
 import { IfcModule } from './modules/evidence/ifcs/ifcs.module';
 import { InstrumentModule } from './modules/evidence/instruments/instruments.module';
 import { StudentCourseOutcomeGradeModule } from './modules/evidence/student-course-outcome-grades/student-course-outcome-grades.module';
@@ -180,6 +181,7 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		RubricQuestionModule,
 		RubricScoreModule,
 		RubricModule,
+		ArdModule,
 		EvaluationModule,
 		IfcModule,
 		InstrumentModule,
