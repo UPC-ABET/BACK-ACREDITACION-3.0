@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
 import { BaseService } from 'src/commons/base.service';
 import { StudentRepository } from '../core/students.repository';
 import { StudentValidation } from '../core/students.validation';
-
 import { CreateStudentDto, UpdateStudentDto } from '../model/students.dtos';
-import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class StudentService extends BaseService<StudentRepository> {
@@ -25,5 +24,12 @@ export class StudentService extends BaseService<StudentRepository> {
 	async delete(id: number, manager?: EntityManager) {
 		await StudentValidation.validateDelete(this.repository, id);
 		return await super.delete(id, manager);
+	}
+
+	async getByFilters(filters: Record<string, any>) {
+		if (filters.code !== undefined) {
+			return this.normalizeJsonbColumns(await this.repository.findByPartialCode(filters));
+		}
+		return super.getByFilters(filters);
 	}
 }
