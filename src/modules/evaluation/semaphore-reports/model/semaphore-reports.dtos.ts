@@ -53,25 +53,56 @@ export class SemaphoreFilterDto {
 	lang?: string;
 }
 
-export class SemaphoreReportSummaryDto {
+export class SemaphoreLevelLegendDto {
+	name: string;
+	minScore: number;
+	maxScore: number;
+	color: string;
+}
+
+export class SemaphoreCourseOutcomeSummaryDto {
+	sede: string;
+	cicloAcademico: string;
 	courseCode: string;
 	courseName: string;
 	outcomeCode: string;
 	outcomeName: string;
 	totalStudents: number;
-	studentsAchieved: number;
-	percentageAchieved: number;
+	studentsRed: number;
+	studentsYellow: number;
+	studentsGreen: number;
+	percentageRed: number;
+	percentageYellow: number;
+	percentageGreen: number;
+	isCritical: boolean;
 	color: string;
-	sede: string;
-	cicloAcademico: string;
 }
 
 export class SemaphoreReportDto {
-	summary: SemaphoreReportSummaryDto[];
-	redDetail: SemaphoreReportSummaryDto[];
-	yellowDetail: SemaphoreReportSummaryDto[];
-	greenDetail: SemaphoreReportSummaryDto[];
+	legend: SemaphoreLevelLegendDto[];
+	summary: SemaphoreCourseOutcomeSummaryDto[];
 	metadata: SemaphoreMetadataDto;
+}
+
+export class SemaphoreOutcomeSummaryRowDto {
+	sede: string;
+	outcomeCode: string;
+	outcomeName: string;
+	totalStudents: number;
+	levelName: string;
+	count: number;
+	percentage: number;
+	color: string;
+}
+
+export class SemaphoreCourseDetailRowDto {
+	sede: string;
+	outcomeCode: string;
+	outcomeName: string;
+	courseCode: string;
+	courseName: string;
+	count: number;
+	totalStudents: number;
 }
 
 export class SemaphoreMetadataDto {

@@ -1,21 +1,55 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import {
-	SEMAPHORE_RC_SQL,
-	SEMAPHORE_RV_SQL,
+	SEMAPHORE_RC_SCREEN_SQL,
+	SEMAPHORE_RV_SCREEN_SQL,
+	SEMAPHORE_RC_DETAIL_SQL,
+	SEMAPHORE_RC_SUMMARY_SQL,
+	SEMAPHORE_RV_DETAIL_SQL,
+	SEMAPHORE_RV_SUMMARY_SQL,
+	SEMAPHORE_LEVELS_LEGEND_SQL,
 	SEMAPHORE_METADATA_SQL,
 } from './semaphore-reports.sql';
 
-export interface SemaphoreRow {
+export interface SemaphoreCourseOutcomeRow {
 	courseCode: string;
 	courseName: string;
 	outcomeCode: string;
 	outcomeName: string;
 	totalStudents: number;
-	studentsAchieved: number;
-	percentageAchieved: number;
+	studentsRed: number;
+	studentsYellow: number;
+	studentsGreen: number;
 	sede: string;
 	cicloAcademico: string;
+}
+
+export interface SemaphoreDetailRow {
+	courseCode: string;
+	courseName: string;
+	outcomeCode: string;
+	outcomeName: string;
+	levelRank: number;
+	cantidad: number;
+	totalStudents: number;
+	sede: string;
+	cicloAcademico: string;
+}
+
+export interface SemaphoreSummaryRow {
+	outcomeCode: string;
+	outcomeName: string;
+	levelRank: number;
+	cantidad: number;
+	totalStudents: number;
+	porcentaje: number;
+	sede: string;
+}
+
+export interface SemaphoreLevelLegendRow {
+	name: string;
+	minScore: number;
+	maxScore: number;
 	color: string;
 }
 
@@ -26,43 +60,126 @@ export interface MetadataRow {
 	accreditorCode: string;
 }
 
+const RC_INSTRUMENT_TYPE_CODE = 'TG206-T003';
+const RV_INSTRUMENT_TYPE_CODE = 'TG206-T004';
+
 @Injectable()
 export class SemaphoreReportsRepository {
 	constructor(private readonly dataSource: DataSource) {}
 
-	async getRcReport(
+	async getRcScreen(
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
 		modalityTypeId: number | null,
 		language: string,
-	): Promise<SemaphoreRow[]> {
-		return this.dataSource.query(SEMAPHORE_RC_SQL, [
+	): Promise<SemaphoreCourseOutcomeRow[]> {
+		return this.dataSource.query(SEMAPHORE_RC_SCREEN_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
-			modalityTypeId,
 			language,
 			programCommissionId,
 		]);
 	}
 
-	async getRvReport(
+	async getRvScreen(
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
 		modalityTypeId: number | null,
 		language: string,
-	): Promise<SemaphoreRow[]> {
-		return this.dataSource.query(SEMAPHORE_RV_SQL, [
+	): Promise<SemaphoreCourseOutcomeRow[]> {
+		return this.dataSource.query(SEMAPHORE_RV_SCREEN_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
-			modalityTypeId,
 			language,
 			programCommissionId,
+		]);
+	}
+
+	async getRcDetail(
+		academicPeriodId: number,
+		programCommissionId: number | null,
+		outcomeId: number | null,
+		campusId: number | null,
+		modalityTypeId: number | null,
+		language: string,
+	): Promise<SemaphoreDetailRow[]> {
+		return this.dataSource.query(SEMAPHORE_RC_DETAIL_SQL, [
+			academicPeriodId,
+			outcomeId,
+			campusId,
+			language,
+			programCommissionId,
+		]);
+	}
+
+	async getRcSummary(
+		academicPeriodId: number,
+		programCommissionId: number | null,
+		outcomeId: number | null,
+		campusId: number | null,
+		modalityTypeId: number | null,
+		language: string,
+	): Promise<SemaphoreSummaryRow[]> {
+		return this.dataSource.query(SEMAPHORE_RC_SUMMARY_SQL, [
+			academicPeriodId,
+			outcomeId,
+			campusId,
+			language,
+			programCommissionId,
+		]);
+	}
+
+	async getRvDetail(
+		academicPeriodId: number,
+		programCommissionId: number | null,
+		outcomeId: number | null,
+		campusId: number | null,
+		modalityTypeId: number | null,
+		language: string,
+	): Promise<SemaphoreDetailRow[]> {
+		return this.dataSource.query(SEMAPHORE_RV_DETAIL_SQL, [
+			academicPeriodId,
+			outcomeId,
+			campusId,
+			language,
+			programCommissionId,
+		]);
+	}
+
+	async getRvSummary(
+		academicPeriodId: number,
+		programCommissionId: number | null,
+		outcomeId: number | null,
+		campusId: number | null,
+		modalityTypeId: number | null,
+		language: string,
+	): Promise<SemaphoreSummaryRow[]> {
+		return this.dataSource.query(SEMAPHORE_RV_SUMMARY_SQL, [
+			academicPeriodId,
+			outcomeId,
+			campusId,
+			language,
+			programCommissionId,
+		]);
+	}
+
+	async getLevelsLegend(
+		academicPeriodId: number,
+		instrument: 'rc' | 'rv',
+		language: string,
+	): Promise<SemaphoreLevelLegendRow[]> {
+		const instrumentTypeCode =
+			instrument === 'rc' ? RC_INSTRUMENT_TYPE_CODE : RV_INSTRUMENT_TYPE_CODE;
+		return this.dataSource.query(SEMAPHORE_LEVELS_LEGEND_SQL, [
+			academicPeriodId,
+			instrumentTypeCode,
+			language,
 		]);
 	}
 
