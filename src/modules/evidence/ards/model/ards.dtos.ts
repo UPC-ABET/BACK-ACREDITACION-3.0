@@ -1,9 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+	ArrayNotEmpty,
 	IsArray,
 	IsDateString,
 	IsInt,
+	IsObject,
 	IsOptional,
 	IsString,
 	Length,
@@ -11,6 +13,32 @@ import {
 	ValidateNested,
 } from 'class-validator';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
+import type { I18nText } from 'src/shared/types/i18n';
+
+export class CreateArdDto {
+	@IsDateString()
+	@ApiProperty({ example: '2026-06-23T15:00:00.000Z' })
+	meetingDate: string;
+
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiProperty({ example: 1 })
+	campusId: number;
+
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiProperty({ example: 1 })
+	programId: number;
+}
+
+export class UpdateArdDto {
+	@IsOptional()
+	@IsDateString()
+	@ApiPropertyOptional({ example: '2026-06-23T15:00:00.000Z' })
+	meetingDate?: string;
+}
 
 export class ArdDetailItemDto {
 	@Type(() => Number)
@@ -32,78 +60,24 @@ export class ArdDetailItemDto {
 	professorId: number;
 
 	@IsOptional()
-	@IsString()
-	@Length(0, 5000)
-	@ApiPropertyOptional({ example: 'Student comment about the course' })
-	comments?: string;
+	@IsObject()
+	@ApiPropertyOptional({ example: { es: 'Comentario del delegado', en: 'Delegate comment' } })
+	comments?: I18nText;
 }
 
-export class CreateArdDto {
-	@IsDateString()
-	@ApiProperty({ example: '2026-06-23T15:00:00.000Z' })
-	meetingDate: string;
-
+export class CreateArdDetailsDto {
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
 	@ApiProperty({ example: 1 })
-	campusId: number;
+	ardId: number;
 
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@ApiPropertyOptional({ example: 1 })
-	programId?: number;
-
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@ApiPropertyOptional({ example: 1 })
-	academicPeriodId?: number;
-
-	@IsOptional()
 	@IsArray()
+	@ArrayNotEmpty()
 	@ValidateNested({ each: true })
 	@Type(() => ArdDetailItemDto)
-	@ApiPropertyOptional({ type: [ArdDetailItemDto] })
-	details?: ArdDetailItemDto[];
-}
-
-export class UpdateArdDto {
-	@IsOptional()
-	@IsDateString()
-	@ApiPropertyOptional({ example: '2026-06-23T15:00:00.000Z' })
-	meetingDate?: string;
-
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@ApiPropertyOptional({ example: 1 })
-	campusId?: number;
-
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@ApiPropertyOptional({ example: 1 })
-	programId?: number;
-
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@ApiPropertyOptional({ example: 1 })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => ArdDetailItemDto)
-	@ApiPropertyOptional({ type: [ArdDetailItemDto] })
-	details?: ArdDetailItemDto[];
+	@ApiProperty({ type: [ArdDetailItemDto] })
+	details: ArdDetailItemDto[];
 }
 
 export class ArdMaintenanceQueryDto extends PaginationQueryDto {
@@ -115,14 +89,16 @@ export class ArdMaintenanceQueryDto extends PaginationQueryDto {
 	campusId?: number;
 
 	@IsOptional()
-	@IsDateString()
-	@ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
-	dateFrom?: string;
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiPropertyOptional({ example: 1 })
+	programId?: number;
 
 	@IsOptional()
 	@IsDateString()
-	@ApiPropertyOptional({ example: '2026-06-30T23:59:59.000Z' })
-	dateTo?: string;
+	@ApiPropertyOptional({ example: '2026-06-23' })
+	meetingDate?: string;
 
 	@IsOptional()
 	@IsString()
@@ -131,63 +107,18 @@ export class ArdMaintenanceQueryDto extends PaginationQueryDto {
 	search?: string;
 }
 
-export interface ArdMaintenanceItem {
-	id: number;
-	code: string;
-	meetingDate: Date;
-	campusId: number;
-	campusCode: string;
-	programId: number | null;
-	detailsCount: number;
-	createdAt: Date;
-}
-
-export interface ArdDetailItem {
-	id: number;
-	enrollmentStudentId: number | null;
-	courseId: number;
-	professorId: number;
-	comments: string | null;
-}
-
-export class ArdAttendeesQueryDto {
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@ApiProperty({ example: 1 })
-	campusId: number;
-
+export class ArdClassRepresentativesQueryDto {
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
 	@ApiProperty({ example: 1 })
 	programId: number;
-}
 
-export interface ArdDelegateAttendee {
-	enrolledStudentId: number;
-	studentId: number;
-	studentCode: string;
-	studentFullName: string;
-	courseSectionId: number;
-	courseId: number;
-	courseCode: string;
-	courseName: string;
-	sectionCode: string;
-	professorId: number;
-	professorFullName: string;
-}
-
-export interface ArdGuestAttendee {
-	enrolledStudentId: number;
-	studentId: number;
-	studentCode: string;
-	studentFullName: string;
-}
-
-export interface ArdAttendeesResult {
-	delegates: ArdDelegateAttendee[];
-	guests: ArdGuestAttendee[];
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiProperty({ example: 1 })
+	campusId: number;
 }
 
 export class ArdProgramCoursesQueryDto {
@@ -196,6 +127,14 @@ export class ArdProgramCoursesQueryDto {
 	@Min(1)
 	@ApiProperty({ example: 1 })
 	programId: number;
+}
+
+export class ArdCourseProfessorsQueryDto {
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiProperty({ example: 1 })
+	courseId: number;
 
 	@Type(() => Number)
 	@IsInt()
@@ -204,16 +143,68 @@ export class ArdProgramCoursesQueryDto {
 	campusId: number;
 }
 
-export interface ArdCourseSectionProfessor {
+export interface ArdMaintenanceItem {
+	id: number;
+	code: string;
+	meetingDate: Date;
+	campusId: number;
+	campusCode: string;
+	programId: number;
+	programName: I18nText;
+	detailsCount: number;
+	createdAt: Date;
+}
+
+export interface ArdDetailView {
+	id: number;
+	enrollmentStudentId: number;
+	studentCode: string;
+	studentFullName: string;
+	courseId: number;
+	courseCode: string;
+	courseName: I18nText;
+	professorId: number;
+	professorCode: string;
+	professorFullName: string;
+	comments: I18nText;
+}
+
+export interface ArdView {
+	id: number;
+	code: string;
+	meetingDate: Date;
+	campusId: number;
+	campusCode: string;
+	academicPeriodId: number;
+	programId: number;
+	programName: I18nText;
+	createdAt: Date;
+	details: ArdDetailView[];
+}
+
+export interface ArdClassRepresentative {
+	enrollmentStudentId: number;
+	studentId: number;
+	studentCode: string;
+	studentFullName: string;
 	courseSectionId: number;
+	courseId: number;
+	courseCode: string;
+	courseName: I18nText;
 	sectionCode: string;
 	professorId: number;
+	professorCode: string;
 	professorFullName: string;
 }
 
 export interface ArdProgramCourse {
 	courseId: number;
 	courseCode: string;
-	courseName: string;
-	sections: ArdCourseSectionProfessor[];
+	courseName: I18nText;
+}
+
+export interface ArdCourseProfessor {
+	professorId: number;
+	professorCode: string;
+	professorFullName: string;
 }

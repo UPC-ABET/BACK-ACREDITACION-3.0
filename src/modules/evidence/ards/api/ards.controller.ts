@@ -5,24 +5,24 @@ import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
-import {
-	ApiSchoolHeader,
-	SchoolId,
-} from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { ArdService } from './ards.service';
 import {
-	ArdAttendeesQueryDto,
+	ArdClassRepresentativesQueryDto,
+	ArdCourseProfessorsQueryDto,
 	ArdMaintenanceQueryDto,
 	ArdProgramCoursesQueryDto,
+	CreateArdDetailsDto,
 	CreateArdDto,
 	UpdateArdDto,
 } from '../model/ards.dtos';
 import {
-	SwaggerArdAttendees,
+	SwaggerArdClassRepresentatives,
 	SwaggerArdController,
+	SwaggerArdCourseProfessors,
 	SwaggerArdCreate,
 	SwaggerArdDelete,
+	SwaggerArdDetailsBulk,
 	SwaggerArdGetById,
 	SwaggerArdMaintenance,
 	SwaggerArdProgramCourses,
@@ -46,17 +46,19 @@ export class ArdController {
 	@SwaggerArdGetById()
 	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
 	async getById(@Param('id', ParseIntPipe) id: number) {
-		return parseSuccessResponse(await this.service.getDetail(id));
+		return parseSuccessResponse(await this.service.getView(id));
 	}
 
-	@SwaggerArdAttendees()
+	@SwaggerArdClassRepresentatives()
 	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
-	async getAttendees(
+	async getClassRepresentatives(
 		@AcademicPeriodId() academicPeriodId: number,
-		@Query() query: ArdAttendeesQueryDto,
+		@Query() query: ArdClassRepresentativesQueryDto,
 	) {
-		return parseSuccessResponse(await this.service.getAttendees(academicPeriodId, query));
+		return parseSuccessResponse(
+			await this.service.getClassRepresentatives(academicPeriodId, query),
+		);
 	}
 
 	@SwaggerArdProgramCourses()
@@ -69,32 +71,36 @@ export class ArdController {
 		return parseSuccessResponse(await this.service.getProgramCourses(academicPeriodId, query));
 	}
 
+	@SwaggerArdCourseProfessors()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.GET })
+	async getCourseProfessors(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Query() query: ArdCourseProfessorsQueryDto,
+	) {
+		return parseSuccessResponse(await this.service.getCourseProfessors(academicPeriodId, query));
+	}
+
 	@SwaggerArdCreate()
 	@ApiAcademicPeriodHeader()
-	@ApiSchoolHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
-	async create(
-		@AcademicPeriodId() academicPeriodId: number,
-		@SchoolId() schoolId: number,
-		@Body() dto: CreateArdDto,
-	) {
+	async create(@AcademicPeriodId() academicPeriodId: number, @Body() dto: CreateArdDto) {
 		return parseSuccessResponse(
-			await this.service.createArd(academicPeriodId, schoolId, dto),
+			await this.service.createArd(academicPeriodId, dto),
 			HttpStatus.CREATED,
 		);
 	}
 
+	@SwaggerArdDetailsBulk()
+	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })
+	async createDetails(@Body() dto: CreateArdDetailsDto) {
+		return parseSuccessResponse(await this.service.saveDetails(dto), HttpStatus.CREATED);
+	}
+
 	@SwaggerArdUpdate()
-	@ApiAcademicPeriodHeader()
-	@ApiSchoolHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.PUT })
-	async update(
-		@Param('id', ParseIntPipe) id: number,
-		@AcademicPeriodId() academicPeriodId: number,
-		@SchoolId() schoolId: number,
-		@Body() dto: UpdateArdDto,
-	) {
-		return parseSuccessResponse(await this.service.updateArd(id, academicPeriodId, schoolId, dto));
+	async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateArdDto) {
+		return parseSuccessResponse(await this.service.updateArd(id, dto));
 	}
 
 	@SwaggerArdDelete()

@@ -7,14 +7,22 @@
  */
 export type DomainErrorKind = 'badRequest' | 'unauthorized' | 'forbidden' | 'notFound' | 'conflict';
 
+/**
+ * A single entry in a domain error's `errors` list (surfaced as the response `data`).
+ * Usually a bare i18n key string; an object when the error must also carry the offending
+ * record's identifiers (e.g. which rows violated a unique constraint), with `code` holding
+ * the i18n key and the remaining fields identifying the row.
+ */
+export type DomainErrorDetail = string | ({ code: string } & Record<string, unknown>);
+
 export interface DomainErrorBody {
 	message: string;
-	errors?: string[];
+	errors?: DomainErrorDetail[];
 }
 
 export class DomainError extends Error {
 	readonly messageKey: string;
-	readonly errors?: string[];
+	readonly errors?: DomainErrorDetail[];
 
 	constructor(
 		readonly kind: DomainErrorKind,

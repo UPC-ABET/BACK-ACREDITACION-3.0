@@ -1,20 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
+import { NotFoundError } from 'src/commons/domain-error';
 import { ArdValidation } from '../core/ards.validation';
-import { ArdRepository, ArdDetail } from '../core/ards.repository';
+import { ArdRepository } from '../core/ards.repository';
 import {
-	ArdAttendeesQueryDto,
-	ArdAttendeesResult,
+	ArdClassRepresentative,
+	ArdClassRepresentativesQueryDto,
+	ArdCourseProfessor,
+	ArdCourseProfessorsQueryDto,
 	ArdMaintenanceItem,
 	ArdMaintenanceQueryDto,
 	ArdProgramCourse,
 	ArdProgramCoursesQueryDto,
+	ArdView,
+	CreateArdDetailsDto,
 	CreateArdDto,
 	UpdateArdDto,
 } from '../model/ards.dtos';
 import { ardsValidationStrings } from '../config/strings/ards.validation';
-import { NotFoundError } from 'src/commons/domain-error';
 
 @Injectable()
 export class ArdService extends BaseService<ArdRepository> {
@@ -31,8 +35,8 @@ export class ArdService extends BaseService<ArdRepository> {
 			academicPeriodId,
 			{
 				campusId: query.campusId,
-				dateFrom: query.dateFrom,
-				dateTo: query.dateTo,
+				programId: query.programId,
+				meetingDate: query.meetingDate,
 				search: query.search,
 			},
 			skip,
@@ -41,14 +45,46 @@ export class ArdService extends BaseService<ArdRepository> {
 		return toPaginated(items, total, page, pageSize);
 	}
 
-	async getAttendees(
+	async getView(id: number): Promise<ArdView> {
+		const view = await this.repository.findView(id);
+		if (!view) {
+			throw new NotFoundError(ardsValidationStrings.error.notFound);
+		}
+		return view;
+	}
+
+	async createArd(academicPeriodId: number, dto: CreateArdDto): Promise<ArdView> {
+		await ArdValidation.validateCreate(this.repository, academicPeriodId, dto);
+		const id = await this.repository.createArd(dto, academicPeriodId);
+		return await this.getView(id);
+	}
+
+	async updateArd(id: number, dto: UpdateArdDto): Promise<ArdView> {
+		await ArdValidation.validateUpdate(this.repository, id, dto);
+		await this.repository.updateArd(id, dto);
+		return await this.getView(id);
+	}
+
+	async saveDetails(dto: CreateArdDetailsDto): Promise<ArdView> {
+		await ArdValidation.validateDetails(this.repository, dto);
+		await this.repository.replaceDetails(dto.ardId, dto.details);
+		return await this.getView(dto.ardId);
+	}
+
+	async delete(id: number): Promise<{ id: number }> {
+		await ArdValidation.validateExists(this.repository, id);
+		await this.repository.deleteWithDetails(id);
+		return { id };
+	}
+
+	async getClassRepresentatives(
 		academicPeriodId: number,
-		query: ArdAttendeesQueryDto,
-	): Promise<ArdAttendeesResult> {
-		return await this.repository.findDelegatesAndGuests(
+		query: ArdClassRepresentativesQueryDto,
+	): Promise<ArdClassRepresentative[]> {
+		return await this.repository.findClassRepresentatives(
 			academicPeriodId,
-			query.campusId,
 			query.programId,
+			query.campusId,
 		);
 	}
 
@@ -56,45 +92,17 @@ export class ArdService extends BaseService<ArdRepository> {
 		academicPeriodId: number,
 		query: ArdProgramCoursesQueryDto,
 	): Promise<ArdProgramCourse[]> {
-		return await this.repository.findProgramCourses(
+		return await this.repository.findProgramCourses(academicPeriodId, query.programId);
+	}
+
+	async getCourseProfessors(
+		academicPeriodId: number,
+		query: ArdCourseProfessorsQueryDto,
+	): Promise<ArdCourseProfessor[]> {
+		return await this.repository.findCourseProfessors(
 			academicPeriodId,
-			query.programId,
+			query.courseId,
 			query.campusId,
 		);
-	}
-
-	async getDetail(id: number): Promise<ArdDetail> {
-		const detail = await this.repository.findDetail(id);
-		if (!detail) {
-			throw new NotFoundError(ardsValidationStrings.error.notFound);
-		}
-		return detail;
-	}
-
-	async createArd(
-		academicPeriodId: number,
-		schoolId: number,
-		dto: CreateArdDto,
-	): Promise<ArdDetail> {
-		await ArdValidation.validateCreate(this.repository, academicPeriodId, dto);
-		const id = await this.repository.createFull(dto, academicPeriodId, schoolId);
-		return await this.getDetail(id);
-	}
-
-	async updateArd(
-		id: number,
-		academicPeriodId: number,
-		schoolId: number,
-		dto: UpdateArdDto,
-	): Promise<ArdDetail> {
-		await ArdValidation.validateUpdate(this.repository, id, academicPeriodId, dto);
-		await this.repository.updateFull(id, dto, academicPeriodId, schoolId);
-		return await this.getDetail(id);
-	}
-
-	async delete(id: number): Promise<{ id: number }> {
-		await ArdValidation.validateDelete(this.repository, id);
-		await this.repository.softDelete(id);
-		return { id };
 	}
 }

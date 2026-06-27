@@ -3,21 +3,31 @@ export const ardsRoutes = {
 		route: 'ards',
 		tag: 'ARD',
 		operation: {
-			create: { method: 'POST', route: '/create', summary: 'Create ARD meeting' },
-			update: { method: 'PUT', route: '/update/:id', summary: 'Update ARD meeting' },
-			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Delete ARD meeting' },
-			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Get ARD meeting detail' },
-			attendees: {
+			create: { method: 'POST', route: '/create', summary: 'Create ARD' },
+			update: { method: 'PUT', route: '/update/:id', summary: 'Update ARD' },
+			delete: { method: 'DELETE', route: '/delete/:id', summary: 'Delete ARD' },
+			getById: { method: 'GET', route: '/get-by-id/:id', summary: 'Get ARD detail' },
+			maintenance: { method: 'GET', route: '/maintenance', summary: 'List ARDs' },
+			classRepresentatives: {
 				method: 'GET',
-				route: '/attendees',
-				summary: 'List ARD delegates and guest students',
+				route: '/class-representatives',
+				summary: 'List class representative students by program and campus',
 			},
 			programCourses: {
 				method: 'GET',
 				route: '/program-courses',
-				summary: 'List program courses with sections and professors',
+				summary: 'List program courses from the organization chart',
 			},
-			maintenance: { method: 'GET', route: '/maintenance', summary: 'List ARD meetings' },
+			courseProfessors: {
+				method: 'GET',
+				route: '/course-professors',
+				summary: 'List distinct professors of a course by campus',
+			},
+			detailsBulk: {
+				method: 'POST',
+				route: '/details/bulk',
+				summary: 'Bulk create ARD details',
+			},
 		},
 	},
 };

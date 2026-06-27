@@ -1,9 +1,11 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ardsRoutes } from '../../config/ards.routes';
 import {
-	ArdAttendeesQueryDto,
+	ArdClassRepresentativesQueryDto,
+	ArdCourseProfessorsQueryDto,
 	ArdMaintenanceQueryDto,
 	ArdProgramCoursesQueryDto,
+	CreateArdDetailsDto,
 	CreateArdDto,
 	UpdateArdDto,
 } from '../../model/ards.dtos';
@@ -22,11 +24,20 @@ export const SwaggerArdDelete = () => HttpMethodWithSwagger(cfg.operation.delete
 
 export const SwaggerArdGetById = () => HttpMethodWithSwagger(cfg.operation.getById);
 
-export const SwaggerArdAttendees = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.attendees, query: ArdAttendeesQueryDto });
+export const SwaggerArdMaintenance = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.maintenance, query: ArdMaintenanceQueryDto });
+
+export const SwaggerArdClassRepresentatives = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.classRepresentatives,
+		query: ArdClassRepresentativesQueryDto,
+	});
 
 export const SwaggerArdProgramCourses = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.programCourses, query: ArdProgramCoursesQueryDto });
 
-export const SwaggerArdMaintenance = () =>
-	HttpMethodWithSwagger({ ...cfg.operation.maintenance, query: ArdMaintenanceQueryDto });
+export const SwaggerArdCourseProfessors = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.courseProfessors, query: ArdCourseProfessorsQueryDto });
+
+export const SwaggerArdDetailsBulk = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.detailsBulk, body: CreateArdDetailsDto });
