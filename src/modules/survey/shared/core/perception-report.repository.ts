@@ -8,6 +8,8 @@ export interface PerceptionScoreRow {
 	outcomeName: I18nText | string | null;
 	campusId: number;
 	campusName: I18nText | string | null;
+	commissionId: number | null;
+	commissionName: I18nText | string | null;
 	score: string;
 	count: number;
 }
@@ -26,10 +28,9 @@ export class PerceptionReportRepository {
 	constructor(private readonly dataSource: DataSource) {}
 
 	async getSurveyTypeId(code: string): Promise<number | null> {
-		const rows = await this.dataSource.query(
-			`SELECT id FROM core.types WHERE code = $1 LIMIT 1`,
-			[code],
-		);
+		const rows = await this.dataSource.query(`SELECT id FROM core.types WHERE code = $1 LIMIT 1`, [
+			code,
+		]);
 		return rows?.[0]?.id ?? null;
 	}
 
@@ -61,20 +62,23 @@ export class PerceptionReportRepository {
 
 		return await this.dataSource.query(
 			`SELECT
-				o.id           AS "outcomeId",
-				o.outcome_code AS "outcomeCode",
-				o.outcome_name AS "outcomeName",
-				s.campus_id    AS "campusId",
-				c.name         AS "campusName",
-				sc.score       AS "score",
-				COUNT(*)::int  AS "count"
+				o.id              AS "outcomeId",
+				o.outcome_code    AS "outcomeCode",
+				o.outcome_name    AS "outcomeName",
+				s.campus_id       AS "campusId",
+				c.name            AS "campusName",
+				pc.commission_id  AS "commissionId",
+				comm.name         AS "commissionName",
+				sc.score          AS "score",
+				COUNT(*)::int     AS "count"
 			FROM evidence.surveys s
 			INNER JOIN survey.scores sc ON sc.survey_id = s.id
 			INNER JOIN accreditation.outcomes o ON o.id = sc.outcome_id
-			INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			LEFT JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			LEFT JOIN accreditation.commissions comm ON comm.id = pc.commission_id
 			LEFT JOIN organization.campuses c ON c.id = s.campus_id
 			WHERE ${conditions.join(' AND ')}
-			GROUP BY o.id, o.outcome_code, o.outcome_name, s.campus_id, c.name, sc.score
+			GROUP BY o.id, o.outcome_code, o.outcome_name, s.campus_id, c.name, pc.commission_id, comm.name, sc.score
 			ORDER BY o.outcome_code, s.campus_id`,
 			params,
 		);
@@ -117,5 +121,28 @@ export class PerceptionReportRepository {
 			[commissionId],
 		);
 		return rows?.[0]?.name ?? null;
+	}
+
+	async getCommissions(
+		surveyTypeId: number,
+		academicPeriodId: number,
+		programId?: number,
+	): Promise<{ id: number; name: I18nText | string }[]> {
+		const params: unknown[] = [surveyTypeId, academicPeriodId];
+		const conditions = ['s.survey_type_id = $1', 's.academic_period_id = $2'];
+		if (programId !== undefined) {
+			params.push(programId);
+			conditions.push(`s.program_id = $${params.length}`);
+		}
+		return await this.dataSource.query(
+			`SELECT DISTINCT pc.commission_id AS id, comm.name
+			 FROM evidence.surveys s
+			 INNER JOIN survey.scores sc ON sc.survey_id = s.id
+			 INNER JOIN accreditation.outcomes o ON o.id = sc.outcome_id
+			 INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			 INNER JOIN accreditation.commissions comm ON comm.id = pc.commission_id
+			 WHERE ${conditions.join(' AND ')}`,
+			params,
+		);
 	}
 }

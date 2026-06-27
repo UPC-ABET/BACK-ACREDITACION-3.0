@@ -16,7 +16,7 @@ export const graValidationStrings = {
 		invalidExcelFile: 'error.survey.gra.invalidExcelFile',
 		excelNoSheets: 'error.survey.gra.excelNoSheets',
 		excelEmpty: 'error.survey.gra.excelEmpty',
-		defaultCourseSectionMissing: 'error.survey.gra.defaultCourseSectionMissing',
+		defaultCampusMissing: 'error.survey.gra.defaultCampusMissing',
 		emptyStudentCode: 'error.survey.gra.emptyStudentCode',
 		studentNotFound: 'error.survey.gra.studentNotFound',
 		alreadyInList: 'error.survey.gra.alreadyInList',

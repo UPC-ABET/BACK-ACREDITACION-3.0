@@ -87,14 +87,18 @@ export class GraNotificationService {
 
 		if (!survey) {
 			const courseSectionId = await this.resolveDefaultCourseSectionId();
+			const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
+			if (!campusId) {
+				throw new InternalServerErrorException(graValidationStrings.error.defaultCampusMissing);
+			}
 			survey = (await this.surveyRepo.create({
 				surveyTypeId: graSurveyTypeId,
 				surveyStatusTypeId: activeStatusId,
 				studentId: dto.studentId,
 				academicPeriodId,
-				campusId: dto.campusId,
+				campusId,
 				programId: dto.programId,
-				courseSectionId,
+				...(courseSectionId !== null && { courseSectionId }),
 			})) as SurveyEntity;
 		}
 
@@ -196,14 +200,23 @@ export class GraNotificationService {
 				dto.programId,
 			);
 			if (!survey) {
+				const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(studentId));
+				if (!campusId) {
+					results.failed++;
+					results.errors.push({
+						row: rowNum,
+						reason: graValidationStrings.error.defaultCampusMissing,
+					});
+					continue;
+				}
 				survey = (await this.surveyRepo.create({
 					surveyTypeId: graSurveyTypeId,
 					surveyStatusTypeId: activeStatusId,
 					studentId,
 					academicPeriodId,
-					campusId: dto.campusId,
+					campusId,
 					programId: dto.programId,
-					courseSectionId,
+					...(courseSectionId !== null && { courseSectionId }),
 				})) as SurveyEntity;
 			}
 
@@ -225,16 +238,10 @@ export class GraNotificationService {
 		return results;
 	}
 
-	/** Resolves the default course section, failing loudly (i18n) when none is seeded. */
-	private async resolveDefaultCourseSectionId(): Promise<number> {
-		const courseSectionId = await this.surveyRepo.getDefaultCourseSectionId();
-		if (!courseSectionId) {
-			this.logger.error('No default course section found for GRA survey creation');
-			throw new InternalServerErrorException(
-				graValidationStrings.error.defaultCourseSectionMissing,
-			);
-		}
-		return courseSectionId;
+	/** Returns the first available course section, or null when none exist. GRA surveys don't
+	 *  require a specific course section, so null is acceptable. */
+	private async resolveDefaultCourseSectionId(): Promise<number | null> {
+		return this.surveyRepo.getDefaultCourseSectionId();
 	}
 
 	async listStudents(dto: ListStudentsGraDto, academicPeriodId?: number | null) {

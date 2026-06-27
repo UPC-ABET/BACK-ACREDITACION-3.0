@@ -151,11 +151,30 @@ export class PerceptionReportService {
 			? this.localizeValue(commissionName, request.lang)
 			: L.allCommissions;
 
-		const sections = this.buildCampusSections(rows, request, L);
+		// When a campus is selected but no commission AND the data spans multiple commissions:
+		// split by commission + general. Otherwise fall back to the regular campus split.
+		const distinctCommissions = new Set(
+			rows.map((r) => r.commissionId).filter((id): id is number => id !== null && id !== undefined),
+		);
+		const useCommissionSplit =
+			request.campusId !== undefined &&
+			request.commissionId === undefined &&
+			distinctCommissions.size > 1;
+
+		const sections = useCommissionSplit
+			? this.buildCommissionSections(rows, request, L)
+			: this.buildCampusSections(rows, request, L);
+
+		// In commission-split mode the campus is fixed; grab its localised name from the rows.
+		const fixedCampusLabel = useCommissionSplit
+			? rows.length > 0
+				? this.localizeValue(rows[0].campusName, request.lang)
+				: L.allCampuses
+			: undefined;
 
 		const documents = sections.map((section) => ({
 			campusId: section.campusId,
-			campusName: section.campusName,
+			campusName: section.label,
 			document: this.buildDocument({
 				rows: section.rows,
 				bands,
@@ -163,11 +182,11 @@ export class PerceptionReportService {
 				reportName: this.localizeValue(request.reportName, request.lang),
 				programLabel: localizedProgram,
 				periodCode: periodCode ?? String(request.academicPeriodId),
-				campusLabel: section.campusName,
-				commissionLabel: headerCommission,
+				campusLabel: useCommissionSplit ? (fixedCampusLabel ?? L.allCampuses) : section.label,
+				commissionLabel: useCommissionSplit ? section.label : headerCommission,
 				labels: L,
 			}),
-			filename: this.buildFilename(request.fileLabel, section.campusName),
+			filename: this.buildFilename(request.fileLabel, section.label),
 		}));
 
 		const generated = await Promise.all(
@@ -230,31 +249,64 @@ export class PerceptionReportService {
 		}));
 	}
 
+	private buildCommissionSections(
+		rows: PerceptionScoreRow[],
+		request: PerceptionReportRequest,
+		labels: (typeof LABELS)[ReportLanguage],
+	): Array<{ campusId: number | null; label: string; rows: PerceptionScoreRow[] }> {
+		const campusId = request.campusId ?? null;
+
+		// General report (all commissions) comes first
+		const sections: Array<{
+			campusId: number | null;
+			label: string;
+			rows: PerceptionScoreRow[];
+		}> = [{ campusId, label: labels.allCommissions, rows }];
+
+		const commissionIds = [
+			...new Set(
+				rows
+					.map((row) => row.commissionId)
+					.filter((id): id is number => id !== null && id !== undefined),
+			),
+		];
+
+		for (const commissionId of commissionIds) {
+			const commRows = rows.filter((row) => row.commissionId === commissionId);
+			if (commRows.length === 0) continue;
+			const commName =
+				this.localizeValue(commRows[0].commissionName, request.lang) || String(commissionId);
+			sections.push({ campusId, label: commName, rows: commRows });
+		}
+
+		return sections;
+	}
+
 	private buildCampusSections(
 		rows: PerceptionScoreRow[],
 		request: PerceptionReportRequest,
 		labels: (typeof LABELS)[ReportLanguage],
-	): Array<{ campusId: number | null; campusName: string; rows: PerceptionScoreRow[] }> {
+	): Array<{ campusId: number | null; label: string; rows: PerceptionScoreRow[] }> {
 		if (request.campusId !== undefined) {
-			const campusName = rows.length
+			const label = rows.length
 				? this.localizeValue(rows[0].campusName, request.lang)
 				: labels.campus;
-			return [{ campusId: request.campusId, campusName, rows }];
+			return [{ campusId: request.campusId, label, rows }];
 		}
 
 		const campusIds = [...new Set(rows.map((row) => row.campusId))];
 		const sections: Array<{
 			campusId: number | null;
-			campusName: string;
+			label: string;
 			rows: PerceptionScoreRow[];
-		}> = [{ campusId: null, campusName: labels.allCampuses, rows }];
+		}> = [{ campusId: null, label: labels.allCampuses, rows }];
 
 		if (campusIds.length > 1) {
 			for (const campusId of campusIds) {
 				const campusRows = rows.filter((row) => row.campusId === campusId);
 				sections.push({
 					campusId,
-					campusName: this.localizeValue(campusRows[0]?.campusName, request.lang),
+					label: this.localizeValue(campusRows[0]?.campusName, request.lang),
 					rows: campusRows,
 				});
 			}
