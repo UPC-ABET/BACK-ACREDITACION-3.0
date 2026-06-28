@@ -65,7 +65,7 @@ export class ArdExportService {
 		dto: ArdExportDto,
 	): Promise<{ buffer: Buffer; filename: string }> {
 		const meta = await this.repository.getExportMeta(academicPeriodId, dto.programId);
-		const rows = await this.repository.findExportRows(academicPeriodId, dto.programId, {
+		const rows = await this.repository.findExportRows(academicPeriodId, dto.programId, dto.lang, {
 			campusId: dto.campusId,
 			areaChartIds: dto.areaChartIds,
 			subareaChartIds: dto.subareaChartIds,

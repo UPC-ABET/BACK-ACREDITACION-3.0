@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
@@ -187,12 +187,13 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 		campusId: number,
 		programId: number,
 	): Promise<boolean> {
-		const count = await this.repository.countBy({
-			academicPeriodId,
-			meetingDate: new Date(meetingDate),
-			campusId,
-			programId,
-		});
+		const count = await this.repository
+			.createQueryBuilder('ard')
+			.where('ard.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.andWhere('ard.meeting_date::date = (:meetingDate)::date', { meetingDate })
+			.andWhere('ard.campus_id = :campusId', { campusId })
+			.andWhere('ard.program_id = :programId', { programId })
+			.getCount();
 		return count > 0;
 	}
 
@@ -200,13 +201,16 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 		const current = await this.repository.findOneBy({ id });
 		if (!current) return false;
 
-		const count = await this.repository.countBy({
-			id: Not(id),
-			academicPeriodId: current.academicPeriodId,
-			meetingDate: new Date(meetingDate),
-			campusId: current.campusId,
-			programId: current.programId,
-		});
+		const count = await this.repository
+			.createQueryBuilder('ard')
+			.where('ard.id != :id', { id })
+			.andWhere('ard.academic_period_id = :academicPeriodId', {
+				academicPeriodId: current.academicPeriodId,
+			})
+			.andWhere('ard.meeting_date::date = (:meetingDate)::date', { meetingDate })
+			.andWhere('ard.campus_id = :campusId', { campusId: current.campusId })
+			.andWhere('ard.program_id = :programId', { programId: current.programId })
+			.getCount();
 		return count > 0;
 	}
 
@@ -231,18 +235,20 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 	}
 
 	async replaceDetails(ardId: number, details: ArdDetailItemDto[]): Promise<void> {
-		await this.detailRepository.delete({ ardId });
+		await this.dataSource.transaction(async (manager) => {
+			await manager.delete(ArdDetailEntity, { ardId });
 
-		const rows = details.map((detail) =>
-			this.detailRepository.create({
-				ardId,
-				enrollmentStudentId: detail.enrollmentStudentId,
-				courseId: detail.courseId,
-				professorId: detail.professorId,
-				comments: detail.comments ?? {},
-			}),
-		);
-		await this.detailRepository.save(rows);
+			const rows = details.map((detail) =>
+				manager.create(ArdDetailEntity, {
+					ardId,
+					enrollmentStudentId: detail.enrollmentStudentId,
+					courseId: detail.courseId,
+					professorId: detail.professorId,
+					comments: detail.comments ?? {},
+				}),
+			);
+			await manager.save(rows);
+		});
 	}
 
 	async findClassRepresentatives(
@@ -389,6 +395,7 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 	async findExportRows(
 		academicPeriodId: number,
 		programId: number,
+		lang: 'es' | 'en',
 		filters: {
 			campusId?: number;
 			areaChartIds?: number[];
@@ -409,6 +416,9 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 			params.push(filters.areaChartIds);
 			conditions.push(`ch.area_chart_id = ANY($${params.length}::int[])`);
 		}
+
+		params.push(lang);
+		const langParam = `$${params.length}`;
 
 		const rows = await this.dataSource.query(
 			`
@@ -451,7 +461,7 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 			  AND ard.academic_period_id = $3
 			  AND ard.program_id = $2
 			  ${conditions.length ? `AND ${conditions.join(' AND ')}` : ''}
-			ORDER BY ard.meeting_date, "code", ch.area_title->>'es', ch.subarea_title->>'es', co.code
+			ORDER BY ard.meeting_date, "code", ch.area_title->>${langParam}, ch.subarea_title->>${langParam}, co.code
 		`,
 			params,
 		);

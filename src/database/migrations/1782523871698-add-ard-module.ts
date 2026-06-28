@@ -9,7 +9,7 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 				"is_active" boolean NOT NULL DEFAULT true,
 				"created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(),
 				"updated_at" TIMESTAMP WITH TIME ZONE,
-				"meeting_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"meeting_date" TIMESTAMP WITH TIME ZONE NOT NULL,
 				"campus_id" integer NOT NULL,
 				"academic_period_id" integer NOT NULL,
 				"program_id" integer NOT NULL,
@@ -83,7 +83,7 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 		`);
 
 		await queryRunner.query(`
-			CREATE INDEX "IDX_ard_academic_period_id" ON "evidence"."ard" ("academic_period_id")
+			CREATE INDEX "IDX_ard_campus_id" ON "evidence"."ard" ("campus_id")
 		`);
 
 		await queryRunner.query(`
@@ -95,9 +95,8 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 		`);
 
 		await queryRunner.query(`
-			ALTER TABLE "evidence"."ard"
-			ADD CONSTRAINT "UQ_ard_period_meeting_campus_program"
-			UNIQUE ("academic_period_id", "meeting_date", "campus_id", "program_id")
+			CREATE UNIQUE INDEX "UQ_ard_period_meeting_campus_program"
+			ON "evidence"."ard" ("academic_period_id", (("meeting_date")::date), "campus_id", "program_id")
 		`);
 
 		await queryRunner.query(`
@@ -108,9 +107,12 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(
+			`DROP INDEX IF EXISTS "evidence"."UQ_ard_period_meeting_campus_program"`,
+		);
 		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_detail_ard_id"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_program_id"`);
-		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_academic_period_id"`);
+		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_campus_id"`);
 		await queryRunner.query(`DROP TABLE "evidence"."ard_detail"`);
 		await queryRunner.query(`DROP TABLE "evidence"."ard"`);
 	}
