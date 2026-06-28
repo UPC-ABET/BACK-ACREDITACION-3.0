@@ -1,14 +1,18 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { ardsRoutes } from '../../config/ards.routes';
 import {
+	ArdAttendanceExportDto,
 	ArdClassRepresentativesQueryDto,
 	ArdCourseProfessorsQueryDto,
+	ArdExportDto,
 	ArdMaintenanceQueryDto,
 	ArdProgramCoursesQueryDto,
 	CreateArdDetailsDto,
 	CreateArdDto,
 	UpdateArdDto,
 } from '../../model/ards.dtos';
+
+const XLSX_PRODUCES = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const cfg = ardsRoutes.ards;
 
@@ -38,6 +42,20 @@ export const SwaggerArdProgramCourses = () =>
 
 export const SwaggerArdCourseProfessors = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.courseProfessors, query: ArdCourseProfessorsQueryDto });
+
+export const SwaggerArdExport = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.export,
+		body: ArdExportDto,
+		produces: XLSX_PRODUCES,
+	});
+
+export const SwaggerArdAttendanceExport = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.attendanceExport,
+		body: ArdAttendanceExportDto,
+		produces: XLSX_PRODUCES,
+	});
 
 export const SwaggerArdDetailsBulk = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.detailsBulk, body: CreateArdDetailsDto });

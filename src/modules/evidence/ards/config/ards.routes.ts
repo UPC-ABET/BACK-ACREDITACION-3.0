@@ -23,6 +23,16 @@ export const ardsRoutes = {
 				route: '/course-professors',
 				summary: 'List distinct professors of a course by campus',
 			},
+			export: {
+				method: 'POST',
+				route: '/export',
+				summary: 'Export ARDs to Excel filtered by program, areas and subareas',
+			},
+			attendanceExport: {
+				method: 'POST',
+				route: '/attendance-export',
+				summary: 'Export the attendance (delegate students) of a single ARD to Excel',
+			},
 			detailsBulk: {
 				method: 'POST',
 				route: '/details/bulk',

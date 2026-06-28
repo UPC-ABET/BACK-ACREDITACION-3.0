@@ -6,9 +6,13 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 import {
+	ArdAttendanceMeta,
+	ArdAttendanceStudent,
 	ArdClassRepresentative,
 	ArdCourseProfessor,
 	ArdDetailItemDto,
+	ArdExportMeta,
+	ArdExportRow,
 	ArdMaintenanceItem,
 	ArdProgramCourse,
 	ArdView,
@@ -365,6 +369,150 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 			professorId: Number(row.professorId),
 			professorCode: row.professorCode,
 			professorFullName: row.professorFullName,
+		}));
+	}
+
+	async getExportMeta(academicPeriodId: number, programId: number): Promise<ArdExportMeta | null> {
+		const [row] = await this.dataSource.query(
+			`
+			SELECT ap.code AS "periodCode", p.name AS "programName"
+			FROM academic.academic_periods ap
+			CROSS JOIN academic.programs p
+			WHERE ap.id = $1 AND p.id = $2
+		`,
+			[academicPeriodId, programId],
+		);
+		if (!row) return null;
+		return { periodCode: row.periodCode, programName: row.programName };
+	}
+
+	async findExportRows(
+		academicPeriodId: number,
+		programId: number,
+		filters: {
+			campusId?: number;
+			areaChartIds?: number[];
+			subareaChartIds?: number[];
+		},
+	): Promise<ArdExportRow[]> {
+		const params: unknown[] = [TYPE_CODES.ENTITY_TYPE.COURSE, programId, academicPeriodId];
+		const conditions: string[] = [];
+
+		if (filters.campusId) {
+			params.push(filters.campusId);
+			conditions.push(`ard.campus_id = $${params.length}`);
+		}
+		if (filters.subareaChartIds?.length) {
+			params.push(filters.subareaChartIds);
+			conditions.push(`ch.subarea_chart_id = ANY($${params.length}::int[])`);
+		} else if (filters.areaChartIds?.length) {
+			params.push(filters.areaChartIds);
+			conditions.push(`ch.area_chart_id = ANY($${params.length}::int[])`);
+		}
+
+		const rows = await this.dataSource.query(
+			`
+			WITH course_hierarchy AS (
+				SELECT DISTINCT ON (c_course.entity_code)
+					c_course.entity_code AS course_id,
+					c_sub.id     AS subarea_chart_id,
+					c_sub.title  AS subarea_title,
+					c_area.id    AS area_chart_id,
+					c_area.title AS area_title
+				FROM organization.charts c_course
+				INNER JOIN core.types et_course ON et_course.id = c_course.entity_type_id AND et_course.code = $1
+				INNER JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
+				INNER JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
+				INNER JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+				WHERE c_program.entity_code = $2
+				  AND c_course.academic_period_id = $3
+				  AND c_course.is_active = true
+				ORDER BY c_course.entity_code, c_course.id
+			)
+			SELECT
+				to_char(ard.meeting_date, 'DD/MM/YYYY')               AS "meetingDate",
+				${ARD_CODE_EXPR}                                       AS "code",
+				CONCAT(st.first_name, ' ', st.last_name)              AS "professorFullName",
+				co.name        AS "courseName",
+				ch.subarea_title AS "subareaName",
+				ch.area_title    AS "areaName",
+				campus.name    AS "campusName",
+				program.name   AS "programName",
+				ad.comments    AS "comments"
+			FROM evidence.ard ard
+			INNER JOIN organization.campuses campus ON campus.id = ard.campus_id
+			INNER JOIN academic.programs program ON program.id = ard.program_id
+			INNER JOIN evidence.ard_detail ad ON ad.ard_id = ard.id AND ad.is_active = true
+			INNER JOIN academic.courses co ON co.id = ad.course_id
+			INNER JOIN academic.professors pr ON pr.id = ad.professor_id
+			INNER JOIN organization.staff st ON st.id = pr.staff_id
+			LEFT JOIN course_hierarchy ch ON ch.course_id = ad.course_id
+			WHERE ard.is_active = true
+			  AND ard.academic_period_id = $3
+			  AND ard.program_id = $2
+			  ${conditions.length ? `AND ${conditions.join(' AND ')}` : ''}
+			ORDER BY ard.meeting_date, "code", ch.area_title->>'es', ch.subarea_title->>'es', co.code
+		`,
+			params,
+		);
+
+		return rows.map((row) => ({
+			meetingDate: row.meetingDate,
+			code: row.code,
+			professorFullName: row.professorFullName,
+			courseName: row.courseName,
+			subareaName: row.subareaName ?? null,
+			areaName: row.areaName ?? null,
+			campusName: row.campusName,
+			programName: row.programName,
+			comments: row.comments,
+		}));
+	}
+
+	async findAttendanceMeta(ardId: number): Promise<ArdAttendanceMeta | null> {
+		const [row] = await this.dataSource.query(
+			`
+			SELECT
+				to_char(ard.meeting_date, 'DD/MM/YYYY') AS "meetingDateLabel",
+				to_char(ard.meeting_date, 'DD_MM_YYYY') AS "meetingDateFile",
+				campus.name  AS "campusName",
+				program.code AS "programCode"
+			FROM evidence.ard ard
+			INNER JOIN organization.campuses campus ON campus.id = ard.campus_id
+			INNER JOIN academic.programs program ON program.id = ard.program_id
+			WHERE ard.id = $1 AND ard.is_active = true
+		`,
+			[ardId],
+		);
+		if (!row) return null;
+		return {
+			meetingDateLabel: row.meetingDateLabel,
+			meetingDateFile: row.meetingDateFile,
+			campusName: row.campusName,
+			programCode: row.programCode,
+		};
+	}
+
+	async findAttendanceStudents(ardId: number): Promise<ArdAttendanceStudent[]> {
+		const rows = await this.dataSource.query(
+			`
+			SELECT DISTINCT
+				s.code AS "studentCode",
+				CONCAT(s.first_name, ' ', s.last_name) AS "studentFullName"
+			FROM evidence.ard_detail ad
+			INNER JOIN academic.enrolled_students es ON es.id = ad.enrollment_student_id
+			INNER JOIN academic.students s ON s.id = es.student_id
+			WHERE ad.ard_id = $1
+			  AND ad.is_active = true
+			  AND es.is_active = true
+			  AND s.is_active = true
+			ORDER BY "studentFullName"
+		`,
+			[ardId],
+		);
+		return rows.map((row) => ({
+			studentCode: row.studentCode,
+			studentFullName: row.studentFullName,
 		}));
 	}
 

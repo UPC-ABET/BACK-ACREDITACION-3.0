@@ -4,6 +4,7 @@ import {
 	ArrayNotEmpty,
 	IsArray,
 	IsDateString,
+	IsIn,
 	IsInt,
 	IsObject,
 	IsOptional,
@@ -143,6 +144,51 @@ export class ArdCourseProfessorsQueryDto {
 	campusId: number;
 }
 
+export class ArdExportDto {
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiProperty({ example: 1 })
+	programId: number;
+
+	@IsOptional()
+	@IsArray()
+	@IsInt({ each: true })
+	@Type(() => Number)
+	@ApiPropertyOptional({ example: [10, 11] })
+	areaChartIds?: number[];
+
+	@IsOptional()
+	@IsArray()
+	@IsInt({ each: true })
+	@Type(() => Number)
+	@ApiPropertyOptional({ example: [20, 21] })
+	subareaChartIds?: number[];
+
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiPropertyOptional({ example: 1 })
+	campusId?: number;
+
+	@IsIn(['es', 'en'])
+	@ApiProperty({ example: 'es', enum: ['es', 'en'] })
+	lang: 'es' | 'en';
+}
+
+export class ArdAttendanceExportDto {
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@ApiProperty({ example: 1 })
+	ardId: number;
+
+	@IsIn(['es', 'en'])
+	@ApiProperty({ example: 'es', enum: ['es', 'en'] })
+	lang: 'es' | 'en';
+}
+
 export interface ArdMaintenanceItem {
 	id: number;
 	code: string;
@@ -207,4 +253,33 @@ export interface ArdCourseProfessor {
 	professorId: number;
 	professorCode: string;
 	professorFullName: string;
+}
+
+export interface ArdExportRow {
+	meetingDate: string;
+	code: string;
+	professorFullName: string;
+	courseName: I18nText;
+	subareaName: I18nText | null;
+	areaName: I18nText | null;
+	campusName: I18nText;
+	programName: I18nText;
+	comments: I18nText;
+}
+
+export interface ArdExportMeta {
+	periodCode: string;
+	programName: I18nText;
+}
+
+export interface ArdAttendanceMeta {
+	meetingDateLabel: string;
+	meetingDateFile: string;
+	campusName: I18nText;
+	programCode: string;
+}
+
+export interface ArdAttendanceStudent {
+	studentCode: string;
+	studentFullName: string;
 }

@@ -4,6 +4,7 @@ export const ardsValidationStrings = {
 		detailsRequired: 'error.ard.detailsRequired',
 		duplicateArd: 'error.ard.duplicateArd',
 		duplicateDetail: 'error.ard.duplicateDetail',
+		noDataToExport: 'error.ard.noDataToExport',
 	},
 	result: {
 		createFailed: 'error.ard.createFailed',
