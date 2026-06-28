@@ -16,6 +16,7 @@ interface ScopeTag {
 
 interface ScopeOption {
 	id: number;
+	entityId: number | null;
 	label: Record<string, string>;
 	parentId: number | null;
 	tag: ScopeTag | null;
@@ -52,6 +53,7 @@ export class OrgScopeService implements UserSchoolsService {
 			const parentId = r.parentId !== null && visibleIds.has(r.parentId) ? r.parentId : null;
 			entry.options.push({
 				id: r.id,
+				entityId: r.entityId,
 				label: r.label,
 				parentId,
 				tag: r.tagCode ? { code: r.tagCode, name: r.tagName } : null,

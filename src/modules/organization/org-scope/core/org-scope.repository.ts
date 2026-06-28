@@ -5,6 +5,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 
 export interface ScopeRow {
 	id: number;
+	entityId: number | null;
 	parentId: number | null;
 	levelNum: number;
 	tagCode: string | null;
@@ -88,6 +89,7 @@ scope AS (
 )
 SELECT
 	c.id::int                                          AS "id",
+	c.entity_code::int                                 AS "entityId",
 	c.root_chart_id::int                               AS "parentId",
 	st.depth                                           AS "levelNum",
 	et.code                                            AS "tagCode",

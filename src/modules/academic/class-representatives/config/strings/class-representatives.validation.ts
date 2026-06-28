@@ -1,6 +1,6 @@
 export const classRepresentativesValidationStrings = {
 	error: {
-		enrollmentNotFound: 'error.classRepresentative.enrollmentNotFound',
+		studentNotEnrolledInSection: 'error.classRepresentative.studentNotEnrolledInSection',
 	},
 	result: {
 		assignFailed: 'error.classRepresentative.assignFailed',
