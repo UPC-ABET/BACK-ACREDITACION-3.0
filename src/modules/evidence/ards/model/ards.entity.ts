@@ -9,12 +9,15 @@ import { ProfessorEntity } from 'src/modules/academic/professors/model/professor
 import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
 
-// Uniqueness is per calendar day, not per timestamp, so it lives in the migration as a
-// unique index over (academic_period_id, meeting_date::date, campus_id, program_id);
-// @Unique cannot express the date cast.
 @Entity({ name: 'ard', schema: 'evidence' })
+@Unique('UQ_ard_period_meeting_campus_program', [
+	'academicPeriodId',
+	'meetingDate',
+	'campusId',
+	'programId',
+])
 export class ArdEntity extends BaseEntity {
-	@DateColumn({ nullable: false, withDefault: false })
+	@DateColumn({ nullable: false, withDefault: false, type: 'date' })
 	meetingDate: Date;
 
 	@IntegerFKIDColumn({ nullable: false })

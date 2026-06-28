@@ -9,7 +9,7 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 				"is_active" boolean NOT NULL DEFAULT true,
 				"created_at" TIMESTAMP WITH TIME ZONE DEFAULT now(),
 				"updated_at" TIMESTAMP WITH TIME ZONE,
-				"meeting_date" TIMESTAMP WITH TIME ZONE NOT NULL,
+				"meeting_date" date NOT NULL,
 				"campus_id" integer NOT NULL,
 				"academic_period_id" integer NOT NULL,
 				"program_id" integer NOT NULL,
@@ -95,8 +95,9 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 		`);
 
 		await queryRunner.query(`
-			CREATE UNIQUE INDEX "UQ_ard_period_meeting_campus_program"
-			ON "evidence"."ard" ("academic_period_id", (("meeting_date")::date), "campus_id", "program_id")
+			ALTER TABLE "evidence"."ard"
+			ADD CONSTRAINT "UQ_ard_period_meeting_campus_program"
+			UNIQUE ("academic_period_id", "meeting_date", "campus_id", "program_id")
 		`);
 
 		await queryRunner.query(`
@@ -107,9 +108,6 @@ export class AddArdModule1782523871698 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(
-			`DROP INDEX IF EXISTS "evidence"."UQ_ard_period_meeting_campus_program"`,
-		);
 		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_detail_ard_id"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_program_id"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "evidence"."IDX_ard_campus_id"`);

@@ -59,7 +59,7 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 			qb.andWhere('ard.program_id = :programId', { programId: filters.programId });
 		}
 		if (filters.meetingDate) {
-			qb.andWhere('ard.meeting_date::date = (:meetingDate)::date', {
+			qb.andWhere('ard.meeting_date = (:meetingDate)::timestamptz::date', {
 				meetingDate: filters.meetingDate,
 			});
 		}
@@ -190,7 +190,7 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 		const count = await this.repository
 			.createQueryBuilder('ard')
 			.where('ard.academic_period_id = :academicPeriodId', { academicPeriodId })
-			.andWhere('ard.meeting_date::date = (:meetingDate)::date', { meetingDate })
+			.andWhere('ard.meeting_date = (:meetingDate)::timestamptz::date', { meetingDate })
 			.andWhere('ard.campus_id = :campusId', { campusId })
 			.andWhere('ard.program_id = :programId', { programId })
 			.getCount();
@@ -207,7 +207,7 @@ export class ArdRepository extends BaseRepository<ArdEntity> {
 			.andWhere('ard.academic_period_id = :academicPeriodId', {
 				academicPeriodId: current.academicPeriodId,
 			})
-			.andWhere('ard.meeting_date::date = (:meetingDate)::date', { meetingDate })
+			.andWhere('ard.meeting_date = (:meetingDate)::timestamptz::date', { meetingDate })
 			.andWhere('ard.campus_id = :campusId', { campusId: current.campusId })
 			.andWhere('ard.program_id = :programId', { programId: current.programId })
 			.getCount();
