@@ -53,6 +53,7 @@ import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
 import { SemaphoreReportsModule } from './modules/evaluation/semaphore-reports/semaphore-reports.module';
 
 import { EvaluationModule } from './modules/evidence/evaluations/evaluations.module';
+import { ArdModule } from './modules/evidence/ards/ards.module';
 import { IfcModule } from './modules/evidence/ifcs/ifcs.module';
 import { InstrumentModule } from './modules/evidence/instruments/instruments.module';
 import { StudentCourseOutcomeGradeModule } from './modules/evidence/student-course-outcome-grades/student-course-outcome-grades.module';
@@ -182,6 +183,7 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		RubricScoreModule,
 		RubricModule,
 		SemaphoreReportsModule,
+		ArdModule,
 		EvaluationModule,
 		IfcModule,
 		InstrumentModule,

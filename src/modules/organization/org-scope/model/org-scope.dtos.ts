@@ -19,8 +19,15 @@ export class ScopeTagDto {
 }
 
 export class ScopeOptionDto {
-	@ApiProperty({ example: 1 })
+	@ApiProperty({ example: 1, description: 'Organization chart node id' })
 	id: number;
+
+	@ApiProperty({
+		example: 1,
+		nullable: true,
+		description: 'Underlying entity id (e.g. program/school/course id); null for generic nodes',
+	})
+	entityId: number | null;
 
 	@ApiProperty({ example: { es: 'labelEs', en: 'labelEn' } })
 	label: I18nText;

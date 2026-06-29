@@ -18,7 +18,7 @@ export class ClassRepresentativesValidation {
 		if (!enrollment) {
 			throw new BadRequestError({
 				message: failureKey,
-				errors: [classRepresentativesValidationStrings.error.enrollmentNotFound],
+				errors: [classRepresentativesValidationStrings.error.studentNotEnrolledInSection],
 			});
 		}
 		return enrollment;
