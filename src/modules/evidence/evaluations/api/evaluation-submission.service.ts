@@ -155,6 +155,27 @@ export class EvaluationSubmissionService {
 		return new Set(levels.map((l) => Number(l.uniqueValue)));
 	}
 
+	private async getHighestPerformanceLevelValue(rubric: RubricEntity): Promise<number> {
+		const course = await this.studyPlanCourseRepo.findOne({
+			where: { id: rubric.studyPlanCourseId },
+			relations: ['studyPlanAcademicPeriod'],
+		});
+		const academicPeriodId = course?.studyPlanAcademicPeriod?.academicPeriodId;
+		if (!academicPeriodId) return 0;
+
+		const instrType = await this.typeRepo.findOne({
+			where: { code: TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE },
+		});
+		if (!instrType) return 0;
+
+		const levels = await this.performanceLevelRepo.find({
+			where: { instrumentTypeId: instrType.id, academicPeriodId: academicPeriodId },
+		});
+		if (levels.length === 0) return 0;
+
+		return Math.max(...levels.map((l) => Number(l.uniqueValue)));
+	}
+
 	private async getRubricForProject(
 		projectId: number,
 	): Promise<{ rubric: RubricEntity | null; studyPlanCourseId: number | null }> {
@@ -189,11 +210,17 @@ export class EvaluationSubmissionService {
 	private async aggregateScoresByOutcome(
 		manager: EntityManager,
 		evaluationId: number,
+		highestPerformanceLevelValue: number,
 	): Promise<{
 		scoresByQuestion: Map<number, { notaOutcome: number; notaMaxOutcome: number }>;
 		notaRubrica: number;
 		notaMaximaRubrica: number;
-		outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
+		outcomeGrades: Array<{
+			outcomeId: number;
+			grade: number;
+			maxValue: number;
+			maxOutcome: number;
+		}>;
 	}> {
 		const allScores = await manager.find(RubricScoreEntity, {
 			where: { evaluationId: evaluationId },
@@ -217,7 +244,12 @@ export class EvaluationSubmissionService {
 
 		let notaRubrica = 0;
 		let notaMaximaRubrica = 0;
-		const outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }> = [];
+		const outcomeGrades: Array<{
+			outcomeId: number;
+			grade: number;
+			maxValue: number;
+			maxOutcome: number;
+		}> = [];
 
 		const resultByQuestion = new Map<number, { notaOutcome: number; notaMaxOutcome: number }>();
 
@@ -230,10 +262,12 @@ export class EvaluationSubmissionService {
 
 			const question = await manager.findOne(RubricQuestionEntity, { where: { id: questionId } });
 			if (question?.outcomeId) {
+				const criteriaCount = bucket.maxValues.length;
 				outcomeGrades.push({
 					outcomeId: question.outcomeId,
 					grade: notaOutcome,
 					maxValue: notaMaxOutcome,
+					maxOutcome: criteriaCount * highestPerformanceLevelValue,
 				});
 			}
 		}
@@ -244,7 +278,12 @@ export class EvaluationSubmissionService {
 	private async upsertOutcomeGrades(
 		manager: EntityManager,
 		studentSectionEnrollmentId: number,
-		outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>,
+		outcomeGrades: Array<{
+			outcomeId: number;
+			grade: number;
+			maxValue: number;
+			maxOutcome: number;
+		}>,
 	): Promise<void> {
 		for (const og of outcomeGrades) {
 			const existing = await manager.findOne(StudentCourseOutcomeGradeEntity, {
@@ -255,12 +294,14 @@ export class EvaluationSubmissionService {
 			});
 			if (existing) {
 				existing.grade = og.grade;
+				existing.extra = { ...existing.extra, max_outcome: og.maxOutcome };
 				await manager.save(existing);
 			} else {
 				const newGrade = manager.create(StudentCourseOutcomeGradeEntity, {
 					studentSectionEnrollmentId: studentSectionEnrollmentId,
 					outcomeId: og.outcomeId,
 					grade: og.grade,
+					extra: { max_outcome: og.maxOutcome },
 				});
 				await manager.save(newGrade);
 			}
@@ -456,6 +497,8 @@ export class EvaluationSubmissionService {
 					}))
 				: dto.scores;
 
+		const highestPerformanceLevelValue = await this.getHighestPerformanceLevelValue(rubric);
+
 		const { evaluationId, finalOutcomeGrades } = await this.evaluationRepository.runInTransaction(
 			async (manager) => {
 				const evaluation = await this.saveEvaluationScores(
@@ -493,13 +536,26 @@ export class EvaluationSubmissionService {
 
 				const isPa = await this.isPaRubric(rubric.id);
 
-				let txOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
+				let txOutcomeGrades: Array<{
+					outcomeId: number;
+					grade: number;
+					maxValue: number;
+					maxOutcome: number;
+				}>;
 
 				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
+					const { outcomeGrades } = await this.aggregateScoresByOutcome(
+						manager,
+						evaluation.id,
+						highestPerformanceLevelValue,
+					);
 					txOutcomeGrades = outcomeGrades;
 				} else {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
+					const { outcomeGrades } = await this.aggregateScoresByOutcome(
+						manager,
+						evaluation.id,
+						highestPerformanceLevelValue,
+					);
 					txOutcomeGrades = outcomeGrades;
 				}
 
