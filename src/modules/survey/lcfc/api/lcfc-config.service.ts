@@ -74,6 +74,13 @@ export class LcfcConfigService {
 			};
 			if (programId != null) extra.programId = programId;
 
+			// Pre-assign a commission so the survey filters correctly without a manual edit.
+			const commissionId = await this.resolvePreferredCommissionId(
+				section.courseSectionId,
+				programId,
+			);
+			if (commissionId != null) extra.commissionId = commissionId;
+
 			const config = await this.configRepo.create({
 				outcomeId,
 				// user_outcome_name/description are I18nText jsonb columns but LCFC stores bare strings here.
@@ -88,6 +95,37 @@ export class LcfcConfigService {
 		}
 
 		return { created, skipped, configs };
+	}
+
+	/**
+	 * Picks the commission to store when a config is generated: EAC when the section exposes it
+	 * (matched by type/code/name, mirroring the edit dialog's default), otherwise the first
+	 * available commission. Returns null when the section has no commission.
+	 */
+	private async resolvePreferredCommissionId(
+		courseSectionId: number,
+		programId?: number | null,
+	): Promise<number | null> {
+		const commissions = await this.configRepo.getSectionCommissions(courseSectionId, programId);
+		if (commissions.length === 0) return null;
+
+		const text = (value: unknown): string =>
+			typeof value === 'string'
+				? value
+				: value && typeof value === 'object'
+					? String(
+							(value as { es?: string; en?: string }).es ??
+								(value as { en?: string }).en ??
+								'',
+						)
+					: '';
+		const isEac = (c: (typeof commissions)[number]): boolean =>
+			/eac/i.test(c.typeCode ?? '') ||
+			/eac/i.test(text(c.typeName)) ||
+			/eac/i.test(c.code ?? '') ||
+			/eac/i.test(text(c.name));
+
+		return (commissions.find(isEac) ?? commissions[0]).commissionId;
 	}
 
 	async generateConfigs(
