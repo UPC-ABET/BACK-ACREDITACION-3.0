@@ -301,15 +301,15 @@ export class PerceptionReportService {
 			rows: PerceptionScoreRow[];
 		}> = [{ campusId: null, label: labels.allCampuses, rows }];
 
-		if (campusIds.length > 1) {
-			for (const campusId of campusIds) {
-				const campusRows = rows.filter((row) => row.campusId === campusId);
-				sections.push({
-					campusId,
-					label: this.localizeValue(campusRows[0]?.campusName, request.lang),
-					rows: campusRows,
-				});
-			}
+		// Always emit one report per campus that has data, in addition to the all-campuses
+		// report — even when a single campus has data (the "all" + that campus).
+		for (const campusId of campusIds) {
+			const campusRows = rows.filter((row) => row.campusId === campusId);
+			sections.push({
+				campusId,
+				label: this.localizeValue(campusRows[0]?.campusName, request.lang),
+				rows: campusRows,
+			});
 		}
 
 		return sections;

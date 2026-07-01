@@ -281,8 +281,11 @@ export class LcfcNotificationService {
 			tokenData.courseSectionId,
 			tokenData.academicPeriodId,
 		);
+		// The entity's JSONB transformer camelizes keys on load, so the stored `commission_id`
+		// is exposed here as `commissionId`. Reading the snake_case key returned undefined, which
+		// disabled the commission filter and showed outcomes from every commission.
 		const commissionId =
-			((config?.extra as Record<string, unknown>)?.commission_id as number | null) ?? null;
+			((config?.extra as Record<string, unknown>)?.commissionId as number | null) ?? null;
 
 		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
 			tokenData.courseSectionId,
