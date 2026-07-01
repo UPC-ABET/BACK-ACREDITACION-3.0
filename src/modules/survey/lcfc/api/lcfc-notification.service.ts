@@ -281,8 +281,9 @@ export class LcfcNotificationService {
 			tokenData.courseSectionId,
 			tokenData.academicPeriodId,
 		);
+		// The entity's JSONB transformer camelizes keys on load, so stored `commission_id` reads as `commissionId`.
 		const commissionId =
-			((config?.extra as Record<string, unknown>)?.commission_id as number | null) ?? null;
+			((config?.extra as Record<string, unknown>)?.commissionId as number | null) ?? null;
 
 		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
 			tokenData.courseSectionId,

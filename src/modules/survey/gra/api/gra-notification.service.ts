@@ -76,6 +76,8 @@ export class GraNotificationService {
 	}
 
 	async saveNotification(dto: SaveGraNotificationDto, academicPeriodId: number) {
+		GraValidation.validateProgram(dto.programId);
+
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		let survey = await this.surveyRepo.findExistingGraSurvey(
@@ -140,6 +142,8 @@ export class GraNotificationService {
 
 	/** Bulk version of saveNotification: adds every student code in the Excel to the GRA list. */
 	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto, academicPeriodId: number) {
+		GraValidation.validateProgram(dto.programId);
+
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		const workbook = new ExcelJS.Workbook();
