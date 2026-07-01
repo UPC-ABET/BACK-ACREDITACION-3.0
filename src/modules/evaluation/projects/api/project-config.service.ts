@@ -159,10 +159,10 @@ export class ProjectConfigService {
 	): Promise<PaginatedResult<ProjectEvaluatorResponseDto>> {
 		const { page, pageSize, skip, take } = resolvePagination(query ?? {});
 		const search = query?.search?.trim() || undefined;
-		const gradeTypeCode = query?.gradeTypeCode;
+		const evaluationStageCode = query?.evaluationStageCode;
 
-		const gradeTypeId = gradeTypeCode
-			? await this.gradeSupport.resolveGradeTypeIdByCode(gradeTypeCode)
+		const evaluationStageTypeId = evaluationStageCode
+			? await this.gradeSupport.resolveEvaluationStageTypeIdByCode(evaluationStageCode)
 			: undefined;
 
 		const programIds = schoolId
@@ -174,7 +174,7 @@ export class ProjectConfigService {
 
 		const filterArgs = {
 			professorId,
-			gradeTypeId,
+			evaluationStageTypeId,
 			academicPeriodId,
 			programIds,
 			search,
@@ -190,7 +190,10 @@ export class ProjectConfigService {
 		);
 		if (projectIds.length === 0) return toPaginated([], total, page, pageSize);
 
-		const raw = await this.projectRepository.getProjectsByProfessorDetail(projectIds, gradeTypeId);
+		const raw = await this.projectRepository.getProjectsByProfessorDetail(
+			projectIds,
+			evaluationStageTypeId,
+		);
 
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
 

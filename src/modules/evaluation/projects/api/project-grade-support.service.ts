@@ -25,6 +25,14 @@ export class ProjectGradeSupportService {
 		return type.id;
 	}
 
+	async resolveEvaluationStageTypeIdByCode(code: string): Promise<number> {
+		const type = await this.typeRepo.findOne({ where: { code } });
+		if (!type) {
+			throw new BadRequestException(projectsValidationStrings.error.invalidEvaluationStageCode);
+		}
+		return type.id;
+	}
+
 	async resolveCapstoneMaxScore(academicPeriodId: number, rubricId: number): Promise<number> {
 		return await this.projectRepository.getCapstoneMaxLevelValue(academicPeriodId, rubricId);
 	}

@@ -358,10 +358,10 @@ export class GetProjectsByProfessorQueryDto extends PaginationQueryDto {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({
-		example: 'TG205-T001',
-		description: 'Filter by grade type code',
+		example: 'TG402-T001',
+		description: 'Filter by evaluation stage code (Midterm/Final)',
 	})
-	gradeTypeCode?: string;
+	evaluationStageCode?: string;
 
 	@IsOptional()
 	@IsString()

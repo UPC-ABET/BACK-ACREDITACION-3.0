@@ -89,7 +89,7 @@ export interface CreateProjectArgs {
 
 export interface ProjectsByProfessorFilterArgs {
 	professorId: number;
-	gradeTypeId?: number;
+	evaluationStageTypeId?: number;
 	academicPeriodId?: number;
 	programIds: number[] | null;
 	search?: string;
@@ -533,7 +533,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		params: unknown[];
 		nextParamIdx: number;
 	} {
-		const { professorId, gradeTypeId, academicPeriodId, programIds, search } = args;
+		const { professorId, evaluationStageTypeId, academicPeriodId, programIds, search } = args;
 
 		let filterFromWhere = `
     FROM evaluation.project_evaluators pe
@@ -559,7 +559,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const params: unknown[] = [professorId];
 		let paramIdx = 2;
 
-		if (gradeTypeId) {
+		if (evaluationStageTypeId) {
 			filterFromWhere += `
       AND EXISTS (
         SELECT 1
@@ -579,9 +579,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
             WHERE ps2.project_id = pe.project_id
           )
         )
-        AND r.grade_type_id = $${paramIdx}
+        AND r.evaluation_stage_type_id = $${paramIdx}
       )`;
-			params.push(gradeTypeId);
+			params.push(evaluationStageTypeId);
 			paramIdx++;
 		}
 
@@ -636,11 +636,11 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 	async getProjectsByProfessorDetail(
 		projectIds: number[],
-		gradeTypeId?: number,
+		evaluationStageTypeId?: number,
 	): Promise<ProjectsByProfessorRawRow[]> {
 		return (await this.dataSource.query(PROJECTS_BY_PROFESSOR_DETAIL_SQL, [
 			projectIds,
-			gradeTypeId ?? null,
+			evaluationStageTypeId ?? null,
 		])) as ProjectsByProfessorRawRow[];
 	}
 
