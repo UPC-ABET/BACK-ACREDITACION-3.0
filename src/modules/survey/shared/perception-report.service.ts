@@ -294,15 +294,17 @@ export class PerceptionReportService {
 			return [{ campusId: request.campusId, label, rows }];
 		}
 
-		const campusIds = [...new Set(rows.map((row) => row.campusId))];
+		const campusIds = [
+			...new Set(
+				rows.map((row) => row.campusId).filter((id): id is number => id !== null && id !== undefined),
+			),
+		];
 		const sections: Array<{
 			campusId: number | null;
 			label: string;
 			rows: PerceptionScoreRow[];
 		}> = [{ campusId: null, label: labels.allCampuses, rows }];
 
-		// Always emit one report per campus that has data, in addition to the all-campuses
-		// report — even when a single campus has data (the "all" + that campus).
 		for (const campusId of campusIds) {
 			const campusRows = rows.filter((row) => row.campusId === campusId);
 			sections.push({

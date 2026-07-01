@@ -43,4 +43,11 @@ export class GraValidation {
 			throw new BadRequestError(graValidationStrings.error.noPending);
 		}
 	}
+
+	static validateProgram(programId: number | null | undefined): void {
+		// A GRA survey belongs to a program; without one the surveys FK insert fails.
+		if (!programId) {
+			throw new BadRequestError(graValidationStrings.error.programRequired);
+		}
+	}
 }

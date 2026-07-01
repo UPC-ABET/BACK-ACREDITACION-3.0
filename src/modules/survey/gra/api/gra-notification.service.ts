@@ -76,11 +76,7 @@ export class GraNotificationService {
 	}
 
 	async saveNotification(dto: SaveGraNotificationDto, academicPeriodId: number) {
-		// A GRA survey belongs to a program; without one the surveys FK insert fails with a raw
-		// 500, so reject early with a clear message.
-		if (!dto.programId) {
-			throw new BadRequestException(graValidationStrings.error.programRequired);
-		}
+		GraValidation.validateProgram(dto.programId);
 
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
@@ -146,9 +142,7 @@ export class GraNotificationService {
 
 	/** Bulk version of saveNotification: adds every student code in the Excel to the GRA list. */
 	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto, academicPeriodId: number) {
-		if (!dto.programId) {
-			throw new BadRequestException(graValidationStrings.error.programRequired);
-		}
+		GraValidation.validateProgram(dto.programId);
 
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 

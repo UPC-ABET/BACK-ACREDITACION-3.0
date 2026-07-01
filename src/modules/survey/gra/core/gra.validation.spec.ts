@@ -76,4 +76,16 @@ describe('GraValidation', () => {
 			expect(() => GraValidation.validateSendEmailRequest(0)).toThrow(DomainError);
 		});
 	});
+
+	describe('validateProgram', () => {
+		it('passes for a valid program id', () => {
+			expect(() => GraValidation.validateProgram(3)).not.toThrow();
+		});
+
+		it.each([[0], [null], [undefined]])('throws for %p', (programId) => {
+			expect(() => GraValidation.validateProgram(programId as number | null | undefined)).toThrow(
+				DomainError,
+			);
+		});
+	});
 });
