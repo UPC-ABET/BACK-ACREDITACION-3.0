@@ -20,16 +20,16 @@ export interface GeneratedExcel {
 export class ScrapingExportsService {
 	constructor(private readonly repository: ScrapingExportsRepository) {}
 
-	async generateDocentes(schoolId: number | null, lang?: string): Promise<GeneratedExcel> {
+	async generateDocentes(lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(docenteExportLabels, lang);
-		const rows = await this.repository.getDocentes(schoolId);
+		const rows = await this.repository.getDocentes();
 		const data = rows.map((r) => [r.professorCode, r.lastName, r.firstName, r.email]);
 		return this.buildExcel(labels, data);
 	}
 
-	async generateSecciones(schoolId: number | null, lang?: string): Promise<GeneratedExcel> {
+	async generateSecciones(lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(seccionExportLabels, lang);
-		const rows = await this.repository.getSecciones(schoolId);
+		const rows = await this.repository.getSecciones();
 		const data = rows.map((r) => [
 			r.courseCode,
 			r.sectionCode,
@@ -40,12 +40,9 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosMatriculados(
-		schoolId: number | null,
-		lang?: string,
-	): Promise<GeneratedExcel> {
+	async generateAlumnosMatriculados(lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(alumnoMatriculadoExportLabels, lang);
-		const rows = await this.repository.getAlumnosMatriculados(schoolId);
+		const rows = await this.repository.getAlumnosMatriculados();
 		const data = rows.map((r) => [
 			r.studentCode,
 			r.lastName,
@@ -57,9 +54,9 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosSecciones(schoolId: number | null, lang?: string): Promise<GeneratedExcel> {
+	async generateAlumnosSecciones(lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(alumnoSeccionExportLabels, lang);
-		const rows = await this.repository.getAlumnosSecciones(schoolId);
+		const rows = await this.repository.getAlumnosSecciones();
 		const data = rows.map((r) => [r.sectionCode, r.studentCode]);
 		return this.buildExcel(labels, data);
 	}
