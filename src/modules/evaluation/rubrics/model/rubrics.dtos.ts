@@ -68,6 +68,10 @@ export class CreateRubricDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
+	evaluationStageTypeId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
 	studyPlanCourseId: number;
 
 	@IsArray()
@@ -96,6 +100,11 @@ export class UpdateRubricDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	gradeTypeId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	evaluationStageTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -135,6 +144,10 @@ export class FilterRubricDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	gradeTypeId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	evaluationStageTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

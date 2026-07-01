@@ -52,6 +52,14 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			i18n('Tipos de rubricas de evaluacion', 'Evaluation rubric types'),
 		],
 		[
+			'TG402',
+			i18n('Etapa de evaluacion', 'Evaluation stage'),
+			i18n(
+				'Etapas de una evaluacion calificada por rubrica (Parcial, Final)',
+				'Stages of a rubric-graded evaluation (Midterm, Final)',
+			),
+		],
+		[
 			'TG403',
 			i18n('Tipo de evaluador', 'Evaluator type'),
 			i18n('Roles de evaluadores y participantes', 'Roles of evaluators and participants'),
@@ -445,6 +453,20 @@ export async function loadTypes(tenantDataSource: DataSource) {
 				'Rubrica por curso sin requerimiento de outcomes',
 				'Per-course rubric without outcome requirement',
 			),
+			'{}',
+		],
+		[
+			'TG402',
+			'TG402-T001',
+			i18n('Parcial', 'Midterm'),
+			i18n('Etapa de evaluacion parcial', 'Midterm evaluation stage'),
+			'{}',
+		],
+		[
+			'TG402',
+			'TG402-T002',
+			i18n('Final', 'Final'),
+			i18n('Etapa de evaluacion final', 'Final evaluation stage'),
 			'{}',
 		],
 		[

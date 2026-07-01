@@ -50,6 +50,7 @@ export class RubricRepository extends BaseRepository<RubricEntity> {
 			.leftJoinAndSelect('rubric.studyPlanCourse', 'studyPlanCourse')
 			.leftJoinAndSelect('rubric.gradeType', 'gradeType')
 			.leftJoinAndSelect('rubric.rubricType', 'rubricType')
+			.leftJoinAndSelect('rubric.evaluationStageType', 'evaluationStageType')
 			.leftJoinAndSelect('studyPlanCourse.course', 'course')
 			.leftJoinAndSelect('studyPlanCourse.studyPlanAcademicPeriod', 'studyPlanAcademicPeriod')
 			.leftJoinAndSelect('studyPlanAcademicPeriod.academicPeriod', 'academicPeriod')

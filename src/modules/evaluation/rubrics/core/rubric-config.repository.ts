@@ -10,6 +10,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 export interface NewRubricData {
 	rubricTypeId: number;
 	gradeTypeId: number;
+	evaluationStageTypeId: number;
 	studyPlanCourseId: number;
 	isActive: boolean;
 	extra?: any;
@@ -60,6 +61,7 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 			const rubric = manager.create(RubricEntity, {
 				rubricTypeId: rubricData.rubricTypeId,
 				gradeTypeId: rubricData.gradeTypeId,
+				evaluationStageTypeId: rubricData.evaluationStageTypeId,
 				studyPlanCourseId: rubricData.studyPlanCourseId,
 				isActive: rubricData.isActive,
 				extra: rubricData.extra,
