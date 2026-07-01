@@ -87,7 +87,9 @@ export class GraNotificationService {
 
 		if (!survey) {
 			const courseSectionId = await this.resolveDefaultCourseSectionId();
-			const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
+			// Use || (not ??) so a falsy campusId (e.g. 0 sent by the client when none was picked)
+			// still falls back to resolving the student's default campus instead of failing.
+			const campusId = dto.campusId || (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
 			if (!campusId) {
 				throw new InternalServerErrorException(graValidationStrings.error.defaultCampusMissing);
 			}
@@ -200,7 +202,7 @@ export class GraNotificationService {
 				dto.programId,
 			);
 			if (!survey) {
-				const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(studentId));
+				const campusId = dto.campusId || (await this.surveyRepo.resolveDefaultCampus(studentId));
 				if (!campusId) {
 					results.failed++;
 					results.errors.push({
