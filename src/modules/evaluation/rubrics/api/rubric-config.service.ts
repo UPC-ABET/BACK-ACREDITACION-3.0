@@ -176,23 +176,17 @@ export class RubricConfigService {
 
 	async resolveRubricType(
 		studyPlanCourseId: number,
-		gradeTypeId: number,
 	): Promise<{ id: number; code: string; name: I18nText }> {
-		const [gradeType, capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
-			this.typeRepo.findOne({ where: { id: gradeTypeId } }),
+		const [capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.CAPSTONE } }),
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.NON_CAPSTONE } }),
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.OUTCOME_TYPE.VERIFICATION } }),
 		]);
 
-		if (!gradeType) throw new BadRequestException(rubricsValidationStrings.error.gradeTypeNotFound);
 		if (!capstoneType || !nonCapstoneType)
 			throw new BadRequestException(rubricsValidationStrings.error.rubricTypesNotConfigured);
 
-		const isEaOrEb =
-			gradeType.code === TYPE_CODES.GRADE_TYPE.EA || gradeType.code === TYPE_CODES.GRADE_TYPE.EB;
-
-		if (isEaOrEb && verificationOutcomeType) {
+		if (verificationOutcomeType) {
 			const hasVerificationOutcome = await this.rubricConfigRepository.hasVerificationOutcome(
 				studyPlanCourseId,
 				verificationOutcomeType.id,

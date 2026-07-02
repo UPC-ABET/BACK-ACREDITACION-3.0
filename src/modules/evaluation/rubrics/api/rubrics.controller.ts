@@ -42,14 +42,10 @@ export class RubricController extends BaseController<RubricService> {
 
 	@Get('resolve-type')
 	@ApiQuery({ name: 'studyPlanCourseId', required: true, type: Number })
-	@ApiQuery({ name: 'gradeTypeId', required: true, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
-	async resolveRubricType(
-		@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number,
-		@Query('gradeTypeId', ParseIntPipe) gradeTypeId: number,
-	) {
+	async resolveRubricType(@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number) {
 		return parseSuccessResponse(
-			await this.rubricConfigService.resolveRubricType(studyPlanCourseId, gradeTypeId),
+			await this.rubricConfigService.resolveRubricType(studyPlanCourseId),
 		);
 	}
 
