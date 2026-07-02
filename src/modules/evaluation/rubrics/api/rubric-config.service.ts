@@ -21,7 +21,7 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
  * Servicio especializado para la configuración completa de rúbricas.
  *
  * Reglas implementadas:
- * - R-RUB-008: Una sola rúbrica por (study_plan_course_id, grade_type_id)
+ * - R-RUB-008: Una sola rúbrica activa por (study_plan_course_id, grade_type_id, competency_scope_type_id)
  * - R-RUB-012: Auto-asignación de niveles de desempeño según instrument_type
  * - R-RUB-013: ValorMaximo = max(PuntajeMayor) de niveles de desempeño aplicables
  * - R-RUB-014: Recálculo de NotaMaxima por pregunta y rúbrica
@@ -93,6 +93,7 @@ export class RubricConfigService {
 			where: {
 				studyPlanCourseId: dto.studyPlanCourseId,
 				gradeTypeId: dto.gradeTypeId,
+				competencyScopeTypeId: dto.competencyScopeTypeId,
 				isActive: true,
 			},
 		});
