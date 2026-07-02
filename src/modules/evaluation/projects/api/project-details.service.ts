@@ -247,14 +247,14 @@ export class ProjectDetailsService {
 		let grades = new Map<number, StudentGradeInfo>();
 
 		if (isEvaluationMode) {
-			const isCapstoneEb =
+			const isCapstoneMultiple =
 				rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
-				rubric.gradeType?.code === TYPE_CODES.GRADE_TYPE.EB;
+				rubric.competencyScopeType?.code === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
 
 			const psIdsForSpc = studentsForSpc.map((s) => s.id);
 
 			if (psIdsForSpc.length > 0) {
-				const totalMaxScore = isCapstoneEb
+				const totalMaxScore = isCapstoneMultiple
 					? await this.gradeSupport.resolveCapstoneMaxScore(
 							params.sectionAcademicPeriodId,
 							rubric.id,
@@ -274,7 +274,7 @@ export class ProjectDetailsService {
 				grades = this.computeStudentGrades(
 					studentsForSpc,
 					evaluations,
-					isCapstoneEb,
+					isCapstoneMultiple,
 					totalMaxScore,
 				);
 			}
@@ -334,7 +334,7 @@ export class ProjectDetailsService {
 	private computeStudentGrades(
 		studentsForSpc: ProjectStudentEntity[],
 		evaluations: EvaluationEntity[],
-		isCapstoneEb: boolean,
+		isCapstoneMultiple: boolean,
 		totalMaxScore: number,
 	): Map<number, StudentGradeInfo> {
 		const grades = new Map<number, StudentGradeInfo>();
@@ -351,7 +351,7 @@ export class ProjectDetailsService {
 			);
 
 			grades.set(s.id, {
-				totalGrade: isCapstoneEb
+				totalGrade: isCapstoneMultiple
 					? this.gradeSupport.computeGrade(sumScores, totalMaxScore)
 					: sumScores,
 				evaluationStatuses: evals.map((ev) => ({

@@ -83,7 +83,7 @@ export class RubricConfigService {
 	 * Crea una rúbrica completa con sus preguntas y criterios de forma transaccional
 	 *
 	 * Validaciones:
-	 * 1. Si es Capstone, todas las preguntas DEBEN tener outcome_id
+	 * 1. Si es Capstone y Múltiple competencia, todas las preguntas DEBEN tener outcome_id
 	 * 2. El study_plan_course_id debe existir en la BD
 	 * 3. Todo se guarda de forma transaccional o se revierte
 	 * 4. Tras crear, recalcula la nota máxima total (R-RUB-014)
@@ -119,12 +119,15 @@ export class RubricConfigService {
 		}
 
 		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
-		const ebGradeTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.GRADE_TYPE.EB);
+		const multipleScopeTypeId = await this.resolveRubricTypeIdByCode(
+			TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE,
+		);
 		const isCapstone = capstoneTypeId != null && dto.rubricTypeId === capstoneTypeId;
-		const isEbGrade = ebGradeTypeId != null && dto.gradeTypeId === ebGradeTypeId;
+		const isMultipleScope =
+			multipleScopeTypeId != null && dto.competencyScopeTypeId === multipleScopeTypeId;
 
-		// Solo se exige outcome_id en todas las preguntas si es Capstone Y el grade type es EB (Evaluación Final)
-		if (isCapstone && isEbGrade) {
+		// Solo se exige outcome_id en todas las preguntas si es Capstone Y el alcance es Múltiple competencia
+		if (isCapstone && isMultipleScope) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcomeId);
 			if (hasMissingOutcomes) {
 				throw new BadRequestException(rubricsValidationStrings.error.capstoneRequiresOutcome);
@@ -138,7 +141,7 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.studyPlanCourseNotFound);
 		}
 
-		if (!(isCapstone && isEbGrade)) {
+		if (!(isCapstone && isMultipleScope)) {
 			this.validateCriteriaScores(dto.questions);
 		}
 

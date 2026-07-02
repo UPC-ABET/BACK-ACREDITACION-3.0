@@ -131,9 +131,9 @@ export class EvaluationSubmissionService {
 		return type?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE;
 	}
 
-	private async isFinalEvaluation(gradeTypeId: number): Promise<boolean> {
-		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === TYPE_CODES.GRADE_TYPE.EB;
+	private async isMultipleCompetencyScope(competencyScopeTypeId: number): Promise<boolean> {
+		const type = await this.typeRepo.findOne({ where: { id: competencyScopeTypeId } });
+		return type?.code === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
 	}
 
 	private async getValidPerformanceLevelValues(rubric: RubricEntity): Promise<Set<number>> {
@@ -429,8 +429,8 @@ export class EvaluationSubmissionService {
 		const isNrOrNa = isNr || isNa;
 
 		const isCapstone = await this.isCapstoneRubric(rubric.rubricTypeId);
-		const isFinal = await this.isFinalEvaluation(rubric.gradeTypeId);
-		const isCapstoneFinal = isCapstone && isFinal;
+		const isMultipleScope = await this.isMultipleCompetencyScope(rubric.competencyScopeTypeId);
+		const isCapstoneMultiple = isCapstone && isMultipleScope;
 
 		const criteriaToQuestion = new Map<number, number>();
 		for (const question of rubric.questions ?? []) {
@@ -440,7 +440,7 @@ export class EvaluationSubmissionService {
 		}
 
 		if (!isNrOrNa) {
-			if (isCapstoneFinal) {
+			if (isCapstoneMultiple) {
 				// Todos los criterios de la rúbrica deben estar en el DTO
 				const allCriteriaIds = new Set(criteriaToQuestion.keys());
 				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
@@ -465,7 +465,7 @@ export class EvaluationSubmissionService {
 				}
 			}
 
-			const validPerfLevelValues = isCapstoneFinal
+			const validPerfLevelValues = isCapstoneMultiple
 				? await this.getValidPerformanceLevelValues(rubric)
 				: null;
 
@@ -490,7 +490,7 @@ export class EvaluationSubmissionService {
 		}
 
 		const scoresToSave =
-			isCapstoneFinal && isNrOrNa
+			isCapstoneMultiple && isNrOrNa
 				? [...criteriaToQuestion.keys()].map((criteriaId) => ({
 						rubricQuestionCriteriaId: criteriaId,
 						score: 0,
@@ -510,7 +510,7 @@ export class EvaluationSubmissionService {
 					dto.qualificationStatusTypeId,
 				);
 
-				if (!isCapstoneFinal) {
+				if (!isCapstoneMultiple) {
 					const submittedCriteriaIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 					const questionsInSubmission = new Set(
 						dto.scores
