@@ -89,7 +89,7 @@ export interface CreateProjectArgs {
 
 export interface ProjectsByProfessorFilterArgs {
 	professorId: number;
-	evaluationStageTypeId?: number;
+	competencyScopeTypeId?: number;
 	academicPeriodId?: number;
 	programIds: number[] | null;
 	search?: string;
@@ -493,21 +493,26 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		])) as ProgramNameRow[];
 	}
 
-	async getActiveRubricForStudyPlanCourse(
+	async getActiveRubricsForStudyPlanCourse(
 		studyPlanCourseId: number,
-		gradeTypeId?: number,
+		competencyScopeTypeId?: number,
 		rubricTypeId?: number,
-	): Promise<RubricEntity | null> {
+	): Promise<RubricEntity[]> {
 		return await this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('r')
 			.leftJoinAndSelect('r.rubricType', 'rt')
 			.leftJoinAndSelect('r.gradeType', 'gt')
+			.leftJoinAndSelect('r.competencyScopeType', 'cst')
 			.where('r.study_plan_course_id = :spcId', { spcId: studyPlanCourseId })
 			.andWhere('r.is_active = :isActive', { isActive: true })
-			.andWhere(gradeTypeId ? 'r.grade_type_id = :gradeTypeId' : '1=1', { gradeTypeId })
+			.andWhere(
+				competencyScopeTypeId ? 'r.competency_scope_type_id = :competencyScopeTypeId' : '1=1',
+				{ competencyScopeTypeId },
+			)
 			.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
-			.getOne();
+			.orderBy('gt.code', 'ASC')
+			.getMany();
 	}
 
 	async getEvaluationsForProjectStudents(
@@ -533,7 +538,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		params: unknown[];
 		nextParamIdx: number;
 	} {
-		const { professorId, evaluationStageTypeId, academicPeriodId, programIds, search } = args;
+		const { professorId, competencyScopeTypeId, academicPeriodId, programIds, search } = args;
 
 		let filterFromWhere = `
     FROM evaluation.project_evaluators pe
@@ -559,7 +564,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const params: unknown[] = [professorId];
 		let paramIdx = 2;
 
-		if (evaluationStageTypeId) {
+		if (competencyScopeTypeId) {
 			filterFromWhere += `
       AND EXISTS (
         SELECT 1
@@ -579,9 +584,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
             WHERE ps2.project_id = pe.project_id
           )
         )
-        AND r.evaluation_stage_type_id = $${paramIdx}
+        AND r.competency_scope_type_id = $${paramIdx}
       )`;
-			params.push(evaluationStageTypeId);
+			params.push(competencyScopeTypeId);
 			paramIdx++;
 		}
 
@@ -636,11 +641,11 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 	async getProjectsByProfessorDetail(
 		projectIds: number[],
-		evaluationStageTypeId?: number,
+		competencyScopeTypeId?: number,
 	): Promise<ProjectsByProfessorRawRow[]> {
 		return (await this.dataSource.query(PROJECTS_BY_PROFESSOR_DETAIL_SQL, [
 			projectIds,
-			evaluationStageTypeId ?? null,
+			competencyScopeTypeId ?? null,
 		])) as ProjectsByProfessorRawRow[];
 	}
 

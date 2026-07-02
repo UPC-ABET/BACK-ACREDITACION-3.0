@@ -53,10 +53,10 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		],
 		[
 			'TG402',
-			i18n('Etapa de evaluacion', 'Evaluation stage'),
+			i18n('Alcance de competencias', 'Competency scope'),
 			i18n(
-				'Etapas de una evaluacion calificada por rubrica (Parcial, Final)',
-				'Stages of a rubric-graded evaluation (Midterm, Final)',
+				'Si una rubrica evalua una unica competencia o multiples competencias',
+				'Whether a rubric evaluates a single or multiple competencies',
 			),
 		],
 		[
@@ -458,15 +458,15 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		[
 			'TG402',
 			'TG402-T001',
-			i18n('Parcial', 'Midterm'),
-			i18n('Etapa de evaluacion parcial', 'Midterm evaluation stage'),
+			i18n('Unica competencia', 'Single competency'),
+			i18n('Rubrica que evalua una unica competencia', 'Rubric evaluates a single competency'),
 			'{}',
 		],
 		[
 			'TG402',
 			'TG402-T002',
-			i18n('Final', 'Final'),
-			i18n('Etapa de evaluacion final', 'Final evaluation stage'),
+			i18n('Multiple competencia', 'Multiple competency'),
+			i18n('Rubrica que evalua multiples competencias', 'Rubric evaluates multiple competencies'),
 			'{}',
 		],
 		[

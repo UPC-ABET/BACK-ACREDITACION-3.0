@@ -110,19 +110,19 @@ export class ProjectController extends BaseController<ProjectService> {
 	@Get('project/:projectId')
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
 	@ApiQuery({ name: 'isEvaluationMode', required: false, type: Boolean })
-	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
+	@ApiQuery({ name: 'competencyScopeCode', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectWithDetails(
 		@Param('projectId', ParseIntPipe) projectId: number,
 		@Query('isEvaluationMode', new ParseBoolPipe({ optional: true })) isEvaluationMode?: boolean,
-		@Query('gradeTypeCode') gradeTypeCode?: string,
+		@Query('competencyScopeCode') competencyScopeCode?: string,
 		@Query('rubricTypeId', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		return parseSuccessResponse(
 			await this.projectDetailsService.getProjectWithDetails(
 				projectId,
 				isEvaluationMode ?? false,
-				gradeTypeCode,
+				competencyScopeCode,
 				rubricTypeId,
 			),
 		);

@@ -25,10 +25,10 @@ export class ProjectGradeSupportService {
 		return type.id;
 	}
 
-	async resolveEvaluationStageTypeIdByCode(code: string): Promise<number> {
+	async resolveCompetencyScopeTypeIdByCode(code: string): Promise<number> {
 		const type = await this.typeRepo.findOne({ where: { code } });
 		if (!type) {
-			throw new BadRequestException(projectsValidationStrings.error.invalidEvaluationStageCode);
+			throw new BadRequestException(projectsValidationStrings.error.invalidCompetencyScopeCode);
 		}
 		return type.id;
 	}

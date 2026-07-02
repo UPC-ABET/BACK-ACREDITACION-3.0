@@ -16,7 +16,7 @@ export class RubricEntity extends BaseEntity {
 	gradeTypeId: number;
 
 	@IntegerColumn({ nullable: false })
-	evaluationStageTypeId: number;
+	competencyScopeTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	studyPlanCourseId: number;
@@ -36,10 +36,10 @@ export class RubricEntity extends BaseEntity {
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
-		name: 'evaluation_stage_type_id',
-		foreignKeyConstraintName: 'FK_rubrics_evaluation_stage_type_id',
+		name: 'competency_scope_type_id',
+		foreignKeyConstraintName: 'FK_rubrics_competency_scope_type_id',
 	})
-	evaluationStageType: TypeEntity;
+	competencyScopeType: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'rubric_type_id', foreignKeyConstraintName: 'FK_rubrics_rubric_type_id' })

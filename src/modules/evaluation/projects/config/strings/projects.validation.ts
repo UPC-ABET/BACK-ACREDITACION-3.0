@@ -17,7 +17,7 @@ export const projectsValidationStrings = {
 		activeRubricNotFound: 'error.project.activeRubricNotFound',
 		rubricContextError: 'error.project.rubricContextError',
 		invalidGradeTypeCode: 'error.project.invalidGradeTypeCode',
-		invalidEvaluationStageCode: 'error.project.invalidEvaluationStageCode',
+		invalidCompetencyScopeCode: 'error.project.invalidCompetencyScopeCode',
 		hasEvaluations: 'error.project.hasEvaluations',
 	},
 	result: {

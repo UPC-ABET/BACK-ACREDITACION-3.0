@@ -68,7 +68,7 @@ export class CreateRubricDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
-	evaluationStageTypeId: number;
+	competencyScopeTypeId: number;
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
@@ -104,7 +104,7 @@ export class UpdateRubricDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
-	evaluationStageTypeId?: number;
+	competencyScopeTypeId?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -147,7 +147,7 @@ export class FilterRubricDto {
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
-	evaluationStageTypeId?: number;
+	competencyScopeTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

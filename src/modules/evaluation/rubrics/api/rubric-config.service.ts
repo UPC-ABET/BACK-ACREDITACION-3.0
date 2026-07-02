@@ -157,7 +157,7 @@ export class RubricConfigService {
 			{
 				rubricTypeId: dto.rubricTypeId,
 				gradeTypeId: dto.gradeTypeId,
-				evaluationStageTypeId: dto.evaluationStageTypeId,
+				competencyScopeTypeId: dto.competencyScopeTypeId,
 				studyPlanCourseId: dto.studyPlanCourseId,
 				isActive: dto.isActive ?? true,
 				extra: dto.extra,
@@ -266,7 +266,7 @@ export class RubricConfigService {
 	async getRubricById(id: number): Promise<RubricEntity> {
 		const rubric = await this.rubricRepo.findOne({
 			where: { id },
-			relations: ['questions', 'questions.criterias', 'questions.outcome', 'evaluationStageType'],
+			relations: ['questions', 'questions.criterias', 'questions.outcome', 'competencyScopeType'],
 		});
 
 		if (!rubric) {
@@ -292,7 +292,7 @@ export class RubricConfigService {
 				'questions.outcome',
 				'gradeType',
 				'rubricType',
-				'evaluationStageType',
+				'competencyScopeType',
 				'studyPlanCourse',
 				'studyPlanCourse.course',
 				'studyPlanCourse.studyPlanAcademicPeriod',
@@ -384,7 +384,7 @@ export class RubricConfigService {
 				id: rubric.id,
 				rubricTypeId: rubric.rubricTypeId,
 				gradeTypeId: rubric.gradeTypeId,
-				evaluationStageTypeId: rubric.evaluationStageTypeId,
+				competencyScopeTypeId: rubric.competencyScopeTypeId,
 				studyPlanCourseId: rubric.studyPlanCourseId,
 				isActive: rubric.isActive ?? false,
 				createdAt: rubric.createdAt,
@@ -402,11 +402,11 @@ export class RubricConfigService {
 							name: rubric.gradeType.name,
 						}
 					: undefined,
-				evaluationStageType: rubric.evaluationStageType
+				competencyScopeType: rubric.competencyScopeType
 					? {
-							id: rubric.evaluationStageType.id,
-							code: rubric.evaluationStageType.code,
-							name: rubric.evaluationStageType.name,
+							id: rubric.competencyScopeType.id,
+							code: rubric.competencyScopeType.code,
+							name: rubric.competencyScopeType.name,
 						}
 					: undefined,
 			},

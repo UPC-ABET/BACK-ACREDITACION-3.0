@@ -248,18 +248,6 @@ export class StudentEvaluationStatusDto {
 	qualificationStatusTypeId: number;
 }
 
-export class ProjectDetailsStudentDto extends StudentInfoDto {
-	@ApiProperty({ example: 1, nullable: true })
-	totalGrade: number | null;
-
-	@ApiProperty({
-		example: {},
-		type: [StudentEvaluationStatusDto],
-		description: 'Estado de calificación por evaluador. Solo presente en modo evaluación.',
-	})
-	evaluations: StudentEvaluationStatusDto[];
-}
-
 export class ProjectEvaluatorDetailDto {
 	@ApiProperty({ example: 1 })
 	id: number;
@@ -286,23 +274,38 @@ export class ProjectEvaluatorDetailDto {
 	evaluatorTypeCode: string;
 }
 
-export class ProjectDetailsStudentWithSpcDto extends ProjectDetailsStudentDto {
+export class ProjectDetailsStudentWithSpcDto extends StudentInfoDto {
 	@ApiProperty({ example: 42, description: 'ID del study_plan_course al que pertenece el alumno' })
 	studyPlanCourseId: number | null;
 }
 
-export class ProjectRubricEntryDto {
-	@ApiProperty({
-		example: 42,
-		description: 'ID del study_plan_course al que corresponde la rúbrica',
-	})
-	studyPlanCourseId: number;
+export class ProjectRubricItemStudentGradeDto {
+	@ApiProperty({ example: 1, description: 'ID del project_student calificado en esta rúbrica' })
+	projectStudentId: number;
+
+	@ApiProperty({ example: 18, nullable: true })
+	totalGrade: number | null;
 
 	@ApiProperty({
-		example: { es: 'Ingeniería de Software', en: 'Software Engineering' },
-		nullable: true,
+		example: {},
+		type: [StudentEvaluationStatusDto],
+		description: 'Estado de calificación por evaluador en esta rúbrica. Solo en modo evaluación.',
 	})
-	programName: any;
+	evaluationStatuses: StudentEvaluationStatusDto[];
+}
+
+export class ProjectRubricItemDto {
+	@ApiProperty({
+		example: { id: 5, code: 'TG205-T005', name: { es: 'TP', en: 'TP' } },
+		description: 'Tipo de nota (grade type) al que pertenece esta rúbrica',
+	})
+	gradeType: any;
+
+	@ApiProperty({
+		example: { id: 7, code: 'TG402-T001', name: { es: 'Parcial', en: 'Midterm' } },
+		description: 'Etapa de evaluación (Parcial/Final) a la que pertenece esta rúbrica',
+	})
+	competencyScopeType: any;
 
 	@ApiProperty({ example: {}, nullable: true })
 	rubric: any;
@@ -315,6 +318,30 @@ export class ProjectRubricEntryDto {
 
 	@ApiProperty({ example: {}, type: [RubricQuestionDetailsDto] })
 	questions: RubricQuestionDetailsDto[];
+
+	@ApiProperty({ example: [], type: [ProjectRubricItemStudentGradeDto] })
+	students: ProjectRubricItemStudentGradeDto[];
+}
+
+export class ProjectRubricGroupDto {
+	@ApiProperty({
+		example: 42,
+		description: 'ID del study_plan_course al que corresponden las rúbricas',
+	})
+	studyPlanCourseId: number;
+
+	@ApiProperty({
+		example: { es: 'Ingeniería de Software', en: 'Software Engineering' },
+		nullable: true,
+	})
+	programName: any;
+
+	@ApiProperty({
+		example: [],
+		type: [ProjectRubricItemDto],
+		description: 'Rúbricas activas de la etapa de evaluación solicitada, una por grade type',
+	})
+	items: ProjectRubricItemDto[];
 }
 
 export class ProjectDetailsResponseDto {
@@ -350,8 +377,8 @@ export class ProjectDetailsResponseDto {
 		learningOutcome: any;
 	} | null;
 
-	@ApiProperty({ example: [], type: [ProjectRubricEntryDto] })
-	rubrics: ProjectRubricEntryDto[];
+	@ApiProperty({ example: [], type: [ProjectRubricGroupDto] })
+	rubrics: ProjectRubricGroupDto[];
 }
 
 export class GetProjectsByProfessorQueryDto extends PaginationQueryDto {
@@ -361,7 +388,7 @@ export class GetProjectsByProfessorQueryDto extends PaginationQueryDto {
 		example: 'TG402-T001',
 		description: 'Filter by evaluation stage code (Midterm/Final)',
 	})
-	evaluationStageCode?: string;
+	competencyScopeCode?: string;
 
 	@IsOptional()
 	@IsString()

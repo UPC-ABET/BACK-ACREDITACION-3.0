@@ -85,7 +85,7 @@ SELECT
 		INNER JOIN evaluation.rubric_questions rq ON rq.id = rqc.rubric_question_id
 		INNER JOIN evaluation.rubrics r ON r.id = rq.rubric_id
 		WHERE ev_ps.project_id = p.id
-		AND ($2::int IS NULL OR r.evaluation_stage_type_id = $2)
+		AND ($2::int IS NULL OR r.competency_scope_type_id = $2)
 	)                 AS "evaluationDate",
 	all_pe.id         AS "evalId",
 	all_pe.professor_id AS "evalProfessorId",
