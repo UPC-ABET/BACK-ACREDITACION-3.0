@@ -51,7 +51,7 @@ export class SubmitEvaluationDto {
 		example: 1,
 		required: true,
 		description:
-			'ID de la rúbrica que se está evaluando (EA o EB). Se obtiene del GET /projects/project/:id.',
+			'ID de la rúbrica que se está evaluando. Se obtiene del GET /projects/project/:id.',
 	})
 	rubricId: number;
 
@@ -102,6 +102,10 @@ export class CreateEvaluationDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
+	rubricId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
 	qualificationStatusTypeId: number;
 
 	@IsOptional()
@@ -147,6 +151,11 @@ export class UpdateEvaluationDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
+	rubricId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
 	qualificationStatusTypeId?: number;
 
 	@IsOptional()
@@ -170,6 +179,15 @@ export class SaveObservationDto {
 	@IsNotEmpty()
 	@ApiProperty({ example: 1, required: true })
 	projectEvaluatorId: number;
+
+	@IsNumber()
+	@IsNotEmpty()
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'ID de la rúbrica a la que pertenece esta observación.',
+	})
+	rubricId: number;
 
 	@IsOptional()
 	@ApiProperty({
@@ -237,6 +255,10 @@ export class FilterEvaluationDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	projectEvaluatorId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	rubricId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

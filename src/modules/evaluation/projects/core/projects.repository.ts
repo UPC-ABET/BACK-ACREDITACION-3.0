@@ -25,8 +25,6 @@ import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluator
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
-import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
-import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { I18nText } from 'src/shared/types/i18n';
 import { camelizeKeys } from 'src/libs/case.functions';
@@ -125,6 +123,8 @@ export interface GradeExportRow {
 	rubricTypeId: number;
 	rubricTypeCode: string;
 	gradeTypeCode: string;
+	gradeTypeName: string;
+	competencyScopeCode: string;
 	totalScore: string;
 }
 
@@ -525,11 +525,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.createQueryBuilder('ev')
 			.leftJoinAndSelect('ev.scores', 'score')
 			.innerJoin('ev.projectStudent', 'ps')
-			.innerJoin(RubricQuestionCriteriaEntity, 'rqc', 'rqc.id = score.rubric_question_criteria_id')
-			.innerJoin(RubricQuestionEntity, 'rq', 'rq.id = rqc.rubric_question_id')
 			.where('ps.project_id = :projectId', { projectId })
 			.andWhere('ps.id = ANY(:psIds)', { psIds: projectStudentIds })
-			.andWhere('rq.rubric_id = :rubricId', { rubricId })
+			.andWhere('ev.rubric_id = :rubricId', { rubricId })
 			.getMany();
 	}
 
@@ -651,12 +649,12 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 	async getProjectGradesForExport(
 		academicPeriodId: number,
-		gradeTypeId: number,
+		competencyScopeTypeId: number,
 		programIds: number[],
 	): Promise<GradeExportRow[]> {
 		return (await this.dataSource.query(PROJECT_GRADES_EXPORT_SQL, [
 			academicPeriodId,
-			gradeTypeId,
+			competencyScopeTypeId,
 			programIds,
 		])) as GradeExportRow[];
 	}

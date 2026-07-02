@@ -125,34 +125,26 @@ SELECT
 	r.rubric_type_id                          AS "rubricTypeId",
 	rt.code                                   AS "rubricTypeCode",
 	gt.code                                   AS "gradeTypeCode",
+	gt.name->>'es'                            AS "gradeTypeName",
+	cst.code                                  AS "competencyScopeCode",
 	SUM(rs.score)                             AS "totalScore"
 FROM evaluation.projects p
 INNER JOIN evaluation.project_students ps       ON ps.project_id = p.id
-INNER JOIN (
-	SELECT DISTINCT ON (ev2.project_student_id) ev2.id, ev2.project_student_id
-	FROM evidence.evaluations ev2
-	INNER JOIN evaluation.rubric_scores rs2          ON rs2.evaluation_id = ev2.id
-	INNER JOIN evaluation.rubric_question_criterias rqc2 ON rqc2.id = rs2.rubric_question_criteria_id
-	INNER JOIN evaluation.rubric_questions rq2       ON rq2.id = rqc2.rubric_question_id
-	INNER JOIN evaluation.rubrics r2                 ON r2.id = rq2.rubric_id
-	WHERE r2.grade_type_id = $2
-	ORDER BY ev2.project_student_id, ev2.updated_at DESC NULLS LAST
-) ev                                            ON ev.project_student_id = ps.id
+INNER JOIN evidence.evaluations ev              ON ev.project_student_id = ps.id
+INNER JOIN evaluation.rubrics r                 ON r.id = ev.rubric_id
 INNER JOIN evaluation.rubric_scores rs          ON rs.evaluation_id = ev.id
-INNER JOIN evaluation.rubric_question_criterias rqc ON rqc.id = rs.rubric_question_criteria_id
-INNER JOIN evaluation.rubric_questions rq       ON rq.id = rqc.rubric_question_id
-INNER JOIN evaluation.rubrics r                 ON r.id = rq.rubric_id
 INNER JOIN core.types rt                        ON rt.id = r.rubric_type_id
 INNER JOIN core.types gt                        ON gt.id = r.grade_type_id
+INNER JOIN core.types cst                       ON cst.id = r.competency_scope_type_id
 INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
 INNER JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
 INNER JOIN academic.courses c                   ON c.id = cs.course_id
 INNER JOIN academic.enrolled_students es        ON es.id = sse.enrolled_student_id
 INNER JOIN academic.students stu                ON stu.id = es.student_id
 WHERE cs.academic_period_id = $1
-	AND r.grade_type_id = $2
+	AND r.competency_scope_type_id = $2
 	AND stu.program_id = ANY($3::int[])
 GROUP BY
 	cs.section_code, c.code, stu.code, stu.first_name, stu.last_name,
-	r.id, r.rubric_type_id, rt.code, gt.code
+	r.id, r.rubric_type_id, rt.code, gt.code, gt.name, cst.code
 ORDER BY c.code, cs.section_code, stu.last_name, stu.first_name`;

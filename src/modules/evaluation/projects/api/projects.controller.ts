@@ -175,18 +175,18 @@ export class ProjectController extends BaseController<ProjectService> {
 	@Get('export/grades')
 	@ApiAcademicPeriodHeader()
 	@ApiSchoolHeader()
-	@ApiQuery({ name: 'gradeTypeCode', required: true, type: String })
+	@ApiQuery({ name: 'competencyScopeCode', required: true, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async exportGrades(
 		@AcademicPeriodId() academicPeriodId: number,
 		@SchoolId() schoolId: number,
-		@Query('gradeTypeCode') gradeTypeCode: string,
+		@Query('competencyScopeCode') competencyScopeCode: string,
 		@Res() res: Response,
 	) {
 		const xlsx = await this.projectGradeExportService.exportProjectGrades(
 			academicPeriodId,
 			schoolId,
-			gradeTypeCode,
+			competencyScopeCode,
 		);
 		const filename = `notas-proyectos-periodo${academicPeriodId}-escuela${schoolId}.xlsx`;
 		const encoded = encodeURIComponent(filename);

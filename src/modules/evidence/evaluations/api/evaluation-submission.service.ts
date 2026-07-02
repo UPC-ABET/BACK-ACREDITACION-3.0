@@ -41,8 +41,8 @@ import { evaluationsValidationStrings } from '../config/strings/evaluations.vali
  * - R-NOT-003: NotaOutcome = Sum(NotaCriterio)
  * - R-NOT-004: NotaRubrica = Sum(NotaOutcome)
  * - R-NOT-005: Guardada se activa si hay observación o todos los criterios están completos
- * - R-NOT-008: Comité (COM) escribe directo (sobrescribe, no promedia)
- * - R-NOT-009: Gerente (GER) en WASC escribe directo (sin promediar)
+ * - R-NOT-008/009: una sola evaluación por (alumno, rúbrica); cualquier evaluador autorizado
+ *   escribe directo sobre esa misma evaluación (sobrescribe, no promedia entre evaluadores)
  * - R-NOT-010: Validación de rango de puntaje contra min_value/max_value del criterio
  * - R-NOT-011: Exclusión de alumnos retirados en finalización
  * - R-NOT-012: Validación de completitud al guardar calificación
@@ -114,18 +114,6 @@ export class EvaluationSubmissionService {
 		return type.id;
 	}
 
-	private async isPaRubric(rubricId?: number, gradeTypeId?: number): Promise<boolean> {
-		if (!gradeTypeId && !rubricId) return false;
-		let gTypeId = gradeTypeId;
-		if (!gTypeId && rubricId) {
-			const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
-			gTypeId = rubric?.gradeTypeId;
-		}
-		if (!gTypeId) return false;
-		const type = await this.typeRepo.findOne({ where: { id: gTypeId } });
-		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
-	}
-
 	private async isCapstoneRubric(rubricTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: rubricTypeId } });
 		return type?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE;
@@ -176,21 +164,21 @@ export class EvaluationSubmissionService {
 		return Math.max(...levels.map((l) => Number(l.uniqueValue)));
 	}
 
-	private async getRubricForProject(
+	private async getRubricsForProject(
 		projectId: number,
-	): Promise<{ rubric: RubricEntity | null; studyPlanCourseId: number | null }> {
+	): Promise<{ rubrics: RubricEntity[]; studyPlanCourseId: number | null }> {
 		const student = await this.studentRepo.findOne({
 			where: { projectId: projectId },
 			relations: ['studentSectionEnrollment', 'studentSectionEnrollment.courseSection'],
 		});
-		if (!student?.studentSectionEnrollment) return { rubric: null, studyPlanCourseId: null };
+		if (!student?.studentSectionEnrollment) return { rubrics: [], studyPlanCourseId: null };
 
 		const courseSection = student.studentSectionEnrollment.courseSection;
 		const courseId = courseSection?.courseId;
 		const academicPeriodId = courseSection?.academicPeriodId;
-		if (!courseId || !academicPeriodId) return { rubric: null, studyPlanCourseId: null };
+		if (!courseId || !academicPeriodId) return { rubrics: [], studyPlanCourseId: null };
 
-		const rubric = await this.rubricRepo
+		const rubrics = await this.rubricRepo
 			.createQueryBuilder('r')
 			.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.id = r.study_plan_course_id')
 			.innerJoin(
@@ -202,9 +190,10 @@ export class EvaluationSubmissionService {
 			.leftJoinAndSelect('questions.criterias', 'criterias')
 			.where('spc.course_id = :courseId', { courseId })
 			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
-			.getOne();
+			.andWhere('r.is_active = :isActive', { isActive: true })
+			.getMany();
 
-		return { rubric: rubric ?? null, studyPlanCourseId: rubric?.studyPlanCourseId ?? null };
+		return { rubrics, studyPlanCourseId: rubrics[0]?.studyPlanCourseId ?? null };
 	}
 
 	private async aggregateScoresByOutcome(
@@ -278,6 +267,7 @@ export class EvaluationSubmissionService {
 	private async upsertOutcomeGrades(
 		manager: EntityManager,
 		studentSectionEnrollmentId: number,
+		evaluationId: number,
 		outcomeGrades: Array<{
 			outcomeId: number;
 			grade: number;
@@ -290,6 +280,7 @@ export class EvaluationSubmissionService {
 				where: {
 					studentSectionEnrollmentId: studentSectionEnrollmentId,
 					outcomeId: og.outcomeId,
+					evaluationId: evaluationId,
 				},
 			});
 			if (existing) {
@@ -300,6 +291,7 @@ export class EvaluationSubmissionService {
 				const newGrade = manager.create(StudentCourseOutcomeGradeEntity, {
 					studentSectionEnrollmentId: studentSectionEnrollmentId,
 					outcomeId: og.outcomeId,
+					evaluationId: evaluationId,
 					grade: og.grade,
 					extra: { max_outcome: og.maxOutcome },
 				});
@@ -308,10 +300,14 @@ export class EvaluationSubmissionService {
 		}
 	}
 
+	// One evaluation per (projectStudentId, rubricId): any authorized evaluator overwrites the
+	// same row (R-NOT-008/009). projectEvaluatorId is not part of the identity — it's metadata
+	// tracking who last touched the record.
 	private async saveEvaluationScores(
 		manager: EntityManager,
 		projectStudentId: number,
 		projectEvaluatorId: number,
+		rubricId: number,
 		observation: I18nText | string | null | undefined,
 		scores: Array<{
 			rubricQuestionCriteriaId: number;
@@ -323,11 +319,12 @@ export class EvaluationSubmissionService {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
 				projectStudentId: projectStudentId,
-				projectEvaluatorId: projectEvaluatorId,
+				rubricId: rubricId,
 			},
 		});
 
 		if (evaluation) {
+			evaluation.projectEvaluatorId = projectEvaluatorId;
 			evaluation.qualificationStatusTypeId = statusTypeId;
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
@@ -337,6 +334,7 @@ export class EvaluationSubmissionService {
 			evaluation = manager.create(EvaluationEntity, {
 				projectStudentId: projectStudentId,
 				projectEvaluatorId: projectEvaluatorId,
+				rubricId: rubricId,
 				qualificationStatusTypeId: statusTypeId,
 				observation: i18nText(observation),
 				registerAt: new Date(),
@@ -407,9 +405,8 @@ export class EvaluationSubmissionService {
 			throw new ConflictException(evaluationsValidationStrings.error.notSameProject);
 		}
 
-		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
-			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
+			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
 
 		const criteriaIds = dto.scores.map((s) => s.rubricQuestionCriteriaId);
@@ -499,12 +496,13 @@ export class EvaluationSubmissionService {
 
 		const highestPerformanceLevelValue = await this.getHighestPerformanceLevelValue(rubric);
 
-		const { evaluationId, finalOutcomeGrades } = await this.evaluationRepository.runInTransaction(
+		const { evaluationId, sumScores } = await this.evaluationRepository.runInTransaction(
 			async (manager) => {
 				const evaluation = await this.saveEvaluationScores(
 					manager,
 					dto.projectStudentId,
 					dto.projectEvaluatorId,
+					rubric.id,
 					dto.observation,
 					scoresToSave,
 					dto.qualificationStatusTypeId,
@@ -534,45 +532,26 @@ export class EvaluationSubmissionService {
 					}
 				}
 
-				const isPa = await this.isPaRubric(rubric.id);
-
-				let txOutcomeGrades: Array<{
-					outcomeId: number;
-					grade: number;
-					maxValue: number;
-					maxOutcome: number;
-				}>;
-
-				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(
-						manager,
-						evaluation.id,
-						highestPerformanceLevelValue,
-					);
-					txOutcomeGrades = outcomeGrades;
-				} else {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(
-						manager,
-						evaluation.id,
-						highestPerformanceLevelValue,
-					);
-					txOutcomeGrades = outcomeGrades;
-				}
+				// Cualquier evaluador autorizado escribe directo sobre la misma evaluación
+				// (R-NOT-008/R-NOT-009), sin promediar entre evaluadores.
+				const { outcomeGrades: txOutcomeGrades, notaRubrica: sumScores } =
+					await this.aggregateScoresByOutcome(manager, evaluation.id, highestPerformanceLevelValue);
 
 				await this.upsertOutcomeGrades(
 					manager,
 					student.studentSectionEnrollmentId,
+					evaluation.id,
 					txOutcomeGrades,
 				);
 
-				return { evaluationId: evaluation.id, finalOutcomeGrades: txOutcomeGrades };
+				return { evaluationId: evaluation.id, sumScores };
 			},
 		);
 
-		const allOutcomeGrades = finalOutcomeGrades || [];
-		const notaRubrica = allOutcomeGrades.reduce((s, og) => s + og.grade, 0);
-		const notaMaxRubrica = allOutcomeGrades.reduce((s, og) => s + og.maxValue, 0);
-		const scaledScore = this.scaleTo20(notaRubrica, notaMaxRubrica);
+		// Misma regla en submit, GET /project/:id y el export de notas: Capstone + Múltiple
+		// competencia escala contra los niveles de desempeño; el resto simplemente suma los scores.
+		const totalMaxScore = highestPerformanceLevelValue * (rubric.questions?.length ?? 0);
+		const scaledScore = isCapstoneMultiple ? this.scaleTo20(sumScores, totalMaxScore) : sumScores;
 
 		return { success: true, evaluationId, scaledScore };
 	}
@@ -596,7 +575,7 @@ export class EvaluationSubmissionService {
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
-			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
+			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
 
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
@@ -608,7 +587,7 @@ export class EvaluationSubmissionService {
 			let evaluation = await manager.findOne(EvaluationEntity, {
 				where: {
 					projectStudentId: dto.projectStudentId,
-					projectEvaluatorId: dto.projectEvaluatorId,
+					rubricId: dto.rubricId,
 				},
 			});
 
@@ -616,11 +595,13 @@ export class EvaluationSubmissionService {
 				evaluation = manager.create(EvaluationEntity, {
 					projectStudentId: dto.projectStudentId,
 					projectEvaluatorId: dto.projectEvaluatorId,
+					rubricId: dto.rubricId,
 					qualificationStatusTypeId: nrStatusTypeId,
 					observation: i18nText(dto.observation),
 					registerAt: new Date(),
 				});
 			} else {
+				evaluation.projectEvaluatorId = dto.projectEvaluatorId;
 				evaluation.observation = i18nText(dto.observation);
 			}
 
@@ -655,7 +636,7 @@ export class EvaluationSubmissionService {
 
 		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
-			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
+			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
 
 		const project = await this.projectRepo.findOne({
@@ -667,13 +648,10 @@ export class EvaluationSubmissionService {
 			throw new NotFoundException(evaluationsValidationStrings.error.projectNotFound);
 		}
 
-		const { rubric } = await this.getRubricForProject(dto.projectId);
-		if (!rubric) {
+		const { rubrics } = await this.getRubricsForProject(dto.projectId);
+		if (rubrics.length === 0) {
 			throw new BadRequestException(evaluationsValidationStrings.error.noRubricForProject);
 		}
-
-		const totalCriteria =
-			rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
 
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
 			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
@@ -681,33 +659,38 @@ export class EvaluationSubmissionService {
 
 		await this.evaluationRepository.runInTransaction(async (manager) => {
 			for (const ps of project.students) {
-				const evaluation = await manager.findOne(EvaluationEntity, {
-					where: {
-						projectStudentId: ps.id,
-						projectEvaluatorId: dto.evaluatorId,
-					},
-				});
-
 				if (!ps.studentSectionEnrollment) continue;
 
-				if (!evaluation) {
-					throw new BadRequestException(evaluationsValidationStrings.error.gradeAllStudents);
+				for (const rubric of rubrics) {
+					const totalCriteria =
+						rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
+
+					const evaluation = await manager.findOne(EvaluationEntity, {
+						where: {
+							projectStudentId: ps.id,
+							rubricId: rubric.id,
+						},
+					});
+
+					if (!evaluation) {
+						throw new BadRequestException(evaluationsValidationStrings.error.gradeAllStudents);
+					}
+
+					if (!dto.isPa && !i18nTrim(evaluation.observation)) {
+						throw new BadRequestException(evaluationsValidationStrings.error.observationRequired);
+					}
+
+					const criteriaCount = await manager.count(RubricScoreEntity, {
+						where: { evaluationId: evaluation.id },
+					});
+
+					if (criteriaCount < totalCriteria) {
+						throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
+					}
+
+					evaluation.qualificationStatusTypeId = asistioStatusTypeId;
+					await manager.save(evaluation);
 				}
-
-				if (!dto.isPa && !i18nTrim(evaluation.observation)) {
-					throw new BadRequestException(evaluationsValidationStrings.error.observationRequired);
-				}
-
-				const criteriaCount = await manager.count(RubricScoreEntity, {
-					where: { evaluationId: evaluation.id },
-				});
-
-				if (criteriaCount < totalCriteria) {
-					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
-				}
-
-				evaluation.qualificationStatusTypeId = asistioStatusTypeId;
-				await manager.save(evaluation);
 			}
 		});
 

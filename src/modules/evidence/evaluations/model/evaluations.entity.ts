@@ -6,6 +6,7 @@ import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluator
 import { ProjectStudentEntity } from 'src/modules/evaluation/project-students/model/project-students.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/rubric-scores.entity';
+import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 
 @Entity({ name: 'evaluations', schema: 'evidence' })
 export class EvaluationEntity extends BaseEntity {
@@ -16,6 +17,9 @@ export class EvaluationEntity extends BaseEntity {
 
 	@IntegerFKIDColumn({ nullable: false })
 	projectEvaluatorId: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	rubricId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	qualificationStatusTypeId: number;
@@ -41,6 +45,10 @@ export class EvaluationEntity extends BaseEntity {
 		foreignKeyConstraintName: 'FK_evaluations_project_evaluator_id',
 	})
 	projectEvaluator: ProjectEvaluatorEntity;
+
+	@ManyToOne(() => RubricEntity)
+	@JoinColumn({ name: 'rubric_id', foreignKeyConstraintName: 'FK_evaluations_rubric_id' })
+	rubric: RubricEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({
