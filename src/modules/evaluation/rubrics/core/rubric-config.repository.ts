@@ -5,6 +5,7 @@ import { RubricEntity } from '../model/rubrics.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
+import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import type { I18nText } from 'src/shared/types/i18n';
 
 export interface NewRubricData {
@@ -69,6 +70,18 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 			outcomeId: m.outcomeId,
 			programCommissionId: m.outcome?.programCommissionId ?? null,
 		}));
+	}
+
+	/** Same as getVerificationOutcomesByCourse but returns the full outcome entities. */
+	async getVerificationOutcomeEntitiesByCourse(
+		studyPlanCourseId: number,
+		verificationOutcomeTypeId: number,
+	): Promise<OutcomeEntity[]> {
+		const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
+			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
+			relations: ['outcome'],
+		});
+		return mappings.map((m) => m.outcome).filter((o): o is OutcomeEntity => o != null);
 	}
 
 	async createWithChildren(

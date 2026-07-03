@@ -364,12 +364,37 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
+		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
+		const multipleScopeTypeId = await this.resolveRubricTypeIdByCode(
+			TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE,
+		);
+		const isCapstone = capstoneTypeId != null && rubric.rubricTypeId === capstoneTypeId;
+		const isMultipleScope =
+			multipleScopeTypeId != null && rubric.competencyScopeTypeId === multipleScopeTypeId;
+
+		let allCourseOutcomes: OutcomeEntity[] = [];
+		if (isCapstone && isMultipleScope) {
+			const verificationTypeId = await this.resolveRubricTypeIdByCode(
+				TYPE_CODES.OUTCOME_TYPE.VERIFICATION,
+			);
+			if (verificationTypeId != null) {
+				allCourseOutcomes =
+					await this.rubricConfigRepository.getVerificationOutcomeEntitiesByCourse(
+						rubric.studyPlanCourseId,
+						verificationTypeId,
+					);
+			}
+		}
+
 		const commissionIds = [
-			...new Set(
-				(rubric.questions || [])
+			...new Set([
+				...(rubric.questions || [])
 					.filter((q) => q.outcome?.programCommissionId != null)
 					.map((q) => q.outcome!.programCommissionId),
-			),
+				...allCourseOutcomes
+					.filter((o) => o.programCommissionId != null)
+					.map((o) => o.programCommissionId),
+			]),
 		];
 
 		let commissions: ProgramCommissionEntity[] = [];
@@ -416,6 +441,18 @@ export class RubricConfigService {
 						programCommissionId: q.outcome.programCommissionId,
 					});
 				}
+			}
+		});
+
+		allCourseOutcomes.forEach((o) => {
+			if (!outcomesMap.has(o.id)) {
+				outcomesMap.set(o.id, {
+					id: o.id,
+					code: o.outcomeCode,
+					name: o.outcomeName,
+					description: o.outcomeDescription,
+					programCommissionId: o.programCommissionId,
+				});
 			}
 		});
 
