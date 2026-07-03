@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsString } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsArray } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -51,6 +51,23 @@ export class SemaphoreFilterDto {
 	@IsString()
 	@ApiProperty({ example: 'es', required: false, description: 'Language (es | en)' })
 	lang?: string;
+
+	@Transform(({ value }) => {
+		if (value === undefined || value === null || value === '') return undefined;
+		const list = Array.isArray(value) ? value : [value];
+		const parsed = list.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+		return parsed.length > 0 ? parsed : undefined;
+	})
+	@IsOptional()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	@ApiProperty({
+		type: [Number],
+		example: [1, 2],
+		required: false,
+		description: 'RV only: rubric IDs to include. Omit for all rubrics.',
+	})
+	rubricIds?: number[];
 }
 
 export class SemaphoreLevelLegendDto {

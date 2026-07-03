@@ -101,19 +101,32 @@ levels AS (
 	  AND pl.academic_period_id = $1::int
 	  AND pl.is_active = true
 ),
-classified_grades AS (
+scaled_grades AS (
 	SELECT
 		sse.id AS enrollment_id,
-		scog.grade,
 		scog.outcome_id,
-		lv.level_rank
+		CASE
+			WHEN NULLIF(scog.extra->>'max_outcome', '')::numeric > 0
+				THEN ROUND((scog.grade * 20) / (scog.extra->>'max_outcome')::numeric, 2)
+			ELSE scog.grade
+		END AS scaled_grade
 	FROM evidence.student_course_outcome_grades scog
 	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	LEFT JOIN levels lv
-		ON scog.grade >= lv.min_score AND scog.grade <= lv.max_score
+	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
 	WHERE sse.is_active = true
 	  AND es.is_active = true
+	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+),
+classified_grades AS (
+	SELECT
+		sg.enrollment_id,
+		sg.scaled_grade AS grade,
+		sg.outcome_id,
+		lv.level_rank
+	FROM scaled_grades sg
+	LEFT JOIN levels lv
+		ON sg.scaled_grade >= lv.min_score AND sg.scaled_grade <= lv.max_score
 ),
 course_outcome_results AS (
 	SELECT
@@ -407,20 +420,34 @@ levels AS (
 	  AND pl.academic_period_id = $1::int
 	  AND pl.is_active = true
 ),
-classified_grades AS (
+scaled_grades AS (
 	SELECT
 		sse.id AS enrollment_id,
-		scog.grade,
 		scog.outcome_id,
 		sse.course_section_id,
-		lv.level_rank
+		CASE
+			WHEN NULLIF(scog.extra->>'max_outcome', '')::numeric > 0
+				THEN ROUND((scog.grade * 20) / (scog.extra->>'max_outcome')::numeric, 2)
+			ELSE scog.grade
+		END AS scaled_grade
 	FROM evidence.student_course_outcome_grades scog
 	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	LEFT JOIN levels lv
-		ON scog.grade >= lv.min_score AND scog.grade <= lv.max_score
+	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
 	WHERE sse.is_active = true
 	  AND es.is_active = true
+	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+),
+classified_grades AS (
+	SELECT
+		sg.enrollment_id,
+		sg.scaled_grade AS grade,
+		sg.outcome_id,
+		sg.course_section_id,
+		lv.level_rank
+	FROM scaled_grades sg
+	LEFT JOIN levels lv
+		ON sg.scaled_grade >= lv.min_score AND sg.scaled_grade <= lv.max_score
 ),
 course_outcome_results AS (
 	SELECT
@@ -517,20 +544,34 @@ levels AS (
 	  AND pl.academic_period_id = $1::int
 	  AND pl.is_active = true
 ),
-classified_grades AS (
+scaled_grades AS (
 	SELECT
 		sse.id AS enrollment_id,
-		scog.grade,
 		scog.outcome_id,
 		sse.course_section_id,
-		lv.level_rank
+		CASE
+			WHEN NULLIF(scog.extra->>'max_outcome', '')::numeric > 0
+				THEN ROUND((scog.grade * 20) / (scog.extra->>'max_outcome')::numeric, 2)
+			ELSE scog.grade
+		END AS scaled_grade
 	FROM evidence.student_course_outcome_grades scog
 	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	LEFT JOIN levels lv
-		ON scog.grade >= lv.min_score AND scog.grade <= lv.max_score
+	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
 	WHERE sse.is_active = true
 	  AND es.is_active = true
+	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+),
+classified_grades AS (
+	SELECT
+		sg.enrollment_id,
+		sg.scaled_grade AS grade,
+		sg.outcome_id,
+		sg.course_section_id,
+		lv.level_rank
+	FROM scaled_grades sg
+	LEFT JOIN levels lv
+		ON sg.scaled_grade >= lv.min_score AND sg.scaled_grade <= lv.max_score
 ),
 course_outcome_results AS (
 	SELECT

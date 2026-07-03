@@ -1,7 +1,7 @@
 export const SEMAPHORE_PDF_LABELS = {
 	es: {
-		reportTitleRC: 'Reporte Semáforo — Control (RC)',
-		reportTitleRV: 'Reporte Semáforo — Verificación (RV)',
+		reportTitleRC: 'Reporte de Control (RC)',
+		reportTitleRV: 'Reporte de Verificación (RV)',
 		programName: 'Programa',
 		commission: 'Comisión',
 		academicPeriod: 'Ciclo',
@@ -22,8 +22,8 @@ export const SEMAPHORE_PDF_LABELS = {
 		noTranslation: 'NO TIENE TRADUCCIÓN',
 	},
 	en: {
-		reportTitleRC: 'Semaphore Report — Control (RC)',
-		reportTitleRV: 'Semaphore Report — Verification (RV)',
+		reportTitleRC: 'Control Report (RC)',
+		reportTitleRV: 'Verification Report (RV)',
 		programName: 'Program',
 		commission: 'Commission',
 		academicPeriod: 'Term',

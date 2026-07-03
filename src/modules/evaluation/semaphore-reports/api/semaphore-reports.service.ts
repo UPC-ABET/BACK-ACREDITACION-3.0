@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ReportChartService } from 'src/libs/reporting/report-chart.service';
 import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
 import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
 import { escapeHtml } from 'src/libs/reporting/report.utils';
@@ -26,8 +27,14 @@ const XLSX_HEADER_BG = 'FFE30613';
 const XLSX_HEADER_TEXT = 'FFFFFFFF';
 const CRITICAL_RED_THRESHOLD = 23;
 
+interface SemaphoreChartData {
+	categories: string[];
+	series: { label: string; color: string; values: number[] }[];
+}
+
 interface SemaphoreRenderReportDto {
 	legend: SemaphoreLevelLegendDto[];
+	chart: SemaphoreChartData;
 	outcomeSummary: SemaphoreOutcomeSummaryRowDto[];
 	redDetail: SemaphoreCourseDetailRowDto[];
 	yellowDetail: SemaphoreCourseDetailRowDto[];
@@ -42,6 +49,7 @@ export class SemaphoreReportsService {
 	constructor(
 		private readonly repository: SemaphoreReportsRepository,
 		private readonly reportGenerator: ReportGeneratorService,
+		private readonly reportChart: ReportChartService,
 	) {}
 
 	async getRcData(dto: SemaphoreFilterDto, academicPeriodId: number): Promise<SemaphoreReportDto> {
@@ -83,7 +91,7 @@ export class SemaphoreReportsService {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const data = await this.fetchRenderData(dto, academicPeriodId, 'rc');
 		const xlsx = await this.buildExcel(data, 'rc', lang);
-		const filename = `Reporte_Semaforo_RC_${Date.now()}.xlsx`;
+		const filename = `Reporte_Control_RC_${Date.now()}.xlsx`;
 		return { xlsx, filename };
 	}
 
@@ -94,7 +102,7 @@ export class SemaphoreReportsService {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const data = await this.fetchRenderData(dto, academicPeriodId, 'rv');
 		const xlsx = await this.buildExcel(data, 'rv', lang);
-		const filename = `Reporte_Semaforo_RV_${Date.now()}.xlsx`;
+		const filename = `Reporte_Verificacion_RV_${Date.now()}.xlsx`;
 		return { xlsx, filename };
 	}
 
@@ -109,6 +117,7 @@ export class SemaphoreReportsService {
 		const outcomeId = dto.outcomeId ?? null;
 		const campusId = dto.campusId ?? null;
 		const modalityTypeId = dto.modalityTypeId ?? null;
+		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 
 		const getScreen =
 			instrument === 'rc' ? this.repository.getRcScreen : this.repository.getRvScreen;
@@ -120,6 +129,7 @@ export class SemaphoreReportsService {
 			campusId,
 			modalityTypeId,
 			lang,
+			rubricIds,
 		);
 		if (rows.length === 0) {
 			throw new HttpException(
@@ -146,11 +156,14 @@ export class SemaphoreReportsService {
 		const outcomeId = dto.outcomeId ?? null;
 		const campusId = dto.campusId ?? null;
 		const modalityTypeId = dto.modalityTypeId ?? null;
+		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 
 		const getDetail =
 			instrument === 'rc' ? this.repository.getRcDetail : this.repository.getRvDetail;
 		const getSummary =
 			instrument === 'rc' ? this.repository.getRcSummary : this.repository.getRvSummary;
+		const getScreen =
+			instrument === 'rc' ? this.repository.getRcScreen : this.repository.getRvScreen;
 
 		const detailRows = await getDetail.call(
 			this.repository,
@@ -160,6 +173,7 @@ export class SemaphoreReportsService {
 			campusId,
 			modalityTypeId,
 			lang,
+			rubricIds,
 		);
 		if (detailRows.length === 0) {
 			throw new HttpException(
@@ -178,10 +192,72 @@ export class SemaphoreReportsService {
 			campusId,
 			modalityTypeId,
 			lang,
+			rubricIds,
+		);
+		// Unfiltered course+outcome breakdown feeds the grouped-bar chart embedded in the PDF.
+		const screenRows = await getScreen.call(
+			this.repository,
+			academicPeriodId,
+			programCommissionId,
+			outcomeId,
+			campusId,
+			modalityTypeId,
+			lang,
+			rubricIds,
 		);
 		const legendRows = await this.repository.getLevelsLegend(academicPeriodId, instrument, lang);
 		const metadata = await this.repository.getMetadata(programCommissionId, academicPeriodId, lang);
-		return this.buildRenderReport(detailRows, summaryRows, legendRows, metadata);
+		return this.buildRenderReport(
+			detailRows,
+			summaryRows,
+			screenRows,
+			legendRows,
+			metadata,
+			lang as ReportLanguage,
+		);
+	}
+
+	/** Aggregates red/yellow/green student counts per outcome for the PDF chart. */
+	private buildOutcomeChartData(
+		screenRows: SemaphoreCourseOutcomeRow[],
+		legend: SemaphoreLevelLegendDto[],
+		lang: ReportLanguage,
+	): SemaphoreChartData {
+		const L = SEMAPHORE_PDF_LABELS[lang];
+		const byOutcome = new Map<string, { red: number; yellow: number; green: number }>();
+		for (const r of screenRows) {
+			const entry = byOutcome.get(r.outcomeCode) ?? { red: 0, yellow: 0, green: 0 };
+			entry.red += Number(r.studentsRed);
+			entry.yellow += Number(r.studentsYellow);
+			entry.green += Number(r.studentsGreen);
+			byOutcome.set(r.outcomeCode, entry);
+		}
+		const categories = [...byOutcome.keys()].sort((a, b) =>
+			a.localeCompare(b, undefined, { numeric: true }),
+		);
+		const entries = categories.map((code) => byOutcome.get(code)!);
+		const color = (rank: number, fallback: string): string => legend[rank]?.color ?? fallback;
+		const name = (rank: number, fallback: string): string => legend[rank]?.name ?? fallback;
+		return {
+			categories,
+			series: [
+				{
+					label: name(0, L.redDetail),
+					color: color(0, '#e30613'),
+					values: entries.map((e) => e.red),
+				},
+				{
+					label: name(1, L.yellowDetail),
+					color: color(1, '#f4c20d'),
+					values: entries.map((e) => e.yellow),
+				},
+				{
+					label: name(2, L.greenDetail),
+					color: color(2, '#16a34a'),
+					values: entries.map((e) => e.green),
+				},
+			],
+		};
 	}
 
 	private buildLegend(legendRows: SemaphoreLevelLegendRow[]): SemaphoreLevelLegendDto[] {
@@ -250,8 +326,10 @@ export class SemaphoreReportsService {
 	private buildRenderReport(
 		detailRows: SemaphoreDetailRow[],
 		summaryRows: SemaphoreSummaryRow[],
+		screenRows: SemaphoreCourseOutcomeRow[],
 		legendRows: SemaphoreLevelLegendRow[],
 		metadata: MetadataRow | null,
+		lang: ReportLanguage = 'es',
 	): SemaphoreRenderReportDto {
 		const legend = this.buildLegend(legendRows);
 		const levelName = (rank: number): string => legend[rank - 1]?.name ?? '';
@@ -280,6 +358,7 @@ export class SemaphoreReportsService {
 
 		return {
 			legend,
+			chart: this.buildOutcomeChartData(screenRows, legend, lang),
 			outcomeSummary,
 			redDetail: detailRows.filter((r) => Number(r.levelRank) === 1).map(toDetailRow),
 			yellowDetail: detailRows.filter((r) => Number(r.levelRank) === 2).map(toDetailRow),
@@ -294,8 +373,15 @@ export class SemaphoreReportsService {
 	}
 
 	private buildFilename(type: 'rc' | 'rv', lang: ReportLanguage): string {
-		const prefix = lang === 'en' ? 'Semaphore_Report' : 'Reporte_Semaforo';
-		const suffix = type === 'rc' ? 'RC' : 'RV';
+		const prefix = lang === 'en' ? 'Report' : 'Reporte';
+		const suffix =
+			type === 'rc'
+				? lang === 'en'
+					? 'Control_RC'
+					: 'Control_RC'
+				: lang === 'en'
+					? 'Verification_RV'
+					: 'Verificacion_RV';
 		return `${prefix}_${suffix}.pdf`;
 	}
 
@@ -359,11 +445,23 @@ export class SemaphoreReportsService {
 				</section>`;
 		};
 
+		const chartHtml =
+			data.chart.categories.length > 0
+				? `<section>${this.reportChart.buildGroupedBarChart({
+						title: reportTitle,
+						categories: data.chart.categories,
+						series: data.chart.series,
+						yAxisLabel: L.colTotalStudents,
+						emptyLabel: L.noTranslation,
+					})}</section>`
+				: '';
+
 		const bodyHtml = `
 			<section>
 				<h3>${escapeHtml(L.legendTitle)}</h3>
 				<div class="legend-line">${legendLine}</div>
 			</section>
+			${chartHtml}
 			<section>
 				<h3>${escapeHtml(L.summary)}</h3>
 				<table>
