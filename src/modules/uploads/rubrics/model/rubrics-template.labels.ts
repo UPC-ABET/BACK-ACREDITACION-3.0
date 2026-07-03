@@ -3,6 +3,7 @@ export const rubricsTemplateLabels: Record<string, Record<string, string>> = {
 		courseCode: 'Código del curso',
 		programCode: 'Código de carrera',
 		gradeTypeCode: 'Código de tipo de calificación',
+		competencyScopeCode: 'Código de alcance de competencias',
 		outcomeCode: 'Código de outcome',
 		questionEs: 'Pregunta (ES)',
 		questionEn: 'Pregunta (EN)',
@@ -23,11 +24,15 @@ export const rubricsTemplateLabels: Record<string, Record<string, string>> = {
 		gradeTypesTitle: 'Tipos de calificación disponibles',
 		gradeTypesColCode: 'Código',
 		gradeTypesColName: 'Nombre',
+		competencyScopeTitle: 'Alcances de competencias disponibles',
+		competencyScopeColCode: 'Código',
+		competencyScopeColName: 'Nombre',
 	},
 	en: {
 		courseCode: 'Course code',
 		programCode: 'Program code',
 		gradeTypeCode: 'Grade type code',
+		competencyScopeCode: 'Competency scope code',
 		outcomeCode: 'Outcome code',
 		questionEs: 'Question (ES)',
 		questionEn: 'Question (EN)',
@@ -48,6 +53,9 @@ export const rubricsTemplateLabels: Record<string, Record<string, string>> = {
 		gradeTypesTitle: 'Available grade types',
 		gradeTypesColCode: 'Code',
 		gradeTypesColName: 'Name',
+		competencyScopeTitle: 'Available competency scopes',
+		competencyScopeColCode: 'Code',
+		competencyScopeColName: 'Name',
 	},
 };
 
@@ -80,6 +88,13 @@ export const rubricsFieldInstructions: Record<string, FieldInstruction[]> = {
 				'Tipo de evaluación. Ver tabla de tipos disponibles. Se repite en todas las filas de la misma rúbrica.',
 			required: true,
 			example: 'TG205-T00X',
+		},
+		{
+			field: 'Código de alcance de competencias',
+			description:
+				'Indica si la rúbrica evalúa única o múltiples competencias. Ver tabla de alcances disponibles. Se repite en todas las filas de la misma rúbrica.',
+			required: true,
+			example: 'TG402-T00X',
 		},
 		{
 			field: 'Código de outcome',
@@ -149,6 +164,13 @@ export const rubricsFieldInstructions: Record<string, FieldInstruction[]> = {
 			example: 'TG205-T00X',
 		},
 		{
+			field: 'Competency scope code',
+			description:
+				'Whether the rubric evaluates a single or multiple competencies. See available scopes table. Repeat on all rows of the same rubric.',
+			required: true,
+			example: 'TG402-T00X',
+		},
+		{
 			field: 'Outcome code',
 			description:
 				'Only for outcome-based rubrics. Identifies the outcome linked to the question. Leave empty otherwise.',
@@ -183,14 +205,14 @@ export const rubricsFieldInstructions: Record<string, FieldInstruction[]> = {
 		{
 			field: 'Min score',
 			description:
-				'Minimum score for the criteria. Optional for outcome-based rubrics with grade type EB (defaults to 0).',
+				'Minimum score for the criteria. Optional for outcome-based rubrics (Capstone + Multiple competency scope) (defaults to 0).',
 			required: false,
 			example: '0',
 		},
 		{
 			field: 'Max score',
 			description:
-				'Maximum score for the criteria. Optional for outcome-based rubrics with grade type EB (defaults to 0).',
+				'Maximum score for the criteria. Optional for outcome-based rubrics (Capstone + Multiple competency scope) (defaults to 0).',
 			required: true,
 			example: '4',
 		},
@@ -210,6 +232,17 @@ export const gradeTypesList: GradeType[] = [
 	{ code: 'TG205-T004', name: 'TA' },
 	{ code: 'TG205-T005', name: 'TP' },
 	{ code: 'TG205-T006', name: 'TF' },
+];
+
+export interface CompetencyScopeType {
+	code: string;
+	name: string;
+}
+
+// These must match core.types where type_group.code = 'TG402'
+export const competencyScopeList: CompetencyScopeType[] = [
+	{ code: 'TG402-T001', name: 'Unica competencia' },
+	{ code: 'TG402-T002', name: 'Multiple competencia' },
 ];
 
 export const DEFAULT_TEMPLATE_LANGUAGE = 'es';

@@ -53,6 +53,24 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 		});
 	}
 
+	/**
+	 * Outcomes de verificación mapeados al curso, agrupados implícitamente por comisión
+	 * (cada outcome pertenece a una sola comisión vía outcome.programCommissionId).
+	 */
+	async getVerificationOutcomesByCourse(
+		studyPlanCourseId: number,
+		verificationOutcomeTypeId: number,
+	): Promise<Array<{ outcomeId: number; programCommissionId: number | null }>> {
+		const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
+			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
+			relations: ['outcome'],
+		});
+		return mappings.map((m) => ({
+			outcomeId: m.outcomeId,
+			programCommissionId: m.outcome?.programCommissionId ?? null,
+		}));
+	}
+
 	async createWithChildren(
 		rubricData: NewRubricData,
 		questions: NewRubricQuestion[],

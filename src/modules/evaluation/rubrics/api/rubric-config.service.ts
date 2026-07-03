@@ -102,6 +102,13 @@ export class RubricConfigService {
 			throw new BadRequestException(rubricsValidationStrings.error.activeRubricExists);
 		}
 
+		if (dto.questions.length === 0) {
+			throw new BadRequestException(rubricsValidationStrings.error.atLeastOneQuestionRequired);
+		}
+		if (dto.questions.some((q) => !q.criterias || q.criterias.length === 0)) {
+			throw new BadRequestException(rubricsValidationStrings.error.atLeastOneCriteriaRequired);
+		}
+
 		const outcomeIds = dto.questions
 			.map((q) => q.outcomeId)
 			.filter((id): id is number => id != null);
@@ -132,6 +139,8 @@ export class RubricConfigService {
 			if (hasMissingOutcomes) {
 				throw new BadRequestException(rubricsValidationStrings.error.capstoneRequiresOutcome);
 			}
+
+			await this.validateCommissionCompleteness(dto.studyPlanCourseId, outcomeIds);
 		}
 
 		const courseExists = await this.courseRepo.exists({
@@ -215,6 +224,49 @@ export class RubricConfigService {
 		}
 
 		return rubric;
+	}
+
+	/**
+	 * Capstone + Múltiple competencia: cada outcome de verificación pertenece a una comisión
+	 * (ABET, CAC, etc.). Si se llena al menos un outcome de una comisión, deben llenarse TODOS
+	 * los outcomes de esa comisión mapeados al curso. Debe haber al menos una comisión completa.
+	 */
+	private async validateCommissionCompleteness(
+		studyPlanCourseId: number,
+		submittedOutcomeIds: number[],
+	): Promise<void> {
+		const verificationTypeId = await this.resolveRubricTypeIdByCode(
+			TYPE_CODES.OUTCOME_TYPE.VERIFICATION,
+		);
+		if (verificationTypeId == null) return;
+
+		const courseOutcomes = await this.rubricConfigRepository.getVerificationOutcomesByCourse(
+			studyPlanCourseId,
+			verificationTypeId,
+		);
+
+		const outcomesByCommission = new Map<number | null, number[]>();
+		for (const o of courseOutcomes) {
+			const list = outcomesByCommission.get(o.programCommissionId) ?? [];
+			list.push(o.outcomeId);
+			outcomesByCommission.set(o.programCommissionId, list);
+		}
+
+		const submitted = new Set(submittedOutcomeIds);
+		let hasCompleteCommission = false;
+
+		for (const commissionOutcomeIds of outcomesByCommission.values()) {
+			const touched = commissionOutcomeIds.filter((id) => submitted.has(id));
+			if (touched.length === 0) continue;
+			if (touched.length < commissionOutcomeIds.length) {
+				throw new BadRequestException(rubricsValidationStrings.error.incompleteCommissionOutcomes);
+			}
+			hasCompleteCommission = true;
+		}
+
+		if (!hasCompleteCommission) {
+			throw new BadRequestException(rubricsValidationStrings.error.atLeastOneCommissionRequired);
+		}
 	}
 
 	private validateCriteriaScores(

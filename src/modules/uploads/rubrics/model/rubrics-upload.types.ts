@@ -3,6 +3,7 @@ export interface RubricRow {
 	courseCode: string;
 	programCode: string;
 	gradeTypeCode: string;
+	competencyScopeCode: string;
 	outcomeCode: string;
 	questionEs: string;
 	questionEn: string;

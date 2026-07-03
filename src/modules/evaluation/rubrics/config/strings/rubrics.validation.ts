@@ -14,6 +14,10 @@ export const rubricsValidationStrings = {
 		criteriaInvalidRange: 'error.rubric.criteriaInvalidRange',
 		criteriaTotalNot20: 'error.rubric.criteriaTotalNot20',
 		rubricInUse: 'error.rubric.rubricInUse',
+		atLeastOneQuestionRequired: 'error.rubric.atLeastOneQuestionRequired',
+		atLeastOneCriteriaRequired: 'error.rubric.atLeastOneCriteriaRequired',
+		incompleteCommissionOutcomes: 'error.rubric.incompleteCommissionOutcomes',
+		atLeastOneCommissionRequired: 'error.rubric.atLeastOneCommissionRequired',
 	},
 	result: {
 		createFailed: 'error.rubric.createFailed',
