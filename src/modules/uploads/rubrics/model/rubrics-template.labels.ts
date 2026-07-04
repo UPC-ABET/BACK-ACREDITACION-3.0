@@ -226,12 +226,15 @@ export interface GradeType {
 
 // These must match core.types where type_group.code = 'TG205'
 export const gradeTypesList: GradeType[] = [
-	{ code: 'TG205-T001', name: 'EA' },
-	{ code: 'TG205-T002', name: 'EB' },
+	{ code: 'TG205-T001', name: 'EA1' },
+	{ code: 'TG205-T002', name: 'EB1' },
 	{ code: 'TG205-T003', name: 'PA' },
 	{ code: 'TG205-T004', name: 'TA' },
-	{ code: 'TG205-T005', name: 'TP' },
-	{ code: 'TG205-T006', name: 'TF' },
+	{ code: 'TG205-T005', name: 'TB1' },
+	{ code: 'TG205-T006', name: 'TB2' },
+	{ code: 'TG205-T007', name: 'DD1' },
+	{ code: 'TG205-T008', name: 'PC1' },
+	{ code: 'TG205-T009', name: 'PC2' },
 ];
 
 export interface CompetencyScopeType {

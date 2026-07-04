@@ -86,7 +86,8 @@ export class SubmitEvaluationDto {
 		example: 1,
 		required: true,
 		description:
-			'Estado de calificación desde core.types (TG404). Ej: ASISTIO (TG404-T001), NR (TG404-T002), NA (TG404-T003).',
+			'Estado de calificación desde core.types (TG404). Ej: ASISTIO (TG404-T001), NR (TG404-T002), ' +
+			'NA (TG404-T003), DPI (TG404-T004), RET (TG404-T005), SAN (TG404-T006).',
 	})
 	qualificationStatusTypeId: number;
 }
