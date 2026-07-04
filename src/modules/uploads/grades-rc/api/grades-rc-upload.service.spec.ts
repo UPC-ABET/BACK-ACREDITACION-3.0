@@ -14,7 +14,7 @@ const uploadLogServiceStub: any = {
 	assertAcademicPeriodExists: jest.fn(),
 };
 
-const HEADER = ['Section', 'Student', 'GradeType', 'Percentage', 'Grade'];
+const HEADER = ['Section', 'Student', 'GradeType', 'Percentage', 'Grade', 'QualificationStatus'];
 
 async function makeXlsx(rows: string[][]): Promise<Buffer> {
 	const wb = new ExcelJS.Workbook();
@@ -34,6 +34,7 @@ function makeRepository(uploadFnResult: any[]) {
 		}),
 		callRollbackFunction: jest.fn().mockResolvedValue(undefined),
 		getGradeTypes: jest.fn().mockResolvedValue([]),
+		getQualificationStatusTypes: jest.fn().mockResolvedValue([]),
 	};
 	return { repository, calls };
 }
@@ -45,7 +46,9 @@ describe('GradesRcUploadService — positional parsing', () => {
 		]);
 		const service = new GradesRcUploadService(repository, uploadLogServiceStub);
 
-		const buffer = await makeXlsx([['SEC-001', 'STU-001', 'TG205-T002', '40', '15.5']]);
+		const buffer = await makeXlsx([
+			['SEC-001', 'STU-001', 'TG205-T002', '40', '15.5', 'TG404-T001'],
+		]);
 		const result = await service.processUpload(buffer, 'grades-rc.xlsx', 7, 1, {} as any);
 
 		expect(result.success).toBe(true);
@@ -60,6 +63,7 @@ describe('GradesRcUploadService — positional parsing', () => {
 			gradeTypeCode: 'TG205-T002',
 			gradeTypePercentage: '40',
 			grade: '15.5',
+			qualificationStatusCode: 'TG404-T001',
 		});
 		expect(academicPeriodId).toBe(1);
 		expect(userId).toBe(7);
@@ -83,11 +87,15 @@ describe('GradesRcUploadService — positional parsing', () => {
 });
 
 describe('GradesRcUploadService — template', () => {
-	it('builds a Template sheet and a localized legend sheet with TG205 codes', async () => {
+	it('builds a Template sheet and an instructions sheet with TG205 and TG404 codes', async () => {
 		const repository: any = {
 			getGradeTypes: jest.fn().mockResolvedValue([
-				{ code: 'TG205-T002', name: 'EB' },
+				{ code: 'TG205-T002', name: 'EB1' },
 				{ code: 'TG205-T003', name: 'PA' },
+			]),
+			getQualificationStatusTypes: jest.fn().mockResolvedValue([
+				{ code: 'TG404-T001', name: 'ASISTIO' },
+				{ code: 'TG404-T004', name: 'DPI' },
 			]),
 		};
 		const service = new GradesRcUploadService(repository, uploadLogServiceStub);
@@ -100,10 +108,13 @@ describe('GradesRcUploadService — template', () => {
 		const header = wb.getWorksheet('Template')!.getRow(1).values as string[];
 		expect(header).toContain('Código de sección');
 		expect(header).toContain('Nota');
+		expect(header).toContain('Código de estado de calificación');
 
-		const legend = wb.getWorksheet('Tipos de nota')!;
-		const codes = (legend.getColumn(1).values as string[]).filter(Boolean);
+		const instructions = wb.getWorksheet('Instrucciones de llenado')!;
+		const codes = (instructions.getColumn(1).values as string[]).filter(Boolean);
 		expect(codes).toContain('TG205-T002');
 		expect(codes).toContain('TG205-T003');
+		expect(codes).toContain('TG404-T001');
+		expect(codes).toContain('TG404-T004');
 	});
 });
