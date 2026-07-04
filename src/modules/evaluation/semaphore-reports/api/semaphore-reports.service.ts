@@ -118,6 +118,7 @@ export class SemaphoreReportsService {
 		const campusId = dto.campusId ?? null;
 		const modalityTypeId = dto.modalityTypeId ?? null;
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
+		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
 		const getScreen =
 			instrument === 'rc' ? this.repository.getRcScreen : this.repository.getRvScreen;
@@ -130,6 +131,7 @@ export class SemaphoreReportsService {
 			modalityTypeId,
 			lang,
 			rubricIds,
+			gradeTypeIds,
 		);
 		if (rows.length === 0) {
 			throw new HttpException(
@@ -157,6 +159,7 @@ export class SemaphoreReportsService {
 		const campusId = dto.campusId ?? null;
 		const modalityTypeId = dto.modalityTypeId ?? null;
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
+		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
 		const getDetail =
 			instrument === 'rc' ? this.repository.getRcDetail : this.repository.getRvDetail;
@@ -174,6 +177,7 @@ export class SemaphoreReportsService {
 			modalityTypeId,
 			lang,
 			rubricIds,
+			gradeTypeIds,
 		);
 		if (detailRows.length === 0) {
 			throw new HttpException(
@@ -193,6 +197,7 @@ export class SemaphoreReportsService {
 			modalityTypeId,
 			lang,
 			rubricIds,
+			gradeTypeIds,
 		);
 		// Unfiltered course+outcome breakdown feeds the grouped-bar chart embedded in the PDF.
 		const screenRows = await getScreen.call(
@@ -204,6 +209,7 @@ export class SemaphoreReportsService {
 			modalityTypeId,
 			lang,
 			rubricIds,
+			gradeTypeIds,
 		);
 		const legendRows = await this.repository.getLevelsLegend(academicPeriodId, instrument, lang);
 		const metadata = await this.repository.getMetadata(programCommissionId, academicPeriodId, lang);
@@ -354,6 +360,7 @@ export class SemaphoreReportsService {
 			courseName: r.courseName,
 			count: Number(r.cantidad),
 			totalStudents: Number(r.totalStudents),
+			percentage: Number(r.porcentaje),
 		});
 
 		return {
@@ -429,6 +436,7 @@ export class SemaphoreReportsService {
 						<td>${escapeHtml(r.courseCode)}</td>
 						<td>${escapeHtml(r.courseName) || L.noTranslation}</td>
 						<td>${r.count}</td>
+						<td>${r.percentage}%</td>
 						<td>${r.totalStudents}</td>
 					</tr>`,
 				)
@@ -438,7 +446,7 @@ export class SemaphoreReportsService {
 					<h4>${escapeHtml(label)} (${items.length})</h4>
 					<table>
 						<thead><tr>
-							<th>${escapeHtml(L.colSede)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colTotalStudentsByOutcome)}</th>
+							<th>${escapeHtml(L.colSede)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th><th>${escapeHtml(L.colTotalStudentsByOutcome)}</th>
 						</tr></thead>
 						<tbody>${rows}</tbody>
 					</table>
@@ -538,6 +546,7 @@ export class SemaphoreReportsService {
 			L.colCode,
 			L.colCourse,
 			L.colQuantity,
+			L.colPercentage,
 			L.colTotalStudentsByOutcome,
 		];
 		const addDetailSheet = (name: string, items: SemaphoreCourseDetailRowDto[]) => {
@@ -551,6 +560,7 @@ export class SemaphoreReportsService {
 					r.courseCode,
 					r.courseName || L.noTranslation,
 					r.count,
+					r.percentage,
 					r.totalStudents,
 				]);
 				this.styleExcelRow(row);
