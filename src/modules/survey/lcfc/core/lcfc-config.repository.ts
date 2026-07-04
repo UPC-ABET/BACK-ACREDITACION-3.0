@@ -203,8 +203,21 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				    AND spap.is_active = true
 				    AND spc.is_active = true
 			  ))
+			  AND EXISTS (
+				  SELECT 1
+				  FROM academic.study_plan_courses spc2
+				  INNER JOIN academic.course_outcome_mappings com2 ON com2.study_plan_course_id = spc2.id
+				  INNER JOIN core.types ot ON ot.id = com2.outcome_type_id
+				  INNER JOIN accreditation.outcomes o2 ON o2.id = com2.outcome_id
+				  INNER JOIN accreditation.program_commissions pc2 ON pc2.id = o2.program_commission_id
+				  WHERE spc2.course_id = cs.course_id
+				    AND ot.code = $3
+				    AND com2.is_active = true
+				    AND spc2.is_active = true
+				    AND ($2::int IS NULL OR pc2.program_id = $2)
+			  )
 			ORDER BY c.name ASC, cs.section_code ASC`,
-			[academicPeriodId, programId ?? null],
+			[academicPeriodId, programId ?? null, TYPE_CODES.OUTCOME_TYPE.CONTROL],
 		);
 	}
 
