@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddUploadLogIdToEvaluationsAndRubricScores1783050000000 implements MigrationInterface {
-	name = 'AddUploadLogIdToEvaluationsAndRubricScores1783050000000';
+export class AddUploadLogIdToEvaluationsAndRubricScores1783052671940 implements MigrationInterface {
+	name = 'AddUploadLogIdToEvaluationsAndRubricScores1783052671940';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(

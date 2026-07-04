@@ -25,8 +25,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *  - Same student appearing twice: last row overwrites (previous cascade deleted and reinserted).
  *  - ESCUELA→CARRERA validated via organization.charts.
  */
-export class RedesignGradesRvUpload1783060000000 implements MigrationInterface {
-	name = 'RedesignGradesRvUpload1783060000000';
+export class RedesignGradesRvUpload1783059384215 implements MigrationInterface {
+	name = 'RedesignGradesRvUpload1783059384215';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`

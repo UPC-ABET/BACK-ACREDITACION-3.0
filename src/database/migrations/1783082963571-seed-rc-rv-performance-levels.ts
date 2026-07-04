@@ -23,8 +23,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * so periods already configured (e.g. TG206-T001 / 202601) and any manual configuration are left
  * untouched. Codes are globally unique ("<INSTR>_L<n>_<periodCode>"), matching UQ_performance_levels_code.
  */
-export class SeedRcRvPerformanceLevels1783090000000 implements MigrationInterface {
-	name = 'SeedRcRvPerformanceLevels1783090000000';
+export class SeedRcRvPerformanceLevels1783082963571 implements MigrationInterface {
+	name = 'SeedRcRvPerformanceLevels1783082963571';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// --- RC (TG206-T003) and RV (TG206-T004): 3 acceptance bands per period ---

@@ -11,8 +11,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * evaluations) in the same run, so the guard needs "IS DISTINCT FROM p_upload_log_id" to avoid
  * blocking on the upload's own rows.
  */
-export class GuardGradesRvRollbackReuse1783070000000 implements MigrationInterface {
-	name = 'GuardGradesRvRollbackReuse1783070000000';
+export class GuardGradesRvRollbackReuse1783066123487 implements MigrationInterface {
+	name = 'GuardGradesRvRollbackReuse1783066123487';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`

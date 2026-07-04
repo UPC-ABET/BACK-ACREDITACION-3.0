@@ -19,8 +19,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *     it's the student's attendance status, consistent with the new DPI/RET/SAN codes).
  *   - New: TG404-T004 DPI, TG404-T005 RET, TG404-T006 SAN.
  */
-export class FixGradeAndQualificationStatusTypes1783080000000 implements MigrationInterface {
-	name = 'FixGradeAndQualificationStatusTypes1783080000000';
+export class FixGradeAndQualificationStatusTypes1783078451903 implements MigrationInterface {
+	name = 'FixGradeAndQualificationStatusTypes1783078451903';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// ── TG205: correct existing wording ────────────────────────────────
