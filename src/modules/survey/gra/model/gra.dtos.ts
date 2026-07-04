@@ -186,9 +186,14 @@ export class SaveGraNotificationDto {
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Campus ID' })
-	campusId: number;
+	@ApiProperty({
+		required: false,
+		example: 1,
+		description: 'Campus ID (optional; resolved from the student when omitted)',
+	})
+	campusId?: number;
 
 	@IsString()
 	@ApiProperty({
@@ -207,9 +212,14 @@ export class BulkUploadGraNotificationDto {
 	@ApiProperty({ example: 1, description: 'Program ID' })
 	programId: number;
 
+	@IsOptional()
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Campus ID' })
-	campusId: number;
+	@ApiProperty({
+		required: false,
+		example: 1,
+		description: 'Campus ID (optional; resolved from the student when omitted)',
+	})
+	campusId?: number;
 
 	@IsString()
 	@ApiProperty({ example: '2025-12-31', description: 'Deadline for completing the survey' })

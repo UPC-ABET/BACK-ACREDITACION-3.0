@@ -294,22 +294,24 @@ export class PerceptionReportService {
 			return [{ campusId: request.campusId, label, rows }];
 		}
 
-		const campusIds = [...new Set(rows.map((row) => row.campusId))];
+		const campusIds = [
+			...new Set(
+				rows.map((row) => row.campusId).filter((id): id is number => id !== null && id !== undefined),
+			),
+		];
 		const sections: Array<{
 			campusId: number | null;
 			label: string;
 			rows: PerceptionScoreRow[];
 		}> = [{ campusId: null, label: labels.allCampuses, rows }];
 
-		if (campusIds.length > 1) {
-			for (const campusId of campusIds) {
-				const campusRows = rows.filter((row) => row.campusId === campusId);
-				sections.push({
-					campusId,
-					label: this.localizeValue(campusRows[0]?.campusName, request.lang),
-					rows: campusRows,
-				});
-			}
+		for (const campusId of campusIds) {
+			const campusRows = rows.filter((row) => row.campusId === campusId);
+			sections.push({
+				campusId,
+				label: this.localizeValue(campusRows[0]?.campusName, request.lang),
+				rows: campusRows,
+			});
 		}
 
 		return sections;

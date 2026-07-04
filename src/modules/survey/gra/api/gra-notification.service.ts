@@ -76,6 +76,8 @@ export class GraNotificationService {
 	}
 
 	async saveNotification(dto: SaveGraNotificationDto, academicPeriodId: number) {
+		GraValidation.validateProgram(dto.programId);
+
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		let survey = await this.surveyRepo.findExistingGraSurvey(
@@ -87,7 +89,9 @@ export class GraNotificationService {
 
 		if (!survey) {
 			const courseSectionId = await this.resolveDefaultCourseSectionId();
-			const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
+			// Use || (not ??) so a falsy campusId (e.g. 0 sent by the client when none was picked)
+			// still falls back to resolving the student's default campus instead of failing.
+			const campusId = dto.campusId || (await this.surveyRepo.resolveDefaultCampus(dto.studentId));
 			if (!campusId) {
 				throw new InternalServerErrorException(graValidationStrings.error.defaultCampusMissing);
 			}
@@ -138,6 +142,8 @@ export class GraNotificationService {
 
 	/** Bulk version of saveNotification: adds every student code in the Excel to the GRA list. */
 	async bulkUploadNotifications(dto: BulkUploadGraNotificationDto, academicPeriodId: number) {
+		GraValidation.validateProgram(dto.programId);
+
 		const { graSurveyTypeId, activeStatusId, scheduledStatusId } = await this.getTypeIds();
 
 		const workbook = new ExcelJS.Workbook();
@@ -200,7 +206,7 @@ export class GraNotificationService {
 				dto.programId,
 			);
 			if (!survey) {
-				const campusId = dto.campusId ?? (await this.surveyRepo.resolveDefaultCampus(studentId));
+				const campusId = dto.campusId || (await this.surveyRepo.resolveDefaultCampus(studentId));
 				if (!campusId) {
 					results.failed++;
 					results.errors.push({

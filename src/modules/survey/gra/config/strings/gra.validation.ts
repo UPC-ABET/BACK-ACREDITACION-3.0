@@ -20,6 +20,7 @@ export const graValidationStrings = {
 		emptyStudentCode: 'error.survey.gra.emptyStudentCode',
 		studentNotFound: 'error.survey.gra.studentNotFound',
 		alreadyInList: 'error.survey.gra.alreadyInList',
+		programRequired: 'error.survey.gra.programRequired',
 	},
 	success: {
 		notificationCreated: 'success.survey.gra.notificationCreated',
