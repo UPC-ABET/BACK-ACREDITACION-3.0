@@ -2,19 +2,29 @@ const CRITICAL_RED_THRESHOLD = 23;
 
 // Unfiltered course+outcome breakdown, used by the JSON screen endpoint (no critical/representative filtering).
 export const SEMAPHORE_RC_SCREEN_SQL = `
-WITH weighted_grades AS (
+WITH course_grades AS (
+	-- The RC grade is the single student_course_grades row whose grade_type_id matches the
+	-- grade type designated for this course (study_plan_courses.extra.grade_type_id) -- not a
+	-- weighted sum across all grade types. Rows whose qualification status isn't ASISTIO
+	-- (TG404-T001) are excluded: a 0 from RET/NR/DPI/SAN is not a real grade.
 	SELECT
 		sse.id AS enrollment_id,
-		ROUND(SUM(scg.grade * scg.grade_type_percentage / 100), 2) AS weighted_average
+		scg.grade AS grade
 	FROM academic.student_course_grades scg
 	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+	JOIN academic.courses c ON c.id = cs.course_id
+	JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.id = spc.study_plan_academic_period_id
+		AND spap.academic_period_id = cs.academic_period_id
+	JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
 	WHERE cs.academic_period_id = $1::int
 	  AND sse.is_active = true
 	  AND es.is_active = true
-	GROUP BY sse.id
-	HAVING SUM(scg.grade * scg.grade_type_percentage / 100) IS NOT NULL
+	  AND scg.grade_type_id = (spc.extra->>'grade_type_id')::int
+	  AND qst.code = 'TG404-T001'
 ),
 filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
@@ -34,12 +44,12 @@ levels AS (
 ),
 classified_grades AS (
 	SELECT
-		wg.enrollment_id,
-		wg.weighted_average,
+		cg.enrollment_id,
+		cg.grade,
 		lv.level_rank
-	FROM weighted_grades wg
+	FROM course_grades cg
 	LEFT JOIN levels lv
-		ON wg.weighted_average >= lv.min_score AND wg.weighted_average <= lv.max_score
+		ON cg.grade >= lv.min_score AND cg.grade <= lv.max_score
 ),
 course_outcome_results AS (
 	SELECT
@@ -170,19 +180,26 @@ ORDER BY sede, course_code, outcome_code
 `;
 
 export const SEMAPHORE_RC_DETAIL_SQL = `
-WITH weighted_grades AS (
+WITH course_grades AS (
+	-- See SEMAPHORE_RC_SCREEN_SQL: single designated-grade-type row, ASISTIO only.
 	SELECT
 		sse.id AS enrollment_id,
-		ROUND(SUM(scg.grade * scg.grade_type_percentage / 100), 2) AS weighted_average
+		scg.grade AS grade
 	FROM academic.student_course_grades scg
 	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+	JOIN academic.courses c ON c.id = cs.course_id
+	JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.id = spc.study_plan_academic_period_id
+		AND spap.academic_period_id = cs.academic_period_id
+	JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
 	WHERE cs.academic_period_id = $1::int
 	  AND sse.is_active = true
 	  AND es.is_active = true
-	GROUP BY sse.id
-	HAVING SUM(scg.grade * scg.grade_type_percentage / 100) IS NOT NULL
+	  AND scg.grade_type_id = (spc.extra->>'grade_type_id')::int
+	  AND qst.code = 'TG404-T001'
 ),
 filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
@@ -202,12 +219,12 @@ levels AS (
 ),
 classified_grades AS (
 	SELECT
-		wg.enrollment_id,
-		wg.weighted_average,
+		cg.enrollment_id,
+		cg.grade,
 		lv.level_rank
-	FROM weighted_grades wg
+	FROM course_grades cg
 	LEFT JOIN levels lv
-		ON wg.weighted_average >= lv.min_score AND wg.weighted_average <= lv.max_score
+		ON cg.grade >= lv.min_score AND cg.grade <= lv.max_score
 ),
 course_outcome_results AS (
 	SELECT
@@ -263,9 +280,11 @@ scored AS (
 	FROM weighted_levels
 ),
 windowed AS (
+	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- not report-wide -- a critical course somewhere else must not suppress the
+	-- dominant-course fallback for a Sede+Outcome that has no critical course of its own.
 	SELECT
 		*,
-		MAX(peso) OVER ()                                       AS global_max_peso,
 		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
 		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
 	FROM scored
@@ -273,8 +292,8 @@ windowed AS (
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN global_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN global_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max
+		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
+		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max
 	FROM windowed
 )
 SELECT
@@ -294,19 +313,26 @@ ORDER BY sede, outcome_code, level_rank, course_code
 `;
 
 export const SEMAPHORE_RC_SUMMARY_SQL = `
-WITH weighted_grades AS (
+WITH course_grades AS (
+	-- See SEMAPHORE_RC_SCREEN_SQL: single designated-grade-type row, ASISTIO only.
 	SELECT
 		sse.id AS enrollment_id,
-		ROUND(SUM(scg.grade * scg.grade_type_percentage / 100), 2) AS weighted_average
+		scg.grade AS grade
 	FROM academic.student_course_grades scg
 	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+	JOIN academic.courses c ON c.id = cs.course_id
+	JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+	JOIN academic.study_plan_academic_periods spap
+		ON spap.id = spc.study_plan_academic_period_id
+		AND spap.academic_period_id = cs.academic_period_id
+	JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
 	WHERE cs.academic_period_id = $1::int
 	  AND sse.is_active = true
 	  AND es.is_active = true
-	GROUP BY sse.id
-	HAVING SUM(scg.grade * scg.grade_type_percentage / 100) IS NOT NULL
+	  AND scg.grade_type_id = (spc.extra->>'grade_type_id')::int
+	  AND qst.code = 'TG404-T001'
 ),
 filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
@@ -326,12 +352,12 @@ levels AS (
 ),
 classified_grades AS (
 	SELECT
-		wg.enrollment_id,
-		wg.weighted_average,
+		cg.enrollment_id,
+		cg.grade,
 		lv.level_rank
-	FROM weighted_grades wg
+	FROM course_grades cg
 	LEFT JOIN levels lv
-		ON wg.weighted_average >= lv.min_score AND wg.weighted_average <= lv.max_score
+		ON cg.grade >= lv.min_score AND cg.grade <= lv.max_score
 ),
 course_outcome_results AS (
 	SELECT
@@ -378,9 +404,10 @@ scored AS (
 	FROM weighted_levels
 ),
 windowed AS (
+	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- not report-wide.
 	SELECT
 		*,
-		MAX(peso) OVER ()                                       AS global_max_peso,
 		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
 		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
 	FROM scored
@@ -388,8 +415,8 @@ windowed AS (
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN global_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN global_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max,
+		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
+		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max,
 		ROW_NUMBER() OVER (PARTITION BY sede, outcome_code ORDER BY level_rank ASC) AS row_rank
 	FROM windowed
 )
@@ -505,9 +532,11 @@ scored AS (
 	FROM weighted_levels
 ),
 windowed AS (
+	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- not report-wide -- a critical course somewhere else must not suppress the
+	-- dominant-course fallback for a Sede+Outcome that has no critical course of its own.
 	SELECT
 		*,
-		MAX(peso) OVER ()                                       AS global_max_peso,
 		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
 		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
 	FROM scored
@@ -515,8 +544,8 @@ windowed AS (
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN global_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN global_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max
+		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
+		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max
 	FROM windowed
 )
 SELECT
@@ -623,9 +652,10 @@ scored AS (
 	FROM weighted_levels
 ),
 windowed AS (
+	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- not report-wide.
 	SELECT
 		*,
-		MAX(peso) OVER ()                                       AS global_max_peso,
 		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
 		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
 	FROM scored
@@ -633,8 +663,8 @@ windowed AS (
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN global_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN global_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max,
+		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
+		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max,
 		ROW_NUMBER() OVER (PARTITION BY sede, outcome_code ORDER BY level_rank ASC) AS row_rank
 	FROM windowed
 )
