@@ -65,9 +65,28 @@ export class SemaphoreFilterDto {
 		type: [Number],
 		example: [1, 2],
 		required: false,
-		description: 'RV only: rubric IDs to include. Omit for all rubrics.',
+		description:
+			'RV only: rubric IDs to include. Omit for all rubrics. Deprecated: prefer gradeTypeIds.',
 	})
 	rubricIds?: number[];
+
+	@Transform(({ value }) => {
+		if (value === undefined || value === null || value === '') return undefined;
+		const list = Array.isArray(value) ? value : [value];
+		const parsed = list.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+		return parsed.length > 0 ? parsed : undefined;
+	})
+	@IsOptional()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	@ApiProperty({
+		type: [Number],
+		example: [1, 2],
+		required: false,
+		description:
+			'RV only: grade type IDs (tipo de nota, core.types group TG205) to include. Filters RV grades by their rubric grade type. Omit for all.',
+	})
+	gradeTypeIds?: number[];
 }
 
 export class SemaphoreLevelLegendDto {
@@ -120,6 +139,7 @@ export class SemaphoreCourseDetailRowDto {
 	courseName: string;
 	count: number;
 	totalStudents: number;
+	percentage: number;
 }
 
 export class SemaphoreMetadataDto {

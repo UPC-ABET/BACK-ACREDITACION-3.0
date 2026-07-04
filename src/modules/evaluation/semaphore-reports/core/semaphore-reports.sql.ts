@@ -114,9 +114,11 @@ scaled_grades AS (
 	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
+	LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
 	WHERE sse.is_active = true
 	  AND es.is_active = true
 	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+	  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
 ),
 classified_grades AS (
 	SELECT
@@ -283,6 +285,7 @@ SELECT
 	level_rank                                                   AS "levelRank",
 	cantidad                                                     AS "cantidad",
 	total_students                                               AS "totalStudents",
+	porcentaje                                                   AS "porcentaje",
 	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede",
 	ciclo_academico                                              AS "cicloAcademico"
 FROM final_rows
@@ -399,7 +402,9 @@ SELECT
 	porcentaje                                                   AS "porcentaje",
 	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede"
 FROM final_rows
-WHERE effective_peso = effective_group_max AND row_rank = 1
+-- Only critical outcomes: a (sede, outcome) group is critical when its lowest
+-- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_peso = 1.
+WHERE group_max_peso = 1 AND effective_peso = effective_group_max AND row_rank = 1
 ORDER BY sede, outcome_code
 `;
 
@@ -434,9 +439,11 @@ scaled_grades AS (
 	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
+	LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
 	WHERE sse.is_active = true
 	  AND es.is_active = true
 	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+	  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
 ),
 classified_grades AS (
 	SELECT
@@ -520,6 +527,7 @@ SELECT
 	level_rank                                                   AS "levelRank",
 	cantidad                                                     AS "cantidad",
 	total_students                                               AS "totalStudents",
+	porcentaje                                                   AS "porcentaje",
 	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede",
 	ciclo_academico                                              AS "cicloAcademico"
 FROM final_rows
@@ -558,9 +566,11 @@ scaled_grades AS (
 	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
+	LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
 	WHERE sse.is_active = true
 	  AND es.is_active = true
 	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+	  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
 ),
 classified_grades AS (
 	SELECT
@@ -637,7 +647,9 @@ SELECT
 	porcentaje                                                   AS "porcentaje",
 	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede"
 FROM final_rows
-WHERE effective_peso = effective_group_max AND row_rank = 1
+-- Only critical outcomes: a (sede, outcome) group is critical when its lowest
+-- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_peso = 1.
+WHERE group_max_peso = 1 AND effective_peso = effective_group_max AND row_rank = 1
 ORDER BY sede, outcome_code
 `;
 
