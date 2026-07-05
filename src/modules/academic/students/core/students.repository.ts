@@ -20,7 +20,6 @@ export class StudentRepository extends BaseRepository<StudentEntity> {
 		} as FindManyOptions<StudentEntity>);
 	}
 
-	/** Active course-section codes per student, for students that currently have any enrollment. */
 	async findActiveSectionCodesByStudentIds(
 		studentIds: number[],
 	): Promise<Array<{ studentId: number; sectionCode: string }>> {

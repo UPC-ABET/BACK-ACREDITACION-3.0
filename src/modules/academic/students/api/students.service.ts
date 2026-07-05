@@ -4,6 +4,7 @@ import { BaseService } from 'src/commons/base.service';
 import { StudentRepository } from '../core/students.repository';
 import { StudentValidation } from '../core/students.validation';
 import { CreateStudentDto, UpdateStudentDto } from '../model/students.dtos';
+import { StudentEntity } from '../model/students.entity';
 
 @Injectable()
 export class StudentService extends BaseService<StudentRepository> {
@@ -34,8 +35,7 @@ export class StudentService extends BaseService<StudentRepository> {
 		return super.getByFilters(filters);
 	}
 
-	/** Enriches student search results with the course sections they're currently enrolled in. */
-	private async attachActiveSections(students: any[]) {
+	private async attachActiveSections(students: StudentEntity[]) {
 		const studentIds = students.map((student) => student.id);
 		const sectionRows = await this.repository.findActiveSectionCodesByStudentIds(studentIds);
 
