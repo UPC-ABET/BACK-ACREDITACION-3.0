@@ -2,7 +2,7 @@ import { runSeed, i18n } from '../seed-runner';
 import { hashPassword } from 'src/libs/secure.functions';
 
 runSeed('organization users and staff', async (tenantDataSource) => {
-	const mockPassword = await hashPassword('Password123!');
+	const mockPassword = await hashPassword(process.env.DEFAULT_USER_PASSWORD ?? 'Password123!');
 
 	await tenantDataSource.query(
 		`
