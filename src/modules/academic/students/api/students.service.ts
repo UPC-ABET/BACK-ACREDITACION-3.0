@@ -28,8 +28,27 @@ export class StudentService extends BaseService<StudentRepository> {
 
 	async getByFilters(filters: Record<string, any>) {
 		if (filters.code !== undefined) {
-			return this.normalizeJsonbColumns(await this.repository.findByPartialCode(filters));
+			const students = this.normalizeJsonbColumns(await this.repository.findByPartialCode(filters));
+			return this.attachActiveSections(students);
 		}
 		return super.getByFilters(filters);
+	}
+
+	/** Enriches student search results with the course sections they're currently enrolled in. */
+	private async attachActiveSections(students: any[]) {
+		const studentIds = students.map((student) => student.id);
+		const sectionRows = await this.repository.findActiveSectionCodesByStudentIds(studentIds);
+
+		const sectionsByStudentId = new Map<number, string[]>();
+		for (const row of sectionRows) {
+			const codes = sectionsByStudentId.get(row.studentId) ?? [];
+			codes.push(row.sectionCode);
+			sectionsByStudentId.set(row.studentId, codes);
+		}
+
+		return students.map((student) => ({
+			...student,
+			sections: sectionsByStudentId.get(student.id) ?? [],
+		}));
 	}
 }
