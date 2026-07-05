@@ -36,6 +36,11 @@ export class ProjectValidation {
 			}
 		}
 
+		if (data.projectGroupId) {
+			const group = await repo.getProjectGroupById(data.projectGroupId);
+			if (!group) errors.push(projectsValidationStrings.error.projectGroupNotFound);
+		}
+
 		if (errors.length > 0) {
 			throw new BadRequestError({
 				message: projectsValidationStrings.result.updateFailed,

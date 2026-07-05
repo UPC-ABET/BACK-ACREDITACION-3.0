@@ -46,6 +46,14 @@ export class CreateProjectDto {
 	@ApiProperty({ example: 1, required: true, description: 'ID del study_plan_course' })
 	studyPlanCourseId: number;
 
+	@IsInt()
+	@ApiProperty({
+		example: 1,
+		required: true,
+		description: 'ID del grupo de proyecto (empresa virtual) al que pertenece el proyecto',
+	})
+	projectGroupId: number;
+
 	@IsArray()
 	@IsInt({ each: true })
 	@ApiProperty({
@@ -101,6 +109,15 @@ export class UpdateProjectDto {
 	@IsObject()
 	@ApiProperty({ example: { es: 'descriptionEs', en: 'descriptionEn' }, required: false })
 	description?: I18nText;
+
+	@IsOptional()
+	@IsInt()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'ID del grupo de proyecto (empresa virtual) al que pertenece el proyecto',
+	})
+	projectGroupId?: number;
 
 	@IsOptional()
 	@IsArray()
@@ -351,6 +368,11 @@ export class ProjectDetailsResponseDto {
 		code: string;
 		name: I18nText;
 		description: I18nText;
+		projectGroup: {
+			id: number;
+			code: string;
+			name: I18nText;
+		} | null;
 	};
 
 	@ApiProperty({ example: {} })
@@ -438,6 +460,15 @@ export class FilterProjectDto extends PaginationQueryDto {
 		description: 'ID del programa/carrera',
 	})
 	programId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'ID del grupo de proyecto (empresa virtual)',
+	})
+	projectGroupId?: number;
 
 	@IsOptional()
 	@IsNumber()

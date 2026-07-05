@@ -46,6 +46,7 @@ import { TypeModule } from './modules/core/types/types.module';
 import { ProjectEvaluatorModule } from './modules/evaluation/project-evaluators/project-evaluators.module';
 import { ProjectStudentModule } from './modules/evaluation/project-students/project-students.module';
 import { ProjectModule } from './modules/evaluation/projects/projects.module';
+import { ProjectGroupModule } from './modules/evaluation/project-groups/project-groups.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
 import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
@@ -217,6 +218,7 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		ProjectEvaluatorModule,
 		ProjectStudentModule,
 		ProjectModule,
+		ProjectGroupModule,
 		UploadsModule,
 		ConfigurationModule,
 		RoleModule,

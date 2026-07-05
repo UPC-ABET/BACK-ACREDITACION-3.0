@@ -79,10 +79,17 @@ export interface CreateProjectArgs {
 	code: string;
 	name: CreateProjectDto['name'];
 	description: CreateProjectDto['description'];
+	projectGroupId: number;
 	isActive: boolean;
 	extra: CreateProjectDto['extra'];
 	studentSectionEnrollmentIds: number[];
 	evaluators: CreateProjectDto['evaluators'];
+}
+
+export interface ProjectGroupScopeRow {
+	id: number;
+	academicPeriodId: number;
+	programId: number;
 }
 
 export interface ProjectsByProfessorFilterArgs {
@@ -153,6 +160,11 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		}
 		if (filters.isActive !== undefined) {
 			qb.andWhere('project.is_active = :isActive', { isActive: filters.isActive });
+		}
+		if (filters.projectGroupId) {
+			qb.andWhere('project.project_group_id = :projectGroupId', {
+				projectGroupId: filters.projectGroupId,
+			});
 		}
 		if (filters.professorId) {
 			qb.leftJoin('project.evaluators', 'pe_f', 'pe_f.is_active = true');
@@ -250,6 +262,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.where('project.id IN (:...projectIds)', { projectIds })
 			.leftJoinAndSelect('project.students', 'ps')
 			.leftJoinAndSelect('project.evaluators', 'pe', 'pe.is_active = true')
+			.leftJoinAndSelect('project.projectGroup', 'pg')
 			.leftJoin(
 				StudentSectionEnrollmentEntity,
 				'sse_enrich',
@@ -418,12 +431,24 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return rows.length > 0;
 	}
 
+	async getProjectGroupById(projectGroupId: number): Promise<ProjectGroupScopeRow | null> {
+		const [row] = (await this.dataSource.query(
+			`SELECT id, academic_period_id AS "academicPeriodId", program_id AS "programId"
+			 FROM   evaluation.project_groups
+			 WHERE  id = $1
+			 LIMIT  1`,
+			[projectGroupId],
+		)) as ProjectGroupScopeRow[];
+		return row ?? null;
+	}
+
 	async createProjectWithChildren(args: CreateProjectArgs): Promise<ProjectEntity> {
 		return await this.dataSource.transaction(async (manager) => {
 			const project = manager.create(ProjectEntity, {
 				code: args.code,
 				name: args.name,
 				description: args.description,
+				projectGroupId: args.projectGroupId,
 				isActive: args.isActive,
 				extra: args.extra,
 			});
@@ -456,6 +481,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	async getProjectDetailEntity(projectId: number): Promise<ProjectEntity | null> {
 		return await this.repository
 			.createQueryBuilder('p')
+			.leftJoinAndSelect('p.projectGroup', 'pg')
 			.leftJoinAndSelect('p.students', 's')
 			.leftJoinAndSelect('s.studentSectionEnrollment', 'sse')
 			.leftJoinAndSelect('sse.enrolledStudent', 'es')

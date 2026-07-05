@@ -138,6 +138,13 @@ export class ProjectDetailsService {
 				code: project.code || '',
 				name: project.name,
 				description: project.description || { es: '', en: '' },
+				projectGroup: project.projectGroup
+					? {
+							id: project.projectGroup.id,
+							code: project.projectGroup.code,
+							name: project.projectGroup.name,
+						}
+					: null,
 			},
 			academicPeriod: {
 				id: academicPeriod?.id,

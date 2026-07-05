@@ -4,6 +4,7 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		projectNameEs: 'Nombre del proyecto (ES)',
 		projectNameEn: 'Nombre del proyecto (EN)',
 		courseCode: 'Código del curso',
+		projectGroupCode: 'Código del grupo de proyecto',
 		studentCode: 'Código del alumno',
 		errorColumn: 'Mensaje de error',
 		errorsFileName: 'ErroresCargaProyectos.xlsx',
@@ -24,6 +25,7 @@ export const projectsTemplateLabels: Record<string, Record<string, string>> = {
 		projectNameEs: 'Project name (ES)',
 		projectNameEn: 'Project name (EN)',
 		courseCode: 'Course code',
+		projectGroupCode: 'Project group code',
 		studentCode: 'Student code',
 		errorColumn: 'Error message',
 		errorsFileName: 'ProjectsUploadErrors.xlsx',
@@ -77,6 +79,13 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 				'Código del curso asociado al proyecto. Debe ser un curso evaluable en el periodo académico.',
 			required: true,
 			example: 'CURSXXXX',
+		},
+		{
+			field: 'Código del grupo de proyecto',
+			description:
+				'Código del grupo de proyecto (empresa virtual) al que pertenece el proyecto. Obligatorio para proyectos nuevos. Si el grupo no existe en el periodo y la carrera del curso, se crea automáticamente (nombre = código, editable luego en Grupos de proyecto). Puede omitirse al re-subir un proyecto existente solo para actualizar evaluadores.',
+			required: true,
+			example: 'GRP-XXXX-01',
 		},
 		{
 			field: 'Código del alumno',
@@ -151,6 +160,13 @@ export const projectsFieldInstructions: Record<string, FieldInstruction[]> = {
 			example: 'COURSXXXX',
 		},
 		{
+			field: 'Project group code',
+			description:
+				'Code of the project group (virtual company) the project belongs to. Required for new projects. If the group does not exist for the period and the course career, it is auto-created (name = code, editable later under Project groups). May be omitted when re-uploading an existing project only to update evaluators.',
+			required: true,
+			example: 'GRP-XXXX-01',
+		},
+		{
 			field: 'Student code',
 			description:
 				'Code of a member student. Each student occupies one row. Optional if the project already exists and only evaluators need to be updated.',
@@ -218,6 +234,8 @@ export const projectsErrorMessages: Record<string, Record<string, string>> = {
 			'El proyecto nuevo debe tener nombre en español e inglés en al menos una fila.',
 		newProjectRequiresStudent:
 			'El proyecto es nuevo y debe tener al menos una fila con código de alumno.',
+		projectGroupCodeRequired:
+			'El proyecto es nuevo y debe indicar el código del grupo de proyecto.',
 		courseNotFound: 'No existe un curso con ese código.',
 		courseNotEvaluable:
 			'El curso no está configurado como evaluable (is_evaluable) en el periodo académico.',
@@ -236,6 +254,7 @@ export const projectsErrorMessages: Record<string, Record<string, string>> = {
 		projectNameEmpty: 'A new project must have a name in Spanish and English on at least one row.',
 		newProjectRequiresStudent:
 			'The project is new and must have at least one row with a student code.',
+		projectGroupCodeRequired: 'The project is new and must provide the project group code.',
 		courseNotFound: 'No course exists with that code.',
 		courseNotEvaluable:
 			'The course is not configured as evaluable (is_evaluable) in the academic period.',

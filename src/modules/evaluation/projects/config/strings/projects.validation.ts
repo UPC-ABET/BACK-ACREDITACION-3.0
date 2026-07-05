@@ -19,6 +19,8 @@ export const projectsValidationStrings = {
 		invalidGradeTypeCode: 'error.project.invalidGradeTypeCode',
 		invalidCompetencyScopeCode: 'error.project.invalidCompetencyScopeCode',
 		hasEvaluations: 'error.project.hasEvaluations',
+		projectGroupNotFound: 'error.project.projectGroupNotFound',
+		projectGroupPeriodMismatch: 'error.project.projectGroupPeriodMismatch',
 	},
 	result: {
 		createFailed: 'error.project.createFailed',

@@ -57,6 +57,18 @@ export class ProjectConfigService {
 			throw new BadRequestException(projectsValidationStrings.error.noAcademicPeriod);
 		}
 
+		// the project group (empresa virtual) must exist and belong to the same academic period
+		const projectGroup = await this.projectRepository.getProjectGroupById(dto.projectGroupId);
+		if (!projectGroup) {
+			throw new BadRequestException({
+				message: projectsValidationStrings.error.projectGroupNotFound,
+				errors: [`projectGroupId ${dto.projectGroupId}`],
+			});
+		}
+		if (projectGroup.academicPeriodId !== academicPeriodId) {
+			throw new BadRequestException(projectsValidationStrings.error.projectGroupPeriodMismatch);
+		}
+
 		const duplicateCode = await this.projectRepository.existsProjectWithCodeInPeriod(
 			dto.code,
 			academicPeriodId,
@@ -144,6 +156,7 @@ export class ProjectConfigService {
 			code: dto.code,
 			name: dto.name,
 			description: dto.description,
+			projectGroupId: dto.projectGroupId,
 			isActive: dto.isActive ?? true,
 			extra: dto.extra,
 			studentSectionEnrollmentIds: dto.studentSectionEnrollmentIds,
