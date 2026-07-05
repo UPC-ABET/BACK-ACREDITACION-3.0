@@ -16,12 +16,20 @@ export const scrapingExportsRoutes = {
 			alumnosMatriculados: {
 				method: 'GET',
 				route: '/alumnos-matriculados',
-				summary: 'Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape',
+				summary:
+					'Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape',
 			},
 			alumnosSecciones: {
 				method: 'GET',
 				route: '/alumnos-secciones',
-				summary: 'Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape',
+				summary:
+					'Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape',
+			},
+			notasRc: {
+				method: 'GET',
+				route: '/notas-rc',
+				summary:
+					'Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, from the latest Banner scrape',
 			},
 		},
 	},
