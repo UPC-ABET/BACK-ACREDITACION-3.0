@@ -163,9 +163,12 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 	}
 
 	/**
-	 * Returns all non-elective course sections for an academic period.
-	 * When programId is provided, restricts to sections in that program's active study plan.
-	 * When programId is omitted, returns ALL active sections for the period.
+	 * Returns course sections for an academic period whose course has ONLY active
+	 * Control-type outcome mappings articulated for THAT period (mappings from other periods
+	 * or study plans don't count). A course with any mapping of another outcome type
+	 * (Verification/Formation) is excluded, even if it also has Control mappings.
+	 * Electives are included under the same rule. When programId is provided, only
+	 * mappings in that program's active study plans and commissions are considered.
 	 */
 	async getCourseSectionsForPeriod(
 		academicPeriodId: number,
@@ -190,31 +193,45 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			INNER JOIN academic.courses c ON c.id = cs.course_id
 			WHERE cs.academic_period_id = $1
 			  AND c.is_active = true
-			  AND ($2::int IS NULL OR EXISTS (
-				  SELECT 1
-				  FROM academic.study_plans sp
-				  INNER JOIN academic.study_plan_academic_periods spap ON spap.study_plan_id = sp.id
-				  INNER JOIN academic.study_plan_courses spc ON spc.study_plan_academic_period_id = spap.id
-				  WHERE spc.course_id = cs.course_id
-				    AND spap.academic_period_id = $1
-				    AND sp.program_id = $2
-				    AND spc.is_elective = false
-				    AND sp.is_active = true
-				    AND spap.is_active = true
-				    AND spc.is_active = true
-			  ))
 			  AND EXISTS (
 				  SELECT 1
-				  FROM academic.study_plan_courses spc2
-				  INNER JOIN academic.course_outcome_mappings com2 ON com2.study_plan_course_id = spc2.id
-				  INNER JOIN core.types ot ON ot.id = com2.outcome_type_id
-				  INNER JOIN accreditation.outcomes o2 ON o2.id = com2.outcome_id
-				  INNER JOIN accreditation.program_commissions pc2 ON pc2.id = o2.program_commission_id
-				  WHERE spc2.course_id = cs.course_id
+				  FROM academic.study_plan_courses spc
+				  INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+				  INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+				  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc.id
+				  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+				  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+				  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+				  WHERE spc.course_id = cs.course_id
+				    AND spap.academic_period_id = $1
 				    AND ot.code = $3
-				    AND com2.is_active = true
-				    AND spc2.is_active = true
-				    AND ($2::int IS NULL OR pc2.program_id = $2)
+				    AND com.is_active = true
+				    AND spc.is_active = true
+				    AND sp.is_active = true
+				    AND spap.is_active = true
+				    AND ($2::int IS NULL OR (
+				      sp.program_id = $2 AND pc.program_id = $2
+				    ))
+			  )
+			  AND NOT EXISTS (
+				  SELECT 1
+				  FROM academic.study_plan_courses spc
+				  INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+				  INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+				  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc.id
+				  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+				  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+				  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+				  WHERE spc.course_id = cs.course_id
+				    AND spap.academic_period_id = $1
+				    AND ot.code <> $3
+				    AND com.is_active = true
+				    AND spc.is_active = true
+				    AND sp.is_active = true
+				    AND spap.is_active = true
+				    AND ($2::int IS NULL OR (
+				      sp.program_id = $2 AND pc.program_id = $2
+				    ))
 			  )
 			ORDER BY c.name ASC, cs.section_code ASC`,
 			[academicPeriodId, programId ?? null, TYPE_CODES.OUTCOME_TYPE.CONTROL],

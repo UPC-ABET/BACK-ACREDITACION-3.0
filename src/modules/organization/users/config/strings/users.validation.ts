@@ -11,10 +11,14 @@ export const usersValidationStrings = {
 		staffNotFound: 'error.user.staffNotFound',
 		linkedToStaff: 'error.user.linkedToStaff',
 		hasActivityHistory: 'error.user.hasActivityHistory',
+		invalidPasswordResetToken: 'error.user.invalidPasswordResetToken',
+		passwordResetMailFailed: 'error.user.passwordResetMailFailed',
 	},
 	result: {
 		createFailed: 'error.user.createFailed',
 		updateFailed: 'error.user.updateFailed',
 		deleteFailed: 'error.user.deleteFailed',
+		passwordResetRequested: 'success.user.passwordResetRequested',
+		passwordResetCompleted: 'success.user.passwordResetCompleted',
 	},
 };

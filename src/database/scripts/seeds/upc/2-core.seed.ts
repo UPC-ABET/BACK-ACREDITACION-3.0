@@ -107,7 +107,9 @@ export async function loadCoreParameters(tenantDataSource: DataSource) {
 			 $$ [
 				{"var":"{{first_name}}","description":{"es":"Nombre del usuario","en":"User first name"}},
 				{"var":"{{last_name}}","description":{"es":"Apellido del usuario","en":"User last name"}},
-				{"var":"{{app_link}}","description":{"es":"Enlace a la aplicacion","en":"Application link"}}
+				{"var":"{{app_link}}","description":{"es":"Enlace a la aplicacion","en":"Application link"}},
+				{"var":"{{reset_link}}","description":{"es":"Enlace para restablecer contraseña","en":"Password reset link"}},
+				{"var":"{{expires_minutes}}","description":{"es":"Minutos de vigencia del enlace","en":"Link expiration minutes"}}
 			 ] $$
 			),
 			('PARAMETER_SURVEY_NOTIFICATION_VARS',
@@ -124,6 +126,29 @@ export async function loadCoreParameters(tenantDataSource: DataSource) {
 			)
 		) AS v(code, name, description, value)
 		WHERE NOT EXISTS (SELECT 1 FROM "core"."parameters" p WHERE p.code = v.code);
+	`);
+
+	await tenantDataSource.query(`
+		INSERT INTO "core"."email_templates" (category_type_id, code, name, subject, body)
+		SELECT category.id, v.code, v.name::jsonb, v.subject::jsonb, v.body::jsonb
+		FROM "core"."types" category
+		JOIN (VALUES
+			(
+				'PASSWORD_RESET',
+				$$ {"es":"Restablecimiento de contraseña","en":"Password reset"} $$,
+				$$ {"es":"Restablece tu contraseña","en":"Reset your password"} $$,
+				$$ {"es":"<p>Estimado/a {{first_name}} {{last_name}},</p><p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en la Plataforma de Acreditacion ABET.</p><p>Este enlace para restablecer tu contraseña permanecera vigente durante {{expires_minutes}} minutos.</p><p>Para crear una nueva contraseña, utiliza el siguiente enlace:</p><div style=\\"text-align: center; margin: 30px 0;\\"><a href=\\"{{reset_link}}\\" style=\\"background-color: #d62f2f; color: white; padding: 15px 30px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;\\">RESTABLECER CONTRASEÑA</a></div><p>Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p><p>Saludos cordiales,<br>Equipo de Acreditacion ABET</p>","en":"<p>Dear {{first_name}} {{last_name}},</p><p>We received a request to reset the password for your ABET Accreditation Platform account.</p><p>This password reset link will remain valid for {{expires_minutes}} minutes.</p><p>To create a new password, please use the following link:</p><div style=\\"text-align: center; margin: 30px 0;\\"><a href=\\"{{reset_link}}\\" style=\\"background-color: #d62f2f; color: white; padding: 15px 30px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;\\">RESET PASSWORD</a></div><p>If you did not request this change, you can safely ignore this email.</p><p>Best regards,<br>ABET Accreditation Team</p>"} $$
+			)
+		) AS v(code, name, subject, body)
+			ON category.code = 'TG1004-T001'
+		ON CONFLICT ON CONSTRAINT "UQ_email_templates_code" DO UPDATE
+		SET
+			category_type_id = EXCLUDED.category_type_id,
+			name = EXCLUDED.name,
+			subject = EXCLUDED.subject,
+			body = EXCLUDED.body,
+			is_active = TRUE,
+			updated_at = NOW();
 	`);
 }
 

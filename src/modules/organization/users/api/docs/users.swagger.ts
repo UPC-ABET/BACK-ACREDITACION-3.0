@@ -6,6 +6,8 @@ import {
 	FilterUserDto,
 	ListUsersQueryDto,
 	LoginUserByCredentialsDto,
+	RequestPasswordResetDto,
+	ResetPasswordDto,
 } from '../../model/users.dtos';
 
 const cfg = usersRoutes;
@@ -30,6 +32,15 @@ export const SwaggerUserGetByFilters = () =>
 
 export const SwaggerUserLoginByCredentials = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.loginByCredentials, body: LoginUserByCredentialsDto });
+
+export const SwaggerUserRequestPasswordReset = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.requestPasswordReset,
+		body: RequestPasswordResetDto,
+	});
+
+export const SwaggerUserResetPassword = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.resetPassword, body: ResetPasswordDto });
 
 export const SwaggerUserMe = () => HttpMethodWithSwagger(cfg.operation.me);
 

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 jest.mock('bcryptjs', () => ({
 	__esModule: true,
 	compare: jest.fn(),
+	hash: jest.fn(),
 }));
 import * as bcrypt from 'bcryptjs';
 
@@ -22,6 +23,12 @@ describe('UserService - login', () => {
 		findOneByCondition: jest.Mock;
 		findForLogin: jest.Mock;
 		findActiveByEmail: jest.Mock;
+	};
+	let passwordResetTokenRepository: {
+		expirePendingTokens: jest.Mock;
+		createToken: jest.Mock;
+		findValidTokenWithUser: jest.Mock;
+		completePasswordReset: jest.Mock;
 	};
 	let jwtService: { sign: jest.Mock };
 	let userAuthorizationService: { buildAuthorizationProfile: jest.Mock };
@@ -47,6 +54,12 @@ describe('UserService - login', () => {
 			findForLogin: jest.fn(),
 			findActiveByEmail: jest.fn(),
 		};
+		passwordResetTokenRepository = {
+			expirePendingTokens: jest.fn().mockResolvedValue(undefined),
+			createToken: jest.fn().mockResolvedValue({ id: 1 }),
+			findValidTokenWithUser: jest.fn(),
+			completePasswordReset: jest.fn().mockResolvedValue(undefined),
+		};
 		jwtService = {
 			sign: jest.fn().mockReturnValue('signed-jwt-token'),
 		};
@@ -69,6 +82,7 @@ describe('UserService - login', () => {
 
 		service = new UserService(
 			userRepository as unknown as UserRepository,
+			passwordResetTokenRepository as any,
 			jwtService as unknown as JwtService,
 			userAuthorizationService as unknown as UserAuthorizationService,
 			orgScopeService as unknown as OrgScopeService,
@@ -218,6 +232,80 @@ describe('UserService - login', () => {
 			await (service as any).sendWelcomeEmail(newUser);
 
 			expect(mailService.sendRawEmail).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('requestPasswordReset', () => {
+		const resetUser = {
+			id: 50,
+			email: 'reset.user@example.com',
+			firstName: 'Reset',
+			lastName: 'User',
+		};
+
+		it('creates a reset token and sends the password reset email when the user exists', async () => {
+			userRepository.findActiveByEmail.mockResolvedValueOnce(resetUser);
+			emailTemplateService.findByCode.mockResolvedValueOnce({
+				isActive: true,
+				subject: { es: 'Reset {{first_name}}' },
+				body: { es: 'Open {{reset_link}} before {{expires_minutes}}' },
+			});
+
+			const result = await service.requestPasswordReset(resetUser.email);
+
+			expect(result).toEqual({ message: 'success.user.passwordResetRequested' });
+			expect(passwordResetTokenRepository.expirePendingTokens).toHaveBeenCalledWith(resetUser.id);
+			expect(passwordResetTokenRepository.createToken).toHaveBeenCalledWith(
+				resetUser.id,
+				expect.any(String),
+				expect.any(Date),
+			);
+			expect(mailService.sendRawEmail).toHaveBeenCalledWith({
+				to: resetUser.email,
+				subject: 'Reset Reset',
+				html: expect.stringContaining('/auth/reset-password?token='),
+			});
+		});
+
+		it('returns success without sending email when the user does not exist', async () => {
+			userRepository.findActiveByEmail.mockResolvedValueOnce(null);
+
+			const result = await service.requestPasswordReset('missing@example.com');
+
+			expect(result).toEqual({ message: 'success.user.passwordResetRequested' });
+			expect(passwordResetTokenRepository.createToken).not.toHaveBeenCalled();
+			expect(mailService.sendRawEmail).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resetPassword', () => {
+		it('updates the password and consumes the token when the token is valid', async () => {
+			passwordResetTokenRepository.findValidTokenWithUser.mockResolvedValueOnce({
+				id: 9,
+				userId: 50,
+				email: 'reset.user@example.com',
+				firstName: 'Reset',
+				lastName: 'User',
+			});
+			(bcrypt.hash as unknown as jest.Mock).mockResolvedValueOnce('new-hashed-password');
+
+			const result = await service.resetPassword('raw-token', 'new-password');
+
+			expect(result).toEqual({ message: 'success.user.passwordResetCompleted' });
+			expect(passwordResetTokenRepository.completePasswordReset).toHaveBeenCalledWith(
+				9,
+				50,
+				'new-hashed-password',
+			);
+		});
+
+		it('throws BadRequestException when the token is invalid', async () => {
+			passwordResetTokenRepository.findValidTokenWithUser.mockResolvedValueOnce(null);
+
+			await expect(service.resetPassword('bad-token', 'new-password')).rejects.toThrow(
+				'error.user.invalidPasswordResetToken',
+			);
+			expect(passwordResetTokenRepository.completePasswordReset).not.toHaveBeenCalled();
 		});
 	});
 

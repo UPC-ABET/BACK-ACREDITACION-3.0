@@ -13,6 +13,16 @@ export const usersRoutes = {
 			route: '/login-by-credentials',
 			summary: 'Login de usuario por credenciales',
 		},
+		requestPasswordReset: {
+			method: 'POST',
+			route: '/request-password-reset',
+			summary: 'Request password reset email',
+		},
+		resetPassword: {
+			method: 'POST',
+			route: '/reset-password',
+			summary: 'Reset user password',
+		},
 		me: { method: 'GET', route: '/me', summary: 'Get current user profile' },
 		logout: { method: 'POST', route: '/logout', summary: 'Cerrar Sesión Usuario' },
 	},

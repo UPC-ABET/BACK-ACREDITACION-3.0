@@ -193,6 +193,34 @@ export class LoginUserByCredentialsDto {
 	password: string;
 }
 
+export class RequestPasswordResetDto {
+	@IsEmail()
+	@MaxLength(254)
+	@ApiProperty({
+		example: 'user@example.com',
+		required: true,
+	})
+	email: string;
+}
+
+export class ResetPasswordDto {
+	@IsString()
+	@IsNotEmpty()
+	@ApiProperty({
+		example: 'resetTokenExample',
+		required: true,
+	})
+	token: string;
+
+	@IsString()
+	@MinLength(8)
+	@ApiProperty({
+		example: 'newPasswordExample',
+		required: true,
+	})
+	password: string;
+}
+
 export class GetMeDto {
 	@IsString()
 	@IsNotEmpty()

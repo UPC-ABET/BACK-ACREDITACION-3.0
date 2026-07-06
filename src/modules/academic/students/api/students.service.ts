@@ -4,6 +4,7 @@ import { BaseService } from 'src/commons/base.service';
 import { StudentRepository } from '../core/students.repository';
 import { StudentValidation } from '../core/students.validation';
 import { CreateStudentDto, UpdateStudentDto } from '../model/students.dtos';
+import { StudentEntity } from '../model/students.entity';
 
 @Injectable()
 export class StudentService extends BaseService<StudentRepository> {
@@ -28,8 +29,26 @@ export class StudentService extends BaseService<StudentRepository> {
 
 	async getByFilters(filters: Record<string, any>) {
 		if (filters.code !== undefined) {
-			return this.normalizeJsonbColumns(await this.repository.findByPartialCode(filters));
+			const students = this.normalizeJsonbColumns(await this.repository.findByPartialCode(filters));
+			return this.attachActiveSections(students);
 		}
 		return super.getByFilters(filters);
+	}
+
+	private async attachActiveSections(students: StudentEntity[]) {
+		const studentIds = students.map((student) => student.id);
+		const sectionRows = await this.repository.findActiveSectionCodesByStudentIds(studentIds);
+
+		const sectionsByStudentId = new Map<number, string[]>();
+		for (const row of sectionRows) {
+			const codes = sectionsByStudentId.get(row.studentId) ?? [];
+			codes.push(row.sectionCode);
+			sectionsByStudentId.set(row.studentId, codes);
+		}
+
+		return students.map((student) => ({
+			...student,
+			sections: sectionsByStudentId.get(student.id) ?? [],
+		}));
 	}
 }

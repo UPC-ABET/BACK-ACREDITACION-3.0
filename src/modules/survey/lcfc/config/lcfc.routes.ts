@@ -47,7 +47,7 @@ export const lcfcRoutes = {
 			method: 'GET',
 			route: 'config/available-sections',
 			summary:
-				'List course sections available for config generation (active study plan, non-elective)',
+				'List course sections available for config generation (courses, including electives, whose outcomes in the period are exclusively Control-type)',
 		},
 		sectionOutcomes: {
 			method: 'GET',

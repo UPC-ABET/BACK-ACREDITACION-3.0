@@ -1,5 +1,6 @@
 import {
 	ConflictException,
+	BadRequestException,
 	Injectable,
 	Logger,
 	NotFoundException,
@@ -8,7 +9,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
 import { UserRepository } from '../core/users.repository';
+import { PasswordResetTokenRepository } from '../core/password-reset-token.repository';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { hashPassword } from 'src/libs/secure.functions';
 import { UserValidation } from '../core/users.validation';
 import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from '../model/users.dtos';
@@ -28,6 +31,9 @@ import { isAdmin } from 'src/modules/auth/model/authorization.functions';
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 
 const USER_WELCOME_TEMPLATE_CODE = 'USER_WELCOME';
+const PASSWORD_RESET_TEMPLATE_CODE = 'PASSWORD_RESET';
+const PASSWORD_RESET_TOKEN_BYTES = 32;
+const PASSWORD_RESET_EXPIRES_MINUTES = 30;
 
 @Injectable()
 export class UserService extends BaseService<UserRepository> {
@@ -35,6 +41,7 @@ export class UserService extends BaseService<UserRepository> {
 
 	constructor(
 		protected readonly repository: UserRepository,
+		private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
 		private readonly jwtService: JwtService,
 		private readonly userAuthorizationService: UserAuthorizationService,
 		private readonly orgScopeService: OrgScopeService,
@@ -88,6 +95,41 @@ export class UserService extends BaseService<UserRepository> {
 			accessToken,
 			expiresIn: JWT_EXPIRES_IN_SECONDS,
 		};
+	}
+
+	async requestPasswordReset(email: string) {
+		const user = await this.repository.findActiveByEmail(email);
+		if (!user) {
+			return { message: usersValidationStrings.result.passwordResetRequested };
+		}
+
+		const token = this.createPasswordResetToken();
+		const tokenHash = this.hashPasswordResetToken(token);
+		const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRES_MINUTES * 60 * 1000);
+
+		await this.passwordResetTokenRepository.expirePendingTokens(user.id);
+		await this.passwordResetTokenRepository.createToken(user.id, tokenHash, expiresAt);
+		await this.sendPasswordResetEmail(user, token);
+
+		return { message: usersValidationStrings.result.passwordResetRequested };
+	}
+
+	async resetPassword(token: string, password: string) {
+		const tokenHash = this.hashPasswordResetToken(token);
+		const resetToken = await this.passwordResetTokenRepository.findValidTokenWithUser(tokenHash);
+
+		if (!resetToken) {
+			throw new BadRequestException(usersValidationStrings.error.invalidPasswordResetToken);
+		}
+
+		const passwordHash = await hashPassword(password);
+		await this.passwordResetTokenRepository.completePasswordReset(
+			resetToken.id,
+			resetToken.userId,
+			passwordHash,
+		);
+
+		return { message: usersValidationStrings.result.passwordResetCompleted };
 	}
 
 	private async getAuthorizationProfile(userId: number): Promise<AuthorizationProfile> {
@@ -201,6 +243,49 @@ export class UserService extends BaseService<UserRepository> {
 				`Welcome email failed for ${dto.email}: ${error instanceof Error ? error.message : 'unknown error'}`,
 			);
 		}
+	}
+
+	private async sendPasswordResetEmail(
+		user: Pick<UserEntity, 'email' | 'firstName' | 'lastName'>,
+		token: string,
+	) {
+		const resetLink = this.buildPasswordResetLink(token);
+		const subs: Record<string, string> = {
+			'{{first_name}}': user.firstName ?? '',
+			'{{last_name}}': user.lastName ?? '',
+			'{{reset_link}}': resetLink,
+			'{{expires_minutes}}': String(PASSWORD_RESET_EXPIRES_MINUTES),
+			'{{app_link}}': this.configService.get<string>('APP_FRONTEND_URL') ?? '',
+		};
+
+		const template = await this.emailTemplateService.findByCode(PASSWORD_RESET_TEMPLATE_CODE);
+		const subject = template?.isActive
+			? applyTemplateSubstitutions(pickLocale(template.subject), subs)
+			: 'Password reset request';
+		const html = template?.isActive
+			? applyTemplateSubstitutions(pickLocale(template.body), subs)
+			: `<p>Hello ${user.firstName ?? ''},</p><p>Use this link to reset your password: <a href="${resetLink}">${resetLink}</a></p>`;
+
+		try {
+			await this.mailService.sendRawEmail({ to: user.email, subject, html });
+		} catch {
+			throw new BadRequestException(usersValidationStrings.error.passwordResetMailFailed);
+		}
+	}
+
+	private buildPasswordResetLink(token: string): string {
+		const frontendUrl = this.configService.get<string>('APP_FRONTEND_URL') ?? '';
+		const base = frontendUrl.replace(/\/$/, '');
+		const encodedToken = encodeURIComponent(token);
+		return `${base}/auth/reset-password?token=${encodedToken}`;
+	}
+
+	private createPasswordResetToken(): string {
+		return randomBytes(PASSWORD_RESET_TOKEN_BYTES).toString('base64url');
+	}
+
+	private hashPasswordResetToken(token: string): string {
+		return createHash('sha256').update(token).digest('hex');
 	}
 
 	async update(id: number, dto: UpdateUserDto, manager?: EntityManager) {
