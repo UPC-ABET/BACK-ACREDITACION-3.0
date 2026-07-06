@@ -38,7 +38,14 @@ export class ProjectValidation {
 
 		if (data.projectGroupId) {
 			const group = await repo.getProjectGroupById(data.projectGroupId);
-			if (!group) errors.push(projectsValidationStrings.error.projectGroupNotFound);
+			if (!group) {
+				errors.push(projectsValidationStrings.error.projectGroupNotFound);
+			} else if (entity?.projectGroupId) {
+				const currentGroup = await repo.getProjectGroupById(entity.projectGroupId);
+				if (currentGroup && currentGroup.academicPeriodId !== group.academicPeriodId) {
+					errors.push(projectsValidationStrings.error.projectGroupPeriodMismatch);
+				}
+			}
 		}
 
 		if (errors.length > 0) {

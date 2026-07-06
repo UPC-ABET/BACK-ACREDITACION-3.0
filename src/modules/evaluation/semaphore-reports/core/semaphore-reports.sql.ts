@@ -57,8 +57,8 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
-		camp.name                                                     AS sede,
-		ap.code                                                       AS ciclo_academico,
+		camp.name                                                     AS campus,
+		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
@@ -88,10 +88,10 @@ SELECT
 	students_red                                                 AS "studentsRed",
 	students_yellow                                              AS "studentsYellow",
 	students_green                                                AS "studentsGreen",
-	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede",
-	ciclo_academico                                              AS "cicloAcademico"
+	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
-ORDER BY sede, course_code, outcome_code
+ORDER BY campus, course_code, outcome_code
 `;
 
 export const SEMAPHORE_RV_SCREEN_SQL = `
@@ -146,8 +146,8 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
-		camp.name                                                     AS sede,
-		ap.code                                                       AS ciclo_academico,
+		camp.name                                                     AS campus,
+		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
@@ -173,10 +173,10 @@ SELECT
 	students_red                                                 AS "studentsRed",
 	students_yellow                                              AS "studentsYellow",
 	students_green                                                AS "studentsGreen",
-	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede",
-	ciclo_academico                                              AS "cicloAcademico"
+	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
-ORDER BY sede, course_code, outcome_code
+ORDER BY campus, course_code, outcome_code
 `;
 
 export const SEMAPHORE_RC_DETAIL_SQL = `
@@ -232,8 +232,8 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
-		camp.name                                                     AS sede,
-		ap.code                                                       AS ciclo_academico,
+		camp.name                                                     AS campus,
+		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
@@ -255,45 +255,45 @@ course_outcome_results AS (
 	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
 ),
 level_rows AS (
-	SELECT course_code, course_name, outcome_code, outcome_name, sede, ciclo_academico,
-		1 AS level_rank, students_red AS cantidad, total_students
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+		1 AS level_rank, students_red AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, sede, ciclo_academico,
-		2 AS level_rank, students_yellow AS cantidad, total_students
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+		2 AS level_rank, students_yellow AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, sede, ciclo_academico,
-		3 AS level_rank, students_green AS cantidad, total_students
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+		3 AS level_rank, students_green AS quantity, total_students
 	FROM course_outcome_results
 ),
 weighted_levels AS (
 	SELECT
 		*,
-		ROUND(cantidad::numeric / NULLIF(total_students, 0) * 100, 2) AS porcentaje
+		ROUND(quantity::numeric / NULLIF(total_students, 0) * 100, 2) AS percentage
 	FROM level_rows
 ),
 scored AS (
 	SELECT
 		*,
-		CASE WHEN level_rank = 1 AND porcentaje >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS peso
+		CASE WHEN level_rank = 1 AND percentage >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS weight
 	FROM weighted_levels
 ),
 windowed AS (
-	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide -- a critical course somewhere else must not suppress the
-	-- dominant-course fallback for a Sede+Outcome that has no critical course of its own.
+	-- dominant-course fallback for a Campus+Outcome that has no critical course of its own.
 	SELECT
 		*,
-		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
-		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
+		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max
+		CASE WHEN group_max_weight = 1 THEN weight ELSE quantity END     AS effective_weight,
+		CASE WHEN group_max_weight = 1 THEN group_max_weight ELSE group_max_quantity END AS effective_group_max
 	FROM windowed
 )
 SELECT
@@ -302,14 +302,14 @@ SELECT
 	outcome_code                                                 AS "outcomeCode",
 	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
-	cantidad                                                     AS "cantidad",
+	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
-	porcentaje                                                   AS "porcentaje",
-	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede",
-	ciclo_academico                                              AS "cicloAcademico"
+	percentage                                                   AS "percentage",
+	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM final_rows
-WHERE effective_peso = effective_group_max
-ORDER BY sede, outcome_code, level_rank, course_code
+WHERE effective_weight = effective_group_max
+ORDER BY campus, outcome_code, level_rank, course_code
 `;
 
 export const SEMAPHORE_RC_SUMMARY_SQL = `
@@ -364,7 +364,7 @@ course_outcome_results AS (
 		c.code                                                        AS course_code,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
-		camp.name                                                     AS sede,
+		camp.name                                                     AS campus,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
@@ -385,54 +385,54 @@ course_outcome_results AS (
 	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.name
 ),
 level_rows AS (
-	SELECT course_code, outcome_code, outcome_name, sede, 1 AS level_rank, students_red AS cantidad, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, 1 AS level_rank, students_red AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, sede, 2 AS level_rank, students_yellow AS cantidad, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, 2 AS level_rank, students_yellow AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, sede, 3 AS level_rank, students_green AS cantidad, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, 3 AS level_rank, students_green AS quantity, total_students FROM course_outcome_results
 ),
 weighted_levels AS (
 	SELECT
 		*,
-		ROUND(cantidad::numeric / NULLIF(total_students, 0) * 100, 2) AS porcentaje
+		ROUND(quantity::numeric / NULLIF(total_students, 0) * 100, 2) AS percentage
 	FROM level_rows
 ),
 scored AS (
 	SELECT
 		*,
-		CASE WHEN level_rank = 1 AND porcentaje >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS peso
+		CASE WHEN level_rank = 1 AND percentage >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS weight
 	FROM weighted_levels
 ),
 windowed AS (
-	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide.
 	SELECT
 		*,
-		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
-		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
+		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max,
-		ROW_NUMBER() OVER (PARTITION BY sede, outcome_code ORDER BY level_rank ASC) AS row_rank
+		CASE WHEN group_max_weight = 1 THEN weight ELSE quantity END     AS effective_weight,
+		CASE WHEN group_max_weight = 1 THEN group_max_weight ELSE group_max_quantity END AS effective_group_max,
+		ROW_NUMBER() OVER (PARTITION BY campus, outcome_code ORDER BY level_rank ASC) AS row_rank
 	FROM windowed
 )
 SELECT
 	outcome_code                                                 AS "outcomeCode",
 	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
-	cantidad                                                     AS "cantidad",
+	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
-	porcentaje                                                   AS "porcentaje",
-	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede"
+	percentage                                                   AS "percentage",
+	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus"
 FROM final_rows
--- Only critical outcomes: a (sede, outcome) group is critical when its lowest
--- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_peso = 1.
-WHERE group_max_peso = 1 AND effective_peso = effective_group_max AND row_rank = 1
-ORDER BY sede, outcome_code
+-- Only critical outcomes: a (campus, outcome) group is critical when its lowest
+-- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_weight = 1.
+WHERE group_max_weight = 1 AND effective_weight = effective_group_max AND row_rank = 1
+ORDER BY campus, outcome_code
 `;
 
 export const SEMAPHORE_RV_DETAIL_SQL = `
@@ -489,8 +489,8 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
-		camp.name                                                     AS sede,
-		ap.code                                                       AS ciclo_academico,
+		camp.name                                                     AS campus,
+		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
@@ -507,45 +507,45 @@ course_outcome_results AS (
 	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
 ),
 level_rows AS (
-	SELECT course_code, course_name, outcome_code, outcome_name, sede, ciclo_academico,
-		1 AS level_rank, students_red AS cantidad, total_students
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+		1 AS level_rank, students_red AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, sede, ciclo_academico,
-		2 AS level_rank, students_yellow AS cantidad, total_students
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+		2 AS level_rank, students_yellow AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, sede, ciclo_academico,
-		3 AS level_rank, students_green AS cantidad, total_students
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+		3 AS level_rank, students_green AS quantity, total_students
 	FROM course_outcome_results
 ),
 weighted_levels AS (
 	SELECT
 		*,
-		ROUND(cantidad::numeric / NULLIF(total_students, 0) * 100, 2) AS porcentaje
+		ROUND(quantity::numeric / NULLIF(total_students, 0) * 100, 2) AS percentage
 	FROM level_rows
 ),
 scored AS (
 	SELECT
 		*,
-		CASE WHEN level_rank = 1 AND porcentaje >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS peso
+		CASE WHEN level_rank = 1 AND percentage >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS weight
 	FROM weighted_levels
 ),
 windowed AS (
-	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide -- a critical course somewhere else must not suppress the
-	-- dominant-course fallback for a Sede+Outcome that has no critical course of its own.
+	-- dominant-course fallback for a Campus+Outcome that has no critical course of its own.
 	SELECT
 		*,
-		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
-		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
+		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max
+		CASE WHEN group_max_weight = 1 THEN weight ELSE quantity END     AS effective_weight,
+		CASE WHEN group_max_weight = 1 THEN group_max_weight ELSE group_max_quantity END AS effective_group_max
 	FROM windowed
 )
 SELECT
@@ -554,14 +554,14 @@ SELECT
 	outcome_code                                                 AS "outcomeCode",
 	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
-	cantidad                                                     AS "cantidad",
+	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
-	porcentaje                                                   AS "porcentaje",
-	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede",
-	ciclo_academico                                              AS "cicloAcademico"
+	percentage                                                   AS "percentage",
+	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM final_rows
-WHERE effective_peso = effective_group_max
-ORDER BY sede, outcome_code, level_rank, course_code
+WHERE effective_weight = effective_group_max
+ORDER BY campus, outcome_code, level_rank, course_code
 `;
 
 export const SEMAPHORE_RV_SUMMARY_SQL = `
@@ -617,7 +617,7 @@ course_outcome_results AS (
 		c.code                                                        AS course_code,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
-		camp.name                                                     AS sede,
+		camp.name                                                     AS campus,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
@@ -633,54 +633,54 @@ course_outcome_results AS (
 	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.name
 ),
 level_rows AS (
-	SELECT course_code, outcome_code, outcome_name, sede, 1 AS level_rank, students_red AS cantidad, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, 1 AS level_rank, students_red AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, sede, 2 AS level_rank, students_yellow AS cantidad, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, 2 AS level_rank, students_yellow AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, sede, 3 AS level_rank, students_green AS cantidad, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, 3 AS level_rank, students_green AS quantity, total_students FROM course_outcome_results
 ),
 weighted_levels AS (
 	SELECT
 		*,
-		ROUND(cantidad::numeric / NULLIF(total_students, 0) * 100, 2) AS porcentaje
+		ROUND(quantity::numeric / NULLIF(total_students, 0) * 100, 2) AS percentage
 	FROM level_rows
 ),
 scored AS (
 	SELECT
 		*,
-		CASE WHEN level_rank = 1 AND porcentaje >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS peso
+		CASE WHEN level_rank = 1 AND percentage >= ${CRITICAL_RED_THRESHOLD} THEN 1 ELSE 0 END AS weight
 	FROM weighted_levels
 ),
 windowed AS (
-	-- "Is there a critical course?" must be decided per Sede+Outcome (group_max_peso),
+	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide.
 	SELECT
 		*,
-		MAX(peso) OVER (PARTITION BY sede, outcome_code)        AS group_max_peso,
-		MAX(cantidad) OVER (PARTITION BY sede, outcome_code)    AS group_max_cantidad
+		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
 	SELECT
 		*,
-		CASE WHEN group_max_peso = 1 THEN peso ELSE cantidad END     AS effective_peso,
-		CASE WHEN group_max_peso = 1 THEN group_max_peso ELSE group_max_cantidad END AS effective_group_max,
-		ROW_NUMBER() OVER (PARTITION BY sede, outcome_code ORDER BY level_rank ASC) AS row_rank
+		CASE WHEN group_max_weight = 1 THEN weight ELSE quantity END     AS effective_weight,
+		CASE WHEN group_max_weight = 1 THEN group_max_weight ELSE group_max_quantity END AS effective_group_max,
+		ROW_NUMBER() OVER (PARTITION BY campus, outcome_code ORDER BY level_rank ASC) AS row_rank
 	FROM windowed
 )
 SELECT
 	outcome_code                                                 AS "outcomeCode",
 	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
-	cantidad                                                     AS "cantidad",
+	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
-	porcentaje                                                   AS "porcentaje",
-	COALESCE(sede->>$4::text, sede->>'es', '')                   AS "sede"
+	percentage                                                   AS "percentage",
+	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus"
 FROM final_rows
--- Only critical outcomes: a (sede, outcome) group is critical when its lowest
--- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_peso = 1.
-WHERE group_max_peso = 1 AND effective_peso = effective_group_max AND row_rank = 1
-ORDER BY sede, outcome_code
+-- Only critical outcomes: a (campus, outcome) group is critical when its lowest
+-- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_weight = 1.
+WHERE group_max_weight = 1 AND effective_weight = effective_group_max AND row_rank = 1
+ORDER BY campus, outcome_code
 `;
 
 export const SEMAPHORE_LEVELS_LEGEND_SQL = `

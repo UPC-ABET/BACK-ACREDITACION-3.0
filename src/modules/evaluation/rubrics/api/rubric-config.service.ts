@@ -47,7 +47,7 @@ export class RubricConfigService {
 		private readonly rubricConfigRepository: RubricConfigRepository,
 	) {}
 
-	private async resolveRubricTypeIdByCode(code: string): Promise<number | null> {
+	private async resolveTypeIdByCode(code: string): Promise<number | null> {
 		const type = await this.typeRepo.findOne({ where: { code } });
 		return type?.id ?? null;
 	}
@@ -125,8 +125,8 @@ export class RubricConfigService {
 			}
 		}
 
-		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
-		const multipleScopeTypeId = await this.resolveRubricTypeIdByCode(
+		const capstoneTypeId = await this.resolveTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
+		const multipleScopeTypeId = await this.resolveTypeIdByCode(
 			TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE,
 		);
 		const isCapstone = capstoneTypeId != null && dto.rubricTypeId === capstoneTypeId;
@@ -235,9 +235,7 @@ export class RubricConfigService {
 		studyPlanCourseId: number,
 		submittedOutcomeIds: number[],
 	): Promise<void> {
-		const verificationTypeId = await this.resolveRubricTypeIdByCode(
-			TYPE_CODES.OUTCOME_TYPE.VERIFICATION,
-		);
+		const verificationTypeId = await this.resolveTypeIdByCode(TYPE_CODES.OUTCOME_TYPE.VERIFICATION);
 		if (verificationTypeId == null) return;
 
 		const courseOutcomes = await this.rubricConfigRepository.getVerificationOutcomesByCourse(
@@ -364,8 +362,8 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
-		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
-		const multipleScopeTypeId = await this.resolveRubricTypeIdByCode(
+		const capstoneTypeId = await this.resolveTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
+		const multipleScopeTypeId = await this.resolveTypeIdByCode(
 			TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE,
 		);
 		const isCapstone = capstoneTypeId != null && rubric.rubricTypeId === capstoneTypeId;
@@ -374,7 +372,7 @@ export class RubricConfigService {
 
 		let allCourseOutcomes: OutcomeEntity[] = [];
 		if (isCapstone && isMultipleScope) {
-			const verificationTypeId = await this.resolveRubricTypeIdByCode(
+			const verificationTypeId = await this.resolveTypeIdByCode(
 				TYPE_CODES.OUTCOME_TYPE.VERIFICATION,
 			);
 			if (verificationTypeId != null) {

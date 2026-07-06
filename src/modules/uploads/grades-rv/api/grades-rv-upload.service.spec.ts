@@ -5,14 +5,6 @@ jest.mock('../core/grades-rv-upload.repository', () => ({ GradesRvUploadReposito
 jest.mock('../../upload-logs/api/upload-logs.service', () => ({ UploadLogService: class {} }), {
 	virtual: true,
 });
-jest.mock(
-	'../../rubrics/model/rubrics-template.labels',
-	() => ({
-		gradeTypesList: [{ code: 'TG205-T006', name: 'TF' }],
-	}),
-	{ virtual: true },
-);
-
 import * as ExcelJS from 'exceljs';
 import { GradesRvUploadService } from './grades-rv-upload.service';
 
@@ -109,8 +101,8 @@ describe('GradesRvUploadService — positional parsing', () => {
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({
 			rowNumber: 2,
-			escuelaCode: 'ESCEL',
-			carreraCode: 'ELE',
+			schoolCode: 'ESCEL',
+			programCode: 'ELE',
 			commissionCode: 'EAC',
 			courseCode: '1AEL0236',
 			studentCode: '20171F052',
@@ -172,7 +164,10 @@ describe('GradesRvUploadService — positional parsing', () => {
 
 describe('GradesRvUploadService — template', () => {
 	it('builds a Template sheet and an instructions sheet with localized headers', async () => {
-		const service = new GradesRvUploadService({} as any, uploadLogServiceStub);
+		const repositoryStub: any = {
+			getGradeTypes: jest.fn().mockResolvedValue([{ code: 'TG205-T006', name: 'TF' }]),
+		};
+		const service = new GradesRvUploadService(repositoryStub, uploadLogServiceStub);
 
 		const { buffer, fileName } = await service.generateTemplate('es');
 		expect(fileName).toBe('PlantillaNotasRV.xlsx');

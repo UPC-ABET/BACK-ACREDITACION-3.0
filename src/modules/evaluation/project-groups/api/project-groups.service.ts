@@ -9,18 +9,22 @@ import {
 	UpdateProjectGroupDto,
 } from '../model/project-groups.dtos';
 
+type CreateProjectGroupData = CreateProjectGroupDto & { academicPeriodId: number };
+type UpdateProjectGroupData = UpdateProjectGroupDto & { academicPeriodId?: number };
+type FilterProjectGroupData = FilterProjectGroupDto & { academicPeriodId?: number | null };
+
 @Injectable()
 export class ProjectGroupService extends BaseService<ProjectGroupRepository> {
 	constructor(protected readonly repository: ProjectGroupRepository) {
 		super(repository);
 	}
 
-	async create(dto: CreateProjectGroupDto, manager?: EntityManager) {
+	async create(dto: CreateProjectGroupData, manager?: EntityManager) {
 		await ProjectGroupValidation.validateCreate(this.repository, dto);
 		return await super.create(dto, manager);
 	}
 
-	async update(id: number, dto: UpdateProjectGroupDto, manager?: EntityManager) {
+	async update(id: number, dto: UpdateProjectGroupData, manager?: EntityManager) {
 		await ProjectGroupValidation.validateUpdate(this.repository, id, dto);
 		return await super.update(id, dto, manager);
 	}
@@ -30,7 +34,7 @@ export class ProjectGroupService extends BaseService<ProjectGroupRepository> {
 		return await super.delete(id, manager);
 	}
 
-	override async getByFilters(filters: FilterProjectGroupDto) {
+	override async getByFilters(filters: FilterProjectGroupData) {
 		return this.normalizeJsonbColumns(await this.repository.getByFilters(filters));
 	}
 }

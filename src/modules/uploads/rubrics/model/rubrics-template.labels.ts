@@ -219,33 +219,4 @@ export const rubricsFieldInstructions: Record<string, FieldInstruction[]> = {
 	],
 };
 
-export interface GradeType {
-	code: string;
-	name: string;
-}
-
-// These must match core.types where type_group.code = 'TG205'
-export const gradeTypesList: GradeType[] = [
-	{ code: 'TG205-T001', name: 'EA1' },
-	{ code: 'TG205-T002', name: 'EB1' },
-	{ code: 'TG205-T003', name: 'PA' },
-	{ code: 'TG205-T004', name: 'TA' },
-	{ code: 'TG205-T005', name: 'TB1' },
-	{ code: 'TG205-T006', name: 'TB2' },
-	{ code: 'TG205-T007', name: 'DD1' },
-	{ code: 'TG205-T008', name: 'PC1' },
-	{ code: 'TG205-T009', name: 'PC2' },
-];
-
-export interface CompetencyScopeType {
-	code: string;
-	name: string;
-}
-
-// These must match core.types where type_group.code = 'TG402'
-export const competencyScopeList: CompetencyScopeType[] = [
-	{ code: 'TG402-T001', name: 'Unica competencia' },
-	{ code: 'TG402-T002', name: 'Multiple competencia' },
-];
-
 export const DEFAULT_TEMPLATE_LANGUAGE = 'es';

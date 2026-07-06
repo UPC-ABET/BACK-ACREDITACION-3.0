@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
+import { Entity, ManyToOne, OneToMany, JoinColumn, Unique } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { CodeColumn, IntegerFKIDColumn, JsonColumn } from 'src/commons/configs/db.configs';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -13,9 +13,7 @@ import { ProjectEntity } from 'src/modules/evaluation/projects/model/projects.en
  * re-registered per period/program, not a global master table.
  */
 @Entity({ name: 'project_groups', schema: 'evaluation' })
-@Index('UQ_project_groups_code_period_program', ['code', 'academicPeriodId', 'programId'], {
-	unique: true,
-})
+@Unique('UQ_project_groups_code_period_program', ['code', 'academicPeriodId', 'programId'])
 export class ProjectGroupEntity extends BaseEntity {
 	// %% ATTRIBUTES
 

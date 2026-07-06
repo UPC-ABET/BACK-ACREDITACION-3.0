@@ -54,6 +54,16 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 		});
 	}
 
+	private async getVerificationOutcomeMappingsByCourse(
+		studyPlanCourseId: number,
+		verificationOutcomeTypeId: number,
+	): Promise<CourseOutcomeMappingEntity[]> {
+		return await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
+			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
+			relations: ['outcome'],
+		});
+	}
+
 	/**
 	 * Verification outcomes mapped to the course, implicitly grouped by commission
 	 * (each outcome belongs to a single commission via outcome.programCommissionId).
@@ -62,10 +72,10 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 		studyPlanCourseId: number,
 		verificationOutcomeTypeId: number,
 	): Promise<Array<{ outcomeId: number; programCommissionId: number | null }>> {
-		const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
-			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
-			relations: ['outcome'],
-		});
+		const mappings = await this.getVerificationOutcomeMappingsByCourse(
+			studyPlanCourseId,
+			verificationOutcomeTypeId,
+		);
 		return mappings.map((m) => ({
 			outcomeId: m.outcomeId,
 			programCommissionId: m.outcome?.programCommissionId ?? null,
@@ -77,10 +87,10 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 		studyPlanCourseId: number,
 		verificationOutcomeTypeId: number,
 	): Promise<OutcomeEntity[]> {
-		const mappings = await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
-			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
-			relations: ['outcome'],
-		});
+		const mappings = await this.getVerificationOutcomeMappingsByCourse(
+			studyPlanCourseId,
+			verificationOutcomeTypeId,
+		);
 		return mappings.map((m) => m.outcome).filter((o): o is OutcomeEntity => o != null);
 	}
 

@@ -89,7 +89,6 @@ export interface CreateProjectArgs {
 export interface ProjectGroupScopeRow {
 	id: number;
 	academicPeriodId: number;
-	programId: number;
 }
 
 export interface ProjectsByProfessorFilterArgs {
@@ -433,9 +432,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 	async getProjectGroupById(projectGroupId: number): Promise<ProjectGroupScopeRow | null> {
 		const [row] = (await this.dataSource.query(
-			`SELECT id, academic_period_id AS "academicPeriodId", program_id AS "programId"
+			`SELECT id, academic_period_id AS "academicPeriodId"
 			 FROM   evaluation.project_groups
-			 WHERE  id = $1
+			 WHERE  id = $1::int
 			 LIMIT  1`,
 			[projectGroupId],
 		)) as ProjectGroupScopeRow[];

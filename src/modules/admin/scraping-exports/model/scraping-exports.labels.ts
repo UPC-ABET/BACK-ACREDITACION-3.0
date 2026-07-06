@@ -84,7 +84,7 @@ export const alumnoSeccionExportLabels: LangMap = {
 
 // Mirrors the grades-rc bulk upload template column order exactly (uploads/grades-rc), so the
 // generated file can be re-uploaded as-is.
-export const notasRcExportLabels: LangMap = {
+export const gradesRcExportLabels: LangMap = {
 	es: {
 		headers: [
 			'Código de sección',

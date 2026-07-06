@@ -13,7 +13,9 @@ export class ProjectGroupRepository extends BaseRepository<ProjectGroupEntity> {
 		super(repository, dataSource);
 	}
 
-	async getByFilters(filters: FilterProjectGroupDto): Promise<ProjectGroupEntity[]> {
+	async getByFilters(
+		filters: FilterProjectGroupDto & { academicPeriodId?: number | null },
+	): Promise<ProjectGroupEntity[]> {
 		const qb = this.dataSource
 			.createQueryBuilder(ProjectGroupEntity, 'pg')
 			.leftJoinAndSelect('pg.program', 'program')
@@ -21,13 +23,13 @@ export class ProjectGroupRepository extends BaseRepository<ProjectGroupEntity> {
 
 		if (filters.code) qb.andWhere('pg.code = :code', { code: filters.code });
 		if (filters.academicPeriodId)
-			qb.andWhere('pg.academic_period_id = :academicPeriodId', {
+			qb.andWhere('pg.academicPeriodId = :academicPeriodId', {
 				academicPeriodId: filters.academicPeriodId,
 			});
 		if (filters.programId)
-			qb.andWhere('pg.program_id = :programId', { programId: filters.programId });
+			qb.andWhere('pg.programId = :programId', { programId: filters.programId });
 		if (filters.isActive !== undefined)
-			qb.andWhere('pg.is_active = :isActive', { isActive: filters.isActive });
+			qb.andWhere('pg.isActive = :isActive', { isActive: filters.isActive });
 
 		return await qb.orderBy('pg.code', 'ASC').getMany();
 	}

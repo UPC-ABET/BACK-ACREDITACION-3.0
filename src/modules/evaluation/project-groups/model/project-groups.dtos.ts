@@ -1,10 +1,19 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+	IsBoolean,
+	IsInt,
+	IsNotEmpty,
+	IsObject,
+	IsOptional,
+	IsString,
+	Length,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
 
 export class CreateProjectGroupDto {
 	@IsString()
 	@IsNotEmpty()
+	@Length(1, 50)
 	@ApiProperty({
 		example: 'GRP-ISW-01',
 		required: true,
@@ -23,16 +32,13 @@ export class CreateProjectGroupDto {
 	description?: I18nText;
 
 	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'Academic period ID' })
-	academicPeriodId: number;
-
-	@IsInt()
 	@ApiProperty({ example: 1, required: true, description: 'Program ID' })
 	programId: number;
 
 	@IsOptional()
+	@IsObject()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })
-	extra?: any;
+	extra?: Record<string, unknown>;
 
 	@IsOptional()
 	@IsBoolean()
@@ -44,6 +50,7 @@ export class UpdateProjectGroupDto {
 	@IsOptional()
 	@IsString()
 	@IsNotEmpty()
+	@Length(1, 50)
 	@ApiProperty({ example: 'GRP-ISW-01', required: false })
 	code?: string;
 
@@ -59,17 +66,13 @@ export class UpdateProjectGroupDto {
 
 	@IsOptional()
 	@IsInt()
-	@ApiProperty({ example: 1, required: false, description: 'Academic period ID' })
-	academicPeriodId?: number;
-
-	@IsOptional()
-	@IsInt()
 	@ApiProperty({ example: 1, required: false, description: 'Program ID' })
 	programId?: number;
 
 	@IsOptional()
+	@IsObject()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })
-	extra?: any;
+	extra?: Record<string, unknown>;
 
 	@IsOptional()
 	@IsBoolean()
@@ -82,11 +85,6 @@ export class FilterProjectGroupDto {
 	@IsString()
 	@ApiProperty({ example: 'GRP-ISW-01', required: false })
 	code?: string;
-
-	@IsOptional()
-	@IsInt()
-	@ApiProperty({ example: 1, required: false, description: 'Academic period ID' })
-	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsInt()

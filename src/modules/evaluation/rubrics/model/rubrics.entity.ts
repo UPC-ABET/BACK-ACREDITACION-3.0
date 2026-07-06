@@ -12,10 +12,10 @@ export class RubricEntity extends BaseEntity {
 	@IntegerColumn({ nullable: false })
 	rubricTypeId: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	gradeTypeId: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	competencyScopeTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })

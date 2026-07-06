@@ -25,9 +25,9 @@ export const scrapingExportsRoutes = {
 				summary:
 					'Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape',
 			},
-			notasRc: {
+			gradesRc: {
 				method: 'GET',
-				route: '/notas-rc',
+				route: '/grades-rc',
 				summary:
 					'Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, from the latest Banner scrape',
 			},

@@ -25,7 +25,6 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
-import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { evaluationsValidationStrings } from '../config/strings/evaluations.validation';
@@ -178,20 +177,10 @@ export class EvaluationSubmissionService {
 		const academicPeriodId = courseSection?.academicPeriodId;
 		if (!courseId || !academicPeriodId) return { rubrics: [], studyPlanCourseId: null };
 
-		const rubrics = await this.rubricRepo
-			.createQueryBuilder('r')
-			.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.id = r.study_plan_course_id')
-			.innerJoin(
-				StudyPlanAcademicPeriodEntity,
-				'spap',
-				'spap.id = spc.study_plan_academic_period_id',
-			)
-			.leftJoinAndSelect('r.questions', 'questions')
-			.leftJoinAndSelect('questions.criterias', 'criterias')
-			.where('spc.course_id = :courseId', { courseId })
-			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
-			.andWhere('r.is_active = :isActive', { isActive: true })
-			.getMany();
+		const rubrics = await this.evaluationRepository.getActiveRubricsForCoursePeriod(
+			courseId,
+			academicPeriodId,
+		);
 
 		return { rubrics, studyPlanCourseId: rubrics[0]?.studyPlanCourseId ?? null };
 	}
@@ -573,7 +562,6 @@ export class EvaluationSubmissionService {
 			);
 		}
 
-		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
 			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
@@ -634,7 +622,6 @@ export class EvaluationSubmissionService {
 			);
 		}
 
-		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
 			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}

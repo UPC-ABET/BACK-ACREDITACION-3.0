@@ -43,8 +43,8 @@ export interface AlumnoSeccionExportRow {
 
 // uploads/grades-rc template: sectionCode | studentCode | gradeTypeCode | gradeTypePercentage |
 // grade | qualificationStatusCode. Built from raw_notas (Banner); grade/qualificationStatusCode
-// are resolved from the raw nota text (see NotasRcExportService).
-export interface NotaRcExportRow {
+// are resolved from the raw grade text (see GradesRcExportRepository).
+export interface GradeRcExportRow {
 	sectionCode: string;
 	studentCode: string;
 	gradeTypeCode: string;

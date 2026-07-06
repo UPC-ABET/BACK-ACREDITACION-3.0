@@ -20,8 +20,8 @@ export interface SemaphoreCourseOutcomeRow {
 	studentsRed: number;
 	studentsYellow: number;
 	studentsGreen: number;
-	sede: string;
-	cicloAcademico: string;
+	campus: string;
+	academicPeriodCycle: string;
 }
 
 export interface SemaphoreDetailRow {
@@ -30,21 +30,21 @@ export interface SemaphoreDetailRow {
 	outcomeCode: string;
 	outcomeName: string;
 	levelRank: number;
-	cantidad: number;
+	quantity: number;
 	totalStudents: number;
-	porcentaje: number;
-	sede: string;
-	cicloAcademico: string;
+	percentage: number;
+	campus: string;
+	academicPeriodCycle: string;
 }
 
 export interface SemaphoreSummaryRow {
 	outcomeCode: string;
 	outcomeName: string;
 	levelRank: number;
-	cantidad: number;
+	quantity: number;
 	totalStudents: number;
-	porcentaje: number;
-	sede: string;
+	percentage: number;
+	campus: string;
 }
 
 export interface SemaphoreLevelLegendRow {
@@ -73,10 +73,7 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
-		modalityTypeId: number | null,
 		language: string,
-		_rubricIds: number[] | null = null,
-		_gradeTypeIds: number[] | null = null,
 	): Promise<SemaphoreCourseOutcomeRow[]> {
 		return this.dataSource.query(SEMAPHORE_RC_SCREEN_SQL, [
 			academicPeriodId,
@@ -92,7 +89,6 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
-		modalityTypeId: number | null,
 		language: string,
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
@@ -113,10 +109,7 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
-		modalityTypeId: number | null,
 		language: string,
-		_rubricIds: number[] | null = null,
-		_gradeTypeIds: number[] | null = null,
 	): Promise<SemaphoreDetailRow[]> {
 		return this.dataSource.query(SEMAPHORE_RC_DETAIL_SQL, [
 			academicPeriodId,
@@ -132,10 +125,7 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
-		modalityTypeId: number | null,
 		language: string,
-		_rubricIds: number[] | null = null,
-		_gradeTypeIds: number[] | null = null,
 	): Promise<SemaphoreSummaryRow[]> {
 		return this.dataSource.query(SEMAPHORE_RC_SUMMARY_SQL, [
 			academicPeriodId,
@@ -151,7 +141,6 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
-		modalityTypeId: number | null,
 		language: string,
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
@@ -172,7 +161,6 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		outcomeId: number | null,
 		campusId: number | null,
-		modalityTypeId: number | null,
 		language: string,
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,

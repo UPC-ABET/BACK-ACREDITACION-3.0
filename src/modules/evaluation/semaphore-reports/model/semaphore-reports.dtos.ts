@@ -1,20 +1,8 @@
-import { IsOptional, IsNumber, IsString, IsArray } from 'class-validator';
+import { IsOptional, IsNumber, IsIn, IsArray } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SemaphoreFilterDto {
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({
-		example: 1,
-		required: false,
-		description: 'Academic period ID (defaults to X-Academic-Period-Id header)',
-	})
-	academicPeriodId?: number;
-
 	@Transform(({ value }) =>
 		value === undefined || value === null || value === '' ? undefined : Number(value),
 	)
@@ -39,18 +27,15 @@ export class SemaphoreFilterDto {
 	@ApiProperty({ example: 1, required: false, description: 'Campus ID to filter by' })
 	campusId?: number;
 
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'Modality type ID to filter by' })
-	modalityTypeId?: number;
-
-	@IsOptional()
-	@IsString()
-	@ApiProperty({ example: 'es', required: false, description: 'Language (es | en)' })
-	lang?: string;
+	@IsIn(['es', 'en'])
+	@ApiProperty({
+		example: 'es',
+		required: false,
+		description: 'Language (es | en)',
+		enum: ['es', 'en'],
+	})
+	lang?: 'es' | 'en';
 
 	@Transform(({ value }) => {
 		if (value === undefined || value === null || value === '') return undefined;
@@ -97,8 +82,8 @@ export class SemaphoreLevelLegendDto {
 }
 
 export class SemaphoreCourseOutcomeSummaryDto {
-	sede: string;
-	cicloAcademico: string;
+	campus: string;
+	academicPeriodCycle: string;
 	courseCode: string;
 	courseName: string;
 	outcomeCode: string;
@@ -121,7 +106,7 @@ export class SemaphoreReportDto {
 }
 
 export class SemaphoreOutcomeSummaryRowDto {
-	sede: string;
+	campus: string;
 	outcomeCode: string;
 	outcomeName: string;
 	totalStudents: number;
@@ -132,7 +117,7 @@ export class SemaphoreOutcomeSummaryRowDto {
 }
 
 export class SemaphoreCourseDetailRowDto {
-	sede: string;
+	campus: string;
 	outcomeCode: string;
 	outcomeName: string;
 	courseCode: string;

@@ -764,8 +764,8 @@ BEGIN
 	FOR r IN
 		SELECT
 			(e->>'rowNumber')::int                   AS row_number,
-			NULLIF(trim(e->>'escuelaCode'), '')       AS escuela_code,
-			NULLIF(trim(e->>'carreraCode'), '')       AS carrera_code,
+			NULLIF(trim(e->>'schoolCode'), '')        AS school_code,
+			NULLIF(trim(e->>'programCode'), '')       AS program_code,
 			NULLIF(trim(e->>'commissionCode'), '')    AS commission_code,
 			NULLIF(trim(e->>'courseCode'), '')        AS course_code,
 			NULLIF(trim(e->>'studentCode'), '')       AS student_code,
@@ -786,28 +786,28 @@ BEGIN
 			NULLIF(trim(e->>'projectDescEn'), '')     AS project_desc_en
 		FROM jsonb_array_elements(p_rows) AS e
 	LOOP
-		-- escuelaCode
-		IF r.escuela_code IS NULL THEN
+		-- schoolCode
+		IF r.school_code IS NULL THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'escuelaCodeEmpty'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'schoolCodeEmpty'::text, NULL::integer;
 		ELSE
 			SELECT id INTO v_school_id
-			FROM organization.schools WHERE code = r.escuela_code;
+			FROM organization.schools WHERE code = r.school_code;
 
 			IF v_school_id IS NULL THEN
 				v_has_errors := true;
-				RETURN QUERY SELECT r.row_number, 'escuelaNotFound'::text, NULL::integer;
+				RETURN QUERY SELECT r.row_number, 'schoolNotFound'::text, NULL::integer;
 			END IF;
 		END IF;
 
-		-- carreraCode
-		IF r.carrera_code IS NULL THEN
+		-- programCode
+		IF r.program_code IS NULL THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'carreraCodeEmpty'::text, NULL::integer;
-		ELSIF NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.carrera_code) THEN
+			RETURN QUERY SELECT r.row_number, 'programCodeEmpty'::text, NULL::integer;
+		ELSIF NOT EXISTS (SELECT 1 FROM academic.programs p WHERE p.code = r.program_code) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'carreraNotFound'::text, NULL::integer;
-		ELSIF r.escuela_code IS NOT NULL AND v_school_id IS NOT NULL
+			RETURN QUERY SELECT r.row_number, 'programNotFound'::text, NULL::integer;
+		ELSIF r.school_code IS NOT NULL AND v_school_id IS NOT NULL
 		      AND NOT EXISTS (
 			SELECT 1
 			FROM academic.programs prog
@@ -818,10 +818,10 @@ BEGIN
 			     ON ch_sch.id = ch_prog.root_chart_id
 			     AND ch_sch.entity_type_id = v_school_type_id
 			     AND ch_sch.entity_code = v_school_id
-			WHERE prog.code = r.carrera_code
+			WHERE prog.code = r.program_code
 		) THEN
 			v_has_errors := true;
-			RETURN QUERY SELECT r.row_number, 'carreraNotInEscuela'::text, NULL::integer;
+			RETURN QUERY SELECT r.row_number, 'programNotInSchool'::text, NULL::integer;
 		END IF;
 
 		-- commissionCode
@@ -3455,29 +3455,29 @@ $fn$;
 		// ── drop evaluation_id + rubric_id columns ──
 		await queryRunner.query(`
 			ALTER TABLE evidence.student_course_outcome_grades
-			DROP CONSTRAINT "FK_student_course_outcome_grades_evaluation_id"
+			DROP CONSTRAINT IF EXISTS "FK_student_course_outcome_grades_evaluation_id"
 		`);
 		await queryRunner.query(`
 			ALTER TABLE evidence.student_course_outcome_grades
-			DROP COLUMN evaluation_id
+			DROP COLUMN IF EXISTS evaluation_id
 		`);
 		await queryRunner.query(`
 			ALTER TABLE evidence.evaluations
-			DROP CONSTRAINT "FK_evaluations_rubric_id"
+			DROP CONSTRAINT IF EXISTS "FK_evaluations_rubric_id"
 		`);
 		await queryRunner.query(`
 			ALTER TABLE evidence.evaluations
-			DROP COLUMN rubric_id
+			DROP COLUMN IF EXISTS rubric_id
 		`);
 
 		// ── drop competency scope column + TG402 types ──
 		await queryRunner.query(`
 			ALTER TABLE evaluation.rubrics
-			DROP CONSTRAINT "FK_rubrics_competency_scope_type_id"
+			DROP CONSTRAINT IF EXISTS "FK_rubrics_competency_scope_type_id"
 		`);
 		await queryRunner.query(`
 			ALTER TABLE evaluation.rubrics
-			DROP COLUMN competency_scope_type_id
+			DROP COLUMN IF EXISTS competency_scope_type_id
 		`);
 		await queryRunner.query(`
 			DELETE FROM core.types

@@ -4,12 +4,12 @@ import { DataSource } from 'typeorm';
 
 import { EXPORTS_RAW_CONNECTION } from './scraping-exports.repository';
 
-export interface RawNotaRcRow {
+export interface RawGradeRcRow {
 	sectionCode: string;
 	studentCode: string;
-	tipo: string;
-	peso: string;
-	notaRaw: string;
+	type: string;
+	weight: string;
+	gradeRaw: string;
 }
 
 /**
@@ -20,27 +20,27 @@ export interface RawNotaRcRow {
  * core.types (TG404) is the RC bulk upload's job (fn_upload_grades_rc), not this export's.
  */
 @Injectable()
-export class NotasRcExportRepository {
+export class GradesRcExportRepository {
 	constructor(
 		@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly rawDataSource: DataSource,
 		@InjectDataSource() private readonly mainDataSource: DataSource,
 	) {}
 
-	// One row per (alumno, curso, tipo de nota) from the latest Banner run, with the section (NRC)
+	// One row per (student, course, grade type) from the latest Banner run, with the section (NRC)
 	// resolved via raw_horario + raw_matricula of that same run. A student can only be enrolled in
 	// one section of a given course per academic period, so the join is unambiguous.
-	async getRawNotasRc(): Promise<RawNotaRcRow[]> {
+	async getRawGradesRc(): Promise<RawGradeRcRow[]> {
 		return await this.rawDataSource.query(`
 			WITH latest_run AS (
 				SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1
 			),
-			notas_exploded AS (
+			grades_exploded AS (
 				SELECT
 					rn.codigo_alumno,
 					rn.curso_codigo,
-					n->>'tipo' AS tipo,
-					n->>'peso' AS peso,
-					n->>'nota' AS nota_raw
+					n->>'tipo' AS type,
+					n->>'peso' AS weight,
+					n->>'nota' AS grade_raw
 				FROM raw_notas rn
 				CROSS JOIN LATERAL jsonb_array_elements(rn.payload->'detalle'->'notas') AS n
 				WHERE rn.run_id = (SELECT id FROM latest_run)
@@ -57,14 +57,14 @@ export class NotasRcExportRepository {
 			)
 			SELECT
 				sl.nrc           AS "sectionCode",
-				ne.codigo_alumno AS "studentCode",
-				ne.tipo          AS "tipo",
-				ne.peso          AS "peso",
-				ne.nota_raw      AS "notaRaw"
-			FROM notas_exploded ne
+				ge.codigo_alumno AS "studentCode",
+				ge.type          AS "type",
+				ge.weight        AS "weight",
+				ge.grade_raw     AS "gradeRaw"
+			FROM grades_exploded ge
 			JOIN section_lookup sl
-			  ON sl.codigo_alumno = ne.codigo_alumno AND sl.curso_codigo = ne.curso_codigo
-			ORDER BY sl.nrc, ne.codigo_alumno, ne.tipo
+			  ON sl.codigo_alumno = ge.codigo_alumno AND sl.curso_codigo = ge.curso_codigo
+			ORDER BY sl.nrc, ge.codigo_alumno, ge.type
 		`);
 	}
 
@@ -74,7 +74,7 @@ export class NotasRcExportRepository {
 			`SELECT t.code, UPPER(t.name->>'es') AS name
 			 FROM core.types t
 			 JOIN core.type_groups g ON g.id = t.type_group_id
-			 WHERE g.code = $1 AND t.is_active = true`,
+			 WHERE g.code = $1::text AND t.is_active = true`,
 			[groupCode],
 		);
 		return new Map(rows.map((r) => [r.name, r.code]));

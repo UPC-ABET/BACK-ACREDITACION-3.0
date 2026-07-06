@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
 import { readCell } from 'src/libs/excel.functions';
+import { addReferenceTable } from 'src/libs/excel-reference-table.functions';
 
 import { GradesRcRow, UploadResult, UploadRowError } from '../model/grades-rc-upload.types';
 import type { GradesRcUploadDto } from '../model/grades-rc-upload.dtos';
@@ -150,69 +151,25 @@ export class GradesRcUploadService {
 		instrSheet.getColumn(4).width = 25;
 
 		// ── Grade types reference (below instructions) ────────────────────
-		const gradeTypesEndRow = this.addReferenceTable(
+		const gradeTypesEndRow = addReferenceTable(
 			instrSheet,
 			2 + instructions.length + 2,
 			labels.gradeTypesTitle,
-			labels,
+			{ code: labels.legendColCode, name: labels.legendColName },
 			gradeTypes,
 		);
 
 		// ── Qualification status types reference (below grade types) ──────
-		this.addReferenceTable(
+		addReferenceTable(
 			instrSheet,
 			gradeTypesEndRow + 2,
 			labels.qualificationStatusTypesTitle,
-			labels,
+			{ code: labels.legendColCode, name: labels.legendColName },
 			qualificationStatusTypes,
 		);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
-	}
-
-	// Renders a titled two-column (code, name) reference table starting at startRow.
-	// Returns the row number right after the table's last row.
-	private addReferenceTable(
-		sheet: ExcelJS.Worksheet,
-		startRow: number,
-		title: string,
-		labels: Record<string, string>,
-		rows: Array<{ code: string; name: string }>,
-	): number {
-		const titleRow = sheet.getRow(startRow);
-		const titleCell = titleRow.getCell(1);
-		titleCell.value = title;
-		titleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-		titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
-		titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-		sheet.mergeCells(startRow, 1, startRow, 2);
-		titleRow.height = 22;
-
-		const subRow = sheet.getRow(startRow + 1);
-		[labels.legendColCode, labels.legendColName].forEach((h, i) => {
-			const cell = subRow.getCell(i + 1);
-			cell.value = h;
-			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
-			cell.alignment = { horizontal: 'center', vertical: 'middle' };
-		});
-
-		rows.forEach((row, idx) => {
-			const r = sheet.getRow(startRow + 2 + idx);
-			r.getCell(1).value = row.code;
-			r.getCell(2).value = row.name;
-			[1, 2].forEach((c) => {
-				const cell = r.getCell(c);
-				cell.alignment = { vertical: 'middle' };
-				cell.border = {
-					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-				};
-			});
-		});
-
-		return startRow + 2 + rows.length;
 	}
 
 	private styleHeaderRow(sheet: ExcelJS.Worksheet, headers: string[], rowNumber = 1): void {

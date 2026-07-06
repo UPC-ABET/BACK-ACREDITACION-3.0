@@ -1,7 +1,7 @@
 export interface GradesRvRow {
 	rowNumber: number;
-	escuelaCode: string; // col 1
-	carreraCode: string; // col 2
+	schoolCode: string; // col 1
+	programCode: string; // col 2
 	commissionCode: string; // col 3
 	courseCode: string; // col 4
 	studentCode: string; // col 5

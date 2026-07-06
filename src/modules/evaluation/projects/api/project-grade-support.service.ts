@@ -1,7 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { TypeRepository } from 'src/modules/core/types/core/types.repository';
 import { projectsValidationStrings } from '../config/strings/projects.validation';
 import { ProjectRepository } from '../core/projects.repository';
 
@@ -12,25 +10,24 @@ import { ProjectRepository } from '../core/projects.repository';
 @Injectable()
 export class ProjectGradeSupportService {
 	constructor(
-		@InjectRepository(TypeEntity)
-		private readonly typeRepo: Repository<TypeEntity>,
+		private readonly typeRepository: TypeRepository,
 		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async resolveGradeTypeIdByCode(code: string): Promise<number> {
-		const type = await this.typeRepo.findOne({ where: { code } });
-		if (!type) {
+		const typeId = await this.typeRepository.findIdByCode(code);
+		if (!typeId) {
 			throw new BadRequestException(projectsValidationStrings.error.invalidGradeTypeCode);
 		}
-		return type.id;
+		return typeId;
 	}
 
 	async resolveCompetencyScopeTypeIdByCode(code: string): Promise<number> {
-		const type = await this.typeRepo.findOne({ where: { code } });
-		if (!type) {
+		const typeId = await this.typeRepository.findIdByCode(code);
+		if (!typeId) {
 			throw new BadRequestException(projectsValidationStrings.error.invalidCompetencyScopeCode);
 		}
-		return type.id;
+		return typeId;
 	}
 
 	async resolveCapstoneMaxScore(academicPeriodId: number, rubricId: number): Promise<number> {

@@ -2,13 +2,12 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
 import { readCell } from 'src/libs/excel.functions';
+import { addReferenceTable } from 'src/libs/excel-reference-table.functions';
 
 import { RubricRow, UploadResult, UploadRowError } from '../model/rubrics-upload.types';
 import type { RubricsUploadDto } from '../model/rubrics-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
-	competencyScopeList,
-	gradeTypesList,
 	rubricsFieldInstructions,
 	rubricsTemplateLabels,
 } from '../model/rubrics-template.labels';
@@ -89,6 +88,8 @@ export class RubricsUploadService {
 		const language = this.resolveLanguage(lang);
 		const labels = rubricsTemplateLabels[language];
 		const instructions = rubricsFieldInstructions[language];
+		const gradeTypes = await this.repository.getGradeTypes(language);
+		const competencyScopeTypes = await this.repository.getCompetencyScopeTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
 		const sheet = workbook.addWorksheet('Template');
@@ -157,73 +158,22 @@ export class RubricsUploadService {
 
 		// ── Grade types table ─────────────────────────────────────────────
 		const evalStartRow = 2 + instructions.length + 2;
-
-		const evalTitleRow = instrSheet.getRow(evalStartRow);
-		const evalTitleCell = evalTitleRow.getCell(1);
-		evalTitleCell.value = labels.gradeTypesTitle;
-		evalTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-		evalTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
-		evalTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-		instrSheet.mergeCells(evalStartRow, 1, evalStartRow, 2);
-		evalTitleRow.height = 22;
-
-		const evalSubRow = instrSheet.getRow(evalStartRow + 1);
-		[labels.gradeTypesColCode, labels.gradeTypesColName].forEach((h, i) => {
-			const cell = evalSubRow.getCell(i + 1);
-			cell.value = h;
-			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
-			cell.alignment = { horizontal: 'center', vertical: 'middle' };
-		});
-
-		gradeTypesList.forEach((gt, idx) => {
-			const r = instrSheet.getRow(evalStartRow + 2 + idx);
-			r.getCell(1).value = gt.code;
-			r.getCell(2).value = gt.name;
-			[1, 2].forEach((c) => {
-				const cell = r.getCell(c);
-				cell.alignment = { vertical: 'middle' };
-				cell.border = {
-					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-				};
-			});
-		});
+		const gradeTypesEndRow = addReferenceTable(
+			instrSheet,
+			evalStartRow,
+			labels.gradeTypesTitle,
+			{ code: labels.gradeTypesColCode, name: labels.gradeTypesColName },
+			gradeTypes,
+		);
 
 		// ── Competency scope table ─────────────────────────────────────────
-		const scopeStartRow = evalStartRow + 2 + gradeTypesList.length + 1;
-
-		const scopeTitleRow = instrSheet.getRow(scopeStartRow);
-		const scopeTitleCell = scopeTitleRow.getCell(1);
-		scopeTitleCell.value = labels.competencyScopeTitle;
-		scopeTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-		scopeTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
-		scopeTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-		instrSheet.mergeCells(scopeStartRow, 1, scopeStartRow, 2);
-		scopeTitleRow.height = 22;
-
-		const scopeSubRow = instrSheet.getRow(scopeStartRow + 1);
-		[labels.competencyScopeColCode, labels.competencyScopeColName].forEach((h, i) => {
-			const cell = scopeSubRow.getCell(i + 1);
-			cell.value = h;
-			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
-			cell.alignment = { horizontal: 'center', vertical: 'middle' };
-		});
-
-		competencyScopeList.forEach((cs, idx) => {
-			const r = instrSheet.getRow(scopeStartRow + 2 + idx);
-			r.getCell(1).value = cs.code;
-			r.getCell(2).value = cs.name;
-			[1, 2].forEach((c) => {
-				const cell = r.getCell(c);
-				cell.alignment = { vertical: 'middle' };
-				cell.border = {
-					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-				};
-			});
-		});
+		addReferenceTable(
+			instrSheet,
+			gradeTypesEndRow + 1,
+			labels.competencyScopeTitle,
+			{ code: labels.competencyScopeColCode, name: labels.competencyScopeColName },
+			competencyScopeTypes,
+		);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };

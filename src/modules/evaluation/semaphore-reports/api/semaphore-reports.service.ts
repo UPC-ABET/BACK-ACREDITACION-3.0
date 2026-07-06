@@ -91,7 +91,7 @@ export class SemaphoreReportsService {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const data = await this.fetchRenderData(dto, academicPeriodId, 'rc');
 		const xlsx = await this.buildExcel(data, 'rc', lang);
-		const filename = `Reporte_Control_RC_${Date.now()}.xlsx`;
+		const filename = this.buildExcelFilename('rc', lang);
 		return { xlsx, filename };
 	}
 
@@ -102,7 +102,7 @@ export class SemaphoreReportsService {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const data = await this.fetchRenderData(dto, academicPeriodId, 'rv');
 		const xlsx = await this.buildExcel(data, 'rv', lang);
-		const filename = `Reporte_Verificacion_RV_${Date.now()}.xlsx`;
+		const filename = this.buildExcelFilename('rv', lang);
 		return { xlsx, filename };
 	}
 
@@ -116,23 +116,27 @@ export class SemaphoreReportsService {
 		const programCommissionId = dto.programCommissionId ?? null;
 		const outcomeId = dto.outcomeId ?? null;
 		const campusId = dto.campusId ?? null;
-		const modalityTypeId = dto.modalityTypeId ?? null;
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
-		const getScreen =
-			instrument === 'rc' ? this.repository.getRcScreen : this.repository.getRvScreen;
-		const rows = await getScreen.call(
-			this.repository,
-			academicPeriodId,
-			programCommissionId,
-			outcomeId,
-			campusId,
-			modalityTypeId,
-			lang,
-			rubricIds,
-			gradeTypeIds,
-		);
+		const rows =
+			instrument === 'rc'
+				? await this.repository.getRcScreen(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+					)
+				: await this.repository.getRvScreen(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+						rubricIds,
+						gradeTypeIds,
+					);
 		if (rows.length === 0) {
 			throw new HttpException(
 				{
@@ -157,28 +161,27 @@ export class SemaphoreReportsService {
 		const programCommissionId = dto.programCommissionId ?? null;
 		const outcomeId = dto.outcomeId ?? null;
 		const campusId = dto.campusId ?? null;
-		const modalityTypeId = dto.modalityTypeId ?? null;
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
-		const getDetail =
-			instrument === 'rc' ? this.repository.getRcDetail : this.repository.getRvDetail;
-		const getSummary =
-			instrument === 'rc' ? this.repository.getRcSummary : this.repository.getRvSummary;
-		const getScreen =
-			instrument === 'rc' ? this.repository.getRcScreen : this.repository.getRvScreen;
-
-		const detailRows = await getDetail.call(
-			this.repository,
-			academicPeriodId,
-			programCommissionId,
-			outcomeId,
-			campusId,
-			modalityTypeId,
-			lang,
-			rubricIds,
-			gradeTypeIds,
-		);
+		const detailRows =
+			instrument === 'rc'
+				? await this.repository.getRcDetail(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+					)
+				: await this.repository.getRvDetail(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+						rubricIds,
+						gradeTypeIds,
+					);
 		if (detailRows.length === 0) {
 			throw new HttpException(
 				{
@@ -188,29 +191,43 @@ export class SemaphoreReportsService {
 				HttpStatus.NOT_FOUND,
 			);
 		}
-		const summaryRows = await getSummary.call(
-			this.repository,
-			academicPeriodId,
-			programCommissionId,
-			outcomeId,
-			campusId,
-			modalityTypeId,
-			lang,
-			rubricIds,
-			gradeTypeIds,
-		);
+		const summaryRows =
+			instrument === 'rc'
+				? await this.repository.getRcSummary(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+					)
+				: await this.repository.getRvSummary(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+						rubricIds,
+						gradeTypeIds,
+					);
 		// Unfiltered course+outcome breakdown feeds the grouped-bar chart embedded in the PDF.
-		const screenRows = await getScreen.call(
-			this.repository,
-			academicPeriodId,
-			programCommissionId,
-			outcomeId,
-			campusId,
-			modalityTypeId,
-			lang,
-			rubricIds,
-			gradeTypeIds,
-		);
+		const screenRows =
+			instrument === 'rc'
+				? await this.repository.getRcScreen(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+					)
+				: await this.repository.getRvScreen(
+						academicPeriodId,
+						programCommissionId,
+						outcomeId,
+						campusId,
+						lang,
+						rubricIds,
+						gradeTypeIds,
+					);
 		const legendRows = await this.repository.getLevelsLegend(academicPeriodId, instrument, lang);
 		const metadata = await this.repository.getMetadata(programCommissionId, academicPeriodId, lang);
 		return this.buildRenderReport(
@@ -299,8 +316,8 @@ export class SemaphoreReportsService {
 					: levelColor(1);
 
 			return {
-				sede: r.sede,
-				cicloAcademico: r.cicloAcademico,
+				campus: r.campus,
+				academicPeriodCycle: r.academicPeriodCycle,
 				courseCode: r.courseCode,
 				courseName: r.courseName,
 				outcomeCode: r.outcomeCode,
@@ -342,25 +359,25 @@ export class SemaphoreReportsService {
 		const levelColor = (rank: number): string => legend[rank - 1]?.color ?? '#6b7280';
 
 		const outcomeSummary: SemaphoreOutcomeSummaryRowDto[] = summaryRows.map((r) => ({
-			sede: r.sede,
+			campus: r.campus,
 			outcomeCode: r.outcomeCode,
 			outcomeName: r.outcomeName,
 			totalStudents: Number(r.totalStudents),
 			levelName: levelName(Number(r.levelRank)),
-			count: Number(r.cantidad),
-			percentage: Number(r.porcentaje),
+			count: Number(r.quantity),
+			percentage: Number(r.percentage),
 			color: levelColor(Number(r.levelRank)),
 		}));
 
 		const toDetailRow = (r: SemaphoreDetailRow): SemaphoreCourseDetailRowDto => ({
-			sede: r.sede,
+			campus: r.campus,
 			outcomeCode: r.outcomeCode,
 			outcomeName: r.outcomeName,
 			courseCode: r.courseCode,
 			courseName: r.courseName,
-			count: Number(r.cantidad),
+			count: Number(r.quantity),
 			totalStudents: Number(r.totalStudents),
-			percentage: Number(r.porcentaje),
+			percentage: Number(r.percentage),
 		});
 
 		return {
@@ -382,14 +399,15 @@ export class SemaphoreReportsService {
 	private buildFilename(type: 'rc' | 'rv', lang: ReportLanguage): string {
 		const prefix = lang === 'en' ? 'Report' : 'Reporte';
 		const suffix =
-			type === 'rc'
-				? lang === 'en'
-					? 'Control_RC'
-					: 'Control_RC'
-				: lang === 'en'
-					? 'Verification_RV'
-					: 'Verificacion_RV';
+			type === 'rc' ? 'Control_RC' : lang === 'en' ? 'Verification_RV' : 'Verificacion_RV';
 		return `${prefix}_${suffix}.pdf`;
+	}
+
+	private buildExcelFilename(type: 'rc' | 'rv', lang: 'es' | 'en'): string {
+		const prefix = lang === 'en' ? 'Report' : 'Reporte';
+		const suffix =
+			type === 'rc' ? 'Control_RC' : lang === 'en' ? 'Verification_RV' : 'Verificacion_RV';
+		return `${prefix}_${suffix}_${Date.now()}.xlsx`;
 	}
 
 	private buildDocument(
@@ -414,7 +432,7 @@ export class SemaphoreReportsService {
 			.map(
 				(r) => `
 				<tr style="background-color:${escapeHtml(r.color)}">
-					<td>${escapeHtml(r.sede)}</td>
+					<td>${escapeHtml(r.campus)}</td>
 					<td>${escapeHtml(r.outcomeCode)}</td>
 					<td>${escapeHtml(r.outcomeName)}</td>
 					<td>${r.totalStudents}</td>
@@ -430,7 +448,7 @@ export class SemaphoreReportsService {
 				.map(
 					(r) => `
 					<tr>
-						<td>${escapeHtml(r.sede)}</td>
+						<td>${escapeHtml(r.campus)}</td>
 						<td>${escapeHtml(r.outcomeCode)}</td>
 						<td>${escapeHtml(r.outcomeName)}</td>
 						<td>${escapeHtml(r.courseCode)}</td>
@@ -446,7 +464,7 @@ export class SemaphoreReportsService {
 					<h4>${escapeHtml(label)} (${items.length})</h4>
 					<table>
 						<thead><tr>
-							<th>${escapeHtml(L.colSede)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th><th>${escapeHtml(L.colTotalStudentsByOutcome)}</th>
+							<th>${escapeHtml(L.colCampus)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th><th>${escapeHtml(L.colTotalStudentsByOutcome)}</th>
 						</tr></thead>
 						<tbody>${rows}</tbody>
 					</table>
@@ -474,7 +492,7 @@ export class SemaphoreReportsService {
 				<h3>${escapeHtml(L.summary)}</h3>
 				<table>
 					<thead><tr>
-						<th>${escapeHtml(L.colSede)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colTotalStudents)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th>
+						<th>${escapeHtml(L.colCampus)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colTotalStudents)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th>
 					</tr></thead>
 					<tbody>${summaryRows}</tbody>
 				</table>
@@ -511,7 +529,7 @@ export class SemaphoreReportsService {
 
 		const summarySheet = wb.addWorksheet(type === 'rc' ? 'RC - Resumen' : 'RV - Resumen');
 		const summaryHeaders = [
-			L.colSede,
+			L.colCampus,
 			L.colOutcome,
 			L.colOutcome,
 			L.colTotalStudents,
@@ -521,7 +539,7 @@ export class SemaphoreReportsService {
 		this.writeExcelHeader(summarySheet, summaryHeaders);
 		for (const r of data.outcomeSummary) {
 			const row = summarySheet.addRow([
-				r.sede,
+				r.campus,
 				r.outcomeCode,
 				r.outcomeName,
 				r.totalStudents,
@@ -540,7 +558,7 @@ export class SemaphoreReportsService {
 		summarySheet.views = [{ state: 'frozen', ySplit: 1 }];
 
 		const detailHeaders = [
-			L.colSede,
+			L.colCampus,
 			L.colOutcome,
 			L.colOutcome,
 			L.colCode,
@@ -554,7 +572,7 @@ export class SemaphoreReportsService {
 			this.writeExcelHeader(sheet, detailHeaders);
 			for (const r of items) {
 				const row = sheet.addRow([
-					r.sede,
+					r.campus,
 					r.outcomeCode,
 					r.outcomeName,
 					r.courseCode,

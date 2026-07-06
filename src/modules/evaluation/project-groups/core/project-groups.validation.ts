@@ -3,8 +3,11 @@ import { ProjectGroupRepository } from './project-groups.repository';
 import { projectGroupsValidationStrings } from '../config/strings/project-groups.validation';
 import { CreateProjectGroupDto, UpdateProjectGroupDto } from '../model/project-groups.dtos';
 
+type CreateProjectGroupData = CreateProjectGroupDto & { academicPeriodId: number };
+type UpdateProjectGroupData = UpdateProjectGroupDto & { academicPeriodId?: number };
+
 export class ProjectGroupValidation {
-	static async validateCreate(repo: ProjectGroupRepository, data: CreateProjectGroupDto) {
+	static async validateCreate(repo: ProjectGroupRepository, data: CreateProjectGroupData) {
 		const errors: Array<string> = [];
 
 		if (!(await repo.academicPeriodExists(data.academicPeriodId))) {
@@ -28,7 +31,7 @@ export class ProjectGroupValidation {
 	static async validateUpdate(
 		repo: ProjectGroupRepository,
 		id: number,
-		data: UpdateProjectGroupDto,
+		data: UpdateProjectGroupData,
 	) {
 		const errors: Array<string> = [];
 

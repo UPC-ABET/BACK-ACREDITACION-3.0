@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
 import { readCell } from 'src/libs/excel.functions';
+import { addReferenceTable } from 'src/libs/excel-reference-table.functions';
 
 import { GradesRvRow, UploadResult, UploadRowError } from '../model/grades-rv-upload.types';
 import type { GradesRvUploadDto } from '../model/grades-rv-upload.dtos';
@@ -11,14 +12,13 @@ import {
 	gradesRvFieldInstructions,
 	gradesRvTemplateLabels,
 } from '../model/grades-rv-template.labels';
-import { gradeTypesList } from '../../rubrics/model/rubrics-template.labels';
 import { GradesRvUploadRepository } from '../core/grades-rv-upload.repository';
 import { UploadLogService } from '../../upload-logs/api/upload-logs.service';
 
 // Positional column layout:
-//  1: ESCUELA   2: CARRERA   3: COMISION   4: CURSO    5: ALUMNO    6: SECCION
-//  7: DOCENTE   8: TIPOEVALUACION  9-15: O1-O7
-// 16: CODIGOPROYECTO  17: PROYECTO(ES)  18: PROYECTO(EN)  19: DESCPROYECTO(ES)  20: DESCPROYECTO(EN)
+//  1: SCHOOL   2: PROGRAM   3: COMMISSION   4: COURSE   5: STUDENT   6: SECTION
+//  7: PROFESSOR   8: GRADE_TYPE  9-15: O1-O7
+// 16: PROJECT_CODE  17: PROJECT_NAME(ES)  18: PROJECT_NAME(EN)  19: PROJECT_DESC(ES)  20: PROJECT_DESC(EN)
 const ERROR_COLUMN = 21;
 
 @Injectable()
@@ -95,13 +95,14 @@ export class GradesRvUploadService {
 		const language = this.resolveLanguage(lang);
 		const labels = gradesRvTemplateLabels[language];
 		const instructions = gradesRvFieldInstructions[language];
+		const gradeTypes = await this.repository.getGradeTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
 		const dataSheet = workbook.addWorksheet('Template');
 
 		const headers = [
-			labels.escuelaCode,
-			labels.carreraCode,
+			labels.schoolCode,
+			labels.programCode,
 			labels.commissionCode,
 			labels.courseCode,
 			labels.studentCode,
@@ -170,39 +171,13 @@ export class GradesRvUploadService {
 		instrSheet.getColumn(4).width = 25;
 
 		// ── Grade types reference (below instructions) ────────────────────
-		const gtStartRow = 2 + instructions.length + 2;
-
-		const gtTitleRow = instrSheet.getRow(gtStartRow);
-		const gtTitleCell = gtTitleRow.getCell(1);
-		gtTitleCell.value = labels.gradeTypesTitle;
-		gtTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-		gtTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
-		gtTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-		instrSheet.mergeCells(gtStartRow, 1, gtStartRow, 2);
-		gtTitleRow.height = 22;
-
-		const gtSubRow = instrSheet.getRow(gtStartRow + 1);
-		[labels.gradeTypesColCode, labels.gradeTypesColName].forEach((h, i) => {
-			const cell = gtSubRow.getCell(i + 1);
-			cell.value = h;
-			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
-			cell.alignment = { horizontal: 'center', vertical: 'middle' };
-		});
-
-		gradeTypesList.forEach((gt, idx) => {
-			const r = instrSheet.getRow(gtStartRow + 2 + idx);
-			r.getCell(1).value = gt.code;
-			r.getCell(2).value = gt.name;
-			[1, 2].forEach((c) => {
-				const cell = r.getCell(c);
-				cell.alignment = { vertical: 'middle' };
-				cell.border = {
-					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-				};
-			});
-		});
+		addReferenceTable(
+			instrSheet,
+			2 + instructions.length + 2,
+			labels.gradeTypesTitle,
+			{ code: labels.gradeTypesColCode, name: labels.gradeTypesColName },
+			gradeTypes,
+		);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
@@ -229,8 +204,8 @@ export class GradesRvUploadService {
 			if (rowNumber === 1) return;
 			rows.push({
 				rowNumber,
-				escuelaCode: readCell(row, 1),
-				carreraCode: readCell(row, 2),
+				schoolCode: readCell(row, 1),
+				programCode: readCell(row, 2),
 				commissionCode: readCell(row, 3),
 				courseCode: readCell(row, 4),
 				studentCode: readCell(row, 5),

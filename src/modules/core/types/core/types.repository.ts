@@ -57,6 +57,11 @@ export class TypeRepository extends BaseRepository<TypeEntity> {
 		);
 	}
 
+	async findIdByCode(code: string): Promise<number | null> {
+		const type = await this.repository.findOne({ where: { code } });
+		return type?.id ?? null;
+	}
+
 	async findByGroupCode(groupCode: string) {
 		const rows = await this.dataSource.query(
 			`SELECT t.id::int AS id,
