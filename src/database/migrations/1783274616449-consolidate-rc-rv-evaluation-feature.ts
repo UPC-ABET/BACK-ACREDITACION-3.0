@@ -3637,13 +3637,13 @@ BEGIN
 		WHERE g.student_section_enrollment_id = sse.id AND g.outcome_id = o.id
 	);
 
-	-- update outcome grades that already existed (push prior grade onto the extra.uploadUndo stack)
+	-- update outcome grades that already existed (push prior grade onto the extra.upload_undo stack)
 	UPDATE evidence.student_course_outcome_grades g
 	SET grade = (e->>'grade')::numeric,
 		updated_at = NOW(),
-		extra = jsonb_set(COALESCE(g.extra, '{}'::jsonb), '{uploadUndo}',
-			COALESCE(g.extra->'uploadUndo', '[]'::jsonb) ||
-			jsonb_build_object('logId', v_log_id, 'grade', g.grade))
+		extra = jsonb_set(COALESCE(g.extra, '{}'::jsonb), '{upload_undo}',
+			COALESCE(g.extra->'upload_undo', '[]'::jsonb) ||
+			jsonb_build_object('log_id', v_log_id, 'grade', g.grade))
 	FROM jsonb_array_elements(p_rows) AS e
 	JOIN academic.course_sections cs ON cs.section_code = trim(e->>'sectionCode')
 	JOIN academic.student_section_enrollments sse ON sse.course_section_id = cs.id
