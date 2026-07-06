@@ -21,8 +21,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * down() restores the exact pre-feature state: pre-existing function bodies are restored
  * (fn_rollback_grades_rv back to its RETURNS text version), added columns/tables dropped.
  */
-export class ConsolidateRcRvEvaluationFeature1783274616449 implements MigrationInterface {
-	name = 'ConsolidateRcRvEvaluationFeature1783274616449';
+export class ConsolidateRcRvEvaluationFeature1783366935441 implements MigrationInterface {
+	name = 'ConsolidateRcRvEvaluationFeature1783366935441';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// ── competency scope on rubrics (TG402 + evaluation.rubrics.competency_scope_type_id) ──
