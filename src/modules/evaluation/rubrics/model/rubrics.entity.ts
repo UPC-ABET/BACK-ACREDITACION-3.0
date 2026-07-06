@@ -1,6 +1,6 @@
 import { Entity, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
@@ -9,7 +9,7 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 export class RubricEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	rubricTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })

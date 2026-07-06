@@ -40,9 +40,9 @@ export class ProjectValidation {
 			const group = await repo.getProjectGroupById(data.projectGroupId);
 			if (!group) {
 				errors.push(projectsValidationStrings.error.projectGroupNotFound);
-			} else if (entity?.projectGroupId) {
-				const currentGroup = await repo.getProjectGroupById(entity.projectGroupId);
-				if (currentGroup && currentGroup.academicPeriodId !== group.academicPeriodId) {
+			} else {
+				const projectAcademicPeriodId = await repo.getProjectAcademicPeriodId(id);
+				if (projectAcademicPeriodId && group.academicPeriodId !== projectAcademicPeriodId) {
 					errors.push(projectsValidationStrings.error.projectGroupPeriodMismatch);
 				}
 			}

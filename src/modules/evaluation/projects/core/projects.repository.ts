@@ -441,6 +441,19 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return row ?? null;
 	}
 
+	async getProjectAcademicPeriodId(projectId: number): Promise<number | null> {
+		const [row] = (await this.dataSource.query(
+			`SELECT cs.academic_period_id AS "academicPeriodId"
+			 FROM   evaluation.project_students ps
+			 INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+			 INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+			 WHERE  ps.project_id = $1::int
+			 LIMIT  1`,
+			[projectId],
+		)) as Array<{ academicPeriodId: number }>;
+		return row?.academicPeriodId ?? null;
+	}
+
 	async createProjectWithChildren(args: CreateProjectArgs): Promise<ProjectEntity> {
 		return await this.dataSource.transaction(async (manager) => {
 			const project = manager.create(ProjectEntity, {
