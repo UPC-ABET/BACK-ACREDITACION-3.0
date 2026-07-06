@@ -18,14 +18,14 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 /**
  * RubricConfigService
  *
- * Servicio especializado para la configuración completa de rúbricas.
+ * Specialized service for full rubric configuration.
  *
- * Reglas implementadas:
- * - R-RUB-008: Una sola rúbrica por (study_plan_course_id, grade_type_id)
- * - R-RUB-012: Auto-asignación de niveles de desempeño según instrument_type
- * - R-RUB-013: ValorMaximo = max(PuntajeMayor) de niveles de desempeño aplicables
- * - R-RUB-014: Recálculo de NotaMaxima por pregunta y rúbrica
- * - R-RUB-015: En rúbrica WASC (PA) el NotaOutcome = max; en ABET = sum
+ * Implemented business rules:
+ * - R-RUB-008: Single active rubric per (study_plan_course_id, grade_type_id, competency_scope_type_id)
+ * - R-RUB-012: Auto-assignment of performance levels according to instrument_type
+ * - R-RUB-013: MaxValue = max(HighestScore) of applicable performance levels
+ * - R-RUB-014: Recalculation of MaxScore per question and rubric
+ * - R-RUB-015: In WASC rubric (PA) NotaOutcome = max; in ABET = sum
  */
 @Injectable()
 export class RubricConfigService {
@@ -47,7 +47,7 @@ export class RubricConfigService {
 		private readonly rubricConfigRepository: RubricConfigRepository,
 	) {}
 
-	private async resolveRubricTypeIdByCode(code: string): Promise<number | null> {
+	private async resolveTypeIdByCode(code: string): Promise<number | null> {
 		const type = await this.typeRepo.findOne({ where: { code } });
 		return type?.id ?? null;
 	}
@@ -80,25 +80,33 @@ export class RubricConfigService {
 	}
 
 	/**
-	 * Crea una rúbrica completa con sus preguntas y criterios de forma transaccional
+	 * Creates a complete rubric with its questions and criteria transactionally
 	 *
-	 * Validaciones:
-	 * 1. Si es Capstone, todas las preguntas DEBEN tener outcome_id
-	 * 2. El study_plan_course_id debe existir en la BD
-	 * 3. Todo se guarda de forma transaccional o se revierte
-	 * 4. Tras crear, recalcula la nota máxima total (R-RUB-014)
+	 * Validations:
+	 * 1. If Capstone and Multiple competency, ALL questions MUST have outcome_id
+	 * 2. The study_plan_course_id must exist in the DB
+	 * 3. Everything is saved transactionally or rolled back
+	 * 4. After creation, recalculates the total max score (R-RUB-014)
 	 */
 	async createRubric(dto: CreateRubricDto): Promise<RubricEntity> {
 		const existingRubric = await this.rubricRepo.findOne({
 			where: {
 				studyPlanCourseId: dto.studyPlanCourseId,
 				gradeTypeId: dto.gradeTypeId,
+				competencyScopeTypeId: dto.competencyScopeTypeId,
 				isActive: true,
 			},
 		});
 
 		if (existingRubric) {
 			throw new BadRequestException(rubricsValidationStrings.error.activeRubricExists);
+		}
+
+		if (dto.questions.length === 0) {
+			throw new BadRequestException(rubricsValidationStrings.error.atLeastOneQuestionRequired);
+		}
+		if (dto.questions.some((q) => !q.criterias || q.criterias.length === 0)) {
+			throw new BadRequestException(rubricsValidationStrings.error.atLeastOneCriteriaRequired);
 		}
 
 		const outcomeIds = dto.questions
@@ -117,17 +125,22 @@ export class RubricConfigService {
 			}
 		}
 
-		const capstoneTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
-		const ebGradeTypeId = await this.resolveRubricTypeIdByCode(TYPE_CODES.GRADE_TYPE.EB);
+		const capstoneTypeId = await this.resolveTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
+		const multipleScopeTypeId = await this.resolveTypeIdByCode(
+			TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE,
+		);
 		const isCapstone = capstoneTypeId != null && dto.rubricTypeId === capstoneTypeId;
-		const isEbGrade = ebGradeTypeId != null && dto.gradeTypeId === ebGradeTypeId;
+		const isMultipleScope =
+			multipleScopeTypeId != null && dto.competencyScopeTypeId === multipleScopeTypeId;
 
-		// Solo se exige outcome_id en todas las preguntas si es Capstone Y el grade type es EB (Evaluación Final)
-		if (isCapstone && isEbGrade) {
+		// outcome_id is only required on all questions if Capstone AND scope is Multiple competency
+		if (isCapstone && isMultipleScope) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcomeId);
 			if (hasMissingOutcomes) {
 				throw new BadRequestException(rubricsValidationStrings.error.capstoneRequiresOutcome);
 			}
+
+			await this.validateCommissionCompleteness(dto.studyPlanCourseId, outcomeIds);
 		}
 
 		const courseExists = await this.courseRepo.exists({
@@ -137,7 +150,7 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.studyPlanCourseNotFound);
 		}
 
-		if (!(isCapstone && isEbGrade)) {
+		if (!(isCapstone && isMultipleScope)) {
 			this.validateCriteriaScores(dto.questions);
 		}
 
@@ -157,6 +170,7 @@ export class RubricConfigService {
 			{
 				rubricTypeId: dto.rubricTypeId,
 				gradeTypeId: dto.gradeTypeId,
+				competencyScopeTypeId: dto.competencyScopeTypeId,
 				studyPlanCourseId: dto.studyPlanCourseId,
 				isActive: dto.isActive ?? true,
 				extra: dto.extra,
@@ -167,7 +181,7 @@ export class RubricConfigService {
 		try {
 			await this.recalculateMaxScore(savedRubric.id);
 		} catch {
-			// Recalculo no crítico para la creación
+			// Recalculation is non-critical for creation
 		}
 
 		return savedRubric;
@@ -175,23 +189,17 @@ export class RubricConfigService {
 
 	async resolveRubricType(
 		studyPlanCourseId: number,
-		gradeTypeId: number,
 	): Promise<{ id: number; code: string; name: I18nText }> {
-		const [gradeType, capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
-			this.typeRepo.findOne({ where: { id: gradeTypeId } }),
+		const [capstoneType, nonCapstoneType, verificationOutcomeType] = await Promise.all([
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.CAPSTONE } }),
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.RUBRIC_TYPE.NON_CAPSTONE } }),
 			this.typeRepo.findOne({ where: { code: TYPE_CODES.OUTCOME_TYPE.VERIFICATION } }),
 		]);
 
-		if (!gradeType) throw new BadRequestException(rubricsValidationStrings.error.gradeTypeNotFound);
 		if (!capstoneType || !nonCapstoneType)
 			throw new BadRequestException(rubricsValidationStrings.error.rubricTypesNotConfigured);
 
-		const isEaOrEb =
-			gradeType.code === TYPE_CODES.GRADE_TYPE.EA || gradeType.code === TYPE_CODES.GRADE_TYPE.EB;
-
-		if (isEaOrEb && verificationOutcomeType) {
+		if (verificationOutcomeType) {
 			const hasVerificationOutcome = await this.rubricConfigRepository.hasVerificationOutcome(
 				studyPlanCourseId,
 				verificationOutcomeType.id,
@@ -216,6 +224,47 @@ export class RubricConfigService {
 		}
 
 		return rubric;
+	}
+
+	/**
+	 * Capstone + Multiple competency: each verification outcome belongs to a commission
+	 * (ABET, CAC, etc.). If at least one outcome of a commission is filled, ALL outcomes
+	 * of that commission mapped to the course must be filled. At least one complete commission is required.
+	 */
+	private async validateCommissionCompleteness(
+		studyPlanCourseId: number,
+		submittedOutcomeIds: number[],
+	): Promise<void> {
+		const verificationTypeId = await this.resolveTypeIdByCode(TYPE_CODES.OUTCOME_TYPE.VERIFICATION);
+		if (verificationTypeId == null) return;
+
+		const courseOutcomes = await this.rubricConfigRepository.getVerificationOutcomesByCourse(
+			studyPlanCourseId,
+			verificationTypeId,
+		);
+
+		const outcomesByCommission = new Map<number | null, number[]>();
+		for (const o of courseOutcomes) {
+			const list = outcomesByCommission.get(o.programCommissionId) ?? [];
+			list.push(o.outcomeId);
+			outcomesByCommission.set(o.programCommissionId, list);
+		}
+
+		const submitted = new Set(submittedOutcomeIds);
+		let hasCompleteCommission = false;
+
+		for (const commissionOutcomeIds of outcomesByCommission.values()) {
+			const touched = commissionOutcomeIds.filter((id) => submitted.has(id));
+			if (touched.length === 0) continue;
+			if (touched.length < commissionOutcomeIds.length) {
+				throw new BadRequestException(rubricsValidationStrings.error.incompleteCommissionOutcomes);
+			}
+			hasCompleteCommission = true;
+		}
+
+		if (!hasCompleteCommission) {
+			throw new BadRequestException(rubricsValidationStrings.error.atLeastOneCommissionRequired);
+		}
 	}
 
 	private validateCriteriaScores(
@@ -265,7 +314,7 @@ export class RubricConfigService {
 	async getRubricById(id: number): Promise<RubricEntity> {
 		const rubric = await this.rubricRepo.findOne({
 			where: { id },
-			relations: ['questions', 'questions.criterias', 'questions.outcome'],
+			relations: ['questions', 'questions.criterias', 'questions.outcome', 'competencyScopeType'],
 		});
 
 		if (!rubric) {
@@ -276,11 +325,11 @@ export class RubricConfigService {
 	}
 
 	/**
-	 * Obtiene una rúbrica por ID con estructura normalizada para frontend:
-	 * - rubric: información base
-	 * - commissions: array de comisiones con outcomeIds
-	 * - outcomes: array de outcomes con questionIds
-	 * - questions: array de preguntas con criterias
+	 * Gets a rubric by ID with a normalized structure for the frontend:
+	 * - rubric: base information
+	 * - commissions: array of commissions with outcomeIds
+	 * - outcomes: array of outcomes with questionIds
+	 * - questions: array of questions with criterias
 	 */
 	async getRubricWithContextData(id: number): Promise<any> {
 		const rubric = await this.rubricRepo.findOne({
@@ -291,6 +340,7 @@ export class RubricConfigService {
 				'questions.outcome',
 				'gradeType',
 				'rubricType',
+				'competencyScopeType',
 				'studyPlanCourse',
 				'studyPlanCourse.course',
 				'studyPlanCourse.studyPlanAcademicPeriod',
@@ -312,12 +362,37 @@ export class RubricConfigService {
 			throw new NotFoundException(rubricsValidationStrings.error.notFound);
 		}
 
+		const capstoneTypeId = await this.resolveTypeIdByCode(TYPE_CODES.RUBRIC_TYPE.CAPSTONE);
+		const multipleScopeTypeId = await this.resolveTypeIdByCode(
+			TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE,
+		);
+		const isCapstone = capstoneTypeId != null && rubric.rubricTypeId === capstoneTypeId;
+		const isMultipleScope =
+			multipleScopeTypeId != null && rubric.competencyScopeTypeId === multipleScopeTypeId;
+
+		let allCourseOutcomes: OutcomeEntity[] = [];
+		if (isCapstone && isMultipleScope) {
+			const verificationTypeId = await this.resolveTypeIdByCode(
+				TYPE_CODES.OUTCOME_TYPE.VERIFICATION,
+			);
+			if (verificationTypeId != null) {
+				allCourseOutcomes =
+					await this.rubricConfigRepository.getVerificationOutcomeEntitiesByCourse(
+						rubric.studyPlanCourseId,
+						verificationTypeId,
+					);
+			}
+		}
+
 		const commissionIds = [
-			...new Set(
-				(rubric.questions || [])
+			...new Set([
+				...(rubric.questions || [])
 					.filter((q) => q.outcome?.programCommissionId != null)
 					.map((q) => q.outcome!.programCommissionId),
-			),
+				...allCourseOutcomes
+					.filter((o) => o.programCommissionId != null)
+					.map((o) => o.programCommissionId),
+			]),
 		];
 
 		let commissions: ProgramCommissionEntity[] = [];
@@ -367,6 +442,18 @@ export class RubricConfigService {
 			}
 		});
 
+		allCourseOutcomes.forEach((o) => {
+			if (!outcomesMap.has(o.id)) {
+				outcomesMap.set(o.id, {
+					id: o.id,
+					code: o.outcomeCode,
+					name: o.outcomeName,
+					description: o.outcomeDescription,
+					programCommissionId: o.programCommissionId,
+				});
+			}
+		});
+
 		(Array.from(outcomesMap.values()) as any).forEach((outcome: any) => {
 			const commission = commissions.find((c) => c.id === outcome.programCommissionId);
 			if (commission) {
@@ -382,6 +469,7 @@ export class RubricConfigService {
 				id: rubric.id,
 				rubricTypeId: rubric.rubricTypeId,
 				gradeTypeId: rubric.gradeTypeId,
+				competencyScopeTypeId: rubric.competencyScopeTypeId,
 				studyPlanCourseId: rubric.studyPlanCourseId,
 				isActive: rubric.isActive ?? false,
 				createdAt: rubric.createdAt,
@@ -397,6 +485,13 @@ export class RubricConfigService {
 							id: rubric.gradeType.id,
 							code: rubric.gradeType.code,
 							name: rubric.gradeType.name,
+						}
+					: undefined,
+				competencyScopeType: rubric.competencyScopeType
+					? {
+							id: rubric.competencyScopeType.id,
+							code: rubric.competencyScopeType.code,
+							name: rubric.competencyScopeType.name,
 						}
 					: undefined,
 			},

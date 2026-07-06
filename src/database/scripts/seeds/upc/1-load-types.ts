@@ -52,6 +52,14 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			i18n('Tipos de rubricas de evaluacion', 'Evaluation rubric types'),
 		],
 		[
+			'TG402',
+			i18n('Alcance de competencias', 'Competency scope'),
+			i18n(
+				'Si una rubrica evalua una unica competencia o multiples competencias',
+				'Whether a rubric evaluates a single or multiple competencies',
+			),
+		],
+		[
 			'TG403',
 			i18n('Tipo de evaluador', 'Evaluator type'),
 			i18n('Roles de evaluadores y participantes', 'Roles of evaluators and participants'),
@@ -294,15 +302,15 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		[
 			'TG205',
 			'TG205-T001',
-			i18n('EA', 'EA'),
-			i18n('Evaluacion Parcial', 'Midterm evaluation'),
+			i18n('EA1', 'EA1'),
+			i18n('Evaluacion Parcial 1', 'Midterm Evaluation 1'),
 			'{"weight":0.1}',
 		],
 		[
 			'TG205',
 			'TG205-T002',
-			i18n('EB', 'EB'),
-			i18n('Evaluacion Final', 'Final evaluation'),
+			i18n('EB1', 'EB1'),
+			i18n('Evaluacion Final 1', 'Final Evaluation 1'),
 			'{"weight":0.1}',
 		],
 		[
@@ -322,15 +330,36 @@ export async function loadTypes(tenantDataSource: DataSource) {
 		[
 			'TG205',
 			'TG205-T005',
-			i18n('TP', 'TP'),
-			i18n('Trabajo Parcial', 'Midterm assignment'),
+			i18n('TB1', 'TB1'),
+			i18n('Trabajo 1', 'Assignment 1'),
 			'{"weight":0.1}',
 		],
 		[
 			'TG205',
 			'TG205-T006',
-			i18n('TF', 'TF'),
-			i18n('Trabajo Final', 'Final assignment'),
+			i18n('TB2', 'TB2'),
+			i18n('Trabajo 2', 'Assignment 2'),
+			'{"weight":0.1}',
+		],
+		[
+			'TG205',
+			'TG205-T007',
+			i18n('DD1', 'DD1'),
+			i18n('Evaluacion de Desempeno 1', 'Performance Evaluation 1'),
+			'{"weight":0.1}',
+		],
+		[
+			'TG205',
+			'TG205-T008',
+			i18n('PC1', 'PC1'),
+			i18n('Practica Calificada 1', 'Graded Practice 1'),
+			'{"weight":0.1}',
+		],
+		[
+			'TG205',
+			'TG205-T009',
+			i18n('PC2', 'PC2'),
+			i18n('Practica Calificada 2', 'Graded Practice 2'),
 			'{"weight":0.1}',
 		],
 		[
@@ -448,6 +477,20 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'{}',
 		],
 		[
+			'TG402',
+			'TG402-T001',
+			i18n('Unica competencia', 'Single competency'),
+			i18n('Rubrica que evalua una unica competencia', 'Rubric evaluates a single competency'),
+			'{}',
+		],
+		[
+			'TG402',
+			'TG402-T002',
+			i18n('Multiple competencia', 'Multiple competency'),
+			i18n('Rubrica que evalua multiples competencias', 'Rubric evaluates multiple competencies'),
+			'{}',
+		],
+		[
 			'TG403',
 			'TG403-T001',
 			i18n('Comité', 'Committee'),
@@ -513,9 +556,36 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			'TG404-T003',
 			i18n('NA', 'DNA'),
 			i18n(
-				'No Asistio - El evaluador no asistio a la evaluacion',
-				'Did not attend - the evaluator did not attend the evaluation',
+				'No Asistio - El alumno no asistio a la evaluacion',
+				'Did not attend - the student did not attend the evaluation',
 			),
+			'{}',
+		],
+		[
+			'TG404',
+			'TG404-T004',
+			i18n('DPI', 'DPI'),
+			i18n(
+				'Desaprobado por Inasistencias - El alumno reprueba por exceder el limite de inasistencias',
+				'Failed due to absences - the student fails for exceeding the absence limit',
+			),
+			'{}',
+		],
+		[
+			'TG404',
+			'TG404-T005',
+			i18n('RET', 'RET'),
+			i18n(
+				'Retirado - El alumno se retiro del curso',
+				'Withdrawn - the student withdrew from the course',
+			),
+			'{}',
+		],
+		[
+			'TG404',
+			'TG404-T006',
+			i18n('SAN', 'SAN'),
+			i18n('Sancionado - El alumno fue sancionado', 'Sanctioned - the student was sanctioned'),
 			'{}',
 		],
 		[

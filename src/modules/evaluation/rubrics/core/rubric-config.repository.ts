@@ -5,11 +5,13 @@ import { RubricEntity } from '../model/rubrics.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { RubricQuestionCriteriaEntity } from 'src/modules/evaluation/rubric-question-criterias/model/rubric-question-criterias.entity';
 import { CourseOutcomeMappingEntity } from 'src/modules/academic/course-outcome-mappings/model/course-outcome-mappings.entity';
+import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import type { I18nText } from 'src/shared/types/i18n';
 
 export interface NewRubricData {
 	rubricTypeId: number;
 	gradeTypeId: number;
+	competencyScopeTypeId: number;
 	studyPlanCourseId: number;
 	isActive: boolean;
 	extra?: any;
@@ -52,6 +54,46 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 		});
 	}
 
+	private async getVerificationOutcomeMappingsByCourse(
+		studyPlanCourseId: number,
+		verificationOutcomeTypeId: number,
+	): Promise<CourseOutcomeMappingEntity[]> {
+		return await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
+			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
+			relations: ['outcome'],
+		});
+	}
+
+	/**
+	 * Verification outcomes mapped to the course, implicitly grouped by commission
+	 * (each outcome belongs to a single commission via outcome.programCommissionId).
+	 */
+	async getVerificationOutcomesByCourse(
+		studyPlanCourseId: number,
+		verificationOutcomeTypeId: number,
+	): Promise<Array<{ outcomeId: number; programCommissionId: number | null }>> {
+		const mappings = await this.getVerificationOutcomeMappingsByCourse(
+			studyPlanCourseId,
+			verificationOutcomeTypeId,
+		);
+		return mappings.map((m) => ({
+			outcomeId: m.outcomeId,
+			programCommissionId: m.outcome?.programCommissionId ?? null,
+		}));
+	}
+
+	/** Same as getVerificationOutcomesByCourse but returns the full outcome entities. */
+	async getVerificationOutcomeEntitiesByCourse(
+		studyPlanCourseId: number,
+		verificationOutcomeTypeId: number,
+	): Promise<OutcomeEntity[]> {
+		const mappings = await this.getVerificationOutcomeMappingsByCourse(
+			studyPlanCourseId,
+			verificationOutcomeTypeId,
+		);
+		return mappings.map((m) => m.outcome).filter((o): o is OutcomeEntity => o != null);
+	}
+
 	async createWithChildren(
 		rubricData: NewRubricData,
 		questions: NewRubricQuestion[],
@@ -60,6 +102,7 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 			const rubric = manager.create(RubricEntity, {
 				rubricTypeId: rubricData.rubricTypeId,
 				gradeTypeId: rubricData.gradeTypeId,
+				competencyScopeTypeId: rubricData.competencyScopeTypeId,
 				studyPlanCourseId: rubricData.studyPlanCourseId,
 				isActive: rubricData.isActive,
 				extra: rubricData.extra,

@@ -89,18 +89,21 @@ runSeed('evaluation module', async (tenantDataSource) => {
 		INSERT INTO "evaluation"."rubrics" (
 			rubric_type_id,
 			grade_type_id,
+			competency_scope_type_id,
 			study_plan_course_id
 		)
-		SELECT rubric_type.id, grade_type.id, spc.id
+		SELECT rubric_type.id, grade_type.id, competency_scope.id, spc.id
 		FROM (
 			VALUES
-				('TG401-T002', 'TG205-T006', 'SP_SOFT26', '202601', 'Fundamentos de Programacion'),
-				('TG401-T001', 'TG205-T003', 'SP_SOFT26', '202502', 'Proyecto Integrador de Software')
-		) AS v(rubric_type_code, grade_type_code, study_plan_code, academic_period_code, course_name)
+				('TG401-T002', 'TG205-T006', 'TG402-T002', 'SP_SOFT26', '202601', 'Fundamentos de Programacion'),
+				('TG401-T001', 'TG205-T003', 'TG402-T002', 'SP_SOFT26', '202502', 'Proyecto Integrador de Software')
+		) AS v(rubric_type_code, grade_type_code, competency_scope_code, study_plan_code, academic_period_code, course_name)
 		JOIN "core"."types" rubric_type
 			ON rubric_type.code = v.rubric_type_code
 		JOIN "core"."types" grade_type
 			ON grade_type.code = v.grade_type_code
+		JOIN "core"."types" competency_scope
+			ON competency_scope.code = v.competency_scope_code
 		JOIN "academic"."study_plans" sp
 			ON sp.code = v.study_plan_code
 		JOIN "academic"."study_plan_academic_periods" spap

@@ -4,6 +4,8 @@ export interface ProjectRow {
 	projectNameEs: string;
 	projectNameEn: string;
 	courseCode: string;
+	/** Project group code (virtual company). Required for new projects. */
+	projectGroupCode: string;
 	studentCode: string;
 	/** Comma-separated professor codes keyed by evaluator type code (e.g. 'TG403-T001') */
 	evaluators: Record<string, string>;

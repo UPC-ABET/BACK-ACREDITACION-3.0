@@ -25,7 +25,6 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
-import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { evaluationsValidationStrings } from '../config/strings/evaluations.validation';
@@ -33,23 +32,23 @@ import { evaluationsValidationStrings } from '../config/strings/evaluations.vali
 /**
  * EvaluationSubmissionService
  *
- * Servicio que implementa la lógica de calificación de rúbricas (flujo completo).
+ * Service implementing rubric grading logic (full flow).
  *
- * Reglas de negocio implementadas:
- * - R-NOT-001: Cálculo de Nivel Alcanzado por outcome (umbrales 0.33/0.67)
- * - R-NOT-002: Nota final escalada a vigesimal (20)
- * - R-NOT-003: NotaOutcome = Sum(NotaCriterio)
+ * Implemented business rules:
+ * - R-NOT-001: Achievement Level calculation per outcome (thresholds 0.33/0.67)
+ * - R-NOT-002: Final grade scaled to 20-point scale
+ * - R-NOT-003: NotaOutcome = Sum(NotaCriteria)
  * - R-NOT-004: NotaRubrica = Sum(NotaOutcome)
- * - R-NOT-005: Guardada se activa si hay observación o todos los criterios están completos
- * - R-NOT-008: Comité (COM) escribe directo (sobrescribe, no promedia)
- * - R-NOT-009: Gerente (GER) en WASC escribe directo (sin promediar)
- * - R-NOT-010: Validación de rango de puntaje contra min_value/max_value del criterio
- * - R-NOT-011: Exclusión de alumnos retirados en finalización
- * - R-NOT-012: Validación de completitud al guardar calificación
- * - R-NOT-013: Observación obligatoria salvo en PA
- * - R-NOT-014: Observación vacía revierte estado
- * - R-NOT-015: Rol DOC (docente) solo visualiza, no califica
- * - R-NOT-016: Máximo 1 evaluador por tipo de rol en el proyecto
+ * - R-NOT-005: Saved status activates if observation exists or all criteria are complete
+ * - R-NOT-008/009: single evaluation per (student, rubric); any authorized evaluator
+ *   writes directly on that same evaluation (overwrites, no averaging across evaluators)
+ * - R-NOT-010: Score range validation against min_value/max_value of the criteria
+ * - R-NOT-011: Exclusion of withdrawn students on finalization
+ * - R-NOT-012: Completeness validation when saving grade
+ * - R-NOT-013: Observation required except in PA
+ * - R-NOT-014: Empty observation reverts status
+ * - R-NOT-015: DOC role (teacher) can only view, not grade
+ * - R-NOT-016: Maximum 1 evaluator per role type in the project
  */
 @Injectable()
 export class EvaluationSubmissionService {
@@ -114,26 +113,14 @@ export class EvaluationSubmissionService {
 		return type.id;
 	}
 
-	private async isPaRubric(rubricId?: number, gradeTypeId?: number): Promise<boolean> {
-		if (!gradeTypeId && !rubricId) return false;
-		let gTypeId = gradeTypeId;
-		if (!gTypeId && rubricId) {
-			const rubric = await this.rubricRepo.findOne({ where: { id: rubricId } });
-			gTypeId = rubric?.gradeTypeId;
-		}
-		if (!gTypeId) return false;
-		const type = await this.typeRepo.findOne({ where: { id: gTypeId } });
-		return type?.code === TYPE_CODES.GRADE_TYPE.PA;
-	}
-
 	private async isCapstoneRubric(rubricTypeId: number): Promise<boolean> {
 		const type = await this.typeRepo.findOne({ where: { id: rubricTypeId } });
 		return type?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE;
 	}
 
-	private async isFinalEvaluation(gradeTypeId: number): Promise<boolean> {
-		const type = await this.typeRepo.findOne({ where: { id: gradeTypeId } });
-		return type?.code === TYPE_CODES.GRADE_TYPE.EB;
+	private async isMultipleCompetencyScope(competencyScopeTypeId: number): Promise<boolean> {
+		const type = await this.typeRepo.findOne({ where: { id: competencyScopeTypeId } });
+		return type?.code === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
 	}
 
 	private async getValidPerformanceLevelValues(rubric: RubricEntity): Promise<Set<number>> {
@@ -155,45 +142,63 @@ export class EvaluationSubmissionService {
 		return new Set(levels.map((l) => Number(l.uniqueValue)));
 	}
 
-	private async getRubricForProject(
+	private async getHighestPerformanceLevelValue(rubric: RubricEntity): Promise<number> {
+		const course = await this.studyPlanCourseRepo.findOne({
+			where: { id: rubric.studyPlanCourseId },
+			relations: ['studyPlanAcademicPeriod'],
+		});
+		const academicPeriodId = course?.studyPlanAcademicPeriod?.academicPeriodId;
+		if (!academicPeriodId) return 0;
+
+		const instrType = await this.typeRepo.findOne({
+			where: { code: TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE },
+		});
+		if (!instrType) return 0;
+
+		const levels = await this.performanceLevelRepo.find({
+			where: { instrumentTypeId: instrType.id, academicPeriodId: academicPeriodId },
+		});
+		if (levels.length === 0) return 0;
+
+		return Math.max(...levels.map((l) => Number(l.uniqueValue)));
+	}
+
+	private async getRubricsForProject(
 		projectId: number,
-	): Promise<{ rubric: RubricEntity | null; studyPlanCourseId: number | null }> {
+	): Promise<{ rubrics: RubricEntity[]; studyPlanCourseId: number | null }> {
 		const student = await this.studentRepo.findOne({
 			where: { projectId: projectId },
 			relations: ['studentSectionEnrollment', 'studentSectionEnrollment.courseSection'],
 		});
-		if (!student?.studentSectionEnrollment) return { rubric: null, studyPlanCourseId: null };
+		if (!student?.studentSectionEnrollment) return { rubrics: [], studyPlanCourseId: null };
 
 		const courseSection = student.studentSectionEnrollment.courseSection;
 		const courseId = courseSection?.courseId;
 		const academicPeriodId = courseSection?.academicPeriodId;
-		if (!courseId || !academicPeriodId) return { rubric: null, studyPlanCourseId: null };
+		if (!courseId || !academicPeriodId) return { rubrics: [], studyPlanCourseId: null };
 
-		const rubric = await this.rubricRepo
-			.createQueryBuilder('r')
-			.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.id = r.study_plan_course_id')
-			.innerJoin(
-				StudyPlanAcademicPeriodEntity,
-				'spap',
-				'spap.id = spc.study_plan_academic_period_id',
-			)
-			.leftJoinAndSelect('r.questions', 'questions')
-			.leftJoinAndSelect('questions.criterias', 'criterias')
-			.where('spc.course_id = :courseId', { courseId })
-			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
-			.getOne();
+		const rubrics = await this.evaluationRepository.getActiveRubricsForCoursePeriod(
+			courseId,
+			academicPeriodId,
+		);
 
-		return { rubric: rubric ?? null, studyPlanCourseId: rubric?.studyPlanCourseId ?? null };
+		return { rubrics, studyPlanCourseId: rubrics[0]?.studyPlanCourseId ?? null };
 	}
 
 	private async aggregateScoresByOutcome(
 		manager: EntityManager,
 		evaluationId: number,
+		highestPerformanceLevelValue: number,
 	): Promise<{
 		scoresByQuestion: Map<number, { notaOutcome: number; notaMaxOutcome: number }>;
 		notaRubrica: number;
 		notaMaximaRubrica: number;
-		outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
+		outcomeGrades: Array<{
+			outcomeId: number;
+			grade: number;
+			maxValue: number;
+			maxOutcome: number;
+		}>;
 	}> {
 		const allScores = await manager.find(RubricScoreEntity, {
 			where: { evaluationId: evaluationId },
@@ -217,7 +222,12 @@ export class EvaluationSubmissionService {
 
 		let notaRubrica = 0;
 		let notaMaximaRubrica = 0;
-		const outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }> = [];
+		const outcomeGrades: Array<{
+			outcomeId: number;
+			grade: number;
+			maxValue: number;
+			maxOutcome: number;
+		}> = [];
 
 		const resultByQuestion = new Map<number, { notaOutcome: number; notaMaxOutcome: number }>();
 
@@ -230,10 +240,12 @@ export class EvaluationSubmissionService {
 
 			const question = await manager.findOne(RubricQuestionEntity, { where: { id: questionId } });
 			if (question?.outcomeId) {
+				const criteriaCount = bucket.maxValues.length;
 				outcomeGrades.push({
 					outcomeId: question.outcomeId,
 					grade: notaOutcome,
 					maxValue: notaMaxOutcome,
+					maxOutcome: criteriaCount * highestPerformanceLevelValue,
 				});
 			}
 		}
@@ -244,33 +256,47 @@ export class EvaluationSubmissionService {
 	private async upsertOutcomeGrades(
 		manager: EntityManager,
 		studentSectionEnrollmentId: number,
-		outcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>,
+		evaluationId: number,
+		outcomeGrades: Array<{
+			outcomeId: number;
+			grade: number;
+			maxValue: number;
+			maxOutcome: number;
+		}>,
 	): Promise<void> {
 		for (const og of outcomeGrades) {
 			const existing = await manager.findOne(StudentCourseOutcomeGradeEntity, {
 				where: {
 					studentSectionEnrollmentId: studentSectionEnrollmentId,
 					outcomeId: og.outcomeId,
+					evaluationId: evaluationId,
 				},
 			});
 			if (existing) {
 				existing.grade = og.grade;
+				existing.extra = { ...existing.extra, max_outcome: og.maxOutcome };
 				await manager.save(existing);
 			} else {
 				const newGrade = manager.create(StudentCourseOutcomeGradeEntity, {
 					studentSectionEnrollmentId: studentSectionEnrollmentId,
 					outcomeId: og.outcomeId,
+					evaluationId: evaluationId,
 					grade: og.grade,
+					extra: { max_outcome: og.maxOutcome },
 				});
 				await manager.save(newGrade);
 			}
 		}
 	}
 
+	// One evaluation per (projectStudentId, rubricId): any authorized evaluator overwrites the
+	// same row (R-NOT-008/009). projectEvaluatorId is not part of the identity — it's metadata
+	// tracking who last touched the record.
 	private async saveEvaluationScores(
 		manager: EntityManager,
 		projectStudentId: number,
 		projectEvaluatorId: number,
+		rubricId: number,
 		observation: I18nText | string | null | undefined,
 		scores: Array<{
 			rubricQuestionCriteriaId: number;
@@ -282,11 +308,12 @@ export class EvaluationSubmissionService {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
 				projectStudentId: projectStudentId,
-				projectEvaluatorId: projectEvaluatorId,
+				rubricId: rubricId,
 			},
 		});
 
 		if (evaluation) {
+			evaluation.projectEvaluatorId = projectEvaluatorId;
 			evaluation.qualificationStatusTypeId = statusTypeId;
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
@@ -296,6 +323,7 @@ export class EvaluationSubmissionService {
 			evaluation = manager.create(EvaluationEntity, {
 				projectStudentId: projectStudentId,
 				projectEvaluatorId: projectEvaluatorId,
+				rubricId: rubricId,
 				qualificationStatusTypeId: statusTypeId,
 				observation: i18nText(observation),
 				registerAt: new Date(),
@@ -332,15 +360,15 @@ export class EvaluationSubmissionService {
 	}
 
 	/**
-	 * Envía/actualiza una calificación de criterio individual.
+	 * Submits/updates an individual criteria score.
 	 *
-	 * Flujo:
-	 * 1. Valida evaluador/estudiante y rangos
-	 * 2. Rechaza si el evaluador es de tipo DOC (solo visualiza)
-	 * 3. UPSERT en rubric_scores
-	 * 4. Escribe directo los outcome grades (sin promediar entre evaluadores)
-	 * 5. Persiste outcome grades escalados
-	 * 6. Devuelve nota vigesimal
+	 * Flow:
+	 * 1. Validate evaluator/student and ranges
+	 * 2. Reject if evaluator is DOC type (view only)
+	 * 3. UPSERT into rubric_scores
+	 * 4. Write outcome grades directly (no averaging across evaluators)
+	 * 5. Persist scaled outcome grades
+	 * 6. Return 20-point scale grade
 	 */
 	async submitEvaluation(
 		dto: SubmitEvaluationDto,
@@ -366,9 +394,8 @@ export class EvaluationSubmissionService {
 			throw new ConflictException(evaluationsValidationStrings.error.notSameProject);
 		}
 
-		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
-			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
+			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
 
 		const criteriaIds = dto.scores.map((s) => s.rubricQuestionCriteriaId);
@@ -388,8 +415,8 @@ export class EvaluationSubmissionService {
 		const isNrOrNa = isNr || isNa;
 
 		const isCapstone = await this.isCapstoneRubric(rubric.rubricTypeId);
-		const isFinal = await this.isFinalEvaluation(rubric.gradeTypeId);
-		const isCapstoneFinal = isCapstone && isFinal;
+		const isMultipleScope = await this.isMultipleCompetencyScope(rubric.competencyScopeTypeId);
+		const isCapstoneMultiple = isCapstone && isMultipleScope;
 
 		const criteriaToQuestion = new Map<number, number>();
 		for (const question of rubric.questions ?? []) {
@@ -399,8 +426,8 @@ export class EvaluationSubmissionService {
 		}
 
 		if (!isNrOrNa) {
-			if (isCapstoneFinal) {
-				// Todos los criterios de la rúbrica deben estar en el DTO
+			if (isCapstoneMultiple) {
+				// All rubric criteria must be in the DTO
 				const allCriteriaIds = new Set(criteriaToQuestion.keys());
 				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
@@ -408,7 +435,7 @@ export class EvaluationSubmissionService {
 					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
 				}
 			} else {
-				// Capstone parcial o no capstone: máximo 1 criterio por pregunta
+				// Partial Capstone or non-Capstone: maximum 1 criteria per question
 				const countByQuestion = new Map<number, number>();
 				for (const scoreDto of dto.scores) {
 					const questionId = criteriaToQuestion.get(scoreDto.rubricQuestionCriteriaId);
@@ -424,7 +451,7 @@ export class EvaluationSubmissionService {
 				}
 			}
 
-			const validPerfLevelValues = isCapstoneFinal
+			const validPerfLevelValues = isCapstoneMultiple
 				? await this.getValidPerformanceLevelValues(rubric)
 				: null;
 
@@ -449,25 +476,28 @@ export class EvaluationSubmissionService {
 		}
 
 		const scoresToSave =
-			isCapstoneFinal && isNrOrNa
+			isCapstoneMultiple && isNrOrNa
 				? [...criteriaToQuestion.keys()].map((criteriaId) => ({
 						rubricQuestionCriteriaId: criteriaId,
 						score: 0,
 					}))
 				: dto.scores;
 
-		const { evaluationId, finalOutcomeGrades } = await this.evaluationRepository.runInTransaction(
+		const highestPerformanceLevelValue = await this.getHighestPerformanceLevelValue(rubric);
+
+		const { evaluationId, sumScores } = await this.evaluationRepository.runInTransaction(
 			async (manager) => {
 				const evaluation = await this.saveEvaluationScores(
 					manager,
 					dto.projectStudentId,
 					dto.projectEvaluatorId,
+					rubric.id,
 					dto.observation,
 					scoresToSave,
 					dto.qualificationStatusTypeId,
 				);
 
-				if (!isCapstoneFinal) {
+				if (!isCapstoneMultiple) {
 					const submittedCriteriaIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 					const questionsInSubmission = new Set(
 						dto.scores
@@ -491,38 +521,32 @@ export class EvaluationSubmissionService {
 					}
 				}
 
-				const isPa = await this.isPaRubric(rubric.id);
-
-				let txOutcomeGrades: Array<{ outcomeId: number; grade: number; maxValue: number }>;
-
-				if (evaluatorCode === TYPE_CODES.EVALUATOR_TYPE.GER && isPa) {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
-					txOutcomeGrades = outcomeGrades;
-				} else {
-					const { outcomeGrades } = await this.aggregateScoresByOutcome(manager, evaluation.id);
-					txOutcomeGrades = outcomeGrades;
-				}
+				// Any authorized evaluator writes directly on the same evaluation
+				// (R-NOT-008/R-NOT-009), without averaging across evaluators.
+				const { outcomeGrades: txOutcomeGrades, notaRubrica: sumScores } =
+					await this.aggregateScoresByOutcome(manager, evaluation.id, highestPerformanceLevelValue);
 
 				await this.upsertOutcomeGrades(
 					manager,
 					student.studentSectionEnrollmentId,
+					evaluation.id,
 					txOutcomeGrades,
 				);
 
-				return { evaluationId: evaluation.id, finalOutcomeGrades: txOutcomeGrades };
+				return { evaluationId: evaluation.id, sumScores };
 			},
 		);
 
-		const allOutcomeGrades = finalOutcomeGrades || [];
-		const notaRubrica = allOutcomeGrades.reduce((s, og) => s + og.grade, 0);
-		const notaMaxRubrica = allOutcomeGrades.reduce((s, og) => s + og.maxValue, 0);
-		const scaledScore = this.scaleTo20(notaRubrica, notaMaxRubrica);
+		// Same rule in submit, GET /project/:id and grade export: Capstone + Multiple
+		// competency scales against performance levels; the rest simply sums the scores.
+		const totalMaxScore = highestPerformanceLevelValue * (rubric.questions?.length ?? 0);
+		const scaledScore = isCapstoneMultiple ? this.scaleTo20(sumScores, totalMaxScore) : sumScores;
 
 		return { success: true, evaluationId, scaledScore };
 	}
 
 	/**
-	 * Guarda/actualiza la observación de una evaluación (R-NOT-014)
+	 * Saves/updates the observation of an evaluation (R-NOT-014)
 	 */
 	async saveObservation(dto: SaveObservationDto): Promise<{ success: boolean }> {
 		const evaluator = await this.evaluatorRepo.findOne({
@@ -538,9 +562,8 @@ export class EvaluationSubmissionService {
 			);
 		}
 
-		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
-			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
+			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
 
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
@@ -552,7 +575,7 @@ export class EvaluationSubmissionService {
 			let evaluation = await manager.findOne(EvaluationEntity, {
 				where: {
 					projectStudentId: dto.projectStudentId,
-					projectEvaluatorId: dto.projectEvaluatorId,
+					rubricId: dto.rubricId,
 				},
 			});
 
@@ -560,11 +583,13 @@ export class EvaluationSubmissionService {
 				evaluation = manager.create(EvaluationEntity, {
 					projectStudentId: dto.projectStudentId,
 					projectEvaluatorId: dto.projectEvaluatorId,
+					rubricId: dto.rubricId,
 					qualificationStatusTypeId: nrStatusTypeId,
 					observation: i18nText(dto.observation),
 					registerAt: new Date(),
 				});
 			} else {
+				evaluation.projectEvaluatorId = dto.projectEvaluatorId;
 				evaluation.observation = i18nText(dto.observation);
 			}
 
@@ -581,7 +606,7 @@ export class EvaluationSubmissionService {
 	}
 
 	/**
-	 * Finaliza la calificación de un proyecto (R-NOT-011, R-NOT-012, R-NOT-013, R-NOT-015)
+	 * Finalizes project grading (R-NOT-011, R-NOT-012, R-NOT-013, R-NOT-015)
 	 */
 	async finalizeProject(dto: FinalizeProjectDto): Promise<{ success: boolean; message: string }> {
 		const evaluator = await this.evaluatorRepo.findOne({
@@ -597,9 +622,8 @@ export class EvaluationSubmissionService {
 			);
 		}
 
-		const evaluatorCode = await this.resolveEvaluatorTypeCode(evaluator.evaluatorTypeId);
 		if (!(await this.canEvaluatorTypeGrade(evaluator.evaluatorTypeId))) {
-			throw new BadRequestException(evaluationsValidationStrings.error.onlyComiteCanGrade);
+			throw new BadRequestException(evaluationsValidationStrings.error.evaluatorTypeNotAuthorized);
 		}
 
 		const project = await this.projectRepo.findOne({
@@ -611,13 +635,10 @@ export class EvaluationSubmissionService {
 			throw new NotFoundException(evaluationsValidationStrings.error.projectNotFound);
 		}
 
-		const { rubric } = await this.getRubricForProject(dto.projectId);
-		if (!rubric) {
+		const { rubrics } = await this.getRubricsForProject(dto.projectId);
+		if (rubrics.length === 0) {
 			throw new BadRequestException(evaluationsValidationStrings.error.noRubricForProject);
 		}
-
-		const totalCriteria =
-			rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
 
 		const asistioStatusTypeId = await this.resolveStatusTypeIdByCode(
 			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
@@ -625,33 +646,38 @@ export class EvaluationSubmissionService {
 
 		await this.evaluationRepository.runInTransaction(async (manager) => {
 			for (const ps of project.students) {
-				const evaluation = await manager.findOne(EvaluationEntity, {
-					where: {
-						projectStudentId: ps.id,
-						projectEvaluatorId: dto.evaluatorId,
-					},
-				});
-
 				if (!ps.studentSectionEnrollment) continue;
 
-				if (!evaluation) {
-					throw new BadRequestException(evaluationsValidationStrings.error.gradeAllStudents);
+				for (const rubric of rubrics) {
+					const totalCriteria =
+						rubric.questions?.reduce((sum, q) => sum + (q.criterias?.length || 0), 0) || 0;
+
+					const evaluation = await manager.findOne(EvaluationEntity, {
+						where: {
+							projectStudentId: ps.id,
+							rubricId: rubric.id,
+						},
+					});
+
+					if (!evaluation) {
+						throw new BadRequestException(evaluationsValidationStrings.error.gradeAllStudents);
+					}
+
+					if (!dto.isPa && !i18nTrim(evaluation.observation)) {
+						throw new BadRequestException(evaluationsValidationStrings.error.observationRequired);
+					}
+
+					const criteriaCount = await manager.count(RubricScoreEntity, {
+						where: { evaluationId: evaluation.id },
+					});
+
+					if (criteriaCount < totalCriteria) {
+						throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
+					}
+
+					evaluation.qualificationStatusTypeId = asistioStatusTypeId;
+					await manager.save(evaluation);
 				}
-
-				if (!dto.isPa && !i18nTrim(evaluation.observation)) {
-					throw new BadRequestException(evaluationsValidationStrings.error.observationRequired);
-				}
-
-				const criteriaCount = await manager.count(RubricScoreEntity, {
-					where: { evaluationId: evaluation.id },
-				});
-
-				if (criteriaCount < totalCriteria) {
-					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
-				}
-
-				evaluation.qualificationStatusTypeId = asistioStatusTypeId;
-				await manager.save(evaluation);
 			}
 		});
 

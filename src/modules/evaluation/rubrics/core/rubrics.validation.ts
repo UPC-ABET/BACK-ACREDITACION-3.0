@@ -10,6 +10,7 @@ export class RubricValidation {
 			where: {
 				studyPlanCourseId: data.studyPlanCourseId,
 				gradeTypeId: data.gradeTypeId,
+				competencyScopeTypeId: data.competencyScopeTypeId,
 			},
 		});
 
@@ -29,11 +30,12 @@ export class RubricValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) errors.push(rubricsValidationStrings.error.notFound);
 
-		if (data.studyPlanCourseId && data.gradeTypeId) {
+		if (data.studyPlanCourseId && data.gradeTypeId && data.competencyScopeTypeId) {
 			const exists = await repo.findOneByCondition({
 				where: {
 					studyPlanCourseId: data.studyPlanCourseId,
 					gradeTypeId: data.gradeTypeId,
+					competencyScopeTypeId: data.competencyScopeTypeId,
 				},
 			});
 

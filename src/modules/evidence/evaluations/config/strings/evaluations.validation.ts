@@ -15,7 +15,7 @@ export const evaluationsValidationStrings = {
 		statusTypeNotFound: 'error.evaluation.statusTypeNotFound',
 		docCannotGrade: 'error.evaluation.docCannotGrade',
 		inactiveEvaluatorCannotGrade: 'error.evaluation.inactiveEvaluatorCannotGrade',
-		onlyComiteCanGrade: 'error.evaluation.onlyComiteCanGrade',
+		evaluatorTypeNotAuthorized: 'error.evaluation.evaluatorTypeNotAuthorized',
 		gradeAllStudents: 'error.evaluation.gradeAllStudents',
 		observationRequired: 'error.evaluation.observationRequired',
 	},

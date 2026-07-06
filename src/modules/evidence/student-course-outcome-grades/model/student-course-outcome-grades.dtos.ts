@@ -22,6 +22,10 @@ export class CreateStudentCourseOutcomeGradeDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
 	grade: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
+	evaluationId: number;
 }
 
 export class UpdateStudentCourseOutcomeGradeDto {
@@ -48,6 +52,11 @@ export class UpdateStudentCourseOutcomeGradeDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	grade?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	evaluationId?: number;
 }
 
 export class FilterStudentCourseOutcomeGradeDto {
@@ -70,4 +79,8 @@ export class FilterStudentCourseOutcomeGradeDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	grade?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	evaluationId?: number;
 }

@@ -10,6 +10,7 @@ export class StudentCourseOutcomeGradeValidation {
 			where: {
 				studentSectionEnrollmentId: data.studentSectionEnrollmentId,
 				outcomeId: data.outcomeId,
+				evaluationId: data.evaluationId,
 			},
 		});
 
@@ -35,11 +36,13 @@ export class StudentCourseOutcomeGradeValidation {
 
 		const enrollmentId = data.studentSectionEnrollmentId ?? entity?.studentSectionEnrollmentId;
 		const outcomeId = data.outcomeId ?? entity?.outcomeId;
+		const evaluationId = data.evaluationId ?? entity?.evaluationId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
 				studentSectionEnrollmentId: enrollmentId,
 				outcomeId: outcomeId,
+				evaluationId: evaluationId,
 			},
 		});
 

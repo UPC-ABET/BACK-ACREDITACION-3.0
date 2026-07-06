@@ -1,6 +1,6 @@
 import { Entity, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { IntegerFKIDColumn, IntegerColumn } from 'src/commons/configs/db.configs';
+import { IntegerFKIDColumn } from 'src/commons/configs/db.configs';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
@@ -9,11 +9,14 @@ import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 export class RubricEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	rubricTypeId: number;
 
-	@IntegerColumn({ nullable: false })
+	@IntegerFKIDColumn({ nullable: false })
 	gradeTypeId: number;
+
+	@IntegerFKIDColumn({ nullable: false })
+	competencyScopeTypeId: number;
 
 	@IntegerFKIDColumn({ nullable: false })
 	studyPlanCourseId: number;
@@ -30,6 +33,13 @@ export class RubricEntity extends BaseEntity {
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'grade_type_id', foreignKeyConstraintName: 'FK_rubrics_grade_type_id' })
 	gradeType: TypeEntity;
+
+	@ManyToOne(() => TypeEntity)
+	@JoinColumn({
+		name: 'competency_scope_type_id',
+		foreignKeyConstraintName: 'FK_rubrics_competency_scope_type_id',
+	})
+	competencyScopeType: TypeEntity;
 
 	@ManyToOne(() => TypeEntity)
 	@JoinColumn({ name: 'rubric_type_id', foreignKeyConstraintName: 'FK_rubrics_rubric_type_id' })

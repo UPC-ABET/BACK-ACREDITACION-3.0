@@ -9,7 +9,7 @@ export class EvaluationValidation {
 		const exists = await repo.findOneByCondition({
 			where: {
 				projectStudentId: data.projectStudentId,
-				projectEvaluatorId: data.projectEvaluatorId,
+				rubricId: data.rubricId,
 			},
 		});
 
@@ -30,12 +30,12 @@ export class EvaluationValidation {
 		if (!entity) errors.push(evaluationsValidationStrings.error.notFound);
 
 		const projectStudentId = data.projectStudentId ?? entity?.projectStudentId;
-		const projectEvaluatorId = data.projectEvaluatorId ?? entity?.projectEvaluatorId;
+		const rubricId = data.rubricId ?? entity?.rubricId;
 
 		const exists = await repo.findOneByCondition({
 			where: {
 				projectStudentId: projectStudentId,
-				projectEvaluatorId: projectEvaluatorId,
+				rubricId: rubricId,
 			},
 		});
 

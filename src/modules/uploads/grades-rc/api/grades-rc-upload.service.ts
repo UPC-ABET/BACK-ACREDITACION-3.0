@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
 import { readCell } from 'src/libs/excel.functions';
+import { addReferenceTable } from 'src/libs/excel-reference-table.functions';
 
 import { GradesRcRow, UploadResult, UploadRowError } from '../model/grades-rc-upload.types';
 import type { GradesRcUploadDto } from '../model/grades-rc-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	gradesRcErrorMessages,
+	gradesRcFieldInstructions,
 	gradesRcTemplateLabels,
 } from '../model/grades-rc-template.labels';
 import { GradesRcUploadRepository } from '../core/grades-rc-upload.repository';
@@ -86,7 +88,9 @@ export class GradesRcUploadService {
 	async generateTemplate(lang: string): Promise<{ buffer: Buffer; fileName: string }> {
 		const language = this.resolveLanguage(lang);
 		const labels = gradesRcTemplateLabels[language];
+		const instructions = gradesRcFieldInstructions[language];
 		const gradeTypes = await this.repository.getGradeTypes(language);
+		const qualificationStatusTypes = await this.repository.getQualificationStatusTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
 
@@ -97,17 +101,72 @@ export class GradesRcUploadService {
 			labels.gradeTypeCode,
 			labels.gradeTypePercentage,
 			labels.grade,
+			labels.qualificationStatusCode,
 		];
 		dataSheet.addRow(headers);
 		this.styleHeaderRow(dataSheet, headers);
 
-		const legendSheet = workbook.addWorksheet(labels.legendSheet);
-		const legendHeaders = [labels.legendCode, labels.legendName];
-		legendSheet.addRow(legendHeaders);
-		this.styleHeaderRow(legendSheet, legendHeaders);
-		for (const gradeType of gradeTypes) {
-			legendSheet.addRow([gradeType.code, gradeType.name]);
-		}
+		// ── Instructions sheet ────────────────────────────────────────────
+		const instrSheet = workbook.addWorksheet(labels.instructionsTitle);
+
+		const instHeaders = [
+			labels.instructionsColField,
+			labels.instructionsColDescription,
+			labels.instructionsColRequired,
+			labels.instructionsColExample,
+		];
+
+		const instHeaderRow = instrSheet.getRow(1);
+		instHeaders.forEach((h, i) => {
+			const cell = instHeaderRow.getCell(i + 1);
+			cell.value = h;
+			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+			cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+		});
+		instHeaderRow.height = 22;
+
+		instructions.forEach((instr, idx) => {
+			const r = instrSheet.getRow(2 + idx);
+			r.getCell(1).value = instr.field;
+			r.getCell(2).value = instr.description;
+			r.getCell(3).value = instr.required ? labels.instructionsYes : labels.instructionsNo;
+			r.getCell(4).value = instr.example;
+
+			for (let c = 1; c <= 4; c++) {
+				const cell = r.getCell(c);
+				cell.alignment = { vertical: 'middle', wrapText: true };
+				cell.border = {
+					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+				};
+			}
+			r.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
+			r.height = 40;
+		});
+
+		instrSheet.getColumn(1).width = 30;
+		instrSheet.getColumn(2).width = 65;
+		instrSheet.getColumn(3).width = 13;
+		instrSheet.getColumn(4).width = 25;
+
+		// ── Grade types reference (below instructions) ────────────────────
+		const gradeTypesEndRow = addReferenceTable(
+			instrSheet,
+			2 + instructions.length + 2,
+			labels.gradeTypesTitle,
+			{ code: labels.legendColCode, name: labels.legendColName },
+			gradeTypes,
+		);
+
+		// ── Qualification status types reference (below grade types) ──────
+		addReferenceTable(
+			instrSheet,
+			gradeTypesEndRow + 2,
+			labels.qualificationStatusTypesTitle,
+			{ code: labels.legendColCode, name: labels.legendColName },
+			qualificationStatusTypes,
+		);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
@@ -127,7 +186,7 @@ export class GradesRcUploadService {
 	}
 
 	// Positional layout (header ignored):
-	// sectionCode | studentCode | gradeTypeCode | gradeTypePercentage | grade
+	// sectionCode | studentCode | gradeTypeCode | gradeTypePercentage | grade | qualificationStatusCode
 	private parseWorkbook(workbook: ExcelJS.Workbook): GradesRcRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: GradesRcRow[] = [];
@@ -141,6 +200,7 @@ export class GradesRcUploadService {
 				gradeTypeCode: readCell(row, 3),
 				gradeTypePercentage: readCell(row, 4),
 				grade: readCell(row, 5),
+				qualificationStatusCode: readCell(row, 6),
 			});
 		});
 		return rows;
@@ -153,8 +213,9 @@ export class GradesRcUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		// data columns = sectionCode, studentCode, gradeTypeCode, gradeTypePercentage, grade; error column is next.
-		const errorColumn = 6;
+		// data columns = sectionCode, studentCode, gradeTypeCode, gradeTypePercentage, grade,
+		// qualificationStatusCode; error column is next.
+		const errorColumn = 7;
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };

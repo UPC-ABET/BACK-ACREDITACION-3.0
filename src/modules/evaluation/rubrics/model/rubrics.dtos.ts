@@ -68,6 +68,10 @@ export class CreateRubricDto {
 
 	@IsNumber()
 	@ApiProperty({ example: 1, required: true })
+	competencyScopeTypeId: number;
+
+	@IsNumber()
+	@ApiProperty({ example: 1, required: true })
 	studyPlanCourseId: number;
 
 	@IsArray()
@@ -100,12 +104,17 @@ export class UpdateRubricDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
+	competencyScopeTypeId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
 	studyPlanCourseId?: number;
 
 	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => CreateRubricQuestionDto) // reutilizamos porque ya tiene id opcional
+	@Type(() => CreateRubricQuestionDto) // reuse because it already has optional id
 	@ApiProperty({ example: {}, type: [CreateRubricQuestionDto], required: false })
 	questions?: CreateRubricQuestionDto[];
 
@@ -135,6 +144,10 @@ export class FilterRubricDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	gradeTypeId?: number;
+
+	@IsOptional()
+	@ApiProperty({ example: 1, required: false })
+	competencyScopeTypeId?: number;
 
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })

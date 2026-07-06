@@ -35,7 +35,13 @@ export const seccionExportLabels: LangMap = {
 		fileName: 'Secciones.xlsx',
 	},
 	en: {
-		headers: ['Course code', 'Section code', 'Professor code', 'Campus code', 'Section modality code'],
+		headers: [
+			'Course code',
+			'Section code',
+			'Professor code',
+			'Campus code',
+			'Section modality code',
+		],
 		fileName: 'Sections.xlsx',
 	},
 };
@@ -53,7 +59,14 @@ export const alumnoMatriculadoExportLabels: LangMap = {
 		fileName: 'Matriculados.xlsx',
 	},
 	en: {
-		headers: ['Student code', 'Last name', 'First name', 'Program code', 'Campus code', 'Enrollment modality code'],
+		headers: [
+			'Student code',
+			'Last name',
+			'First name',
+			'Program code',
+			'Campus code',
+			'Enrollment modality code',
+		],
 		fileName: 'EnrolledStudents.xlsx',
 	},
 };
@@ -66,5 +79,32 @@ export const alumnoSeccionExportLabels: LangMap = {
 	en: {
 		headers: ['Section code', 'Student code'],
 		fileName: 'StudentSection.xlsx',
+	},
+};
+
+// Mirrors the grades-rc bulk upload template column order exactly (uploads/grades-rc), so the
+// generated file can be re-uploaded as-is.
+export const gradesRcExportLabels: LangMap = {
+	es: {
+		headers: [
+			'Código de sección',
+			'Código del alumno',
+			'Código de tipo de nota',
+			'Peso del tipo de nota (%)',
+			'Nota',
+			'Código de estado de calificación',
+		],
+		fileName: 'NotasRC.xlsx',
+	},
+	en: {
+		headers: [
+			'Section code',
+			'Student code',
+			'Grade type code',
+			'Grade type weight (%)',
+			'Grade',
+			'Qualification status code',
+		],
+		fileName: 'GradesRC.xlsx',
 	},
 };

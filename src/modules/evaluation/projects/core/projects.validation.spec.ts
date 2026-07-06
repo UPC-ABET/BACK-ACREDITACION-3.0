@@ -5,6 +5,8 @@ const mockRepo = {
 	findOneByCondition: jest.fn(),
 	findOneById: jest.fn(),
 	hasRubricScores: jest.fn(),
+	getProjectGroupById: jest.fn(),
+	getProjectAcademicPeriodId: jest.fn(),
 };
 
 describe('ProjectValidation', () => {
@@ -43,6 +45,33 @@ describe('ProjectValidation', () => {
 			await expect(ProjectValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
 				DomainError,
 			);
+		});
+
+		it('throws when assigning a group from a different academic period (project currently ungrouped)', async () => {
+			mockRepo.findOneById.mockResolvedValue({ id: 1, projectGroupId: null });
+			mockRepo.getProjectGroupById.mockResolvedValue({ id: 7, academicPeriodId: 202520 });
+			mockRepo.getProjectAcademicPeriodId.mockResolvedValue(202510);
+			await expect(
+				ProjectValidation.validateUpdate(mockRepo as any, 1, { projectGroupId: 7 }),
+			).rejects.toThrow(DomainError);
+		});
+
+		it('passes when assigning a group from the same academic period', async () => {
+			mockRepo.findOneById.mockResolvedValue({ id: 1, projectGroupId: null });
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.getProjectGroupById.mockResolvedValue({ id: 7, academicPeriodId: 202510 });
+			mockRepo.getProjectAcademicPeriodId.mockResolvedValue(202510);
+			await expect(
+				ProjectValidation.validateUpdate(mockRepo as any, 1, { projectGroupId: 7 }),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws when the assigned group does not exist', async () => {
+			mockRepo.findOneById.mockResolvedValue({ id: 1, projectGroupId: null });
+			mockRepo.getProjectGroupById.mockResolvedValue(null);
+			await expect(
+				ProjectValidation.validateUpdate(mockRepo as any, 1, { projectGroupId: 99 }),
+			).rejects.toThrow(DomainError);
 		});
 	});
 

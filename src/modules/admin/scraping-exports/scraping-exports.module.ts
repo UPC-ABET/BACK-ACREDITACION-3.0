@@ -8,6 +8,7 @@ import {
 	EXPORTS_RAW_CONNECTION,
 	ScrapingExportsRepository,
 } from './core/scraping-exports.repository';
+import { GradesRcExportRepository } from './core/grades-rc-export.repository';
 
 // Builds the uploads-ready Excel files (docentes, secciones, matriculados, alumno-sección) out of
 // the raw scraping tables. Banner and Planner raw tables share one physical DB, so this module
@@ -31,6 +32,6 @@ import {
 		}),
 	],
 	controllers: [ScrapingExportsController],
-	providers: [ScrapingExportsService, ScrapingExportsRepository],
+	providers: [ScrapingExportsService, ScrapingExportsRepository, GradesRcExportRepository],
 })
 export class ScrapingExportsModule {}

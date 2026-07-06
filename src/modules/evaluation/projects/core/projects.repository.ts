@@ -25,8 +25,6 @@ import { ProjectEvaluatorEntity } from 'src/modules/evaluation/project-evaluator
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { RubricEntity } from 'src/modules/evaluation/rubrics/model/rubrics.entity';
 import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
-import { RubricQuestionCriteriaEntity } from '../../rubric-question-criterias/model/rubric-question-criterias.entity';
-import { RubricQuestionEntity } from '../../rubric-questions/model/rubric-questions.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { I18nText } from 'src/shared/types/i18n';
 import { camelizeKeys } from 'src/libs/case.functions';
@@ -81,15 +79,21 @@ export interface CreateProjectArgs {
 	code: string;
 	name: CreateProjectDto['name'];
 	description: CreateProjectDto['description'];
+	projectGroupId: number;
 	isActive: boolean;
 	extra: CreateProjectDto['extra'];
 	studentSectionEnrollmentIds: number[];
 	evaluators: CreateProjectDto['evaluators'];
 }
 
+export interface ProjectGroupScopeRow {
+	id: number;
+	academicPeriodId: number;
+}
+
 export interface ProjectsByProfessorFilterArgs {
 	professorId: number;
-	gradeTypeId?: number;
+	competencyScopeTypeId?: number;
 	academicPeriodId?: number;
 	programIds: number[] | null;
 	search?: string;
@@ -125,6 +129,8 @@ export interface GradeExportRow {
 	rubricTypeId: number;
 	rubricTypeCode: string;
 	gradeTypeCode: string;
+	gradeTypeName: string;
+	competencyScopeCode: string;
 	totalScore: string;
 }
 
@@ -153,6 +159,11 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		}
 		if (filters.isActive !== undefined) {
 			qb.andWhere('project.is_active = :isActive', { isActive: filters.isActive });
+		}
+		if (filters.projectGroupId) {
+			qb.andWhere('project.project_group_id = :projectGroupId', {
+				projectGroupId: filters.projectGroupId,
+			});
 		}
 		if (filters.professorId) {
 			qb.leftJoin('project.evaluators', 'pe_f', 'pe_f.is_active = true');
@@ -250,6 +261,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.where('project.id IN (:...projectIds)', { projectIds })
 			.leftJoinAndSelect('project.students', 'ps')
 			.leftJoinAndSelect('project.evaluators', 'pe', 'pe.is_active = true')
+			.leftJoinAndSelect('project.projectGroup', 'pg')
 			.leftJoin(
 				StudentSectionEnrollmentEntity,
 				'sse_enrich',
@@ -418,12 +430,37 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return rows.length > 0;
 	}
 
+	async getProjectGroupById(projectGroupId: number): Promise<ProjectGroupScopeRow | null> {
+		const [row] = (await this.dataSource.query(
+			`SELECT id, academic_period_id AS "academicPeriodId"
+			 FROM   evaluation.project_groups
+			 WHERE  id = $1::int
+			 LIMIT  1`,
+			[projectGroupId],
+		)) as ProjectGroupScopeRow[];
+		return row ?? null;
+	}
+
+	async getProjectAcademicPeriodId(projectId: number): Promise<number | null> {
+		const [row] = (await this.dataSource.query(
+			`SELECT cs.academic_period_id AS "academicPeriodId"
+			 FROM   evaluation.project_students ps
+			 INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+			 INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+			 WHERE  ps.project_id = $1::int
+			 LIMIT  1`,
+			[projectId],
+		)) as Array<{ academicPeriodId: number }>;
+		return row?.academicPeriodId ?? null;
+	}
+
 	async createProjectWithChildren(args: CreateProjectArgs): Promise<ProjectEntity> {
 		return await this.dataSource.transaction(async (manager) => {
 			const project = manager.create(ProjectEntity, {
 				code: args.code,
 				name: args.name,
 				description: args.description,
+				projectGroupId: args.projectGroupId,
 				isActive: args.isActive,
 				extra: args.extra,
 			});
@@ -456,6 +493,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	async getProjectDetailEntity(projectId: number): Promise<ProjectEntity | null> {
 		return await this.repository
 			.createQueryBuilder('p')
+			.leftJoinAndSelect('p.projectGroup', 'pg')
 			.leftJoinAndSelect('p.students', 's')
 			.leftJoinAndSelect('s.studentSectionEnrollment', 'sse')
 			.leftJoinAndSelect('sse.enrolledStudent', 'es')
@@ -493,21 +531,26 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		])) as ProgramNameRow[];
 	}
 
-	async getActiveRubricForStudyPlanCourse(
+	async getActiveRubricsForStudyPlanCourse(
 		studyPlanCourseId: number,
-		gradeTypeId?: number,
+		competencyScopeTypeId?: number,
 		rubricTypeId?: number,
-	): Promise<RubricEntity | null> {
+	): Promise<RubricEntity[]> {
 		return await this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('r')
 			.leftJoinAndSelect('r.rubricType', 'rt')
 			.leftJoinAndSelect('r.gradeType', 'gt')
+			.leftJoinAndSelect('r.competencyScopeType', 'cst')
 			.where('r.study_plan_course_id = :spcId', { spcId: studyPlanCourseId })
 			.andWhere('r.is_active = :isActive', { isActive: true })
-			.andWhere(gradeTypeId ? 'r.grade_type_id = :gradeTypeId' : '1=1', { gradeTypeId })
+			.andWhere(
+				competencyScopeTypeId ? 'r.competency_scope_type_id = :competencyScopeTypeId' : '1=1',
+				{ competencyScopeTypeId },
+			)
 			.andWhere(rubricTypeId ? 'r.rubric_type_id = :rubricTypeId' : '1=1', { rubricTypeId })
-			.getOne();
+			.orderBy('gt.code', 'ASC')
+			.getMany();
 	}
 
 	async getEvaluationsForProjectStudents(
@@ -520,11 +563,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			.createQueryBuilder('ev')
 			.leftJoinAndSelect('ev.scores', 'score')
 			.innerJoin('ev.projectStudent', 'ps')
-			.innerJoin(RubricQuestionCriteriaEntity, 'rqc', 'rqc.id = score.rubric_question_criteria_id')
-			.innerJoin(RubricQuestionEntity, 'rq', 'rq.id = rqc.rubric_question_id')
 			.where('ps.project_id = :projectId', { projectId })
 			.andWhere('ps.id = ANY(:psIds)', { psIds: projectStudentIds })
-			.andWhere('rq.rubric_id = :rubricId', { rubricId })
+			.andWhere('ev.rubric_id = :rubricId', { rubricId })
 			.getMany();
 	}
 
@@ -533,7 +574,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		params: unknown[];
 		nextParamIdx: number;
 	} {
-		const { professorId, gradeTypeId, academicPeriodId, programIds, search } = args;
+		const { professorId, competencyScopeTypeId, academicPeriodId, programIds, search } = args;
 
 		let filterFromWhere = `
     FROM evaluation.project_evaluators pe
@@ -559,7 +600,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		const params: unknown[] = [professorId];
 		let paramIdx = 2;
 
-		if (gradeTypeId) {
+		if (competencyScopeTypeId) {
 			filterFromWhere += `
       AND EXISTS (
         SELECT 1
@@ -579,9 +620,9 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
             WHERE ps2.project_id = pe.project_id
           )
         )
-        AND r.grade_type_id = $${paramIdx}
+        AND r.competency_scope_type_id = $${paramIdx}
       )`;
-			params.push(gradeTypeId);
+			params.push(competencyScopeTypeId);
 			paramIdx++;
 		}
 
@@ -636,22 +677,22 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 
 	async getProjectsByProfessorDetail(
 		projectIds: number[],
-		gradeTypeId?: number,
+		competencyScopeTypeId?: number,
 	): Promise<ProjectsByProfessorRawRow[]> {
 		return (await this.dataSource.query(PROJECTS_BY_PROFESSOR_DETAIL_SQL, [
 			projectIds,
-			gradeTypeId ?? null,
+			competencyScopeTypeId ?? null,
 		])) as ProjectsByProfessorRawRow[];
 	}
 
 	async getProjectGradesForExport(
 		academicPeriodId: number,
-		gradeTypeId: number,
+		competencyScopeTypeId: number,
 		programIds: number[],
 	): Promise<GradeExportRow[]> {
 		return (await this.dataSource.query(PROJECT_GRADES_EXPORT_SQL, [
 			academicPeriodId,
-			gradeTypeId,
+			competencyScopeTypeId,
 			programIds,
 		])) as GradeExportRow[];
 	}

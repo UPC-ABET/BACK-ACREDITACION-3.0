@@ -110,19 +110,19 @@ export class ProjectController extends BaseController<ProjectService> {
 	@Get('project/:projectId')
 	@ApiOkResponse({ type: ProjectDetailsResponseDto })
 	@ApiQuery({ name: 'isEvaluationMode', required: false, type: Boolean })
-	@ApiQuery({ name: 'gradeTypeCode', required: false, type: String })
+	@ApiQuery({ name: 'competencyScopeCode', required: false, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getProjectWithDetails(
 		@Param('projectId', ParseIntPipe) projectId: number,
 		@Query('isEvaluationMode', new ParseBoolPipe({ optional: true })) isEvaluationMode?: boolean,
-		@Query('gradeTypeCode') gradeTypeCode?: string,
+		@Query('competencyScopeCode') competencyScopeCode?: string,
 		@Query('rubricTypeId', new ParseIntPipe({ optional: true })) rubricTypeId?: number,
 	) {
 		return parseSuccessResponse(
 			await this.projectDetailsService.getProjectWithDetails(
 				projectId,
 				isEvaluationMode ?? false,
-				gradeTypeCode,
+				competencyScopeCode,
 				rubricTypeId,
 			),
 		);
@@ -175,18 +175,18 @@ export class ProjectController extends BaseController<ProjectService> {
 	@Get('export/grades')
 	@ApiAcademicPeriodHeader()
 	@ApiSchoolHeader()
-	@ApiQuery({ name: 'gradeTypeCode', required: true, type: String })
+	@ApiQuery({ name: 'competencyScopeCode', required: true, type: String })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async exportGrades(
 		@AcademicPeriodId() academicPeriodId: number,
 		@SchoolId() schoolId: number,
-		@Query('gradeTypeCode') gradeTypeCode: string,
+		@Query('competencyScopeCode') competencyScopeCode: string,
 		@Res() res: Response,
 	) {
 		const xlsx = await this.projectGradeExportService.exportProjectGrades(
 			academicPeriodId,
 			schoolId,
-			gradeTypeCode,
+			competencyScopeCode,
 		);
 		const filename = `notas-proyectos-periodo${academicPeriodId}-escuela${schoolId}.xlsx`;
 		const encoded = encodeURIComponent(filename);

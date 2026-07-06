@@ -3,6 +3,7 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn, DecimalColumn } from 'src/commons/configs/db.configs';
 import { OutcomeEntity } from 'src/modules/accreditation/outcomes/model/outcomes.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
+import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluations.entity';
 
 @Entity({ name: 'student_course_outcome_grades', schema: 'evidence' })
 export class StudentCourseOutcomeGradeEntity extends BaseEntity {
@@ -20,6 +21,9 @@ export class StudentCourseOutcomeGradeEntity extends BaseEntity {
 	@IntegerFKIDColumn({ nullable: true })
 	uploadLogId: number;
 
+	@IntegerFKIDColumn({ nullable: false })
+	evaluationId: number;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => StudentSectionEnrollmentEntity)
@@ -35,4 +39,11 @@ export class StudentCourseOutcomeGradeEntity extends BaseEntity {
 		foreignKeyConstraintName: 'FK_student_course_outcome_grades_outcome_id',
 	})
 	outcome: OutcomeEntity;
+
+	@ManyToOne(() => EvaluationEntity)
+	@JoinColumn({
+		name: 'evaluation_id',
+		foreignKeyConstraintName: 'FK_student_course_outcome_grades_evaluation_id',
+	})
+	evaluation: EvaluationEntity;
 }

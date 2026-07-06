@@ -17,26 +17,27 @@ export class ProjectGradeExportService {
 	async exportProjectGrades(
 		academicPeriodId: number,
 		schoolId: number,
-		gradeTypeCode: string,
+		competencyScopeCode: string,
 	): Promise<Buffer> {
-		const gradeTypeId = await this.gradeSupport.resolveGradeTypeIdByCode(gradeTypeCode);
+		const competencyScopeTypeId =
+			await this.gradeSupport.resolveCompetencyScopeTypeIdByCode(competencyScopeCode);
 
 		const programIds = await this.gradeSupport.resolveProgramIdsBySchoolId(schoolId);
 		if (programIds.length === 0) return this.buildGradesExcel([]);
 
 		const rows = await this.projectRepository.getProjectGradesForExport(
 			academicPeriodId,
-			gradeTypeId,
+			competencyScopeTypeId,
 			programIds,
 		);
 
-		const isCapstoneEbExport = gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+		const isMultipleScopeExport = competencyScopeCode === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
 
 		const rubricIds = [...new Set(rows.map((r) => r.rubricId))];
 		const maxScoreByRubricId = new Map<number, number>();
 		await Promise.all(
 			rubricIds.map(async (rubricId) => {
-				if (isCapstoneEbExport) {
+				if (isMultipleScopeExport) {
 					const max = await this.gradeSupport.resolveCapstoneMaxScore(academicPeriodId, rubricId);
 					maxScoreByRubricId.set(rubricId, max);
 				} else {
@@ -57,13 +58,13 @@ export class ProjectGradeExportService {
 	}
 
 	private calculateGrade(row: GradeExportRow, totalMaxScore: number): number {
-		const isCapstoneAndEb =
+		const isCapstoneMultiple =
 			row.rubricTypeCode === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
-			row.gradeTypeCode === TYPE_CODES.GRADE_TYPE.EB;
+			row.competencyScopeCode === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
 
 		const sumScores = Number(row.totalScore);
 
-		if (isCapstoneAndEb) {
+		if (isCapstoneMultiple) {
 			return this.gradeSupport.computeGrade(sumScores, totalMaxScore);
 		}
 
@@ -79,6 +80,7 @@ export class ProjectGradeExportService {
 			'Código de sección',
 			'Código de alumno',
 			'Nombre del alumno',
+			'Tipo de nota',
 			'Nota',
 		];
 
@@ -87,6 +89,7 @@ export class ProjectGradeExportService {
 			{ key: 'sectionCode', width: 20 },
 			{ key: 'studentCode', width: 20 },
 			{ key: 'studentName', width: 36 },
+			{ key: 'gradeTypeCode', width: 14 },
 			{ key: 'grade', width: 12 },
 		];
 
@@ -107,7 +110,14 @@ export class ProjectGradeExportService {
 		headerRow.height = 22;
 
 		for (const row of rows) {
-			ws.addRow([row.courseCode, row.sectionCode, row.studentCode, row.studentName, row.grade]);
+			ws.addRow([
+				row.courseCode,
+				row.sectionCode,
+				row.studentCode,
+				row.studentName,
+				row.gradeTypeName,
+				row.grade,
+			]);
 		}
 
 		ws.views = [{ state: 'frozen', ySplit: 1 }];

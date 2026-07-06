@@ -2,14 +2,18 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
+import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
 	alumnoMatriculadoExportLabels,
 	alumnoSeccionExportLabels,
 	docenteExportLabels,
+	gradesRcExportLabels,
 	seccionExportLabels,
 } from '../model/scraping-exports.labels';
+import { GradeRcExportRow } from '../model/scraping-exports.types';
+import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export interface GeneratedExcel {
 	buffer: Buffer;
@@ -18,7 +22,10 @@ export interface GeneratedExcel {
 
 @Injectable()
 export class ScrapingExportsService {
-	constructor(private readonly repository: ScrapingExportsRepository) {}
+	constructor(
+		private readonly repository: ScrapingExportsRepository,
+		private readonly gradesRcRepository: GradesRcExportRepository,
+	) {}
 
 	async generateDocentes(lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(docenteExportLabels, lang);
@@ -59,6 +66,66 @@ export class ScrapingExportsService {
 		const rows = await this.repository.getAlumnosSecciones();
 		const data = rows.map((r) => [r.sectionCode, r.studentCode]);
 		return this.buildExcel(labels, data);
+	}
+
+	async generateGradesRc(lang?: string): Promise<GeneratedExcel> {
+		const labels = this.resolveLabels(gradesRcExportLabels, lang);
+		const rows = await this.buildGradesRcRows();
+		const data = rows.map((r) => [
+			r.sectionCode,
+			r.studentCode,
+			r.gradeTypeCode,
+			r.gradeTypePercentage,
+			r.grade,
+			r.qualificationStatusCode,
+		]);
+		return this.buildExcel(labels, data);
+	}
+
+	// Resolves each raw Banner grade into an RC-upload-ready row:
+	//  - gradeTypeCode: matched from the raw "type" (e.g. "EA1") against TG205's short name.
+	//    Rows whose type doesn't match any known grade type are skipped -- there is no code to
+	//    put in the Excel for them.
+	//  - grade / qualificationStatusCode: if the raw grade text parses as a number, it's the grade and
+	//    the status is ASISTIO. If it doesn't (Banner returned "SAN"/"RET"/"NR"/etc. as the grade
+	//    value itself), the grade defaults to 0 and that raw text is put as-is in the
+	//    qualificationStatusCode cell -- if it isn't a known TG404 code/name yet, the RC bulk
+	//    upload (fn_upload_grades_rc) is the one that resolves or auto-provisions it, not this
+	//    export.
+	private async buildGradesRcRows(): Promise<GradeRcExportRow[]> {
+		const [rawRows, gradeTypeCodesByName, qualificationStatusCodesByName] = await Promise.all([
+			this.gradesRcRepository.getRawGradesRc(),
+			this.gradesRcRepository.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
+			this.gradesRcRepository.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
+		]);
+
+		const asistioCode = TYPE_CODES.QUALIFICATION_STATUS.ASISTIO;
+		const rows: GradeRcExportRow[] = [];
+
+		for (const raw of rawRows) {
+			const gradeTypeCode = gradeTypeCodesByName.get((raw.type ?? '').toUpperCase());
+			if (!gradeTypeCode) continue;
+
+			const gradeText = (raw.gradeRaw ?? '').trim();
+			const parsed = Number(gradeText);
+			const isNumeric = gradeText !== '' && !Number.isNaN(parsed);
+
+			const grade = isNumeric ? String(parsed) : '0';
+			const qualificationStatusCode = isNumeric
+				? asistioCode
+				: (qualificationStatusCodesByName.get(gradeText.toUpperCase()) ?? gradeText);
+
+			rows.push({
+				sectionCode: raw.sectionCode,
+				studentCode: raw.studentCode,
+				gradeTypeCode,
+				gradeTypePercentage: raw.weight,
+				grade,
+				qualificationStatusCode,
+			});
+		}
+
+		return rows;
 	}
 
 	private resolveLabels(map: Record<string, ExportLabels>, lang?: string): ExportLabels {

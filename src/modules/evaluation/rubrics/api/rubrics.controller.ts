@@ -42,14 +42,10 @@ export class RubricController extends BaseController<RubricService> {
 
 	@Get('resolve-type')
 	@ApiQuery({ name: 'studyPlanCourseId', required: true, type: Number })
-	@ApiQuery({ name: 'gradeTypeId', required: true, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
-	async resolveRubricType(
-		@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number,
-		@Query('gradeTypeId', ParseIntPipe) gradeTypeId: number,
-	) {
+	async resolveRubricType(@Query('studyPlanCourseId', ParseIntPipe) studyPlanCourseId: number) {
 		return parseSuccessResponse(
-			await this.rubricConfigService.resolveRubricType(studyPlanCourseId, gradeTypeId),
+			await this.rubricConfigService.resolveRubricType(studyPlanCourseId),
 		);
 	}
 
@@ -65,8 +61,8 @@ export class RubricController extends BaseController<RubricService> {
 		return await this.rubricConfigService.getRubricById(rubricId);
 	}
 
-	// TODO: Implementar @Post('import-excel') con FileInterceptor para importación masiva de rúbricas.
-	// Esto reemplazará el Excel masivo anterior según el plan de migración.
+	// TODO: Implement @Post('import-excel') with FileInterceptor for bulk rubric import.
+	// This replaces the previous bulk Excel import per the migration plan.
 
 	@SwaggerRubricCreate()
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })

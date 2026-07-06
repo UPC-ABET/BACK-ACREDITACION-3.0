@@ -51,6 +51,14 @@ export class ScrapingExportsController {
 		this.send(res, await this.service.generateAlumnosSecciones(lang));
 	}
 
+	@Get(routes.operation.gradesRc.route)
+	@ApiOperation({ summary: routes.operation.gradesRc.summary })
+	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
+	async gradesRc(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
+		this.send(res, await this.service.generateGradesRc(lang));
+	}
+
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {
 		const encoded = encodeURIComponent(fileName);
 		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);

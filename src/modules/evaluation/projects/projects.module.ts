@@ -12,6 +12,7 @@ import { ProjectDetailsService } from './api/project-details.service';
 import { ProjectGradeExportService } from './api/project-grade-export.service';
 import { ProjectGradeSupportService } from './api/project-grade-support.service';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
+import { TypeRepository } from 'src/modules/core/types/core/types.repository';
 import { RubricModule } from 'src/modules/evaluation/rubrics/rubrics.module';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
@@ -32,6 +33,7 @@ import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-sec
 	providers: [
 		ProjectService,
 		ProjectRepository,
+		TypeRepository,
 		ProjectConfigService,
 		ProjectDetailsService,
 		ProjectGradeExportService,

@@ -5,6 +5,7 @@ export interface GradesRcRow {
 	gradeTypeCode: string;
 	gradeTypePercentage: string;
 	grade: string;
+	qualificationStatusCode: string;
 }
 
 export interface UploadResult {

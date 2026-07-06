@@ -322,37 +322,6 @@ runSeed('evidence module', async (tenantDataSource) => {
 		);
 	`);
 
-	await tenantDataSource.query(`
-		INSERT INTO "evidence"."student_course_outcome_grades" (
-			student_section_enrollment_id,
-			outcome_id,
-			grade
-		)
-		SELECT sse.id, outcome.id, v.grade
-		FROM (
-			VALUES
-				('student.luis.ramirez@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_01', 16.500000),
-				('student.luis.ramirez@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_04', 17.000000),
-				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_01', 15.000000),
-				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_04', 16.000000)
-		) AS v(student_email, section_code, outcome_code, grade)
-		JOIN "academic"."students" student
-			ON student.email = v.student_email
-		JOIN "academic"."enrolled_students" enrolled_student
-			ON enrolled_student.student_id = student.id
-		JOIN "academic"."course_sections" course_section
-			ON course_section.section_code = v.section_code
-		JOIN "academic"."student_section_enrollments" sse
-			ON sse.enrolled_student_id = enrolled_student.id AND sse.course_section_id = course_section.id
-		JOIN "accreditation"."outcomes" outcome
-			ON outcome.outcome_code = v.outcome_code
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM "evidence"."student_course_outcome_grades" scog
-			WHERE scog.student_section_enrollment_id = sse.id AND scog.outcome_id = outcome.id
-		);
-	`);
-
 	const evaluationValues = [
 		[
 			'PROJ_SOFT_FP_2026',
@@ -387,11 +356,12 @@ runSeed('evidence module', async (tenantDataSource) => {
 		INSERT INTO "evidence"."evaluations" (
 			project_student_id,
 			project_evaluator_id,
+			rubric_id,
 			qualification_status_type_id,
 			observation,
 			register_at
 		)
-		SELECT project_student.id, project_evaluator.id, qualification_status.id, v.observation, v.register_at::timestamptz
+		SELECT project_student.id, project_evaluator.id, rubric.id, qualification_status.id, v.observation, v.register_at::timestamptz
 		FROM (
 			VALUES
 				${evaluationValues}
@@ -406,6 +376,14 @@ runSeed('evidence module', async (tenantDataSource) => {
 			ON sse.enrolled_student_id = enrolled_student.id
 		JOIN "evaluation"."project_students" project_student
 			ON project_student.project_id = project.id AND project_student.student_section_enrollment_id = sse.id
+		JOIN "academic"."course_sections" course_section
+			ON course_section.id = sse.course_section_id
+		JOIN "academic"."study_plan_academic_periods" spap
+			ON spap.academic_period_id = course_section.academic_period_id
+		JOIN "academic"."study_plan_courses" spc
+			ON spc.study_plan_academic_period_id = spap.id AND spc.course_id = course_section.course_id
+		JOIN "evaluation"."rubrics" rubric
+			ON rubric.study_plan_course_id = spc.id AND rubric.is_active = true
 		JOIN "organization"."staff" staff
 			ON staff.staff_email = v.professor_email
 		JOIN "academic"."professors" professor
@@ -418,10 +396,46 @@ runSeed('evidence module', async (tenantDataSource) => {
 			SELECT 1
 			FROM "evidence"."evaluations" evaluation
 			WHERE evaluation.project_student_id = project_student.id
-				AND evaluation.project_evaluator_id = project_evaluator.id
+				AND evaluation.rubric_id = rubric.id
 		);
 	`);
 	// NOTE: rubric_scores insert intentionally omitted in this seed.
 	// rubric_scores requires rubric_outcome_criteria_id (NOT NULL), which is not
 	// covered by this foundational spec. Re-add once that data flow is defined.
+
+	await tenantDataSource.query(`
+		INSERT INTO "evidence"."student_course_outcome_grades" (
+			student_section_enrollment_id,
+			outcome_id,
+			grade,
+			evaluation_id
+		)
+		SELECT sse.id, outcome.id, v.grade, evaluation.id
+		FROM (
+			VALUES
+				('student.luis.ramirez@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_01', 16.500000),
+				('student.luis.ramirez@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_04', 17.000000),
+				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_01', 15.000000),
+				('student.sofia.torres@upc.edu.pe', 'SOFT-FP-2026-1-A', 'OUT_SOFT_04', 16.000000)
+		) AS v(student_email, section_code, outcome_code, grade)
+		JOIN "academic"."students" student
+			ON student.email = v.student_email
+		JOIN "academic"."enrolled_students" enrolled_student
+			ON enrolled_student.student_id = student.id
+		JOIN "academic"."course_sections" course_section
+			ON course_section.section_code = v.section_code
+		JOIN "academic"."student_section_enrollments" sse
+			ON sse.enrolled_student_id = enrolled_student.id AND sse.course_section_id = course_section.id
+		JOIN "accreditation"."outcomes" outcome
+			ON outcome.outcome_code = v.outcome_code
+		JOIN "evaluation"."project_students" project_student
+			ON project_student.student_section_enrollment_id = sse.id
+		JOIN "evidence"."evaluations" evaluation
+			ON evaluation.project_student_id = project_student.id
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM "evidence"."student_course_outcome_grades" scog
+			WHERE scog.student_section_enrollment_id = sse.id AND scog.outcome_id = outcome.id
+		);
+	`);
 });

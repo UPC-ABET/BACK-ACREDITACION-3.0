@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
 import { readCell } from 'src/libs/excel.functions';
+import { addReferenceTable } from 'src/libs/excel-reference-table.functions';
 
 import { RubricRow, UploadResult, UploadRowError } from '../model/rubrics-upload.types';
 import type { RubricsUploadDto } from '../model/rubrics-upload.dtos';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
-	gradeTypesList,
 	rubricsFieldInstructions,
 	rubricsTemplateLabels,
 } from '../model/rubrics-template.labels';
@@ -88,15 +88,18 @@ export class RubricsUploadService {
 		const language = this.resolveLanguage(lang);
 		const labels = rubricsTemplateLabels[language];
 		const instructions = rubricsFieldInstructions[language];
+		const gradeTypes = await this.repository.getGradeTypes(language);
+		const competencyScopeTypes = await this.repository.getCompetencyScopeTypes(language);
 
 		const workbook = new ExcelJS.Workbook();
 		const sheet = workbook.addWorksheet('Template');
 
-		// ── Data table (cols 1-10) ────────────────────────────────────────
+		// ── Data table (cols 1-11) ────────────────────────────────────────
 		const headers = [
 			labels.courseCode,
 			labels.programCode,
 			labels.gradeTypeCode,
+			labels.competencyScopeCode,
 			labels.outcomeCode,
 			labels.questionEs,
 			labels.questionEn,
@@ -155,46 +158,30 @@ export class RubricsUploadService {
 
 		// ── Grade types table ─────────────────────────────────────────────
 		const evalStartRow = 2 + instructions.length + 2;
+		const gradeTypesEndRow = addReferenceTable(
+			instrSheet,
+			evalStartRow,
+			labels.gradeTypesTitle,
+			{ code: labels.gradeTypesColCode, name: labels.gradeTypesColName },
+			gradeTypes,
+		);
 
-		const evalTitleRow = instrSheet.getRow(evalStartRow);
-		const evalTitleCell = evalTitleRow.getCell(1);
-		evalTitleCell.value = labels.gradeTypesTitle;
-		evalTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-		evalTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
-		evalTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-		instrSheet.mergeCells(evalStartRow, 1, evalStartRow, 2);
-		evalTitleRow.height = 22;
-
-		const evalSubRow = instrSheet.getRow(evalStartRow + 1);
-		[labels.gradeTypesColCode, labels.gradeTypesColName].forEach((h, i) => {
-			const cell = evalSubRow.getCell(i + 1);
-			cell.value = h;
-			cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
-			cell.alignment = { horizontal: 'center', vertical: 'middle' };
-		});
-
-		gradeTypesList.forEach((gt, idx) => {
-			const r = instrSheet.getRow(evalStartRow + 2 + idx);
-			r.getCell(1).value = gt.code;
-			r.getCell(2).value = gt.name;
-			[1, 2].forEach((c) => {
-				const cell = r.getCell(c);
-				cell.alignment = { vertical: 'middle' };
-				cell.border = {
-					bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-					right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-				};
-			});
-		});
+		// ── Competency scope table ─────────────────────────────────────────
+		addReferenceTable(
+			instrSheet,
+			gradeTypesEndRow + 1,
+			labels.competencyScopeTitle,
+			{ code: labels.competencyScopeColCode, name: labels.competencyScopeColName },
+			competencyScopeTypes,
+		);
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 		return { buffer, fileName: labels.templateFileName };
 	}
 
 	// Positional layout (header row ignored):
-	// courseCode | programCode | gradeTypeCode | outcomeCode | questionEs | questionEn |
-	// criteriaEs | criteriaEn | minValue | maxValue
+	// courseCode | programCode | gradeTypeCode | competencyScopeCode | outcomeCode | questionEs |
+	// questionEn | criteriaEs | criteriaEn | minValue | maxValue
 	private parseWorkbook(workbook: ExcelJS.Workbook): RubricRow[] {
 		const worksheet = workbook.worksheets[0];
 		const rows: RubricRow[] = [];
@@ -206,13 +193,14 @@ export class RubricsUploadService {
 				courseCode: readCell(row, 1),
 				programCode: readCell(row, 2),
 				gradeTypeCode: readCell(row, 3),
-				outcomeCode: readCell(row, 4),
-				questionEs: readCell(row, 5),
-				questionEn: readCell(row, 6),
-				criteriaEs: readCell(row, 7),
-				criteriaEn: readCell(row, 8),
-				minValue: readCell(row, 9),
-				maxValue: readCell(row, 10),
+				competencyScopeCode: readCell(row, 4),
+				outcomeCode: readCell(row, 5),
+				questionEs: readCell(row, 6),
+				questionEn: readCell(row, 7),
+				criteriaEs: readCell(row, 8),
+				criteriaEn: readCell(row, 9),
+				minValue: readCell(row, 10),
+				maxValue: readCell(row, 11),
 			});
 		});
 
@@ -239,7 +227,7 @@ export class RubricsUploadService {
 		messages: Record<string, string>,
 	): Promise<string> {
 		const worksheet = workbook.worksheets[0];
-		const errorColumn = 11; // after the 10 data columns
+		const errorColumn = 12; // after the 11 data columns
 		const headerCell = worksheet.getRow(1).getCell(errorColumn);
 		headerCell.value = errorColumnHeader;
 		headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -267,43 +255,57 @@ const rubricsErrorMessages: Record<string, Record<string, string>> = {
 		programCodeEmpty: 'El código de carrera es obligatorio.',
 		programNotFound: 'No existe una carrera con ese código.',
 		gradeTypeCodeEmpty: 'El código de tipo de calificación es obligatorio.',
+		competencyScopeCodeEmpty: 'El código de alcance de competencias es obligatorio.',
+		competencyScopeNotFound: 'El código de alcance de competencias no es válido.',
 		criteriaEsEmpty: 'El criterio en español es obligatorio.',
 		criteriaEnEmpty: 'El criterio en inglés es obligatorio.',
 		minValueInvalid: 'El puntaje mínimo debe ser un número válido.',
 		maxValueInvalid: 'El puntaje máximo debe ser un número válido.',
 		minValueGreaterThanMax: 'El puntaje mínimo no puede ser mayor que el puntaje máximo.',
 		questionRequiredNonCapstone:
-			'La pregunta en español es obligatoria para rúbricas no-Capstone+EB.',
-		outcomeRequiredCapstoneEb:
-			'El código de outcome es obligatorio para rúbricas Capstone con tipo EB.',
+			'La pregunta en español es obligatoria para rúbricas que no son Capstone + Múltiple competencia.',
+		outcomeRequiredCapstoneMultiple:
+			'El código de outcome es obligatorio para rúbricas Capstone con alcance Múltiple competencia.',
 		courseNotFound:
 			'No existe el curso con ese código en la carrera indicada para el periodo académico.',
 		gradeTypeNotFound: 'El código de tipo de calificación no es válido.',
 		rubricAlreadyExists:
-			'Ya existe una rúbrica activa para ese curso y tipo de calificación en el periodo.',
+			'Ya existe una rúbrica activa para ese curso, tipo de calificación y alcance de competencias en el periodo.',
 		outcomeNotFound: 'No existe un outcome con ese código mapeado al curso.',
 		criteriaOverlap: 'Los criterios de la pregunta se solapan o no son consecutivos.',
 		criteriaTotalNot20: 'La suma de los puntajes máximos por pregunta debe ser 20.',
+		incompleteCommissionOutcomes:
+			'Si se llena un outcome de una comisión, deben llenarse todos los outcomes de esa comisión mapeados al curso.',
+		atLeastOneCommissionRequired:
+			'Debe completarse al menos una comisión (todos sus outcomes de verificación) para crear la rúbrica.',
 	},
 	en: {
 		courseCodeEmpty: 'Course code is required.',
 		programCodeEmpty: 'Program code is required.',
 		programNotFound: 'No program exists with that code.',
 		gradeTypeCodeEmpty: 'Grade type code is required.',
+		competencyScopeCodeEmpty: 'Competency scope code is required.',
+		competencyScopeNotFound: 'Competency scope code is not valid.',
 		criteriaEsEmpty: 'Criteria in Spanish is required.',
 		criteriaEnEmpty: 'Criteria in English is required.',
 		minValueInvalid: 'Min score must be a valid number.',
 		maxValueInvalid: 'Max score must be a valid number.',
 		minValueGreaterThanMax: 'Min score cannot be greater than max score.',
-		questionRequiredNonCapstone: 'Question in Spanish is required for non-Capstone+EB rubrics.',
-		outcomeRequiredCapstoneEb: 'Outcome code is required for Capstone rubrics with grade type EB.',
+		questionRequiredNonCapstone:
+			'Question in Spanish is required for rubrics that are not Capstone + Multiple competency scope.',
+		outcomeRequiredCapstoneMultiple:
+			'Outcome code is required for Capstone rubrics with Multiple competency scope.',
 		courseNotFound:
 			'No course with that code exists in the specified program for the academic period.',
 		gradeTypeNotFound: 'Grade type code is not valid.',
 		rubricAlreadyExists:
-			'An active rubric already exists for that course and grade type in the period.',
+			'An active rubric already exists for that course, grade type and competency scope in the period.',
 		outcomeNotFound: 'No outcome with that code is mapped to the course.',
 		criteriaOverlap: 'The criteria for the question overlap or are not consecutive.',
 		criteriaTotalNot20: 'The sum of max scores per question must equal 20.',
+		incompleteCommissionOutcomes:
+			'If an outcome from a commission is filled in, every outcome from that commission mapped to the course must also be filled in.',
+		atLeastOneCommissionRequired:
+			'At least one commission (all its verification outcomes) must be complete to create the rubric.',
 	},
 };

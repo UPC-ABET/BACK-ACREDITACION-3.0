@@ -30,8 +30,8 @@ export class ScrapingExportsRepository {
 	constructor(@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly dataSource: DataSource) {}
 
 	// Distinct teachers from the latest Banner run, taken straight from raw_horario's docentes.
-	// professorCode = idBanner (the "N0…" user code the original system uses), and apellidos /
-	// nombres / correo come from the same record, so the email is always present and the code is in
+	// professorCode = idBanner (the "N0…" user code the original system uses), and last name /
+	// first name / email come from the same record, so the email is always present and the code is in
 	// the expected format.
 	async getDocentes(): Promise<DocenteExportRow[]> {
 		const rows: Array<{
