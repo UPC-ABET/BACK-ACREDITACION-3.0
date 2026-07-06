@@ -12,6 +12,8 @@ import {
 	SwaggerUserLoginByCredentials,
 	SwaggerUserMe,
 	SwaggerUserLogout,
+	SwaggerUserRequestPasswordReset,
+	SwaggerUserResetPassword,
 } from './docs/users.swagger';
 import {
 	CreateUserDto,
@@ -20,6 +22,8 @@ import {
 	ListUsersQueryDto,
 	LoginUserByCredentialsDto,
 	GetMeDto,
+	RequestPasswordResetDto,
+	ResetPasswordDto,
 } from '../model/users.dtos';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
@@ -82,6 +86,18 @@ export class UserController extends BaseController<UserService> {
 		const result = await this.service.loginByCredentials(dto.email, dto.password);
 		saveAccessCookie(res, result);
 		return parseSuccessResponse(result);
+	}
+
+	@Public()
+	@SwaggerUserRequestPasswordReset()
+	async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+		return parseSuccessResponse(await this.service.requestPasswordReset(dto.email));
+	}
+
+	@Public()
+	@SwaggerUserResetPassword()
+	async resetPassword(@Body() dto: ResetPasswordDto) {
+		return parseSuccessResponse(await this.service.resetPassword(dto.token, dto.password));
 	}
 
 	@SkipPermissions()

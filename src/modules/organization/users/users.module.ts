@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserEntity } from './model/users.entity';
+import { PasswordResetTokenEntity } from './model/password-reset-token.entity';
 import { UserRepository } from './core/users.repository';
+import { PasswordResetTokenRepository } from './core/password-reset-token.repository';
 import { UserService } from './api/users.service';
 import { UserController } from './api/users.controller';
 import { UserAuthorizationService } from './api/user-authorization.service';
@@ -12,13 +14,13 @@ import { EmailTemplateModule } from 'src/modules/core/email-templates/email-temp
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([UserEntity]),
+		TypeOrmModule.forFeature([UserEntity, PasswordResetTokenEntity]),
 		OrgScopeModule,
 		MailModule,
 		EmailTemplateModule,
 	],
 	controllers: [UserController],
-	providers: [UserService, UserRepository, UserAuthorizationService],
+	providers: [UserService, UserRepository, PasswordResetTokenRepository, UserAuthorizationService],
 	exports: [UserService, UserAuthorizationService],
 })
 export class UserModule {}
