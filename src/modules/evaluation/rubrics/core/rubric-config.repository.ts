@@ -55,8 +55,8 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 	}
 
 	/**
-	 * Outcomes de verificación mapeados al curso, agrupados implícitamente por comisión
-	 * (cada outcome pertenece a una sola comisión vía outcome.programCommissionId).
+	 * Verification outcomes mapped to the course, implicitly grouped by commission
+	 * (each outcome belongs to a single commission via outcome.programCommissionId).
 	 */
 	async getVerificationOutcomesByCourse(
 		studyPlanCourseId: number,

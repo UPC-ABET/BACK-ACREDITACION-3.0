@@ -33,23 +33,23 @@ import { evaluationsValidationStrings } from '../config/strings/evaluations.vali
 /**
  * EvaluationSubmissionService
  *
- * Servicio que implementa la lógica de calificación de rúbricas (flujo completo).
+ * Service implementing rubric grading logic (full flow).
  *
- * Reglas de negocio implementadas:
- * - R-NOT-001: Cálculo de Nivel Alcanzado por outcome (umbrales 0.33/0.67)
- * - R-NOT-002: Nota final escalada a vigesimal (20)
- * - R-NOT-003: NotaOutcome = Sum(NotaCriterio)
+ * Implemented business rules:
+ * - R-NOT-001: Achievement Level calculation per outcome (thresholds 0.33/0.67)
+ * - R-NOT-002: Final grade scaled to 20-point scale
+ * - R-NOT-003: NotaOutcome = Sum(NotaCriteria)
  * - R-NOT-004: NotaRubrica = Sum(NotaOutcome)
- * - R-NOT-005: Guardada se activa si hay observación o todos los criterios están completos
- * - R-NOT-008/009: una sola evaluación por (alumno, rúbrica); cualquier evaluador autorizado
- *   escribe directo sobre esa misma evaluación (sobrescribe, no promedia entre evaluadores)
- * - R-NOT-010: Validación de rango de puntaje contra min_value/max_value del criterio
- * - R-NOT-011: Exclusión de alumnos retirados en finalización
- * - R-NOT-012: Validación de completitud al guardar calificación
- * - R-NOT-013: Observación obligatoria salvo en PA
- * - R-NOT-014: Observación vacía revierte estado
- * - R-NOT-015: Rol DOC (docente) solo visualiza, no califica
- * - R-NOT-016: Máximo 1 evaluador por tipo de rol en el proyecto
+ * - R-NOT-005: Saved status activates if observation exists or all criteria are complete
+ * - R-NOT-008/009: single evaluation per (student, rubric); any authorized evaluator
+ *   writes directly on that same evaluation (overwrites, no averaging across evaluators)
+ * - R-NOT-010: Score range validation against min_value/max_value of the criteria
+ * - R-NOT-011: Exclusion of withdrawn students on finalization
+ * - R-NOT-012: Completeness validation when saving grade
+ * - R-NOT-013: Observation required except in PA
+ * - R-NOT-014: Empty observation reverts status
+ * - R-NOT-015: DOC role (teacher) can only view, not grade
+ * - R-NOT-016: Maximum 1 evaluator per role type in the project
  */
 @Injectable()
 export class EvaluationSubmissionService {
@@ -371,15 +371,15 @@ export class EvaluationSubmissionService {
 	}
 
 	/**
-	 * Envía/actualiza una calificación de criterio individual.
+	 * Submits/updates an individual criteria score.
 	 *
-	 * Flujo:
-	 * 1. Valida evaluador/estudiante y rangos
-	 * 2. Rechaza si el evaluador es de tipo DOC (solo visualiza)
-	 * 3. UPSERT en rubric_scores
-	 * 4. Escribe directo los outcome grades (sin promediar entre evaluadores)
-	 * 5. Persiste outcome grades escalados
-	 * 6. Devuelve nota vigesimal
+	 * Flow:
+	 * 1. Validate evaluator/student and ranges
+	 * 2. Reject if evaluator is DOC type (view only)
+	 * 3. UPSERT into rubric_scores
+	 * 4. Write outcome grades directly (no averaging across evaluators)
+	 * 5. Persist scaled outcome grades
+	 * 6. Return 20-point scale grade
 	 */
 	async submitEvaluation(
 		dto: SubmitEvaluationDto,
@@ -438,7 +438,7 @@ export class EvaluationSubmissionService {
 
 		if (!isNrOrNa) {
 			if (isCapstoneMultiple) {
-				// Todos los criterios de la rúbrica deben estar en el DTO
+				// All rubric criteria must be in the DTO
 				const allCriteriaIds = new Set(criteriaToQuestion.keys());
 				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
 				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
@@ -446,7 +446,7 @@ export class EvaluationSubmissionService {
 					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
 				}
 			} else {
-				// Capstone parcial o no capstone: máximo 1 criterio por pregunta
+				// Partial Capstone or non-Capstone: maximum 1 criteria per question
 				const countByQuestion = new Map<number, number>();
 				for (const scoreDto of dto.scores) {
 					const questionId = criteriaToQuestion.get(scoreDto.rubricQuestionCriteriaId);
@@ -532,8 +532,8 @@ export class EvaluationSubmissionService {
 					}
 				}
 
-				// Cualquier evaluador autorizado escribe directo sobre la misma evaluación
-				// (R-NOT-008/R-NOT-009), sin promediar entre evaluadores.
+				// Any authorized evaluator writes directly on the same evaluation
+				// (R-NOT-008/R-NOT-009), without averaging across evaluators.
 				const { outcomeGrades: txOutcomeGrades, notaRubrica: sumScores } =
 					await this.aggregateScoresByOutcome(manager, evaluation.id, highestPerformanceLevelValue);
 
@@ -548,8 +548,8 @@ export class EvaluationSubmissionService {
 			},
 		);
 
-		// Misma regla en submit, GET /project/:id y el export de notas: Capstone + Múltiple
-		// competencia escala contra los niveles de desempeño; el resto simplemente suma los scores.
+		// Same rule in submit, GET /project/:id and grade export: Capstone + Multiple
+		// competency scales against performance levels; the rest simply sums the scores.
 		const totalMaxScore = highestPerformanceLevelValue * (rubric.questions?.length ?? 0);
 		const scaledScore = isCapstoneMultiple ? this.scaleTo20(sumScores, totalMaxScore) : sumScores;
 
@@ -557,7 +557,7 @@ export class EvaluationSubmissionService {
 	}
 
 	/**
-	 * Guarda/actualiza la observación de una evaluación (R-NOT-014)
+	 * Saves/updates the observation of an evaluation (R-NOT-014)
 	 */
 	async saveObservation(dto: SaveObservationDto): Promise<{ success: boolean }> {
 		const evaluator = await this.evaluatorRepo.findOne({
@@ -618,7 +618,7 @@ export class EvaluationSubmissionService {
 	}
 
 	/**
-	 * Finaliza la calificación de un proyecto (R-NOT-011, R-NOT-012, R-NOT-013, R-NOT-015)
+	 * Finalizes project grading (R-NOT-011, R-NOT-012, R-NOT-013, R-NOT-015)
 	 */
 	async finalizeProject(dto: FinalizeProjectDto): Promise<{ success: boolean; message: string }> {
 		const evaluator = await this.evaluatorRepo.findOne({

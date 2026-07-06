@@ -27,13 +27,13 @@ export class ProjectConfigService {
 	) {}
 
 	/**
-	 * Crea un proyecto completo con sus estudiantes y evaluadores de forma transaccional.
+	 * Creates a full project with its students and evaluators transactionally.
 	 *
-	 * Validaciones previas:
-	 * - study_plan_course debe existir y tener extra.isEvaluable = true
-	 * - código y nombre únicos en el mismo periodo académico
-	 * - alumnos activos, matriculados en el curso, sin proyecto en el mismo periodo
-	 * - evaluadores sin duplicados de profesor+tipo, con límites por tipo
+	 * Pre-validations:
+	 * - study_plan_course must exist and have extra.isEvaluable = true
+	 * - code and name must be unique within the same academic period
+	 * - active students enrolled in the course, with no project in the same period
+	 * - evaluators with no duplicates of professor+type, with per-type limits
 	 */
 	async createProject(dto: CreateProjectDto): Promise<ProjectEntity> {
 		const studyPlanCourse = await this.studyPlanCourseRepo.findOne({

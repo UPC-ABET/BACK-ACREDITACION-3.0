@@ -18,14 +18,14 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 /**
  * RubricConfigService
  *
- * Servicio especializado para la configuración completa de rúbricas.
+ * Specialized service for full rubric configuration.
  *
- * Reglas implementadas:
- * - R-RUB-008: Una sola rúbrica activa por (study_plan_course_id, grade_type_id, competency_scope_type_id)
- * - R-RUB-012: Auto-asignación de niveles de desempeño según instrument_type
- * - R-RUB-013: ValorMaximo = max(PuntajeMayor) de niveles de desempeño aplicables
- * - R-RUB-014: Recálculo de NotaMaxima por pregunta y rúbrica
- * - R-RUB-015: En rúbrica WASC (PA) el NotaOutcome = max; en ABET = sum
+ * Implemented business rules:
+ * - R-RUB-008: Single active rubric per (study_plan_course_id, grade_type_id, competency_scope_type_id)
+ * - R-RUB-012: Auto-assignment of performance levels according to instrument_type
+ * - R-RUB-013: MaxValue = max(HighestScore) of applicable performance levels
+ * - R-RUB-014: Recalculation of MaxScore per question and rubric
+ * - R-RUB-015: In WASC rubric (PA) NotaOutcome = max; in ABET = sum
  */
 @Injectable()
 export class RubricConfigService {
@@ -80,13 +80,13 @@ export class RubricConfigService {
 	}
 
 	/**
-	 * Crea una rúbrica completa con sus preguntas y criterios de forma transaccional
+	 * Creates a complete rubric with its questions and criteria transactionally
 	 *
-	 * Validaciones:
-	 * 1. Si es Capstone y Múltiple competencia, todas las preguntas DEBEN tener outcome_id
-	 * 2. El study_plan_course_id debe existir en la BD
-	 * 3. Todo se guarda de forma transaccional o se revierte
-	 * 4. Tras crear, recalcula la nota máxima total (R-RUB-014)
+	 * Validations:
+	 * 1. If Capstone and Multiple competency, ALL questions MUST have outcome_id
+	 * 2. The study_plan_course_id must exist in the DB
+	 * 3. Everything is saved transactionally or rolled back
+	 * 4. After creation, recalculates the total max score (R-RUB-014)
 	 */
 	async createRubric(dto: CreateRubricDto): Promise<RubricEntity> {
 		const existingRubric = await this.rubricRepo.findOne({
@@ -133,7 +133,7 @@ export class RubricConfigService {
 		const isMultipleScope =
 			multipleScopeTypeId != null && dto.competencyScopeTypeId === multipleScopeTypeId;
 
-		// Solo se exige outcome_id en todas las preguntas si es Capstone Y el alcance es Múltiple competencia
+		// outcome_id is only required on all questions if Capstone AND scope is Multiple competency
 		if (isCapstone && isMultipleScope) {
 			const hasMissingOutcomes = dto.questions.some((q) => !q.outcomeId);
 			if (hasMissingOutcomes) {
@@ -181,7 +181,7 @@ export class RubricConfigService {
 		try {
 			await this.recalculateMaxScore(savedRubric.id);
 		} catch {
-			// Recalculo no crítico para la creación
+			// Recalculation is non-critical for creation
 		}
 
 		return savedRubric;
@@ -227,9 +227,9 @@ export class RubricConfigService {
 	}
 
 	/**
-	 * Capstone + Múltiple competencia: cada outcome de verificación pertenece a una comisión
-	 * (ABET, CAC, etc.). Si se llena al menos un outcome de una comisión, deben llenarse TODOS
-	 * los outcomes de esa comisión mapeados al curso. Debe haber al menos una comisión completa.
+	 * Capstone + Multiple competency: each verification outcome belongs to a commission
+	 * (ABET, CAC, etc.). If at least one outcome of a commission is filled, ALL outcomes
+	 * of that commission mapped to the course must be filled. At least one complete commission is required.
 	 */
 	private async validateCommissionCompleteness(
 		studyPlanCourseId: number,
@@ -327,11 +327,11 @@ export class RubricConfigService {
 	}
 
 	/**
-	 * Obtiene una rúbrica por ID con estructura normalizada para frontend:
-	 * - rubric: información base
-	 * - commissions: array de comisiones con outcomeIds
-	 * - outcomes: array de outcomes con questionIds
-	 * - questions: array de preguntas con criterias
+	 * Gets a rubric by ID with a normalized structure for the frontend:
+	 * - rubric: base information
+	 * - commissions: array of commissions with outcomeIds
+	 * - outcomes: array of outcomes with questionIds
+	 * - questions: array of questions with criterias
 	 */
 	async getRubricWithContextData(id: number): Promise<any> {
 		const rubric = await this.rubricRepo.findOne({

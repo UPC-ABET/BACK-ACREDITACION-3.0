@@ -114,7 +114,7 @@ export class UpdateRubricDto {
 	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => CreateRubricQuestionDto) // reutilizamos porque ya tiene id opcional
+	@Type(() => CreateRubricQuestionDto) // reuse because it already has optional id
 	@ApiProperty({ example: {}, type: [CreateRubricQuestionDto], required: false })
 	questions?: CreateRubricQuestionDto[];
 

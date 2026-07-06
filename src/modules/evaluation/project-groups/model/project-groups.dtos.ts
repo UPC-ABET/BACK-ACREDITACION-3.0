@@ -8,7 +8,7 @@ export class CreateProjectGroupDto {
 	@ApiProperty({
 		example: 'GRP-ISW-01',
 		required: true,
-		description: 'Código del grupo de proyecto',
+		description: 'Project group code',
 	})
 	code: string;
 
@@ -23,11 +23,11 @@ export class CreateProjectGroupDto {
 	description?: I18nText;
 
 	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'ID del periodo académico' })
+	@ApiProperty({ example: 1, required: true, description: 'Academic period ID' })
 	academicPeriodId: number;
 
 	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'ID de la carrera (programa)' })
+	@ApiProperty({ example: 1, required: true, description: 'Program ID' })
 	programId: number;
 
 	@IsOptional()
@@ -59,12 +59,12 @@ export class UpdateProjectGroupDto {
 
 	@IsOptional()
 	@IsInt()
-	@ApiProperty({ example: 1, required: false, description: 'ID del periodo académico' })
+	@ApiProperty({ example: 1, required: false, description: 'Academic period ID' })
 	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsInt()
-	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera (programa)' })
+	@ApiProperty({ example: 1, required: false, description: 'Program ID' })
 	programId?: number;
 
 	@IsOptional()
@@ -85,12 +85,12 @@ export class FilterProjectGroupDto {
 
 	@IsOptional()
 	@IsInt()
-	@ApiProperty({ example: 1, required: false, description: 'ID del periodo académico' })
+	@ApiProperty({ example: 1, required: false, description: 'Academic period ID' })
 	academicPeriodId?: number;
 
 	@IsOptional()
 	@IsInt()
-	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera (programa)' })
+	@ApiProperty({ example: 1, required: false, description: 'Program ID' })
 	programId?: number;
 
 	@IsOptional()

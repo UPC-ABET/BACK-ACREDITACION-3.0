@@ -68,8 +68,8 @@ export class EvaluationController extends BaseController<EvaluationService> {
 		return parseSuccessResponse(await this.submissionService.getEvaluationById(evaluationId));
 	}
 
-	// TODO: Agregar GET project/:projectId/report
-	// Exportar el resultado del proyecto (Cruza outcomes, rúbricas y promedios) y cruce con performance_levels.
+	// TODO: Add GET project/:projectId/report
+	// Export project results (cross outcomes, rubrics and averages) and cross with performance_levels.
 
 	@SwaggerEvaluationCreate()
 	@RequirePermission({ module: PERMISSION_MODULES.EVIDENCE, action: PERMISSION_ACTIONS.POST })

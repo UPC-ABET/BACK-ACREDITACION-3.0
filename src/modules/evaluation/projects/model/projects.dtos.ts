@@ -17,11 +17,11 @@ import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class ProjectEvaluatorInputDto {
 	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'ID del profesor evaluador' })
+	@ApiProperty({ example: 1, required: true, description: 'Evaluator professor ID' })
 	professorId: number;
 
 	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'ID del tipo de evaluador (TG403)' })
+	@ApiProperty({ example: 1, required: true, description: 'Evaluator type ID (TG403)' })
 	evaluatorTypeId: number;
 }
 
@@ -43,14 +43,14 @@ export class CreateProjectDto {
 	description?: I18nText;
 
 	@IsInt()
-	@ApiProperty({ example: 1, required: true, description: 'ID del study_plan_course' })
+	@ApiProperty({ example: 1, required: true, description: 'Study plan course ID' })
 	studyPlanCourseId: number;
 
 	@IsInt()
 	@ApiProperty({
 		example: 1,
 		required: true,
-		description: 'ID del grupo de proyecto (empresa virtual) al que pertenece el proyecto',
+		description: 'Project group (virtual company) ID the project belongs to',
 	})
 	projectGroupId: number;
 
@@ -71,7 +71,7 @@ export class CreateProjectDto {
 		example: {},
 		type: [ProjectEvaluatorInputDto],
 		required: true,
-		description: 'Evaluadores con su tipo',
+		description: 'Evaluators with their type',
 	})
 	evaluators: ProjectEvaluatorInputDto[];
 
@@ -115,7 +115,7 @@ export class UpdateProjectDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del grupo de proyecto (empresa virtual) al que pertenece el proyecto',
+		description: 'Project group (virtual company) ID the project belongs to',
 	})
 	projectGroupId?: number;
 
@@ -254,13 +254,13 @@ export class RubricQuestionDetailsDto {
 export class StudentEvaluationStatusDto {
 	@ApiProperty({
 		example: 1,
-		description: 'project_evaluator_id del evaluador que registró la evaluación',
+		description: 'Project evaluator ID of the evaluator who registered the evaluation',
 	})
 	evaluatorId: number;
 
 	@ApiProperty({
 		example: 1,
-		description: 'ID del tipo de estado de calificación desde core.types (TG404)',
+		description: 'Qualification status type ID from core.types (TG404)',
 	})
 	qualificationStatusTypeId: number;
 }
@@ -292,12 +292,12 @@ export class ProjectEvaluatorDetailDto {
 }
 
 export class ProjectDetailsStudentWithSpcDto extends StudentInfoDto {
-	@ApiProperty({ example: 42, description: 'ID del study_plan_course al que pertenece el alumno' })
+	@ApiProperty({ example: 42, description: 'Study plan course ID the student belongs to' })
 	studyPlanCourseId: number | null;
 }
 
 export class ProjectRubricItemStudentGradeDto {
-	@ApiProperty({ example: 1, description: 'ID del project_student calificado en esta rúbrica' })
+	@ApiProperty({ example: 1, description: 'Project student ID graded in this rubric' })
 	projectStudentId: number;
 
 	@ApiProperty({ example: 18, nullable: true })
@@ -306,7 +306,7 @@ export class ProjectRubricItemStudentGradeDto {
 	@ApiProperty({
 		example: {},
 		type: [StudentEvaluationStatusDto],
-		description: 'Estado de calificación por evaluador en esta rúbrica. Solo en modo evaluación.',
+		description: 'Qualification status per evaluator in this rubric. Evaluation mode only.',
 	})
 	evaluationStatuses: StudentEvaluationStatusDto[];
 }
@@ -314,13 +314,13 @@ export class ProjectRubricItemStudentGradeDto {
 export class ProjectRubricItemDto {
 	@ApiProperty({
 		example: { id: 5, code: 'TG205-T005', name: { es: 'TP', en: 'TP' } },
-		description: 'Tipo de nota (grade type) al que pertenece esta rúbrica',
+		description: 'Grade type this rubric belongs to',
 	})
 	gradeType: any;
 
 	@ApiProperty({
 		example: { id: 7, code: 'TG402-T001', name: { es: 'Parcial', en: 'Midterm' } },
-		description: 'Etapa de evaluación (Parcial/Final) a la que pertenece esta rúbrica',
+		description: 'Evaluation stage (Midterm/Final) this rubric belongs to',
 	})
 	competencyScopeType: any;
 
@@ -343,7 +343,7 @@ export class ProjectRubricItemDto {
 export class ProjectRubricGroupDto {
 	@ApiProperty({
 		example: 42,
-		description: 'ID del study_plan_course al que corresponden las rúbricas',
+		description: 'Study plan course ID the rubrics belong to',
 	})
 	studyPlanCourseId: number;
 
@@ -356,7 +356,7 @@ export class ProjectRubricGroupDto {
 	@ApiProperty({
 		example: [],
 		type: [ProjectRubricItemDto],
-		description: 'Rúbricas activas de la etapa de evaluación solicitada, una por grade type',
+		description: 'Active rubrics for the requested evaluation stage, one per grade type',
 	})
 	items: ProjectRubricItemDto[];
 }
@@ -426,7 +426,7 @@ export class FilterProjectDto extends PaginationQueryDto {
 	@IsString()
 	@ApiPropertyOptional({
 		example: 'García',
-		description: 'Busca por código, nombre del proyecto o nombre del estudiante',
+		description: 'Search by code, project name or student name',
 	})
 	search?: string;
 
@@ -457,7 +457,7 @@ export class FilterProjectDto extends PaginationQueryDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del programa/carrera',
+		description: 'Program ID',
 	})
 	programId?: number;
 
@@ -466,7 +466,7 @@ export class FilterProjectDto extends PaginationQueryDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del grupo de proyecto (empresa virtual)',
+		description: 'Project group (virtual company) ID',
 	})
 	projectGroupId?: number;
 
@@ -475,7 +475,7 @@ export class FilterProjectDto extends PaginationQueryDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del curso (academic.courses)',
+		description: 'Course ID (academic.courses)',
 	})
 	courseId?: number;
 
@@ -483,7 +483,7 @@ export class FilterProjectDto extends PaginationQueryDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del estudiante.',
+		description: 'Student ID.',
 	})
 	studentId?: number;
 
@@ -492,7 +492,7 @@ export class FilterProjectDto extends PaginationQueryDto {
 	@ApiProperty({
 		example: 1,
 		required: false,
-		description: 'ID del profesor evaluador.',
+		description: 'Evaluator professor ID.',
 	})
 	professorId?: number;
 }

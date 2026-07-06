@@ -7,10 +7,10 @@ import { ProgramEntity } from 'src/modules/academic/programs/model/programs.enti
 import { ProjectEntity } from 'src/modules/evaluation/projects/model/projects.entity';
 
 /**
- * Grupo de proyecto ("empresa virtual"): agrupa los proyectos académicos de una carrera dentro de
- * un periodo académico. Cada proyecto académico pertenece a un grupo de proyecto. El `code` es la
- * clave de negocio y es único dentro de (periodo académico + carrera) — la misma empresa se
- * re-registra por periodo/carrera, no es una tabla maestra global.
+ * Project group ("virtual company"): groups academic projects within a program and
+ * academic period. Each academic project belongs to a project group. The `code` is the
+ * business key and is unique within (academic period + program) — the same company is
+ * re-registered per period/program, not a global master table.
  */
 @Entity({ name: 'project_groups', schema: 'evaluation' })
 @Index('UQ_project_groups_code_period_program', ['code', 'academicPeriodId', 'programId'], {
