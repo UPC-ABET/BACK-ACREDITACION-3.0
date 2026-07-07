@@ -29,6 +29,7 @@ import {
 } from '../model/lcfc.dtos';
 
 const NOTIFICATION_BATCH_SIZE = 1000;
+const NOTIFICATION_SEND_CONCURRENCY = 50;
 const MAX_SEND_ERROR_DETAILS = 100;
 const JOB_STATUS_TTL_MS = 30 * 60 * 1000;
 
@@ -164,7 +165,7 @@ export class LcfcNotificationService {
 			emailsFailed: 0,
 		});
 		this.logger.log(
-			`LCFC notification job ${jobId ?? 'sync'} started: totalStudents=${totalStudents}, batchSize=${NOTIFICATION_BATCH_SIZE}`,
+			`LCFC notification job ${jobId ?? 'sync'} started: totalStudents=${totalStudents}, batchSize=${NOTIFICATION_BATCH_SIZE}, sendConcurrency=${NOTIFICATION_SEND_CONCURRENCY}`,
 		);
 		// Deadline is configured in the Configuration tab; fall back to it when the send
 		// request doesn't carry one of its own.
@@ -222,8 +223,9 @@ export class LcfcNotificationService {
 				};
 			});
 
-			const batchResult = await this.notifRepo
-				.processSendNotifications({
+			let batchResult: Awaited<ReturnType<typeof this.notifRepo.processSendNotifications>>;
+			try {
+				batchResult = await this.notifRepo.processSendNotifications({
 					lcfcSurveyTypeId,
 					activeStatusId,
 					closedStatusId,
@@ -232,12 +234,21 @@ export class LcfcNotificationService {
 					academicPeriodId,
 					maxRegisterDate,
 					candidates,
-				})
-				.catch((err) => {
-					throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
-						description: (err as Error).message,
-					});
 				});
+			} catch (err) {
+				emailsFailed += enrolledStudents.length;
+				this.pushSendError(errors, `Batch ${batchNumber}: ${(err as Error).message}`);
+				this.updateSendNotificationStatus(jobId, {
+					progressPct: Math.round(((offset + enrolledStudents.length) / totalStudents) * 100),
+					emailsSent,
+					emailsFailed,
+				});
+				this.logger.error(
+					`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} failed while preparing notifications: ${(err as Error).message}`,
+					(err as Error).stack,
+				);
+				continue;
+			}
 
 			surveysCreated += batchResult.surveysCreated;
 			alreadyExisted += batchResult.alreadyExisted;
@@ -247,8 +258,10 @@ export class LcfcNotificationService {
 
 			let batchEmailsSent = 0;
 			let batchEmailsFailed = 0;
-			await Promise.all(
-				batchResult.pendingNotifications.map(async (notif) => {
+			await this.processConcurrently(
+				batchResult.pendingNotifications,
+				NOTIFICATION_SEND_CONCURRENCY,
+				async (notif) => {
 					try {
 						const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
 						const emailBody = this.surveyEmailTemplateService.replacePlaceholders(
@@ -275,16 +288,14 @@ export class LcfcNotificationService {
 					} catch (err) {
 						emailsFailed++;
 						batchEmailsFailed++;
-						if (errors.length < MAX_SEND_ERROR_DETAILS) {
-							errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
-						}
+						this.pushSendError(errors, `Student ${notif.studentCode}: ${(err as Error).message}`);
 					} finally {
 						this.updateSendNotificationStatus(jobId, {
 							emailsSent,
 							emailsFailed,
 						});
 					}
-				}),
+				},
 			);
 			this.updateSendNotificationStatus(jobId, {
 				progressPct: Math.round(((offset + enrolledStudents.length) / totalStudents) * 100),
@@ -314,6 +325,28 @@ export class LcfcNotificationService {
 		const current = this.notificationJobs.get(jobId);
 		if (!current) return;
 		this.notificationJobs.set(jobId, { ...current, ...patch });
+	}
+
+	private pushSendError(errors: string[], message: string) {
+		if (errors.length < MAX_SEND_ERROR_DETAILS) {
+			errors.push(message);
+		}
+	}
+
+	private async processConcurrently<T>(
+		items: T[],
+		concurrency: number,
+		handler: (item: T) => Promise<void>,
+	) {
+		let nextIndex = 0;
+		const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+			while (nextIndex < items.length) {
+				const item = items[nextIndex];
+				nextIndex++;
+				await handler(item);
+			}
+		});
+		await Promise.all(workers);
 	}
 
 	async validateToken(token: string) {
