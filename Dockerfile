@@ -47,6 +47,7 @@ ENV PUPPETEER_CACHE_DIR=/puppeteer-cache
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       dumb-init \
+      unzip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/node_modules ./node_modules
