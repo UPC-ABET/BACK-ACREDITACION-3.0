@@ -145,6 +145,7 @@ export class BannerTokenService {
 				'--no-sandbox',
 				'--disable-setuid-sandbox',
 				'--disable-dev-shm-usage',
+				'--disable-gpu',
 				'--disable-blink-features=AutomationControlled',
 			],
 		});

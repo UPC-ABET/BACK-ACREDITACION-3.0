@@ -19,7 +19,7 @@ let session = null;
 
 async function teardownBrowser() {
 	if (session && session.browser) {
-		await session.browser.close().catch(() => {});
+		await session.browser.close().catch(() => { });
 		session.browser = null;
 	}
 }
@@ -37,7 +37,17 @@ async function startSession({ sessionId, intranetUrl, authStatePath }) {
 		const browser = await chromium.launch({
 			headless: false,
 			executablePath: process.env.CHROMIUM_PATH || undefined,
-			args: ['--no-sandbox', '--disable-dev-shm-usage', '--start-maximized'],
+			args: [
+				'--no-sandbox',
+				'--disable-dev-shm-usage',
+				'--disable-gpu',
+				'--start-maximized',
+				'--disable-extensions',
+				'--disable-background-networking',
+				'--disable-renderer-backgrounding',
+				'--disable-features=Translate,BackForwardCache,MediaRouter',
+				'--js-flags=--max-old-space-size=256',
+			],
 		});
 		session.browser = browser;
 

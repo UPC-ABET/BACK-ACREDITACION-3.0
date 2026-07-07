@@ -154,7 +154,12 @@ export class PlannerTokenService {
 		const browser = await chromium.launch({
 			headless: true,
 			...(executablePath ? { executablePath } : {}),
-			args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+			args: [
+				'--no-sandbox',
+				'--disable-setuid-sandbox',
+				'--disable-dev-shm-usage',
+				'--disable-gpu',
+			],
 		});
 
 		try {

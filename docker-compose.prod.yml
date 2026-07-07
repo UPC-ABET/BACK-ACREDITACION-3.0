@@ -7,6 +7,8 @@ services:
     image: ghcr.io/upc-abet/back-acreditacion-3.0:latest
     container_name: sys_acc_back
     restart: unless-stopped
+    mem_limit: 640m
+    memswap_limit: 1024m
     env_file:
       - .env
     ports:
@@ -27,6 +29,9 @@ services:
     image: ghcr.io/upc-abet/back-acreditacion-3.0:browser-auth
     container_name: browser-auth
     restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 896m
+    shm_size: 256m
     volumes:
       - ./scrapping:/data/banner
     networks:

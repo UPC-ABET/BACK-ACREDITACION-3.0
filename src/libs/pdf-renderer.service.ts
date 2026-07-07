@@ -48,41 +48,86 @@ export const UPC_LOGO_DATA_URI: string = loadLogoDataUri();
 export class PdfRendererService implements OnModuleDestroy {
 	private readonly logger = new Logger(PdfRendererService.name);
 	private browser: PuppeteerBrowser | null = null;
+	private browserLaunch: Promise<PuppeteerBrowser> | null = null;
+	private static readonly MAX_CONCURRENT_RENDERS = 2;
+	private activeRenders = 0;
+	private readonly renderQueue: Array<() => void> = [];
 
 	constructor(private readonly configService: ConfigService) {}
 
 	private async getBrowser(): Promise<PuppeteerBrowser> {
 		if (this.browser && this.browser.connected) return this.browser;
-		const puppeteerMod: any = await import('puppeteer');
-		const puppeteer = puppeteerMod.default ?? puppeteerMod;
-		const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
-		this.browser = await puppeteer.launch({
-			headless: true,
-			...(executablePath ? { executablePath } : {}),
-			args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-		});
-		this.logger.log(
-			`Chromium launched${executablePath ? ` (executablePath=${executablePath})` : ''}`,
-		);
-		return this.browser!;
+		if (this.browserLaunch) return this.browserLaunch;
+
+		this.browserLaunch = (async () => {
+			const puppeteerMod: any = await import('puppeteer');
+			const puppeteer = puppeteerMod.default ?? puppeteerMod;
+			const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
+			const browser: PuppeteerBrowser = await puppeteer.launch({
+				headless: true,
+				...(executablePath ? { executablePath } : {}),
+				args: [
+					'--no-sandbox',
+					'--disable-setuid-sandbox',
+					'--disable-dev-shm-usage',
+					'--disable-gpu',
+				],
+				timeout: 60000,
+			});
+			this.browser = browser;
+			this.logger.log(
+				`Chromium launched${executablePath ? ` (executablePath=${executablePath})` : ''}`,
+			);
+			return browser;
+		})();
+
+		try {
+			return await this.browserLaunch;
+		} catch (err) {
+			this.browser = null;
+			throw err;
+		} finally {
+			this.browserLaunch = null;
+		}
 	}
 
 	async htmlToPdf(html: string): Promise<Buffer> {
-		const browser = await this.getBrowser();
-		const page = await browser.newPage();
+		await this.acquireRenderSlot();
 		try {
-			// Logo is a data URI so 'load' is sufficient — 'networkidle0' is excluded for setContent in puppeteer 25.
-			await page.setContent(html, { waitUntil: 'load' });
-			await page.emulateMediaType('print');
-			return Buffer.from(
-				await page.pdf({
-					format: 'A4',
-					printBackground: true,
-					preferCSSPageSize: true,
-				}),
-			);
+			const browser = await this.getBrowser();
+			const page = await browser.newPage();
+			try {
+				await page.setContent(html, { waitUntil: 'load' });
+				await page.emulateMediaType('print');
+				return Buffer.from(
+					await page.pdf({
+						format: 'A4',
+						printBackground: true,
+						preferCSSPageSize: true,
+					}),
+				);
+			} finally {
+				await page.close().catch(() => undefined);
+			}
 		} finally {
-			await page.close();
+			this.releaseRenderSlot();
+		}
+	}
+
+	private acquireRenderSlot(): Promise<void> {
+		if (this.activeRenders < PdfRendererService.MAX_CONCURRENT_RENDERS) {
+			this.activeRenders++;
+			return Promise.resolve();
+		}
+		return new Promise<void>((resolve) => this.renderQueue.push(resolve));
+	}
+
+	private releaseRenderSlot(): void {
+		const next = this.renderQueue.shift();
+		if (next) {
+			next();
+		} else {
+			this.activeRenders--;
 		}
 	}
 
