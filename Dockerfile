@@ -30,19 +30,21 @@ RUN pnpm run build
 RUN pnpm prune --prod
 
 ############################
-# 3) runtime — slim image with system Chromium for Puppeteer
+# 3) runtime — slim image with driver-managed browsers
 ############################
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Each driver installs its OWN version-matched browser (Playwright 1.60 → Chromium,
+# Puppeteer 25 → Chrome) into a shared, world-readable path. The unpinned Debian
+# `chromium` package drifts (a rebuild pulled Chromium 150) and its CDP launch
+# handshake is incompatible with the pinned drivers — that aborts with SIGTRAP /
+# WS-endpoint timeouts. NOTE: PUPPETEER_EXECUTABLE_PATH must NOT be set (neither
+# here nor in the server .env), so both drivers resolve their bundled browser.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PUPPETEER_CACHE_DIR=/puppeteer-cache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      chromium \
-      fonts-liberation \
-      libnss3 \
       ca-certificates \
       dumb-init \
     && rm -rf /var/lib/apt/lists/*
@@ -50,6 +52,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
+
+# Install version-matched browsers for both drivers. `playwright install --with-deps`
+# also pulls the shared OS libraries that Puppeteer's Chrome needs too.
+RUN npx playwright install --with-deps chromium \
+    && npx puppeteer browsers install chrome \
+    && chmod -R a+rX /ms-playwright /puppeteer-cache
 
 USER node
 EXPOSE 7777
