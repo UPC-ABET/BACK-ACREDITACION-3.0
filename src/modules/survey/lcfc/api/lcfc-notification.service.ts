@@ -26,6 +26,9 @@ import {
 	DashboardLcfcDto,
 } from '../model/lcfc.dtos';
 
+const NOTIFICATION_BATCH_SIZE = 1000;
+const MAX_SEND_ERROR_DETAILS = 100;
+
 @Injectable()
 export class LcfcNotificationService {
 	private readonly logger = new Logger(LcfcNotificationService.name);
@@ -102,9 +105,9 @@ export class LcfcNotificationService {
 		if (courseSectionIds.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noMatchingSections);
 		}
-		const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(courseSectionIds);
+		const totalStudents = await this.notifRepo.countEnrolledStudentsByCourses(courseSectionIds);
 
-		if (enrolledStudents.length === 0) {
+		if (totalStudents === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
 		// Deadline is configured in the Configuration tab; fall back to it when the send
@@ -113,42 +116,6 @@ export class LcfcNotificationService {
 			dto.maxRegisterDate ??
 			(await this.configRepo.getDeadline(dto.programId ?? null, academicPeriodId));
 
-		// Use the STUDENT's own program (a shared course can enrol students from other programs),
-		// so the survey shows the student's career and their own outcomes — not the program the
-		// config was created for.
-		const candidates: LcfcSendCandidate[] = enrolledStudents.map((student) => {
-			const config = activeConfigs.find(
-				(c) => c.extra?.courseSectionId === student.courseSectionId,
-			);
-			return {
-				studentId: student.studentId,
-				studentName: student.studentName,
-				studentCode: student.studentCode,
-				studentEmail: student.studentEmail,
-				courseSectionId: student.courseSectionId,
-				courseName: student.courseName,
-				programName: student.programName,
-				programId: student.programId ?? dto.programId ?? config?.extra?.programId ?? null,
-				campusId: dto.campusId ?? student.campusId ?? config?.extra?.campusId ?? null,
-			};
-		});
-
-		const { surveysCreated, alreadyExisted, pendingNotifications } = await this.notifRepo
-			.processSendNotifications({
-				lcfcSurveyTypeId,
-				activeStatusId,
-				closedStatusId,
-				scheduledStatusId,
-				resend: dto.resend ?? false,
-				academicPeriodId,
-				maxRegisterDate,
-				candidates,
-			})
-			.catch((err) => {
-				throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
-					description: (err as Error).message,
-				});
-			});
 		const surveyBaseUrl =
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
@@ -161,35 +128,93 @@ export class LcfcNotificationService {
 		let emailsSent = 0;
 		let emailsFailed = 0;
 		const errors: string[] = [];
+		let surveysCreated = 0;
+		let alreadyExisted = 0;
+		const configByCourseSectionId = new Map(
+			activeConfigs
+				.map((config) => ({ config, courseSectionId: config.extra?.courseSectionId }))
+				.filter(
+					(item): item is { config: (typeof activeConfigs)[number]; courseSectionId: number } =>
+						typeof item.courseSectionId === 'number',
+				)
+				.map((item) => [item.courseSectionId, item.config]),
+		);
 
-		for (const notif of pendingNotifications) {
-			try {
-				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
-				const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
-					student_name: notif.studentName,
-					student_code: notif.studentCode,
-					course_name: notif.courseName,
-					program_name: notif.programName,
-					survey_link: surveyUrl,
-					token: notif.token,
+		for (let offset = 0; offset < totalStudents; offset += NOTIFICATION_BATCH_SIZE) {
+			const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(
+				courseSectionIds,
+				NOTIFICATION_BATCH_SIZE,
+				offset,
+			);
+			const candidates: LcfcSendCandidate[] = enrolledStudents.map((student) => {
+				const config = configByCourseSectionId.get(student.courseSectionId);
+				return {
+					studentId: student.studentId,
+					studentName: student.studentName,
+					studentCode: student.studentCode,
+					studentEmail: student.studentEmail,
+					courseSectionId: student.courseSectionId,
+					courseName: student.courseName,
+					programName: student.programName,
+					programId: student.programId ?? dto.programId ?? config?.extra?.programId ?? null,
+					campusId: dto.campusId ?? student.campusId ?? config?.extra?.campusId ?? null,
+				};
+			});
+
+			const batchResult = await this.notifRepo
+				.processSendNotifications({
+					lcfcSurveyTypeId,
+					activeStatusId,
+					closedStatusId,
+					scheduledStatusId,
+					resend: dto.resend ?? false,
+					academicPeriodId,
+					maxRegisterDate,
+					candidates,
+				})
+				.catch((err) => {
+					throw new BadRequestException(lcfcValidationStrings.error.processFailed, {
+						description: (err as Error).message,
+					});
 				});
 
-				await this.mailService.sendRawEmail({
-					to: notif.studentEmail,
-					subject: emailTemplate.subject,
-					html: emailBody,
-				});
+			surveysCreated += batchResult.surveysCreated;
+			alreadyExisted += batchResult.alreadyExisted;
 
-				await this.notifRepo.markAsSentBySurveyId(notif.surveyId, sentStatusId);
-				emailsSent++;
-			} catch (err) {
-				emailsFailed++;
-				errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
+			for (const notif of batchResult.pendingNotifications) {
+				try {
+					const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
+					const emailBody = this.surveyEmailTemplateService.replacePlaceholders(
+						emailTemplate.body,
+						{
+							student_name: notif.studentName,
+							student_code: notif.studentCode,
+							course_name: notif.courseName,
+							program_name: notif.programName,
+							survey_link: surveyUrl,
+							token: notif.token,
+						},
+					);
+
+					await this.mailService.sendRawEmail({
+						to: notif.studentEmail,
+						subject: emailTemplate.subject,
+						html: emailBody,
+					});
+
+					await this.notifRepo.markAsSentBySurveyId(notif.surveyId, sentStatusId);
+					emailsSent++;
+				} catch (err) {
+					emailsFailed++;
+					if (errors.length < MAX_SEND_ERROR_DETAILS) {
+						errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
+					}
+				}
 			}
 		}
 
 		return {
-			totalStudents: enrolledStudents.length,
+			totalStudents,
 			surveysCreated,
 			alreadyExisted,
 			emailsSent,

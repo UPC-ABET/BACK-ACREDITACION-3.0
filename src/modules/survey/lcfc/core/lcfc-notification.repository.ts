@@ -166,7 +166,40 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		};
 	}
 
-	async getEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<
+	async countEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<number> {
+		const rows: { total: number }[] = await this.dataSource.query(
+			`SELECT COUNT(*)::int AS "total"
+			FROM (
+				SELECT DISTINCT
+					st.id,
+					st.first_name || ' ' || st.last_name,
+					st.code,
+					st.email,
+					sse.course_section_id,
+					c.name->>'es',
+					cs.campus_id,
+					sp.program_id,
+					p.name->>'es'
+				FROM academic.student_section_enrollments sse
+				INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+				INNER JOIN academic.students st ON st.id = es.student_id
+				INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+				INNER JOIN academic.courses c ON c.id = cs.course_id
+				INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
+				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+				INNER JOIN academic.programs p ON p.id = sp.program_id
+				WHERE sse.course_section_id = ANY($1)
+			) enrolled`,
+			[courseSectionIds],
+		);
+		return rows[0]?.total ?? 0;
+	}
+
+	async getEnrolledStudentsByCourses(
+		courseSectionIds: number[],
+		limit?: number,
+		offset?: number,
+	): Promise<
 		{
 			studentId: number;
 			studentName: string;
@@ -199,8 +232,9 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)
-			ORDER BY "studentName" ASC`,
-			[courseSectionIds],
+			ORDER BY "studentName" ASC, st.id ASC, sse.course_section_id ASC
+			${limit ? `LIMIT $2 OFFSET $3` : ''}`,
+			limit ? [courseSectionIds, limit, offset ?? 0] : [courseSectionIds],
 		);
 		return rows ?? [];
 	}
