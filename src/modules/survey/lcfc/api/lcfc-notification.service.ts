@@ -285,11 +285,25 @@ export class LcfcNotificationService {
 		const commissionId =
 			((config?.extra as Record<string, unknown>)?.commissionId as number | null) ?? null;
 
-		const outcomes = await this.surveyRepo.getOutcomesForCourseSection(
+		let outcomes = await this.surveyRepo.getOutcomesForCourseSection(
 			tokenData.courseSectionId,
 			tokenData.programId,
 			commissionId,
 		);
+		// Commissions are program-specific, but a section stores a single commission in its
+		// config even when it enrols students from several programs. If the stored commission
+		// doesn't belong to the student's program the combined filter yields no outcomes and
+		// the survey would render empty — retry with the student's program only.
+		if (outcomes.length === 0 && commissionId != null) {
+			this.logger.warn(
+				`LCFC config commission ${commissionId} yields no outcomes for section ${tokenData.courseSectionId} / program ${tokenData.programId}; falling back to program-only filter`,
+			);
+			outcomes = await this.surveyRepo.getOutcomesForCourseSection(
+				tokenData.courseSectionId,
+				tokenData.programId,
+				null,
+			);
+		}
 		const language = dto.language ?? 'es';
 
 		// Return outcomes grouped by commission so the survey form can render each
