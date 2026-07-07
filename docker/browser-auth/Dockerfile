@@ -6,21 +6,23 @@
 # backend over the private sys_acc_web network.
 #   Xvfb (:99) + headful Chromium + x11vnc + websockify(:6080)
 #   + a small Node control API (:7000) driven by the backend.
-# Uses the same node + system-Chromium base as the main app image (no external
-# Playwright registry pull), so it isn't subject to mcr.microsoft.com throttling.
+# Chromium is installed by `playwright install` so its build is version-matched
+# to the pinned playwright package. (The unpinned Debian `chromium` package drifts
+# — a rebuild pulled Chromium 150, whose CDP launch handshake is incompatible with
+# playwright 1.60 and aborts with SIGTRAP. The browser binary is fetched from
+# cdn.playwright.dev, not the throttled mcr.microsoft.com image registry.)
 # ============================================================
 FROM node:24-bookworm-slim
 
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV DISPLAY=:99
-ENV CHROMIUM_PATH=/usr/bin/chromium
+# Shared, world-readable browser location so the non-root `node` user can launch it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
+# X stack + fonts/certs. Chromium's own OS deps come from `playwright install --with-deps`.
 # DEBIAN_FRONTEND=noninteractive stops tzdata (pulled in by the X packages) from
 # prompting for a timezone and hanging the build.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      chromium \
       fonts-liberation \
-      libnss3 \
       ca-certificates \
       xvfb \
       x11vnc \
@@ -33,6 +35,12 @@ RUN mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
+
+# Install the exact Chromium build that the pinned playwright expects, plus its OS
+# deps, into the shared path — then make it readable/traversable by the node user.
+RUN npx playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright
+
 COPY controller.js start.sh ./
 RUN chmod +x start.sh
 

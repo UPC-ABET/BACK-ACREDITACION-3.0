@@ -37,17 +37,10 @@ async function startSession({ sessionId, intranetUrl, authStatePath }) {
 		const browser = await chromium.launch({
 			headless: false,
 			executablePath: process.env.CHROMIUM_PATH || undefined,
-			args: [
-				'--no-sandbox',
-				'--disable-dev-shm-usage',
-				'--disable-gpu',
-				'--start-maximized',
-				'--disable-extensions',
-				'--disable-background-networking',
-				'--disable-renderer-backgrounding',
-				'--disable-features=Translate,BackForwardCache,MediaRouter',
-				'--js-flags=--max-old-space-size=256',
-			],
+			// Keep this minimal: it's an interactive, headful login browser used
+			// rarely and one-at-a-time, so correctness beats shaving memory.
+			// --disable-gpu is safe in a headless-host container; nothing else added.
+			args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--start-maximized'],
 		});
 		session.browser = browser;
 
