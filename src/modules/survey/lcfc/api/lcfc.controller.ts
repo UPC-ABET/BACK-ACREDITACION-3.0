@@ -1,4 +1,4 @@
-import { Body, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
+import { Body, HttpStatus, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
@@ -18,6 +18,7 @@ import {
 	SwaggerLcfcConfigSectionCommissions,
 	SwaggerLcfcConfigSetDeadline,
 	SwaggerLcfcNotificationSend,
+	SwaggerLcfcNotificationStatus,
 	SwaggerLcfcTokenValidate,
 	SwaggerLcfcSurveyListByToken,
 	SwaggerLcfcSurveyGetByToken,
@@ -163,7 +164,16 @@ export class LcfcController {
 		@Body() dto: SendLcfcNotificationDto,
 		@AcademicPeriodId() academicPeriodId: number,
 	) {
-		return parseSuccessResponse(await this.lcfcService.sendNotifications(dto, academicPeriodId));
+		return parseSuccessResponse(
+			this.lcfcService.startSendNotifications(dto, academicPeriodId),
+			HttpStatus.ACCEPTED,
+		);
+	}
+
+	@SwaggerLcfcNotificationStatus()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async notificationStatus(@Param('jobId') jobId: string) {
+		return parseSuccessResponse(this.lcfcService.getSendNotificationStatus(jobId));
 	}
 
 	@SwaggerLcfcTokenValidate()

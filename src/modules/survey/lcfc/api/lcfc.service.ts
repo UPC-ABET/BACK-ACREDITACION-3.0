@@ -103,6 +103,14 @@ export class LcfcService {
 		return this.notifService.sendNotifications(dto, academicPeriodId);
 	}
 
+	startSendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
+		return this.notifService.startSendNotifications(dto, academicPeriodId);
+	}
+
+	getSendNotificationStatus(jobId: string) {
+		return this.notifService.getSendNotificationStatus(jobId);
+	}
+
 	validateToken(token: string) {
 		return this.notifService.validateToken(token);
 	}

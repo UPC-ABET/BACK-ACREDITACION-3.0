@@ -73,6 +73,11 @@ export const lcfcRoutes = {
 			route: 'notification/send',
 			summary: 'Send LCFC surveys by email to students enrolled in active courses',
 		},
+		status: {
+			method: 'GET',
+			route: 'notification/status/:jobId',
+			summary: 'Get LCFC notification send job progress',
+		},
 	},
 	token: {
 		validate: {

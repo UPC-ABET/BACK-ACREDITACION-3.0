@@ -95,6 +95,11 @@ export const SwaggerLcfcConfigSetDeadline = () =>
 	HttpMethodWithSwagger({ ...cfg.config.setDeadline, body: SetLcfcDeadlineDto });
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
+export const SwaggerLcfcNotificationStatus = () =>
+	HttpMethodWithSwagger({
+		...cfg.notification.status,
+		params: [{ name: 'jobId', description: 'LCFC notification job ID', type: String }],
+	});
 export const SwaggerLcfcTokenValidate = () =>
 	HttpMethodWithSwagger({
 		...cfg.token.validate,

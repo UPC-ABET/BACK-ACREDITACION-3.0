@@ -3,8 +3,10 @@ import {
 	BadRequestException,
 	Logger,
 	InternalServerErrorException,
+	NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import * as ExcelJS from 'exceljs';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
@@ -28,10 +30,18 @@ import {
 
 const NOTIFICATION_BATCH_SIZE = 1000;
 const MAX_SEND_ERROR_DETAILS = 100;
+const JOB_STATUS_TTL_MS = 30 * 60 * 1000;
+
+type LcfcNotificationJobStatus = {
+	progressPct: number;
+	emailsSent: number;
+	emailsFailed: number;
+};
 
 @Injectable()
 export class LcfcNotificationService {
 	private readonly logger = new Logger(LcfcNotificationService.name);
+	private readonly notificationJobs = new Map<string, LcfcNotificationJobStatus>();
 
 	constructor(
 		private readonly notifRepo: LcfcNotificationRepository,
@@ -41,6 +51,44 @@ export class LcfcNotificationService {
 		private readonly mailService: MailService,
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
+
+	startSendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
+		const jobId = randomUUID();
+		this.notificationJobs.set(jobId, {
+			progressPct: 0,
+			emailsSent: 0,
+			emailsFailed: 0,
+		});
+		this.logger.log(
+			`LCFC notification job ${jobId} queued for academicPeriodId=${academicPeriodId}`,
+		);
+
+		void this.sendNotifications({ ...dto }, academicPeriodId, jobId)
+			.then((result) => {
+				this.logger.log(
+					`LCFC notification job ${jobId} completed: totalStudents=${result.totalStudents}, surveysCreated=${result.surveysCreated}, alreadyExisted=${result.alreadyExisted}, emailsSent=${result.emailsSent}, emailsFailed=${result.emailsFailed}`,
+				);
+			})
+			.catch((err) => {
+				this.logger.error(
+					`LCFC notification job ${jobId} failed: ${(err as Error).message}`,
+					(err as Error).stack,
+				);
+			})
+			.finally(() => {
+				setTimeout(() => this.notificationJobs.delete(jobId), JOB_STATUS_TTL_MS);
+			});
+
+		return { accepted: true, jobId };
+	}
+
+	getSendNotificationStatus(jobId: string) {
+		const status = this.notificationJobs.get(jobId);
+		if (!status) {
+			throw new NotFoundException(lcfcValidationStrings.error.notificationJobNotFound);
+		}
+		return status;
+	}
 
 	private async getTypeIds() {
 		const [lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId] =
@@ -73,7 +121,7 @@ export class LcfcNotificationService {
 		};
 	}
 
-	async sendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
+	async sendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number, jobId?: string) {
 		const { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId } =
 			await this.getTypeIds();
 		const activeConfigs = await this.configRepo.findAllLcfc({
@@ -110,6 +158,14 @@ export class LcfcNotificationService {
 		if (totalStudents === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
 		}
+		this.updateSendNotificationStatus(jobId, {
+			progressPct: 0,
+			emailsSent: 0,
+			emailsFailed: 0,
+		});
+		this.logger.log(
+			`LCFC notification job ${jobId ?? 'sync'} started: totalStudents=${totalStudents}, batchSize=${NOTIFICATION_BATCH_SIZE}`,
+		);
 		// Deadline is configured in the Configuration tab; fall back to it when the send
 		// request doesn't carry one of its own.
 		const maxRegisterDate =
@@ -141,10 +197,15 @@ export class LcfcNotificationService {
 		);
 
 		for (let offset = 0; offset < totalStudents; offset += NOTIFICATION_BATCH_SIZE) {
+			const batchNumber = Math.floor(offset / NOTIFICATION_BATCH_SIZE) + 1;
+			const totalBatches = Math.ceil(totalStudents / NOTIFICATION_BATCH_SIZE);
 			const enrolledStudents = await this.notifRepo.getEnrolledStudentsByCourses(
 				courseSectionIds,
 				NOTIFICATION_BATCH_SIZE,
 				offset,
+			);
+			this.logger.log(
+				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} loaded: students=${enrolledStudents.length}, offset=${offset}`,
 			);
 			const candidates: LcfcSendCandidate[] = enrolledStudents.map((student) => {
 				const config = configByCourseSectionId.get(student.courseSectionId);
@@ -180,37 +241,59 @@ export class LcfcNotificationService {
 
 			surveysCreated += batchResult.surveysCreated;
 			alreadyExisted += batchResult.alreadyExisted;
+			this.logger.log(
+				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} prepared: surveysCreated=${batchResult.surveysCreated}, alreadyExisted=${batchResult.alreadyExisted}, pendingEmails=${batchResult.pendingNotifications.length}`,
+			);
 
-			for (const notif of batchResult.pendingNotifications) {
-				try {
-					const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
-					const emailBody = this.surveyEmailTemplateService.replacePlaceholders(
-						emailTemplate.body,
-						{
-							student_name: notif.studentName,
-							student_code: notif.studentCode,
-							course_name: notif.courseName,
-							program_name: notif.programName,
-							survey_link: surveyUrl,
-							token: notif.token,
-						},
-					);
+			let batchEmailsSent = 0;
+			let batchEmailsFailed = 0;
+			await Promise.all(
+				batchResult.pendingNotifications.map(async (notif) => {
+					try {
+						const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.LCFC}?token=${notif.token}`;
+						const emailBody = this.surveyEmailTemplateService.replacePlaceholders(
+							emailTemplate.body,
+							{
+								student_name: notif.studentName,
+								student_code: notif.studentCode,
+								course_name: notif.courseName,
+								program_name: notif.programName,
+								survey_link: surveyUrl,
+								token: notif.token,
+							},
+						);
 
-					await this.mailService.sendRawEmail({
-						to: notif.studentEmail,
-						subject: emailTemplate.subject,
-						html: emailBody,
-					});
+						await this.mailService.sendRawEmail({
+							to: notif.studentEmail,
+							subject: emailTemplate.subject,
+							html: emailBody,
+						});
 
-					await this.notifRepo.markAsSentBySurveyId(notif.surveyId, sentStatusId);
-					emailsSent++;
-				} catch (err) {
-					emailsFailed++;
-					if (errors.length < MAX_SEND_ERROR_DETAILS) {
-						errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
+						await this.notifRepo.markAsSentBySurveyId(notif.surveyId, sentStatusId);
+						emailsSent++;
+						batchEmailsSent++;
+					} catch (err) {
+						emailsFailed++;
+						batchEmailsFailed++;
+						if (errors.length < MAX_SEND_ERROR_DETAILS) {
+							errors.push(`Student ${notif.studentCode}: ${(err as Error).message}`);
+						}
+					} finally {
+						this.updateSendNotificationStatus(jobId, {
+							emailsSent,
+							emailsFailed,
+						});
 					}
-				}
-			}
+				}),
+			);
+			this.updateSendNotificationStatus(jobId, {
+				progressPct: Math.round(((offset + enrolledStudents.length) / totalStudents) * 100),
+				emailsSent,
+				emailsFailed,
+			});
+			this.logger.log(
+				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} emails processed: sent=${batchEmailsSent}, failed=${batchEmailsFailed}, totalSent=${emailsSent}, totalFailed=${emailsFailed}`,
+			);
 		}
 
 		return {
@@ -221,6 +304,16 @@ export class LcfcNotificationService {
 			emailsFailed,
 			errors,
 		};
+	}
+
+	private updateSendNotificationStatus(
+		jobId: string | undefined,
+		patch: Partial<LcfcNotificationJobStatus>,
+	) {
+		if (!jobId) return;
+		const current = this.notificationJobs.get(jobId);
+		if (!current) return;
+		this.notificationJobs.set(jobId, { ...current, ...patch });
 	}
 
 	async validateToken(token: string) {
