@@ -18,28 +18,65 @@ import {
 export const EXPORTS_RAW_CONNECTION = 'exports-raw';
 
 /**
- * Read side of the scraping-export feature. The raw tables live in the scraping DB ("exports-raw").
- * The exports always return the full latest scrape (every career); they are NOT scoped per school —
- * the per-career/program filtering happens on the upload side (audit.fn_validate_program_modality /
+ * Resolve the active academic period id (X-Academic-Period-Id → academic_periods.id) to its code
+ * (e.g. 1 → "202610", 2 → "202615"), which is exactly what scrape_run.periodo stores. Returns null
+ * when no period is given or it doesn't resolve, in which case the exports fall back to the latest
+ * run overall. Shared with the grades-rc export repository.
+ */
+export async function resolveAcademicPeriodCode(
+	mainDataSource: DataSource,
+	academicPeriodId: number | null,
+): Promise<string | null> {
+	if (academicPeriodId == null) return null;
+	const rows: Array<{ code: string }> = await mainDataSource.query(
+		`SELECT code FROM academic.academic_periods WHERE id = $1 LIMIT 1`,
+		[academicPeriodId],
+	);
+	return rows[0]?.code ?? null;
+}
+
+// Run to export from: the latest scrape_run for the given period code ($1). When $1 is NULL (no
+// active period) it falls back to the latest run overall. The period code decides the modality —
+// 202610/202620 are Regular, 202615/202625 are EPE — because Banner scrapes each into its own run.
+const RUN_FOR_PERIOD = `(
+	SELECT id FROM scrape_run
+	WHERE ($1::text IS NULL OR periodo = $1)
+	ORDER BY started_at DESC
+	LIMIT 1
+)`;
+
+/**
+ * Read side of the scraping-export feature. The raw tables live in the scraping DB ("exports-raw");
+ * the active academic period is resolved against the main DB. Each export returns the full scrape
+ * of the selected period (every career of that period/modality) — it is NOT scoped per school; the
+ * per-career/program filtering happens on the upload side (audit.fn_validate_program_modality /
  * audit.fn_upload_enrolled_students validate each row's programCode against academic.programs). The
- * only narrowing kept here is dropping non-engineering programs from matriculados (mapProgramToCareer
- * returns null for them). Reads only — never writes.
+ * only narrowing kept here is dropping non-engineering programs from matriculados
+ * (mapProgramToCareer returns null for them). Reads only — never writes.
  */
 @Injectable()
 export class ScrapingExportsRepository {
-	constructor(@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly dataSource: DataSource) {}
+	constructor(
+		@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly dataSource: DataSource,
+		@InjectDataSource() private readonly mainDataSource: DataSource,
+	) {}
 
-	// Distinct teachers from the latest Banner run, taken straight from raw_horario's docentes.
-	// professorCode = idBanner (the "N0…" user code the original system uses), and last name /
-	// first name / email come from the same record, so the email is always present and the code is in
-	// the expected format.
-	async getDocentes(): Promise<DocenteExportRow[]> {
+	private periodCode(academicPeriodId: number | null): Promise<string | null> {
+		return resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
+	}
+
+	// Distinct teachers from the selected period's Banner run, taken straight from raw_horario's
+	// docentes. professorCode = idBanner (the "N0…" user code the original system uses), and last
+	// name / first name / email come from the same record.
+	async getDocentes(academicPeriodId: number | null): Promise<DocenteExportRow[]> {
+		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{
 			professorCode: string;
 			lastName: string | null;
 			firstName: string | null;
 			email: string | null;
-		}> = await this.dataSource.query(`
+		}> = await this.dataSource.query(
+			`
 			SELECT DISTINCT ON (d->>'idBanner')
 				d->>'idBanner'  AS "professorCode",
 				d->>'apellidos' AS "lastName",
@@ -48,10 +85,12 @@ export class ScrapingExportsRepository {
 			FROM raw_horario h
 			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(h.payload->'horarios', '[]'::jsonb)) hr
 			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(hr->'docentes', '[]'::jsonb)) d
-			WHERE h.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
+			WHERE h.run_id = ${RUN_FOR_PERIOD}
 			  AND NULLIF(trim(d->>'idBanner'), '') IS NOT NULL
 			ORDER BY d->>'idBanner'
-		`);
+		`,
+			[period],
+		);
 
 		return rows.map((row) => ({
 			professorCode: row.professorCode,
@@ -61,18 +100,20 @@ export class ScrapingExportsRepository {
 		}));
 	}
 
-	// One row per Banner section (latest run), straight from raw_horario — same source the original
-	// system uses. courseCode = materia.codigo + numeroCurso, sectionCode = nrc, professorCode = the
-	// principal teacher's idBanner (so it lines up with the docentes export), campus = mapped Banner
-	// campus, modality = Banner metodoEducativo (defaulting to "P" when missing).
-	async getSecciones(): Promise<SeccionExportRow[]> {
+	// One row per Banner section of the selected period, straight from raw_horario — same source the
+	// original system uses. courseCode = materia.codigo + numeroCurso, sectionCode = nrc,
+	// professorCode = the principal teacher's idBanner, campus = mapped Banner campus, modality =
+	// Banner metodoEducativo (defaulting to "P" when missing).
+	async getSecciones(academicPeriodId: number | null): Promise<SeccionExportRow[]> {
+		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{
 			courseCode: string | null;
 			sectionCode: string;
 			professorCode: string | null;
 			campusCode: string | null;
 			modalityCode: string | null;
-		}> = await this.dataSource.query(`
+		}> = await this.dataSource.query(
+			`
 			SELECT DISTINCT ON (h.nrc)
 				(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS "courseCode",
 				h.nrc                                                            AS "sectionCode",
@@ -88,10 +129,12 @@ export class ScrapingExportsRepository {
 				ORDER BY (d->>'esPrincipal')::boolean DESC NULLS LAST
 				LIMIT 1
 			) prof ON true
-			WHERE h.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
+			WHERE h.run_id = ${RUN_FOR_PERIOD}
 			  AND NULLIF(trim(h.nrc), '') IS NOT NULL
 			ORDER BY h.nrc
-		`);
+		`,
+			[period],
+		);
 
 		return rows.map((row) => ({
 			courseCode: row.courseCode ?? '',
@@ -102,18 +145,22 @@ export class ScrapingExportsRepository {
 		}));
 	}
 
-	// Distinct enrolled students from the latest Banner run. The program is mapped to its academic
-	// career code (SW/CC/…), the campus to the short code (CS/MO/SI/VL), and the enrollment column is
-	// hardcoded to "P" for now. Every engineering student is kept; non-engineering programs are
-	// dropped by mapProgramToCareer (the only filtering left — the rest happens on upload).
-	async getAlumnosMatriculados(): Promise<AlumnoMatriculadoExportRow[]> {
+	// Distinct enrolled students from the selected period's Banner run. The program is mapped to its
+	// academic career code (SW/CC/CIVAC/CIVFC…), the campus to the short code, and the enrollment
+	// column is hardcoded to "P" for now. Every engineering student is kept; non-engineering programs
+	// are dropped by mapProgramToCareer (the only filtering left — the rest happens on upload).
+	async getAlumnosMatriculados(
+		academicPeriodId: number | null,
+	): Promise<AlumnoMatriculadoExportRow[]> {
+		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{
 			studentCode: string;
 			lastName: string | null;
 			firstName: string | null;
 			programCode: string | null;
 			campusCode: string | null;
-		}> = await this.dataSource.query(`
+		}> = await this.dataSource.query(
+			`
 			SELECT DISTINCT ON (a.codigo_alumno)
 				a.codigo_alumno                   AS "studentCode",
 				a.payload->>'apellidos'           AS "lastName",
@@ -121,10 +168,12 @@ export class ScrapingExportsRepository {
 				a.payload->'programa'->>'codigo'  AS "programCode",
 				a.payload->'campus'->>'codigo'    AS "campusCode"
 			FROM raw_alumno a
-			WHERE a.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
+			WHERE a.run_id = ${RUN_FOR_PERIOD}
 			  AND NULLIF(trim(a.codigo_alumno), '') IS NOT NULL
 			ORDER BY a.codigo_alumno
-		`);
+		`,
+			[period],
+		);
 
 		return rows.flatMap((row) => {
 			const career = mapProgramToCareer(row.programCode);
@@ -142,18 +191,22 @@ export class ScrapingExportsRepository {
 		});
 	}
 
-	// Distinct (section, student) pairs from the latest Banner run. The Banner NRC doubles as the
-	// section code (same namespace as the sections export), and the student code matches the
+	// Distinct (section, student) pairs from the selected period's Banner run. The Banner NRC doubles
+	// as the section code (same namespace as the sections export), and the student code matches the
 	// enrolled-students export (both Banner).
-	async getAlumnosSecciones(): Promise<AlumnoSeccionExportRow[]> {
-		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(`
+	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
+		const period = await this.periodCode(academicPeriodId);
+		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(
+			`
 			SELECT DISTINCT m.nrc AS "sectionCode", m.codigo_alumno AS "studentCode"
 			FROM raw_matricula m
-			WHERE m.run_id = (SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1)
+			WHERE m.run_id = ${RUN_FOR_PERIOD}
 			  AND NULLIF(trim(m.nrc), '') IS NOT NULL
 			  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
 			ORDER BY m.nrc, m.codigo_alumno
-		`);
+		`,
+			[period],
+		);
 
 		return rows.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
 	}

@@ -3,6 +3,10 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import {
+	AcademicPeriodId,
+	ApiAcademicPeriodHeader,
+} from 'src/modules/auth/protocols/jwt/decorators/academic-period-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
@@ -19,44 +23,66 @@ export class ScrapingExportsController {
 	@Get(routes.operation.docentes.route)
 	@ApiOperation({ summary: routes.operation.docentes.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async docentes(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateDocentes(lang));
+	async docentes(
+		@Query('lang') lang: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateDocentes(academicPeriodId, lang));
 	}
 
 	@Get(routes.operation.secciones.route)
 	@ApiOperation({ summary: routes.operation.secciones.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async secciones(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateSecciones(lang));
+	async secciones(
+		@Query('lang') lang: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateSecciones(academicPeriodId, lang));
 	}
 
 	@Get(routes.operation.alumnosMatriculados.route)
 	@ApiOperation({ summary: routes.operation.alumnosMatriculados.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	async alumnosMatriculados(
 		@Query('lang') lang: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		this.send(res, await this.service.generateAlumnosMatriculados(lang));
+		this.send(res, await this.service.generateAlumnosMatriculados(academicPeriodId, lang));
 	}
 
 	@Get(routes.operation.alumnosSecciones.route)
 	@ApiOperation({ summary: routes.operation.alumnosSecciones.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async alumnosSecciones(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateAlumnosSecciones(lang));
+	async alumnosSecciones(
+		@Query('lang') lang: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateAlumnosSecciones(academicPeriodId, lang));
 	}
 
 	@Get(routes.operation.gradesRc.route)
 	@ApiOperation({ summary: routes.operation.gradesRc.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async gradesRc(@Query('lang') lang: string, @Res({ passthrough: false }) res: Response) {
-		this.send(res, await this.service.generateGradesRc(lang));
+	async gradesRc(
+		@Query('lang') lang: string,
+		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@Res({ passthrough: false }) res: Response,
+	) {
+		this.send(res, await this.service.generateGradesRc(academicPeriodId, lang));
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {

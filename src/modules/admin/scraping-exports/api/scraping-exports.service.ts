@@ -27,16 +27,16 @@ export class ScrapingExportsService {
 		private readonly gradesRcRepository: GradesRcExportRepository,
 	) {}
 
-	async generateDocentes(lang?: string): Promise<GeneratedExcel> {
+	async generateDocentes(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(docenteExportLabels, lang);
-		const rows = await this.repository.getDocentes();
+		const rows = await this.repository.getDocentes(academicPeriodId);
 		const data = rows.map((r) => [r.professorCode, r.lastName, r.firstName, r.email]);
 		return this.buildExcel(labels, data);
 	}
 
-	async generateSecciones(lang?: string): Promise<GeneratedExcel> {
+	async generateSecciones(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(seccionExportLabels, lang);
-		const rows = await this.repository.getSecciones();
+		const rows = await this.repository.getSecciones(academicPeriodId);
 		const data = rows.map((r) => [
 			r.courseCode,
 			r.sectionCode,
@@ -47,9 +47,12 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosMatriculados(lang?: string): Promise<GeneratedExcel> {
+	async generateAlumnosMatriculados(
+		academicPeriodId: number | null,
+		lang?: string,
+	): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(alumnoMatriculadoExportLabels, lang);
-		const rows = await this.repository.getAlumnosMatriculados();
+		const rows = await this.repository.getAlumnosMatriculados(academicPeriodId);
 		const data = rows.map((r) => [
 			r.studentCode,
 			r.lastName,
@@ -61,16 +64,19 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosSecciones(lang?: string): Promise<GeneratedExcel> {
+	async generateAlumnosSecciones(
+		academicPeriodId: number | null,
+		lang?: string,
+	): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(alumnoSeccionExportLabels, lang);
-		const rows = await this.repository.getAlumnosSecciones();
+		const rows = await this.repository.getAlumnosSecciones(academicPeriodId);
 		const data = rows.map((r) => [r.sectionCode, r.studentCode]);
 		return this.buildExcel(labels, data);
 	}
 
-	async generateGradesRc(lang?: string): Promise<GeneratedExcel> {
+	async generateGradesRc(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
-		const rows = await this.buildGradesRcRows();
+		const rows = await this.buildGradesRcRows(academicPeriodId);
 		const data = rows.map((r) => [
 			r.sectionCode,
 			r.studentCode,
@@ -92,9 +98,9 @@ export class ScrapingExportsService {
 	//    qualificationStatusCode cell -- if it isn't a known TG404 code/name yet, the RC bulk
 	//    upload (fn_upload_grades_rc) is the one that resolves or auto-provisions it, not this
 	//    export.
-	private async buildGradesRcRows(): Promise<GradeRcExportRow[]> {
+	private async buildGradesRcRows(academicPeriodId: number | null): Promise<GradeRcExportRow[]> {
 		const [rawRows, gradeTypeCodesByName, qualificationStatusCodesByName] = await Promise.all([
-			this.gradesRcRepository.getRawGradesRc(),
+			this.gradesRcRepository.getRawGradesRc(academicPeriodId),
 			this.gradesRcRepository.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
 			this.gradesRcRepository.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
 		]);
