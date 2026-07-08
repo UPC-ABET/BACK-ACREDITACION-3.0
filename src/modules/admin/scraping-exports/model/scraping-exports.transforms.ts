@@ -19,10 +19,13 @@ export function mapCampus(bannerCampusCode: string | null | undefined): string {
 // Banner program code -> academic.programs.code (the "career" code, e.g. SW / CC). The export only
 // covers engineering programs (the accreditation scope), so any program not in this map returns
 // null and the caller drops the row.
-// NOTE: Banner has a single program code for Civil and Industrial (no separate EPE code), so each
-// maps to its regular (AC) variant in academic.programs — CIVAC / INDAC (the EPE FC variants are
-// not what Banner scrapes here).
+// Banner scrapes two modalities under different code prefixes and academic periods:
+//   - UAC_* = regular careers (period 202610) -> the AC / plain codes.
+//   - UFC_* = EPE careers    (period 202615) -> the FC / EPE codes (CIVFC, INDFC, IS, RED).
+// The programCode column feeds the enrolled-students upload, which JOINs academic.programs on this
+// code (all-or-nothing), so every value here must be a real academic.programs.code.
 const PROGRAM_CAREER_MAP: Record<string, string> = {
+	// --- Regular (UAC_) ---
 	UAC_ISOF_SP1: 'SW', // Ingeniería de Software
 	UAC_COMP_SP1: 'CC', // Ciencias de la Computación
 	UAC_ISIN_SP1: 'SI', // Ingeniería de Sistemas de Información
@@ -35,6 +38,17 @@ const PROGRAM_CAREER_MAP: Record<string, string> = {
 	UAC_IGMI_SP1: 'IGM', // Ingeniería de Gestión Minera
 	UAC_ICIV_SP1: 'CIVAC', // Ingeniería Civil (regular)
 	UAC_IIND_SP1: 'INDAC', // Ingeniería Industrial (regular)
+	// --- EPE (UFC_) ---
+	UFC_INGC_SP1: 'CIVFC', // Ingeniería Civil EPE
+	UFC_INGI_SP1: 'INDFC', // Ingeniería Industrial EPE
+	UFC_INGS_SP1: 'IS', // Ingeniería de Sistemas EPE
+	UFC_INRC_SP1: 'RED', // Ingeniería de Redes y Comunicaciones EPE
+	// EPE sub-modalities (WS / FDS) -> same academic program as their parent EPE career.
+	// TODO(confirmar con Leonardo): validar que estas variantes mapean a su carrera EPE padre.
+	UFC_ICWS_SP1: 'CIVFC', // Ingeniería Civil (WS)
+	UFC_IIWS_SP1: 'INDFC', // Ingeniería Industrial (WS)
+	UFC_SIWS_SP1: 'IS', // Ingeniería de Sistemas (WS)
+	UFC_IINF_SP1: 'INDFC', // Ingeniería Industrial (FDS)
 };
 
 // Returns the engineering career code, or null when the program is out of scope (non-engineering).

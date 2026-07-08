@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
-import { EXPORTS_RAW_CONNECTION } from './scraping-exports.repository';
+import { EXPORTS_RAW_CONNECTION, resolveAcademicPeriodCode } from './scraping-exports.repository';
 
 export interface RawGradeRcRow {
 	sectionCode: string;
@@ -26,13 +26,17 @@ export class GradesRcExportRepository {
 		@InjectDataSource() private readonly mainDataSource: DataSource,
 	) {}
 
-	// One row per (student, course, grade type) from the latest Banner run, with the section (NRC)
-	// resolved via raw_horario + raw_matricula of that same run. A student can only be enrolled in
-	// one section of a given course per academic period, so the join is unambiguous.
-	async getRawGradesRc(): Promise<RawGradeRcRow[]> {
-		return await this.rawDataSource.query(`
+	// One row per (student, course, grade type) from the selected period's Banner run, with the
+	// section (NRC) resolved via raw_horario + raw_matricula of that same run. A student can only be
+	// enrolled in one section of a given course per academic period, so the join is unambiguous.
+	async getRawGradesRc(academicPeriodId: number | null): Promise<RawGradeRcRow[]> {
+		const period = await resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
+		return await this.rawDataSource.query(
+			`
 			WITH latest_run AS (
-				SELECT id FROM scrape_run ORDER BY started_at DESC LIMIT 1
+				SELECT id FROM scrape_run
+				WHERE ($1::text IS NULL OR periodo = $1)
+				ORDER BY started_at DESC LIMIT 1
 			),
 			grades_exploded AS (
 				SELECT
@@ -65,7 +69,9 @@ export class GradesRcExportRepository {
 			JOIN section_lookup sl
 			  ON sl.codigo_alumno = ge.codigo_alumno AND sl.curso_codigo = ge.curso_codigo
 			ORDER BY sl.nrc, ge.codigo_alumno, ge.type
-		`);
+		`,
+			[period],
+		);
 	}
 
 	// name (es, uppercased) -> code, for every active type in the given group (main DB).
