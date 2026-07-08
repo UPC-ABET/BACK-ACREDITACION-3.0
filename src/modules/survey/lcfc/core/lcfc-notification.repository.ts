@@ -189,8 +189,22 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 				INNER JOIN academic.programs p ON p.id = sp.program_id
 				WHERE sse.course_section_id = ANY($1)
+				  -- A shared course only surveys students whose OWN program has the Control
+				  -- outcome mapped to it; other programs enrolled in the same section are not
+				  -- candidates, even though the section/config is active.
+				  AND EXISTS (
+					  SELECT 1
+					  FROM academic.study_plan_courses spc2
+					  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
+					  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+					  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+					  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+					  WHERE spc2.course_id = cs.course_id
+						AND ot.code = $2
+						AND pc.program_id = sp.program_id
+				  )
 			) enrolled`,
-			[courseSectionIds],
+			[courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL],
 		);
 		return rows[0]?.total ?? 0;
 	}
@@ -232,9 +246,24 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)
+			  -- Same rule as countEnrolledStudentsByCourses: only the alumni whose own program
+			  -- has the Control outcome mapped to this course are real LCFC candidates.
+			  AND EXISTS (
+				  SELECT 1
+				  FROM academic.study_plan_courses spc2
+				  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
+				  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+				  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+				  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+				  WHERE spc2.course_id = cs.course_id
+					AND ot.code = $2
+					AND pc.program_id = sp.program_id
+			  )
 			ORDER BY "studentName" ASC, st.id ASC, sse.course_section_id ASC
-			${limit ? `LIMIT $2 OFFSET $3` : ''}`,
-			limit ? [courseSectionIds, limit, offset ?? 0] : [courseSectionIds],
+			${limit ? `LIMIT $3 OFFSET $4` : ''}`,
+			limit
+				? [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, limit, offset ?? 0]
+				: [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL],
 		);
 		return rows ?? [];
 	}
