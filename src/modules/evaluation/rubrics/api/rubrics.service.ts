@@ -81,6 +81,8 @@ export class RubricService extends BaseService<RubricRepository> {
 			rubrics.map((rubric) =>
 				limit(async () => ({
 					...rubric,
+					programName:
+						rubric.studyPlanCourse?.studyPlanAcademicPeriod?.studyPlan?.program?.name ?? null,
 					isUsed: await this.repository.isUsed(rubric.id),
 				})),
 			),
