@@ -43,12 +43,6 @@ const PROGRAM_CAREER_MAP: Record<string, string> = {
 	UFC_INGI_SP1: 'INDFC', // Ingeniería Industrial EPE
 	UFC_INGS_SP1: 'IS', // Ingeniería de Sistemas EPE
 	UFC_INRC_SP1: 'RED', // Ingeniería de Redes y Comunicaciones EPE
-	// EPE sub-modalities (WS / FDS) -> same academic program as their parent EPE career.
-	// TODO(confirmar con Leonardo): validar que estas variantes mapean a su carrera EPE padre.
-	UFC_ICWS_SP1: 'CIVFC', // Ingeniería Civil (WS)
-	UFC_IIWS_SP1: 'INDFC', // Ingeniería Industrial (WS)
-	UFC_SIWS_SP1: 'IS', // Ingeniería de Sistemas (WS)
-	UFC_IINF_SP1: 'INDFC', // Ingeniería Industrial (FDS)
 };
 
 // Returns the engineering career code, or null when the program is out of scope (non-engineering).
