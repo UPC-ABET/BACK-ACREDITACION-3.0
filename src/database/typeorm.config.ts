@@ -1,8 +1,13 @@
 import { DataSource } from 'typeorm';
+import { globSync } from 'glob';
 import { UpperPrefixSnakeNamingStrategy } from '../commons/configs/naming-strategy';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
+
+const entities = globSync('src/**/*.entity.ts', {
+	ignore: 'src/modules/admin/*/raw/model/*.entity.ts',
+});
 
 export default new DataSource({
 	type: 'postgres',
@@ -17,6 +22,6 @@ export default new DataSource({
 	logging: false,
 	namingStrategy: new UpperPrefixSnakeNamingStrategy(),
 
-	entities: ['src/**/*.entity.ts'],
+	entities,
 	migrations: ['src/database/migrations/*.ts'],
 });

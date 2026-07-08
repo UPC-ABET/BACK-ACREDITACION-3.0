@@ -158,7 +158,10 @@ export class LcfcNotificationService {
 		if (courseSectionIds.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noMatchingSections);
 		}
-		const totalStudents = await this.notifRepo.countEnrolledStudentsByCourses(courseSectionIds);
+		const totalStudents = await this.notifRepo.countEnrolledStudentsByCourses(
+			courseSectionIds,
+			dto.programId ?? null,
+		);
 
 		if (totalStudents === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noEnrolledStudents);
@@ -212,6 +215,7 @@ export class LcfcNotificationService {
 				courseSectionIds,
 				NOTIFICATION_BATCH_SIZE,
 				offset,
+				dto.programId ?? null,
 			);
 			this.logger.log(
 				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} loaded: students=${enrolledStudents.length}, offset=${offset}`,
