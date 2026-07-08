@@ -37,6 +37,8 @@ type LcfcNotificationJobStatus = {
 	progressPct: number;
 	emailsSent: number;
 	emailsFailed: number;
+	skippedAlreadySent: number;
+	skippedAlreadyCompleted: number;
 };
 
 @Injectable()
@@ -59,6 +61,8 @@ export class LcfcNotificationService {
 			progressPct: 0,
 			emailsSent: 0,
 			emailsFailed: 0,
+			skippedAlreadySent: 0,
+			skippedAlreadyCompleted: 0,
 		});
 		this.logger.log(
 			`LCFC notification job ${jobId} queued for academicPeriodId=${academicPeriodId}`,
@@ -67,7 +71,7 @@ export class LcfcNotificationService {
 		void this.sendNotifications({ ...dto }, academicPeriodId, jobId)
 			.then((result) => {
 				this.logger.log(
-					`LCFC notification job ${jobId} completed: totalStudents=${result.totalStudents}, surveysCreated=${result.surveysCreated}, alreadyExisted=${result.alreadyExisted}, emailsSent=${result.emailsSent}, emailsFailed=${result.emailsFailed}`,
+					`LCFC notification job ${jobId} completed: totalStudents=${result.totalStudents}, surveysCreated=${result.surveysCreated}, alreadyExisted=${result.alreadyExisted}, skippedAlreadySent=${result.skippedAlreadySent}, skippedAlreadyCompleted=${result.skippedAlreadyCompleted}, emailsSent=${result.emailsSent}, emailsFailed=${result.emailsFailed}`,
 				);
 			})
 			.catch((err) => {
@@ -163,6 +167,8 @@ export class LcfcNotificationService {
 			progressPct: 0,
 			emailsSent: 0,
 			emailsFailed: 0,
+			skippedAlreadySent: 0,
+			skippedAlreadyCompleted: 0,
 		});
 		this.logger.log(
 			`LCFC notification job ${jobId ?? 'sync'} started: totalStudents=${totalStudents}, batchSize=${NOTIFICATION_BATCH_SIZE}, sendConcurrency=${NOTIFICATION_SEND_CONCURRENCY}`,
@@ -187,6 +193,8 @@ export class LcfcNotificationService {
 		const errors: string[] = [];
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
+		let skippedAlreadySent = 0;
+		let skippedAlreadyCompleted = 0;
 		const configByCourseSectionId = new Map(
 			activeConfigs
 				.map((config) => ({ config, courseSectionId: config.extra?.courseSectionId }))
@@ -252,8 +260,10 @@ export class LcfcNotificationService {
 
 			surveysCreated += batchResult.surveysCreated;
 			alreadyExisted += batchResult.alreadyExisted;
+			skippedAlreadySent += batchResult.skippedAlreadySent;
+			skippedAlreadyCompleted += batchResult.skippedAlreadyCompleted;
 			this.logger.log(
-				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} prepared: surveysCreated=${batchResult.surveysCreated}, alreadyExisted=${batchResult.alreadyExisted}, pendingEmails=${batchResult.pendingNotifications.length}`,
+				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} prepared: surveysCreated=${batchResult.surveysCreated}, alreadyExisted=${batchResult.alreadyExisted}, skippedAlreadySent=${batchResult.skippedAlreadySent}, skippedAlreadyCompleted=${batchResult.skippedAlreadyCompleted}, pendingEmails=${batchResult.pendingNotifications.length}`,
 			);
 
 			let batchEmailsSent = 0;
@@ -301,6 +311,8 @@ export class LcfcNotificationService {
 				progressPct: Math.round(((offset + enrolledStudents.length) / totalStudents) * 100),
 				emailsSent,
 				emailsFailed,
+				skippedAlreadySent,
+				skippedAlreadyCompleted,
 			});
 			this.logger.log(
 				`LCFC notification job ${jobId ?? 'sync'} batch ${batchNumber}/${totalBatches} emails processed: sent=${batchEmailsSent}, failed=${batchEmailsFailed}, totalSent=${emailsSent}, totalFailed=${emailsFailed}`,
@@ -311,6 +323,8 @@ export class LcfcNotificationService {
 			totalStudents,
 			surveysCreated,
 			alreadyExisted,
+			skippedAlreadySent,
+			skippedAlreadyCompleted,
 			emailsSent,
 			emailsFailed,
 			errors,
