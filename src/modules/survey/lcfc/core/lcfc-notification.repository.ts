@@ -334,6 +334,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 	}): Promise<{
 		surveysCreated: number;
 		alreadyExisted: number;
+		skippedAlreadyCompleted: number;
+		skippedAlreadySent: number;
 		pendingNotifications: LcfcPendingNotification[];
 	}> {
 		const {
@@ -349,6 +351,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 
 		let surveysCreated = 0;
 		let alreadyExisted = 0;
+		let skippedAlreadyCompleted = 0;
+		let skippedAlreadySent = 0;
 		const pendingNotifications: LcfcPendingNotification[] = [];
 
 		await this.dataSource.transaction(async (manager) => {
@@ -367,47 +371,70 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 					alreadyExisted++;
 					// Never (re)send to a student who already completed this survey — even on resend.
 					if (existingSurvey.surveyStatusTypeId === closedStatusId) {
+						skippedAlreadyCompleted++;
 						continue;
 					}
-					// Default behaviour only (re)sends notifications still scheduled (never sent), so
-					// pressing "send" twice does not spam students. On resend we reuse the latest
-					// existing notification regardless of status and refresh its deadline.
-					const existingNotif: { id: number; token: string }[] = resend
-						? await manager.query(
-								`SELECT id, token FROM survey.notifications WHERE survey_id = $1 ORDER BY id DESC LIMIT 1`,
-								[existingSurvey.id],
-							)
-						: await manager.query(
-								`SELECT id, token FROM survey.notifications WHERE survey_id = $1 AND notification_status_type_id = $2 LIMIT 1`,
-								[existingSurvey.id, scheduledStatusId],
-							);
+					const latestNotif: { id: number; token: string; statusTypeId: number }[] =
+						await manager.query(
+							`SELECT id, token, notification_status_type_id AS "statusTypeId"
+							 FROM survey.notifications WHERE survey_id = $1 ORDER BY id DESC LIMIT 1`,
+							[existingSurvey.id],
+						);
 
-					if (existingNotif?.[0]) {
-						if (resend) {
-							// Reset to scheduled and refresh the deadline so the reused token is valid again.
-							// sent_date / max_register_date are NOT NULL, so keep the existing deadline when
-							// no new one was resolved, and never null out sent_date (it's re-stamped to
-							// NOW() by markAsSentBySurveyId once the email goes out).
-							await manager.query(
-								`UPDATE survey.notifications
-								 SET notification_status_type_id = $1,
-								     max_register_date = COALESCE($2, max_register_date),
-								     updated_at = NOW()
-								 WHERE id = $3`,
-								[scheduledStatusId, maxRegisterDate, existingNotif[0].id],
-							);
-						}
+					if (!latestNotif?.[0]) {
+						// Survey exists but has no notification row (inconsistent data): without this
+						// branch the student is silently skipped forever, even on resend. Create a
+						// fresh scheduled notification so the email finally goes out.
+						const token = uuidv4();
+						await manager.query(
+							`INSERT INTO survey.notifications (survey_id, notification_status_type_id, token, max_register_date)
+							 VALUES ($1, $2, $3, COALESCE($4, NOW()))`,
+							[existingSurvey.id, scheduledStatusId, token, maxRegisterDate],
+						);
 						pendingNotifications.push({
 							studentId: candidate.studentId,
 							studentName: candidate.studentName,
 							studentCode: candidate.studentCode,
 							studentEmail: candidate.studentEmail,
 							surveyId: existingSurvey.id,
-							token: existingNotif[0].token,
+							token,
 							courseName: candidate.courseName,
 							programName: candidate.programName,
 						});
+						continue;
 					}
+
+					// Default behaviour only (re)sends notifications still scheduled (never sent), so
+					// pressing "send" twice does not spam students. On resend we reuse the latest
+					// existing notification regardless of status and refresh its deadline.
+					if (!resend && latestNotif[0].statusTypeId !== scheduledStatusId) {
+						skippedAlreadySent++;
+						continue;
+					}
+					if (resend) {
+						// Reset to scheduled and refresh the deadline so the reused token is valid again.
+						// sent_date / max_register_date are NOT NULL, so keep the existing deadline when
+						// no new one was resolved, and never null out sent_date (it's re-stamped to
+						// NOW() by markAsSentBySurveyId once the email goes out).
+						await manager.query(
+							`UPDATE survey.notifications
+							 SET notification_status_type_id = $1,
+							     max_register_date = COALESCE($2, max_register_date),
+							     updated_at = NOW()
+							 WHERE id = $3`,
+							[scheduledStatusId, maxRegisterDate, latestNotif[0].id],
+						);
+					}
+					pendingNotifications.push({
+						studentId: candidate.studentId,
+						studentName: candidate.studentName,
+						studentCode: candidate.studentCode,
+						studentEmail: candidate.studentEmail,
+						surveyId: existingSurvey.id,
+						token: latestNotif[0].token,
+						courseName: candidate.courseName,
+						programName: candidate.programName,
+					});
 				} else {
 					const inserted: { id: number }[] = await manager.query(
 						`INSERT INTO evidence.surveys
@@ -451,7 +478,13 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			}
 		});
 
-		return { surveysCreated, alreadyExisted, pendingNotifications };
+		return {
+			surveysCreated,
+			alreadyExisted,
+			skippedAlreadyCompleted,
+			skippedAlreadySent,
+			pendingNotifications,
+		};
 	}
 
 	/**
