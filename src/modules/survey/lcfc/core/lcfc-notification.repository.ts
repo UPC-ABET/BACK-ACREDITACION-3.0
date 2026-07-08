@@ -166,7 +166,10 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		};
 	}
 
-	async countEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<number> {
+	async countEnrolledStudentsByCourses(
+		courseSectionIds: number[],
+		programId?: number | null,
+	): Promise<number> {
 		const rows: { total: number }[] = await this.dataSource.query(
 			`SELECT COUNT(*)::int AS "total"
 			FROM (
@@ -203,8 +206,12 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 						AND ot.code = $2
 						AND pc.program_id = sp.program_id
 				  )
+				  -- When a specific program is filtered (Carrera dropdown), a shared course that
+				  -- is also Control-eligible for another program must not surface that program's
+				  -- students — the filter is exclusive, not "at least this program".
+				  AND ($3::int IS NULL OR sp.program_id = $3)
 			) enrolled`,
-			[courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL],
+			[courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null],
 		);
 		return rows[0]?.total ?? 0;
 	}
@@ -213,6 +220,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		courseSectionIds: number[],
 		limit?: number,
 		offset?: number,
+		programId?: number | null,
 	): Promise<
 		{
 			studentId: number;
@@ -259,11 +267,14 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 					AND ot.code = $2
 					AND pc.program_id = sp.program_id
 			  )
+			  -- Same exclusivity rule as countEnrolledStudentsByCourses: a program filter
+			  -- (Carrera dropdown) must not pull in another eligible program's students.
+			  AND ($3::int IS NULL OR sp.program_id = $3)
 			ORDER BY "studentName" ASC, st.id ASC, sse.course_section_id ASC
-			${limit ? `LIMIT $3 OFFSET $4` : ''}`,
+			${limit ? `LIMIT $4 OFFSET $5` : ''}`,
 			limit
-				? [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, limit, offset ?? 0]
-				: [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL],
+				? [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null, limit, offset ?? 0]
+				: [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null],
 		);
 		return rows ?? [];
 	}
