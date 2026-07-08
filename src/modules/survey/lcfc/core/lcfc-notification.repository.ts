@@ -166,7 +166,10 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		};
 	}
 
-	async countEnrolledStudentsByCourses(courseSectionIds: number[]): Promise<number> {
+	async countEnrolledStudentsByCourses(
+		courseSectionIds: number[],
+		programId?: number | null,
+	): Promise<number> {
 		const rows: { total: number }[] = await this.dataSource.query(
 			`SELECT COUNT(*)::int AS "total"
 			FROM (
@@ -189,8 +192,26 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 				INNER JOIN academic.programs p ON p.id = sp.program_id
 				WHERE sse.course_section_id = ANY($1)
+				  -- A shared course only surveys students whose OWN program has the Control
+				  -- outcome mapped to it; other programs enrolled in the same section are not
+				  -- candidates, even though the section/config is active.
+				  AND EXISTS (
+					  SELECT 1
+					  FROM academic.study_plan_courses spc2
+					  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
+					  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+					  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+					  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+					  WHERE spc2.course_id = cs.course_id
+						AND ot.code = $2
+						AND pc.program_id = sp.program_id
+				  )
+				  -- When a specific program is filtered (Carrera dropdown), a shared course that
+				  -- is also Control-eligible for another program must not surface that program's
+				  -- students — the filter is exclusive, not "at least this program".
+				  AND ($3::int IS NULL OR sp.program_id = $3)
 			) enrolled`,
-			[courseSectionIds],
+			[courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null],
 		);
 		return rows[0]?.total ?? 0;
 	}
@@ -199,6 +220,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		courseSectionIds: number[],
 		limit?: number,
 		offset?: number,
+		programId?: number | null,
 	): Promise<
 		{
 			studentId: number;
@@ -232,9 +254,27 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)
+			  -- Same rule as countEnrolledStudentsByCourses: only the alumni whose own program
+			  -- has the Control outcome mapped to this course are real LCFC candidates.
+			  AND EXISTS (
+				  SELECT 1
+				  FROM academic.study_plan_courses spc2
+				  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
+				  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+				  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+				  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+				  WHERE spc2.course_id = cs.course_id
+					AND ot.code = $2
+					AND pc.program_id = sp.program_id
+			  )
+			  -- Same exclusivity rule as countEnrolledStudentsByCourses: a program filter
+			  -- (Carrera dropdown) must not pull in another eligible program's students.
+			  AND ($3::int IS NULL OR sp.program_id = $3)
 			ORDER BY "studentName" ASC, st.id ASC, sse.course_section_id ASC
-			${limit ? `LIMIT $2 OFFSET $3` : ''}`,
-			limit ? [courseSectionIds, limit, offset ?? 0] : [courseSectionIds],
+			${limit ? `LIMIT $4 OFFSET $5` : ''}`,
+			limit
+				? [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null, limit, offset ?? 0]
+				: [courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null],
 		);
 		return rows ?? [];
 	}
