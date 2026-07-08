@@ -26,26 +26,26 @@ export function mapCampus(bannerCampusCode: string | null | undefined): string {
 // code (all-or-nothing), so every value here must be a real academic.programs.code.
 const PROGRAM_CAREER_MAP: Record<string, string> = {
 	// --- Regular (UAC_) ---
-	UAC_ISOF_SP1: 'SW', // Ingeniería de Software
-	UAC_COMP_SP1: 'CC', // Ciencias de la Computación
-	UAC_ISIN_SP1: 'SI', // Ingeniería de Sistemas de Información
-	UAC_IMEC_SP1: 'MEC', // Ingeniería Mecatrónica
-	UAC_IGEM_SP1: 'IGE', // Ingeniería de Gestión Empresarial
-	UAC_IAMB_SP1: 'IA', // Ingeniería Ambiental
-	UAC_IBIM_SP1: 'BIO', // Ingeniería Biomédica
-	UAC_IELE_SP1: 'ELE', // Ingeniería Electrónica
-	UAC_ICIB_SP1: 'CB', // Ingeniería de Ciberseguridad
-	UAC_IGMI_SP1: 'IGM', // Ingeniería de Gestión Minera
-	UAC_ICIV_SP1: 'CIVAC', // Ingeniería Civil (regular)
-	UAC_IIND_SP1: 'INDAC', // Ingeniería Industrial (regular)
+	UAC_ISOF_SP1: 'SW', // Software Engineering
+	UAC_COMP_SP1: 'CC', // Computer Science
+	UAC_ISIN_SP1: 'SI', // Information Systems Engineering
+	UAC_IMEC_SP1: 'MEC', // Mechatronics Engineering
+	UAC_IGEM_SP1: 'IGE', // Business Management Engineering
+	UAC_IAMB_SP1: 'IA', // Environmental Engineering
+	UAC_IBIM_SP1: 'BIO', // Biomedical Engineering
+	UAC_IELE_SP1: 'ELE', // Electronics Engineering
+	UAC_ICIB_SP1: 'CB', // Cybersecurity Engineering
+	UAC_IGMI_SP1: 'IGM', // Mining Management Engineering
+	UAC_ICIV_SP1: 'CIVAC', // Civil Engineering (regular)
+	UAC_IIND_SP1: 'INDAC', // Industrial Engineering (regular)
+	UAC_INAR_SP1: 'IIA', // Artificial Intelligence Engineering
 	// --- EPE (UFC_) ---
-	UFC_INGC_SP1: 'CIVFC', // Ingeniería Civil EPE
-	UFC_INGI_SP1: 'INDFC', // Ingeniería Industrial EPE
-	UFC_INGS_SP1: 'IS', // Ingeniería de Sistemas EPE
-	UFC_INRC_SP1: 'RED', // Ingeniería de Redes y Comunicaciones EPE
+	UFC_INGC_SP1: 'CIVFC', // Civil Engineering EPE
+	UFC_INGI_SP1: 'INDFC', // Industrial Engineering EPE
+	UFC_INGS_SP1: 'IS', // Systems Engineering EPE
+	UFC_INRC_SP1: 'RED', // Networks Engineering EPE
 };
 
-// Returns the engineering career code, or null when the program is out of scope (non-engineering).
 export function mapProgramToCareer(bannerProgramCode: string | null | undefined): string | null {
 	const code = (bannerProgramCode ?? '').trim();
 	return PROGRAM_CAREER_MAP[code] ?? null;
