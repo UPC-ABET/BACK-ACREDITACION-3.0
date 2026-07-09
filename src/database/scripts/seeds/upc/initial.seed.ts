@@ -300,20 +300,28 @@ async function loadAccreditation(tenantDataSource: DataSource) {
 }
 
 async function loadInstruments(tenantDataSource: DataSource) {
-	const EXAM = 'TG501-T001';
+	const TEACHER = 'TG501-T001';
+	const STUDENT = 'TG501-T002';
+	const EMPLOYER = 'TG501-T003';
+	const GRADUATE = 'TG501-T004';
 
-	// Only the structurally-required IFC instrument belongs in the PROD baseline: the
-	// IFC module looks it up by code (IFC) at runtime and fails if it is missing.
-	// Course-specific instruments (exams, capstones, surveys) are demo fixtures and stay
-	// in the full demo seed.
+	// Baseline instrument catalog, one per constituent-instrument pairing.
 	const instrumentRows: Array<[string, string, string, string, boolean]> = [
 		[
-			EXAM,
+			TEACHER,
 			'IFC',
 			i18n('Informe Final del Curso', 'Course Final Report'),
 			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
 			true,
 		],
+		[STUDENT, 'LCFC', i18n('Encuesta LCFC', 'Encuesta LCFC'), '{}', true],
+		[STUDENT, 'RC', i18n('Reporte de Control', 'Control Report'), '{}', true],
+		[STUDENT, 'IRD', i18n('IRD', 'IRD'), '{}', true],
+		[EMPLOYER, 'PPP', i18n('Encuesta PPP', 'Encuesta PPP'), '{}', true],
+		[EMPLOYER, 'ACC', i18n('Acta Comité Consultivo', 'Acta Comité Consultivo'), '{}', true],
+		[GRADUATE, 'GRA', i18n('Encuesta GRA', 'GRA Survey'), '{}', true],
+		[GRADUATE, 'RV', i18n('Reporte de Verificación', 'Verification Report'), '{}', true],
+		[TEACHER, 'GENERIC', i18n('Generico', 'Generic'), '{}', false],
 	];
 
 	const instrumentValues = instrumentRows

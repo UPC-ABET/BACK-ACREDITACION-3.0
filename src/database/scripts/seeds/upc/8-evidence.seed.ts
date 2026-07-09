@@ -1,9 +1,12 @@
 ﻿import { runSeed, i18n } from '../seed-runner';
 
 runSeed('evidence module', async (tenantDataSource) => {
+	const TEACHER = 'TG501-T001';
+	const STUDENT = 'TG501-T002';
+
 	const instrumentValues = [
 		[
-			'TG501-T001',
+			STUDENT,
 			'FP_EXAM',
 			i18n('Examen de Fundamentos de Programacion', 'Fundamentals of Programming exam'),
 			i18n(
@@ -13,7 +16,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 			true,
 		],
 		[
-			'TG501-T002',
+			STUDENT,
 			'CAPSTONE',
 			i18n('Proyecto integrador de software', 'Software integrator project'),
 			i18n(
@@ -23,7 +26,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 			true,
 		],
 		[
-			'TG501-T003',
+			STUDENT,
 			'SURVEY_STUDENT',
 			i18n('Encuesta de percepcion estudiantil', 'Student perception survey'),
 			i18n(
@@ -33,7 +36,7 @@ runSeed('evidence module', async (tenantDataSource) => {
 			false,
 		],
 		[
-			'TG501-T001',
+			TEACHER,
 			'IFC',
 			i18n('Informe Final del Curso', 'Course Final Report'),
 			i18n('Instrumento IFC para reporte final del curso', 'Course final report (IFC) instrument'),
