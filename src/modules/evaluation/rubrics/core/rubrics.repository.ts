@@ -18,6 +18,8 @@ export interface RubricListFilters {
 	programId?: number;
 	academicPeriodId?: number;
 	courseId?: number;
+	skip?: number;
+	take?: number;
 }
 
 export interface NormalizedRubricCriteria {
@@ -43,7 +45,7 @@ export class RubricRepository extends BaseRepository<RubricEntity> {
 		super(repository, dataSource);
 	}
 
-	async findManyWithContext(filters?: RubricListFilters): Promise<RubricEntity[]> {
+	async findManyWithContext(filters?: RubricListFilters): Promise<[RubricEntity[], number]> {
 		const qb = this.dataSource
 			.getRepository(RubricEntity)
 			.createQueryBuilder('rubric')
@@ -75,7 +77,12 @@ export class RubricRepository extends BaseRepository<RubricEntity> {
 			qb.andWhere('course.id = :courseId', { courseId: filters.courseId });
 		}
 
-		return await qb.getMany();
+		qb.orderBy('rubric.id', 'DESC');
+
+		if (filters?.skip !== undefined) qb.skip(filters.skip);
+		if (filters?.take !== undefined) qb.take(filters.take);
+
+		return await qb.getManyAndCount();
 	}
 
 	async isUsed(rubricId: number): Promise<boolean> {

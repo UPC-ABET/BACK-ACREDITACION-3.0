@@ -17,6 +17,8 @@ import { EntityManager } from 'typeorm';
 import { RubricConfigService } from './rubric-config.service';
 import type { I18nText } from 'src/shared/types/i18n';
 import pLimit from 'p-limit';
+import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
+import { GetRubricsQueryDto } from '../model/rubrics.dtos';
 
 @Injectable()
 export class RubricService extends BaseService<RubricRepository> {
@@ -68,16 +70,25 @@ export class RubricService extends BaseService<RubricRepository> {
 		return await this.repository.findOneById(id);
 	}
 
-	async getAllWithFilters(filters?: {
-		schoolId?: number;
-		programId?: number;
-		academicPeriodId?: number;
-		courseId?: number;
-	}) {
-		const rubrics = await this.repository.findManyWithContext(filters);
+	async getAllWithFilters(
+		filters: {
+			schoolId?: number;
+			programId?: number;
+			academicPeriodId?: number;
+			courseId?: number;
+		} = {},
+		query: GetRubricsQueryDto = {},
+	): Promise<PaginatedResult<any>> {
+		const { page, pageSize, skip, take } = resolvePagination(query);
+
+		const [rubrics, total] = await this.repository.findManyWithContext({
+			...filters,
+			skip,
+			take,
+		});
 
 		const limit = pLimit(5);
-		return await Promise.all(
+		const items = await Promise.all(
 			rubrics.map((rubric) =>
 				limit(async () => ({
 					...rubric,
@@ -85,6 +96,8 @@ export class RubricService extends BaseService<RubricRepository> {
 				})),
 			),
 		);
+
+		return toPaginated(items, total, page, pageSize);
 	}
 
 	async getById(id: number) {

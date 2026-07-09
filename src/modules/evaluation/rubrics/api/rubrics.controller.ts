@@ -1,4 +1,4 @@
-import { Body, Param, Post, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { Body, Param, Post, Get, ParseIntPipe, Query, ValidationPipe } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { BaseController } from 'src/commons/base.controller';
@@ -13,7 +13,12 @@ import {
 } from './docs/rubrics.swagger';
 import { RubricService } from './rubrics.service';
 import { RubricConfigService } from './rubric-config.service';
-import { CreateRubricDto, UpdateRubricDto, FilterRubricDto } from '../model/rubrics.dtos';
+import {
+	CreateRubricDto,
+	UpdateRubricDto,
+	FilterRubricDto,
+	GetRubricsQueryDto,
+} from '../model/rubrics.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import {
 	SchoolId,
@@ -82,22 +87,23 @@ export class RubricController extends BaseController<RubricService> {
 	@SwaggerRubricGetAll()
 	@ApiSchoolHeader(false)
 	@ApiAcademicPeriodHeader(false)
-	@ApiQuery({ name: 'programId', required: false, type: Number })
-	@ApiQuery({ name: 'courseId', required: false, type: Number })
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
 		@SchoolId({ optional: true }) schoolId?: number | null,
 		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
-		@Query('programId', new ParseIntPipe({ optional: true })) programId?: number,
-		@Query('courseId', new ParseIntPipe({ optional: true })) courseId?: number,
+		@Query(new ValidationPipe({ transform: true, whitelist: true }))
+		query: GetRubricsQueryDto = {},
 	) {
 		return parseSuccessResponse(
-			await this.service.getAllWithFilters({
-				schoolId: schoolId ?? undefined,
-				programId,
-				academicPeriodId: academicPeriodId ?? undefined,
-				courseId,
-			}),
+			await this.service.getAllWithFilters(
+				{
+					schoolId: schoolId ?? undefined,
+					programId: query.programId,
+					academicPeriodId: academicPeriodId ?? undefined,
+					courseId: query.courseId,
+				},
+				query,
+			),
 		);
 	}
 
