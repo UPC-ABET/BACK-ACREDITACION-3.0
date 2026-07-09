@@ -209,6 +209,13 @@ export class ScrapingExportsRepository {
 	// students are only exported for sections that were previously loaded, so the alumno-seccion upload
 	// never references a section that isn't in the DB. The raw tables live in a separate connection, so
 	// the uploaded section codes are fetched from the main DB and passed into the raw query.
+	//
+	// Additionally scoped to each student's study plan (malla): a (section, student) pair is only
+	// exported when the section's course belongs to the courses of the malla the student is enrolled in
+	// for this period. Banner enrolls a student in courses that may sit outside their accreditation
+	// malla; those must not surface as enrollments. The allowed (student, course) pairs come from the
+	// main DB (enrolled_students → study_plan_academic_periods → study_plan_courses → courses) and are
+	// passed into the raw query as parallel arrays, matched against curso = materia.codigo + numeroCurso.
 	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 
@@ -219,9 +226,33 @@ export class ScrapingExportsRepository {
 		const uploadedSectionCodes = uploaded.map((row) => row.sectionCode);
 		if (uploadedSectionCodes.length === 0) return [];
 
+		const studyPlanPairs: Array<{ studentCode: string; courseCode: string }> =
+			await this.mainDataSource.query(
+				`
+				SELECT DISTINCT s.code AS "studentCode", c.code AS "courseCode"
+				FROM academic.enrolled_students es
+				JOIN academic.students s ON s.id = es.student_id
+				JOIN academic.study_plan_academic_periods spap
+					ON spap.id = es.study_plan_academic_period_id
+				JOIN academic.study_plan_courses spc
+					ON spc.study_plan_academic_period_id = spap.id
+				JOIN academic.courses c ON c.id = spc.course_id
+				WHERE spap.academic_period_id = $1
+			`,
+				[academicPeriodId],
+			);
+		if (studyPlanPairs.length === 0) return [];
+
+		const allowedStudentCodes = studyPlanPairs.map((row) => row.studentCode);
+		const allowedCourseCodes = studyPlanPairs.map((row) => row.courseCode);
+
 		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(
 			`
-			WITH matricula AS (
+			WITH allowed AS (
+				SELECT student_code, course_code
+				FROM unnest($3::text[], $4::text[]) AS t(student_code, course_code)
+			),
+			matricula AS (
 				SELECT DISTINCT
 					m.codigo_alumno,
 					m.nrc,
@@ -234,6 +265,13 @@ export class ScrapingExportsRepository {
 				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
 				  AND m.nrc = ANY($2::text[])
 			),
+			filtered AS (
+				SELECT mt.*
+				FROM matricula mt
+				JOIN allowed a
+					ON a.student_code = mt.codigo_alumno
+					AND a.course_code = mt.curso
+			),
 			ranked AS (
 				SELECT
 					codigo_alumno,
@@ -242,14 +280,14 @@ export class ScrapingExportsRepository {
 						PARTITION BY codigo_alumno, curso
 						ORDER BY (calificable = 'Y') DESC NULLS LAST, nrc
 					) AS rn
-				FROM matricula
+				FROM filtered
 			)
 			SELECT nrc AS "sectionCode", codigo_alumno AS "studentCode"
 			FROM ranked
 			WHERE rn = 1
 			ORDER BY nrc, codigo_alumno
 		`,
-			[period, uploadedSectionCodes],
+			[period, uploadedSectionCodes, allowedStudentCodes, allowedCourseCodes],
 		);
 
 		return rows.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
