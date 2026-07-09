@@ -131,6 +131,9 @@ export class ScrapingExportsRepository {
 			) prof ON true
 			WHERE h.run_id = ${RUN_FOR_PERIOD}
 			  AND NULLIF(trim(h.nrc), '') IS NOT NULL
+			  -- Legacy behaviour: only sections that carry their own teacher are exported. Practice/lab
+			  -- sections without a docente in Banner are dropped (they are not loaded as sections).
+			  AND prof.idb IS NOT NULL
 			ORDER BY h.nrc
 		`,
 			[period],
@@ -191,19 +194,42 @@ export class ScrapingExportsRepository {
 		});
 	}
 
-	// Distinct (section, student) pairs from the selected period's Banner run. The Banner NRC doubles
-	// as the section code (same namespace as the sections export), and the student code matches the
-	// enrolled-students export (both Banner).
+	// One (section, student) pair per COURSE — as the legacy system did. In Banner a student is enrolled
+	// in every component of a course (theory + practice/lab, each its own NRC), but the accreditation
+	// model keeps a single enrollment per course: the graded section. So for each (student, course) we
+	// keep the section flagged calificable='Y' (the theory); ties break by NRC. This mirrors the legacy
+	// invariant ("un alumno una vez por curso") that the old load enforced. Course = materia.codigo +
+	// numeroCurso, same key the sections export uses.
 	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(
 			`
-			SELECT DISTINCT m.nrc AS "sectionCode", m.codigo_alumno AS "studentCode"
-			FROM raw_matricula m
-			WHERE m.run_id = ${RUN_FOR_PERIOD}
-			  AND NULLIF(trim(m.nrc), '') IS NOT NULL
-			  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
-			ORDER BY m.nrc, m.codigo_alumno
+			WITH matricula AS (
+				SELECT DISTINCT
+					m.codigo_alumno,
+					m.nrc,
+					(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS curso,
+					h.payload->>'calificable'                                        AS calificable
+				FROM raw_matricula m
+				JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
+				WHERE m.run_id = ${RUN_FOR_PERIOD}
+				  AND NULLIF(trim(m.nrc), '') IS NOT NULL
+				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
+			),
+			ranked AS (
+				SELECT
+					codigo_alumno,
+					nrc,
+					row_number() OVER (
+						PARTITION BY codigo_alumno, curso
+						ORDER BY (calificable = 'Y') DESC NULLS LAST, nrc
+					) AS rn
+				FROM matricula
+			)
+			SELECT nrc AS "sectionCode", codigo_alumno AS "studentCode"
+			FROM ranked
+			WHERE rn = 1
+			ORDER BY nrc, codigo_alumno
 		`,
 			[period],
 		);
