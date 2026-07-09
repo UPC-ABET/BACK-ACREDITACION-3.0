@@ -882,6 +882,9 @@ export async function loadTypes(tenantDataSource: DataSource) {
 			i18n('Carga de alumnos por seccion', 'Student section enrollment upload'),
 			'{"order":8}',
 		],
+		['TG1101', 'TG1101-T011', i18n('Proyectos académicos', 'Academic projects'), '{}', '{}'],
+		['TG1101', 'TG1101-T012', i18n('Rúbricas', 'Rubrics'), '{}', '{}'],
+		['TG1101', 'TG1101-T013', i18n('Delegados', 'Class Representatives'), '{}', '{}'],
 		[
 			'TG1102',
 			'TG1102-T001',

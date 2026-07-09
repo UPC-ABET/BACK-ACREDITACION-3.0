@@ -77,10 +77,14 @@ async function loadAuthRolesAndPermissions(tenantDataSource: DataSource) {
 				('TG2001', '{"route":"/evidence","module":"EVIDENCE"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T010', '{"en":"Evidence","es":"Evidencia"}'::jsonb),
 				('TG2001', '{"route":"/improvement","module":"IMPROVEMENT"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T011', '{"en":"Improvement","es":"Mejora Continua"}'::jsonb),
 				('TG2001', '{"route":"/organization","module":"ORGANIZATION"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T012', '{"en":"Organization","es":"Organizacion"}'::jsonb),
-				('TG2001', '{"route":"/survey","module":"SURVEY"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T013', '{"en":"Survey","es":"Encuestas"}'::jsonb),
+				('TG2001', '{"route":"/surveys","module":"SURVEY"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T013', '{"en":"Survey","es":"Encuestas"}'::jsonb),
 				('TG2001', '{"route":"/core","module":"CORE"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T014', '{"en":"Core","es":"Nucleo"}'::jsonb),
 				('TG2001', '{"route":"/rubrics","module":"RUBRICS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T015', '{"en":"Rubrics","es":"Rubricas"}'::jsonb),
-				('TG2001', '{"route":"/loads","module":"LOADS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T016', '{"en":"Loads","es":"Cargas"}'::jsonb)
+				('TG2001', '{"route":"/loads","module":"LOADS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T016', '{"en":"Loads","es":"Cargas"}'::jsonb),
+				('TG2001', '{"route":"/portfolio","module":"PORTFOLIO"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T017', '{"en":"Portfolio","es":"Portafolio"}'::jsonb),
+				('TG2001', '{"route":"/scrapping","module":"SCRAPPING"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T018', '{"en":"Scrapping","es":"Scrapping"}'::jsonb),
+				('TG2001', '{"route":"/academic-projects","module":"ACADEMIC_PROJECTS"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T019', '{"en":"Academic Projects","es":"Proyectos Académicos"}'::jsonb),
+				('TG2001', '{"route":"/ard","module":"ARD"}'::jsonb, true, '2026-05-22 20:55:33.573608+00', 'TG2001-T020', '{"en":"ARD","es":"ARD"}'::jsonb)
 		) AS v(type_group_code, extra, is_active, created_at, code, name)
 		JOIN "core"."type_groups" tg ON tg.code = v.type_group_code
 		ON CONFLICT (code) DO UPDATE
