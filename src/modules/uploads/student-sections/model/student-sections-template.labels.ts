@@ -25,6 +25,8 @@ export const studentSectionsErrorMessages: Record<string, Record<string, string>
 		studyPlanPeriodMismatch:
 			'El alumno no está matriculado en la misma malla curricular y período que la sección.',
 		courseNotInStudyPlan: 'El curso de la sección no pertenece a la malla curricular del alumno.',
+		studentAlreadyEnrolledInCourse:
+			'El alumno ya está matriculado en otra sección de este curso en el período académico.',
 	},
 	en: {
 		duplicateRowInFile: 'Duplicate row in the file (same section and student).',
@@ -35,6 +37,8 @@ export const studentSectionsErrorMessages: Record<string, Record<string, string>
 		studyPlanPeriodMismatch:
 			'The student is not enrolled in the same study plan and period as the section.',
 		courseNotInStudyPlan: "The section's course does not belong to the student's study plan.",
+		studentAlreadyEnrolledInCourse:
+			'The student is already enrolled in another section of this course for this academic period.',
 	},
 };
 

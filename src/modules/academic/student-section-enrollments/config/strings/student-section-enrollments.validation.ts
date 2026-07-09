@@ -1,6 +1,7 @@
 export const studentSectionEnrollmentsValidationStrings = {
 	error: {
 		enrollmentExists: 'error.studentSectionEnrollment.enrollmentExists',
+		alreadyEnrolledInCourse: 'error.studentSectionEnrollment.alreadyEnrolledInCourse',
 		studyPlanPeriodMismatch: 'error.studentSectionEnrollment.studyPlanPeriodMismatch',
 		courseNotInStudyPlan: 'error.studentSectionEnrollment.courseNotInStudyPlan',
 		notFound: 'error.studentSectionEnrollment.notFound',

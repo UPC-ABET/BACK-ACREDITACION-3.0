@@ -53,6 +53,15 @@ export class StudentSectionEnrollmentValidation {
 		if (exists) errors.push(studentSectionEnrollmentsValidationStrings.error.enrollmentExists);
 
 		if (data.enrolledStudentId && data.courseSectionId) {
+			if (
+				await repo.existsOtherEnrollmentInSameCoursePeriod(
+					data.enrolledStudentId,
+					data.courseSectionId,
+				)
+			) {
+				errors.push(studentSectionEnrollmentsValidationStrings.error.alreadyEnrolledInCourse);
+			}
+
 			const eligibilityError = await this.studyPlanEligibilityError(
 				repo,
 				data.enrolledStudentId,
@@ -97,6 +106,12 @@ export class StudentSectionEnrollmentValidation {
 				(data.courseSectionId !== undefined && data.courseSectionId !== entity.courseSectionId);
 
 			if (pairChanged) {
+				if (
+					await repo.existsOtherEnrollmentInSameCoursePeriod(enrolledStudentId, courseSectionId, id)
+				) {
+					errors.push(studentSectionEnrollmentsValidationStrings.error.alreadyEnrolledInCourse);
+				}
+
 				const eligibilityError = await this.studyPlanEligibilityError(
 					repo,
 					enrolledStudentId,
@@ -135,6 +150,15 @@ export class StudentSectionEnrollmentValidation {
 			},
 		});
 		if (exists) errors.push(studentSectionEnrollmentsValidationStrings.error.enrollmentExists);
+
+		if (
+			await repo.existsOtherEnrollmentInSameCoursePeriod(
+				data.enrolledStudentId,
+				data.courseSectionId,
+			)
+		) {
+			errors.push(studentSectionEnrollmentsValidationStrings.error.alreadyEnrolledInCourse);
+		}
 
 		const eligibilityError = await this.studyPlanEligibilityError(
 			repo,
@@ -179,6 +203,15 @@ export class StudentSectionEnrollmentValidation {
 				throw new BadRequestError({
 					message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
 					errors: [studentSectionEnrollmentsValidationStrings.error.enrollmentExists],
+				});
+			}
+
+			if (
+				await repo.existsOtherEnrollmentInSameCoursePeriod(enrolledStudentId, courseSectionId, id)
+			) {
+				throw new BadRequestError({
+					message: studentSectionEnrollmentsValidationStrings.result.updateFailed,
+					errors: [studentSectionEnrollmentsValidationStrings.error.alreadyEnrolledInCourse],
 				});
 			}
 

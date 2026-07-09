@@ -135,6 +135,34 @@ export class StudentSectionEnrollmentRepository extends BaseRepository<StudentSe
 		};
 	}
 
+	// A student may only be enrolled in ONE section of a given course for a given academic period.
+	// Returns true when the student already has an enrollment in a DIFFERENT section of the same course
+	// and period as the target section. The exact-same-section case is handled separately (enrollmentExists);
+	// on update, excludeEnrollmentId skips the row being edited.
+	async existsOtherEnrollmentInSameCoursePeriod(
+		enrolledStudentId: number,
+		courseSectionId: number,
+		excludeEnrollmentId?: number,
+	): Promise<boolean> {
+		const [row] = await this.dataSource.query(
+			`SELECT EXISTS (
+				SELECT 1
+				FROM academic.course_sections cs_target
+				JOIN academic.course_sections cs_other
+					ON cs_other.course_id = cs_target.course_id
+				   AND cs_other.academic_period_id = cs_target.academic_period_id
+				   AND cs_other.id <> cs_target.id
+				JOIN academic.student_section_enrollments sse
+					ON sse.course_section_id = cs_other.id
+				   AND sse.enrolled_student_id = $1
+				WHERE cs_target.id = $2
+				  AND ($3::int IS NULL OR sse.id <> $3)
+			) AS "exists"`,
+			[enrolledStudentId, courseSectionId, excludeEnrollmentId ?? null],
+		);
+		return row.exists === true;
+	}
+
 	async findDeleteBlockerCounts(id: number): Promise<StudentSectionEnrollmentDeleteBlockerCounts> {
 		const [row] = await this.dataSource.query(
 			`SELECT

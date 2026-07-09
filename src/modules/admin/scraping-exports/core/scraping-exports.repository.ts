@@ -134,6 +134,10 @@ export class ScrapingExportsRepository {
 			  -- Legacy behaviour: only sections that carry their own teacher are exported. Practice/lab
 			  -- sections without a docente in Banner are dropped (they are not loaded as sections).
 			  AND prof.idb IS NOT NULL
+			  -- Only the graded (calificable='Y') section of each course is exported — the accreditation
+			  -- model keeps a single loadable section per course (the theory), matching the one the
+			  -- alumno-seccion export enrolls students into.
+			  AND h.payload->>'calificable' = 'Y'
 			ORDER BY h.nrc
 		`,
 			[period],
@@ -200,8 +204,21 @@ export class ScrapingExportsRepository {
 	// keep the section flagged calificable='Y' (the theory); ties break by NRC. This mirrors the legacy
 	// invariant ("un alumno una vez por curso") that the old load enforced. Course = materia.codigo +
 	// numeroCurso, same key the sections export uses.
+	//
+	// Scoped to the sections ALREADY UPLOADED to the app DB (academic.course_sections for the period):
+	// students are only exported for sections that were previously loaded, so the alumno-seccion upload
+	// never references a section that isn't in the DB. The raw tables live in a separate connection, so
+	// the uploaded section codes are fetched from the main DB and passed into the raw query.
 	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
+
+		const uploaded: Array<{ sectionCode: string }> = await this.mainDataSource.query(
+			`SELECT section_code AS "sectionCode" FROM academic.course_sections WHERE academic_period_id = $1`,
+			[academicPeriodId],
+		);
+		const uploadedSectionCodes = uploaded.map((row) => row.sectionCode);
+		if (uploadedSectionCodes.length === 0) return [];
+
 		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(
 			`
 			WITH matricula AS (
@@ -215,6 +232,7 @@ export class ScrapingExportsRepository {
 				WHERE m.run_id = ${RUN_FOR_PERIOD}
 				  AND NULLIF(trim(m.nrc), '') IS NOT NULL
 				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
+				  AND m.nrc = ANY($2::text[])
 			),
 			ranked AS (
 				SELECT
@@ -231,7 +249,7 @@ export class ScrapingExportsRepository {
 			WHERE rn = 1
 			ORDER BY nrc, codigo_alumno
 		`,
-			[period],
+			[period, uploadedSectionCodes],
 		);
 
 		return rows.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
