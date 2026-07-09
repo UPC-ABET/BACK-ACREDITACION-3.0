@@ -61,9 +61,6 @@ export class RubricController extends BaseController<RubricService> {
 		return await this.rubricConfigService.getRubricById(rubricId);
 	}
 
-	// TODO: Implement @Post('import-excel') with FileInterceptor for bulk rubric import.
-	// This replaces the previous bulk Excel import per the migration plan.
-
 	@SwaggerRubricCreate()
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async create(@Body() dto: CreateRubricDto) {
