@@ -6,6 +6,7 @@ const mockRepo = {
 	findOneById: jest.fn(),
 	findDeleteBlockerCounts: jest.fn(),
 	checkStudyPlanEligibility: jest.fn(),
+	existsOtherEnrollmentInSameCoursePeriod: jest.fn(),
 };
 
 const noBlockers = {
@@ -21,6 +22,7 @@ describe('StudentSectionEnrollmentValidation', () => {
 			periodMatches: true,
 			courseInPlan: true,
 		});
+		mockRepo.existsOtherEnrollmentInSameCoursePeriod.mockResolvedValue(false);
 	});
 
 	describe('validateCreate', () => {
@@ -74,6 +76,24 @@ describe('StudentSectionEnrollmentValidation', () => {
 			expect(body.errors).toContain('error.studentSectionEnrollment.studyPlanPeriodMismatch');
 			expect(body.errors).not.toContain('error.studentSectionEnrollment.courseNotInStudyPlan');
 		});
+
+		it('throws when the student is already enrolled in another section of the course', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.existsOtherEnrollmentInSameCoursePeriod.mockResolvedValue(true);
+
+			let caught: DomainError | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateCreate(mockRepo as any, {
+					enrolledStudentId: 4,
+					courseSectionId: 3,
+				});
+			} catch (e) {
+				caught = e as DomainError;
+			}
+
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.errors).toContain('error.studentSectionEnrollment.alreadyEnrolledInCourse');
+		});
 	});
 
 	describe('validateUpdate', () => {
@@ -125,6 +145,21 @@ describe('StudentSectionEnrollmentValidation', () => {
 			await expect(
 				StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto),
 			).rejects.toThrow(DomainError);
+		});
+
+		it('throws when the student is already enrolled in another section of the course', async () => {
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.existsOtherEnrollmentInSameCoursePeriod.mockResolvedValue(true);
+
+			let caught: DomainError | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateMaintenanceCreate(mockRepo as any, dto);
+			} catch (e) {
+				caught = e as DomainError;
+			}
+
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.errors).toContain('error.studentSectionEnrollment.alreadyEnrolledInCourse');
 		});
 
 		it('throws when the section course is not in the student study plan', async () => {
@@ -206,6 +241,24 @@ describe('StudentSectionEnrollmentValidation', () => {
 					enrolledStudentId: 11,
 				}),
 			).rejects.toThrow(DomainError);
+		});
+
+		it('throws when the new pair puts the student in another section of the course', async () => {
+			mockRepo.findOneById.mockResolvedValue(existing);
+			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.existsOtherEnrollmentInSameCoursePeriod.mockResolvedValue(true);
+
+			let caught: DomainError | undefined;
+			try {
+				await StudentSectionEnrollmentValidation.validateMaintenanceUpdate(mockRepo as any, 1, {
+					courseSectionId: 21,
+				});
+			} catch (e) {
+				caught = e as DomainError;
+			}
+
+			expect(caught).toBeInstanceOf(DomainError);
+			expect(caught!.errors).toContain('error.studentSectionEnrollment.alreadyEnrolledInCourse');
 		});
 
 		it('throws when the new pair course is not in the student study plan', async () => {
