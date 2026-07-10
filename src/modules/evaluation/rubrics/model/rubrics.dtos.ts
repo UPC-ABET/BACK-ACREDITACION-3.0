@@ -1,8 +1,17 @@
 // rubrics.dtos.ts
-import { IsBoolean, IsNumber, IsOptional, IsArray, ValidateNested, Allow } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+	IsBoolean,
+	IsNumber,
+	IsInt,
+	IsOptional,
+	IsArray,
+	ValidateNested,
+	Allow,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateRubricCriteriaDto {
 	@IsOptional()
@@ -152,4 +161,18 @@ export class FilterRubricDto {
 	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	studyPlanCourseId?: number;
+}
+
+export class GetRubricsQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by program id' })
+	programId?: number;
+
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by course id' })
+	courseId?: number;
 }

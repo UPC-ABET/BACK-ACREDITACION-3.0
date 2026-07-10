@@ -49,7 +49,6 @@ import { ProjectModule } from './modules/evaluation/projects/projects.module';
 import { ProjectGroupModule } from './modules/evaluation/project-groups/project-groups.module';
 import { RubricQuestionCriteriaModule } from './modules/evaluation/rubric-question-criterias/rubric-question-criterias.module';
 import { RubricQuestionModule } from './modules/evaluation/rubric-questions/rubric-questions.module';
-import { RubricScoreModule } from './modules/evaluation/rubric-scores/rubric-scores.module';
 import { RubricModule } from './modules/evaluation/rubrics/rubrics.module';
 import { SemaphoreReportsModule } from './modules/evaluation/semaphore-reports/semaphore-reports.module';
 
@@ -181,7 +180,6 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		TypeModule,
 		RubricQuestionCriteriaModule,
 		RubricQuestionModule,
-		RubricScoreModule,
 		RubricModule,
 		SemaphoreReportsModule,
 		ArdModule,
