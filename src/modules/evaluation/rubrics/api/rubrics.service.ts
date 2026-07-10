@@ -19,6 +19,12 @@ import type { I18nText } from 'src/shared/types/i18n';
 import pLimit from 'p-limit';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { GetRubricsQueryDto } from '../model/rubrics.dtos';
+import { RubricEntity } from '../model/rubrics.entity';
+
+export interface RubricListItem extends RubricEntity {
+	programName: I18nText | null;
+	isUsed: boolean;
+}
 
 @Injectable()
 export class RubricService extends BaseService<RubricRepository> {
@@ -78,7 +84,7 @@ export class RubricService extends BaseService<RubricRepository> {
 			courseId?: number;
 		} = {},
 		query: GetRubricsQueryDto = {},
-	): Promise<PaginatedResult<any>> {
+	): Promise<PaginatedResult<RubricListItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
 
 		const [rubrics, total] = await this.repository.findManyWithContext({
