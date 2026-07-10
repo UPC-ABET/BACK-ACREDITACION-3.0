@@ -316,7 +316,7 @@ export class ProjectRubricItemStudentGradeDto {
 		description:
 			'Observation in I18nText format (JSONB). Always an object, never a plain string. Null if not set.',
 	})
-	observation: Record<string, string> | null;
+	observation: I18nText | null;
 }
 
 export class ProjectRubricItemDto {
