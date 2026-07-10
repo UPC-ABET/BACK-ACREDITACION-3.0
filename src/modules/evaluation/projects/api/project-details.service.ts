@@ -33,6 +33,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 interface StudentGradeInfo {
 	totalGrade: number;
 	evaluationStatuses: StudentEvaluationStatusDto[];
+	observation: I18nText | string | null;
 }
 
 interface RubricContextCriteria {
@@ -305,6 +306,7 @@ export class ProjectDetailsService {
 					projectStudentId: s.id,
 					totalGrade: grade.totalGrade,
 					evaluationStatuses: grade.evaluationStatuses,
+					observation: grade.observation,
 				};
 			});
 
@@ -365,6 +367,7 @@ export class ProjectDetailsService {
 					evaluatorId: ev.projectEvaluatorId,
 					qualificationStatusTypeId: ev.qualificationStatusTypeId,
 				})),
+				observation: latestEval.observation,
 			});
 		}
 

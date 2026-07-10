@@ -309,6 +309,16 @@ export class ProjectRubricItemStudentGradeDto {
 		description: 'Qualification status per evaluator in this rubric. Evaluation mode only.',
 	})
 	evaluationStatuses: StudentEvaluationStatusDto[];
+
+	@ApiProperty({
+		oneOf: [
+			{ type: 'string', example: 'Overall observation' },
+			{ type: 'object', example: { es: 'Observación general', en: 'Overall observation' } },
+		],
+		nullable: true,
+		description: 'Observation text for this evaluation. Null if not set.',
+	})
+	observation: Record<string, string> | string | null;
 }
 
 export class ProjectRubricItemDto {
