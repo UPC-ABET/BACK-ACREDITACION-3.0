@@ -68,6 +68,13 @@ export const lcfcRoutes = {
 		},
 	},
 	notification: {
+		summary: {
+			method: 'POST',
+			route: 'notification/summary',
+			summary:
+				'Preview how many careers and students would be notified by a send (or resend, ' +
+				'when the "reenviar a quienes ya recibieron" flag is set)',
+		},
 		send: {
 			method: 'POST',
 			route: 'notification/send',

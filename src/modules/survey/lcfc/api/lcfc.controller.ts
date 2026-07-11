@@ -17,6 +17,7 @@ import {
 	SwaggerLcfcConfigSectionOutcomes,
 	SwaggerLcfcConfigSectionCommissions,
 	SwaggerLcfcConfigSetDeadline,
+	SwaggerLcfcNotificationSummary,
 	SwaggerLcfcNotificationSend,
 	SwaggerLcfcNotificationStatus,
 	SwaggerLcfcTokenValidate,
@@ -155,6 +156,16 @@ export class LcfcController {
 		@AcademicPeriodId() academicPeriodId: number,
 	) {
 		return parseSuccessResponse(await this.lcfcService.setDeadline(dto, academicPeriodId));
+	}
+
+	@SwaggerLcfcNotificationSummary()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async notificationSummary(
+		@Body() dto: SendLcfcNotificationDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.lcfcService.getSendSummary(dto, academicPeriodId));
 	}
 
 	@SwaggerLcfcNotificationSend()

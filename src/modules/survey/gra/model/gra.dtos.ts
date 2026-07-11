@@ -298,6 +298,18 @@ export class SendGraEmailDto {
 		required: false,
 	})
 	lang?: 'es' | 'en';
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: false,
+		description:
+			'When true, also resends to already-notified students who have not responded yet ' +
+			'("Reenviar a quienes ya recibieron"). Students who already completed the survey are ' +
+			'never included, regardless of this flag.',
+		required: false,
+	})
+	resend?: boolean;
 }
 
 export class ResendGraNotificationDto {

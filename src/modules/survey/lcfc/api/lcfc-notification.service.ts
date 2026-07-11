@@ -15,6 +15,7 @@ import {
 	LcfcNotificationRepository,
 	LcfcSendCandidate,
 } from '../core/lcfc-notification.repository';
+import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
 import { LcfcConfigRepository } from '../core/lcfc-config.repository';
 import { LcfcValidation } from '../core/lcfc.validation';
@@ -126,9 +127,13 @@ export class LcfcNotificationService {
 		};
 	}
 
-	async sendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number, jobId?: string) {
-		const { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId } =
-			await this.getTypeIds();
+	/** Resolves which active, filter-matching course sections a send/summary targets. Thrown
+	 *  errors are safety nets for the actual send — getSendSummary swallows them into an
+	 *  empty preview instead, since "nothing to notify yet" isn't an error in a preview. */
+	private async resolveCourseSectionIds(
+		dto: SendLcfcNotificationDto,
+		academicPeriodId: number,
+	): Promise<{ courseSectionIds: number[]; activeConfigs: OutcomeConfigEntity[] }> {
 		const activeConfigs = await this.configRepo.findAllLcfc({
 			academicPeriodId,
 			programId: dto.programId,
@@ -158,6 +163,48 @@ export class LcfcNotificationService {
 		if (courseSectionIds.length === 0) {
 			throw new BadRequestException(lcfcValidationStrings.error.noMatchingSections);
 		}
+
+		return { courseSectionIds, activeConfigs };
+	}
+
+	/** Preview of what a send would do: how many careers and students would be notified.
+	 *  When dto.resend is set ("Reenviar a quienes ya recibieron"), also counts already-notified
+	 *  students who haven't responded yet — students who already completed the survey are
+	 *  never included, regardless of the flag. Mirrors GRA's getSendSummary. */
+	async getSendSummary(dto: SendLcfcNotificationDto, academicPeriodId: number) {
+		const { lcfcSurveyTypeId, closedStatusId, scheduledStatusId } = await this.getTypeIds();
+
+		let courseSectionIds: number[];
+		try {
+			({ courseSectionIds } = await this.resolveCourseSectionIds(dto, academicPeriodId));
+		} catch {
+			return { totalPrograms: 0, totalStudents: 0, byProgram: [] };
+		}
+
+		const byProgram = await this.notifRepo.getSendSummaryByProgram(
+			courseSectionIds,
+			lcfcSurveyTypeId,
+			closedStatusId,
+			scheduledStatusId,
+			dto.programId ?? null,
+			dto.resend ?? false,
+		);
+
+		return {
+			totalPrograms: byProgram.length,
+			totalStudents: byProgram.reduce((sum, row) => sum + row.studentCount, 0),
+			byProgram,
+		};
+	}
+
+	async sendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number, jobId?: string) {
+		const { lcfcSurveyTypeId, activeStatusId, closedStatusId, scheduledStatusId, sentStatusId } =
+			await this.getTypeIds();
+
+		const { courseSectionIds, activeConfigs } = await this.resolveCourseSectionIds(
+			dto,
+			academicPeriodId,
+		);
 		const totalStudents = await this.notifRepo.countEnrolledStudentsByCourses(
 			courseSectionIds,
 			dto.programId ?? null,

@@ -305,6 +305,9 @@ export class GraNotificationService {
 			code: row.code,
 			name: `${row.firstName} ${row.lastName}`.trim(),
 			email: row.email ?? '',
+			// The student's own program: the add-to-notification flow uses it so adding never
+			// depends on (nor is overridden by) the career filter selected in the UI.
+			programId: row.programId ?? null,
 			career: row.programName ?? '',
 		}));
 	}
@@ -370,14 +373,17 @@ export class GraNotificationService {
 		return { success: true, notificationId };
 	}
 
-	/** Preview of what a send would do: how many careers and students would be notified. */
+	/** Preview of what a send would do: how many careers and students would be notified.
+	 *  When dto.resend is set ("Reenviar a quienes ya recibieron"), also counts already-notified
+	 *  students who haven't responded yet — students who already completed the survey are
+	 *  never included, regardless of the flag. */
 	async getSendSummary(dto: SendGraEmailDto, academicPeriodId: number) {
-		const { graSurveyTypeId, scheduledStatusId } = await this.getTypeIds();
+		const { graSurveyTypeId, scheduledStatusId, closedStatusId } = await this.getTypeIds();
 
-		const byProgram = await this.notifRepo.findPendingSummaryByProgram(
+		const byProgram = await this.notifRepo.findSendSummaryByProgram(
 			graSurveyTypeId,
-			scheduledStatusId,
-			{ academicPeriodId, programId: dto.programId },
+			{ scheduledStatusId, closedStatusId },
+			{ academicPeriodId, programId: dto.programId, includeAlreadySent: dto.resend ?? false },
 		);
 
 		return {
@@ -389,13 +395,23 @@ export class GraNotificationService {
 
 	/** Kicks off email sending in the background and returns a job id to poll for progress. */
 	async startSendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
-		const { graSurveyTypeId, scheduledStatusId } = await this.getTypeIds();
+		const { graSurveyTypeId, scheduledStatusId, closedStatusId } = await this.getTypeIds();
 
-		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
-			academicPeriodId,
-			programId: dto.programId,
-		});
+		const pending = await this.notifRepo.findSendCandidates(
+			graSurveyTypeId,
+			{ scheduledStatusId, closedStatusId },
+			{ academicPeriodId, programId: dto.programId, includeAlreadySent: dto.resend ?? false },
+		);
 
+		return this.startJob(dto, pending);
+	}
+
+	/** Shared job bookkeeping for the send flow (with or without the resend toggle) — both just
+	 *  feed a list of candidate notifications through the same background sender. */
+	private startJob(
+		dto: SendGraEmailDto,
+		pending: Awaited<ReturnType<GraNotificationRepository['findSendCandidates']>>,
+	) {
 		GraValidation.validateSendEmailRequest(pending.length);
 
 		const jobId = randomUUID();
@@ -406,18 +422,21 @@ export class GraNotificationService {
 			emailsFailed: 0,
 			errors: [],
 		});
-		this.logger.log(`GRA notification job ${jobId} queued: totalStudents=${pending.length}`);
+		const kind = dto.resend ? 'resend' : 'send';
+		this.logger.log(
+			`GRA notification ${kind} job ${jobId} queued: totalStudents=${pending.length}`,
+		);
 
 		void this.processSendEmails(dto, pending, jobId)
 			.then((result) => {
 				this.logger.log(
-					`GRA notification job ${jobId} completed: sent=${result.sent}, failed=${result.failed}` +
+					`GRA notification ${kind} job ${jobId} completed: sent=${result.sent}, failed=${result.failed}` +
 						(result.errors.length ? `, errors=${JSON.stringify(result.errors)}` : ''),
 				);
 			})
 			.catch((err) => {
 				this.logger.error(
-					`GRA notification job ${jobId} failed: ${(err as Error).message}`,
+					`GRA notification ${kind} job ${jobId} failed: ${(err as Error).message}`,
 					(err as Error).stack,
 				);
 			})
@@ -438,7 +457,7 @@ export class GraNotificationService {
 
 	private async processSendEmails(
 		dto: SendGraEmailDto,
-		pending: Awaited<ReturnType<GraNotificationRepository['findGraPending']>>,
+		pending: Awaited<ReturnType<GraNotificationRepository['findSendCandidates']>>,
 		jobId: string,
 	) {
 		const { sentStatusId } = await this.getTypeIds();
