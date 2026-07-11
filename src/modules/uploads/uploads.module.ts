@@ -13,6 +13,7 @@ import { ArticulationUploadModule } from './articulation/articulation-upload.mod
 import { StudentSectionsUploadModule } from './student-sections/student-sections-upload.module';
 import { ProjectsUploadModule } from './projects/projects-upload.module';
 import { RubricsUploadModule } from './rubrics/rubrics-upload.module';
+import { ProjectGradesUploadModule } from './project-grades/project-grades-upload.module';
 
 @Module({
 	imports: [
@@ -29,6 +30,7 @@ import { RubricsUploadModule } from './rubrics/rubrics-upload.module';
 		StudentSectionsUploadModule,
 		ProjectsUploadModule,
 		RubricsUploadModule,
+		ProjectGradesUploadModule,
 	],
 })
 export class UploadsModule {}

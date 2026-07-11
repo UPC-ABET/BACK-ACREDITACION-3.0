@@ -21,6 +21,9 @@ export class RubricScoreEntity extends BaseEntity {
 	@JsonColumn({ nullable: true })
 	commentaries: I18nText;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number | null;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => EvaluationEntity)
