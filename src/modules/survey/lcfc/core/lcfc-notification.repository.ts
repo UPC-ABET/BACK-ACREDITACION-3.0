@@ -166,12 +166,29 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		};
 	}
 
+	/** Distinct (course_id, program_id) pairs whose program has the Control outcome mapped to
+	 *  the course. Joined (hash join) instead of a correlated EXISTS: the planner was running
+	 *  the EXISTS as a nested-loop semi join over every enrollment row (~24M comparisons,
+	 *  ~3s per query in production). A shared course only surveys students whose OWN program
+	 *  is in this set; other programs enrolled in the same section are not candidates. */
+	private static readonly ELIGIBLE_COURSE_PROGRAMS_CTE = `
+		eligible AS (
+			SELECT DISTINCT spc2.course_id, pc.program_id
+			FROM academic.study_plan_courses spc2
+			INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
+			INNER JOIN core.types ot ON ot.id = com.outcome_type_id
+			INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
+			INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			WHERE ot.code = $2
+		)`;
+
 	async countEnrolledStudentsByCourses(
 		courseSectionIds: number[],
 		programId?: number | null,
 	): Promise<number> {
 		const rows: { total: number }[] = await this.dataSource.query(
-			`SELECT COUNT(*)::int AS "total"
+			`WITH ${LcfcNotificationRepository.ELIGIBLE_COURSE_PROGRAMS_CTE}
+			SELECT COUNT(*)::int AS "total"
 			FROM (
 				SELECT DISTINCT
 					st.id,
@@ -191,21 +208,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 				INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
 				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 				INNER JOIN academic.programs p ON p.id = sp.program_id
+				INNER JOIN eligible el ON el.course_id = cs.course_id AND el.program_id = sp.program_id
 				WHERE sse.course_section_id = ANY($1)
-				  -- A shared course only surveys students whose OWN program has the Control
-				  -- outcome mapped to it; other programs enrolled in the same section are not
-				  -- candidates, even though the section/config is active.
-				  AND EXISTS (
-					  SELECT 1
-					  FROM academic.study_plan_courses spc2
-					  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
-					  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
-					  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
-					  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
-					  WHERE spc2.course_id = cs.course_id
-						AND ot.code = $2
-						AND pc.program_id = sp.program_id
-				  )
 				  -- When a specific program is filtered (Carrera dropdown), a shared course that
 				  -- is also Control-eligible for another program must not surface that program's
 				  -- students — the filter is exclusive, not "at least this program".
@@ -214,6 +218,93 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			[courseSectionIds, TYPE_CODES.OUTCOME_TYPE.CONTROL, programId ?? null],
 		);
 		return rows[0]?.total ?? 0;
+	}
+
+	/**
+	 * Read-only preview of who a send/resend would reach, grouped by program — mirrors the
+	 * branching in processSendNotifications without writing anything:
+	 *   - no existing survey yet                      -> counted (will be created & sent)
+	 *   - existing survey, already completed           -> never counted, regardless of resend
+	 *   - existing survey, notification still scheduled -> counted (always (re)sent)
+	 *   - existing survey, notification already sent    -> counted only when resend = true
+	 */
+	async getSendSummaryByProgram(
+		courseSectionIds: number[],
+		lcfcSurveyTypeId: number,
+		closedStatusId: number,
+		scheduledStatusId: number,
+		programId: number | null,
+		resend: boolean,
+	): Promise<Array<{ programId: number; programName: string; studentCount: number }>> {
+		const rows = await this.dataSource.query(
+			`WITH ${LcfcNotificationRepository.ELIGIBLE_COURSE_PROGRAMS_CTE},
+			enrolled AS (
+				SELECT DISTINCT
+					st.id AS student_id,
+					sse.course_section_id,
+					sp.program_id,
+					p.name->>'es' AS program_name
+				FROM academic.student_section_enrollments sse
+				INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+				INNER JOIN academic.students st ON st.id = es.student_id
+				INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+				INNER JOIN academic.courses c ON c.id = cs.course_id
+				INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
+				INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
+				INNER JOIN academic.programs p ON p.id = sp.program_id
+				INNER JOIN eligible el ON el.course_id = cs.course_id AND el.program_id = sp.program_id
+				WHERE sse.course_section_id = ANY($1)
+				  AND ($3::int IS NULL OR sp.program_id = $3)
+			),
+			-- One pass over notifications instead of a per-student LATERAL: without an index on
+			-- notifications.survey_id the LATERAL degenerated into a full table scan per enrolled
+			-- student (~4 min for ~48k students in production).
+			latest_notifications AS (
+				SELECT DISTINCT ON (n.survey_id)
+					n.survey_id,
+					n.notification_status_type_id
+				FROM survey.notifications n
+				ORDER BY n.survey_id, n.id DESC
+			),
+			classified AS (
+				SELECT
+					e.student_id,
+					e.program_id,
+					e.program_name,
+					s.survey_status_type_id,
+					latest.notification_status_type_id
+				FROM enrolled e
+				LEFT JOIN evidence.surveys s
+					ON s.survey_type_id = $4
+					AND s.student_id = e.student_id
+					AND s.course_section_id = e.course_section_id
+				LEFT JOIN latest_notifications latest ON latest.survey_id = s.id
+			)
+			SELECT
+				program_id   AS "programId",
+				program_name AS "programName",
+				COUNT(*)::int AS "studentCount"
+			FROM classified
+			WHERE (survey_status_type_id IS NULL OR survey_status_type_id <> $5)
+			  AND (
+				  survey_status_type_id IS NULL
+				  OR notification_status_type_id IS NULL
+				  OR notification_status_type_id = $6
+				  OR $7::boolean = true
+			  )
+			GROUP BY program_id, program_name
+			ORDER BY program_name`,
+			[
+				courseSectionIds,
+				TYPE_CODES.OUTCOME_TYPE.CONTROL,
+				programId,
+				lcfcSurveyTypeId,
+				closedStatusId,
+				scheduledStatusId,
+				resend,
+			],
+		);
+		return rows ?? [];
 	}
 
 	async getEnrolledStudentsByCourses(
@@ -235,7 +326,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 		}[]
 	> {
 		const rows = await this.dataSource.query(
-			`SELECT DISTINCT
+			`WITH ${LcfcNotificationRepository.ELIGIBLE_COURSE_PROGRAMS_CTE}
+			SELECT DISTINCT
 				st.id                                   AS "studentId",
 				st.first_name || ' ' || st.last_name    AS "studentName",
 				st.code                                 AS "studentCode",
@@ -253,20 +345,8 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			INNER JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
 			INNER JOIN academic.study_plans sp ON sp.id = spap.study_plan_id
 			INNER JOIN academic.programs p ON p.id = sp.program_id
+			INNER JOIN eligible el ON el.course_id = cs.course_id AND el.program_id = sp.program_id
 			WHERE sse.course_section_id = ANY($1)
-			  -- Same rule as countEnrolledStudentsByCourses: only the alumni whose own program
-			  -- has the Control outcome mapped to this course are real LCFC candidates.
-			  AND EXISTS (
-				  SELECT 1
-				  FROM academic.study_plan_courses spc2
-				  INNER JOIN academic.course_outcome_mappings com ON com.study_plan_course_id = spc2.id
-				  INNER JOIN core.types ot ON ot.id = com.outcome_type_id
-				  INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id
-				  INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
-				  WHERE spc2.course_id = cs.course_id
-					AND ot.code = $2
-					AND pc.program_id = sp.program_id
-			  )
 			  -- Same exclusivity rule as countEnrolledStudentsByCourses: a program filter
 			  -- (Carrera dropdown) must not pull in another eligible program's students.
 			  AND ($3::int IS NULL OR sp.program_id = $3)

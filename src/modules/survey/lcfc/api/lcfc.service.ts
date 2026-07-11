@@ -103,6 +103,10 @@ export class LcfcService {
 		return this.notifService.sendNotifications(dto, academicPeriodId);
 	}
 
+	getSendSummary(dto: SendLcfcNotificationDto, academicPeriodId: number) {
+		return this.notifService.getSendSummary(dto, academicPeriodId);
+	}
+
 	startSendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
 		return this.notifService.startSendNotifications(dto, academicPeriodId);
 	}

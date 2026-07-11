@@ -71,12 +71,16 @@ export const graRoutes = {
 		summary: {
 			method: 'POST',
 			route: 'email/summary',
-			summary: 'Preview how many careers and students would be notified by a send',
+			summary:
+				'Preview how many careers and students would be notified by a send (or resend, ' +
+				'when the "reenviar a quienes ya recibieron" flag is set)',
 		},
 		send: {
 			method: 'POST',
 			route: 'email/send',
-			summary: 'Start sending GRA surveys by email to pending students (returns a job id)',
+			summary:
+				'Start sending GRA surveys by email to pending students; optionally also resends to ' +
+				'already-notified students who have not responded yet (returns a job id)',
 		},
 		sendStatus: {
 			method: 'GET',

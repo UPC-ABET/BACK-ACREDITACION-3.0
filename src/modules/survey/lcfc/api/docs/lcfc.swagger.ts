@@ -93,6 +93,8 @@ export const SwaggerLcfcConfigSectionCommissions = () =>
 	);
 export const SwaggerLcfcConfigSetDeadline = () =>
 	HttpMethodWithSwagger({ ...cfg.config.setDeadline, body: SetLcfcDeadlineDto });
+export const SwaggerLcfcNotificationSummary = () =>
+	HttpMethodWithSwagger({ ...cfg.notification.summary, body: SendLcfcNotificationDto });
 export const SwaggerLcfcNotificationSend = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.send, body: SendLcfcNotificationDto });
 export const SwaggerLcfcNotificationStatus = () =>

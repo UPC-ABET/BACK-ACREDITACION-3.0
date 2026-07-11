@@ -38,10 +38,14 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			.getOne();
 	}
 
-	async findGraPending(
+	/** GRA students eligible to be (re)notified: never notified (scheduled), plus — when
+	 *  `includeAlreadySent` is set (the "Reenviar a quienes ya recibieron" toggle) —
+	 *  already-notified students who haven't responded yet. Students who already completed
+	 *  the survey are never included, regardless of the toggle. */
+	async findSendCandidates(
 		graSurveyTypeId: number,
-		scheduledStatusId: number,
-		filters: { academicPeriodId: number; programId?: number },
+		statusIds: { scheduledStatusId: number; closedStatusId: number },
+		filters: { academicPeriodId: number; programId?: number; includeAlreadySent: boolean },
 	): Promise<
 		{
 			notificationId: number;
@@ -71,15 +75,53 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			INNER JOIN academic.students st ON st.id = s.student_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			WHERE s.survey_type_id = $1
-			  AND n.notification_status_type_id = $2
+			  AND s.survey_status_type_id <> $2
 			  AND s.academic_period_id = $3
+			  ${filters.includeAlreadySent ? '' : 'AND n.notification_status_type_id = $4'}
 		`;
-		const params: any[] = [graSurveyTypeId, scheduledStatusId, filters.academicPeriodId];
+		const params: any[] = [graSurveyTypeId, statusIds.closedStatusId, filters.academicPeriodId];
+		if (!filters.includeAlreadySent) {
+			params.push(statusIds.scheduledStatusId);
+		}
 
 		if (filters.programId) {
 			query += ` AND s.program_id = $${params.length + 1}`;
 			params.push(filters.programId);
 		}
+
+		return await this.dataSource.query(query, params);
+	}
+
+	/** Same candidate set as findSendCandidates, grouped by program for the send-summary preview. */
+	async findSendSummaryByProgram(
+		graSurveyTypeId: number,
+		statusIds: { scheduledStatusId: number; closedStatusId: number },
+		filters: { academicPeriodId: number; programId?: number; includeAlreadySent: boolean },
+	): Promise<Array<{ programId: number; programName: string; studentCount: number }>> {
+		let query = `
+			SELECT
+				s.program_id  AS "programId",
+				p.name->>'es' AS "programName",
+				COUNT(*)::int AS "studentCount"
+			FROM survey.notifications n
+			INNER JOIN evidence.surveys s ON s.id = n.survey_id
+			INNER JOIN academic.programs p ON p.id = s.program_id
+			WHERE s.survey_type_id = $1
+			  AND s.survey_status_type_id <> $2
+			  AND s.academic_period_id = $3
+			  ${filters.includeAlreadySent ? '' : 'AND n.notification_status_type_id = $4'}
+		`;
+		const params: any[] = [graSurveyTypeId, statusIds.closedStatusId, filters.academicPeriodId];
+		if (!filters.includeAlreadySent) {
+			params.push(statusIds.scheduledStatusId);
+		}
+
+		if (filters.programId) {
+			query += ` AND s.program_id = $${params.length + 1}`;
+			params.push(filters.programId);
+		}
+
+		query += ` GROUP BY s.program_id, p.name ORDER BY p.name`;
 
 		return await this.dataSource.query(query, params);
 	}
