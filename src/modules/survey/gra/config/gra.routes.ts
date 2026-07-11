@@ -41,10 +41,20 @@ export const graRoutes = {
 			route: 'notification/list-students',
 			summary: 'List students with GRA notification status',
 		},
+		searchStudents: {
+			method: 'POST',
+			route: 'notification/search-students',
+			summary: 'Search active students by code or name (for the add-individual-student box)',
+		},
 		delete: {
 			method: 'DELETE',
 			route: 'notification/delete/:id',
 			summary: 'Remove student from GRA list',
+		},
+		resend: {
+			method: 'POST',
+			route: 'notification/resend/:id',
+			summary: 'Resend the GRA survey email to a single notified student',
 		},
 		template: {
 			method: 'GET',
@@ -58,10 +68,20 @@ export const graRoutes = {
 		},
 	},
 	email: {
+		summary: {
+			method: 'POST',
+			route: 'email/summary',
+			summary: 'Preview how many careers and students would be notified by a send',
+		},
 		send: {
 			method: 'POST',
 			route: 'email/send',
-			summary: 'Send GRA surveys by email to pending students',
+			summary: 'Start sending GRA surveys by email to pending students (returns a job id)',
+		},
+		sendStatus: {
+			method: 'GET',
+			route: 'email/send-status/:jobId',
+			summary: 'Poll the progress of a GRA notification send job',
 		},
 		getTemplate: {
 			method: 'GET',

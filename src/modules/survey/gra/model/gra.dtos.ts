@@ -300,6 +300,26 @@ export class SendGraEmailDto {
 	lang?: 'es' | 'en';
 }
 
+export class ResendGraNotificationDto {
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'https://app.example.com',
+		description: 'Frontend base URL used to build the survey link',
+		required: false,
+	})
+	surveyBaseUrl?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'es',
+		description: 'Email language: es | en (defaults to es)',
+		required: false,
+	})
+	lang?: 'es' | 'en';
+}
+
 export class GetSurveyByTokenDto {
 	@IsString()
 	@ApiProperty({
@@ -357,6 +377,15 @@ export class CompleteGraSurveyDto {
 		description: 'Scores per GRA outcome',
 	})
 	scores: GraScoreItemDto[];
+}
+
+export class SearchGraStudentsDto {
+	@IsString()
+	@ApiProperty({
+		example: 'Maria Lopez',
+		description: 'Search term matched against student code, first name, or last name',
+	})
+	term: string;
 }
 
 export class DashboardGraDto {
