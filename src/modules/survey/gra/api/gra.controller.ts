@@ -16,8 +16,12 @@ import {
 	SwaggerGraNotificationTemplate,
 	SwaggerGraNotificationUploadExcel,
 	SwaggerGraNotificationListStudents,
+	SwaggerGraNotificationSearchStudents,
 	SwaggerGraNotificationDelete,
+	SwaggerGraNotificationResend,
+	SwaggerGraEmailSummary,
 	SwaggerGraEmailSend,
+	SwaggerGraEmailSendStatus,
 	SwaggerGraEmailGetTemplate,
 	SwaggerGraEmailUpdateTemplate,
 	SwaggerGraTokenValidate,
@@ -37,7 +41,9 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	SearchGraStudentsDto,
 	SendGraEmailDto,
+	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
 	CompleteGraSurveyDto,
 	DashboardGraDto,
@@ -155,17 +161,45 @@ export class GraController {
 		return parseSuccessResponse(await this.graService.listStudents(dto, academicPeriodId));
 	}
 
+	@SwaggerGraNotificationSearchStudents()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async notificationSearchStudents(@Body() dto: SearchGraStudentsDto) {
+		return parseSuccessResponse(await this.graService.searchStudents(dto));
+	}
+
 	@SwaggerGraNotificationDelete()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.DELETE })
 	async notificationDelete(@Param('id', ParseIntPipe) id: number) {
 		return parseSuccessResponse(await this.graService.deleteNotification(id));
 	}
 
+	@SwaggerGraNotificationResend()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async notificationResend(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: ResendGraNotificationDto,
+	) {
+		return parseSuccessResponse(await this.graService.resendNotification(id, dto));
+	}
+
+	@SwaggerGraEmailSummary()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async emailSummary(@Body() dto: SendGraEmailDto, @AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.graService.getSendSummary(dto, academicPeriodId));
+	}
+
 	@SwaggerGraEmailSend()
 	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
 	async emailSend(@Body() dto: SendGraEmailDto, @AcademicPeriodId() academicPeriodId: number) {
-		return parseSuccessResponse(await this.graService.sendEmails(dto, academicPeriodId));
+		return parseSuccessResponse(await this.graService.startSendEmails(dto, academicPeriodId));
+	}
+
+	@SwaggerGraEmailSendStatus()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async emailSendStatus(@Param('jobId') jobId: string) {
+		return parseSuccessResponse(this.graService.getSendStatus(jobId));
 	}
 
 	@SwaggerGraEmailGetTemplate()

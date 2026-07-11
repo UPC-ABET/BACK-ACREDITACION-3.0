@@ -203,6 +203,41 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		);
 	}
 
+	/** Search active students by partial code or name match (first/last name), for the
+	 *  "add individual student" GRA search box. Scoped to this module — does not touch the
+	 *  shared academic/students module. */
+	async searchStudentsByCodeOrName(
+		term: string,
+		limit: number,
+	): Promise<
+		{
+			id: number;
+			code: string;
+			firstName: string;
+			lastName: string;
+			email: string | null;
+			programName: string | null;
+		}[]
+	> {
+		const like = `%${term}%`;
+		return await this.dataSource.query(
+			`SELECT
+				st.id                AS "id",
+				st.code              AS "code",
+				st.first_name        AS "firstName",
+				st.last_name         AS "lastName",
+				st.email             AS "email",
+				p.name->>'es'        AS "programName"
+			FROM academic.students st
+			LEFT JOIN academic.programs p ON p.id = st.program_id
+			WHERE st.is_active = true
+			  AND (st.code ILIKE $1 OR st.first_name ILIKE $1 OR st.last_name ILIKE $1)
+			ORDER BY st.first_name ASC
+			LIMIT $2`,
+			[like, limit],
+		);
+	}
+
 	/** Resolves a campus id for a student. Tries their enrolled campus first, then falls back to any campus. */
 	async resolveDefaultCampus(studentId?: number): Promise<number | null> {
 		if (studentId) {

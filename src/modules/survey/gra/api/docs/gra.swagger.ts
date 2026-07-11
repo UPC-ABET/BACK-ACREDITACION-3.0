@@ -10,11 +10,13 @@ import {
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
+	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
 	CompleteGraSurveyDto,
 	DashboardGraDto,
 	ReplicateGraConfigDto,
 	ListGraSurveyOutcomesDto,
+	SearchGraStudentsDto,
 } from '../../model/gra.dtos';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 
@@ -48,17 +50,32 @@ export const SwaggerGraNotificationSave = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.save, body: SaveGraNotificationDto });
 export const SwaggerGraNotificationListStudents = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.listStudents, body: ListStudentsGraDto });
+export const SwaggerGraNotificationSearchStudents = () =>
+	HttpMethodWithSwagger({ ...cfg.notification.searchStudents, body: SearchGraStudentsDto });
 export const SwaggerGraNotificationDelete = () =>
 	HttpMethodWithSwagger({
 		...cfg.notification.delete,
+		params: [{ name: 'id', description: 'ID de la notificación GRA', type: Number }],
+	});
+export const SwaggerGraNotificationResend = () =>
+	HttpMethodWithSwagger({
+		...cfg.notification.resend,
+		body: ResendGraNotificationDto,
 		params: [{ name: 'id', description: 'ID de la notificación GRA', type: Number }],
 	});
 export const SwaggerGraNotificationTemplate = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.template, produces: XLSX_CONTENT_TYPE });
 export const SwaggerGraNotificationUploadExcel = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.uploadExcel, body: BulkUploadGraNotificationDto });
+export const SwaggerGraEmailSummary = () =>
+	HttpMethodWithSwagger({ ...cfg.email.summary, body: SendGraEmailDto });
 export const SwaggerGraEmailSend = () =>
 	HttpMethodWithSwagger({ ...cfg.email.send, body: SendGraEmailDto });
+export const SwaggerGraEmailSendStatus = () =>
+	HttpMethodWithSwagger({
+		...cfg.email.sendStatus,
+		params: [{ name: 'jobId', description: 'ID del proceso de envío GRA', type: String }],
+	});
 export const SwaggerGraEmailGetTemplate = () => HttpMethodWithSwagger(cfg.email.getTemplate);
 export const SwaggerGraEmailUpdateTemplate = () =>
 	HttpMethodWithSwagger({ ...cfg.email.updateTemplate, body: UpdateGraEmailTemplateDto });

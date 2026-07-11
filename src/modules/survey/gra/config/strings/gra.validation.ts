@@ -21,6 +21,8 @@ export const graValidationStrings = {
 		studentNotFound: 'error.survey.gra.studentNotFound',
 		alreadyInList: 'error.survey.gra.alreadyInList',
 		programRequired: 'error.survey.gra.programRequired',
+		notificationJobNotFound: 'error.survey.gra.notificationJobNotFound',
+		alreadyResponded: 'error.survey.gra.alreadyResponded',
 	},
 	success: {
 		notificationCreated: 'success.survey.gra.notificationCreated',

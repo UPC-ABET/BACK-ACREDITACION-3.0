@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as ExcelJS from 'exceljs';
 import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
 import { MailService } from 'src/modules/mail/mail.service';
@@ -26,14 +27,46 @@ import {
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
+	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
 	CompleteGraSurveyDto,
 	DashboardGraDto,
+	SearchGraStudentsDto,
 } from '../model/gra.dtos';
+
+/** NestJS HttpExceptions (e.g. MailService's BadGatewayException) carry the real SMTP error in
+ *  a `details` field on their response body; `.message` alone is just the localized error key. */
+function extractSendErrorMessage(err: unknown): string {
+	if (err && typeof err === 'object' && 'getResponse' in err) {
+		const response = (err as { getResponse: () => unknown }).getResponse();
+		if (response && typeof response === 'object') {
+			const { details, message } = response as { details?: unknown; message?: unknown };
+			if (typeof details === 'string' && details) return details;
+			if (typeof message === 'string') return message;
+		} else if (typeof response === 'string') {
+			return response;
+		}
+	}
+	return err instanceof Error ? err.message : String(err);
+}
+
+const STUDENT_SEARCH_MAX_RESULTS = 30;
+const SEND_CONCURRENCY = 20;
+const MAX_SEND_ERROR_DETAILS = 100;
+const JOB_STATUS_TTL_MS = 30 * 60 * 1000;
+
+type GraNotificationJobStatus = {
+	progressPct: number;
+	totalStudents: number;
+	emailsSent: number;
+	emailsFailed: number;
+	errors: string[];
+};
 
 @Injectable()
 export class GraNotificationService {
 	private readonly logger = new Logger(GraNotificationService.name);
+	private readonly notificationJobs = new Map<string, GraNotificationJobStatus>();
 
 	constructor(
 		private readonly notifRepo: GraNotificationRepository,
@@ -251,13 +284,29 @@ export class GraNotificationService {
 	}
 
 	async listStudents(dto: ListStudentsGraDto, academicPeriodId?: number | null) {
-		const { graSurveyTypeId } = await this.getTypeIds();
-		return await this.notifRepo.listStudentsGra(graSurveyTypeId, {
+		const { graSurveyTypeId, closedStatusId } = await this.getTypeIds();
+		return await this.notifRepo.listStudentsGra(graSurveyTypeId, closedStatusId, {
 			academicPeriodId: academicPeriodId ?? undefined,
 			programId: dto.programId,
 			campusId: dto.campusId,
 			studentCode: dto.studentCode,
 		});
+	}
+
+	/** Search active students by code or name, for the "add individual student" search box. */
+	async searchStudents(dto: SearchGraStudentsDto) {
+		const term = dto.term.trim();
+		if (!term) return [];
+
+		const rows = await this.surveyRepo.searchStudentsByCodeOrName(term, STUDENT_SEARCH_MAX_RESULTS);
+
+		return rows.map((row) => ({
+			studentId: row.id,
+			code: row.code,
+			name: `${row.firstName} ${row.lastName}`.trim(),
+			email: row.email ?? '',
+			career: row.programName ?? '',
+		}));
 	}
 
 	async deleteNotification(id: number) {
@@ -270,15 +319,22 @@ export class GraNotificationService {
 		return { deleted: true, notificationId: id };
 	}
 
-	async sendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
-		const { graSurveyTypeId, scheduledStatusId, sentStatusId } = await this.getTypeIds();
+	/** Resends the GRA survey email to a single already-notified student, regardless of its
+	 *  send status (pending or already sent) — but refuses once the student has responded,
+	 *  since re-sending a completed survey's link makes no sense. */
+	async resendNotification(notificationId: number, dto: ResendGraNotificationDto) {
+		const details = await this.notifRepo.findNotificationDetailsById(notificationId);
+		if (!details) {
+			throw new NotFoundException(graValidationStrings.error.notificationNotFound, {
+				description: String(notificationId),
+			});
+		}
 
-		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
-			academicPeriodId,
-			programId: dto.programId,
-		});
+		const { sentStatusId, closedStatusId } = await this.getTypeIds();
 
-		GraValidation.validateSendEmailRequest(pending.length);
+		if (details.surveyStatusTypeId === closedStatusId) {
+			throw new BadRequestException(graValidationStrings.error.alreadyResponded);
+		}
 
 		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
 			TYPE_CODES.SURVEY_TYPE.GRA,
@@ -289,9 +345,120 @@ export class GraNotificationService {
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
-		const results = { total: pending.length, sent: 0, failed: 0, errors: [] as string[] };
+		const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.GRA}?token=${details.token}`;
 
-		for (const student of pending) {
+		const emailBody = this.surveyEmailTemplateService.replacePlaceholders(emailTemplate.body, {
+			student_name: details.studentName,
+			student_code: details.studentCode,
+			program_name: details.programName,
+			survey_link: surveyUrl,
+			token: details.token,
+		});
+
+		try {
+			await this.mailService.sendRawEmail({
+				to: details.studentEmail,
+				subject: emailTemplate.subject,
+				html: emailBody,
+			});
+		} catch (err) {
+			throw new BadRequestException(extractSendErrorMessage(err));
+		}
+
+		await this.notifRepo.markAsSent(notificationId, sentStatusId);
+
+		return { success: true, notificationId };
+	}
+
+	/** Preview of what a send would do: how many careers and students would be notified. */
+	async getSendSummary(dto: SendGraEmailDto, academicPeriodId: number) {
+		const { graSurveyTypeId, scheduledStatusId } = await this.getTypeIds();
+
+		const byProgram = await this.notifRepo.findPendingSummaryByProgram(
+			graSurveyTypeId,
+			scheduledStatusId,
+			{ academicPeriodId, programId: dto.programId },
+		);
+
+		return {
+			totalPrograms: byProgram.length,
+			totalStudents: byProgram.reduce((sum, row) => sum + row.studentCount, 0),
+			byProgram,
+		};
+	}
+
+	/** Kicks off email sending in the background and returns a job id to poll for progress. */
+	async startSendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
+		const { graSurveyTypeId, scheduledStatusId } = await this.getTypeIds();
+
+		const pending = await this.notifRepo.findGraPending(graSurveyTypeId, scheduledStatusId, {
+			academicPeriodId,
+			programId: dto.programId,
+		});
+
+		GraValidation.validateSendEmailRequest(pending.length);
+
+		const jobId = randomUUID();
+		this.notificationJobs.set(jobId, {
+			progressPct: 0,
+			totalStudents: pending.length,
+			emailsSent: 0,
+			emailsFailed: 0,
+			errors: [],
+		});
+		this.logger.log(`GRA notification job ${jobId} queued: totalStudents=${pending.length}`);
+
+		void this.processSendEmails(dto, pending, jobId)
+			.then((result) => {
+				this.logger.log(
+					`GRA notification job ${jobId} completed: sent=${result.sent}, failed=${result.failed}` +
+						(result.errors.length ? `, errors=${JSON.stringify(result.errors)}` : ''),
+				);
+			})
+			.catch((err) => {
+				this.logger.error(
+					`GRA notification job ${jobId} failed: ${(err as Error).message}`,
+					(err as Error).stack,
+				);
+			})
+			.finally(() => {
+				setTimeout(() => this.notificationJobs.delete(jobId), JOB_STATUS_TTL_MS);
+			});
+
+		return { accepted: true, jobId };
+	}
+
+	getSendStatus(jobId: string) {
+		const status = this.notificationJobs.get(jobId);
+		if (!status) {
+			throw new NotFoundException(graValidationStrings.error.notificationJobNotFound);
+		}
+		return status;
+	}
+
+	private async processSendEmails(
+		dto: SendGraEmailDto,
+		pending: Awaited<ReturnType<GraNotificationRepository['findGraPending']>>,
+		jobId: string,
+	) {
+		const { sentStatusId } = await this.getTypeIds();
+
+		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
+			TYPE_CODES.SURVEY_TYPE.GRA,
+			dto.lang ?? 'es',
+		);
+
+		const surveyBaseUrl =
+			dto.surveyBaseUrl ||
+			this.configService.get<string>('SURVEY_BASE_URL') ||
+			'http://localhost:3001';
+
+		const total = pending.length;
+		let sent = 0;
+		let failed = 0;
+		const errors: string[] = [];
+
+		await this.processConcurrently(pending, SEND_CONCURRENCY, async (student) => {
 			try {
 				const surveyUrl = `${surveyBaseUrl}${SURVEY_FRONTEND_PATHS.GRA}?token=${student.token}`;
 
@@ -310,14 +477,40 @@ export class GraNotificationService {
 				});
 
 				await this.notifRepo.markAsSent(student.notificationId, sentStatusId);
-				results.sent++;
+				sent++;
 			} catch (err) {
-				results.failed++;
-				results.errors.push(`Student ${student.studentCode}: ${(err as Error).message}`);
+				failed++;
+				if (errors.length < MAX_SEND_ERROR_DETAILS) {
+					errors.push(`Student ${student.studentCode}: ${extractSendErrorMessage(err)}`);
+				}
+			} finally {
+				this.notificationJobs.set(jobId, {
+					progressPct: Math.round(((sent + failed) / total) * 100),
+					totalStudents: total,
+					emailsSent: sent,
+					emailsFailed: failed,
+					errors: [...errors],
+				});
 			}
-		}
+		});
 
-		return results;
+		return { total, sent, failed, errors };
+	}
+
+	private async processConcurrently<T>(
+		items: T[],
+		concurrency: number,
+		handler: (item: T) => Promise<void>,
+	) {
+		let nextIndex = 0;
+		const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+			while (nextIndex < items.length) {
+				const item = items[nextIndex];
+				nextIndex++;
+				await handler(item);
+			}
+		});
+		await Promise.all(workers);
 	}
 
 	/** Reads the GRA email template (email_templates row keyed by the GRA survey type code). */

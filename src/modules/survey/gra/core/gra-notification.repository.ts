@@ -84,8 +84,44 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		return await this.dataSource.query(query, params);
 	}
 
+	/** Notification + student details for a single row, regardless of its send status
+	 *  (used for the per-row "resend" action). */
+	async findNotificationDetailsById(notificationId: number): Promise<{
+		notificationId: number;
+		token: string;
+		surveyId: number;
+		studentId: number;
+		studentName: string;
+		studentCode: string;
+		studentEmail: string;
+		programName: string;
+		surveyStatusTypeId: number;
+	} | null> {
+		const rows = await this.dataSource.query(
+			`SELECT
+				n.id                                 AS "notificationId",
+				n.token,
+				n.survey_id                          AS "surveyId",
+				s.student_id                         AS "studentId",
+				st.first_name || ' ' || st.last_name AS "studentName",
+				st.code                              AS "studentCode",
+				st.email                             AS "studentEmail",
+				p.name->>'es'                        AS "programName",
+				s.survey_status_type_id              AS "surveyStatusTypeId"
+			FROM survey.notifications n
+			INNER JOIN evidence.surveys s ON s.id = n.survey_id
+			INNER JOIN academic.students st ON st.id = s.student_id
+			INNER JOIN academic.programs p ON p.id = s.program_id
+			WHERE n.id = $1
+			LIMIT 1`,
+			[notificationId],
+		);
+		return rows?.[0] ?? null;
+	}
+
 	async listStudentsGra(
 		graSurveyTypeId: number,
+		closedStatusId: number,
 		filters: {
 			academicPeriodId?: number;
 			programId?: number;
@@ -105,6 +141,8 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			sentDate: string | null;
 			maxRegisterDate: string;
 			token: string;
+			responseStatus: string | null;
+			responseDate: string | null;
 		}[]
 	> {
 		let query = `
@@ -119,7 +157,9 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 				t.name->>'es'                        AS "notificationStatus",
 				n.sent_date                          AS "sentDate",
 				n.max_register_date                  AS "maxRegisterDate",
-				n.token
+				n.token,
+				CASE WHEN s.survey_status_type_id = $2 THEN 'RESPONDIDO' ELSE NULL END AS "responseStatus",
+				CASE WHEN s.survey_status_type_id = $2 THEN s.updated_at ELSE NULL END AS "responseDate"
 			FROM survey.notifications n
 			INNER JOIN evidence.surveys s ON s.id = n.survey_id
 			INNER JOIN academic.students st ON st.id = s.student_id
@@ -127,7 +167,7 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			INNER JOIN core.types t ON t.id = n.notification_status_type_id
 			WHERE s.survey_type_id = $1
 		`;
-		const params: any[] = [graSurveyTypeId];
+		const params: any[] = [graSurveyTypeId, closedStatusId];
 
 		if (filters.academicPeriodId) {
 			query += ` AND s.academic_period_id = $${params.length + 1}`;
@@ -147,6 +187,36 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		}
 
 		query += ` ORDER BY st.first_name ASC`;
+
+		return await this.dataSource.query(query, params);
+	}
+
+	/** Pending (scheduled, not yet sent) GRA students grouped by program, for the send-summary preview. */
+	async findPendingSummaryByProgram(
+		graSurveyTypeId: number,
+		scheduledStatusId: number,
+		filters: { academicPeriodId: number; programId?: number },
+	): Promise<Array<{ programId: number; programName: string; studentCount: number }>> {
+		let query = `
+			SELECT
+				s.program_id  AS "programId",
+				p.name->>'es' AS "programName",
+				COUNT(*)::int AS "studentCount"
+			FROM survey.notifications n
+			INNER JOIN evidence.surveys s ON s.id = n.survey_id
+			INNER JOIN academic.programs p ON p.id = s.program_id
+			WHERE s.survey_type_id = $1
+			  AND n.notification_status_type_id = $2
+			  AND s.academic_period_id = $3
+		`;
+		const params: any[] = [graSurveyTypeId, scheduledStatusId, filters.academicPeriodId];
+
+		if (filters.programId) {
+			query += ` AND s.program_id = $${params.length + 1}`;
+			params.push(filters.programId);
+		}
+
+		query += ` GROUP BY s.program_id, p.name ORDER BY p.name`;
 
 		return await this.dataSource.query(query, params);
 	}

@@ -15,9 +15,11 @@ import {
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
 	SendGraEmailDto,
+	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
 	CompleteGraSurveyDto,
 	DashboardGraDto,
+	SearchGraStudentsDto,
 } from '../model/gra.dtos';
 
 @Injectable()
@@ -90,12 +92,28 @@ export class GraService {
 		return this.notifService.listStudents(dto, academicPeriodId);
 	}
 
+	searchStudents(dto: SearchGraStudentsDto) {
+		return this.notifService.searchStudents(dto);
+	}
+
 	deleteNotification(id: number) {
 		return this.notifService.deleteNotification(id);
 	}
 
-	sendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
-		return this.notifService.sendEmails(dto, academicPeriodId);
+	resendNotification(notificationId: number, dto: ResendGraNotificationDto) {
+		return this.notifService.resendNotification(notificationId, dto);
+	}
+
+	getSendSummary(dto: SendGraEmailDto, academicPeriodId: number) {
+		return this.notifService.getSendSummary(dto, academicPeriodId);
+	}
+
+	startSendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
+		return this.notifService.startSendEmails(dto, academicPeriodId);
+	}
+
+	getSendStatus(jobId: string) {
+		return this.notifService.getSendStatus(jobId);
 	}
 
 	getEmailTemplateConfig() {
