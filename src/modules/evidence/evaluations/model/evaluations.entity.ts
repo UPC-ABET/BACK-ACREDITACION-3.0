@@ -30,6 +30,9 @@ export class EvaluationEntity extends BaseEntity {
 	@DateColumn({ nullable: true })
 	registerAt: Date | null;
 
+	@IntegerFKIDColumn({ nullable: true })
+	uploadLogId: number | null;
+
 	// %% RELATIONS
 
 	@ManyToOne(() => ProjectStudentEntity)

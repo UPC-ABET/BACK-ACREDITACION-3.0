@@ -18,6 +18,7 @@ export const evaluationsValidationStrings = {
 		evaluatorTypeNotAuthorized: 'error.evaluation.evaluatorTypeNotAuthorized',
 		gradeAllStudents: 'error.evaluation.gradeAllStudents',
 		observationRequired: 'error.evaluation.observationRequired',
+		rollbackBlockedNewerUpload: 'error.evaluation.rollbackBlockedNewerUpload',
 	},
 	result: {
 		createFailed: 'error.evaluation.createFailed',

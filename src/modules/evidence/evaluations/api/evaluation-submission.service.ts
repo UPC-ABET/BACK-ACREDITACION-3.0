@@ -304,6 +304,7 @@ export class EvaluationSubmissionService {
 			commentaries?: I18nText | string;
 		}>,
 		statusTypeId: number,
+		uploadLogId?: number,
 	): Promise<EvaluationEntity> {
 		let evaluation = await manager.findOne(EvaluationEntity, {
 			where: {
@@ -313,6 +314,25 @@ export class EvaluationSubmissionService {
 		});
 
 		if (evaluation) {
+			// Bulk-upload upserts of a pre-existing row are recorded on the extra.upload_undo stack
+			// (same pattern as academic.student_course_grades / RC) so the upload can be rolled back
+			// without touching upload_log_id, which stays pointing at whoever originally created the row.
+			if (uploadLogId !== undefined) {
+				const undoStack = Array.isArray(evaluation.extra?.upload_undo)
+					? evaluation.extra.upload_undo
+					: [];
+				evaluation.extra = {
+					...evaluation.extra,
+					upload_undo: [
+						...undoStack,
+						{
+							log_id: uploadLogId,
+							qualification_status_type_id: evaluation.qualificationStatusTypeId,
+							observation: evaluation.observation,
+						},
+					],
+				};
+			}
 			evaluation.projectEvaluatorId = projectEvaluatorId;
 			evaluation.qualificationStatusTypeId = statusTypeId;
 			if (observation !== undefined) {
@@ -328,6 +348,7 @@ export class EvaluationSubmissionService {
 				observation: i18nText(observation),
 				registerAt: new Date(),
 				isActive: true,
+				uploadLogId: uploadLogId ?? null,
 			});
 			evaluation = await manager.save(evaluation);
 		}
@@ -341,6 +362,22 @@ export class EvaluationSubmissionService {
 			});
 
 			if (existingScore) {
+				if (uploadLogId !== undefined) {
+					const undoStack = Array.isArray(existingScore.extra?.upload_undo)
+						? existingScore.extra.upload_undo
+						: [];
+					existingScore.extra = {
+						...existingScore.extra,
+						upload_undo: [
+							...undoStack,
+							{
+								log_id: uploadLogId,
+								score: existingScore.score,
+								commentaries: existingScore.commentaries,
+							},
+						],
+					};
+				}
 				existingScore.score = scoreDto.score;
 				existingScore.commentaries = i18nText(scoreDto.commentaries) ?? existingScore.commentaries;
 				await manager.save(existingScore);
@@ -351,6 +388,7 @@ export class EvaluationSubmissionService {
 					score: scoreDto.score,
 					commentaries: i18nText(scoreDto.commentaries) as any,
 					isActive: true,
+					uploadLogId: uploadLogId ?? null,
 				});
 				await manager.save(newScore);
 			}
@@ -410,9 +448,9 @@ export class EvaluationSubmissionService {
 		}
 
 		const statusCode = await this.resolveEvaluatorTypeCode(dto.qualificationStatusTypeId);
-		const isNr = statusCode === TYPE_CODES.QUALIFICATION_STATUS.NR;
-		const isNa = statusCode === TYPE_CODES.QUALIFICATION_STATUS.NA;
-		const isNrOrNa = isNr || isNa;
+		// Any status other than ASISTIO (NR, NA, DPI, RET, SAN, ...) is treated as "did not attend
+		// grading normally": score validation is skipped and scores are forced to 0.
+		const isNonAttendanceStatus = statusCode !== TYPE_CODES.QUALIFICATION_STATUS.ASISTIO;
 
 		const isCapstone = await this.isCapstoneRubric(rubric.rubricTypeId);
 		const isMultipleScope = await this.isMultipleCompetencyScope(rubric.competencyScopeTypeId);
@@ -425,7 +463,7 @@ export class EvaluationSubmissionService {
 			}
 		}
 
-		if (!isNrOrNa) {
+		if (!isNonAttendanceStatus) {
 			if (isCapstoneMultiple) {
 				// All rubric criteria must be in the DTO
 				const allCriteriaIds = new Set(criteriaToQuestion.keys());
@@ -476,12 +514,67 @@ export class EvaluationSubmissionService {
 		}
 
 		const scoresToSave =
-			isCapstoneMultiple && isNrOrNa
+			isCapstoneMultiple && isNonAttendanceStatus
 				? [...criteriaToQuestion.keys()].map((criteriaId) => ({
 						rubricQuestionCriteriaId: criteriaId,
 						score: 0,
 					}))
 				: dto.scores;
+
+		const { evaluationId, scaledScore } = await this.persistEvaluationScores({
+			projectStudentId: dto.projectStudentId,
+			projectEvaluatorId: dto.projectEvaluatorId,
+			studentSectionEnrollmentId: student.studentSectionEnrollmentId,
+			rubric,
+			isCapstoneMultiple,
+			observation: dto.observation,
+			qualificationStatusTypeId: dto.qualificationStatusTypeId,
+			scoresToSave,
+			criteriaToQuestion,
+		});
+
+		return { success: true, evaluationId, scaledScore };
+	}
+
+	/**
+	 * Persists the scores of an already-validated evaluation: upserts the evaluation row,
+	 * upserts/deletes the rubric_scores, aggregates outcome grades and scales to 20.
+	 *
+	 * Shared by the online submit flow (`submitEvaluation`) and the bulk grading upload, so both
+	 * write through the same aggregation/scaling logic (R-NOT-003/004, scaling to 20-point scale).
+	 * Callers are responsible for resolving/validating `rubric`, `scoresToSave` and `isCapstoneMultiple`
+	 * per their own flow (online per-request validation vs. bulk row-level resolution).
+	 */
+	async persistEvaluationScores(params: {
+		projectStudentId: number;
+		projectEvaluatorId: number;
+		studentSectionEnrollmentId: number;
+		rubric: RubricEntity;
+		isCapstoneMultiple: boolean;
+		observation: I18nText | string | null | undefined;
+		qualificationStatusTypeId: number;
+		scoresToSave: Array<{
+			rubricQuestionCriteriaId: number;
+			score: number;
+			commentaries?: I18nText | string;
+		}>;
+		criteriaToQuestion: Map<number, number>;
+		/** When set (bulk uploads only), upserts of pre-existing rows push their prior state onto
+		 * extra.upload_undo instead of just overwriting, so the upload can be rolled back. */
+		uploadLogId?: number;
+	}): Promise<{ evaluationId: number; scaledScore: number }> {
+		const {
+			projectStudentId,
+			projectEvaluatorId,
+			studentSectionEnrollmentId,
+			rubric,
+			isCapstoneMultiple,
+			observation,
+			qualificationStatusTypeId,
+			scoresToSave,
+			criteriaToQuestion,
+			uploadLogId,
+		} = params;
 
 		const highestPerformanceLevelValue = await this.getHighestPerformanceLevelValue(rubric);
 
@@ -489,18 +582,19 @@ export class EvaluationSubmissionService {
 			async (manager) => {
 				const evaluation = await this.saveEvaluationScores(
 					manager,
-					dto.projectStudentId,
-					dto.projectEvaluatorId,
+					projectStudentId,
+					projectEvaluatorId,
 					rubric.id,
-					dto.observation,
+					observation,
 					scoresToSave,
-					dto.qualificationStatusTypeId,
+					qualificationStatusTypeId,
+					uploadLogId,
 				);
 
 				if (!isCapstoneMultiple) {
-					const submittedCriteriaIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
+					const submittedCriteriaIds = new Set(scoresToSave.map((s) => s.rubricQuestionCriteriaId));
 					const questionsInSubmission = new Set(
-						dto.scores
+						scoresToSave
 							.map((s) => criteriaToQuestion.get(s.rubricQuestionCriteriaId))
 							.filter((qId): qId is number => qId !== undefined),
 					);
@@ -528,7 +622,7 @@ export class EvaluationSubmissionService {
 
 				await this.upsertOutcomeGrades(
 					manager,
-					student.studentSectionEnrollmentId,
+					studentSectionEnrollmentId,
 					evaluation.id,
 					txOutcomeGrades,
 				);
@@ -542,7 +636,82 @@ export class EvaluationSubmissionService {
 		const totalMaxScore = highestPerformanceLevelValue * (rubric.questions?.length ?? 0);
 		const scaledScore = isCapstoneMultiple ? this.scaleTo20(sumScores, totalMaxScore) : sumScores;
 
-		return { success: true, evaluationId, scaledScore };
+		return { evaluationId, scaledScore };
+	}
+
+	/**
+	 * Rolls back a bulk upload that used `persistEvaluationScores` with an `uploadLogId`.
+	 *
+	 * Mirrors the extra.upload_undo pattern already used for academic.student_course_grades (RC
+	 * grades upload): rows this upload *created* (upload_log_id = uploadLogId) are deleted; rows it
+	 * *updated* (pre-existing) have their prior state popped off extra.upload_undo and restored.
+	 * Blocked if a later upload sits on top of this one's undo entry for any touched row — that
+	 * later upload must be rolled back first.
+	 *
+	 * Known limitation: when a bulk row replaces a previously-selected criterion for the same
+	 * question (Modo B "max 1 criteria per question"), the old rubric_score is hard-deleted by
+	 * `persistEvaluationScores` without an undo entry — that specific score is not recoverable by
+	 * this rollback, the same class of limitation other upload modules document via reuse guards.
+	 */
+	async rollbackUpload(uploadLogId: number): Promise<void> {
+		await this.evaluationRepository.runInTransaction(async (manager) => {
+			const blocked = await manager.query(
+				`
+				SELECT 1 FROM evidence.evaluations e
+				WHERE (e.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', $1::int))
+				  AND (e.extra->'upload_undo' -> -1 ->> 'log_id')::int <> $1::int
+				UNION ALL
+				SELECT 1 FROM evaluation.rubric_scores s
+				WHERE (s.extra->'upload_undo') @> jsonb_build_array(jsonb_build_object('log_id', $1::int))
+				  AND (s.extra->'upload_undo' -> -1 ->> 'log_id')::int <> $1::int
+				LIMIT 1
+				`,
+				[uploadLogId],
+			);
+			if (blocked.length > 0) {
+				throw new BadRequestException(
+					evaluationsValidationStrings.error.rollbackBlockedNewerUpload,
+				);
+			}
+
+			// Restore updated rubric_scores, then delete the ones this upload inserted from scratch.
+			await manager.query(
+				`
+				UPDATE evaluation.rubric_scores s
+				SET score = (s.extra->'upload_undo' -> -1 ->> 'score')::numeric,
+					commentaries = (s.extra->'upload_undo' -> -1 -> 'commentaries'),
+					extra = CASE
+						WHEN jsonb_array_length(s.extra->'upload_undo') <= 1 THEN s.extra - 'upload_undo'
+						ELSE jsonb_set(s.extra, '{upload_undo}', (s.extra->'upload_undo') - (-1))
+					END,
+					updated_at = NOW()
+				WHERE (s.extra->'upload_undo' -> -1 ->> 'log_id')::int = $1::int
+				`,
+				[uploadLogId],
+			);
+			await manager.query(`DELETE FROM evaluation.rubric_scores WHERE upload_log_id = $1::int`, [
+				uploadLogId,
+			]);
+
+			// Restore updated evaluations, then delete the ones this upload inserted from scratch.
+			await manager.query(
+				`
+				UPDATE evidence.evaluations e
+				SET qualification_status_type_id = (e.extra->'upload_undo' -> -1 ->> 'qualification_status_type_id')::int,
+					observation = (e.extra->'upload_undo' -> -1 -> 'observation'),
+					extra = CASE
+						WHEN jsonb_array_length(e.extra->'upload_undo') <= 1 THEN e.extra - 'upload_undo'
+						ELSE jsonb_set(e.extra, '{upload_undo}', (e.extra->'upload_undo') - (-1))
+					END,
+					updated_at = NOW()
+				WHERE (e.extra->'upload_undo' -> -1 ->> 'log_id')::int = $1::int
+				`,
+				[uploadLogId],
+			);
+			await manager.query(`DELETE FROM evidence.evaluations WHERE upload_log_id = $1::int`, [
+				uploadLogId,
+			]);
+		});
 	}
 
 	/**
