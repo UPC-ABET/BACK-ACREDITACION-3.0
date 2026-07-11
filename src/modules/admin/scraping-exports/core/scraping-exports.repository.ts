@@ -213,9 +213,15 @@ export class ScrapingExportsRepository {
 	// Additionally scoped to each student's study plan (malla): a (section, student) pair is only
 	// exported when the section's course belongs to the courses of the malla the student is enrolled in
 	// for this period. Banner enrolls a student in courses that may sit outside their accreditation
-	// malla; those must not surface as enrollments. The allowed (student, course) pairs come from the
-	// main DB (enrolled_students → study_plan_academic_periods → study_plan_courses → courses) and are
-	// passed into the raw query as parallel arrays, matched against curso = materia.codigo + numeroCurso.
+	// malla; those must not surface as enrollments.
+	//
+	// The malla check is done by SHIPPING THE (SMALL) RAW ENROLLMENTS TO THE MAIN DB, not by pulling the
+	// whole malla into memory. Enumerating every (student, course-in-malla) pair is a cross-product of
+	// students × their full study plan (~2M rows for a regular period) that blows the Node heap. Instead
+	// we first read the real, bounded Banner matrícula (one row per student-course, ~tens of thousands),
+	// then intersect just those pairs against the malla in SQL. Ranking to rn=1 happens BEFORE the malla
+	// filter, which is safe: the filter drops whole (student, course) partitions, so it never changes
+	// which section wins within a surviving partition.
 	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 
@@ -226,70 +232,72 @@ export class ScrapingExportsRepository {
 		const uploadedSectionCodes = uploaded.map((row) => row.sectionCode);
 		if (uploadedSectionCodes.length === 0) return [];
 
-		const studyPlanPairs: Array<{ studentCode: string; courseCode: string }> =
+		// Real Banner matrícula for the uploaded sections, already collapsed to one section per
+		// (student, course): the graded (calificable='Y') one, ties broken by NRC. Only the small
+		// uploaded-section list crosses into the raw DB; the result is bounded by real enrollments.
+		const candidates: Array<{ sectionCode: string; studentCode: string; courseCode: string }> =
+			await this.dataSource.query(
+				`
+				WITH matricula AS (
+					SELECT DISTINCT
+						m.codigo_alumno,
+						m.nrc,
+						(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS curso,
+						h.payload->>'calificable'                                        AS calificable
+					FROM raw_matricula m
+					JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
+					WHERE m.run_id = ${RUN_FOR_PERIOD}
+					  AND NULLIF(trim(m.nrc), '') IS NOT NULL
+					  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
+					  AND m.nrc = ANY($2::text[])
+				),
+				ranked AS (
+					SELECT
+						codigo_alumno,
+						curso,
+						nrc,
+						row_number() OVER (
+							PARTITION BY codigo_alumno, curso
+							ORDER BY (calificable = 'Y') DESC NULLS LAST, nrc
+						) AS rn
+					FROM matricula
+				)
+				SELECT nrc AS "sectionCode", codigo_alumno AS "studentCode", curso AS "courseCode"
+				FROM ranked
+				WHERE rn = 1
+				ORDER BY nrc, codigo_alumno
+			`,
+				[period, uploadedSectionCodes],
+			);
+		if (candidates.length === 0) return [];
+
+		// Keep only pairs whose course belongs to the study plan the student is enrolled in for this
+		// period. The candidate pairs (one per student-course) are shipped to the main DB, which
+		// intersects them against the malla in SQL — no full-malla materialization on either side.
+		const candidateStudentCodes = candidates.map((row) => row.studentCode);
+		const candidateCourseCodes = candidates.map((row) => row.courseCode);
+
+		const allowed: Array<{ studentCode: string; courseCode: string }> =
 			await this.mainDataSource.query(
 				`
-				SELECT DISTINCT s.code AS "studentCode", c.code AS "courseCode"
-				FROM academic.enrolled_students es
-				JOIN academic.students s ON s.id = es.student_id
+				SELECT DISTINCT t.student_code AS "studentCode", t.course_code AS "courseCode"
+				FROM unnest($1::text[], $2::text[]) AS t(student_code, course_code)
+				JOIN academic.students s ON s.code = t.student_code
+				JOIN academic.enrolled_students es ON es.student_id = s.id
 				JOIN academic.study_plan_academic_periods spap
 					ON spap.id = es.study_plan_academic_period_id
+					AND spap.academic_period_id = $3
 				JOIN academic.study_plan_courses spc
 					ON spc.study_plan_academic_period_id = spap.id
-				JOIN academic.courses c ON c.id = spc.course_id
-				WHERE spap.academic_period_id = $1
+				JOIN academic.courses c ON c.id = spc.course_id AND c.code = t.course_code
 			`,
-				[academicPeriodId],
+				[candidateStudentCodes, candidateCourseCodes, academicPeriodId],
 			);
-		if (studyPlanPairs.length === 0) return [];
 
-		const allowedStudentCodes = studyPlanPairs.map((row) => row.studentCode);
-		const allowedCourseCodes = studyPlanPairs.map((row) => row.courseCode);
+		const allowedPairs = new Set(allowed.map((row) => `${row.studentCode}|${row.courseCode}`));
 
-		const rows: Array<{ sectionCode: string; studentCode: string }> = await this.dataSource.query(
-			`
-			WITH allowed AS (
-				SELECT student_code, course_code
-				FROM unnest($3::text[], $4::text[]) AS t(student_code, course_code)
-			),
-			matricula AS (
-				SELECT DISTINCT
-					m.codigo_alumno,
-					m.nrc,
-					(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS curso,
-					h.payload->>'calificable'                                        AS calificable
-				FROM raw_matricula m
-				JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
-				WHERE m.run_id = ${RUN_FOR_PERIOD}
-				  AND NULLIF(trim(m.nrc), '') IS NOT NULL
-				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
-				  AND m.nrc = ANY($2::text[])
-			),
-			filtered AS (
-				SELECT mt.*
-				FROM matricula mt
-				JOIN allowed a
-					ON a.student_code = mt.codigo_alumno
-					AND a.course_code = mt.curso
-			),
-			ranked AS (
-				SELECT
-					codigo_alumno,
-					nrc,
-					row_number() OVER (
-						PARTITION BY codigo_alumno, curso
-						ORDER BY (calificable = 'Y') DESC NULLS LAST, nrc
-					) AS rn
-				FROM filtered
-			)
-			SELECT nrc AS "sectionCode", codigo_alumno AS "studentCode"
-			FROM ranked
-			WHERE rn = 1
-			ORDER BY nrc, codigo_alumno
-		`,
-			[period, uploadedSectionCodes, allowedStudentCodes, allowedCourseCodes],
-		);
-
-		return rows.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
+		return candidates
+			.filter((row) => allowedPairs.has(`${row.studentCode}|${row.courseCode}`))
+			.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
 	}
 }
