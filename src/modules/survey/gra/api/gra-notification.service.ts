@@ -305,6 +305,9 @@ export class GraNotificationService {
 			code: row.code,
 			name: `${row.firstName} ${row.lastName}`.trim(),
 			email: row.email ?? '',
+			// The student's own program: the add-to-notification flow uses it so adding never
+			// depends on (nor is overridden by) the career filter selected in the UI.
+			programId: row.programId ?? null,
 			career: row.programName ?? '',
 		}));
 	}

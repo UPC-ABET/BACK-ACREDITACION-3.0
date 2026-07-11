@@ -216,6 +216,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			firstName: string;
 			lastName: string;
 			email: string | null;
+			programId: number | null;
 			programName: string | null;
 		}[]
 	> {
@@ -227,6 +228,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 				st.first_name        AS "firstName",
 				st.last_name         AS "lastName",
 				st.email             AS "email",
+				st.program_id        AS "programId",
 				p.name->>'es'        AS "programName"
 			FROM academic.students st
 			LEFT JOIN academic.programs p ON p.id = st.program_id
