@@ -50,6 +50,20 @@ interface RubricContextQuestion {
 	criterias: RubricContextCriteria[];
 }
 
+interface RubricContextOutcome {
+	id: number;
+}
+
+interface RubricContextCommission {
+	id: number;
+	outcomeIds: number[];
+}
+
+interface VisibleCapstoneRubricContext {
+	rubricContext: RubricContext;
+	visibleCriteriaIds: Set<number>;
+}
+
 /**
  * Shape consumed from RubricConfigService.getRubricWithContextData(). Only the fields read
  * here are modelled; rubric/commissions/outcomes are passed through verbatim to the (untyped
@@ -57,8 +71,8 @@ interface RubricContextQuestion {
  */
 interface RubricContext {
 	rubric: unknown;
-	commissions: unknown[];
-	outcomes: unknown[];
+	commissions: RubricContextCommission[];
+	outcomes: RubricContextOutcome[];
 	questions: RubricContextQuestion[];
 }
 
@@ -127,7 +141,9 @@ export class ProjectDetailsService {
 				sectionAcademicPeriodId,
 			});
 
-			rubricGroups.push(group);
+			if (group) {
+				rubricGroups.push(group);
+			}
 		}
 
 		const studentDtos = this.buildStudentDtos(students, sseToSpc);
@@ -206,7 +222,7 @@ export class ProjectDetailsService {
 		competencyScopeTypeId?: number;
 		rubricTypeId?: number;
 		sectionAcademicPeriodId: number;
-	}): Promise<ProjectRubricGroupDto> {
+	}): Promise<ProjectRubricGroupDto | null> {
 		const { spcId, projectId, programName, students, sseToSpc, isEvaluationMode } = params;
 
 		const rubrics = await this.projectRepository.getActiveRubricsForStudyPlanCourse(
@@ -231,10 +247,16 @@ export class ProjectDetailsService {
 			),
 		);
 
+		const visibleItems = items.filter((item): item is ProjectRubricItemDto => item !== null);
+
+		if (isEvaluationMode && visibleItems.length === 0) {
+			return null;
+		}
+
 		return {
 			studyPlanCourseId: spcId,
 			programName,
-			items,
+			items: visibleItems,
 		};
 	}
 
@@ -244,29 +266,42 @@ export class ProjectDetailsService {
 		studentsForSpc: ProjectStudentEntity[];
 		isEvaluationMode: boolean;
 		sectionAcademicPeriodId: number;
-	}): Promise<ProjectRubricItemDto> {
+	}): Promise<ProjectRubricItemDto | null> {
 		const { rubric, projectId, studentsForSpc, isEvaluationMode } = params;
 
-		const rubricContext: RubricContext | null = await this.rubricConfigService
+		const rawRubricContext: RubricContext | null = await this.rubricConfigService
 			.getRubricWithContextData(rubric.id)
 			.catch(() => null);
+
+		const hasCriteria = (rawRubricContext?.questions ?? []).some(
+			(question) => (question.criterias ?? []).length > 0,
+		);
+		if (isEvaluationMode && !hasCriteria) {
+			return null;
+		}
+
+		const isCapstoneMultiple =
+			isEvaluationMode &&
+			rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+			rubric.competencyScopeType?.code === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
+		const visibleCapstoneContext = isCapstoneMultiple
+			? this.filterVisibleCapstoneRubricContext(rawRubricContext)
+			: null;
+		if (isCapstoneMultiple && !visibleCapstoneContext) {
+			return null;
+		}
+
+		const rubricContext = visibleCapstoneContext?.rubricContext ?? rawRubricContext;
 
 		let evaluations: EvaluationEntity[] = [];
 		let grades = new Map<number, StudentGradeInfo>();
 
 		if (isEvaluationMode) {
-			const isCapstoneMultiple =
-				rubric.rubricType?.code === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
-				rubric.competencyScopeType?.code === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
-
 			const psIdsForSpc = studentsForSpc.map((s) => s.id);
 
 			if (psIdsForSpc.length > 0) {
-				const totalMaxScore = isCapstoneMultiple
-					? await this.gradeSupport.resolveCapstoneMaxScore(
-							params.sectionAcademicPeriodId,
-							rubric.id,
-						)
+				const totalMaxScore = visibleCapstoneContext
+					? this.computeMaxScoreFromQuestions(rubricContext?.questions ?? [])
 					: (
 							await this.rubricConfigService
 								.recalculateMaxScore(rubric.id)
@@ -279,10 +314,17 @@ export class ProjectDetailsService {
 					rubric.id,
 				);
 
+				if (visibleCapstoneContext) {
+					evaluations = this.filterEvaluationsByCriteriaIds(
+						evaluations,
+						visibleCapstoneContext.visibleCriteriaIds,
+					);
+				}
+
 				grades = this.computeStudentGrades(
 					studentsForSpc,
 					evaluations,
-					isCapstoneMultiple,
+					visibleCapstoneContext != null,
 					totalMaxScore,
 				);
 			}
@@ -327,6 +369,94 @@ export class ProjectDetailsService {
 			questions,
 			students: gradeStudents,
 		};
+	}
+
+	private filterVisibleCapstoneRubricContext(
+		rubricContext: RubricContext | null,
+	): VisibleCapstoneRubricContext | null {
+		if (!rubricContext) {
+			return null;
+		}
+
+		const questionsByOutcomeId = new Map<number, RubricContextQuestion[]>();
+		for (const question of rubricContext.questions) {
+			if (question.outcomeId == null) continue;
+
+			const list = questionsByOutcomeId.get(question.outcomeId) ?? [];
+			list.push(question);
+			questionsByOutcomeId.set(question.outcomeId, list);
+		}
+
+		const completeOutcomeIds = new Set<number>();
+		const visibleCriteriaIds = new Set<number>();
+
+		for (const outcome of rubricContext.outcomes) {
+			const outcomeQuestions = questionsByOutcomeId.get(outcome.id) ?? [];
+			if (outcomeQuestions.length === 0) continue;
+
+			const isOutcomeComplete = outcomeQuestions.every((question) => question.criterias.length > 0);
+			if (!isOutcomeComplete) continue;
+
+			completeOutcomeIds.add(outcome.id);
+			for (const question of outcomeQuestions) {
+				for (const criteria of question.criterias) {
+					visibleCriteriaIds.add(criteria.id);
+				}
+			}
+		}
+
+		const visibleCommissions = rubricContext.commissions.filter(
+			(commission) =>
+				commission.outcomeIds.length > 0 &&
+				commission.outcomeIds.every((outcomeId) => completeOutcomeIds.has(outcomeId)),
+		);
+
+		if (visibleCommissions.length === 0) {
+			return null;
+		}
+
+		const visibleOutcomeIds = new Set(
+			visibleCommissions.flatMap((commission) => commission.outcomeIds),
+		);
+
+		return {
+			rubricContext: {
+				...rubricContext,
+				commissions: visibleCommissions,
+				outcomes: rubricContext.outcomes.filter((outcome) => visibleOutcomeIds.has(outcome.id)),
+				questions: rubricContext.questions.filter(
+					(question) => question.outcomeId != null && visibleOutcomeIds.has(question.outcomeId),
+				),
+			},
+			visibleCriteriaIds,
+		};
+	}
+
+	private filterEvaluationsByCriteriaIds(
+		evaluations: EvaluationEntity[],
+		visibleCriteriaIds: Set<number>,
+	): EvaluationEntity[] {
+		return evaluations
+			.map((evaluation) => ({
+				...evaluation,
+				scores: (evaluation.scores ?? []).filter((score) =>
+					visibleCriteriaIds.has(score.rubricQuestionCriteriaId),
+				),
+			}))
+			.filter((evaluation) => (evaluation.scores ?? []).length > 0) as EvaluationEntity[];
+	}
+
+	private computeMaxScoreFromQuestions(questions: RubricContextQuestion[]): number {
+		return questions.reduce((totalMaxScore, question) => {
+			if (question.criterias.length === 0) {
+				return totalMaxScore;
+			}
+
+			const questionMaxScore = Math.max(
+				...question.criterias.map((criteria) => Number(criteria.maxValue)),
+			);
+			return totalMaxScore + questionMaxScore;
+		}, 0);
 	}
 
 	private buildLatestEvalByStudent(evaluations: EvaluationEntity[]): Map<number, EvaluationEntity> {
