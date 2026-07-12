@@ -329,12 +329,14 @@ export class EvaluationSubmissionService {
 							log_id: uploadLogId,
 							qualification_status_type_id: evaluation.qualificationStatusTypeId,
 							observation: evaluation.observation,
+							register_at: evaluation.registerAt,
 						},
 					],
 				};
 			}
 			evaluation.projectEvaluatorId = projectEvaluatorId;
 			evaluation.qualificationStatusTypeId = statusTypeId;
+			evaluation.registerAt = new Date();
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
 			}
@@ -699,6 +701,7 @@ export class EvaluationSubmissionService {
 				UPDATE evidence.evaluations e
 				SET qualification_status_type_id = (e.extra->'upload_undo' -> -1 ->> 'qualification_status_type_id')::int,
 					observation = (e.extra->'upload_undo' -> -1 -> 'observation'),
+					register_at = (e.extra->'upload_undo' -> -1 ->> 'register_at')::timestamptz,
 					extra = CASE
 						WHEN jsonb_array_length(e.extra->'upload_undo') <= 1 THEN e.extra - 'upload_undo'
 						ELSE jsonb_set(e.extra, '{upload_undo}', (e.extra->'upload_undo') - (-1))
