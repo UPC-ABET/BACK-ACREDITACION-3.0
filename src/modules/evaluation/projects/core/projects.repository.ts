@@ -30,7 +30,6 @@ import type { I18nText } from 'src/shared/types/i18n';
 import { camelizeKeys } from 'src/libs/case.functions';
 import type { UserSchool } from 'src/modules/organization/org-scope/core/user-schools/user-schools.types';
 import {
-	CAPSTONE_MAX_LEVEL_VALUE_SQL,
 	COURSE_BASIC_BY_ID_SQL,
 	PROGRAM_IDS_BY_SCHOOL_SQL,
 	PROGRAM_NAMES_BY_STUDY_PLAN_COURSE_SQL,
@@ -40,7 +39,6 @@ import {
 	PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL,
 	PROJECT_GRADES_EXPORT_SQL,
 	PROJECT_STUDENT_LATEST_GRADES_SQL,
-	RUBRIC_QUESTION_COUNT_SQL,
 	SCHOOLS_BY_PROFESSOR_SQL,
 	SSE_TO_STUDY_PLAN_COURSE_SQL,
 	STUDENT_ALREADY_IN_PROJECT_SQL,
@@ -56,10 +54,6 @@ export interface ProjectStudentLatestGradeRow {
 
 export interface CapstoneMaxValueRow {
 	maxValue: string | null;
-}
-
-export interface RubricQuestionCountRow {
-	questionCount: string | null;
 }
 
 export interface ProgramIdRow {
@@ -144,6 +138,7 @@ export interface GradeExportRow {
 	gradeTypeName: string;
 	competencyScopeCode: string;
 	totalScore: string;
+	scoreCount: string;
 }
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
@@ -387,26 +382,12 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return result.length > 0;
 	}
 
-	async getCapstoneMaxLevelValue(academicPeriodId: number, rubricId: number): Promise<number> {
-		const [[levelRow], [questionRow]] = (await Promise.all([
-			this.dataSource.query(CAPSTONE_MAX_LEVEL_VALUE_SQL, [
-				TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
-				academicPeriodId,
-			]),
-			this.dataSource.query(RUBRIC_QUESTION_COUNT_SQL, [rubricId]),
-		])) as [CapstoneMaxValueRow[], RubricQuestionCountRow[]];
-
-		const maxPerQuestion = Number(levelRow?.maxValue ?? 0);
-		const questionCount = Number(questionRow?.questionCount ?? 0);
-		return maxPerQuestion * questionCount;
-	}
-
 	/**
 	 * Highest performance_levels.unique_value for the period -- the per-criteria ceiling Capstone +
 	 * Multiple scores against (each criteria's score must equal one of the discrete performance
 	 * level values; see EvaluationSubmissionService.getHighestPerformanceLevelValue /
 	 * aggregateScoresByOutcome, where maxOutcome = criteriaCount * this value). Not `max_value`,
-	 * which is a different column used by the whole-rubric export variant, getCapstoneMaxLevelValue.
+	 * a different column that isn't a meaningful ceiling for this rubric type.
 	 */
 	async getPerformanceLevelUniqueValueMax(academicPeriodId: number): Promise<number> {
 		const [levelRow] = (await this.dataSource.query(PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL, [

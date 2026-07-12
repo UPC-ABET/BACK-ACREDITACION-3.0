@@ -1,10 +1,3 @@
-export const CAPSTONE_MAX_LEVEL_VALUE_SQL = `
-SELECT MAX(pl.max_value) AS "maxValue"
-FROM academic.performance_levels pl
-INNER JOIN core.types t ON t.id = pl.instrument_type_id
-WHERE t.code = $1
-  AND pl.academic_period_id = $2`;
-
 // Each Capstone + Multiple criteria is scored against one of the discrete performance level
 // values (unique_value), not the min/max range columns -- see
 // EvaluationSubmissionService.getHighestPerformanceLevelValue / aggregateScoresByOutcome, where
@@ -15,11 +8,6 @@ FROM academic.performance_levels pl
 INNER JOIN core.types t ON t.id = pl.instrument_type_id
 WHERE t.code = $1
   AND pl.academic_period_id = $2`;
-
-export const RUBRIC_QUESTION_COUNT_SQL = `
-SELECT COUNT(*) AS "questionCount"
-FROM evaluation.rubric_questions
-WHERE rubric_id = $1`;
 
 export const SCHOOLS_BY_PROFESSOR_SQL = `
 WITH my_projects AS (
@@ -234,7 +222,8 @@ SELECT
 	gt.code                                   AS "gradeTypeCode",
 	gt.name->>'es'                            AS "gradeTypeName",
 	cst.code                                  AS "competencyScopeCode",
-	SUM(rs.score)                             AS "totalScore"
+	SUM(rs.score)                             AS "totalScore",
+	COUNT(rs.id)                              AS "scoreCount"
 FROM evaluation.projects p
 INNER JOIN evaluation.project_students ps       ON ps.project_id = p.id
 INNER JOIN evidence.evaluations ev              ON ev.project_student_id = ps.id

@@ -1,5 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { RubricEntity } from '../model/rubrics.entity';
 import { RubricQuestionEntity } from 'src/modules/evaluation/rubric-questions/model/rubric-questions.entity';
@@ -56,25 +56,26 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 
 	private async getVerificationOutcomeMappingsByCourse(
 		studyPlanCourseId: number,
-		verificationOutcomeTypeId: number,
+		outcomeTypeIds: number[],
 	): Promise<CourseOutcomeMappingEntity[]> {
 		return await this.dataSource.getRepository(CourseOutcomeMappingEntity).find({
-			where: { studyPlanCourseId, outcomeTypeId: verificationOutcomeTypeId },
+			where: { studyPlanCourseId, outcomeTypeId: In(outcomeTypeIds) },
 			relations: ['outcome'],
 		});
 	}
 
 	/**
-	 * Verification outcomes mapped to the course, implicitly grouped by commission
-	 * (each outcome belongs to a single commission via outcome.programCommissionId).
+	 * Outcomes of the given type(s) mapped to the course, implicitly grouped by commission
+	 * (each outcome belongs to a single commission via outcome.programCommissionId). Pass both
+	 * VERIFICATION and CONTROL type ids to match fn_upload_rubrics' commission-completeness check.
 	 */
 	async getVerificationOutcomesByCourse(
 		studyPlanCourseId: number,
-		verificationOutcomeTypeId: number,
+		outcomeTypeIds: number[],
 	): Promise<Array<{ outcomeId: number; programCommissionId: number | null }>> {
 		const mappings = await this.getVerificationOutcomeMappingsByCourse(
 			studyPlanCourseId,
-			verificationOutcomeTypeId,
+			outcomeTypeIds,
 		);
 		return mappings.map((m) => ({
 			outcomeId: m.outcomeId,
@@ -85,11 +86,11 @@ export class RubricConfigRepository extends BaseRepository<RubricEntity> {
 	/** Same as getVerificationOutcomesByCourse but returns the full outcome entities. */
 	async getVerificationOutcomeEntitiesByCourse(
 		studyPlanCourseId: number,
-		verificationOutcomeTypeId: number,
+		outcomeTypeIds: number[],
 	): Promise<OutcomeEntity[]> {
 		const mappings = await this.getVerificationOutcomeMappingsByCourse(
 			studyPlanCourseId,
-			verificationOutcomeTypeId,
+			outcomeTypeIds,
 		);
 		return mappings.map((m) => m.outcome).filter((o): o is OutcomeEntity => o != null);
 	}
