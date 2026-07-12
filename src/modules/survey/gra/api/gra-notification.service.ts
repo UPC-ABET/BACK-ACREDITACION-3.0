@@ -33,6 +33,7 @@ import {
 	DashboardGraDto,
 	SearchGraStudentsDto,
 } from '../model/gra.dtos';
+import { resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
 /** NestJS HttpExceptions (e.g. MailService's BadGatewayException) carry the real SMTP error in
  *  a `details` field on their response body; `.message` alone is just the localized error key. */
@@ -285,12 +286,17 @@ export class GraNotificationService {
 
 	async listStudents(dto: ListStudentsGraDto, academicPeriodId?: number | null) {
 		const { graSurveyTypeId, closedStatusId } = await this.getTypeIds();
-		return await this.notifRepo.listStudentsGra(graSurveyTypeId, closedStatusId, {
+		const { page, pageSize, skip, take } = resolvePagination(dto);
+		const { rows, total } = await this.notifRepo.listStudentsGra(graSurveyTypeId, closedStatusId, {
 			academicPeriodId: academicPeriodId ?? undefined,
 			programId: dto.programId,
 			campusId: dto.campusId,
 			studentCode: dto.studentCode,
+			search: dto.search,
+			skip,
+			take,
 		});
+		return toPaginated(rows, total, page, pageSize);
 	}
 
 	/** Search active students by code or name, for the "add individual student" search box. */

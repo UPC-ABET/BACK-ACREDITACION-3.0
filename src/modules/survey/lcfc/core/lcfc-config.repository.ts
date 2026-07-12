@@ -17,11 +17,12 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		super(repository, dataSource);
 	}
 
-	async findAllLcfc(filters?: {
+	/** Base LCFC query with the shared program/period/status filters applied. */
+	private buildLcfcQuery(filters?: {
 		programId?: number;
 		academicPeriodId?: number;
 		isActive?: boolean;
-	}): Promise<OutcomeConfigEntity[]> {
+	}) {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.where(`oc.extra->>'survey_type' = :type`, { type: LCFC_SURVEY_TYPE });
@@ -60,7 +61,62 @@ export class LcfcConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		}
 
 		qb.orderBy('oc.user_outcome_name', 'ASC');
-		return await qb.getMany();
+		return qb;
+	}
+
+	async findAllLcfc(filters?: {
+		programId?: number;
+		academicPeriodId?: number;
+		isActive?: boolean;
+	}): Promise<OutcomeConfigEntity[]> {
+		return await this.buildLcfcQuery(filters).getMany();
+	}
+
+	/** Lean projection for list views: only the columns the section table needs, skipping the
+	 *  heavy jsonb payload (descriptions, full extra) that made the full list ~1 MB per period.
+	 *  Rows without a course section are excluded — they can't be listed nor resent to. */
+	async findSectionSummariesLcfc(filters?: {
+		programId?: number;
+		academicPeriodId?: number;
+		isActive?: boolean;
+		search?: string;
+		skip?: number;
+		take?: number;
+	}): Promise<{
+		rows: {
+			id: number;
+			courseName: unknown;
+			sectionCode: string | null;
+			courseSectionId: number | null;
+			isActive: boolean;
+		}[];
+		total: number;
+	}> {
+		const qb = this.buildLcfcQuery(filters).andWhere(`oc.extra->>'course_section_id' IS NOT NULL`);
+
+		if (filters?.search?.trim()) {
+			// course_name may be an I18nText object or a bare string; casting the jsonb to text
+			// keeps the match simple and covers both shapes.
+			qb.andWhere(
+				new Brackets((qb2) => {
+					qb2
+						.where(`COALESCE(oc.extra->'course_name', oc.user_outcome_name)::text ILIKE :search`)
+						.orWhere(`oc.extra->>'section_code' ILIKE :search`);
+				}),
+			).setParameter('search', `%${filters.search.trim()}%`);
+		}
+
+		const total = await qb.getCount();
+		const rows = await qb
+			.select('oc.id', 'id')
+			.addSelect(`COALESCE(oc.extra->'course_name', oc.user_outcome_name)`, 'courseName')
+			.addSelect(`oc.extra->>'section_code'`, 'sectionCode')
+			.addSelect(`(oc.extra->>'course_section_id')::int`, 'courseSectionId')
+			.addSelect('oc.is_active', 'isActive')
+			.offset(filters?.skip)
+			.limit(filters?.take)
+			.getRawMany();
+		return { rows, total };
 	}
 
 	async findByCourseSection(

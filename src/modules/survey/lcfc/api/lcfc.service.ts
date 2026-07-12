@@ -10,6 +10,7 @@ import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
+	ListLcfcSectionsDto,
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
 	SetLcfcDeadlineDto,
@@ -53,6 +54,10 @@ export class LcfcService {
 
 	getAllConfigs(filters?: FilterLcfcConfigDto & { academicPeriodId?: number | null }) {
 		return this.configService.getAll(filters);
+	}
+
+	listSectionSummaries(filters?: ListLcfcSectionsDto & { academicPeriodId?: number | null }) {
+		return this.configService.listSectionSummaries(filters);
 	}
 
 	getConfigById(id: number) {

@@ -7,6 +7,7 @@ import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
+	ListLcfcSectionsDto,
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
 	SetLcfcDeadlineDto,
@@ -28,6 +29,8 @@ export const SwaggerLcfcConfigGenerate = () =>
 export const SwaggerLcfcConfigGetAll = () => HttpMethodWithSwagger(cfg.config.getAll);
 export const SwaggerLcfcConfigGetByFilters = () =>
 	HttpMethodWithSwagger({ ...cfg.config.getByFilters, body: FilterLcfcConfigDto });
+export const SwaggerLcfcConfigListSections = () =>
+	HttpMethodWithSwagger({ ...cfg.config.listSections, body: ListLcfcSectionsDto });
 export const SwaggerLcfcConfigGetById = () =>
 	HttpMethodWithSwagger({
 		...cfg.config.getById,

@@ -14,6 +14,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import type { I18nText } from 'src/shared/types/i18n';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 const toOptionalPositiveInt = ({ value }: { value: unknown }): number | undefined =>
 	Number(value) > 0 ? Number(value) : undefined;
@@ -145,6 +146,23 @@ export class FilterLcfcConfigDto {
 	@IsBoolean()
 	@ApiProperty({ example: true, required: false })
 	isActive?: boolean;
+}
+
+export class ListLcfcSectionsDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, required: false })
+	programId?: number;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({ example: true, required: false })
+	isActive?: boolean;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({ example: 'Cálculo', description: 'Search by course name or section code' })
+	search?: string;
 }
 
 export class SetLcfcDeadlineDto {

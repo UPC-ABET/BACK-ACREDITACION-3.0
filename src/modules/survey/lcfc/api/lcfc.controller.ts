@@ -8,6 +8,7 @@ import {
 	SwaggerLcfcConfigGenerate,
 	SwaggerLcfcConfigGetAll,
 	SwaggerLcfcConfigGetByFilters,
+	SwaggerLcfcConfigListSections,
 	SwaggerLcfcConfigGetById,
 	SwaggerLcfcConfigUpdate,
 	SwaggerLcfcConfigUpdateStatus,
@@ -34,6 +35,7 @@ import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
+	ListLcfcSectionsDto,
 	UpdateLcfcConfigDto,
 	UpdateLcfcConfigStatusDto,
 	SetLcfcDeadlineDto,
@@ -85,6 +87,18 @@ export class LcfcController {
 		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
 	) {
 		return parseSuccessResponse(await this.lcfcService.getAllConfigs({ ...dto, academicPeriodId }));
+	}
+
+	@SwaggerLcfcConfigListSections()
+	@ApiAcademicPeriodHeader(false)
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async configListSections(
+		@Body() dto: ListLcfcSectionsDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		return parseSuccessResponse(
+			await this.lcfcService.listSectionSummaries({ ...dto, academicPeriodId }),
+		);
 	}
 
 	@SwaggerLcfcConfigGetById()
