@@ -181,6 +181,15 @@ export class StudentInfoDto {
 
 	@ApiProperty({ example: 'studentCodeExample' })
 	studentCode: string;
+
+	@ApiProperty({
+		example: 18,
+		nullable: true,
+		description:
+			'Grade from the latest evaluation for this student under the requested competencyScopeCode. ' +
+			'Scaled to 20 for Capstone + Multiple competency rubrics, raw score sum otherwise. Null if not graded yet.',
+	})
+	totalGrade: number | null;
 }
 
 export class ProjectEvaluatorResponseDto {

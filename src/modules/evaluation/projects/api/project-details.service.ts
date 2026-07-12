@@ -556,6 +556,9 @@ export class ProjectDetailsService {
 				email: stu?.email || '',
 				studentCode: stu?.code || '',
 				studyPlanCourseId: sseId != null ? (sseToSpc.get(sseId) ?? null) : null,
+				// Grade lives per rubric item here (ProjectRubricItemStudentGradeDto.totalGrade below),
+				// not duplicated on the top-level student entry.
+				totalGrade: null,
 			};
 		});
 	}

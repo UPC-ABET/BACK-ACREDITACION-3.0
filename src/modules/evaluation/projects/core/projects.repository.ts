@@ -37,10 +37,19 @@ import {
 	PROJECT_DUPLICATE_CODE_SQL,
 	PROJECT_DUPLICATE_NAME_SQL,
 	PROJECT_GRADES_EXPORT_SQL,
+	PROJECT_STUDENT_LATEST_GRADES_SQL,
 	RUBRIC_QUESTION_COUNT_SQL,
 	SSE_TO_STUDY_PLAN_COURSE_SQL,
 	STUDENT_ALREADY_IN_PROJECT_SQL,
 } from './project-config.sql';
+
+export interface ProjectStudentLatestGradeRow {
+	studentPsId: number;
+	sumScore: string;
+	rubricTypeCode: string;
+	competencyScopeCode: string;
+	totalMaxScore: string;
+}
 
 export interface CapstoneMaxValueRow {
 	maxValue: string | null;
@@ -683,6 +692,17 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			projectIds,
 			competencyScopeTypeId ?? null,
 		])) as ProjectsByProfessorRawRow[];
+	}
+
+	async getLatestGradesForProjects(
+		projectIds: number[],
+		competencyScopeTypeId?: number,
+	): Promise<ProjectStudentLatestGradeRow[]> {
+		if (projectIds.length === 0) return [];
+		return (await this.dataSource.query(PROJECT_STUDENT_LATEST_GRADES_SQL, [
+			projectIds,
+			competencyScopeTypeId ?? null,
+		])) as ProjectStudentLatestGradeRow[];
 	}
 
 	async getProjectGradesForExport(

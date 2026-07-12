@@ -115,6 +115,50 @@ LEFT JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
 LEFT JOIN academic.courses c                   ON c.id = cs.course_id
 WHERE p.id = ANY($1::int[])`;
 
+// Per-student grade for the professor project list: latest evaluation (by updated_at) per
+// project_student, summed score of its rubric_scores, plus the rubric's total max score (sum of
+// each question's highest criteria max_value) so the caller can scale it to 20 for Capstone +
+// Multiple competency rubrics — same rule as ProjectDetailsService.computeStudentGrades.
+export const PROJECT_STUDENT_LATEST_GRADES_SQL = `
+WITH latest_eval AS (
+	SELECT DISTINCT ON (ev.project_student_id)
+		ev.id AS evaluation_id, ev.project_student_id, ev.rubric_id
+	FROM evidence.evaluations ev
+	INNER JOIN evaluation.project_students ps ON ps.id = ev.project_student_id
+	INNER JOIN evaluation.rubrics r            ON r.id = ev.rubric_id
+	WHERE ps.project_id = ANY($1::int[])
+	  AND ($2::int IS NULL OR r.competency_scope_type_id = $2)
+	ORDER BY ev.project_student_id, ev.updated_at DESC
+),
+score_sums AS (
+	SELECT le.project_student_id, le.rubric_id, COALESCE(SUM(rs.score), 0) AS sum_score
+	FROM latest_eval le
+	LEFT JOIN evaluation.rubric_scores rs ON rs.evaluation_id = le.evaluation_id
+	GROUP BY le.project_student_id, le.rubric_id
+),
+question_max AS (
+	SELECT rq.rubric_id, rq.id AS question_id, MAX(rqc.max_value) AS q_max
+	FROM evaluation.rubric_questions rq
+	INNER JOIN evaluation.rubric_question_criterias rqc ON rqc.rubric_question_id = rq.id
+	GROUP BY rq.rubric_id, rq.id
+),
+rubric_max AS (
+	SELECT rubric_id, SUM(q_max) AS total_max
+	FROM question_max
+	GROUP BY rubric_id
+)
+SELECT
+	ss.project_student_id      AS "studentPsId",
+	ss.sum_score                AS "sumScore",
+	rt.code                     AS "rubricTypeCode",
+	cst.code                    AS "competencyScopeCode",
+	COALESCE(rm.total_max, 0)   AS "totalMaxScore"
+FROM score_sums ss
+INNER JOIN evaluation.rubrics r ON r.id = ss.rubric_id
+INNER JOIN core.types rt        ON rt.id = r.rubric_type_id
+INNER JOIN core.types cst       ON cst.id = r.competency_scope_type_id
+LEFT JOIN rubric_max rm         ON rm.rubric_id = ss.rubric_id`;
+
 export const PROJECT_GRADES_EXPORT_SQL = `
 SELECT
 	cs.section_code                           AS "sectionCode",
