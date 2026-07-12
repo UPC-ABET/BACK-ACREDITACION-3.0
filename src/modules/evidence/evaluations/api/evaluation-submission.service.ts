@@ -25,6 +25,7 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { RvGradeProcessingService } from 'src/modules/academic/processed-rv-grades/api/rv-grade-processing.service';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { evaluationsValidationStrings } from '../config/strings/evaluations.validation';
@@ -80,6 +81,7 @@ export class EvaluationSubmissionService {
 		@InjectRepository(StudyPlanCourseEntity)
 		private readonly studyPlanCourseRepo: Repository<StudyPlanCourseEntity>,
 		private readonly evaluationRepository: EvaluationRepository,
+		private readonly rvGradeProcessingService: RvGradeProcessingService,
 	) {}
 
 	private computeLevel(score: number, maxValue: number): number {
@@ -628,6 +630,10 @@ export class EvaluationSubmissionService {
 					evaluation.id,
 					txOutcomeGrades,
 				);
+
+				// Same transaction as the scores it derives from: the RV report reads the processed
+				// table directly, so a converted grade must never be able to lag behind a re-grade.
+				await this.rvGradeProcessingService.processEvaluations([evaluation.id], manager);
 
 				return { evaluationId: evaluation.id, sumScores };
 			},

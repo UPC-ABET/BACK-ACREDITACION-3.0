@@ -1,5 +1,38 @@
 const CRITICAL_RED_THRESHOLD = 23;
 
+/**
+ * RV rows are read from `academic.processed_rv_grades`, which already holds the 20-point scaled
+ * grade and its performance-level rank -- for the commission that was actually graded *and* for the
+ * commissions derived from it through `accreditation.outcome_conversions`. Filtering by
+ * `program_commission_id` (via `filtered_outcomes`) therefore returns a full report for a
+ * commission nobody grades against directly, which the previous
+ * `evidence.student_course_outcome_grades` read could not do: no grades existed for its outcomes.
+ *
+ * `rubric_ids` / `grade_type_ids` still filter through the originating evaluation, so a converted
+ * row is filtered by the rubric its source grades came from.
+ */
+const RV_CLASSIFIED_GRADES_CTE = `
+	classified_grades AS (
+		SELECT
+			prg.student_section_enrollment_id AS enrollment_id,
+			prg.scaled_grade                  AS grade,
+			prg.outcome_id                    AS outcome_id,
+			prg.course_section_id             AS course_section_id,
+			prg.level_rank                    AS level_rank
+		FROM academic.processed_rv_grades prg
+		JOIN academic.student_section_enrollments sse ON sse.id = prg.student_section_enrollment_id
+		JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+		JOIN evidence.evaluations ev ON ev.id = prg.evaluation_id
+		LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
+		WHERE prg.academic_period_id = $1::int
+		  AND prg.is_active = true
+		  AND sse.is_active = true
+		  AND es.is_active = true
+		  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
+		  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
+	)
+`;
+
 // Unfiltered course+outcome breakdown, used by the JSON screen endpoint (no critical/representative filtering).
 export const SEMAPHORE_RC_SCREEN_SQL = `
 WITH course_grades AS (
@@ -101,45 +134,7 @@ WITH filtered_outcomes AS (
 	WHERE is_active = true
 	  AND ($5::int IS NULL OR program_commission_id = $5::int)
 ),
-levels AS (
-	SELECT
-		pl.id, pl.min_score, pl.max_score,
-		ROW_NUMBER() OVER (ORDER BY pl.max_score ASC) AS level_rank
-	FROM academic.performance_levels pl
-	JOIN core.types it ON it.id = pl.instrument_type_id
-	WHERE it.code = 'TG206-T004'
-	  AND pl.academic_period_id = $1::int
-	  AND pl.is_active = true
-),
-scaled_grades AS (
-	SELECT
-		sse.id AS enrollment_id,
-		scog.outcome_id,
-		CASE
-			WHEN NULLIF(scog.extra->>'max_outcome', '')::numeric > 0
-				THEN ROUND((scog.grade * 20) / (scog.extra->>'max_outcome')::numeric, 2)
-			ELSE scog.grade
-		END AS scaled_grade
-	FROM evidence.student_course_outcome_grades scog
-	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
-	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
-	LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
-	WHERE sse.is_active = true
-	  AND es.is_active = true
-	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
-	  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
-),
-classified_grades AS (
-	SELECT
-		sg.enrollment_id,
-		sg.scaled_grade AS grade,
-		sg.outcome_id,
-		lv.level_rank
-	FROM scaled_grades sg
-	LEFT JOIN levels lv
-		ON sg.scaled_grade >= lv.min_score AND sg.scaled_grade <= lv.max_score
-),
+${RV_CLASSIFIED_GRADES_CTE},
 course_outcome_results AS (
 	SELECT
 		c.code                                                        AS course_code,
@@ -153,14 +148,12 @@ course_outcome_results AS (
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 2 THEN cg.enrollment_id END) AS students_yellow,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 3 THEN cg.enrollment_id END) AS students_green
 	FROM classified_grades cg
-	JOIN academic.student_section_enrollments sse ON sse.id = cg.enrollment_id
-	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+	JOIN academic.course_sections cs ON cs.id = cg.course_section_id
 	JOIN academic.courses c ON c.id = cs.course_id
 	JOIN academic.academic_periods ap ON ap.id = cs.academic_period_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
-	WHERE cs.academic_period_id = $1::int
-	  AND ($2::int IS NULL OR o.id = $2::int)
+	WHERE ($2::int IS NULL OR o.id = $2::int)
 	  AND ($3::int IS NULL OR camp.id = $3::int)
 	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
 )
@@ -442,47 +435,7 @@ WITH filtered_outcomes AS (
 	WHERE is_active = true
 	  AND ($5::int IS NULL OR program_commission_id = $5::int)
 ),
-levels AS (
-	SELECT
-		pl.id, pl.min_score, pl.max_score,
-		ROW_NUMBER() OVER (ORDER BY pl.max_score ASC) AS level_rank
-	FROM academic.performance_levels pl
-	JOIN core.types it ON it.id = pl.instrument_type_id
-	WHERE it.code = 'TG206-T004'
-	  AND pl.academic_period_id = $1::int
-	  AND pl.is_active = true
-),
-scaled_grades AS (
-	SELECT
-		sse.id AS enrollment_id,
-		scog.outcome_id,
-		sse.course_section_id,
-		CASE
-			WHEN NULLIF(scog.extra->>'max_outcome', '')::numeric > 0
-				THEN ROUND((scog.grade * 20) / (scog.extra->>'max_outcome')::numeric, 2)
-			ELSE scog.grade
-		END AS scaled_grade
-	FROM evidence.student_course_outcome_grades scog
-	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
-	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
-	LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
-	WHERE sse.is_active = true
-	  AND es.is_active = true
-	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
-	  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
-),
-classified_grades AS (
-	SELECT
-		sg.enrollment_id,
-		sg.scaled_grade AS grade,
-		sg.outcome_id,
-		sg.course_section_id,
-		lv.level_rank
-	FROM scaled_grades sg
-	LEFT JOIN levels lv
-		ON sg.scaled_grade >= lv.min_score AND sg.scaled_grade <= lv.max_score
-),
+${RV_CLASSIFIED_GRADES_CTE},
 course_outcome_results AS (
 	SELECT
 		c.code                                                        AS course_code,
@@ -501,8 +454,7 @@ course_outcome_results AS (
 	JOIN academic.academic_periods ap ON ap.id = cs.academic_period_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
-	WHERE cs.academic_period_id = $1::int
-	  AND ($2::int IS NULL OR o.id = $2::int)
+	WHERE ($2::int IS NULL OR o.id = $2::int)
 	  AND ($3::int IS NULL OR camp.id = $3::int)
 	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
 ),
@@ -571,47 +523,7 @@ WITH filtered_outcomes AS (
 	WHERE is_active = true
 	  AND ($5::int IS NULL OR program_commission_id = $5::int)
 ),
-levels AS (
-	SELECT
-		pl.id, pl.min_score, pl.max_score,
-		ROW_NUMBER() OVER (ORDER BY pl.max_score ASC) AS level_rank
-	FROM academic.performance_levels pl
-	JOIN core.types it ON it.id = pl.instrument_type_id
-	WHERE it.code = 'TG206-T004'
-	  AND pl.academic_period_id = $1::int
-	  AND pl.is_active = true
-),
-scaled_grades AS (
-	SELECT
-		sse.id AS enrollment_id,
-		scog.outcome_id,
-		sse.course_section_id,
-		CASE
-			WHEN NULLIF(scog.extra->>'max_outcome', '')::numeric > 0
-				THEN ROUND((scog.grade * 20) / (scog.extra->>'max_outcome')::numeric, 2)
-			ELSE scog.grade
-		END AS scaled_grade
-	FROM evidence.student_course_outcome_grades scog
-	JOIN academic.student_section_enrollments sse ON sse.id = scog.student_section_enrollment_id
-	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	JOIN evidence.evaluations ev ON ev.id = scog.evaluation_id
-	LEFT JOIN evaluation.rubrics r ON r.id = ev.rubric_id
-	WHERE sse.is_active = true
-	  AND es.is_active = true
-	  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
-	  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
-),
-classified_grades AS (
-	SELECT
-		sg.enrollment_id,
-		sg.scaled_grade AS grade,
-		sg.outcome_id,
-		sg.course_section_id,
-		lv.level_rank
-	FROM scaled_grades sg
-	LEFT JOIN levels lv
-		ON sg.scaled_grade >= lv.min_score AND sg.scaled_grade <= lv.max_score
-),
+${RV_CLASSIFIED_GRADES_CTE},
 course_outcome_results AS (
 	SELECT
 		c.code                                                        AS course_code,
@@ -627,8 +539,7 @@ course_outcome_results AS (
 	JOIN academic.courses c ON c.id = cs.course_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
-	WHERE cs.academic_period_id = $1::int
-	  AND ($2::int IS NULL OR o.id = $2::int)
+	WHERE ($2::int IS NULL OR o.id = $2::int)
 	  AND ($3::int IS NULL OR camp.id = $3::int)
 	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.name
 ),

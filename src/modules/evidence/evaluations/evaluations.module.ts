@@ -19,9 +19,11 @@ import { EvaluationRepository } from './core/evaluations.repository';
 import { EvaluationService } from './api/evaluations.service';
 import { EvaluationController } from './api/evaluations.controller';
 import { EvaluationSubmissionService } from './api/evaluation-submission.service';
+import { ProcessedRvGradesModule } from 'src/modules/academic/processed-rv-grades/processed-rv-grades.module';
 
 @Module({
 	imports: [
+		ProcessedRvGradesModule,
 		TypeOrmModule.forFeature([
 			EvaluationEntity,
 			ProjectStudentEntity,

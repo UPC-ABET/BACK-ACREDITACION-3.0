@@ -37,6 +37,8 @@ import { AccreditorModule } from './modules/accreditation/accreditors/accreditor
 import { CommissionModule } from './modules/accreditation/commissions/commissions.module';
 import { OutcomeModule } from './modules/accreditation/outcomes/outcomes.module';
 import { ProgramCommissionModule } from './modules/accreditation/program-commissions/program-commissions.module';
+import { OutcomeConversionsModule } from './modules/accreditation/outcome-conversions/outcome-conversions.module';
+import { ProcessedRvGradesModule } from './modules/academic/processed-rv-grades/processed-rv-grades.module';
 
 import { ParameterModule } from './modules/core/parameters/parameters.module';
 import { EmailTemplateModule } from './modules/core/email-templates/email-templates.module';
@@ -174,6 +176,8 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		CommissionModule,
 		OutcomeModule,
 		ProgramCommissionModule,
+		OutcomeConversionsModule,
+		ProcessedRvGradesModule,
 		ParameterModule,
 		EmailTemplateModule,
 		TypeGroupModule,
