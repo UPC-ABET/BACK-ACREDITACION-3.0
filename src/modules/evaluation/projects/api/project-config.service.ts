@@ -277,4 +277,8 @@ export class ProjectConfigService {
 
 		return toPaginated(Array.from(projectMap.values()), total, page, pageSize);
 	}
+
+	async getSchoolsForProfessor(professorId: number) {
+		return await this.projectRepository.getSchoolsForProfessor(professorId);
+	}
 }

@@ -10,6 +10,42 @@ SELECT COUNT(*) AS "questionCount"
 FROM evaluation.rubric_questions
 WHERE rubric_id = $1`;
 
+export const SCHOOLS_BY_PROFESSOR_SQL = `
+WITH my_projects AS (
+	SELECT DISTINCT pe.project_id
+	FROM evaluation.project_evaluators pe
+	INNER JOIN evaluation.projects proj ON proj.id = pe.project_id
+	WHERE pe.professor_id = $1
+	  AND pe.is_active = true
+	  AND proj.is_active = true
+),
+project_school_ids AS (
+	SELECT DISTINCT ch_sch.entity_code::int AS school_id
+	FROM my_projects mpj
+	INNER JOIN evaluation.project_students ps ON ps.project_id = mpj.project_id
+	INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+	INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+	INNER JOIN academic.students stu ON stu.id = es.student_id
+	INNER JOIN organization.charts ch_prog
+	        ON ch_prog.entity_code = stu.program_id
+	       AND ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = $2)
+	INNER JOIN organization.charts ch_sch
+	        ON ch_sch.id = ch_prog.root_chart_id
+	       AND ch_sch.entity_type_id = (SELECT id FROM core.types WHERE code = $3)
+)
+SELECT DISTINCT
+	sc.id::int         AS "id",
+	sc.code            AS "code",
+	sc.name            AS "name",
+	sc.faculty_id::int AS "facultyId",
+	f.code             AS "facultyCode",
+	f.name             AS "facultyName"
+FROM project_school_ids psid
+INNER JOIN organization.schools sc ON sc.id = psid.school_id
+LEFT JOIN organization.faculties f ON f.id = sc.faculty_id
+WHERE sc.is_active = true
+ORDER BY sc.code ASC`;
+
 export const PROGRAM_IDS_BY_SCHOOL_SQL = `
 SELECT DISTINCT c_child.entity_code AS "programId"
 FROM organization.charts c_school
