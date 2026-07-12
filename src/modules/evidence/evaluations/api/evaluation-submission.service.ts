@@ -445,7 +445,7 @@ export class EvaluationSubmissionService {
 
 		const rubric = await this.rubricRepo.findOne({
 			where: { id: dto.rubricId },
-			relations: ['questions', 'questions.criterias'],
+			relations: ['questions', 'questions.criterias', 'questions.outcome'],
 		});
 		if (!rubric) {
 			throw new NotFoundException(evaluationsValidationStrings.error.rubricNotFound);
@@ -469,11 +469,37 @@ export class EvaluationSubmissionService {
 
 		if (!isNonAttendanceStatus) {
 			if (isCapstoneMultiple) {
-				// All rubric criteria must be in the DTO
-				const allCriteriaIds = new Set(criteriaToQuestion.keys());
+				// Each outcome/question belongs to a commission (ABET, CAC, etc). A commission is
+				// "touched" once any of its criteria are scored, and once touched every criteria of
+				// every outcome of that same commission must be scored too -- a commission can never
+				// be left half-graded. Other, untouched commissions are left for a later submit.
+				const commissionToCriteriaIds = new Map<number, Set<number>>();
+				for (const question of rubric.questions ?? []) {
+					const commissionId = question.outcome?.programCommissionId;
+					if (commissionId == null) continue;
+					if (!commissionToCriteriaIds.has(commissionId)) {
+						commissionToCriteriaIds.set(commissionId, new Set());
+					}
+					const criteriaIds = commissionToCriteriaIds.get(commissionId)!;
+					for (const criteria of question.criterias ?? []) {
+						criteriaIds.add(criteria.id);
+					}
+				}
+
 				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
-				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
-				if (missing.length > 0) {
+				let hasCompleteCommission = false;
+				for (const criteriaIds of commissionToCriteriaIds.values()) {
+					const touched = [...criteriaIds].filter((id) => scoredIds.has(id));
+					if (touched.length === 0) continue;
+					if (touched.length < criteriaIds.size) {
+						throw new BadRequestException(
+							evaluationsValidationStrings.error.incompleteCommissionCriteria,
+						);
+					}
+					hasCompleteCommission = true;
+				}
+
+				if (!hasCompleteCommission) {
 					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
 				}
 			} else {

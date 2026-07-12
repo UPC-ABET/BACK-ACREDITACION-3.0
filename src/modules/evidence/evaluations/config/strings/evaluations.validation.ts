@@ -11,6 +11,7 @@ export const evaluationsValidationStrings = {
 		invalidScore: 'error.evaluation.invalidScore',
 		invalidScoreCapstone: 'error.evaluation.invalidScoreCapstone',
 		allCriteriaRequired: 'error.evaluation.allCriteriaRequired',
+		incompleteCommissionCriteria: 'error.evaluation.incompleteCommissionCriteria',
 		oneCriteriaPerQuestion: 'error.evaluation.oneCriteriaPerQuestion',
 		statusTypeNotFound: 'error.evaluation.statusTypeNotFound',
 		docCannotGrade: 'error.evaluation.docCannotGrade',

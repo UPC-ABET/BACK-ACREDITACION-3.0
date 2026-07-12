@@ -37,6 +37,7 @@ import {
 	PROJECTS_BY_PROFESSOR_DETAIL_SQL,
 	PROJECT_DUPLICATE_CODE_SQL,
 	PROJECT_DUPLICATE_NAME_SQL,
+	PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL,
 	PROJECT_GRADES_EXPORT_SQL,
 	PROJECT_STUDENT_LATEST_GRADES_SQL,
 	RUBRIC_QUESTION_COUNT_SQL,
@@ -400,6 +401,21 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return maxPerQuestion * questionCount;
 	}
 
+	/**
+	 * Highest performance_levels.unique_value for the period -- the per-criteria ceiling Capstone +
+	 * Multiple scores against (each criteria's score must equal one of the discrete performance
+	 * level values; see EvaluationSubmissionService.getHighestPerformanceLevelValue /
+	 * aggregateScoresByOutcome, where maxOutcome = criteriaCount * this value). Not `max_value`,
+	 * which is a different column used by the whole-rubric export variant, getCapstoneMaxLevelValue.
+	 */
+	async getPerformanceLevelUniqueValueMax(academicPeriodId: number): Promise<number> {
+		const [levelRow] = (await this.dataSource.query(PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL, [
+			TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
+			academicPeriodId,
+		])) as CapstoneMaxValueRow[];
+		return Number(levelRow?.maxValue ?? 0);
+	}
+
 	async getProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
 		const rows = (await this.dataSource.query(PROGRAM_IDS_BY_SCHOOL_SQL, [
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
@@ -716,6 +732,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return (await this.dataSource.query(PROJECT_STUDENT_LATEST_GRADES_SQL, [
 			projectIds,
 			competencyScopeTypeId ?? null,
+			TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
 		])) as ProjectStudentLatestGradeRow[];
 	}
 

@@ -34,6 +34,10 @@ export class ProjectGradeSupportService {
 		return await this.projectRepository.getCapstoneMaxLevelValue(academicPeriodId, rubricId);
 	}
 
+	async resolvePerformanceLevelUniqueValueMax(academicPeriodId: number): Promise<number> {
+		return await this.projectRepository.getPerformanceLevelUniqueValueMax(academicPeriodId);
+	}
+
 	async resolveProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
 		return await this.projectRepository.getProgramIdsBySchoolId(schoolId);
 	}
