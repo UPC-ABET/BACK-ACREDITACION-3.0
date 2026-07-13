@@ -169,9 +169,12 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			programId?: number;
 			campusId?: number;
 			studentCode?: string;
+			search?: string;
+			skip?: number;
+			take?: number;
 		},
-	): Promise<
-		{
+	): Promise<{
+		rows: {
 			notificationId: number;
 			surveyId: number;
 			studentId: number;
@@ -180,14 +183,58 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 			studentEmail: string;
 			programName: string;
 			notificationStatus: string;
+			notificationStatusCode: string;
 			sentDate: string | null;
 			maxRegisterDate: string;
 			token: string;
 			responseStatus: string | null;
 			responseDate: string | null;
-		}[]
-	> {
-		let query = `
+		}[];
+		total: number;
+	}> {
+		// The WHERE params come first so the COUNT query can reuse them as-is;
+		// closedStatusId is only referenced in the SELECT list of the data query.
+		let fromWhere = `
+			FROM survey.notifications n
+			INNER JOIN evidence.surveys s ON s.id = n.survey_id
+			INNER JOIN academic.students st ON st.id = s.student_id
+			INNER JOIN academic.programs p ON p.id = s.program_id
+			INNER JOIN core.types t ON t.id = n.notification_status_type_id
+			WHERE s.survey_type_id = $1
+		`;
+		const whereParams: any[] = [graSurveyTypeId];
+
+		if (filters.academicPeriodId) {
+			fromWhere += ` AND s.academic_period_id = $${whereParams.length + 1}`;
+			whereParams.push(filters.academicPeriodId);
+		}
+		if (filters.programId) {
+			fromWhere += ` AND s.program_id = $${whereParams.length + 1}`;
+			whereParams.push(filters.programId);
+		}
+		if (filters.campusId) {
+			fromWhere += ` AND s.campus_id = $${whereParams.length + 1}`;
+			whereParams.push(filters.campusId);
+		}
+		if (filters.studentCode) {
+			fromWhere += ` AND st.code ILIKE $${whereParams.length + 1}`;
+			whereParams.push(`%${filters.studentCode}%`);
+		}
+		if (filters.search?.trim()) {
+			const idx = whereParams.length + 1;
+			fromWhere += ` AND (st.code ILIKE $${idx} OR st.first_name || ' ' || st.last_name ILIKE $${idx} OR st.email ILIKE $${idx})`;
+			whereParams.push(`%${filters.search.trim()}%`);
+		}
+
+		const countResult = await this.dataSource.query(
+			`SELECT COUNT(*)::int AS total ${fromWhere}`,
+			whereParams,
+		);
+		const total: number = countResult?.[0]?.total ?? 0;
+
+		const dataParams = [...whereParams, closedStatusId];
+		const closedIdx = dataParams.length;
+		let dataQuery = `
 			SELECT
 				n.id                               AS "notificationId",
 				n.survey_id                        AS "surveyId",
@@ -197,40 +244,26 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 				st.email                             AS "studentEmail",
 				p.name->>'es'                        AS "programName",
 				t.name->>'es'                        AS "notificationStatus",
+				t.code                               AS "notificationStatusCode",
 				n.sent_date                          AS "sentDate",
 				n.max_register_date                  AS "maxRegisterDate",
 				n.token,
-				CASE WHEN s.survey_status_type_id = $2 THEN 'RESPONDIDO' ELSE NULL END AS "responseStatus",
-				CASE WHEN s.survey_status_type_id = $2 THEN s.updated_at ELSE NULL END AS "responseDate"
-			FROM survey.notifications n
-			INNER JOIN evidence.surveys s ON s.id = n.survey_id
-			INNER JOIN academic.students st ON st.id = s.student_id
-			INNER JOIN academic.programs p ON p.id = s.program_id
-			INNER JOIN core.types t ON t.id = n.notification_status_type_id
-			WHERE s.survey_type_id = $1
+				CASE WHEN s.survey_status_type_id = $${closedIdx} THEN 'RESPONDIDO' ELSE NULL END AS "responseStatus",
+				CASE WHEN s.survey_status_type_id = $${closedIdx} THEN s.updated_at ELSE NULL END AS "responseDate"
+			${fromWhere}
+			ORDER BY st.first_name ASC, st.code ASC
 		`;
-		const params: any[] = [graSurveyTypeId, closedStatusId];
-
-		if (filters.academicPeriodId) {
-			query += ` AND s.academic_period_id = $${params.length + 1}`;
-			params.push(filters.academicPeriodId);
+		if (filters.take !== undefined) {
+			dataParams.push(filters.take);
+			dataQuery += ` LIMIT $${dataParams.length}`;
 		}
-		if (filters.programId) {
-			query += ` AND s.program_id = $${params.length + 1}`;
-			params.push(filters.programId);
-		}
-		if (filters.campusId) {
-			query += ` AND s.campus_id = $${params.length + 1}`;
-			params.push(filters.campusId);
-		}
-		if (filters.studentCode) {
-			query += ` AND st.code ILIKE $${params.length + 1}`;
-			params.push(`%${filters.studentCode}%`);
+		if (filters.skip !== undefined) {
+			dataParams.push(filters.skip);
+			dataQuery += ` OFFSET $${dataParams.length}`;
 		}
 
-		query += ` ORDER BY st.first_name ASC`;
-
-		return await this.dataSource.query(query, params);
+		const rows = await this.dataSource.query(dataQuery, dataParams);
+		return { rows, total };
 	}
 
 	/** Pending (scheduled, not yet sent) GRA students grouped by program, for the send-summary preview. */

@@ -4,9 +4,11 @@ import {
 	GenerateLcfcConfigDto,
 	CloneLcfcConfigDto,
 	FilterLcfcConfigDto,
+	ListLcfcSectionsDto,
 	UpdateLcfcConfigStatusDto,
 	UpdateLcfcConfigDto,
 } from '../model/lcfc.dtos';
+import { resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import type { I18nText } from 'src/shared/types/i18n';
@@ -114,9 +116,7 @@ export class LcfcConfigService {
 				? value
 				: value && typeof value === 'object'
 					? String(
-							(value as { es?: string; en?: string }).es ??
-								(value as { en?: string }).en ??
-								'',
+							(value as { es?: string; en?: string }).es ?? (value as { en?: string }).en ?? '',
 						)
 					: '';
 		const isEac = (c: (typeof commissions)[number]): boolean =>
@@ -242,6 +242,19 @@ export class LcfcConfigService {
 			isActive: filters?.isActive,
 		});
 		return configs;
+	}
+
+	async listSectionSummaries(filters?: ListLcfcSectionsDto & { academicPeriodId?: number | null }) {
+		const { page, pageSize, skip, take } = resolvePagination(filters ?? {});
+		const { rows, total } = await this.configRepo.findSectionSummariesLcfc({
+			programId: filters?.programId,
+			academicPeriodId: filters?.academicPeriodId ?? undefined,
+			isActive: filters?.isActive,
+			search: filters?.search,
+			skip,
+			take,
+		});
+		return toPaginated(rows, total, page, pageSize);
 	}
 
 	async updateStatus(dto: UpdateLcfcConfigStatusDto): Promise<{ updated: number }> {

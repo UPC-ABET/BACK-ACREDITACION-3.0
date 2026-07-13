@@ -17,6 +17,12 @@ export const lcfcRoutes = {
 			route: 'config/get-by-filters',
 			summary: 'Filter LCFC course configurations',
 		},
+		listSections: {
+			method: 'POST',
+			route: 'config/list-sections',
+			summary:
+				'Lightweight list of LCFC course sections (id, course, section, status) — avoids transferring full config rows',
+		},
 		getById: {
 			method: 'GET',
 			route: 'config/get-by-id/:id',

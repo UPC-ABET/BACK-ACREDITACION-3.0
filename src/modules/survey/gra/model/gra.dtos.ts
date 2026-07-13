@@ -8,8 +8,9 @@ import {
 	Min,
 	Max,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { PaginationQueryDto } from 'src/commons/pagination.dtos';
 
 export class CreateGraConfigDto {
 	@IsNumber()
@@ -250,7 +251,7 @@ export class UpdateGraEmailTemplateDto {
 	bodyEn?: string;
 }
 
-export class ListStudentsGraDto {
+export class ListStudentsGraDto extends PaginationQueryDto {
 	@IsOptional()
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
@@ -269,6 +270,14 @@ export class ListStudentsGraDto {
 		required: false,
 	})
 	studentCode?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'Juan Pérez',
+		description: 'Search by student code, name, or email',
+	})
+	search?: string;
 }
 
 export class SendGraEmailDto {
