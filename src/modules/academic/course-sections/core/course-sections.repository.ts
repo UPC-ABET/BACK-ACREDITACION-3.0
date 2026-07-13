@@ -60,6 +60,22 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 			.getManyAndCount();
 	}
 
+	// A section's course must belong to a study plan offered in the section's academic period —
+	// the same invariant audit.fn_upload_sections enforces (courseNotInStudyPlan). Used by the
+	// create/edit validation so no path can attach a section to a course outside the period's malla.
+	async isCourseInStudyPlanForPeriod(courseId: number, academicPeriodId: number): Promise<boolean> {
+		const [row] = await this.dataSource.query(
+			`SELECT EXISTS (
+				SELECT 1
+				FROM academic.study_plan_courses spc
+				JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+				WHERE spc.course_id = $1 AND spap.academic_period_id = $2
+			) AS "inPlan"`,
+			[courseId, academicPeriodId],
+		);
+		return row.inPlan === true;
+	}
+
 	async findDeleteBlockerCounts(sectionId: number): Promise<CourseSectionDeleteBlockerCounts> {
 		const [row] = await this.dataSource.query(
 			`SELECT

@@ -1,6 +1,7 @@
 export const courseSectionsValidationStrings = {
 	error: {
 		sectionExists: 'error.courseSection.sectionExists',
+		courseNotInStudyPlan: 'error.courseSection.courseNotInStudyPlan',
 		notFound: 'error.courseSection.notFound',
 		inUse: 'error.courseSection.inUse',
 		usedInStudentSectionEnrollments: 'error.courseSection.usedInStudentSectionEnrollments',

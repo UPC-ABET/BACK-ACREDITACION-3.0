@@ -31,6 +31,15 @@ export class CourseSectionValidation {
 
 		if (exists) errors.push(courseSectionsValidationStrings.error.sectionExists);
 
+		// the course must belong to a study plan offered in this academic period
+		if (
+			data.courseId &&
+			data.academicPeriodId &&
+			!(await repo.isCourseInStudyPlanForPeriod(data.courseId, data.academicPeriodId))
+		) {
+			errors.push(courseSectionsValidationStrings.error.courseNotInStudyPlan);
+		}
+
 		if (errors.length > 0) {
 			throw new BadRequestError({
 				message: courseSectionsValidationStrings.result.createFailed,
@@ -56,6 +65,22 @@ export class CourseSectionValidation {
 
 			if (exists && exists.id !== id) {
 				errors.push(courseSectionsValidationStrings.error.sectionExists);
+			}
+		}
+
+		// re-check study-plan membership when the course or the period is being changed
+		if (entity) {
+			const courseId = data.courseId ?? entity.courseId;
+			const academicPeriodId = data.academicPeriodId ?? entity.academicPeriodId;
+			const courseOrPeriodChanged =
+				(data.courseId !== undefined && data.courseId !== entity.courseId) ||
+				(data.academicPeriodId !== undefined && data.academicPeriodId !== entity.academicPeriodId);
+
+			if (
+				courseOrPeriodChanged &&
+				!(await repo.isCourseInStudyPlanForPeriod(courseId, academicPeriodId))
+			) {
+				errors.push(courseSectionsValidationStrings.error.courseNotInStudyPlan);
 			}
 		}
 
@@ -90,6 +115,11 @@ export class CourseSectionValidation {
 			},
 		});
 		if (exists) errors.push(courseSectionsValidationStrings.error.sectionExists);
+
+		// the course must belong to a study plan offered in this academic period
+		if (!(await repo.isCourseInStudyPlanForPeriod(data.courseId, academicPeriodId))) {
+			errors.push(courseSectionsValidationStrings.error.courseNotInStudyPlan);
+		}
 
 		if (errors.length > 0) {
 			throw new BadRequestError({
@@ -132,6 +162,18 @@ export class CourseSectionValidation {
 					errors: [courseSectionsValidationStrings.error.sectionExists],
 				});
 			}
+		}
+
+		// when the course changes, it must belong to a study plan for the section's period
+		const courseChanged = data.courseId !== undefined && data.courseId !== entity.courseId;
+		if (
+			courseChanged &&
+			!(await repo.isCourseInStudyPlanForPeriod(courseId, entity.academicPeriodId))
+		) {
+			throw new BadRequestError({
+				message: courseSectionsValidationStrings.result.updateFailed,
+				errors: [courseSectionsValidationStrings.error.courseNotInStudyPlan],
+			});
 		}
 	}
 
