@@ -30,18 +30,19 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		expect(mainQuery).toHaveBeenCalledTimes(2);
 	});
 
-	it('ships uploaded sections into the raw query and keeps only pairs that pass the malla check', async () => {
+	it('ships uploaded sections into the raw query and returns the validated+collapsed rows', async () => {
 		mainQuery.mockResolvedValueOnce([{ code: '202610' }]); // resolveAcademicPeriodCode
 		mainQuery.mockResolvedValueOnce([{ sectionCode: 'NRC1' }, { sectionCode: 'NRC2' }]); // uploaded
 		rawQuery.mockResolvedValueOnce([
-			{ sectionCode: 'NRC1', studentCode: 'A1', courseCode: 'CS1010' },
-			{ sectionCode: 'NRC2', studentCode: 'A2', courseCode: 'CS2020' },
+			{ sectionCode: 'NRC1', studentCode: 'A1', isGraded: true },
+			{ sectionCode: 'NRC2', studentCode: 'A2', isGraded: true },
 		]); // candidate enrollments
-		mainQuery.mockResolvedValueOnce([{ studentCode: 'A1', courseCode: 'CS1010' }]); // allowed by malla
+		// the validate+collapse query returns the surviving rows directly (NRC2/A2 dropped by the malla)
+		mainQuery.mockResolvedValueOnce([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
 
 		const result = await repo.getAlumnosSecciones(1);
 
-		// A2/CS2020 is dropped because it isn't in the student's malla
+		// the repository returns the query result as-is (validation + collapse happen in SQL)
 		expect(result).toEqual([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
 
 		// raw query gets the period code and the uploaded section codes only
@@ -49,10 +50,10 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		expect(rawParams[0]).toBe('202610');
 		expect(rawParams[1]).toEqual(['NRC1', 'NRC2']);
 
-		// the malla validation gets the candidate pairs (as parallel arrays) plus the period id
+		// the validate+collapse query gets the candidate pairs as parallel arrays (section, student, graded)
 		const [, validationParams] = mainQuery.mock.calls[2];
-		expect(validationParams[0]).toEqual(['A1', 'A2']); // candidate student codes
-		expect(validationParams[1]).toEqual(['CS1010', 'CS2020']); // candidate course codes
-		expect(validationParams[2]).toBe(1); // academic period id
+		expect(validationParams[0]).toEqual(['NRC1', 'NRC2']); // candidate section codes
+		expect(validationParams[1]).toEqual(['A1', 'A2']); // candidate student codes
+		expect(validationParams[2]).toEqual([true, true]); // graded flags
 	});
 });

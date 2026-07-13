@@ -202,26 +202,22 @@ export class ScrapingExportsRepository {
 	// in every component of a course (theory + practice/lab, each its own NRC), but the accreditation
 	// model keeps a single enrollment per course: the graded section. So for each (student, course) we
 	// keep the section flagged calificable='Y' (the theory); ties break by NRC. This mirrors the legacy
-	// invariant ("un alumno una vez por curso") that the old load enforced. Course = materia.codigo +
-	// numeroCurso, same key the sections export uses.
+	// invariant ("un alumno una vez por curso") that the old load enforced.
 	//
 	// Scoped to the sections ALREADY UPLOADED to the app DB (academic.course_sections for the period):
 	// students are only exported for sections that were previously loaded, so the alumno-seccion upload
 	// never references a section that isn't in the DB. The raw tables live in a separate connection, so
 	// the uploaded section codes are fetched from the main DB and passed into the raw query.
 	//
-	// Additionally scoped to each student's study plan (malla): a (section, student) pair is only
-	// exported when the section's course belongs to the courses of the malla the student is enrolled in
-	// for this period. Banner enrolls a student in courses that may sit outside their accreditation
-	// malla; those must not surface as enrollments.
-	//
-	// The malla check is done by SHIPPING THE (SMALL) RAW ENROLLMENTS TO THE MAIN DB, not by pulling the
-	// whole malla into memory. Enumerating every (student, course-in-malla) pair is a cross-product of
-	// students × their full study plan (~2M rows for a regular period) that blows the Node heap. Instead
-	// we first read the real, bounded Banner matrícula (one row per student-course, ~tens of thousands),
-	// then intersect just those pairs against the malla in SQL. Ranking to rn=1 happens BEFORE the malla
-	// filter, which is safe: the filter drops whole (student, course) partitions, so it never changes
-	// which section wins within a surviving partition.
+	// The malla (study plan) validation AND the one-per-course collapse run in a SINGLE main-DB pass,
+	// keyed on the section's ACTUAL uploaded course (academic.course_sections.course_id) — NOT the raw
+	// Banner course of the NRC. Banner reuses NRCs across runs, so a section's raw course can differ from
+	// the course it was uploaded under; validating the real uploaded course is exactly what
+	// audit.fn_upload_student_sections enforces, so the export can never emit a pair the upload would
+	// reject. A (section, student) survives only when the section exists in course_sections, the student
+	// is enrolled in a study plan for that period, and that plan contains the section's course — which
+	// also drops phantom sections and non-enrolled students for free. The bounded raw matrícula (one row
+	// per student-section, ~tens of thousands) is shipped to the main DB; no malla is materialized.
 	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 
@@ -232,72 +228,69 @@ export class ScrapingExportsRepository {
 		const uploadedSectionCodes = uploaded.map((row) => row.sectionCode);
 		if (uploadedSectionCodes.length === 0) return [];
 
-		// Real Banner matrícula for the uploaded sections, already collapsed to one section per
-		// (student, course): the graded (calificable='Y') one, ties broken by NRC. Only the small
-		// uploaded-section list crosses into the raw DB; the result is bounded by real enrollments.
-		const candidates: Array<{ sectionCode: string; studentCode: string; courseCode: string }> =
+		// Real Banner matrícula restricted to the sections already uploaded for this period. Uploaded
+		// sections are the graded (calificable='Y') ones, so this is already ~one section per
+		// student-course; `isGraded` is carried only to break ties deterministically in the collapse.
+		const candidates: Array<{ sectionCode: string; studentCode: string; isGraded: boolean }> =
 			await this.dataSource.query(
 				`
-				WITH matricula AS (
-					SELECT DISTINCT
-						m.codigo_alumno,
-						m.nrc,
-						(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS curso,
-						h.payload->>'calificable'                                        AS calificable
-					FROM raw_matricula m
-					JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
-					WHERE m.run_id = ${RUN_FOR_PERIOD}
-					  AND NULLIF(trim(m.nrc), '') IS NOT NULL
-					  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
-					  AND m.nrc = ANY($2::text[])
-				),
-				ranked AS (
-					SELECT
-						codigo_alumno,
-						curso,
-						nrc,
-						row_number() OVER (
-							PARTITION BY codigo_alumno, curso
-							ORDER BY (calificable = 'Y') DESC NULLS LAST, nrc
-						) AS rn
-					FROM matricula
-				)
-				SELECT nrc AS "sectionCode", codigo_alumno AS "studentCode", curso AS "courseCode"
-				FROM ranked
-				WHERE rn = 1
-				ORDER BY nrc, codigo_alumno
+				SELECT DISTINCT
+					m.nrc                             AS "sectionCode",
+					m.codigo_alumno                   AS "studentCode",
+					(h.payload->>'calificable' = 'Y') AS "isGraded"
+				FROM raw_matricula m
+				JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
+				WHERE m.run_id = ${RUN_FOR_PERIOD}
+				  AND NULLIF(trim(m.nrc), '') IS NOT NULL
+				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
+				  AND m.nrc = ANY($2::text[])
 			`,
 				[period, uploadedSectionCodes],
 			);
 		if (candidates.length === 0) return [];
 
-		// Keep only pairs whose course belongs to the study plan the student is enrolled in for this
-		// period. The candidate pairs (one per student-course) are shipped to the main DB, which
-		// intersects them against the malla in SQL — no full-malla materialization on either side.
-		const candidateStudentCodes = candidates.map((row) => row.studentCode);
-		const candidateCourseCodes = candidates.map((row) => row.courseCode);
+		// Validate against the section's real uploaded course and collapse to one section per
+		// (student, course) in a single pass. The candidate pairs are shipped to the main DB as parallel
+		// arrays and intersected against course_sections + the student's study_plan_courses in SQL.
+		const sectionCodes = candidates.map((row) => row.sectionCode);
+		const studentCodes = candidates.map((row) => row.studentCode);
+		const gradedFlags = candidates.map((row) => row.isGraded);
 
-		const allowed: Array<{ studentCode: string; courseCode: string }> =
-			await this.mainDataSource.query(
-				`
-				SELECT DISTINCT t.student_code AS "studentCode", t.course_code AS "courseCode"
-				FROM unnest($1::text[], $2::text[]) AS t(student_code, course_code)
-				JOIN academic.students s ON s.code = t.student_code
+		const rows: AlumnoSeccionExportRow[] = await this.mainDataSource.query(
+			`
+			WITH cand AS (
+				SELECT section_code, student_code, is_graded
+				FROM unnest($1::text[], $2::text[], $3::boolean[]) AS t(section_code, student_code, is_graded)
+			),
+			resolved AS (
+				SELECT c.section_code, c.student_code, c.is_graded, cs.course_id
+				FROM cand c
+				JOIN academic.course_sections cs ON cs.section_code = c.section_code
+				JOIN academic.students s ON s.code = c.student_code
 				JOIN academic.enrolled_students es ON es.student_id = s.id
 				JOIN academic.study_plan_academic_periods spap
 					ON spap.id = es.study_plan_academic_period_id
-					AND spap.academic_period_id = $3
+					AND spap.academic_period_id = cs.academic_period_id
 				JOIN academic.study_plan_courses spc
 					ON spc.study_plan_academic_period_id = spap.id
-				JOIN academic.courses c ON c.id = spc.course_id AND c.code = t.course_code
-			`,
-				[candidateStudentCodes, candidateCourseCodes, academicPeriodId],
-			);
+					AND spc.course_id = cs.course_id
+			),
+			ranked AS (
+				SELECT section_code, student_code,
+					row_number() OVER (
+						PARTITION BY student_code, course_id
+						ORDER BY is_graded DESC NULLS LAST, section_code
+					) AS rn
+				FROM resolved
+			)
+			SELECT section_code AS "sectionCode", student_code AS "studentCode"
+			FROM ranked
+			WHERE rn = 1
+			ORDER BY section_code, student_code
+		`,
+			[sectionCodes, studentCodes, gradedFlags],
+		);
 
-		const allowedPairs = new Set(allowed.map((row) => `${row.studentCode}|${row.courseCode}`));
-
-		return candidates
-			.filter((row) => allowedPairs.has(`${row.studentCode}|${row.courseCode}`))
-			.map((row) => ({ sectionCode: row.sectionCode, studentCode: row.studentCode }));
+		return rows;
 	}
 }
