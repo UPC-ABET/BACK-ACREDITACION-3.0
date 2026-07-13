@@ -25,6 +25,7 @@ import { RubricScoreEntity } from 'src/modules/evaluation/rubric-scores/model/ru
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { PerformanceLevelEntity } from 'src/modules/academic/performance-levels/model/performance-levels.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { RvGradeProcessingService } from 'src/modules/academic/processed-rv-grades/api/rv-grade-processing.service';
 import { type I18nText, i18nText, i18nTrim } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { evaluationsValidationStrings } from '../config/strings/evaluations.validation';
@@ -80,6 +81,7 @@ export class EvaluationSubmissionService {
 		@InjectRepository(StudyPlanCourseEntity)
 		private readonly studyPlanCourseRepo: Repository<StudyPlanCourseEntity>,
 		private readonly evaluationRepository: EvaluationRepository,
+		private readonly rvGradeProcessingService: RvGradeProcessingService,
 	) {}
 
 	private computeLevel(score: number, maxValue: number): number {
@@ -329,12 +331,14 @@ export class EvaluationSubmissionService {
 							log_id: uploadLogId,
 							qualification_status_type_id: evaluation.qualificationStatusTypeId,
 							observation: evaluation.observation,
+							register_at: evaluation.registerAt,
 						},
 					],
 				};
 			}
 			evaluation.projectEvaluatorId = projectEvaluatorId;
 			evaluation.qualificationStatusTypeId = statusTypeId;
+			evaluation.registerAt = new Date();
 			if (observation !== undefined) {
 				evaluation.observation = i18nText(observation);
 			}
@@ -441,7 +445,7 @@ export class EvaluationSubmissionService {
 
 		const rubric = await this.rubricRepo.findOne({
 			where: { id: dto.rubricId },
-			relations: ['questions', 'questions.criterias'],
+			relations: ['questions', 'questions.criterias', 'questions.outcome'],
 		});
 		if (!rubric) {
 			throw new NotFoundException(evaluationsValidationStrings.error.rubricNotFound);
@@ -465,11 +469,37 @@ export class EvaluationSubmissionService {
 
 		if (!isNonAttendanceStatus) {
 			if (isCapstoneMultiple) {
-				// All rubric criteria must be in the DTO
-				const allCriteriaIds = new Set(criteriaToQuestion.keys());
+				// Each outcome/question belongs to a commission (ABET, CAC, etc). A commission is
+				// "touched" once any of its criteria are scored, and once touched every criteria of
+				// every outcome of that same commission must be scored too -- a commission can never
+				// be left half-graded. Other, untouched commissions are left for a later submit.
+				const commissionToCriteriaIds = new Map<number, Set<number>>();
+				for (const question of rubric.questions ?? []) {
+					const commissionId = question.outcome?.programCommissionId;
+					if (commissionId == null) continue;
+					if (!commissionToCriteriaIds.has(commissionId)) {
+						commissionToCriteriaIds.set(commissionId, new Set());
+					}
+					const criteriaIds = commissionToCriteriaIds.get(commissionId)!;
+					for (const criteria of question.criterias ?? []) {
+						criteriaIds.add(criteria.id);
+					}
+				}
+
 				const scoredIds = new Set(dto.scores.map((s) => s.rubricQuestionCriteriaId));
-				const missing = [...allCriteriaIds].filter((id) => !scoredIds.has(id));
-				if (missing.length > 0) {
+				let hasCompleteCommission = false;
+				for (const criteriaIds of commissionToCriteriaIds.values()) {
+					const touched = [...criteriaIds].filter((id) => scoredIds.has(id));
+					if (touched.length === 0) continue;
+					if (touched.length < criteriaIds.size) {
+						throw new BadRequestException(
+							evaluationsValidationStrings.error.incompleteCommissionCriteria,
+						);
+					}
+					hasCompleteCommission = true;
+				}
+
+				if (!hasCompleteCommission) {
 					throw new BadRequestException(evaluationsValidationStrings.error.allCriteriaRequired);
 				}
 			} else {
@@ -627,6 +657,10 @@ export class EvaluationSubmissionService {
 					txOutcomeGrades,
 				);
 
+				// Same transaction as the scores it derives from: the RV report reads the processed
+				// table directly, so a converted grade must never be able to lag behind a re-grade.
+				await this.rvGradeProcessingService.processEvaluations([evaluation.id], manager);
+
 				return { evaluationId: evaluation.id, sumScores };
 			},
 		);
@@ -699,6 +733,7 @@ export class EvaluationSubmissionService {
 				UPDATE evidence.evaluations e
 				SET qualification_status_type_id = (e.extra->'upload_undo' -> -1 ->> 'qualification_status_type_id')::int,
 					observation = (e.extra->'upload_undo' -> -1 -> 'observation'),
+					register_at = (e.extra->'upload_undo' -> -1 ->> 'register_at')::timestamptz,
 					extra = CASE
 						WHEN jsonb_array_length(e.extra->'upload_undo') <= 1 THEN e.extra - 'upload_undo'
 						ELSE jsonb_set(e.extra, '{upload_undo}', (e.extra->'upload_undo') - (-1))

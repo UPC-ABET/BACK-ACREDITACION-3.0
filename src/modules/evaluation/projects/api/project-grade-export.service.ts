@@ -33,31 +33,42 @@ export class ProjectGradeExportService {
 
 		const isMultipleScopeExport = competencyScopeCode === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
 
+		// Capstone + Multiple is graded commission-by-commission (EvaluationSubmissionService.
+		// submitEvaluation), so the max can't be a rubric-wide constant -- a student who completed
+		// only one of several commissions must be scaled against just that commission's criteria.
+		// maxPerCriteria is a single per-period value (unique_value ceiling), multiplied per row by
+		// that student's own scoreCount -- see ProjectDetailsService.computeStudentGrades for the
+		// same rule applied to the project-detail/list endpoints.
+		const maxPerCriteria = isMultipleScopeExport
+			? await this.gradeSupport.resolvePerformanceLevelUniqueValueMax(academicPeriodId)
+			: 0;
+
 		const rubricIds = [...new Set(rows.map((r) => r.rubricId))];
 		const maxScoreByRubricId = new Map<number, number>();
-		await Promise.all(
-			rubricIds.map(async (rubricId) => {
-				if (isMultipleScopeExport) {
-					const max = await this.gradeSupport.resolveCapstoneMaxScore(academicPeriodId, rubricId);
-					maxScoreByRubricId.set(rubricId, max);
-				} else {
+		if (!isMultipleScopeExport) {
+			await Promise.all(
+				rubricIds.map(async (rubricId) => {
 					const data = await this.rubricConfigService
 						.recalculateMaxScore(rubricId)
 						.catch(() => ({ totalMaxScore: 0 }));
 					maxScoreByRubricId.set(rubricId, data.totalMaxScore || 0);
-				}
-			}),
-		);
+				}),
+			);
+		}
 
 		const graded = rows.map((row) => ({
 			...row,
-			grade: this.calculateGrade(row, maxScoreByRubricId.get(row.rubricId) ?? 0),
+			grade: this.calculateGrade(row, maxPerCriteria, maxScoreByRubricId.get(row.rubricId) ?? 0),
 		}));
 
 		return this.buildGradesExcel(graded);
 	}
 
-	private calculateGrade(row: GradeExportRow, totalMaxScore: number): number {
+	private calculateGrade(
+		row: GradeExportRow,
+		maxPerCriteria: number,
+		rubricWideMaxScore: number,
+	): number {
 		const isCapstoneMultiple =
 			row.rubricTypeCode === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
 			row.competencyScopeCode === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
@@ -65,6 +76,7 @@ export class ProjectGradeExportService {
 		const sumScores = Number(row.totalScore);
 
 		if (isCapstoneMultiple) {
+			const totalMaxScore = maxPerCriteria * Number(row.scoreCount);
 			return this.gradeSupport.computeGrade(sumScores, totalMaxScore);
 		}
 

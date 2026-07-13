@@ -52,6 +52,19 @@ export class RubricConfigService {
 		return type?.id ?? null;
 	}
 
+	/**
+	 * VERIFICATION + CONTROL outcome type ids -- the commission-completeness check considers both,
+	 * matching fn_upload_rubrics (see migration RubricsCapstoneMultipleCommissionCompletenessAllTypes).
+	 * Capstone detection itself (isCapstoneRubric/resolveRubricType) stays VERIFICATION-only.
+	 */
+	private async resolveCommissionCompletenessOutcomeTypeIds(): Promise<number[]> {
+		const [verificationTypeId, controlTypeId] = await Promise.all([
+			this.resolveTypeIdByCode(TYPE_CODES.OUTCOME_TYPE.VERIFICATION),
+			this.resolveTypeIdByCode(TYPE_CODES.OUTCOME_TYPE.CONTROL),
+		]);
+		return [verificationTypeId, controlTypeId].filter((id): id is number => id != null);
+	}
+
 	async recalculateMaxScore(
 		rubricId: number,
 	): Promise<{ byQuestion: Map<number, number>; totalMaxScore: number }> {
@@ -235,12 +248,12 @@ export class RubricConfigService {
 		studyPlanCourseId: number,
 		submittedOutcomeIds: number[],
 	): Promise<void> {
-		const verificationTypeId = await this.resolveTypeIdByCode(TYPE_CODES.OUTCOME_TYPE.VERIFICATION);
-		if (verificationTypeId == null) return;
+		const outcomeTypeIds = await this.resolveCommissionCompletenessOutcomeTypeIds();
+		if (outcomeTypeIds.length === 0) return;
 
 		const courseOutcomes = await this.rubricConfigRepository.getVerificationOutcomesByCourse(
 			studyPlanCourseId,
-			verificationTypeId,
+			outcomeTypeIds,
 		);
 
 		const outcomesByCommission = new Map<number | null, number[]>();
@@ -372,14 +385,12 @@ export class RubricConfigService {
 
 		let allCourseOutcomes: OutcomeEntity[] = [];
 		if (isCapstone && isMultipleScope) {
-			const verificationTypeId = await this.resolveTypeIdByCode(
-				TYPE_CODES.OUTCOME_TYPE.VERIFICATION,
-			);
-			if (verificationTypeId != null) {
+			const outcomeTypeIds = await this.resolveCommissionCompletenessOutcomeTypeIds();
+			if (outcomeTypeIds.length > 0) {
 				allCourseOutcomes =
 					await this.rubricConfigRepository.getVerificationOutcomeEntitiesByCourse(
 						rubric.studyPlanCourseId,
-						verificationTypeId,
+						outcomeTypeIds,
 					);
 			}
 		}

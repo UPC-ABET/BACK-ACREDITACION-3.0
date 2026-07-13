@@ -28,26 +28,32 @@ import { EvaluationEntity } from 'src/modules/evidence/evaluations/model/evaluat
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { I18nText } from 'src/shared/types/i18n';
 import { camelizeKeys } from 'src/libs/case.functions';
+import type { UserSchool } from 'src/modules/organization/org-scope/core/user-schools/user-schools.types';
 import {
-	CAPSTONE_MAX_LEVEL_VALUE_SQL,
 	COURSE_BASIC_BY_ID_SQL,
 	PROGRAM_IDS_BY_SCHOOL_SQL,
 	PROGRAM_NAMES_BY_STUDY_PLAN_COURSE_SQL,
 	PROJECTS_BY_PROFESSOR_DETAIL_SQL,
 	PROJECT_DUPLICATE_CODE_SQL,
 	PROJECT_DUPLICATE_NAME_SQL,
+	PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL,
 	PROJECT_GRADES_EXPORT_SQL,
-	RUBRIC_QUESTION_COUNT_SQL,
+	PROJECT_STUDENT_LATEST_GRADES_SQL,
+	SCHOOLS_BY_PROFESSOR_SQL,
 	SSE_TO_STUDY_PLAN_COURSE_SQL,
 	STUDENT_ALREADY_IN_PROJECT_SQL,
 } from './project-config.sql';
 
-export interface CapstoneMaxValueRow {
-	maxValue: string | null;
+export interface ProjectStudentLatestGradeRow {
+	studentPsId: number;
+	sumScore: string;
+	rubricTypeCode: string;
+	competencyScopeCode: string;
+	totalMaxScore: string;
 }
 
-export interface RubricQuestionCountRow {
-	questionCount: string | null;
+export interface CapstoneMaxValueRow {
+	maxValue: string | null;
 }
 
 export interface ProgramIdRow {
@@ -132,6 +138,7 @@ export interface GradeExportRow {
 	gradeTypeName: string;
 	competencyScopeCode: string;
 	totalScore: string;
+	scoreCount: string;
 }
 
 export class ProjectRepository extends BaseRepository<ProjectEntity> {
@@ -375,18 +382,19 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		return result.length > 0;
 	}
 
-	async getCapstoneMaxLevelValue(academicPeriodId: number, rubricId: number): Promise<number> {
-		const [[levelRow], [questionRow]] = (await Promise.all([
-			this.dataSource.query(CAPSTONE_MAX_LEVEL_VALUE_SQL, [
-				TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
-				academicPeriodId,
-			]),
-			this.dataSource.query(RUBRIC_QUESTION_COUNT_SQL, [rubricId]),
-		])) as [CapstoneMaxValueRow[], RubricQuestionCountRow[]];
-
-		const maxPerQuestion = Number(levelRow?.maxValue ?? 0);
-		const questionCount = Number(questionRow?.questionCount ?? 0);
-		return maxPerQuestion * questionCount;
+	/**
+	 * Highest performance_levels.unique_value for the period -- the per-criteria ceiling Capstone +
+	 * Multiple scores against (each criteria's score must equal one of the discrete performance
+	 * level values; see EvaluationSubmissionService.getHighestPerformanceLevelValue /
+	 * aggregateScoresByOutcome, where maxOutcome = criteriaCount * this value). Not `max_value`,
+	 * a different column that isn't a meaningful ceiling for this rubric type.
+	 */
+	async getPerformanceLevelUniqueValueMax(academicPeriodId: number): Promise<number> {
+		const [levelRow] = (await this.dataSource.query(PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL, [
+			TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
+			academicPeriodId,
+		])) as CapstoneMaxValueRow[];
+		return Number(levelRow?.maxValue ?? 0);
 	}
 
 	async getProgramIdsBySchoolId(schoolId: number): Promise<number[]> {
@@ -583,7 +591,10 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
     INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
     INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
     INNER JOIN academic.courses c ON c.id = cs.course_id
-    INNER JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+    INNER JOIN academic.enrolled_students es_p ON es_p.id = sse.enrolled_student_id
+    INNER JOIN academic.study_plan_courses spc
+            ON spc.course_id = c.id
+           AND spc.study_plan_academic_period_id = es_p.study_plan_academic_period_id
     INNER JOIN academic.study_plan_academic_periods sp_ap ON sp_ap.id = spc.study_plan_academic_period_id
     INNER JOIN academic.study_plans sp ON sp.id = sp_ap.study_plan_id
     INNER JOIN academic.programs program ON program.id = sp.program_id`;
@@ -683,6 +694,27 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			projectIds,
 			competencyScopeTypeId ?? null,
 		])) as ProjectsByProfessorRawRow[];
+	}
+
+	/** Schools available to a professor, derived from their active evaluator assignments. */
+	async getSchoolsForProfessor(professorId: number): Promise<UserSchool[]> {
+		return (await this.dataSource.query(SCHOOLS_BY_PROFESSOR_SQL, [
+			professorId,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+		])) as UserSchool[];
+	}
+
+	async getLatestGradesForProjects(
+		projectIds: number[],
+		competencyScopeTypeId?: number,
+	): Promise<ProjectStudentLatestGradeRow[]> {
+		if (projectIds.length === 0) return [];
+		return (await this.dataSource.query(PROJECT_STUDENT_LATEST_GRADES_SQL, [
+			projectIds,
+			competencyScopeTypeId ?? null,
+			TYPE_CODES.PERF_LEVEL_INSTRUMENT.TYPE,
+		])) as ProjectStudentLatestGradeRow[];
 	}
 
 	async getProjectGradesForExport(

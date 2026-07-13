@@ -1,14 +1,49 @@
-export const CAPSTONE_MAX_LEVEL_VALUE_SQL = `
-SELECT MAX(pl.max_value) AS "maxValue"
+// Each Capstone + Multiple criteria is scored against one of the discrete performance level
+// values (unique_value), not the min/max range columns -- see
+// EvaluationSubmissionService.getHighestPerformanceLevelValue / aggregateScoresByOutcome, where
+// maxOutcome = criteriaCount * this value.
+export const PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL = `
+SELECT MAX(pl.unique_value) AS "maxValue"
 FROM academic.performance_levels pl
 INNER JOIN core.types t ON t.id = pl.instrument_type_id
 WHERE t.code = $1
   AND pl.academic_period_id = $2`;
 
-export const RUBRIC_QUESTION_COUNT_SQL = `
-SELECT COUNT(*) AS "questionCount"
-FROM evaluation.rubric_questions
-WHERE rubric_id = $1`;
+export const SCHOOLS_BY_PROFESSOR_SQL = `
+WITH my_projects AS (
+	SELECT DISTINCT pe.project_id
+	FROM evaluation.project_evaluators pe
+	INNER JOIN evaluation.projects proj ON proj.id = pe.project_id
+	WHERE pe.professor_id = $1
+	  AND pe.is_active = true
+	  AND proj.is_active = true
+),
+project_school_ids AS (
+	SELECT DISTINCT ch_sch.entity_code::int AS school_id
+	FROM my_projects mpj
+	INNER JOIN evaluation.project_students ps ON ps.project_id = mpj.project_id
+	INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
+	INNER JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+	INNER JOIN academic.students stu ON stu.id = es.student_id
+	INNER JOIN organization.charts ch_prog
+	        ON ch_prog.entity_code = stu.program_id
+	       AND ch_prog.entity_type_id = (SELECT id FROM core.types WHERE code = $2)
+	INNER JOIN organization.charts ch_sch
+	        ON ch_sch.id = ch_prog.root_chart_id
+	       AND ch_sch.entity_type_id = (SELECT id FROM core.types WHERE code = $3)
+)
+SELECT DISTINCT
+	sc.id::int         AS "id",
+	sc.code            AS "code",
+	sc.name            AS "name",
+	sc.faculty_id::int AS "facultyId",
+	f.code             AS "facultyCode",
+	f.name             AS "facultyName"
+FROM project_school_ids psid
+INNER JOIN organization.schools sc ON sc.id = psid.school_id
+LEFT JOIN organization.faculties f ON f.id = sc.faculty_id
+WHERE sc.is_active = true
+ORDER BY sc.code ASC`;
 
 export const PROGRAM_IDS_BY_SCHOOL_SQL = `
 SELECT DISTINCT c_child.entity_code AS "programId"
@@ -115,6 +150,66 @@ LEFT JOIN academic.course_sections cs          ON cs.id = sse.course_section_id
 LEFT JOIN academic.courses c                   ON c.id = cs.course_id
 WHERE p.id = ANY($1::int[])`;
 
+// Per-student grade for the professor project list: latest evaluation (by updated_at) per
+// project_student, summed score of its rubric_scores, plus the rubric's total max score so the
+// caller can scale it to 20 for Capstone + Multiple competency rubrics — same rule as
+// ProjectDetailsService.computeStudentGrades.
+//
+// Capstone + Multiple scores each criteria against one of the discrete performance level values
+// (unique_value), not a per-criteria min/max range -- rubric_question_criterias.max_value is 0 for
+// that rubric type (see EvaluationSubmissionService.aggregateScoresByOutcome). So the max is the
+// rubric's academic period's highest performance level unique_value times the *student's own*
+// scored-criteria count -- not the whole rubric's criteria count. Capstone + Multiple is graded
+// commission-by-commission (EvaluationSubmissionService.submitEvaluation), so a student who
+// completed only one of several commissions must be scaled against just that commission's
+// criteria, not every commission in the rubric.
+export const PROJECT_STUDENT_LATEST_GRADES_SQL = `
+WITH latest_eval AS (
+	SELECT DISTINCT ON (ev.project_student_id)
+		ev.id AS evaluation_id, ev.project_student_id, ev.rubric_id
+	FROM evidence.evaluations ev
+	INNER JOIN evaluation.project_students ps ON ps.id = ev.project_student_id
+	INNER JOIN evaluation.rubrics r            ON r.id = ev.rubric_id
+	WHERE ps.project_id = ANY($1::int[])
+	  AND ($2::int IS NULL OR r.competency_scope_type_id = $2)
+	ORDER BY ev.project_student_id, ev.updated_at DESC
+),
+score_sums AS (
+	SELECT
+		le.project_student_id,
+		le.rubric_id,
+		COALESCE(SUM(rs.score), 0) AS sum_score,
+		COUNT(rs.id)               AS score_count
+	FROM latest_eval le
+	LEFT JOIN evaluation.rubric_scores rs ON rs.evaluation_id = le.evaluation_id
+	GROUP BY le.project_student_id, le.rubric_id
+),
+rubric_period AS (
+	SELECT r.id AS rubric_id, spap.academic_period_id
+	FROM evaluation.rubrics r
+	INNER JOIN academic.study_plan_courses spc ON spc.id = r.study_plan_course_id
+	INNER JOIN academic.study_plan_academic_periods spap ON spap.id = spc.study_plan_academic_period_id
+),
+perf_level_max AS (
+	SELECT pl.academic_period_id, MAX(pl.unique_value) AS max_value
+	FROM academic.performance_levels pl
+	INNER JOIN core.types t ON t.id = pl.instrument_type_id
+	WHERE t.code = $3
+	GROUP BY pl.academic_period_id
+)
+SELECT
+	ss.project_student_id                                   AS "studentPsId",
+	ss.sum_score                                             AS "sumScore",
+	rt.code                                                  AS "rubricTypeCode",
+	cst.code                                                 AS "competencyScopeCode",
+	COALESCE(plm.max_value, 0) * ss.score_count              AS "totalMaxScore"
+FROM score_sums ss
+INNER JOIN evaluation.rubrics r ON r.id = ss.rubric_id
+INNER JOIN core.types rt        ON rt.id = r.rubric_type_id
+INNER JOIN core.types cst       ON cst.id = r.competency_scope_type_id
+LEFT JOIN rubric_period rp      ON rp.rubric_id = ss.rubric_id
+LEFT JOIN perf_level_max plm    ON plm.academic_period_id = rp.academic_period_id`;
+
 export const PROJECT_GRADES_EXPORT_SQL = `
 SELECT
 	cs.section_code                           AS "sectionCode",
@@ -127,7 +222,8 @@ SELECT
 	gt.code                                   AS "gradeTypeCode",
 	gt.name->>'es'                            AS "gradeTypeName",
 	cst.code                                  AS "competencyScopeCode",
-	SUM(rs.score)                             AS "totalScore"
+	SUM(rs.score)                             AS "totalScore",
+	COUNT(rs.id)                              AS "scoreCount"
 FROM evaluation.projects p
 INNER JOIN evaluation.project_students ps       ON ps.project_id = p.id
 INNER JOIN evidence.evaluations ev              ON ev.project_student_id = ps.id

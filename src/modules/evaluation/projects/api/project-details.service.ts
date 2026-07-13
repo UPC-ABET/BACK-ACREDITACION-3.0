@@ -300,13 +300,22 @@ export class ProjectDetailsService {
 			const psIdsForSpc = studentsForSpc.map((s) => s.id);
 
 			if (psIdsForSpc.length > 0) {
+				// Non-capstone-multiple rubrics keep a single rubric-wide max (they're always
+				// submitted whole). Capstone + Multiple is graded commission-by-commission now, so
+				// its max can't be a rubric-wide constant -- computeStudentGrades derives it per
+				// student from maxPerCriteria, scaled to only the criteria that student was scored on.
 				const totalMaxScore = visibleCapstoneContext
-					? this.computeMaxScoreFromQuestions(rubricContext?.questions ?? [])
+					? 0
 					: (
 							await this.rubricConfigService
 								.recalculateMaxScore(rubric.id)
 								.catch(() => ({ totalMaxScore: 0 }))
 						).totalMaxScore || 0;
+				const maxPerCriteria = visibleCapstoneContext
+					? await this.gradeSupport.resolvePerformanceLevelUniqueValueMax(
+							params.sectionAcademicPeriodId,
+						)
+					: 0;
 
 				evaluations = await this.projectRepository.getEvaluationsForProjectStudents(
 					projectId,
@@ -326,6 +335,7 @@ export class ProjectDetailsService {
 					evaluations,
 					visibleCapstoneContext != null,
 					totalMaxScore,
+					maxPerCriteria,
 				);
 			}
 		}
@@ -446,19 +456,6 @@ export class ProjectDetailsService {
 			.filter((evaluation) => (evaluation.scores ?? []).length > 0) as EvaluationEntity[];
 	}
 
-	private computeMaxScoreFromQuestions(questions: RubricContextQuestion[]): number {
-		return questions.reduce((totalMaxScore, question) => {
-			if (question.criterias.length === 0) {
-				return totalMaxScore;
-			}
-
-			const questionMaxScore = Math.max(
-				...question.criterias.map((criteria) => Number(criteria.maxValue)),
-			);
-			return totalMaxScore + questionMaxScore;
-		}, 0);
-	}
-
 	private buildLatestEvalByStudent(evaluations: EvaluationEntity[]): Map<number, EvaluationEntity> {
 		const map = new Map<number, EvaluationEntity>();
 		for (const ev of evaluations) {
@@ -475,6 +472,7 @@ export class ProjectDetailsService {
 		evaluations: EvaluationEntity[],
 		isCapstoneMultiple: boolean,
 		totalMaxScore: number,
+		maxPerCriteria: number,
 	): Map<number, StudentGradeInfo> {
 		const grades = new Map<number, StudentGradeInfo>();
 		const latestEvalByStudent = this.buildLatestEvalByStudent(evaluations);
@@ -484,14 +482,17 @@ export class ProjectDetailsService {
 			if (!latestEval) continue;
 
 			const evals = evaluations.filter((ev) => ev.projectStudentId === s.id);
-			const sumScores = (latestEval.scores || []).reduce(
-				(sSum, score) => sSum + Number(score.score),
-				0,
-			);
+			const scores = latestEval.scores || [];
+			const sumScores = scores.reduce((sSum, score) => sSum + Number(score.score), 0);
+			// Capstone + Multiple is graded commission-by-commission: the max only covers the
+			// criteria this student was actually scored on (the commission(s) they completed),
+			// not every structurally-complete commission in the rubric -- otherwise a student who
+			// finished one of several commissions would be scaled against the whole rubric's max.
+			const studentMaxScore = isCapstoneMultiple ? maxPerCriteria * scores.length : totalMaxScore;
 
 			grades.set(s.id, {
 				totalGrade: isCapstoneMultiple
-					? this.gradeSupport.computeGrade(sumScores, totalMaxScore)
+					? this.gradeSupport.computeGrade(sumScores, studentMaxScore)
 					: sumScores,
 				evaluationStatuses: evals.map((ev) => ({
 					evaluatorId: ev.projectEvaluatorId,
@@ -556,6 +557,9 @@ export class ProjectDetailsService {
 				email: stu?.email || '',
 				studentCode: stu?.code || '',
 				studyPlanCourseId: sseId != null ? (sseToSpc.get(sseId) ?? null) : null,
+				// Grade lives per rubric item here (ProjectRubricItemStudentGradeDto.totalGrade below),
+				// not duplicated on the top-level student entry.
+				totalGrade: null,
 			};
 		});
 	}

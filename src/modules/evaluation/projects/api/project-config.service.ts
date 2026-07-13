@@ -14,6 +14,7 @@ import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/m
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
 import { ProjectRepository } from '../core/projects.repository';
 import { ProjectGradeSupportService } from './project-grade-support.service';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 @Injectable()
 export class ProjectConfigService {
@@ -208,6 +209,24 @@ export class ProjectConfigService {
 			competencyScopeTypeId,
 		);
 
+		const gradeRows = await this.projectRepository.getLatestGradesForProjects(
+			projectIds,
+			competencyScopeTypeId,
+		);
+		const gradeByStudentPsId = new Map<number, number>();
+		for (const g of gradeRows) {
+			const sumScore = Number(g.sumScore);
+			const isCapstoneMultiple =
+				g.rubricTypeCode === TYPE_CODES.RUBRIC_TYPE.CAPSTONE &&
+				g.competencyScopeCode === TYPE_CODES.COMPETENCY_SCOPE.MULTIPLE;
+			gradeByStudentPsId.set(
+				g.studentPsId,
+				isCapstoneMultiple
+					? this.gradeSupport.computeGrade(sumScore, Number(g.totalMaxScore))
+					: sumScore,
+			);
+		}
+
 		const projectMap = new Map<number, ProjectEvaluatorResponseDto>();
 
 		for (const row of raw) {
@@ -251,10 +270,15 @@ export class ProjectConfigService {
 					lastName: row.stuLastName || '',
 					email: row.stuEmail || '',
 					studentCode: row.stuCode ? String(row.stuCode) : '',
+					totalGrade: gradeByStudentPsId.get(row.studentPsId) ?? null,
 				});
 			}
 		}
 
 		return toPaginated(Array.from(projectMap.values()), total, page, pageSize);
+	}
+
+	async getSchoolsForProfessor(professorId: number) {
+		return await this.projectRepository.getSchoolsForProfessor(professorId);
 	}
 }

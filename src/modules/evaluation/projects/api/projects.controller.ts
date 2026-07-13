@@ -86,6 +86,14 @@ export class ProjectController extends BaseController<ProjectService> {
 		);
 	}
 
+	@Get('professor/:professorId/schools')
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
+	async getSchoolsForProfessor(@Param('professorId', ParseIntPipe) professorId: number) {
+		return parseSuccessResponse(
+			await this.projectConfigService.getSchoolsForProfessor(professorId),
+		);
+	}
+
 	@Get('evaluator/:evaluatorId')
 	@ApiAcademicPeriodHeader(false)
 	@ApiSchoolHeader(false)
