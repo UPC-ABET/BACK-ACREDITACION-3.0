@@ -157,6 +157,73 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		return rows ?? [];
 	}
 
+	async getAcademicPeriodCode(academicPeriodId: number): Promise<string | null> {
+		const rows = await this.dataSource.query(
+			`SELECT code FROM academic.academic_periods WHERE id = $1 LIMIT 1`,
+			[academicPeriodId],
+		);
+		return rows?.[0]?.code ?? null;
+	}
+
+	/**
+	 * Per-program completion summary across ALL programs (LEFT JOIN, so programs with zero
+	 * surveys still appear). Each program counts surveys from the period matching its own
+	 * modality: for the selected period, the LATERAL picks the academic period whose
+	 * modality_type_id equals the program's and whose date range overlaps the selected one
+	 * (e.g. selecting Regular 202610 makes EPE programs count against EPE 202615).
+	 */
+	async getProgramSummary(
+		lcfcSurveyTypeId: number,
+		closedStatusId: number,
+		activeStatusId: number,
+		academicPeriodId: number,
+	): Promise<
+		Array<{
+			programId: number;
+			programName: any;
+			periodCode: string | null;
+			completed: number;
+			pending: number;
+			total: number;
+		}>
+	> {
+		return this.dataSource.query(
+			`WITH selected AS (
+				SELECT id, start_date, end_date
+				FROM academic.academic_periods
+				WHERE id = $4
+			)
+			SELECT
+				p.id                                                                          AS "programId",
+				p.name                                                                        AS "programName",
+				per.code                                                                      AS "periodCode",
+				COUNT(s.id) FILTER (WHERE s.survey_status_type_id = $2)::int                  AS "completed",
+				COUNT(s.id) FILTER (WHERE s.survey_status_type_id = $3)::int                  AS "pending",
+				COUNT(s.id)::int                                                              AS "total"
+			FROM academic.programs p
+			CROSS JOIN selected sel
+			LEFT JOIN LATERAL (
+				SELECT ap.id, ap.code
+				FROM academic.academic_periods ap
+				WHERE ap.modality_type_id = p.modality_type_id
+					AND ap.start_date <= sel.end_date
+					AND ap.end_date >= sel.start_date
+				ORDER BY (ap.id = sel.id) DESC,
+					ABS(EXTRACT(EPOCH FROM (ap.start_date - sel.start_date))) ASC,
+					ap.id DESC
+				LIMIT 1
+			) per ON TRUE
+			LEFT JOIN evidence.surveys s
+				ON s.program_id = p.id
+				AND s.survey_type_id = $1
+				AND s.academic_period_id = per.id
+			WHERE p.is_active = TRUE
+			GROUP BY p.id, p.name, per.code
+			ORDER BY p.name->>'es' ASC`,
+			[lcfcSurveyTypeId, closedStatusId, activeStatusId, academicPeriodId],
+		);
+	}
+
 	async getDashboardData(
 		lcfcSurveyTypeId: number,
 		activeStatusId: number,

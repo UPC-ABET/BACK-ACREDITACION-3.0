@@ -3,7 +3,10 @@ import type { ReportLanguage } from 'src/libs/reporting/report.types';
 import { LcfcConfigService } from './lcfc-config.service';
 import { LcfcNotificationService } from './lcfc-notification.service';
 import { LcfcReportService } from './lcfc-report.service';
-import { PerceptionReportService } from 'src/modules/survey/shared/perception-report.service';
+import {
+	PerceptionReportService,
+	type PerceptionReportResult,
+} from 'src/modules/survey/shared/perception-report.service';
 import type { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
@@ -33,7 +36,22 @@ export class LcfcService {
 		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang);
 	}
 
-	generatePerceptionReport(dto: PerceptionReportDto, academicPeriodId: number) {
+	async generatePerceptionReport(
+		dto: PerceptionReportDto,
+		academicPeriodId: number,
+	): Promise<PerceptionReportResult> {
+		// No program/commission/campus filter → simple per-program completion overview
+		// instead of the perception-by-outcome PDFs.
+		if (!dto.programId && !dto.commissionId && !dto.campusId) {
+			const { pdf, filename } = await this.reportService.generateProgramSummaryPdf(
+				academicPeriodId,
+				dto.lang ?? 'es',
+			);
+			return {
+				reports: [{ campusId: null, campusName: '', filename, base64: pdf.toString('base64') }],
+				zip: null,
+			};
+		}
 		return this.perceptionReport.generate({
 			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.LCFC,
 			fileLabel: 'LCFC',
