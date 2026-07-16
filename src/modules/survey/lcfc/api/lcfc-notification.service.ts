@@ -607,4 +607,19 @@ export class LcfcNotificationService {
 			filters: dto,
 		};
 	}
+
+	/** Per-program completion counts (all programs, modality-matched period) for the summary report. */
+	async getProgramSummary(academicPeriodId: number) {
+		const { lcfcSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
+		const [rows, periodCode] = await Promise.all([
+			this.surveyRepo.getProgramSummary(
+				lcfcSurveyTypeId,
+				closedStatusId,
+				activeStatusId,
+				academicPeriodId,
+			),
+			this.surveyRepo.getAcademicPeriodCode(academicPeriodId),
+		]);
+		return { rows, periodCode };
+	}
 }

@@ -135,7 +135,9 @@ export const lcfcRoutes = {
 		reportPerception: {
 			method: 'POST',
 			route: 'report/perception',
-			summary: 'Generate the LCFC perception-by-outcome PDF report (all sedes + one per sede)',
+			summary:
+				'Generate the LCFC perception-by-outcome PDF report (all sedes + one per sede). ' +
+				'With no program/commission/campus filter, returns a per-program completion overview PDF instead',
 		},
 	},
 };
