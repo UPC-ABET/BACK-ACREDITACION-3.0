@@ -63,14 +63,6 @@ INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
 WHERE p.code = $1 AND cs.academic_period_id = $2
 LIMIT 1`;
 
-export const PROJECT_DUPLICATE_NAME_SQL = `
-SELECT p.id AS "id" FROM evaluation.projects p
-INNER JOIN evaluation.project_students ps ON ps.project_id = p.id
-INNER JOIN academic.student_section_enrollments sse ON sse.id = ps.student_section_enrollment_id
-INNER JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-WHERE (p.name->>'es' = $1 OR p.name->>'en' = $2) AND cs.academic_period_id = $3
-LIMIT 1`;
-
 export const STUDENT_ALREADY_IN_PROJECT_SQL = `
 SELECT ps.id AS "id" FROM evaluation.project_students ps
 INNER JOIN evaluation.projects p ON p.id = ps.project_id
