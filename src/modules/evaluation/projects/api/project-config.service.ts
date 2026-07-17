@@ -12,6 +12,7 @@ import { projectsValidationStrings } from '../config/strings/projects.validation
 import type { I18nText } from 'src/shared/types/i18n';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
 import { StudentSectionEnrollmentEntity } from 'src/modules/academic/student-section-enrollments/model/student-section-enrollments.entity';
+import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 import { ProjectRepository } from '../core/projects.repository';
 import { ProjectGradeSupportService } from './project-grade-support.service';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -23,6 +24,8 @@ export class ProjectConfigService {
 		private readonly studyPlanCourseRepo: Repository<StudyPlanCourseEntity>,
 		@InjectRepository(StudentSectionEnrollmentEntity)
 		private readonly enrollmentRepo: Repository<StudentSectionEnrollmentEntity>,
+		@InjectRepository(TypeEntity)
+		private readonly typeRepo: Repository<TypeEntity>,
 		private readonly projectRepository: ProjectRepository,
 		private readonly gradeSupport: ProjectGradeSupportService,
 	) {}
@@ -138,8 +141,14 @@ export class ProjectConfigService {
 			);
 		}
 
-		for (const [, count] of typeCountInRequest.entries()) {
-			if (count > 1) {
+		const evaluatorTypes = await this.typeRepo.find({
+			where: [...typeCountInRequest.keys()].map((id) => ({ id })),
+		});
+		const evaluatorTypeById = new Map(evaluatorTypes.map((t) => [t.id, t]));
+
+		for (const [evaluatorTypeId, count] of typeCountInRequest.entries()) {
+			const maxEvaluators = evaluatorTypeById.get(evaluatorTypeId)?.extra?.maxEvaluators;
+			if (maxEvaluators !== undefined && maxEvaluators !== null && count > maxEvaluators) {
 				throw new BadRequestException(projectsValidationStrings.error.evaluatorLimit);
 			}
 		}
