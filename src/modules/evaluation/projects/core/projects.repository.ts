@@ -35,7 +35,6 @@ import {
 	PROGRAM_NAMES_BY_STUDY_PLAN_COURSE_SQL,
 	PROJECTS_BY_PROFESSOR_DETAIL_SQL,
 	PROJECT_DUPLICATE_CODE_SQL,
-	PROJECT_DUPLICATE_NAME_SQL,
 	PERFORMANCE_LEVEL_UNIQUE_VALUE_MAX_SQL,
 	PROJECT_GRADES_EXPORT_SQL,
 	PROJECT_STUDENT_LATEST_GRADES_SQL,
@@ -409,19 +408,6 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 	async existsProjectWithCodeInPeriod(code: string, academicPeriodId: number): Promise<boolean> {
 		const rows = (await this.dataSource.query(PROJECT_DUPLICATE_CODE_SQL, [
 			code,
-			academicPeriodId,
-		])) as ProjectIdRow[];
-		return rows.length > 0;
-	}
-
-	async existsProjectWithNameInPeriod(
-		nameEs: string | undefined,
-		nameEn: string | undefined,
-		academicPeriodId: number,
-	): Promise<boolean> {
-		const rows = (await this.dataSource.query(PROJECT_DUPLICATE_NAME_SQL, [
-			nameEs,
-			nameEn,
 			academicPeriodId,
 		])) as ProjectIdRow[];
 		return rows.length > 0;

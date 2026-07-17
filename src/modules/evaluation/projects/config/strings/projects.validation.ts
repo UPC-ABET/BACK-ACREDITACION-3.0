@@ -5,7 +5,6 @@ export const projectsValidationStrings = {
 		notEvaluateRubric: 'error.project.notEvaluateRubric',
 		noAcademicPeriod: 'error.project.noAcademicPeriod',
 		duplicateCode: 'error.project.duplicateCode',
-		duplicateName: 'error.project.duplicateName',
 		noStudents: 'error.project.noStudents',
 		enrollmentNotFound: 'error.project.enrollmentNotFound',
 		studentWithdrawn: 'error.project.studentWithdrawn',

@@ -32,7 +32,7 @@ export class ProjectConfigService {
 	 *
 	 * Pre-validations:
 	 * - study_plan_course must exist and have extra.isEvaluable = true
-	 * - code and name must be unique within the same academic period
+	 * - code must be unique within the same academic period
 	 * - active students enrolled in the course, with no project in the same period
 	 * - evaluators with no duplicates of professor+type, with per-type limits
 	 */
@@ -76,15 +76,6 @@ export class ProjectConfigService {
 		);
 		if (duplicateCode) {
 			throw new BadRequestException(projectsValidationStrings.error.duplicateCode);
-		}
-
-		const duplicateName = await this.projectRepository.existsProjectWithNameInPeriod(
-			dto.name?.es,
-			dto.name?.en,
-			academicPeriodId,
-		);
-		if (duplicateName) {
-			throw new BadRequestException(projectsValidationStrings.error.duplicateName);
 		}
 
 		if (!dto.studentSectionEnrollmentIds?.length) {
