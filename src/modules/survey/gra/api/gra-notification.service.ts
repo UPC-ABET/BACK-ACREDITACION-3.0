@@ -468,17 +468,32 @@ export class GraNotificationService {
 	) {
 		const { sentStatusId } = await this.getTypeIds();
 
-		const emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
-			TYPE_CODES.SURVEY_TYPE.GRA,
-			dto.lang ?? 'es',
-		);
+		const total = pending.length;
+		let emailTemplate: { subject: string; body: string };
+		try {
+			emailTemplate = await this.surveyEmailTemplateService.getEmailTemplate(
+				TYPE_CODES.SURVEY_TYPE.GRA,
+				dto.lang ?? 'es',
+			);
+		} catch (err) {
+			// Thrown from a fire-and-forget job (see startJob): without this, a missing/misconfigured
+			// template fails silently — the job status map is left at 0/N sent forever and the
+			// frontend never learns why no emails went out.
+			this.notificationJobs.set(jobId, {
+				progressPct: 100,
+				totalStudents: total,
+				emailsSent: 0,
+				emailsFailed: total,
+				errors: [extractSendErrorMessage(err)],
+			});
+			throw err;
+		}
 
 		const surveyBaseUrl =
 			dto.surveyBaseUrl ||
 			this.configService.get<string>('SURVEY_BASE_URL') ||
 			'http://localhost:3001';
 
-		const total = pending.length;
 		let sent = 0;
 		let failed = 0;
 		const errors: string[] = [];
