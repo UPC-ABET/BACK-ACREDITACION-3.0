@@ -23,6 +23,7 @@ export const graValidationStrings = {
 		programRequired: 'error.survey.gra.programRequired',
 		notificationJobNotFound: 'error.survey.gra.notificationJobNotFound',
 		alreadyResponded: 'error.survey.gra.alreadyResponded',
+		configExists: 'error.survey.gra.configExists',
 	},
 	success: {
 		notificationCreated: 'success.survey.gra.notificationCreated',

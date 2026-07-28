@@ -79,6 +79,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		outcomeId: number,
 		programId?: number,
 		academicPeriodId?: number,
+		excludeId?: number,
 	): Promise<boolean> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
@@ -92,6 +93,9 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
 				periodId: academicPeriodId,
 			});
+		}
+		if (excludeId !== undefined) {
+			qb.andWhere('oc.id != :excludeId', { excludeId });
 		}
 
 		return (await qb.getCount()) > 0;
