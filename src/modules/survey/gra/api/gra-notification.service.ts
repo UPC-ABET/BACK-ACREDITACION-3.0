@@ -699,6 +699,20 @@ export class GraNotificationService {
 		};
 	}
 
+	async getProgramSummary(academicPeriodId: number) {
+		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
+		const [rows, periodCode] = await Promise.all([
+			this.surveyRepo.getProgramSummary(
+				graSurveyTypeId,
+				closedStatusId,
+				activeStatusId,
+				academicPeriodId,
+			),
+			this.surveyRepo.getAcademicPeriodCode(academicPeriodId),
+		]);
+		return { rows, periodCode };
+	}
+
 	/** Builds an Excel workbook of the completed GRA surveys for a period/program. */
 	async exportSurveys(
 		academicPeriodId: number,

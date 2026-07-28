@@ -141,3 +141,4 @@ export const SwaggerLcfcReportPdf = () =>
 	);
 export const SwaggerLcfcReportPerception = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.reportPerception, body: PerceptionReportDto });
+export const SwaggerLcfcConversionRebuild = () => HttpMethodWithSwagger(cfg.conversion.rebuild);
