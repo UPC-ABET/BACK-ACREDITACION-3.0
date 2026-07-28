@@ -175,13 +175,19 @@ export class GraConfigService {
 		type GroupedCommission = {
 			commissionId: number;
 			commissionName: GraOutcomeRow['commissionName'];
-			outcomes: Omit<GraOutcomeRow, 'commissionId' | 'commissionName'>[];
+			commissionTypeCode: string;
+			outcomes: Omit<GraOutcomeRow, 'commissionId' | 'commissionName' | 'commissionTypeCode'>[];
 		};
 		const grouped: Record<number, GroupedCommission> = {};
 		for (const row of rows) {
 			const cid = row.commissionId;
 			if (!grouped[cid]) {
-				grouped[cid] = { commissionId: cid, commissionName: row.commissionName, outcomes: [] };
+				grouped[cid] = {
+					commissionId: cid,
+					commissionName: row.commissionName,
+					commissionTypeCode: row.commissionTypeCode,
+					outcomes: [],
+				};
 			}
 			grouped[cid].outcomes.push({
 				outcomeId: row.outcomeId,

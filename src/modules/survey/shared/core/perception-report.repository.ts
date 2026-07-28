@@ -41,7 +41,7 @@ export class PerceptionReportRepository {
 	 */
 	async getScoreRows(filters: PerceptionQueryFilters): Promise<PerceptionScoreRow[]> {
 		const params: unknown[] = [filters.surveyTypeId, filters.academicPeriodId];
-		const conditions = ['s.survey_type_id = $1', 's.academic_period_id = $2'];
+		const conditions = ['s.survey_type_id = $1', 's.academic_period_id = $2', 's.is_active = true'];
 
 		if (filters.programId !== undefined) {
 			params.push(filters.programId);
@@ -129,7 +129,7 @@ export class PerceptionReportRepository {
 		programId?: number,
 	): Promise<{ id: number; name: I18nText | string }[]> {
 		const params: unknown[] = [surveyTypeId, academicPeriodId];
-		const conditions = ['s.survey_type_id = $1', 's.academic_period_id = $2'];
+		const conditions = ['s.survey_type_id = $1', 's.academic_period_id = $2', 's.is_active = true'];
 		if (programId !== undefined) {
 			params.push(programId);
 			conditions.push(`s.program_id = $${params.length}`);

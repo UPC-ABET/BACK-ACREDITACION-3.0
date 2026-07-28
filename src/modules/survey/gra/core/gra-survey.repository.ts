@@ -84,6 +84,16 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		);
 	}
 
+	/** Soft-deletes a survey (deactivate) — used when its notification is removed from the GRA
+	 *  list, so the survey and any scores it already collected stop being counted in the
+	 *  dashboard and perception reports. */
+	async deactivateSurvey(surveyId: number): Promise<void> {
+		await this.dataSource.query(
+			`UPDATE evidence.surveys SET is_active = false, updated_at = NOW() WHERE id = $1`,
+			[surveyId],
+		);
+	}
+
 	/** Rows of completed GRA surveys with their outcome scores, for the Excel export. */
 	async getCompletedSurveysForExport(
 		academicPeriodId: number,
@@ -116,6 +126,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			INNER JOIN academic.students st ON st.id = s.student_id
 			INNER JOIN academic.programs p ON p.id = s.program_id
 			WHERE s.survey_type_id = (SELECT id FROM core.types WHERE code = $1)
+			  AND s.is_active = true
 			  AND s.academic_period_id = $2
 			  AND ($3::int IS NULL OR s.program_id = $3)
 			ORDER BY st.code ASC, o.outcome_code ASC`,
@@ -130,7 +141,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 		closedStatusId: number,
 		filters: { academicPeriodId?: number; programId?: number; campusId?: number },
 	): Promise<{ completed: number; pending: number; total: number; byProgram: any[] }> {
-		let whereClause = `s.survey_type_id = $1`;
+		let whereClause = `s.survey_type_id = $1 AND s.is_active = true`;
 		const params: any[] = [graSurveyTypeId];
 
 		if (filters.academicPeriodId) {

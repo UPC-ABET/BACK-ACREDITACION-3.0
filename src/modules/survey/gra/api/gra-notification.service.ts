@@ -325,6 +325,10 @@ export class GraNotificationService {
 				description: String(id),
 			});
 		await this.notifRepo.remove(id);
+		// Notifications are 1:1 with their survey (existsForStudent blocks a second one), so once
+		// the notification is gone the survey is orphaned — deactivate it too, otherwise it (and
+		// any scores already submitted) keeps being counted in the dashboard and perception reports.
+		await this.surveyRepo.deactivateSurvey(notif.surveyId);
 		return { deleted: true, notificationId: id };
 	}
 
