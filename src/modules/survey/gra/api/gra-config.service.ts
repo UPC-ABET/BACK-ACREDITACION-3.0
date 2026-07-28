@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestError } from 'src/commons/domain-error';
 import { GraConfigRepository, GRA_SURVEY_TYPE } from '../core/gra-config.repository';
 import type { GraOutcomeRow } from '../core/gra-config.repository';
 import {
@@ -20,6 +21,15 @@ export class GraConfigService {
 	) {}
 
 	async create(dto: CreateGraConfigDto, academicPeriodId: number) {
+		const alreadyExists = await this.configRepo.existsGra(
+			dto.outcomeId,
+			dto.programId ?? undefined,
+			academicPeriodId,
+		);
+		if (alreadyExists) {
+			throw new BadRequestError(graValidationStrings.error.configExists);
+		}
+
 		const extra = {
 			surveyType: GRA_SURVEY_TYPE,
 			nameEn: dto.nameEn ?? null,
@@ -62,6 +72,20 @@ export class GraConfigService {
 		if (!current) throw new NotFoundException(graValidationStrings.error.configNotFound);
 
 		const currentExtra = (current?.extra as Record<string, any>) ?? {};
+
+		const nextOutcomeId = dto.outcomeId ?? current.outcomeId;
+		const nextProgramId = dto.programId ?? currentExtra.programId;
+		if (nextOutcomeId !== undefined) {
+			const alreadyExists = await this.configRepo.existsGra(
+				nextOutcomeId,
+				nextProgramId ?? undefined,
+				currentExtra.academicPeriodId ?? undefined,
+				id,
+			);
+			if (alreadyExists) {
+				throw new BadRequestError(graValidationStrings.error.configExists);
+			}
+		}
 
 		const extra = {
 			...currentExtra,
