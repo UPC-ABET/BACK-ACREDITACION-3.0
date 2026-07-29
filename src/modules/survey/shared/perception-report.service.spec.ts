@@ -7,6 +7,7 @@ const repo = {
 	getProgramName: jest.fn(),
 	getPeriodCode: jest.fn(),
 	getCommissionName: jest.fn(),
+	getConfiguredOutcomes: jest.fn(),
 };
 const chart = { buildGroupedBarChart: jest.fn().mockReturnValue('<svg></svg>') };
 const generator = { generateDocument: jest.fn(), archivePdfFiles: jest.fn() };
@@ -43,6 +44,7 @@ describe('PerceptionReportService', () => {
 		repo.getPeriodCode.mockResolvedValue('20251');
 		repo.getProgramName.mockResolvedValue(null);
 		repo.getCommissionName.mockResolvedValue(null);
+		repo.getConfiguredOutcomes.mockResolvedValue([]);
 	});
 
 	it('returns an empty result when the survey type code is unknown', async () => {
@@ -96,5 +98,31 @@ describe('PerceptionReportService', () => {
 
 		const series = chart.buildGroupedBarChart.mock.calls[0][0].series;
 		expect(series[0].label).toBe('Expected');
+	});
+
+	it('includes configured outcomes with zero responses instead of omitting them', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([scoreRow(1, 'Lima', '4.5', 3)]);
+		repo.getConfiguredOutcomes.mockResolvedValue([
+			{
+				outcomeId: 1,
+				outcomeCode: 'O1',
+				outcomeName: 'Outcome 1',
+				commissionId: 1,
+				commissionName: 'EAC',
+			},
+			{
+				outcomeId: 2,
+				outcomeCode: 'O2',
+				outcomeName: 'Outcome 2',
+				commissionId: 2,
+				commissionName: 'CAC',
+			},
+		]);
+
+		await service.generate({ ...baseRequest, campusId: 1 });
+
+		const categories = chart.buildGroupedBarChart.mock.calls[0][0].categories;
+		expect(categories).toEqual(['O1', 'O2']);
 	});
 });

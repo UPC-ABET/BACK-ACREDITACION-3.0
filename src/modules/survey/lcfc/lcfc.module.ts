@@ -9,9 +9,11 @@ import { LcfcNotificationRepository } from './core/lcfc-notification.repository'
 import { MailModule } from 'src/modules/mail/mail.module';
 import { SurveySharedModule } from 'src/modules/survey/shared/survey-shared.module';
 import { ReportModule } from 'src/libs/reporting/report.module';
+import { OutcomeConversionsModule } from 'src/modules/accreditation/outcome-conversions/outcome-conversions.module';
 import { LcfcConfigService } from './api/lcfc-config.service';
 import { LcfcNotificationService } from './api/lcfc-notification.service';
 import { LcfcReportService } from './api/lcfc-report.service';
+import { LcfcConversionService } from './api/lcfc-conversion.service';
 import { LcfcService } from './api/lcfc.service';
 import { LcfcController } from './api/lcfc.controller';
 
@@ -21,6 +23,7 @@ import { LcfcController } from './api/lcfc.controller';
 		MailModule,
 		SurveySharedModule,
 		ReportModule,
+		OutcomeConversionsModule,
 	],
 	controllers: [LcfcController],
 	providers: [
@@ -28,6 +31,7 @@ import { LcfcController } from './api/lcfc.controller';
 		LcfcConfigService,
 		LcfcNotificationService,
 		LcfcReportService,
+		LcfcConversionService,
 		LcfcConfigRepository,
 		LcfcSurveyRepository,
 		LcfcNotificationRepository,

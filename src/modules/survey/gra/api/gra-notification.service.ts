@@ -325,6 +325,10 @@ export class GraNotificationService {
 				description: String(id),
 			});
 		await this.notifRepo.remove(id);
+		// Notifications are 1:1 with their survey (existsForStudent blocks a second one), so once
+		// the notification is gone the survey is orphaned — deactivate it too, otherwise it (and
+		// any scores already submitted) keeps being counted in the dashboard and perception reports.
+		await this.surveyRepo.deactivateSurvey(notif.surveyId);
 		return { deleted: true, notificationId: id };
 	}
 
@@ -693,6 +697,20 @@ export class GraNotificationService {
 			byProgram: data.byProgram,
 			filters: { ...dto, academicPeriodId: academicPeriodId ?? null },
 		};
+	}
+
+	async getProgramSummary(academicPeriodId: number) {
+		const { graSurveyTypeId, activeStatusId, closedStatusId } = await this.getTypeIds();
+		const [rows, periodCode] = await Promise.all([
+			this.surveyRepo.getProgramSummary(
+				graSurveyTypeId,
+				closedStatusId,
+				activeStatusId,
+				academicPeriodId,
+			),
+			this.surveyRepo.getAcademicPeriodCode(academicPeriodId),
+		]);
+		return { rows, periodCode };
 	}
 
 	/** Builds an Excel workbook of the completed GRA surveys for a period/program. */
