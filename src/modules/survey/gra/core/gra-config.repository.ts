@@ -11,6 +11,7 @@ export interface GraOutcomeRow {
 	programCommissionId: number;
 	commissionId: number;
 	commissionName: I18nText;
+	commissionTypeCode: string;
 	outcomeId: number;
 	outcomeCode: string;
 	outcomeName: I18nText;
@@ -118,6 +119,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				pc.id          AS "programCommissionId",
 				pc.commission_id AS "commissionId",
 				c.name         AS "commissionName",
+				ct.code        AS "commissionTypeCode",
 				o.id           AS "outcomeId",
 				o.outcome_code AS "outcomeCode",
 				o.outcome_name AS "outcomeName",
@@ -125,6 +127,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			FROM accreditation.outcomes o
 			JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
 			LEFT JOIN accreditation.commissions c ON c.id = pc.commission_id
+			LEFT JOIN core.types ct ON ct.id = pc.commission_type_id
 			WHERE pc.program_id = $1
 			  AND pc.academic_period_id = $2
 			  AND o.is_active = true

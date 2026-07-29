@@ -18,6 +18,7 @@ import {
 import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import { LcfcSurveyRepository } from '../core/lcfc-survey.repository';
 import { LcfcConfigRepository } from '../core/lcfc-config.repository';
+import { LcfcConversionService } from './lcfc-conversion.service';
 import { LcfcValidation } from '../core/lcfc.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
@@ -51,6 +52,7 @@ export class LcfcNotificationService {
 		private readonly notifRepo: LcfcNotificationRepository,
 		private readonly surveyRepo: LcfcSurveyRepository,
 		private readonly configRepo: LcfcConfigRepository,
+		private readonly conversionService: LcfcConversionService,
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
@@ -558,12 +560,19 @@ export class LcfcNotificationService {
 				score: item.score,
 				commentaries: i18nText(item.commentaries),
 			}));
-			await this.notifRepo.saveScoresAndCloseSurvey(
-				surveyId,
-				closedStatusId,
-				scoreItems,
-				dto.commentaries,
-			);
+			await this.notifRepo.runInTransaction(async (manager) => {
+				await this.notifRepo.saveScoresAndCloseSurvey(
+					surveyId,
+					closedStatusId,
+					scoreItems,
+					dto.commentaries,
+					manager,
+				);
+				// Derives any CAC/ICACIT (etc.) outcomes this program's commissions define a
+				// conversion for, from the scores just answered — so no manual backfill is ever
+				// needed for surveys completed from here on.
+				await this.conversionService.convertSurveys([surveyId], manager);
+			});
 
 			return {
 				success: true,

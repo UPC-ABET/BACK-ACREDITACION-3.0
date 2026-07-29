@@ -36,6 +36,16 @@ export interface LcfcScoreItem {
 	commentaries: unknown;
 }
 
+/** One directly-answered (`is_converted = false`) score of an LCFC survey, resolved down to the
+ *  outcome code and source commission the conversion formulas key off. */
+export interface LcfcNonConvertedScoreRow {
+	surveyId: number;
+	outcomeId: number;
+	outcomeCode: string;
+	programCommissionId: number;
+	score: number;
+}
+
 @Injectable()
 export class LcfcNotificationRepository extends BaseRepository<NotificationEntity> {
 	constructor(
@@ -609,28 +619,37 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 
 	/**
 	 * Upserts the outcome scores for a survey and marks it closed, optionally merging a
-	 * general comment into evidence.surveys.information — all in one transaction.
+	 * general comment into evidence.surveys.information. Runs in the given manager when one is
+	 * passed (so a caller can extend the transaction, e.g. to also apply outcome conversions),
+	 * otherwise opens its own.
 	 */
 	async saveScoresAndCloseSurvey(
 		surveyId: number,
 		closedStatusId: number,
 		scores: LcfcScoreItem[],
 		generalComment?: string,
+		manager?: EntityManager,
 	): Promise<void> {
-		await this.dataSource.transaction(async (manager: EntityManager) => {
+		const run = async (trxManager: EntityManager) => {
 			for (const item of scores) {
-				const existing: { id: number }[] = await manager.query(
+				const existing: { id: number }[] = await trxManager.query(
 					`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 LIMIT 1`,
 					[surveyId, item.outcomeId],
 				);
 
 				if (existing?.length > 0) {
-					await manager.query(
-						`UPDATE survey.scores SET score = $1, commentaries = $2, updated_at = NOW() WHERE survey_id = $3 AND outcome_id = $4`,
+					// A direct answer always wins: even if this outcome previously held a converted
+					// value (e.g. a conversion rule was added, then the section started asking it
+					// directly too), reset the conversion markers so it's no longer treated as derived.
+					await trxManager.query(
+						`UPDATE survey.scores
+						 SET score = $1, commentaries = $2, is_converted = false,
+						     source_program_commission_id = NULL, formula = NULL, updated_at = NOW()
+						 WHERE survey_id = $3 AND outcome_id = $4`,
 						[item.score, item.commentaries, surveyId, item.outcomeId],
 					);
 				} else {
-					await manager.query(
+					await trxManager.query(
 						`INSERT INTO survey.scores (survey_id, outcome_id, score, commentaries) VALUES ($1, $2, $3, $4)`,
 						[surveyId, item.outcomeId, item.score, item.commentaries],
 					);
@@ -640,7 +659,7 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 			const commentariesJson = generalComment
 				? JSON.stringify({ commentaries: generalComment })
 				: null;
-			await manager.query(
+			await trxManager.query(
 				`UPDATE evidence.surveys
 				 SET survey_status_type_id = $1, updated_at = NOW()
 				     ${commentariesJson ? `, information = COALESCE(information::jsonb || $3::jsonb, $3::jsonb)` : ''}
@@ -649,6 +668,90 @@ export class LcfcNotificationRepository extends BaseRepository<NotificationEntit
 					? [closedStatusId, surveyId, commentariesJson]
 					: [closedStatusId, surveyId],
 			);
-		});
+		};
+
+		if (manager) {
+			await run(manager);
+		} else {
+			await this.dataSource.transaction(run);
+		}
+	}
+
+	async runInTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+		return this.dataSource.transaction(work);
+	}
+
+	/**
+	 * Every directly-answered (`is_converted = false`) score across a batch of surveys, resolved
+	 * to outcome_code + source program_commission_id — the input `LcfcConversionService` needs to
+	 * evaluate conversion formulas. One query for the whole batch (not one per survey) to keep the
+	 * period-wide rebuild affordable.
+	 */
+	async getNonConvertedScoresBySurvey(
+		surveyIds: number[],
+		manager?: EntityManager,
+	): Promise<LcfcNonConvertedScoreRow[]> {
+		if (surveyIds.length === 0) return [];
+		const runner = manager ?? this.dataSource;
+		return runner.query(
+			`SELECT
+				sc.survey_id             AS "surveyId",
+				sc.outcome_id            AS "outcomeId",
+				o.outcome_code           AS "outcomeCode",
+				o.program_commission_id  AS "programCommissionId",
+				sc.score                 AS "score"
+			FROM survey.scores sc
+			JOIN accreditation.outcomes o ON o.id = sc.outcome_id
+			WHERE sc.survey_id = ANY($1) AND sc.is_active = true AND sc.is_converted = false`,
+			[surveyIds],
+		);
+	}
+
+	/** Ids of every closed LCFC survey in a period — the scope of a conversion rebuild. */
+	async getClosedLcfcSurveyIdsForPeriod(academicPeriodId: number): Promise<number[]> {
+		const rows: { id: number }[] = await this.dataSource.query(
+			`SELECT s.id
+			FROM evidence.surveys s
+			WHERE s.survey_type_id = (SELECT id FROM core.types WHERE code = $1)
+			  AND s.survey_status_type_id = (SELECT id FROM core.types WHERE code = $2)
+			  AND s.academic_period_id = $3
+			  AND s.is_active = true`,
+			[TYPE_CODES.SURVEY_TYPE.LCFC, TYPE_CODES.SURVEY_STATUS.CLOSED, academicPeriodId],
+		);
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * Upserts one converted score, guarded so it never overwrites a direct answer: the UPDATE only
+	 * ever matches a row that is itself already `is_converted = true`.
+	 */
+	async upsertConvertedScore(
+		surveyId: number,
+		outcomeId: number,
+		score: number,
+		sourceProgramCommissionId: number,
+		formula: string,
+		manager: EntityManager,
+	): Promise<void> {
+		const existing: { id: number }[] = await manager.query(
+			`SELECT id FROM survey.scores WHERE survey_id = $1 AND outcome_id = $2 AND is_converted = true LIMIT 1`,
+			[surveyId, outcomeId],
+		);
+
+		if (existing?.length > 0) {
+			await manager.query(
+				`UPDATE survey.scores
+				 SET score = $1, source_program_commission_id = $2, formula = $3, updated_at = NOW()
+				 WHERE survey_id = $4 AND outcome_id = $5 AND is_converted = true`,
+				[score, sourceProgramCommissionId, formula, surveyId, outcomeId],
+			);
+		} else {
+			await manager.query(
+				`INSERT INTO survey.scores
+					(survey_id, outcome_id, score, is_converted, source_program_commission_id, formula)
+				 VALUES ($1, $2, $3, true, $4, $5)`,
+				[surveyId, outcomeId, score, sourceProgramCommissionId, formula],
+			);
+		}
 	}
 }

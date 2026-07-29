@@ -140,4 +140,13 @@ export const lcfcRoutes = {
 				'With no program/commission/campus filter, returns a per-program completion overview PDF instead',
 		},
 	},
+	conversion: {
+		rebuild: {
+			method: 'POST',
+			route: 'conversion/rebuild',
+			summary:
+				'Reprocess outcome_conversions (e.g. EAC → CAC/ICACIT) for every closed LCFC survey ' +
+				'of the period — backfill after loading historical surveys or after a conversion rule changes',
+		},
+	},
 };

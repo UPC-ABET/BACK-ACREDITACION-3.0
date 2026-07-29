@@ -6,6 +6,7 @@ import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting
 import type { I18nText } from 'src/shared/types/i18n';
 import {
 	PerceptionReportRepository,
+	type ConfiguredOutcomeRow,
 	type PerceptionScoreRow,
 } from './core/perception-report.repository';
 
@@ -32,6 +33,13 @@ export interface GeneratedReportFile {
 export interface PerceptionReportResult {
 	reports: GeneratedReportFile[];
 	zip: { filename: string; base64: string } | null;
+}
+
+interface ReportSection {
+	campusId: number | null;
+	label: string;
+	rows: PerceptionScoreRow[];
+	configuredOutcomes: ConfiguredOutcomeRow[];
 }
 
 interface AcceptanceBand {
@@ -123,24 +131,35 @@ export class PerceptionReportService {
 		const surveyTypeId = await this.repository.getSurveyTypeId(request.surveyTypeCode);
 		if (!surveyTypeId) return { reports: [], zip: null };
 
-		const [rows, bands, programName, periodCode, commissionName] = await Promise.all([
-			this.repository.getScoreRows({
-				surveyTypeId,
-				academicPeriodId: request.academicPeriodId,
-				programId: request.programId,
-				commissionId: request.commissionId,
-				campusId: request.campusId,
-				surveyNumbers: request.surveyNumbers,
-			}),
-			this.loadBands(surveyTypeId, request.academicPeriodId, request.lang),
-			request.programId ? this.repository.getProgramName(request.programId) : Promise.resolve(null),
-			this.repository.getPeriodCode(request.academicPeriodId),
-			request.commissionId
-				? this.repository.getCommissionName(request.commissionId)
-				: Promise.resolve(null),
-		]);
+		const [rows, bands, programName, periodCode, commissionName, configuredOutcomes] =
+			await Promise.all([
+				this.repository.getScoreRows({
+					surveyTypeId,
+					academicPeriodId: request.academicPeriodId,
+					programId: request.programId,
+					commissionId: request.commissionId,
+					campusId: request.campusId,
+					surveyNumbers: request.surveyNumbers,
+				}),
+				this.loadBands(surveyTypeId, request.academicPeriodId, request.lang),
+				request.programId
+					? this.repository.getProgramName(request.programId)
+					: Promise.resolve(null),
+				this.repository.getPeriodCode(request.academicPeriodId),
+				request.commissionId
+					? this.repository.getCommissionName(request.commissionId)
+					: Promise.resolve(null),
+				// Seeds the report with every outcome configured via the mass outcomes upload (Carrera
+				// x Comisión), so commissions/outcomes without a single response yet (e.g. a newly
+				// configured CAC/ICT) still appear with a zero count instead of being silently omitted.
+				this.repository.getConfiguredOutcomes(
+					request.academicPeriodId,
+					request.programId,
+					request.commissionId,
+				),
+			]);
 
-		if (rows.length === 0) return { reports: [], zip: null };
+		if (rows.length === 0 && configuredOutcomes.length === 0) return { reports: [], zip: null };
 
 		const L = LABELS[request.lang];
 		const localizedProgram = programName
@@ -162,8 +181,8 @@ export class PerceptionReportService {
 			distinctCommissions.size > 1;
 
 		const sections = useCommissionSplit
-			? this.buildCommissionSections(rows, request, L)
-			: this.buildCampusSections(rows, request, L);
+			? this.buildCommissionSections(rows, request, L, configuredOutcomes)
+			: this.buildCampusSections(rows, request, L, configuredOutcomes);
 
 		// In commission-split mode the campus is fixed; grab its localised name from the rows.
 		const fixedCampusLabel = useCommissionSplit
@@ -177,6 +196,7 @@ export class PerceptionReportService {
 			campusName: section.label,
 			document: this.buildDocument({
 				rows: section.rows,
+				configuredOutcomes: section.configuredOutcomes,
 				bands,
 				request,
 				reportName: this.localizeValue(request.reportName, request.lang),
@@ -253,30 +273,39 @@ export class PerceptionReportService {
 		rows: PerceptionScoreRow[],
 		request: PerceptionReportRequest,
 		labels: (typeof LABELS)[ReportLanguage],
-	): Array<{ campusId: number | null; label: string; rows: PerceptionScoreRow[] }> {
+		configuredOutcomes: ConfiguredOutcomeRow[],
+	): ReportSection[] {
 		const campusId = request.campusId ?? null;
 
 		// General report (all commissions) comes first
-		const sections: Array<{
-			campusId: number | null;
-			label: string;
-			rows: PerceptionScoreRow[];
-		}> = [{ campusId, label: labels.allCommissions, rows }];
+		const sections: ReportSection[] = [
+			{ campusId, label: labels.allCommissions, rows, configuredOutcomes },
+		];
 
 		const commissionIds = [
 			...new Set(
-				rows
-					.map((row) => row.commissionId)
-					.filter((id): id is number => id !== null && id !== undefined),
+				[
+					...rows.map((row) => row.commissionId),
+					...configuredOutcomes.map((o) => o.commissionId),
+				].filter((id): id is number => id !== null && id !== undefined),
 			),
 		];
 
 		for (const commissionId of commissionIds) {
 			const commRows = rows.filter((row) => row.commissionId === commissionId);
-			if (commRows.length === 0) continue;
+			const commOutcomes = configuredOutcomes.filter((o) => o.commissionId === commissionId);
+			if (commRows.length === 0 && commOutcomes.length === 0) continue;
 			const commName =
-				this.localizeValue(commRows[0].commissionName, request.lang) || String(commissionId);
-			sections.push({ campusId, label: commName, rows: commRows });
+				this.localizeValue(
+					commRows[0]?.commissionName ?? commOutcomes[0]?.commissionName,
+					request.lang,
+				) || String(commissionId);
+			sections.push({
+				campusId,
+				label: commName,
+				rows: commRows,
+				configuredOutcomes: commOutcomes,
+			});
 		}
 
 		return sections;
@@ -286,24 +315,28 @@ export class PerceptionReportService {
 		rows: PerceptionScoreRow[],
 		request: PerceptionReportRequest,
 		labels: (typeof LABELS)[ReportLanguage],
-	): Array<{ campusId: number | null; label: string; rows: PerceptionScoreRow[] }> {
+		configuredOutcomes: ConfiguredOutcomeRow[],
+	): ReportSection[] {
 		if (request.campusId !== undefined) {
 			const label = rows.length
 				? this.localizeValue(rows[0].campusName, request.lang)
 				: labels.campus;
-			return [{ campusId: request.campusId, label, rows }];
+			return [{ campusId: request.campusId, label, rows, configuredOutcomes }];
 		}
 
 		const campusIds = [
 			...new Set(
-				rows.map((row) => row.campusId).filter((id): id is number => id !== null && id !== undefined),
+				rows
+					.map((row) => row.campusId)
+					.filter((id): id is number => id !== null && id !== undefined),
 			),
 		];
-		const sections: Array<{
-			campusId: number | null;
-			label: string;
-			rows: PerceptionScoreRow[];
-		}> = [{ campusId: null, label: labels.allCampuses, rows }];
+		// Configured outcomes aren't campus-scoped — every campus section (including "TODAS") is
+		// seeded with the full configured set so a commission/outcome without a single response at
+		// a given campus still shows up there with a zero count.
+		const sections: ReportSection[] = [
+			{ campusId: null, label: labels.allCampuses, rows, configuredOutcomes },
+		];
 
 		for (const campusId of campusIds) {
 			const campusRows = rows.filter((row) => row.campusId === campusId);
@@ -311,6 +344,7 @@ export class PerceptionReportService {
 				campusId,
 				label: this.localizeValue(campusRows[0]?.campusName, request.lang),
 				rows: campusRows,
+				configuredOutcomes,
 			});
 		}
 
@@ -319,6 +353,7 @@ export class PerceptionReportService {
 
 	private buildDocument(args: {
 		rows: PerceptionScoreRow[];
+		configuredOutcomes: ConfiguredOutcomeRow[];
 		bands: AcceptanceBand[];
 		request: PerceptionReportRequest;
 		reportName: string;
@@ -328,10 +363,10 @@ export class PerceptionReportService {
 		commissionLabel: string;
 		labels: (typeof LABELS)[ReportLanguage];
 	}): ReportDocument {
-		const { rows, bands, request, labels: L } = args;
+		const { rows, configuredOutcomes, bands, request, labels: L } = args;
 		const modalityLabel = request.modalityLabel?.trim() || L.all;
 
-		const outcomes = this.aggregateOutcomes(rows, bands, request.lang);
+		const outcomes = this.aggregateOutcomes(rows, configuredOutcomes, bands, request.lang);
 
 		const bodyHtml = outcomes.length
 			? `
@@ -358,6 +393,7 @@ export class PerceptionReportService {
 
 	private aggregateOutcomes(
 		rows: PerceptionScoreRow[],
+		configuredOutcomes: ConfiguredOutcomeRow[],
 		bands: AcceptanceBand[],
 		lang: ReportLanguage,
 	): Array<{ code: string; name: string; counts: number[]; total: number }> {
@@ -365,6 +401,17 @@ export class PerceptionReportService {
 			number,
 			{ code: string; name: string; counts: number[]; total: number }
 		>();
+
+		// Seed every configured outcome at zero first, so ones without a single response yet still
+		// show up in the chart/table instead of being silently omitted.
+		for (const outcome of configuredOutcomes) {
+			byOutcome.set(outcome.outcomeId, {
+				code: outcome.outcomeCode,
+				name: this.localizeValue(outcome.outcomeName, lang),
+				counts: bands.map(() => 0),
+				total: 0,
+			});
+		}
 
 		for (const row of rows) {
 			let entry = byOutcome.get(row.outcomeId);

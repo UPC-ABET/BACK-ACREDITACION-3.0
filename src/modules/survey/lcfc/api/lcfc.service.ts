@@ -3,6 +3,7 @@ import type { ReportLanguage } from 'src/libs/reporting/report.types';
 import { LcfcConfigService } from './lcfc-config.service';
 import { LcfcNotificationService } from './lcfc-notification.service';
 import { LcfcReportService } from './lcfc-report.service';
+import { LcfcConversionService, type LcfcConversionResult } from './lcfc-conversion.service';
 import {
 	PerceptionReportService,
 	type PerceptionReportResult,
@@ -29,8 +30,13 @@ export class LcfcService {
 		private readonly configService: LcfcConfigService,
 		private readonly notifService: LcfcNotificationService,
 		private readonly reportService: LcfcReportService,
+		private readonly conversionService: LcfcConversionService,
 		private readonly perceptionReport: PerceptionReportService,
 	) {}
+
+	rebuildConversions(academicPeriodId: number): Promise<LcfcConversionResult> {
+		return this.conversionService.rebuildPeriod(academicPeriodId);
+	}
 
 	generateReportPdf(academicPeriodId: number, programId: number | undefined, lang: ReportLanguage) {
 		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang);

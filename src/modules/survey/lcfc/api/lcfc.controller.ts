@@ -29,6 +29,7 @@ import {
 	SwaggerLcfcExport,
 	SwaggerLcfcReportPdf,
 	SwaggerLcfcReportPerception,
+	SwaggerLcfcConversionRebuild,
 } from './docs/lcfc.swagger';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 import {
@@ -290,5 +291,12 @@ export class LcfcController {
 		return parseSuccessResponse(
 			await this.lcfcService.generatePerceptionReport(dto, academicPeriodId),
 		);
+	}
+
+	@SwaggerLcfcConversionRebuild()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async conversionRebuild(@AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.lcfcService.rebuildConversions(academicPeriodId));
 	}
 }
