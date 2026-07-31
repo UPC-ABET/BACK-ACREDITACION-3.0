@@ -1,0 +1,7 @@
+# Conventional Commits, subject only, no trailers.
+# The same policy runs inside Claude Code as a PreToolUse hook, where --no-verify
+# cannot skip it; this covers Codex, opencode and plain git.
+ABET_HOOK=node_modules/abet-plugins/shared/hooks/cli.mjs
+if [ -f "$ABET_HOOK" ]; then
+  node "$ABET_HOOK" commit-msg "$1"
+fi

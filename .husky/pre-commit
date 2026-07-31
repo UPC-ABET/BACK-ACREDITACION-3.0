@@ -1,1 +1,13 @@
 pnpm exec lint-staged
+
+# ABET policy checks — secrets, formatting, lint, types, related tests.
+# Runs after lint-staged so its auto-fixes are already staged and cannot cause a
+# spurious failure. Skipped when abet-plugins is not installed, so the repo still
+# works for anyone who has not added it yet.
+#
+# Use an `if` block, not `[ -f x ] && cmd`: the latter is the script's last command,
+# so a missing file would exit 1 and block every commit.
+ABET_HOOK=node_modules/abet-plugins/shared/hooks/cli.mjs
+if [ -f "$ABET_HOOK" ]; then
+  node "$ABET_HOOK" pre-commit
+fi

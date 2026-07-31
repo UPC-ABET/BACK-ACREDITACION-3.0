@@ -1,0 +1,6 @@
+# Blocks direct pushes to develop, staging and production.
+# Set ABET_ALLOW_PROTECTED_PUSH=1 for the release promotion flow.
+ABET_HOOK=node_modules/abet-plugins/shared/hooks/cli.mjs
+if [ -f "$ABET_HOOK" ]; then
+  node "$ABET_HOOK" pre-push
+fi
