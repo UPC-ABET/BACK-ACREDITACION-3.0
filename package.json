@@ -44,6 +44,7 @@
 		"seed:survey": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/11-survey.seed.ts",
 		"seed:notifications": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/12-notifications.seed.ts",
 		"seed:auth-roles-permissions": "ts-node -r tsconfig-paths/register src/database/scripts/seeds/upc/13-auth-roles-permissions.seed.ts",
+		"openapi:export": "ts-node -r tsconfig-paths/register src/tools/export-openapi.ts",
 		"lint": "eslint \"src/**/*.{ts,tsx}\"",
 		"lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
 		"check": "npm run lint:fix && npm run format && tsc --noEmit",
