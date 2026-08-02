@@ -171,6 +171,9 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      abet-plugins:
+        specifier: github:UPC-ABET/abet-plugins
+        version: https://codeload.github.com/UPC-ABET/abet-plugins/tar.gz/d441dd60e2d0cc72da10c4f188aacea05c23f94c
       eslint:
         specifier: ^10.4.0
         version: 10.4.0
@@ -1343,6 +1346,12 @@ packages:
 
   '@xtuc/long@4.2.2':
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==}
+
+  abet-plugins@https://codeload.github.com/UPC-ABET/abet-plugins/tar.gz/d441dd60e2d0cc72da10c4f188aacea05c23f94c:
+    resolution: {gitHosted: true, integrity: sha512-kunLqGB/C1QC/vZqm8jUMAx81jXP1SFkXOM0yD78KLnouup5aYdrnA0gJwcAnlrURiwEDEpyy08r4qYd9J9A9Q==, tarball: https://codeload.github.com/UPC-ABET/abet-plugins/tar.gz/d441dd60e2d0cc72da10c4f188aacea05c23f94c}
+    version: 0.3.0
+    engines: {node: '>=20'}
+    hasBin: true
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -5705,6 +5714,8 @@ snapshots:
   '@xtuc/ieee754@1.2.0': {}
 
   '@xtuc/long@4.2.2': {}
+
+  abet-plugins@https://codeload.github.com/UPC-ABET/abet-plugins/tar.gz/d441dd60e2d0cc72da10c4f188aacea05c23f94c: {}
 
   abort-controller@3.0.0:
     dependencies:
