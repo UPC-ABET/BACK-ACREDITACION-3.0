@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ChartRepository } from '../core/charts.repository';
+import { chartsValidationStrings } from '../config/strings/charts.validation';
 import {
 	ChartValidation,
 	resolveEffectiveEntity,
@@ -81,12 +83,21 @@ export class ChartService extends BaseService<ChartRepository> {
 		if (dto.title != null) partial.title = dto.title;
 
 		if (dto.entityTypeId != null || dto.entityCode != null) {
-			const node = (await this.repository.getNodeWithType(id))!;
+			// Validation already loaded the node, but nothing holds it between there and here, so a
+			// concurrent delete must surface as the same error validation would have raised.
+			const node = await this.repository.getNodeWithType(id);
+			if (!node) {
+				throw new BadRequestError({
+					message: chartsValidationStrings.result.maintenanceUpdateFailed,
+					errors: [chartsValidationStrings.error.notFound],
+				});
+			}
+
 			const newTypeCode =
 				dto.entityTypeId != null ? await this.repository.getEntityTypeCode(dto.entityTypeId) : null;
 			const effective = resolveEffectiveEntity(node, dto, newTypeCode);
 
-			if (dto.entityTypeId != null) partial.entityTypeId = effective.entityTypeId ?? undefined;
+			if (dto.entityTypeId != null) partial.entityTypeId = dto.entityTypeId;
 			partial.entityCode = effective.entityCode;
 		}
 
