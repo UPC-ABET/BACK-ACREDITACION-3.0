@@ -161,19 +161,19 @@ changes what "correct" means for the ACs below.
 
 Filled in by `/abet-design-feature` and kept current through implementation.
 
-| AC  | Criterion                                                         | Satisfied by |
-| --- | ----------------------------------------------------------------- | ------------ |
-| 1   | Maintenance create rejects a duplicate trio                       | TBD          |
-| 2   | Maintenance update rejects a duplicate trio, excludes self        | TBD          |
-| 3   | Generic create rejects on the new key, independent of staff       | TBD          |
-| 4   | Generic update rejects a duplicate trio, excludes self            | TBD          |
-| 5   | Null entity code is exempt on every path                          | TBD          |
-| 6   | Upload rejects intra-file duplicates, both rows annotated         | TBD          |
-| 7   | Upload rejects a row colliding with an existing node              | TBD          |
-| 8   | Partial unique index enforces the invariant in Postgres           | TBD          |
-| 9   | Migration is safe against pre-existing duplicates; `down()` works | TBD          |
-| 10  | Validation specs cover all four paths and both edge cases         | TBD          |
-| 11  | Old staff-based rule removed; `openapi.json` unaffected           | TBD          |
+| AC  | Criterion                                                         | Satisfied by                                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Maintenance create rejects a duplicate trio                       | `charts.validation.ts` → `validateMaintenanceCreate` calling `isEntityTakenInPeriod`, backed by `charts.repository.ts` → `findActiveNodeByEntity` (filters `isActive`). Tests: `charts.validation.spec.ts` § validateMaintenanceCreate                                                                                 |
+| 2   | Maintenance update rejects a duplicate trio, excludes self        | `charts.validation.ts` → `validateMaintenanceUpdate`, passing `excludeChartId: id` and resolving the written trio through the shared `resolveEffectiveEntity`, which `charts.service.ts` → `updateNode` also calls. Tests: `charts.validation.spec.ts` § validateMaintenanceUpdate, `charts.service.spec.ts`           |
+| 3   | Generic create rejects on the new key, independent of staff       | `charts.validation.ts` → `validateCreate`. Tests: `charts.validation.spec.ts` § validateCreate, incl. the case the old staff-based rule rejected now passing                                                                                                                                                           |
+| 4   | Generic update rejects a duplicate trio, excludes self            | `charts.validation.ts` → `validateUpdate`, merging the DTO over the stored row before checking. Tests: `charts.validation.spec.ts` § validateUpdate                                                                                                                                                                    |
+| 5   | Null entity code is exempt on every path                          | Single early return in `isEntityTakenInPeriod` (null type **or** null code → free), plus the index predicate `WHERE entity_code IS NOT NULL`. Tests: one case per path in `charts.validation.spec.ts`                                                                                                                  |
+| 6   | Upload rejects intra-file duplicates, both rows annotated         | Migration `1785730489320` → `duplicateEntityInFile`, grouped on the resolved entity id with a window function so **every** row of the group is returned; es/en text in `charts-template.labels.ts`. Tests: `charts-upload.service.spec.ts` (message mapping); runbook step 6 (behaviour)                               |
+| 7   | Upload rejects a row colliding with an existing node              | Migration `1785730489320` → `entityAlreadyInPeriod`, resolving the file's business code to an internal id before comparing against `charts.entity_code`. Verified live via `audit.fn_upload_charts`; runbook steps 7–8                                                                                                 |
+| 8   | Partial unique index enforces the invariant in Postgres           | Migration `1785730489320` → `UQ_charts_academic_period_entity_type_entity_code`, unique + partial on `entity_code IS NOT NULL AND is_active`. Race translated to a domain conflict by `charts.repository.ts` → `translateDuplicateNode` on `create`, `update` and `updateNode`. Tests: `charts.repository.spec.ts`     |
+| 9   | Migration is safe against pre-existing duplicates; `down()` works | Migration `up()` guard queries the violating groups and throws naming each `(period, entity type, entity)` with its chart ids, before any write and without deleting anything; `down()` drops the index and restores the prior function body. Exercised against a live database — the guard aborted on two real groups |
+| 10  | Validation specs cover all four paths and both edge cases         | `charts.validation.spec.ts` (25 cases), `charts.repository.spec.ts` (9), `charts.service.spec.ts` (5). Each new case confirmed red before the change that made it pass; the two pre-existing `validateCreate` fixtures were rewritten first because they passed on `undefined` fields                                  |
+| 11  | Old staff-based rule removed; `openapi.json` unaffected           | `chartExists` deleted from `config/strings/charts.validation.ts`; `grep -rn "chartExists" src/` empty; `pnpm openapi:export` produces no diff — no route, DTO or response shape changed                                                                                                                                |
 
 ## Dependencies
 
