@@ -169,6 +169,38 @@ describe('ChartsUploadService — positional parsing', () => {
 		expect(result.errorRows).toBe(1);
 		expect(result.excelWithErrors).toBeTruthy();
 	});
+
+	// Positional error column for languages = ['es','en']:
+	// 2 (code, parentCode) + 2 languages + 4 (professorCode, email, entityType, entityCode) + 1
+	const ERROR_COLUMN = 9;
+
+	async function readErrorCell(excelWithErrors: string, rowNumber: number): Promise<string> {
+		const wb = new ExcelJS.Workbook();
+		await wb.xlsx.load(Buffer.from(excelWithErrors, 'base64') as unknown as ArrayBuffer);
+		return String(wb.worksheets[0].getRow(rowNumber).getCell(ERROR_COLUMN).value ?? '');
+	}
+
+	it.each([
+		['duplicateEntityInFile', 'es'],
+		['duplicateEntityInFile', 'en'],
+		['entityAlreadyInPeriod', 'es'],
+		['entityAlreadyInPeriod', 'en'],
+	])('writes localized text for %s in %s, never the raw code', async (errorCode, lang) => {
+		const { repository } = makeRepository(
+			['es', 'en'],
+			[{ row_number: 2, error_code: errorCode, upload_log_id: null }],
+		);
+		const service = new ChartsUploadService(repository, uploadLogServiceStub, userServiceStub);
+		const buffer = await makeXlsx([['PC1', '', 'a', 'b', 'P001', 'p@uni.edu', 'Carrera', 'CS101']]);
+
+		const result = await service.processUpload(buffer, 'c.xlsx', 1, SCHOOL_ID, 1, {
+			lang,
+		} as any);
+
+		const cell = await readErrorCell(result.excelWithErrors as string, 2);
+		expect(cell).not.toBe(errorCode);
+		expect(cell.length).toBeGreaterThan(0);
+	});
 });
 
 describe('ChartsUploadService — IFC role guard & provisioning', () => {

@@ -58,6 +58,9 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 		entityCodeWithoutType: 'Indicó un código de entidad sin tipo de entidad.',
 		entityTypeInvalid: 'El código de tipo de entidad no es válido.',
 		entityNotFound: 'No existe la entidad indicada para ese tipo.',
+		duplicateEntityInFile: 'La misma entidad aparece en más de una fila del archivo.',
+		entityAlreadyInPeriod:
+			'La entidad ya tiene un nodo en el organigrama para este periodo académico.',
 		parentNotFound: 'El código del padre no existe en el archivo.',
 	},
 	en: {
@@ -77,6 +80,8 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 		entityCodeWithoutType: 'An entity code was provided without an entity type.',
 		entityTypeInvalid: 'The entity type code is not valid.',
 		entityNotFound: 'No entity exists with that code for the given type.',
+		duplicateEntityInFile: 'The same entity appears in more than one row of the file.',
+		entityAlreadyInPeriod: 'The entity already has a chart node for this academic period.',
 		parentNotFound: 'The parent code does not exist in the file.',
 	},
 };
