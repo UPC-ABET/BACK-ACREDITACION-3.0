@@ -377,3 +377,155 @@ been parsed, so a syntax error in the two new checks would still be sitting ther
 5. Then work the runbook manual steps 6-9, which exercise the upload function end to end.
 
 **Commit**: none — verification only. Fix-ups get their own commit.
+
+---
+
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1 — 2026-08-03
+
+Self-audit before the PR. One blocker, two majors, two minors. Implement via `/abet-implement`.
+
+### Task A.1 — Commit the docs and the change folder ✅ DONE (2026-08-03)
+
+- [x] Task complete
+
+> Already resolved by the author before this batch started — commit `26090461`
+> _docs(charts): record the one-node-per-entity-and-period invariant_. `docs/CONTEXT.md` and all
+> four change-folder files are tracked. No action taken here beyond verifying it.
+
+**Blocker.** `docs/CONTEXT.md` is modified but unstaged and `openspec/changes/unique-chart-entity-per-period/`
+is entirely untracked, so the PR as it stands would ship without the business-rule entry the
+design mandates and without the change folder `/abet-create-pr` links to.
+
+**Files**
+
+- `docs/CONTEXT.md` (commit)
+- `openspec/changes/unique-chart-entity-per-period/` (commit)
+
+**Commit**: `docs(charts): record the one-node-per-entity-and-period invariant`
+
+### Task A.2 — Route `updateNode` through the duplicate translation ✅ DONE (2026-08-03)
+
+- [x] Task complete
+
+> Confirmed red first: `updateNode` rejecting with a `23505` on the chart index came straight
+> back as the raw driver error. Fixed by wrapping the existing `this.repository.update(...)` call
+> rather than switching to `super.update`, which would have changed the method's contract
+> (`NotFoundException` on `affected === 0`, and an entity instead of `void`).
+> Note the sibling case — "rethrows a different constraint untouched" — was green _before_ the
+> fix, because with no translation at all everything is rethrown. It only becomes meaningful now.
+
+**Major.** `ChartRepository.updateNode` (`charts.repository.ts:288`) calls
+`this.repository.update(...)` — the raw TypeORM repository — so it bypasses the
+`ChartRepository.update` override added in Task 1.4. The maintenance edit path, the primary UI
+path, therefore still returns `500 error.internalServer` on a lost race instead of the conflict.
+Design § AC-8 claims the wrapper "covers all four paths"; it covers three. `createNode` is fine —
+it goes through `this.create(...)`, which is the override.
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.repository.ts` (modify)
+- `src/modules/organization/charts/core/charts.repository.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Add a failing case: `updateNode` rejecting with a `23505` on the chart index is rethrown as
+   `ConflictError`. → red.
+2. Wrap the existing call: `await this.translateDuplicateNode(() => this.repository.update(id, partial))`.
+   Do **not** switch to `super.update` — it throws `NotFoundException` on `affected === 0` and
+   returns the entity, which would change `updateNode`'s contract.
+3. Re-run → green.
+
+**Commit**: `fix(charts): cover the maintenance edit path with the duplicate translation`
+
+### Task A.3 — Lock `updateNode` to the shared entity resolver ✅ DONE (2026-08-03)
+
+- [x] Task complete
+
+> Honest split: only **1 of the 5** new cases was red before the change — the race case from A.4.
+> The four resolution assertions passed against the existing implementation, because the
+> implementation was already correct. They are regression guards, not proof of new behaviour, and
+> that is their whole purpose: reverting `updateNode` to its own resolution logic now breaks
+> `charts.service.spec.ts` instead of passing silently.
+> The title-only case is the sharpest of the four — it asserts `entityCode` is absent from the
+> partial entirely, which is what stops a future "just call the resolver unconditionally"
+> simplification from nulling the entity code on every title edit.
+
+**Major.** There is no `charts.service.spec.ts`, so nothing asserts what `ChartService.updateNode`
+writes. Preventing drift between validation and the write is this change's central mechanism, and
+reverting the service to its own resolution logic would keep every test green.
+
+**Files**
+
+- `src/modules/organization/charts/api/charts.service.spec.ts` (test, new)
+
+**Steps (TDD)**
+
+1. Assert `repository.updateNode` receives the expected partial for three DTO shapes: type-only
+   (code re-resolved against the new type, nulled when the type takes none), code-only (resolved
+   against the node's existing type), and title-only (no `entityCode` key written at all).
+2. The title-only case is the regression guard — calling the resolver unconditionally would start
+   writing `entityCode` on every edit.
+
+**Commit**: `test(charts): cover effective-entity resolution on the update path`
+
+### Task A.4 — Remove the non-null assertion in `updateNode` ✅ DONE (2026-08-03)
+
+- [x] Task complete
+
+> The audit's diagnosis was exact: the failing test reported `Received constructor: TypeError`,
+> i.e. a 500, not a domain error. Replaced the `!` with an explicit guard that throws the _same_
+> `BadRequestError` shape `validateMaintenanceUpdate` raises for a missing node
+> (`maintenanceUpdateFailed` + `notFound`), so a node deleted before validation and one deleted
+> during the write look identical to the client instead of one being a server fault.
+
+**Minor.** `charts.service.ts:84` — `const node = (await this.repository.getNodeWithType(id))!;`.
+`getNodeWithType` returns null for a missing or inactive node. Validation runs first but there is
+no transaction, so a concurrent delete between validate and write turns this into a `TypeError`
+and a 500. The pre-refactor code used optional chaining and degraded quietly.
+
+**Files**
+
+- `src/modules/organization/charts/api/charts.service.ts` (modify)
+- `src/modules/organization/charts/api/charts.service.spec.ts` (test)
+
+**Commit**: `fix(charts): fail cleanly when a node disappears mid-update`
+
+### Task A.5 — Give the index name one source of truth ✅ DONE (2026-08-03)
+
+- [x] Task complete
+
+> `UNIQUE_CHART_ENTITY_INDEX` is now exported from `charts.repository.ts` and the migration
+> carries a comment pointing back at it. The spec deliberately keeps the literal string and
+> asserts it equals the exported constant — importing it everywhere would make a rename green in
+> one edit, which is the failure mode being guarded against.
+> The migration edit is a **header comment only, no SQL**, so nothing re-runs and no environment
+> desyncs; the file is unmerged and applied on local dev only.
+> Also folded in here: renamed `UNIQUE_CHART_ENTITY_INDEX_SQLSTATE` to `UNIQUE_VIOLATION_SQLSTATE`
+> — `23505` is Postgres's generic unique-violation code, not this index's.
+
+### Suggestions 6 and 7 (from the same audit round) ✅ DONE (2026-08-03)
+
+- [x] Task complete
+
+> **6** — `partial.entityTypeId = effective.entityTypeId ?? undefined` was dead: inside
+> `if (dto.entityTypeId != null)` the resolver always returns that same number. Replaced with
+> `partial.entityTypeId = dto.entityTypeId`, which is provably equivalent and drops the
+> null-coalesce that only existed to satisfy the type.
+> **7** — the driver error is now attached as `cause` on the `ConflictError` via `Object.assign`
+> (`DomainError`'s constructor takes no options bag). If the index is ever renamed, the original
+> is the only record of why the branch stopped matching.
+
+**Minor.** `UQ_charts_academic_period_entity_type_entity_code` is hardcoded in three places: the
+repository constant, the migration SQL, and `charts.repository.spec.ts`. Renaming the index would
+silently disable the 23505 translation — every duplicate race would return a 500 again — with no
+compile error and no failing test.
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.repository.ts` (modify — export the constant)
+- `src/modules/organization/charts/core/charts.repository.spec.ts` (modify — import it)
+- `src/database/migrations/1785730489320-enforce-unique-chart-entity-per-period.ts` (comment only)
+
+**Commit**: `refactor(charts): export the unique index name for reuse`
