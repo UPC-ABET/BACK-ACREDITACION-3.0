@@ -1,11 +1,19 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, DeepPartial, EntityManager, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
+import { ConflictError } from 'src/commons/domain-error';
 import type { I18nText } from 'src/shared/types/i18n';
 import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ChartEntity } from '../model/charts.entity';
+import { chartsValidationStrings } from '../config/strings/charts.validation';
 
 const ENTITY = TYPE_CODES.ENTITY_TYPE;
+
+// Created by 1785730489320-enforce-unique-chart-entity-per-period. Exported because the name is a
+// contract between that migration and the error translation below: rename it in one place only and
+// the translation stops matching, silently turning every duplicate race back into a 500.
+export const UNIQUE_CHART_ENTITY_INDEX = 'UQ_charts_academic_period_entity_type_entity_code';
+const UNIQUE_VIOLATION_SQLSTATE = '23505';
 
 export interface SchoolChartNode {
 	id: number;
@@ -57,6 +65,46 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 		dataSource: DataSource,
 	) {
 		super(repository, dataSource);
+	}
+
+	// Validation catches duplicates on the way in, but two concurrent writes can both pass it and
+	// let the partial unique index decide. Without this the loser gets a raw driver error, which
+	// AllExceptionsFilter reports as a 500 — so a lost race would look like a server fault rather
+	// than the same conflict a serial duplicate produces.
+	private async translateDuplicateNode<T>(operation: () => Promise<T>): Promise<T> {
+		try {
+			return await operation();
+		} catch (error) {
+			const driver = error as { code?: string; constraint?: string };
+			// Both, never the SQLSTATE alone: other unique constraints must keep their own error.
+			if (
+				driver?.code === UNIQUE_VIOLATION_SQLSTATE &&
+				driver?.constraint === UNIQUE_CHART_ENTITY_INDEX
+			) {
+				// Keep the driver error as the cause: if the index is ever renamed this branch stops
+				// matching, and the original is the only thing that says why.
+				throw Object.assign(
+					new ConflictError(chartsValidationStrings.error.entityAlreadyAssigned),
+					{ cause: error },
+				);
+			}
+			throw error;
+		}
+	}
+
+	public override async create(
+		data: DeepPartial<ChartEntity>,
+		manager?: EntityManager,
+	): Promise<ChartEntity> {
+		return await this.translateDuplicateNode(() => super.create(data, manager));
+	}
+
+	public override async update(
+		id: number,
+		partial: DeepPartial<ChartEntity>,
+		manager?: EntityManager,
+	) {
+		return await this.translateDuplicateNode(() => super.update(id, partial, manager));
 	}
 
 	async getSchoolChartNode(
@@ -194,6 +242,20 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 		return rows.length > 0;
 	}
 
+	// Only active nodes hold a slot: a deactivated node must not block re-adding its entity.
+	// BaseRepository.findOneByCondition does not filter is_active, so the flag is explicit here.
+	async findActiveNodeByEntity(
+		academicPeriodId: number,
+		entityTypeId: number,
+		entityCode: number,
+	): Promise<{ id: number } | null> {
+		const node = await this.repository.findOne({
+			select: { id: true },
+			where: { academicPeriodId, entityTypeId, entityCode, isActive: true },
+		});
+		return node ? { id: node.id } : null;
+	}
+
 	async entityExists(entityTypeCode: string, entityCode: number): Promise<boolean> {
 		const table =
 			entityTypeCode === ENTITY.SCHOOL
@@ -231,7 +293,10 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 			entityCode?: number | null;
 		},
 	): Promise<void> {
-		await this.repository.update(id, partial);
+		// Writes through the TypeORM repository rather than BaseRepository.update, so it does not
+		// inherit the override above and must wrap the translation itself. Switching to super.update
+		// is not equivalent: that throws NotFoundException on affected === 0 and returns the entity.
+		await this.translateDuplicateNode(() => this.repository.update(id, partial));
 	}
 
 	async getSubtreeChartIds(id: number): Promise<number[]> {

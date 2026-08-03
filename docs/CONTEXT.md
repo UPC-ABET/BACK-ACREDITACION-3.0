@@ -322,5 +322,15 @@ _why_ writes them down. Do not populate it by guessing from the code.
   classifications are seed data rather than a code change.
 - **Roles are additive.** A user's permissions are the union of all their roles' permissions,
   merged per module. There is no "active role".
+- **An entity holds at most one active org chart node per academic period.** The key is
+  `(academic period, entity type, entity)` and it is **global across schools** — two schools
+  cannot both hold a node for the same course or programme in one period. Only entity-coded
+  types participate (School, Programme, Course); Area, Subarea and untagged nodes carry no
+  entity code and may repeat freely. The rule exists because `charts.entity_code` is joined
+  directly by IFC status resolution and notification routing, several of them without an
+  entity-type filter, so a duplicate node makes "who is responsible for this course" return
+  two competing answers rather than failing. Enforced in `ChartValidation`, in
+  `audit.fn_upload_charts`, and by the partial unique index
+  `UQ_charts_academic_period_entity_type_entity_code`.
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->

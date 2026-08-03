@@ -12,6 +12,7 @@ const mockRepo = {
 	getEntityTypeCode: jest.fn(),
 	entityExists: jest.fn(),
 	countCourseIfcInSubtree: jest.fn(),
+	findActiveNodeByEntity: jest.fn(),
 };
 
 describe('ChartValidation', () => {
@@ -20,34 +21,71 @@ describe('ChartValidation', () => {
 	});
 
 	describe('validateCreate', () => {
-		it('passes when no duplicate exists', async () => {
-			mockRepo.findOneByCondition.mockResolvedValue(null);
+		const createDto = { staffId: 3, academicPeriodId: 100, entityTypeId: 9, entityCode: 50 };
+
+		it('passes when the entity has no active node in the period', async () => {
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
 			await expect(
-				ChartValidation.validateCreate(mockRepo as any, { name: 'test' }),
+				ChartValidation.validateCreate(mockRepo as any, createDto),
+			).resolves.toBeUndefined();
+			expect(mockRepo.findActiveNodeByEntity).toHaveBeenCalledWith(100, 9, 50);
+		});
+
+		it('throws when the entity already has an active node, whatever the staff', async () => {
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 77 });
+			await expect(
+				ChartValidation.validateCreate(mockRepo as any, { ...createDto, staffId: 999 }),
+			).rejects.toThrow(DomainError);
+		});
+
+		it('allows one staff two nodes that the old staff-based rule rejected', async () => {
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
+			await expect(
+				ChartValidation.validateCreate(mockRepo as any, { ...createDto, entityTypeId: 12 }),
 			).resolves.toBeUndefined();
 		});
 
-		it('throws when duplicate exists', async () => {
-			mockRepo.findOneByCondition.mockResolvedValue({ id: 1 });
+		it('does not check uniqueness without an entity code', async () => {
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 77 });
 			await expect(
-				ChartValidation.validateCreate(mockRepo as any, { name: 'test' }),
-			).rejects.toThrow(DomainError);
+				ChartValidation.validateCreate(mockRepo as any, { staffId: 3, academicPeriodId: 100 }),
+			).resolves.toBeUndefined();
+			expect(mockRepo.findActiveNodeByEntity).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('validateUpdate', () => {
+		const storedNode = { id: 1, academicPeriodId: 100, entityTypeId: 9, entityCode: 50 };
+
 		it('passes when entity exists and no conflict', async () => {
-			mockRepo.findOneById.mockResolvedValue({ id: 1 });
-			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.findOneById.mockResolvedValue(storedNode);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
 			await expect(ChartValidation.validateUpdate(mockRepo as any, 1, {})).resolves.toBeUndefined();
 		});
 
 		it('throws when entity not found', async () => {
 			mockRepo.findOneById.mockResolvedValue(null);
-			mockRepo.findOneByCondition.mockResolvedValue(null);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
 			await expect(ChartValidation.validateUpdate(mockRepo as any, 999, {})).rejects.toThrow(
 				DomainError,
 			);
+		});
+
+		it('throws when the update lands on another active node in the period', async () => {
+			mockRepo.findOneById.mockResolvedValue(storedNode);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 2 });
+			await expect(
+				ChartValidation.validateUpdate(mockRepo as any, 1, { entityCode: 51 }),
+			).rejects.toThrow(DomainError);
+			expect(mockRepo.findActiveNodeByEntity).toHaveBeenCalledWith(100, 9, 51);
+		});
+
+		it('passes when the node keeps its own trio', async () => {
+			mockRepo.findOneById.mockResolvedValue(storedNode);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 1 });
+			await expect(
+				ChartValidation.validateUpdate(mockRepo as any, 1, { staffId: 5 }),
+			).resolves.toBeUndefined();
 		});
 	});
 
@@ -76,9 +114,42 @@ describe('ChartValidation', () => {
 			mockRepo.staffExists.mockResolvedValue(true);
 			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.COURSE);
 			mockRepo.entityExists.mockResolvedValue(true);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
 			await expect(
 				ChartValidation.validateMaintenanceCreate(mockRepo as any, 100, courseDto),
 			).resolves.toBeUndefined();
+		});
+
+		it('throws when the entity already has an active node in the period', async () => {
+			mockRepo.getNodeWithType.mockResolvedValue({
+				academicPeriodId: 100,
+				entityTypeCode: ENTITY.PROGRAM,
+			});
+			mockRepo.staffExists.mockResolvedValue(true);
+			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.COURSE);
+			mockRepo.entityExists.mockResolvedValue(true);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 77 });
+			await expect(
+				ChartValidation.validateMaintenanceCreate(mockRepo as any, 100, courseDto),
+			).rejects.toThrow(DomainError);
+			expect(mockRepo.findActiveNodeByEntity).toHaveBeenCalledWith(100, 9, 50);
+		});
+
+		it('does not check uniqueness for an entity type that carries no code', async () => {
+			mockRepo.getNodeWithType.mockResolvedValue({
+				academicPeriodId: 100,
+				entityTypeCode: ENTITY.PROGRAM,
+			});
+			mockRepo.staffExists.mockResolvedValue(true);
+			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.AREA);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 77 });
+			await expect(
+				ChartValidation.validateMaintenanceCreate(mockRepo as any, 100, {
+					...courseDto,
+					entityCode: undefined,
+				}),
+			).resolves.toBeUndefined();
+			expect(mockRepo.findActiveNodeByEntity).not.toHaveBeenCalled();
 		});
 
 		it('throws when adding under the dean', async () => {
@@ -135,6 +206,52 @@ describe('ChartValidation', () => {
 			await expect(
 				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { title: {} }),
 			).rejects.toThrow(DomainError);
+		});
+
+		const courseNode = {
+			id: 5,
+			academicPeriodId: 100,
+			entityTypeId: 9,
+			entityTypeCode: ENTITY.COURSE,
+			entityCode: 50,
+		};
+
+		it('throws when the edit lands on another active node in the period', async () => {
+			mockRepo.getNodeWithType.mockResolvedValue(courseNode);
+			mockRepo.entityExists.mockResolvedValue(true);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 99 });
+			await expect(
+				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { entityCode: 51 }),
+			).rejects.toThrow(DomainError);
+		});
+
+		it('passes when the node keeps its own trio', async () => {
+			mockRepo.getNodeWithType.mockResolvedValue(courseNode);
+			mockRepo.staffExists.mockResolvedValue(true);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 5 });
+			await expect(
+				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { staffId: 3 }),
+			).resolves.toBeUndefined();
+		});
+
+		it('resolves a code-only edit against the node existing entity type', async () => {
+			mockRepo.getNodeWithType.mockResolvedValue(courseNode);
+			mockRepo.entityExists.mockResolvedValue(true);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
+			await expect(
+				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { entityCode: 51 }),
+			).resolves.toBeUndefined();
+			expect(mockRepo.findActiveNodeByEntity).toHaveBeenCalledWith(100, 9, 51);
+		});
+
+		it('resolves a type-only edit against the new entity type and drops the code', async () => {
+			mockRepo.getNodeWithType.mockResolvedValue(courseNode);
+			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.AREA);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue({ id: 99 });
+			await expect(
+				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { entityTypeId: 12 }),
+			).resolves.toBeUndefined();
+			expect(mockRepo.findActiveNodeByEntity).not.toHaveBeenCalled();
 		});
 	});
 

@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
+import { BadRequestError } from 'src/commons/domain-error';
 import { ChartRepository } from '../core/charts.repository';
-import { ChartValidation, entityTypeNeedsCode, resolveEntityCode } from '../core/charts.validation';
+import { chartsValidationStrings } from '../config/strings/charts.validation';
+import {
+	ChartValidation,
+	resolveEffectiveEntity,
+	resolveEntityCode,
+} from '../core/charts.validation';
 import type { I18nText } from 'src/shared/types/i18n';
 
 import {
@@ -76,14 +82,23 @@ export class ChartService extends BaseService<ChartRepository> {
 		if (dto.staffId != null) partial.staffId = dto.staffId;
 		if (dto.title != null) partial.title = dto.title;
 
-		if (dto.entityTypeId != null) {
-			const newTypeCode = (await this.repository.getEntityTypeCode(dto.entityTypeId))!;
-			partial.entityTypeId = dto.entityTypeId;
-			partial.entityCode = resolveEntityCode(newTypeCode, dto.entityCode);
-		} else if (dto.entityCode != null) {
+		if (dto.entityTypeId != null || dto.entityCode != null) {
+			// Validation already loaded the node, but nothing holds it between there and here, so a
+			// concurrent delete must surface as the same error validation would have raised.
 			const node = await this.repository.getNodeWithType(id);
-			partial.entityCode =
-				node?.entityTypeCode && entityTypeNeedsCode(node.entityTypeCode) ? dto.entityCode : null;
+			if (!node) {
+				throw new BadRequestError({
+					message: chartsValidationStrings.result.maintenanceUpdateFailed,
+					errors: [chartsValidationStrings.error.notFound],
+				});
+			}
+
+			const newTypeCode =
+				dto.entityTypeId != null ? await this.repository.getEntityTypeCode(dto.entityTypeId) : null;
+			const effective = resolveEffectiveEntity(node, dto, newTypeCode);
+
+			if (dto.entityTypeId != null) partial.entityTypeId = dto.entityTypeId;
+			partial.entityCode = effective.entityCode;
 		}
 
 		await this.repository.updateNode(id, partial);
