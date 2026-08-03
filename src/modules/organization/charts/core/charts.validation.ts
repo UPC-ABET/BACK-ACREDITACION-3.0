@@ -20,19 +20,71 @@ export const resolveEntityCode = (
 	entityCode?: number | null,
 ): number | null => (entityTypeNeedsCode(entityTypeCode) ? (entityCode ?? null) : null);
 
+/**
+ * The (entityTypeId, entityCode) a partial edit will actually leave on the node.
+ *
+ * A maintenance update may carry a new type, a new code, or neither, and the code is only kept
+ * for types that take one. Validation and ChartService.updateNode must agree on the result or
+ * one of them checks a trio the other never writes, and the duplicate slips through.
+ */
+export const resolveEffectiveEntity = (
+	current: {
+		entityTypeId: number | null;
+		entityTypeCode: string | null;
+		entityCode: number | null;
+	},
+	dto: { entityTypeId?: number; entityCode?: number },
+	newTypeCode: string | null,
+): { entityTypeId: number | null; entityCode: number | null } => {
+	if (dto.entityTypeId != null) {
+		return {
+			entityTypeId: dto.entityTypeId,
+			entityCode: newTypeCode ? resolveEntityCode(newTypeCode, dto.entityCode) : null,
+		};
+	}
+	if (dto.entityCode != null) {
+		return {
+			entityTypeId: current.entityTypeId,
+			entityCode: current.entityTypeCode
+				? resolveEntityCode(current.entityTypeCode, dto.entityCode)
+				: null,
+		};
+	}
+	return { entityTypeId: current.entityTypeId, entityCode: current.entityCode };
+};
+
 export class ChartValidation {
+	// The one place the uniqueness key is expressed in TypeScript: an entity may hold at most one
+	// active chart node per academic period. Nodes without an entity code (Area/Subarea/untagged)
+	// are exempt, which is why a null on either component short-circuits to "free".
+	static async isEntityTakenInPeriod(
+		repo: ChartRepository,
+		params: {
+			academicPeriodId: number;
+			entityTypeId: number | null | undefined;
+			entityCode: number | null | undefined;
+			excludeChartId?: number;
+		},
+	): Promise<boolean> {
+		const { academicPeriodId, entityTypeId, entityCode, excludeChartId } = params;
+		if (entityTypeId == null || entityCode == null) return false;
+
+		const found = await repo.findActiveNodeByEntity(academicPeriodId, entityTypeId, entityCode);
+		return found !== null && found.id !== excludeChartId;
+	}
+
 	static async validateCreate(repo: ChartRepository, data: any) {
 		const errors: Array<string> = [];
 
-		const exists = await repo.findOneByCondition({
-			where: {
-				staffId: data.staffId,
+		if (
+			await ChartValidation.isEntityTakenInPeriod(repo, {
 				academicPeriodId: data.academicPeriodId,
+				entityTypeId: data.entityTypeId,
 				entityCode: data.entityCode,
-			},
-		});
-
-		if (exists) errors.push(chartsValidationStrings.error.chartExists);
+			})
+		) {
+			errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+		}
 
 		if (errors.length > 0) {
 			throw new BadRequestError({
@@ -46,20 +98,17 @@ export class ChartValidation {
 		const errors: Array<string> = [];
 
 		const entity = await repo.findOneById(id);
-		if (!entity) errors.push(chartsValidationStrings.error.notFound);
-
-		if (data.staffId && data.academicPeriodId && data.entityCode) {
-			const exists = await repo.findOneByCondition({
-				where: {
-					staffId: data.staffId,
-					academicPeriodId: data.academicPeriodId,
-					entityCode: data.entityCode,
-				},
-			});
-
-			if (exists && exists.id !== id) {
-				errors.push(chartsValidationStrings.error.chartExists);
-			}
+		if (!entity) {
+			errors.push(chartsValidationStrings.error.notFound);
+		} else if (
+			await ChartValidation.isEntityTakenInPeriod(repo, {
+				academicPeriodId: data.academicPeriodId ?? entity.academicPeriodId,
+				entityTypeId: data.entityTypeId ?? entity.entityTypeId,
+				entityCode: data.entityCode ?? entity.entityCode,
+				excludeChartId: id,
+			})
+		) {
+			errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
 		}
 
 		if (errors.length > 0) {
@@ -106,6 +155,14 @@ export class ChartValidation {
 				errors.push(chartsValidationStrings.error.entityCodeRequired);
 			} else if (!(await repo.entityExists(typeCode, dto.entityCode))) {
 				errors.push(chartsValidationStrings.error.entityNotFound);
+			} else if (
+				await ChartValidation.isEntityTakenInPeriod(repo, {
+					academicPeriodId,
+					entityTypeId: dto.entityTypeId,
+					entityCode: resolveEntityCode(typeCode, dto.entityCode),
+				})
+			) {
+				errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
 			}
 		}
 
@@ -140,8 +197,10 @@ export class ChartValidation {
 			errors.push(chartsValidationStrings.error.staffNotFound);
 		}
 
+		let newTypeCode: string | null = null;
+
 		if (dto.entityTypeId != null) {
-			const newTypeCode = await repo.getEntityTypeCode(dto.entityTypeId);
+			newTypeCode = await repo.getEntityTypeCode(dto.entityTypeId);
 			if (!newTypeCode) {
 				errors.push(chartsValidationStrings.error.entityTypeInvalid);
 			} else if (isReadOnlyEntityType(newTypeCode)) {
@@ -160,6 +219,22 @@ export class ChartValidation {
 			!(await repo.entityExists(node.entityTypeCode, dto.entityCode))
 		) {
 			errors.push(chartsValidationStrings.error.entityNotFound);
+		}
+
+		// Only once the type and entity resolve: reporting a duplicate on top of an invalid type
+		// would name the wrong problem.
+		if (errors.length === 0) {
+			const effective = resolveEffectiveEntity(node, dto, newTypeCode);
+			if (
+				await ChartValidation.isEntityTakenInPeriod(repo, {
+					academicPeriodId: node.academicPeriodId,
+					entityTypeId: effective.entityTypeId,
+					entityCode: effective.entityCode,
+					excludeChartId: id,
+				})
+			) {
+				errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+			}
 		}
 
 		if (errors.length > 0) {

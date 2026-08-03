@@ -1,6 +1,5 @@
 export const chartsValidationStrings = {
 	error: {
-		chartExists: 'error.chart.chartExists',
 		notFound: 'error.chart.notFound',
 		parentNotFound: 'error.chart.parentNotFound',
 		cannotAddUnderDean: 'error.chart.cannotAddUnderDean',
@@ -9,6 +8,7 @@ export const chartsValidationStrings = {
 		entityTypeReadOnly: 'error.chart.entityTypeReadOnly',
 		entityCodeRequired: 'error.chart.entityCodeRequired',
 		entityNotFound: 'error.chart.entityNotFound',
+		entityAlreadyAssigned: 'error.chart.entityAlreadyAssigned',
 		readOnlyNode: 'error.chart.readOnlyNode',
 		hasIfc: 'error.chart.hasIfc',
 	},

@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { ChartRepository } from '../core/charts.repository';
-import { ChartValidation, entityTypeNeedsCode, resolveEntityCode } from '../core/charts.validation';
+import {
+	ChartValidation,
+	resolveEffectiveEntity,
+	resolveEntityCode,
+} from '../core/charts.validation';
 import type { I18nText } from 'src/shared/types/i18n';
 
 import {
@@ -76,14 +80,14 @@ export class ChartService extends BaseService<ChartRepository> {
 		if (dto.staffId != null) partial.staffId = dto.staffId;
 		if (dto.title != null) partial.title = dto.title;
 
-		if (dto.entityTypeId != null) {
-			const newTypeCode = (await this.repository.getEntityTypeCode(dto.entityTypeId))!;
-			partial.entityTypeId = dto.entityTypeId;
-			partial.entityCode = resolveEntityCode(newTypeCode, dto.entityCode);
-		} else if (dto.entityCode != null) {
-			const node = await this.repository.getNodeWithType(id);
-			partial.entityCode =
-				node?.entityTypeCode && entityTypeNeedsCode(node.entityTypeCode) ? dto.entityCode : null;
+		if (dto.entityTypeId != null || dto.entityCode != null) {
+			const node = (await this.repository.getNodeWithType(id))!;
+			const newTypeCode =
+				dto.entityTypeId != null ? await this.repository.getEntityTypeCode(dto.entityTypeId) : null;
+			const effective = resolveEffectiveEntity(node, dto, newTypeCode);
+
+			if (dto.entityTypeId != null) partial.entityTypeId = effective.entityTypeId ?? undefined;
+			partial.entityCode = effective.entityCode;
 		}
 
 		await this.repository.updateNode(id, partial);
