@@ -26,6 +26,11 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * chart node: which duplicate survives decides which node owns its IFCs and drives notification
  * routing, so that is a decision for the team, not for a migration.
  *
+ * The index name below is also matched at runtime by ChartRepository, which translates SQLSTATE
+ * 23505 on it into a domain conflict — see UNIQUE_CHART_ENTITY_INDEX in
+ * src/modules/organization/charts/core/charts.repository.ts. Renaming it here alone would leave
+ * that translation silently unmatched, and every lost duplicate race would return a 500 again.
+ *
  * Forward-only in production: down() drops the index and restores the prior function body (no
  * duplicate-entity checks).
  */

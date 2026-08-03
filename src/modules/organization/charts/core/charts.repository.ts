@@ -9,8 +9,11 @@ import { chartsValidationStrings } from '../config/strings/charts.validation';
 
 const ENTITY = TYPE_CODES.ENTITY_TYPE;
 
-const UNIQUE_CHART_ENTITY_INDEX = 'UQ_charts_academic_period_entity_type_entity_code';
-const UNIQUE_CHART_ENTITY_INDEX_SQLSTATE = '23505';
+// Created by 1785730489320-enforce-unique-chart-entity-per-period. Exported because the name is a
+// contract between that migration and the error translation below: rename it in one place only and
+// the translation stops matching, silently turning every duplicate race back into a 500.
+export const UNIQUE_CHART_ENTITY_INDEX = 'UQ_charts_academic_period_entity_type_entity_code';
+const UNIQUE_VIOLATION_SQLSTATE = '23505';
 
 export interface SchoolChartNode {
 	id: number;
@@ -75,10 +78,15 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 			const driver = error as { code?: string; constraint?: string };
 			// Both, never the SQLSTATE alone: other unique constraints must keep their own error.
 			if (
-				driver?.code === UNIQUE_CHART_ENTITY_INDEX_SQLSTATE &&
+				driver?.code === UNIQUE_VIOLATION_SQLSTATE &&
 				driver?.constraint === UNIQUE_CHART_ENTITY_INDEX
 			) {
-				throw new ConflictError(chartsValidationStrings.error.entityAlreadyAssigned);
+				// Keep the driver error as the cause: if the index is ever renamed this branch stops
+				// matching, and the original is the only thing that says why.
+				throw Object.assign(
+					new ConflictError(chartsValidationStrings.error.entityAlreadyAssigned),
+					{ cause: error },
+				);
 			}
 			throw error;
 		}
@@ -285,7 +293,10 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 			entityCode?: number | null;
 		},
 	): Promise<void> {
-		await this.repository.update(id, partial);
+		// Writes through the TypeORM repository rather than BaseRepository.update, so it does not
+		// inherit the override above and must wrap the translation itself. Switching to super.update
+		// is not equivalent: that throws NotFoundException on affected === 0 and returns the entity.
+		await this.translateDuplicateNode(() => this.repository.update(id, partial));
 	}
 
 	async getSubtreeChartIds(id: number): Promise<number[]> {
