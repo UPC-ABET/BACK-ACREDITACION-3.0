@@ -41,13 +41,13 @@ export class CourseSectionService extends BaseService<CourseSectionRepository> {
 		query: CourseSectionMaintenanceQueryDto,
 	): Promise<PaginatedResult<CourseSectionMaintenanceItem>> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
-		const [sections, total] = await this.repository.findMaintenancePage(
+		const [sections, total] = await this.repository.findMaintenancePage({
 			academicPeriodId,
-			query.programId,
-			query.search,
+			programId: query.programId,
+			search: query.search,
 			skip,
 			take,
-		);
+		});
 
 		return toPaginated(
 			sections.map((section) => this.toMaintenanceItem(section)),

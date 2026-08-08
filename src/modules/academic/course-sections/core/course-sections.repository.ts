@@ -11,6 +11,14 @@ export interface CourseSectionDeleteBlockerCounts {
 	surveys: number;
 }
 
+export interface CourseSectionMaintenancePageFilters {
+	academicPeriodId: number;
+	programId?: number;
+	search?: string;
+	skip: number;
+	take: number;
+}
+
 export class CourseSectionRepository extends BaseRepository<CourseSectionEntity> {
 	constructor(
 		@InjectRepository(CourseSectionEntity)
@@ -35,18 +43,21 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 	}
 
 	async findMaintenancePage(
-		academicPeriodId: number,
-		programId: number | undefined,
-		search: string | undefined,
-		skip: number,
-		take: number,
+		filters: CourseSectionMaintenancePageFilters,
 	): Promise<[CourseSectionEntity[], number]> {
+		const { academicPeriodId, programId, search, skip, take } = filters;
 		const qb = this.maintenanceQuery().where('section.academic_period_id = :academicPeriodId', {
 			academicPeriodId,
 		});
 
 		if (programId !== undefined) {
-			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = course.id')
+			// study_plan_courses has no DB-level uniqueness on (study_plan_academic_period_id,
+			// course_id) — only application validation (StudyPlanCourseValidation, fn_upload_study_plans)
+			// keeps it 1:1. distinct(true) guards pagination against a fan-out row if that's ever violated;
+			// TypeORM already computes COUNT(DISTINCT section.id) for the total whenever joins are present,
+			// so only the page contents needed this.
+			qb.distinct(true)
+				.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = course.id')
 				.innerJoin(
 					StudyPlanAcademicPeriodEntity,
 					'spap',

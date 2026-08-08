@@ -28,6 +28,14 @@ export class PaginationQueryDto {
 	pageSize?: number;
 }
 
+export class ProgramFilterQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by program (carrera) id' })
+	programId?: number;
+}
+
 export interface PaginatedResult<T> {
 	items: T[];
 	total: number;

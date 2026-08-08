@@ -1,7 +1,6 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PaginationQueryDto } from 'src/commons/pagination.dtos';
+import { ProgramFilterQueryDto } from 'src/commons/pagination.dtos';
 import type { I18nText } from 'src/shared/types/i18n';
 import type { StudentSectionEnrollmentEntity } from './student-section-enrollments.entity';
 
@@ -63,13 +62,7 @@ export class FilterStudentSectionEnrollmentDto {
 	courseSectionId?: number;
 }
 
-export class StudentSectionEnrollmentMaintenanceQueryDto extends PaginationQueryDto {
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@ApiPropertyOptional({ example: 1, description: 'Filter by program (carrera) id' })
-	programId?: number;
-
+export class StudentSectionEnrollmentMaintenanceQueryDto extends ProgramFilterQueryDto {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({
