@@ -7,7 +7,6 @@ import {
 	ApiTags,
 	ApiConsumes,
 	ApiProduces,
-	ApiQuery,
 } from '@nestjs/swagger';
 import { swaggerStrings } from './swagger.strings';
 
@@ -38,6 +37,11 @@ export function HttpMethodWithSwagger(data: {
 	params?: { name: string; description: string; type?: any }[];
 	param?: { name: string; type?: any; description?: string };
 	body?: any;
+	// Unused: @nestjs/swagger already expands a bare `@Query() dto: SomeDto` controller param into
+	// one query parameter per `@ApiProperty`/`@ApiPropertyOptional` field on the DTO. Re-emitting
+	// ApiQuery(type) here duplicated every one of those params in openapi.json. Kept only so the
+	// many existing `query: SomeDto` call sites (which document the DTO for readability) keep
+	// compiling — do not resurrect this into a decorator without deduping against that auto-expansion.
 	query?: any;
 	responseType?: any;
 	produces?: string;
@@ -62,7 +66,6 @@ export function HttpMethodWithSwagger(data: {
 			]
 		: [];
 	const bodyDecorator = data.body ? [ApiBody({ type: data.body })] : [];
-	const queryDecorator = data.query ? [ApiQuery({ type: data.query })] : [];
 	const producesDecorator = data.produces ? [ApiProduces(data.produces)] : [];
 	const responseDecorator = data.responseType
 		? ApiResponse({
@@ -86,7 +89,6 @@ export function HttpMethodWithSwagger(data: {
 		...paramDecorators,
 		...singleParamDecorator,
 		...bodyDecorator,
-		...queryDecorator,
 		...producesDecorator,
 	);
 }
