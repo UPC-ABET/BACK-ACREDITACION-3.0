@@ -13,19 +13,26 @@ import {
 	GenerateFindingsPppDto,
 } from '../../model/ppp.dtos';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
+import { OutcomeConfigResponseDto } from 'src/modules/survey/outcome-configs/model/outcome-configs.dtos';
 
 const cfg = pppRoutes;
 
 export const SwaggerPppController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.root });
 export const SwaggerPppConfigCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.create, body: CreatePppConfigDto });
-export const SwaggerPppConfigGetAll = () => HttpMethodWithSwagger(cfg.config.getAll);
+export const SwaggerPppConfigGetAll = () =>
+	HttpMethodWithSwagger({ ...cfg.config.getAll, responseType: [OutcomeConfigResponseDto] });
 export const SwaggerPppConfigGetByFilters = () =>
-	HttpMethodWithSwagger({ ...cfg.config.getByFilters, body: FilterPppConfigDto });
+	HttpMethodWithSwagger({
+		...cfg.config.getByFilters,
+		body: FilterPppConfigDto,
+		responseType: [OutcomeConfigResponseDto],
+	});
 export const SwaggerPppConfigGetById = () =>
 	HttpMethodWithSwagger({
 		...cfg.config.getById,
 		params: [{ name: 'id', description: 'ID de la configuración PPP', type: Number }],
+		responseType: OutcomeConfigResponseDto,
 	});
 export const SwaggerPppConfigUpdate = () =>
 	HttpMethodWithSwagger({

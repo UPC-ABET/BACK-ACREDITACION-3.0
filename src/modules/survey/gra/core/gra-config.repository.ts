@@ -117,13 +117,20 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 			.where('oc.outcome_id = :outcomeId', { outcomeId })
 			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
+		// Match "no program"/"no period" explicitly (IS NULL) instead of skipping the clause —
+		// otherwise a global config (programId omitted) could match, and reactivate, an unrelated
+		// soft-deleted row that does belong to a specific program/period.
 		if (programId !== undefined) {
 			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
+		} else {
+			qb.andWhere(`oc.extra->>'program_id' IS NULL`);
 		}
 		if (academicPeriodId !== undefined) {
 			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
 				periodId: academicPeriodId,
 			});
+		} else {
+			qb.andWhere(`oc.extra->>'academic_period_id' IS NULL`);
 		}
 
 		return await qb.getOne();

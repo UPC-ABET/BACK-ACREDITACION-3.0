@@ -64,6 +64,77 @@ export class UpdateOutcomeConfigDto {
 	userOutcomeDescription?: I18nText;
 }
 
+// --- Response: GET (list/by id) ---------------------------------------------
+// Mirrors OutcomeConfigEntity as actually serialized by GraConfigRepository/
+// PppConfigRepository (raw entity, no mapper) — see outcome-configs.entity.ts.
+
+export class OutcomeConfigCommissionTypeDto {
+	@ApiProperty({
+		example: 'TG301-T002',
+		description: 'General (TG301-T001) or Specific (TG301-T002)',
+	})
+	code: string;
+}
+
+export class OutcomeConfigProgramCommissionDto {
+	@ApiProperty({ type: OutcomeConfigCommissionTypeDto })
+	commissionType: OutcomeConfigCommissionTypeDto;
+}
+
+export class OutcomeConfigOutcomeDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({ example: 'CAC-CC-1' })
+	outcomeCode: string;
+
+	@ApiProperty({ example: { es: 'outcomeNameEs', en: 'outcomeNameEn' }, type: Object })
+	outcomeName: I18nText;
+
+	@ApiProperty({
+		example: { es: 'outcomeDescriptionEs', en: 'outcomeDescriptionEn' },
+		type: Object,
+	})
+	outcomeDescription: I18nText;
+
+	@ApiProperty({ type: OutcomeConfigProgramCommissionDto })
+	programCommission: OutcomeConfigProgramCommissionDto;
+}
+
+export class OutcomeConfigResponseDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({ example: 1 })
+	outcomeId: number;
+
+	@ApiProperty({ example: true })
+	isActive: boolean;
+
+	@ApiProperty({
+		example: { es: 'userOutcomeNameEs', en: 'userOutcomeNameEn' },
+		type: Object,
+	})
+	userOutcomeName: I18nText;
+
+	@ApiProperty({
+		example: { es: 'userOutcomeDescriptionEs', en: 'userOutcomeDescriptionEn' },
+		type: Object,
+		required: false,
+	})
+	userOutcomeDescription?: I18nText;
+
+	@ApiProperty({
+		example: { surveyType: 'GRA', nameEn: 'nameEnExample', order: 1, programId: 1 },
+		type: Object,
+		description: 'Free-form jsonb bag (survey-specific fields: nameEn, order, programId, etc.)',
+	})
+	extra: Record<string, unknown>;
+
+	@ApiProperty({ type: OutcomeConfigOutcomeDto })
+	outcome: OutcomeConfigOutcomeDto;
+}
+
 export class FilterOutcomeConfigDto {
 	@IsOptional()
 	@ApiProperty({ example: { key: 'extraValue' }, required: false })

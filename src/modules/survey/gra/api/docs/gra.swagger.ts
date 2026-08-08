@@ -19,19 +19,26 @@ import {
 	SearchGraStudentsDto,
 } from '../../model/gra.dtos';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
+import { OutcomeConfigResponseDto } from 'src/modules/survey/outcome-configs/model/outcome-configs.dtos';
 
 const cfg = graRoutes;
 
 export const SwaggerGraController = () => ControllerWithTags({ tag: cfg.tag, route: cfg.root });
 export const SwaggerGraConfigCreate = () =>
 	HttpMethodWithSwagger({ ...cfg.config.create, body: CreateGraConfigDto });
-export const SwaggerGraConfigGetAll = () => HttpMethodWithSwagger(cfg.config.getAll);
+export const SwaggerGraConfigGetAll = () =>
+	HttpMethodWithSwagger({ ...cfg.config.getAll, responseType: [OutcomeConfigResponseDto] });
 export const SwaggerGraConfigGetByFilters = () =>
-	HttpMethodWithSwagger({ ...cfg.config.getByFilters, body: FilterGraConfigDto });
+	HttpMethodWithSwagger({
+		...cfg.config.getByFilters,
+		body: FilterGraConfigDto,
+		responseType: [OutcomeConfigResponseDto],
+	});
 export const SwaggerGraConfigGetById = () =>
 	HttpMethodWithSwagger({
 		...cfg.config.getById,
 		params: [{ name: 'id', description: 'ID de la configuración GRA', type: Number }],
+		responseType: OutcomeConfigResponseDto,
 	});
 export const SwaggerGraConfigUpdate = () =>
 	HttpMethodWithSwagger({
