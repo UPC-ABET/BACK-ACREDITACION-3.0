@@ -16,6 +16,7 @@ import {
 	SwaggerGraNotificationTemplate,
 	SwaggerGraNotificationUploadExcel,
 	SwaggerGraNotificationListStudents,
+	SwaggerGraNotificationExport,
 	SwaggerGraNotificationSearchStudents,
 	SwaggerGraNotificationDelete,
 	SwaggerGraNotificationResend,
@@ -159,6 +160,37 @@ export class GraController {
 		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
 	) {
 		return parseSuccessResponse(await this.graService.listStudents(dto, academicPeriodId));
+	}
+
+	@SwaggerGraNotificationExport()
+	@ApiAcademicPeriodHeader(false)
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async notificationExport(
+		@Res() res: Response,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+		@Query('programId') programIdRaw?: string,
+		@Query('campusId') campusIdRaw?: string,
+		@Query('studentCode') studentCode?: string,
+		@Query('search') search?: string,
+	) {
+		const { buffer, fileName } = await this.graService.exportStudents(
+			{
+				programId:
+					programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined,
+				campusId: campusIdRaw !== undefined && campusIdRaw !== '' ? Number(campusIdRaw) : undefined,
+				studentCode,
+				search,
+			},
+			academicPeriodId,
+		);
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
 	}
 
 	@SwaggerGraNotificationSearchStudents()

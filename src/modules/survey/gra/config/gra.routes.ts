@@ -66,6 +66,11 @@ export const graRoutes = {
 			route: 'notification/upload-excel',
 			summary: 'Bulk add students to the GRA survey list from a base64 Excel',
 		},
+		export: {
+			method: 'GET',
+			route: 'notification/export',
+			summary: 'Download the notified-students list as an Excel file (all columns and rows)',
+		},
 	},
 	email: {
 		summary: {
