@@ -1,6 +1,9 @@
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { classRepresentativesRoutes } from '../../config/class-representatives.routes';
-import { AssignRepresentativeDto } from '../../model/class-representatives.dtos';
+import {
+	AssignRepresentativeDto,
+	ClassRepresentativeMaintenanceQueryDto,
+} from '../../model/class-representatives.dtos';
 
 const cfg = classRepresentativesRoutes;
 
@@ -16,4 +19,7 @@ export const SwaggerClassRepresentativeRemove = () =>
 	HttpMethodWithSwagger({ ...cfg.operation.remove, body: AssignRepresentativeDto });
 
 export const SwaggerClassRepresentativeMaintenance = () =>
-	HttpMethodWithSwagger(cfg.operation.maintenance);
+	HttpMethodWithSwagger({
+		...cfg.operation.maintenance,
+		query: ClassRepresentativeMaintenanceQueryDto,
+	});

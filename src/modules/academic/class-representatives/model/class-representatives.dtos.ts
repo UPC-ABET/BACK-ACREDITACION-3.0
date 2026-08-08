@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PaginationQueryDto } from 'src/commons/pagination.dtos';
+import { ProgramFilterQueryDto } from 'src/commons/pagination.dtos';
 
 export class AssignRepresentativeDto {
 	@IsString()
@@ -14,7 +14,7 @@ export class AssignRepresentativeDto {
 	sectionCode: string;
 }
 
-export class ClassRepresentativeMaintenanceQueryDto extends PaginationQueryDto {
+export class ClassRepresentativeMaintenanceQueryDto extends ProgramFilterQueryDto {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({

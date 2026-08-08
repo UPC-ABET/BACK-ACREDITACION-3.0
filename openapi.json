@@ -98,37 +98,6 @@
 						"in": "query",
 						"description": "Search by user first name / last name / email / linked professor code",
 						"schema": { "example": "searchExample", "type": "string" }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"required": false,
-						"name": "unlinkedOnly",
-						"in": "query",
-						"schema": { "example": true, "type": "boolean" }
-					},
-					{
-						"required": false,
-						"description": "Search by user first name / last name / email / linked professor code",
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -980,10 +949,17 @@
 						}
 					},
 					{
+						"name": "programId",
+						"required": false,
+						"in": "query",
+						"description": "Filter by program (carrera) id",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
 						"name": "search",
 						"required": false,
 						"in": "query",
-						"description": "Search by section, course, professor or campus code",
+						"description": "Search by section code, course code or name, professor code, professor name, or campus code",
 						"schema": { "example": "searchExample", "type": "string" }
 					},
 					{
@@ -992,31 +968,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Search by section, course, professor or campus code",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -1220,31 +1171,6 @@
 						"required": false,
 						"in": "query",
 						"description": "Free-text search term",
-						"schema": { "example": "searchExample", "type": "string" }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Free-text search term",
-						"required": false,
-						"name": "search",
-						"in": "query",
 						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
@@ -1471,38 +1397,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Filter by program (carrera) id",
-						"required": false,
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"description": "Search by student code, first name or last name",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -1844,38 +1738,6 @@
 						"in": "query",
 						"description": "When true, only professors whose staff has no linked user account",
 						"schema": { "example": true, "type": "boolean" }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Free-text search term",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
-					},
-					{
-						"description": "When true, only professors whose staff has no linked user account",
-						"required": false,
-						"name": "unassigned",
-						"in": "query",
-						"schema": { "example": true, "type": "boolean" }
 					}
 				],
 				"responses": {
@@ -1933,31 +1795,6 @@
 						"required": false,
 						"in": "query",
 						"description": "Search by professor code or staff first name / last name / email",
-						"schema": { "example": "searchExample", "type": "string" }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Search by professor code or staff first name / last name / email",
-						"required": false,
-						"name": "search",
-						"in": "query",
 						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
@@ -2435,38 +2272,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Filter by program (carrera) id",
-						"required": false,
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"description": "Search by course code, section code or student code",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -2620,6 +2425,13 @@
 							"example": 20,
 							"type": "number"
 						}
+					},
+					{
+						"name": "programId",
+						"required": false,
+						"in": "query",
+						"description": "Filter by program (carrera) id",
+						"schema": { "example": 1, "type": "number" }
 					},
 					{
 						"name": "search",
@@ -3292,38 +3104,6 @@
 						"description": "Active modality type scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Filter by program (carrera) id",
-						"required": false,
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"description": "Search by study plan code or program name",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -3786,38 +3566,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"required": true,
-						"description": "Program (carrera) id, from header",
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"description": "Search by outcome code or outcome name (es / en)",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -3957,19 +3705,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "accreditorId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"description": "Only commissions linked to this program in the active period",
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
 					}
 				],
 				"responses": {
@@ -3997,12 +3732,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "commissionId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
 					}
 				],
 				"responses": {
@@ -4851,48 +4580,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"required": false,
-						"name": "campusId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "meetingDate",
-						"in": "query",
-						"schema": { "example": "2026-06-23", "type": "string" }
-					},
-					{
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "ARD-VL", "type": "string" }
 					}
 				],
 				"responses": {
@@ -4941,18 +4628,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"name": "programId",
-						"in": "query",
-						"required": true,
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"name": "campusId",
-						"in": "query",
-						"required": true,
-						"schema": { "example": 1, "type": "number" }
 					}
 				],
 				"responses": {
@@ -4980,12 +4655,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"name": "programId",
-						"in": "query",
-						"required": true,
-						"schema": { "example": 1, "type": "number" }
 					}
 				],
 				"responses": {
@@ -5019,18 +4688,6 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"name": "courseId",
-						"in": "query",
-						"required": true,
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"name": "campusId",
-						"in": "query",
-						"required": true,
-						"schema": { "example": 1, "type": "number" }
 					}
 				],
 				"responses": {
@@ -5369,12 +5026,6 @@
 						"description": "Active school scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 3 }
-					},
-					{
-						"required": true,
-						"name": "chartId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
 					}
 				],
 				"responses": {
@@ -5733,12 +5384,6 @@
 						"description": "Active school scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 3 }
-					},
-					{
-						"required": false,
-						"name": "lang",
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
 					}
 				],
 				"responses": {
@@ -8136,31 +7781,6 @@
 						"in": "query",
 						"description": "Free-text search term",
 						"schema": { "example": "searchExample", "type": "string" }
-					},
-					{
-						"required": false,
-						"name": "page",
-						"in": "query",
-						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "pageSize",
-						"in": "query",
-						"schema": {
-							"minimum": 1,
-							"maximum": 200,
-							"default": 20,
-							"example": 20,
-							"type": "number"
-						}
-					},
-					{
-						"description": "Free-text search term",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "searchExample", "type": "string" }
 					}
 				],
 				"responses": {
@@ -9325,32 +8945,6 @@
 						"description": "Active academic period scope id",
 						"required": false,
 						"schema": { "type": "integer", "example": 1 }
-					},
-					{
-						"required": false,
-						"name": "programId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"required": false,
-						"name": "campusId",
-						"in": "query",
-						"schema": { "example": 1, "type": "number" }
-					},
-					{
-						"description": "Filter by student code",
-						"required": false,
-						"name": "studentCode",
-						"in": "query",
-						"schema": { "example": "U20231001", "type": "string" }
-					},
-					{
-						"description": "Search by student code, name, or email",
-						"required": false,
-						"name": "search",
-						"in": "query",
-						"schema": { "example": "Juan Pérez", "type": "string" }
 					}
 				],
 				"responses": {

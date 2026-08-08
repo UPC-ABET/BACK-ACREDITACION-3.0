@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn, BooleanColumn } from 'src/commons/configs/db.configs';
 import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
@@ -6,6 +6,7 @@ import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-a
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'study_plan_courses', schema: 'academic' })
+@Unique('UQ_study_plan_courses_period_course', ['studyPlanAcademicPeriodId', 'courseId'])
 export class StudyPlanCourseEntity extends BaseEntity {
 	// %% ATTRIBUTES
 
