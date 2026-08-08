@@ -8630,7 +8630,17 @@
 				"operationId": "PppController_configGetAll",
 				"parameters": [],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/OutcomeConfigResponseDto" }
+								}
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -8657,7 +8667,17 @@
 					}
 				},
 				"responses": {
-					"201": { "description": "Resource created successfully" },
+					"201": {
+						"description": "Resource created successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/OutcomeConfigResponseDto" }
+								}
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -8678,7 +8698,14 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/OutcomeConfigResponseDto" }
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -9012,7 +9039,17 @@
 				"operationId": "GraController_configGetAll",
 				"parameters": [],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/OutcomeConfigResponseDto" }
+								}
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -9039,7 +9076,17 @@
 					}
 				},
 				"responses": {
-					"201": { "description": "Resource created successfully" },
+					"201": {
+						"description": "Resource created successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/OutcomeConfigResponseDto" }
+								}
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -9060,7 +9107,14 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/OutcomeConfigResponseDto" }
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -15689,6 +15743,69 @@
 					}
 				},
 				"required": ["outcomeId", "nameEs"]
+			},
+			"OutcomeConfigCommissionTypeDto": {
+				"type": "object",
+				"properties": {
+					"code": {
+						"type": "string",
+						"example": "TG301-T002",
+						"description": "General (TG301-T001) or Specific (TG301-T002)"
+					}
+				},
+				"required": ["code"]
+			},
+			"OutcomeConfigProgramCommissionDto": {
+				"type": "object",
+				"properties": {
+					"commissionType": { "$ref": "#/components/schemas/OutcomeConfigCommissionTypeDto" }
+				},
+				"required": ["commissionType"]
+			},
+			"OutcomeConfigOutcomeDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"outcomeCode": { "type": "string", "example": "CAC-CC-1" },
+					"outcomeName": {
+						"type": "object",
+						"example": { "es": "outcomeNameEs", "en": "outcomeNameEn" }
+					},
+					"outcomeDescription": {
+						"type": "object",
+						"example": { "es": "outcomeDescriptionEs", "en": "outcomeDescriptionEn" }
+					},
+					"programCommission": { "$ref": "#/components/schemas/OutcomeConfigProgramCommissionDto" }
+				},
+				"required": ["id", "outcomeCode", "outcomeName", "outcomeDescription", "programCommission"]
+			},
+			"OutcomeConfigResponseDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"outcomeId": { "type": "number", "example": 1 },
+					"isActive": { "type": "boolean", "example": true },
+					"userOutcomeName": {
+						"type": "object",
+						"example": { "es": "userOutcomeNameEs", "en": "userOutcomeNameEn" }
+					},
+					"userOutcomeDescription": {
+						"type": "object",
+						"example": { "es": "userOutcomeDescriptionEs", "en": "userOutcomeDescriptionEn" }
+					},
+					"extra": {
+						"type": "object",
+						"example": {
+							"surveyType": "GRA",
+							"nameEn": "nameEnExample",
+							"order": 1,
+							"programId": 1
+						},
+						"description": "Free-form jsonb bag (survey-specific fields: nameEn, order, programId, etc.)"
+					},
+					"outcome": { "$ref": "#/components/schemas/OutcomeConfigOutcomeDto" }
+				},
+				"required": ["id", "outcomeId", "isActive", "userOutcomeName", "extra", "outcome"]
 			},
 			"FilterPppConfigDto": {
 				"type": "object",

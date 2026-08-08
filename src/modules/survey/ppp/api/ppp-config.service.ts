@@ -19,7 +19,17 @@ export class PppConfigService {
 	) {}
 
 	async create(dto: CreatePppConfigDto, academicPeriodId?: number | null) {
+		// Throws when an active config already occupies this (outcome, program, period).
 		await PppValidation.validateCreateConfig(this.configRepo, dto, academicPeriodId);
+
+		// A soft-deleted config for the same (outcome, program, period) is reactivated in place
+		// instead of inserting a new row — otherwise re-adding a previously removed outcome would
+		// pile up inactive duplicates.
+		const existing = await this.configRepo.findExistingPpp(
+			dto.outcomeId,
+			dto.programId,
+			academicPeriodId ?? undefined,
+		);
 
 		const extra = {
 			surveyType: PPP_SURVEY_TYPE,
@@ -32,15 +42,21 @@ export class PppConfigService {
 			isExternal: dto.isExternal ?? false,
 		};
 
-		return await this.configRepo.create({
+		// user_outcome_name/description are I18nText jsonb columns but store the bare ES string;
+		// the EN variant lives in extra.nameEn (mirrored on the read side, e.g. ppp-survey.service).
+		const payload = {
 			outcomeId: dto.outcomeId,
-			// user_outcome_name/description are I18nText jsonb columns but store the bare ES string;
-			// the EN variant lives in extra.nameEn (mirrored on the read side, e.g. ppp-survey.service).
 			userOutcomeName: dto.nameEs as unknown as I18nText,
 			userOutcomeDescription: (dto.descriptionEs ?? null) as unknown as I18nText,
 			extra,
 			isActive: true,
-		});
+		};
+
+		if (existing) {
+			return await this.configRepo.update(existing.id, payload);
+		}
+
+		return await this.configRepo.create(payload);
 	}
 
 	async getAll(filters?: FilterPppConfigDto & { academicPeriodId?: number | null }) {

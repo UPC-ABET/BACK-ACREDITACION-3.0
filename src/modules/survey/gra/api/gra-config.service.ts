@@ -21,12 +21,12 @@ export class GraConfigService {
 	) {}
 
 	async create(dto: CreateGraConfigDto, academicPeriodId: number) {
-		const alreadyExists = await this.configRepo.existsGra(
+		const existing = await this.configRepo.findExistingGra(
 			dto.outcomeId,
 			dto.programId ?? undefined,
 			academicPeriodId,
 		);
-		if (alreadyExists) {
+		if (existing?.isActive) {
 			throw new BadRequestError(graValidationStrings.error.configExists);
 		}
 
@@ -42,15 +42,21 @@ export class GraConfigService {
 			isExternal: dto.isExternal ?? false,
 		};
 
-		return await this.configRepo.create({
+		// user_outcome_name/description are I18nText jsonb columns but store the bare ES string;
+		// the EN variant lives in extra.nameEn (mirrored on the read side, e.g. ppp-survey.service).
+		const payload = {
 			outcomeId: dto.outcomeId,
-			// user_outcome_name/description are I18nText jsonb columns but store the bare ES string;
-			// the EN variant lives in extra.nameEn (mirrored on the read side, e.g. ppp-survey.service).
 			userOutcomeName: dto.nameEs as unknown as I18nText,
 			userOutcomeDescription: (dto.descriptionEs ?? null) as unknown as I18nText,
 			extra,
 			isActive: true,
-		});
+		};
+
+		if (existing) {
+			return await this.configRepo.update(existing.id, payload);
+		}
+
+		return await this.configRepo.create(payload);
 	}
 
 	async getAll(filters?: FilterGraConfigDto & { academicPeriodId?: number | null }) {

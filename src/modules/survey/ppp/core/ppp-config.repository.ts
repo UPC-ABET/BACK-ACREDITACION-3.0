@@ -25,6 +25,8 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.leftJoinAndSelect('outcome.programCommission', 'programCommission')
+			.leftJoinAndSelect('programCommission.commissionType', 'commissionType')
 			.where(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
@@ -53,6 +55,8 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return await this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.leftJoinAndSelect('outcome.programCommission', 'programCommission')
+			.leftJoinAndSelect('programCommission.commissionType', 'commissionType')
 			.where('oc.id = :id', { id })
 			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE })
 			.getOne();
@@ -74,7 +78,8 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.where('oc.outcome_id = :outcomeId', { outcomeId })
-			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE })
+			.andWhere('oc.is_active = true');
 
 		if (programId !== undefined) {
 			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
@@ -87,5 +92,34 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 
 		const count = await qb.getCount();
 		return count > 0;
+	}
+
+	async findExistingPpp(
+		outcomeId: number,
+		programId?: number,
+		academicPeriodId?: number,
+	): Promise<OutcomeConfigEntity | null> {
+		const qb = this.repository
+			.createQueryBuilder('oc')
+			.where('oc.outcome_id = :outcomeId', { outcomeId })
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
+
+		// Match "no program"/"no period" explicitly (IS NULL) instead of skipping the clause —
+		// otherwise a global config (programId omitted) could match, and reactivate, an unrelated
+		// soft-deleted row that does belong to a specific program/period.
+		if (programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
+		} else {
+			qb.andWhere(`oc.extra->>'program_id' IS NULL`);
+		}
+		if (academicPeriodId !== undefined) {
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+				periodId: academicPeriodId,
+			});
+		} else {
+			qb.andWhere(`oc.extra->>'academic_period_id' IS NULL`);
+		}
+
+		return await qb.getOne();
 	}
 }
