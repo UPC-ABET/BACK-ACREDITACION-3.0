@@ -51,11 +51,10 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 		});
 
 		if (programId !== undefined) {
-			// study_plan_courses has no DB-level uniqueness on (study_plan_academic_period_id,
-			// course_id) — only application validation (StudyPlanCourseValidation, fn_upload_study_plans)
-			// keeps it 1:1. distinct(true) guards pagination against a fan-out row if that's ever violated;
-			// TypeORM already computes COUNT(DISTINCT section.id) for the total whenever joins are present,
-			// so only the page contents needed this.
+			// study_plan_courses has a UQ on (study_plan_academic_period_id, course_id)
+			// (UQ_study_plan_courses_period_course), so this join can't fan out a section into
+			// duplicate rows. distinct(true) is defense in depth for pagination correctness — TypeORM
+			// already computes COUNT(DISTINCT section.id) for the total whenever joins are present.
 			qb.distinct(true)
 				.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = course.id')
 				.innerJoin(
