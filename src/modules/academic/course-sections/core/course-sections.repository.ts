@@ -2,6 +2,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { CourseSectionEntity } from '../model/course-sections.entity';
+import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
+import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
+import { StudyPlanEntity } from 'src/modules/academic/study-plans/model/study-plans.entity';
 
 export interface CourseSectionDeleteBlockerCounts {
 	studentSectionEnrollments: number;
@@ -22,6 +25,7 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 			.createQueryBuilder(CourseSectionEntity, 'section')
 			.innerJoinAndSelect('section.course', 'course')
 			.innerJoinAndSelect('section.professor', 'professor')
+			.innerJoinAndSelect('professor.staff', 'staff')
 			.innerJoinAndSelect('section.campus', 'campus')
 			.innerJoinAndSelect('section.sectionModalityType', 'modality');
 	}
@@ -32,6 +36,7 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 
 	async findMaintenancePage(
 		academicPeriodId: number,
+		programId: number | undefined,
 		search: string | undefined,
 		skip: number,
 		take: number,
@@ -40,12 +45,27 @@ export class CourseSectionRepository extends BaseRepository<CourseSectionEntity>
 			academicPeriodId,
 		});
 
+		if (programId !== undefined) {
+			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = course.id')
+				.innerJoin(
+					StudyPlanAcademicPeriodEntity,
+					'spap',
+					'spap.id = spc.study_plan_academic_period_id AND spap.academic_period_id = section.academic_period_id',
+				)
+				.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id')
+				.andWhere('sp.program_id = :programId', { programId });
+		}
+
 		if (search?.trim()) {
 			const term = `%${search.trim()}%`;
 			qb.andWhere(
 				`(section.section_code ILIKE :term
 					OR course.code ILIKE :term
+					OR course.name->>'es' ILIKE :term
+					OR course.name->>'en' ILIKE :term
 					OR professor.code ILIKE :term
+					OR staff.first_name ILIKE :term
+					OR staff.last_name ILIKE :term
 					OR campus.code ILIKE :term)`,
 				{ term },
 			);

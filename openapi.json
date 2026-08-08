@@ -980,10 +980,17 @@
 						}
 					},
 					{
+						"name": "programId",
+						"required": false,
+						"in": "query",
+						"description": "Filter by program (carrera) id",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
 						"name": "search",
 						"required": false,
 						"in": "query",
-						"description": "Search by section, course, professor or campus code",
+						"description": "Search by section code, course code or name, professor code, professor name, or campus code",
 						"schema": { "example": "searchExample", "type": "string" }
 					},
 					{
@@ -1012,7 +1019,14 @@
 						}
 					},
 					{
-						"description": "Search by section, course, professor or campus code",
+						"description": "Filter by program (carrera) id",
+						"required": false,
+						"name": "programId",
+						"in": "query",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"description": "Search by section code, course code or name, professor code, professor name, or campus code",
 						"required": false,
 						"name": "search",
 						"in": "query",
@@ -2622,6 +2636,13 @@
 						}
 					},
 					{
+						"name": "programId",
+						"required": false,
+						"in": "query",
+						"description": "Filter by program (carrera) id",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
 						"name": "search",
 						"required": false,
 						"in": "query",
@@ -2634,6 +2655,38 @@
 						"description": "Active academic period scope id",
 						"required": true,
 						"schema": { "type": "integer", "example": 1 }
+					},
+					{
+						"required": false,
+						"name": "page",
+						"in": "query",
+						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
+					},
+					{
+						"required": false,
+						"name": "pageSize",
+						"in": "query",
+						"schema": {
+							"minimum": 1,
+							"maximum": 200,
+							"default": 20,
+							"example": 20,
+							"type": "number"
+						}
+					},
+					{
+						"description": "Filter by program (carrera) id",
+						"required": false,
+						"name": "programId",
+						"in": "query",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"description": "Filter by student name, student code, or section code",
+						"required": false,
+						"name": "search",
+						"in": "query",
+						"schema": { "example": "Juan", "type": "string" }
 					}
 				],
 				"responses": {

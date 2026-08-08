@@ -43,6 +43,7 @@ export class CourseSectionService extends BaseService<CourseSectionRepository> {
 		const { page, pageSize, skip, take } = resolvePagination(query);
 		const [sections, total] = await this.repository.findMaintenancePage(
 			academicPeriodId,
+			query.programId,
 			query.search,
 			skip,
 			take,
@@ -91,9 +92,12 @@ export class CourseSectionService extends BaseService<CourseSectionRepository> {
 			id: section.id,
 			courseId: section.courseId,
 			courseCode: section.course.code,
+			courseName: section.course.name,
 			sectionCode: section.sectionCode,
 			professorId: section.professorId,
 			professorCode: section.professor.code,
+			professorFirstName: section.professor.staff.firstName,
+			professorLastName: section.professor.staff.lastName,
 			campusId: section.campusId,
 			campusCode: section.campus.code,
 			sectionModalityTypeId: section.sectionModalityTypeId,

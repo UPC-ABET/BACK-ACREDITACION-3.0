@@ -1,4 +1,5 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
 import { PaginationQueryDto } from 'src/commons/pagination.dtos';
@@ -91,10 +92,17 @@ export class UpdateCourseSectionDto {
 
 export class CourseSectionMaintenanceQueryDto extends PaginationQueryDto {
 	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({ example: 1, description: 'Filter by program (carrera) id' })
+	programId?: number;
+
+	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({
 		example: 'searchExample',
-		description: 'Search by section, course, professor or campus code',
+		description:
+			'Search by section code, course code or name, professor code, professor name, or campus code',
 	})
 	search?: string;
 }
@@ -154,9 +162,12 @@ export interface CourseSectionMaintenanceItem {
 	id: number;
 	courseId: number;
 	courseCode: string;
+	courseName: I18nText;
 	sectionCode: string;
 	professorId: number;
 	professorCode: string;
+	professorFirstName: string;
+	professorLastName: string;
 	campusId: number;
 	campusCode: string;
 	sectionModalityTypeId: number;
