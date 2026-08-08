@@ -14,7 +14,10 @@ import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
-import { GraNotificationRepository } from '../core/gra-notification.repository';
+import {
+	GraNotificationRepository,
+	GRA_RESPONSE_STATUS_RESPONDED,
+} from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
@@ -26,6 +29,7 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	ExportGraStudentsQueryDto,
 	SendGraEmailDto,
 	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
@@ -301,7 +305,7 @@ export class GraNotificationService {
 
 	/** Excel export of the notified-students list (all columns/rows, ignoring pagination). */
 	async exportStudents(
-		filters: { programId?: number; campusId?: number; studentCode?: string; search?: string },
+		filters: ExportGraStudentsQueryDto,
 		academicPeriodId?: number | null,
 	): Promise<{ buffer: Buffer; fileName: string }> {
 		const { graSurveyTypeId, closedStatusId } = await this.getTypeIds();
@@ -329,7 +333,7 @@ export class GraNotificationService {
 
 		for (const r of rows) {
 			const sent = r.notificationStatusCode === TYPE_CODES.SURVEY_NOTIFICATION_STATUS.SENT;
-			const responded = r.responseStatus === 'RESPONDIDO';
+			const responded = r.responseStatus === GRA_RESPONSE_STATUS_RESPONDED;
 			sheet.addRow({
 				studentCode: r.studentCode,
 				studentName: r.studentName,

@@ -18,6 +18,7 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	ExportGraStudentsQueryDto,
 	SendGraEmailDto,
 	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
@@ -112,10 +113,7 @@ export class GraService {
 		return this.notifService.listStudents(dto, academicPeriodId);
 	}
 
-	exportStudents(
-		filters: { programId?: number; campusId?: number; studentCode?: string; search?: string },
-		academicPeriodId?: number | null,
-	) {
+	exportStudents(filters: ExportGraStudentsQueryDto, academicPeriodId?: number | null) {
 		return this.notifService.exportStudents(filters, academicPeriodId);
 	}
 

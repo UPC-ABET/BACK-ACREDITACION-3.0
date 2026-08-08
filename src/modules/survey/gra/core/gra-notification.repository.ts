@@ -11,6 +11,10 @@ export interface GraScoreItem {
 	commentaries: unknown;
 }
 
+/** Literal produced by listStudentsGra's `responseStatus` CASE — shared so callers deriving the
+ *  student's response state don't hardcode a second copy of this string. */
+export const GRA_RESPONSE_STATUS_RESPONDED = 'RESPONDIDO';
+
 @Injectable()
 export class GraNotificationRepository extends BaseRepository<NotificationEntity> {
 	constructor(
@@ -248,7 +252,7 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 				n.sent_date                          AS "sentDate",
 				n.max_register_date                  AS "maxRegisterDate",
 				n.token,
-				CASE WHEN s.survey_status_type_id = $${closedIdx} THEN 'RESPONDIDO' ELSE NULL END AS "responseStatus",
+				CASE WHEN s.survey_status_type_id = $${closedIdx} THEN '${GRA_RESPONSE_STATUS_RESPONDED}' ELSE NULL END AS "responseStatus",
 				CASE WHEN s.survey_status_type_id = $${closedIdx} THEN s.updated_at ELSE NULL END AS "responseDate"
 			${fromWhere}
 			ORDER BY st.first_name ASC, st.code ASC

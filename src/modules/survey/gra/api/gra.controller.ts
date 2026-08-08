@@ -42,6 +42,7 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	ExportGraStudentsQueryDto,
 	SearchGraStudentsDto,
 	SendGraEmailDto,
 	ResendGraNotificationDto,
@@ -167,22 +168,10 @@ export class GraController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async notificationExport(
 		@Res() res: Response,
+		@Query() query: ExportGraStudentsQueryDto,
 		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
-		@Query('programId') programIdRaw?: string,
-		@Query('campusId') campusIdRaw?: string,
-		@Query('studentCode') studentCode?: string,
-		@Query('search') search?: string,
 	) {
-		const { buffer, fileName } = await this.graService.exportStudents(
-			{
-				programId:
-					programIdRaw !== undefined && programIdRaw !== '' ? Number(programIdRaw) : undefined,
-				campusId: campusIdRaw !== undefined && campusIdRaw !== '' ? Number(campusIdRaw) : undefined,
-				studentCode,
-				search,
-			},
-			academicPeriodId,
-		);
+		const { buffer, fileName } = await this.graService.exportStudents(query, academicPeriodId);
 		const encoded = encodeURIComponent(fileName);
 		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
 		res.setHeader(
