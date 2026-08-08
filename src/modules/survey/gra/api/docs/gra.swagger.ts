@@ -9,6 +9,7 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	ExportGraStudentsQueryDto,
 	SendGraEmailDto,
 	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
@@ -74,6 +75,12 @@ export const SwaggerGraNotificationTemplate = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.template, produces: XLSX_CONTENT_TYPE });
 export const SwaggerGraNotificationUploadExcel = () =>
 	HttpMethodWithSwagger({ ...cfg.notification.uploadExcel, body: BulkUploadGraNotificationDto });
+export const SwaggerGraNotificationExport = () =>
+	HttpMethodWithSwagger({
+		...cfg.notification.export,
+		query: ExportGraStudentsQueryDto,
+		produces: XLSX_CONTENT_TYPE,
+	});
 export const SwaggerGraEmailSummary = () =>
 	HttpMethodWithSwagger({ ...cfg.email.summary, body: SendGraEmailDto });
 export const SwaggerGraEmailSend = () =>

@@ -14,7 +14,10 @@ import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
 import { SURVEY_FRONTEND_PATHS } from 'src/modules/survey/shared/survey-frontend-paths';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
-import { GraNotificationRepository } from '../core/gra-notification.repository';
+import {
+	GraNotificationRepository,
+	GRA_RESPONSE_STATUS_RESPONDED,
+} from '../core/gra-notification.repository';
 import { GraSurveyRepository } from '../core/gra-survey.repository';
 import { GraConfigRepository } from '../core/gra-config.repository';
 import { GraValidation } from '../core/gra.validation';
@@ -26,6 +29,7 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	ExportGraStudentsQueryDto,
 	SendGraEmailDto,
 	ResendGraNotificationDto,
 	GetSurveyByTokenDto,
@@ -297,6 +301,53 @@ export class GraNotificationService {
 			take,
 		});
 		return toPaginated(rows, total, page, pageSize);
+	}
+
+	/** Excel export of the notified-students list (all columns/rows, ignoring pagination). */
+	async exportStudents(
+		filters: ExportGraStudentsQueryDto,
+		academicPeriodId?: number | null,
+	): Promise<{ buffer: Buffer; fileName: string }> {
+		const { graSurveyTypeId, closedStatusId } = await this.getTypeIds();
+		const { rows } = await this.notifRepo.listStudentsGra(graSurveyTypeId, closedStatusId, {
+			academicPeriodId: academicPeriodId ?? undefined,
+			programId: filters.programId,
+			campusId: filters.campusId,
+			studentCode: filters.studentCode,
+			search: filters.search,
+		});
+
+		const workbook = new ExcelJS.Workbook();
+		const sheet = workbook.addWorksheet('Estudiantes notificados');
+		sheet.columns = [
+			{ header: 'Código', key: 'studentCode', width: 16 },
+			{ header: 'Nombre', key: 'studentName', width: 32 },
+			{ header: 'Email', key: 'studentEmail', width: 32 },
+			{ header: 'Carrera', key: 'programName', width: 30 },
+			{ header: 'Estado de envío', key: 'sendStatus', width: 16 },
+			{ header: 'Fecha de envío', key: 'sendDate', width: 22 },
+			{ header: 'Estado de respuesta', key: 'responseStatus', width: 18 },
+			{ header: 'Fecha de respuesta', key: 'responseDate', width: 22 },
+		];
+		sheet.getRow(1).font = { bold: true };
+
+		for (const r of rows) {
+			const sent = r.notificationStatusCode === TYPE_CODES.SURVEY_NOTIFICATION_STATUS.SENT;
+			const responded = r.responseStatus === GRA_RESPONSE_STATUS_RESPONDED;
+			sheet.addRow({
+				studentCode: r.studentCode,
+				studentName: r.studentName,
+				studentEmail: r.studentEmail,
+				programName: r.programName,
+				sendStatus: sent ? 'Enviado' : 'Pendiente',
+				sendDate: r.sentDate ? new Date(r.sentDate).toISOString() : '',
+				responseStatus: responded ? 'Respondido' : sent ? 'Pendiente' : '-',
+				responseDate: r.responseDate ? new Date(r.responseDate).toISOString() : '',
+			});
+		}
+
+		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+		return { buffer, fileName: 'estudiantes_notificados_gra.xlsx' };
 	}
 
 	/** Search active students by code or name, for the "add individual student" search box. */

@@ -280,6 +280,32 @@ export class ListStudentsGraDto extends PaginationQueryDto {
 	search?: string;
 }
 
+/** Same filters as ListStudentsGraDto, minus pagination — the export always returns every row. */
+export class ExportGraStudentsQueryDto {
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	programId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiPropertyOptional({ example: 1 })
+	campusId?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({ example: 'U20231001', description: 'Filter by student code' })
+	studentCode?: string;
+
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		example: 'Juan Pérez',
+		description: 'Search by student code, name, or email',
+	})
+	search?: string;
+}
+
 export class SendGraEmailDto {
 	@IsOptional()
 	@IsNumber()

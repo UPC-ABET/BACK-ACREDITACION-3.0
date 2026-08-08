@@ -9289,6 +9289,79 @@
 				"tags": ["GRA - Graduate Survey"]
 			}
 		},
+		"/gra/notification/export": {
+			"get": {
+				"operationId": "GraController_notificationExport",
+				"parameters": [
+					{
+						"name": "programId",
+						"required": false,
+						"in": "query",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"name": "campusId",
+						"required": false,
+						"in": "query",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"name": "studentCode",
+						"required": false,
+						"in": "query",
+						"description": "Filter by student code",
+						"schema": { "example": "U20231001", "type": "string" }
+					},
+					{
+						"name": "search",
+						"required": false,
+						"in": "query",
+						"description": "Search by student code, name, or email",
+						"schema": { "example": "Juan Pérez", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": false,
+						"schema": { "type": "integer", "example": 1 }
+					},
+					{
+						"required": false,
+						"name": "programId",
+						"in": "query",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"required": false,
+						"name": "campusId",
+						"in": "query",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"description": "Filter by student code",
+						"required": false,
+						"name": "studentCode",
+						"in": "query",
+						"schema": { "example": "U20231001", "type": "string" }
+					},
+					{
+						"description": "Search by student code, name, or email",
+						"required": false,
+						"name": "search",
+						"in": "query",
+						"schema": { "example": "Juan Pérez", "type": "string" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Download the notified-students list as an Excel file (all columns and rows)",
+				"tags": ["GRA - Graduate Survey"]
+			}
+		},
 		"/gra/notification/search-students": {
 			"post": {
 				"operationId": "GraController_notificationSearchStudents",

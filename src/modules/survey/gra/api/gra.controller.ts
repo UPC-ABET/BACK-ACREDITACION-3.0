@@ -16,6 +16,7 @@ import {
 	SwaggerGraNotificationTemplate,
 	SwaggerGraNotificationUploadExcel,
 	SwaggerGraNotificationListStudents,
+	SwaggerGraNotificationExport,
 	SwaggerGraNotificationSearchStudents,
 	SwaggerGraNotificationDelete,
 	SwaggerGraNotificationResend,
@@ -41,6 +42,7 @@ import {
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
 	ListStudentsGraDto,
+	ExportGraStudentsQueryDto,
 	SearchGraStudentsDto,
 	SendGraEmailDto,
 	ResendGraNotificationDto,
@@ -159,6 +161,25 @@ export class GraController {
 		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
 	) {
 		return parseSuccessResponse(await this.graService.listStudents(dto, academicPeriodId));
+	}
+
+	@SwaggerGraNotificationExport()
+	@ApiAcademicPeriodHeader(false)
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async notificationExport(
+		@Res() res: Response,
+		@Query() query: ExportGraStudentsQueryDto,
+		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+	) {
+		const { buffer, fileName } = await this.graService.exportStudents(query, academicPeriodId);
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
 	}
 
 	@SwaggerGraNotificationSearchStudents()
