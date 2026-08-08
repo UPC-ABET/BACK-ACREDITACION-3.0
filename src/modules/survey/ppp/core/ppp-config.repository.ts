@@ -25,6 +25,8 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.leftJoinAndSelect('outcome.programCommission', 'programCommission')
+			.leftJoinAndSelect('programCommission.commissionType', 'commissionType')
 			.where(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
@@ -53,6 +55,8 @@ export class PppConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return await this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.leftJoinAndSelect('outcome.programCommission', 'programCommission')
+			.leftJoinAndSelect('programCommission.commissionType', 'commissionType')
 			.where('oc.id = :id', { id })
 			.andWhere(`oc.extra->>'survey_type' = :type`, { type: PPP_SURVEY_TYPE })
 			.getOne();

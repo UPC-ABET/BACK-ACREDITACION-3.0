@@ -38,6 +38,8 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.leftJoinAndSelect('outcome.programCommission', 'programCommission')
+			.leftJoinAndSelect('programCommission.commissionType', 'commissionType')
 			.where(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
 
 		if (filters?.programId !== undefined) {
@@ -71,6 +73,8 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		return await this.repository
 			.createQueryBuilder('oc')
 			.leftJoinAndSelect('oc.outcome', 'outcome')
+			.leftJoinAndSelect('outcome.programCommission', 'programCommission')
+			.leftJoinAndSelect('programCommission.commissionType', 'commissionType')
 			.where('oc.id = :id', { id })
 			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE })
 			.getOne();
@@ -85,7 +89,8 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		const qb = this.repository
 			.createQueryBuilder('oc')
 			.where('oc.outcome_id = :outcomeId', { outcomeId })
-			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE })
+			.andWhere('oc.is_active = true');
 
 		if (programId !== undefined) {
 			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
@@ -100,6 +105,28 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 		}
 
 		return (await qb.getCount()) > 0;
+	}
+
+	async findExistingGra(
+		outcomeId: number,
+		programId?: number,
+		academicPeriodId?: number,
+	): Promise<OutcomeConfigEntity | null> {
+		const qb = this.repository
+			.createQueryBuilder('oc')
+			.where('oc.outcome_id = :outcomeId', { outcomeId })
+			.andWhere(`oc.extra->>'survey_type' = :type`, { type: GRA_SURVEY_TYPE });
+
+		if (programId !== undefined) {
+			qb.andWhere(`(oc.extra->>'program_id')::int = :programId`, { programId: programId });
+		}
+		if (academicPeriodId !== undefined) {
+			qb.andWhere(`(oc.extra->>'academic_period_id')::int = :periodId`, {
+				periodId: academicPeriodId,
+			});
+		}
+
+		return await qb.getOne();
 	}
 
 	async findSurveyTypeIdByCode(code: string): Promise<number | null> {
