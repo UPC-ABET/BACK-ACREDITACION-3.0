@@ -19,9 +19,14 @@ and until it runs no Planner scrape can start.
 # D1. Migration — creates core.scraper_credentials
 pnpm migration:run
 
-# D2. Deploy the image, then REMOVE the retired variables from the server .env:
+# D2. Deploy the image, then edit the server .env:
+#    REMOVE the retired variables:
 #      PLANNER_USER
 #      PLANNER_PASSWORD
+#    ADD the session file path, pointing at the MOUNTED volume. Without it the store falls back
+#    to <cwd>/.scraping inside the container's writable layer, so the session is discarded by
+#    every --force-recreate and steps 4 and 5 below look for a file that is not there:
+#      PLANNER_TOKEN_STORE_PATH=/data/banner/planner_token_store.json
 #    and RECREATE the container. `restart` does NOT re-read env_file — this is the exact
 #    gotcha that cost a debugging session on 2026-08-08 and is why ADR-001 exists.
 docker compose -f docker-compose.prod.yml up -d --force-recreate sys_acc_back
@@ -123,21 +128,21 @@ ls -l ./scrapping/planner_token_store.json   # expect -rw------- (0600)
 
 ## Symptom → diagnosis
 
-| Symptom                                                             | Likely cause                                                                              | Check                                                                                                          |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `status: not_configured` after step 3 appeared to succeed           | The POST hit a different environment, or the row was never written                        | `SELECT * FROM core.scraper_credentials`                                                                       |
-| `error.scraperCredential.decryptionFailed`                          | **`APP_SECRET` changed or differs between environments** (ADR-001)                        | Compare `APP_SECRET` against the value in force when step 3 ran. Fix: re-run step 3. Never "reset" the row     |
-| `error.planner.unreachable`                                         | u-planner is down or the host is unreachable — **not** a bad password                     | `curl -sS -o /dev/null -w '%{http_code}' https://upc-e2g-post-api.u-planner.com/api/user-api`                  |
-| `error.planner.verificationCooldown`                                | A verification is **in flight**, or one was rejected in the last 30s                      | Wait for the first attempt to finish, or 30s after a rejection. Never a verdict on the pair you just submitted |
-| `503 error.planner.unreachable` from `POST /refresh`                | u-planner did not answer. The stored session is untouched and may still be perfectly good | Check u-planner; `GET /status` still reports the real session state. Do **not** re-enter credentials           |
-| `error.planner.invalidCredentials` for a password known to be right | The u-planner account is locked or was rotated upstream                                   | Sign in to `https://upc-e2g-post.u-planner.com/` manually with the same pair                                   |
-| Refresh returns instantly and nothing appears in the log            | The 30s cooldown short-circuited — you are measuring nothing                              | Look for the `debug` cooldown line; wait 30s or restart the container and retry                                |
-| Scrapes 401 in a loop                                               | Should be impossible — `planner-http.client.ts:47` retries auth once                      | If seen, that guard has regressed; treat as a defect, not a config problem                                     |
+| Symptom                                                             | Likely cause                                                                                | Check                                                                                                          |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `status: not_configured` after D3 appeared to succeed               | The POST hit a different environment, or the row was never written                          | `SELECT * FROM core.scraper_credentials`                                                                       |
+| `error.scraperCredential.decryptionFailed`                          | **`APP_SECRET` changed or differs between environments** (ADR-001)                          | Compare `APP_SECRET` against the value in force when D3 ran. Fix: re-run D3. Never "reset" the row             |
+| `error.planner.unreachable`                                         | u-planner is down or the host is unreachable — **not** a bad password                       | `curl -sS -o /dev/null -w '%{http_code}' https://upc-e2g-post-api.u-planner.com/api/user-api`                  |
+| `error.planner.verificationCooldown`                                | A verification is **in flight**, or one was rejected in the last 30s                        | Wait for the first attempt to finish, or 30s after a rejection. Never a verdict on the pair you just submitted |
+| `503 error.planner.unreachable` from `POST /refresh`                | u-planner did not answer. The stored session is untouched and may still be perfectly good   | Check u-planner; `GET /status` still reports the real session state. Do **not** re-enter credentials           |
+| `error.planner.invalidCredentials` for a password known to be right | The u-planner account is locked or was rotated upstream                                     | Sign in to `https://upc-e2g-post.u-planner.com/` manually with the same pair                                   |
+| Refresh returns instantly and nothing appears in the log            | The 30s cooldown short-circuited — you are measuring nothing                                | Look for the `debug` cooldown line; wait 30s or restart the container and retry                                |
+| Scrapes 401 in a loop                                               | Should be impossible — the `authRetried` guard in `PlannerHttpClient.get` retries auth once | If seen, that guard has regressed; treat as a defect, not a config problem                                     |
 
 ## How to revert
 
 Reverting the code is **not sufficient on its own** if the migration has run — the previous
-release reads `PLANNER_USER` / `PLANNER_PASSWORD`, which step 2 removed.
+release reads `PLANNER_USER` / `PLANNER_PASSWORD`, which D2 removed.
 
 ```bash
 # 1. Restore the two variables in the server .env, then recreate (NOT restart):
@@ -159,9 +164,9 @@ session keeps working through a rollback.
 
 - **Do not `docker compose restart` after editing `.env`.** It does not re-read `env_file`.
   Always `up -d --force-recreate`. This single misunderstanding is the origin of this change.
-- **Do not put the credentials in a migration, a seed, or `.env.example`** to save step 3.
-  Keeping secrets out of git is the reason step 3 is manual (proposal decision 6).
-- **Do not rotate `APP_SECRET` while credentials are stored** without re-running step 3
+- **Do not put the credentials in a migration, a seed, or `.env.example`** to save D3.
+  Keeping secrets out of git is the reason D3 is manual (proposal decision 6).
+- **Do not rotate `APP_SECRET` while credentials are stored** without re-running D3
   afterwards. There is no key-rotation mechanism; the stored password simply stops decrypting.
 - **Do not delete `core.scraper_credentials` rows to "reset" a decryption failure** before
   confirming what `APP_SECRET` is. Deleting the row destroys the only copy you have; the

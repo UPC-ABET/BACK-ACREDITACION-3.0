@@ -16,7 +16,7 @@
 - `src/modules/admin/planner/planner-token/` — all five files. The service is what this
   change rewrites.
 - `src/modules/admin/planner/scraper/core/planner-http.client.ts` — the only non-controller
-  consumer. **Line 47's `authRetried` guard** is why the retry path cannot loop.
+  consumer. The `authRetried` guard in `PlannerHttpClient.get` is why the retry path cannot loop.
 - `src/modules/admin/banner/auth-sessions/` — `config/auth-sessions.routes.ts`,
   `api/auth-sessions.controller.ts`, `core/auth-session.store.ts`. The shape being mirrored.
 - `src/libs/encrypt.service.ts` + `encrypt.module.ts` — AES-256-GCM, `@Global()`.
@@ -152,7 +152,7 @@ is where the base64 password lives. Enforced by review grep, listed in tasks.
 `resolveSession` collapses to two branches:
 
 ```
-existing = store.read()
+existing = readSession()          // the file, or the in-memory copy if a write failed
 if (existing && !force && remaining(existing.accessTokenExpiresAt) > REFRESH_SKEW_MS)
     return existing            // no HTTP call at all
 return login()                 // full 2-step, always
@@ -203,11 +203,11 @@ second way to write the same row with different validation.
 Entity `ScraperCredentialEntity`, `@Entity({ name: 'scraper_credentials', schema: 'core' })`,
 extending `BaseEntity`, using custom decorators only:
 
-| Property            | Decorator                                               | Notes                                                                                         |
-| ------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `providerCode`      | `@CodeColumn({ unique: false, nullable: false })`       | `'PLANNER'` \| `'BANNER'`; uniqueness via `@Unique` below so the name is readable, not a hash |
-| `username`          | `@TextShortColumn({ nullable: false })`                 | VARCHAR(100), plaintext — not a secret                                                        |
-| `passwordEncrypted` | `@TextMediumColumn({ nullable: false, select: false })` | VARCHAR(1000); `iv:ct:tag` hex                                                                |
+| Property            | Decorator                                              | Notes                                                                                           |
+| ------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `providerCode`      | `@CodeColumn({ unique: false, nullable: false })`      | `'PLANNER'` \| `'BANNER'`; uniqueness via `@Unique` below so the name is readable, not a hash   |
+| `username`          | `@TextShortColumn({ nullable: false })`                | VARCHAR(100), plaintext — not a secret                                                          |
+| `passwordEncrypted` | `@TextLargeColumn({ nullable: false, select: false })` | VARCHAR(5000); `iv:ct:tag` hex. Sized for the ciphertext, which expands to `58 + 2 x utf8Bytes` |
 
 Plus `@Unique('UQ_scraper_credentials_provider_code', ['providerCode'])` and
 `@PrimaryGeneratedColumn({ primaryKeyConstraintName: 'PK_scraper_credentials' })`.
@@ -278,8 +278,8 @@ inconsistent with the camelCase wire style, and it is called out here so the cho
 visible rather than accidental.
 
 **Named deviation from AC-12**: this makes `getStatus()` **async**, because the
-credentials check is a database read. `getValidSession`, `getValidToken` and `refresh` keep
-their signatures exactly. `planner-http.client.ts` never calls `getStatus` — only
+credentials check is a database read. `getValidSession` and `refresh` keep
+their signatures exactly; `getValidToken` was **deleted** in round 3, having no caller left (proposal AC-12 amendment). `planner-http.client.ts` never calls `getStatus` — only
 `getValidSession` — so AC-12's substance (the scraper is untouched) holds, and the only caller
 that changes is `PlannerSessionController.getStatus`, which gains an `await`. The HTTP
 contract is unchanged apart from the new enum value. Flagged rather than silently absorbed.

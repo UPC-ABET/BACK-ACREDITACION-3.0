@@ -44,6 +44,13 @@ The key is **derived** from `APP_SECRET` as `sha256(APP_SECRET)`, not hex-decode
 settled while implementing this decision: hex-decoding produced whatever length the secret happened
 to be, and the deployed environments hold a 128-character value, so aes-256-gcm rejected every call
 with `Invalid key length`. Nothing had ever noticed, because nothing consumed the service.
+`env.config.ts` still requires `APP_SECRET` to be at least 64 hex characters; the derivation no
+longer depends on that, but the environment contract is unchanged.
+
+> Amended 2026-08-09, before this ADR had ever merged, to record the derivation above and its
+> consequence in Negative 1. The immutability rule in `docs/adr/README.md` protects accepted ADRs
+> that other work already depends on; nothing depended on this one yet, and shipping it describing
+> an encryption scheme the same pull request replaced would have been worse.
 
 **No alternative was built and reverted, so there is no PR to name here.** One honest fact
 belongs in its place: `EncryptService` currently has **no consumer anywhere in `src/`** — the

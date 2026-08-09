@@ -2,6 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { ControllerWithTags, HttpMethodWithSwagger } from 'src/commons/base.decorator';
 import { plannerSessionRoutes } from '../../config/planner-session.routes';
+import { scraperCredentialsValidationStrings } from 'src/modules/admin/scraping/credentials/config/strings/scraper-credentials.validation';
 import { plannerSessionValidationStrings } from '../../config/strings/planner-session.validation';
 import {
 	PlannerCredentialsResponseDto,
@@ -11,11 +12,17 @@ import {
 
 const cfg = plannerSessionRoutes.session;
 
-// Both endpoints that reach u-planner can answer 503. A frontend that only knows about 400 would
-// report a correct password as rejected whenever u-planner is down, which is the misdiagnosis the
-// whole rejected/unreachable split exists to prevent — so it has to be in the spec.
+// Two different keys share the 503, and only the key tells them apart: a frontend routing on status
+// alone would report an APP_SECRET mismatch as "u-planner is down" and send the operator to
+// re-enter credentials that were always correct.
 const unreachableResponse = () =>
-	ApiResponse({ status: 503, description: plannerSessionValidationStrings.error.unreachable });
+	ApiResponse({
+		status: 503,
+		description: [
+			`${plannerSessionValidationStrings.error.unreachable} - u-planner did not answer`,
+			`${scraperCredentialsValidationStrings.error.decryptionFailed} - the stored credential will not decrypt, usually a changed APP_SECRET`,
+		].join('; '),
+	});
 
 // The 400 carries three unrelated meanings, and telling them apart is the difference between "your
 // password is wrong" and "your last attempt is still running". Without them in the spec a frontend
@@ -27,7 +34,8 @@ const saveRejectionResponse = () =>
 		description: [
 			`${plannerSessionValidationStrings.error.invalidCredentials} - u-planner refused the pair`,
 			`${plannerSessionValidationStrings.error.verificationCooldown} - a verification is in flight, or one was rejected in the last 30s; never a verdict on the submitted pair`,
-			'error.validation - the request body failed DTO validation',
+			`${plannerSessionValidationStrings.error.invalidCredentialsPayload} - the body is malformed; details in data[]`,
+			`${scraperCredentialsValidationStrings.result.saveFailed} - the pair is structurally unusable, e.g. a username that is only whitespace`,
 		].join('; '),
 	});
 

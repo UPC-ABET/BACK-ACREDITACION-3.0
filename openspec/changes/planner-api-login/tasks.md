@@ -1247,6 +1247,12 @@ existing `encrypt.service.spec.ts` (57 tests) stays green.
 - Comments narrating change history rather than code (five instances), including a pointer to
   `the change's proposal` that breaks by design when the folder is archived.
 
+**Corrected again 2026-08-09 (round 5).** The naming item was still only half done: round 4 fixed
+the module class and argued the plural file stems were conventional, which answered a different
+question. `model/scraper-credential.entity.ts` was the one singular stem in a module of plural ones
+and is now `scraper-credentials.entity.ts`. The directory keeps its own name (`credentials/` under
+`admin/scraping/`), which reads correctly in context.
+
 **Corrected 2026-08-09 (round 4).** This task was ticked `DONE` over three items that were never
 applied, which is worse than leaving it open — a later round is told not to re-report against this
 ledger, so a false tick makes the item invisible. Closed in round 4: the module naming
@@ -1283,7 +1289,9 @@ Consolidated; none blocking on its own.
 - **`mockStore.save.mockImplementation` leaks** past `clearAllMocks` in
   `planner-token.service.spec.ts:368` — the same class round 1 fixed in the sibling spec.
 - **`APP_SECRET` accepts >64 hex chars** and then throws `Invalid key length` at first use; tighten
-  to `.length(64)`.
+  to `.length(64)`. **Superseded 2026-08-09 (round 5) — do NOT apply this remedy.** It was fixed the
+  other way, by deriving the key with SHA-256 (`be11d66d`), and the deployed environments hold a
+  128-character secret. `.length(64)` would now fail boot validation in every environment.
 - **`PLANNER_API_BASE` is still bare `.url()`** while carrying the session bearer token.
 - **`password` lacks `format: 'password'` / `writeOnly: true`** in the spec, so Swagger UI renders
   it in cleartext.
@@ -1294,6 +1302,13 @@ Consolidated; none blocking on its own.
 - **Multi-replica asymmetry** is now real and unrecorded: credentials are shared (Postgres) while
   the session file, single-flight and both cooldowns are per-process. Record single-replica as an
   accepted constraint in `design.md`, or move the session into the database.
+
+**Corrected again 2026-08-09 (round 5).** A third item in this list was ticked without being
+applied: the migration's `CREATE TABLE IF NOT EXISTS` / `DO $$ … IF NOT EXISTS` shim. It is now
+plain DDL — the shim let the migration succeed against a pre-existing table of a different shape,
+so a divergent environment passed `migration:run` and failed at first query instead. The
+`export-openapi.env.ts` `-r` preload item is **declined**, not done: the import is ordered and
+documented at both ends, and a preload flag is a second mechanism to get wrong.
 
 **Corrected 2026-08-09 (round 4).** Two items in the paragraph above were ticked without being
 applied and are now done: `ScraperCredentialsModule` was renamed to `ScraperCredentialModule`, and
@@ -1571,3 +1586,150 @@ saves could land out of order. It requires the DB write to outlast a full networ
 2. `fix(planner): stop an unreachable u-planner reading as an expired session`
 3. `fix(api): describe the scrape request bodies and the credential 400s in the spec`
 4. `docs(planner): record audit round 4 and correct the stale task ledger`
+
+### Review round 5 — 2026-08-09
+
+Six auditors over HEAD `b5c9625c`. **Verdict: NOT READY — 1 blocker, 10 majors.**
+
+**Ten of the eleven did not exist before round 4 — they are round 4's own code.** That is the
+finding about the process, and it is worth stating plainly: round 4 verified everything it listed
+(auditor C independently re-ran all 13 of its mutation claims and all 13 held, the first round whose
+self-verification survives an outside re-run), and four of its fixes were never on the list.
+
+| Round | Blocker                                   | Character of the majors                                   |
+| ----- | ----------------------------------------- | --------------------------------------------------------- |
+| 1     | Live credentials committed                | Real defects across every domain                          |
+| 2     | `refresh()` reported `active` when broken | 4 of 9 were round-1 regressions                           |
+| 3     | none                                      | 2 behavioural, 5 test-coverage gaps, 4 documentation      |
+| 4     | none                                      | 3 unverified round-3 fixes, 3 behavioural, 5 doc/contract |
+| 5     | **round-4 regression in the scraper**     | 2 more round-4 defects, 4 untested round-4 fixes, 4 doc   |
+
+> **The root cause was a coverage hole, not the audits.** `PlannerScraperService` had no spec and
+> sits outside this branch's diff, so no auditor was ever pointed at it — until round 4's taxonomy
+> change made it the thing that mattered. It now has one, and that is what stops this class
+> recurring rather than another round of review.
+
+**All 11 findings and all 16 minors fixed 2026-08-09**, except one recorded as a follow-up below.
+
+### Task E.1 — The scraper stopped aborting on an outage ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**BLOCKER. Found independently by auditors A, B, D and F.** Round 4's D.1 detached
+`PlannerLoginUnreachableError` from `PlannerSessionExpiredError` to fix how a run is _labelled_, and
+`PlannerScraperService` uses that same type as its _abort_ signal in three per-item catches. The
+label was checked; the guards were not. D.1's ledger entry said "the scraper needed no change, which
+is the test that the taxonomy is now right" — that was an argument standing in for a test, and it
+was wrong.
+
+Consequence: `PlannerHttpClient` asks for a session on every request and that path has no cooldown,
+so one outage became one institutional login attempt per remaining item — thousands on a full
+catalogue run — and the run finished `partial`, which reads as "we got most of it". The same applied
+to a drifted `APP_SECRET`, whose `ServiceUnavailableException` is equally unrecoverable by retrying.
+
+**Fix**: a named `isFatalScrapeError` at all three sites, and `isPlannerSessionFailure` replacing
+every bare `instanceof PlannerSessionExpiredError`. The run classifier needed no change — an
+unreachable u-planner now falls through to `failed`, which is the correct label.
+
+### Task E.2 — The round-4 coercion mitigation was inert ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditor E, corroborated by the native security review, and reproduced directly.)** The
+route-scoped `ValidationPipe` added in round 4 never did anything: Nest runs global pipes _before_
+route-scoped ones, so the global `enableImplicitConversion` had already turned `{"a": 1}` into
+`"[object Object]"`. Verified further that no DTO decorator can fix it either — class-transformer
+applies implicit conversion _before_ `@Transform`, so the original type is gone by then too.
+
+**Fix**: the controller takes the raw body, and `PlannerCredentialsValidation.parse` validates it
+with implicit conversion off — the only place the real type still exists. The inert pipe and the
+`@Transform` that also could not work are both gone rather than left as reassurance.
+
+### Task E.3 — The in-memory session shadowed the file permanently ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditor F).** Round 4's D.3 fix set `adoptedSession` and never cleared it, so after the
+first adoption `store.read()` was never consulted again: `getStatus` reported a session that might
+not be on disk as `active`, replacing the store file had no effect for the process lifetime, and two
+replicas sharing a file would diverge for the token's whole life.
+
+**Fix**: `readSession()` prefers the file, and the in-memory copy is set only when a write fails and
+cleared the moment one succeeds. As a side effect the `credentials changed during login` branch that
+round 4 made unreachable is reachable again, and now has a test.
+
+### Task E.4 — Four round-4 fixes had no tests at all ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Majors (auditor C), from a 49-mutant campaign.** The taxonomy (D.1), the credential `Logger`
+(D.4), and both halves of D.8 could each be reverted with the suite still green.
+
+**Fix**: `planner-session.errors.spec.ts` pins both directions of the hierarchy; a
+`failure paths are never silent` block in `planner-credentials.service.spec.ts` covers all three
+branches with the same shared secret-absence guard used elsewhere; `planner-credentials.validation.spec.ts`
+covers the payload types; and `planner-scraper.service.spec.ts` — the file whose absence caused E.1 —
+pins the fatal/non-fatal split and the run classification.
+
+### Task E.5 — Contract and documentation ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+`POST /refresh` documented only one of the two keys that reach it as a 503, and `design.md` said
+`decryptionFailed` was a 400 — the exact misdiagnosis ADR-001 exists to prevent, in the document
+that explains it. `POST /credentials` gained a fourth 400 meaning when round 4 moved validation
+earlier, undocumented. `design.md` still certified `getValidToken`, still described the pre-round-4
+`VARCHAR(1000)` column and the pre-round-4 `store.read()` fast path. The runbook's D1–D3 renaming
+left four cross-references pointing at "step 3", which in § Manual validation is _submit a wrong
+password_. All corrected, spec regenerated.
+
+`PLANNER_TOKEN_STORE_PATH` was set nowhere — not in `.env.example`, not in the runbook — so the
+default path lands inside the container's writable layer and every `--force-recreate` (which D2
+mandates) silently discarded the session. Added to both.
+
+### Task E.6 — Round-5 minors ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+- A 2xx body that is not a JSON object is now **unreachable**, not rejected: a WAF or maintenance
+  page answering for u-planner was telling every operator their correct password was refused, and
+  arming the 30s penalty while it did.
+- The session store writes through `openSync(..., 'wx')` with a randomised temp name and
+  `fchmodSync`, so a planted symlink at a predictable `.tmp` path can no longer redirect a
+  long-lived JWT or have the mode applied to someone else's file.
+- Five ad-hoc error stringifiers in four formats collapsed into `src/libs/error.functions.ts`.
+- `PlannerTokenSession` fields are `readonly` — one instance is shared by every concurrent caller.
+- `isPlannerLoginError` was a no-op at both its call sites; replaced by `isPlannerSessionFailure`,
+  which is the predicate the code actually needs and the one E.1 turned on.
+- `ScraperCredentialService.assertSavable` replaces a reach past the module boundary into its
+  `core/` validation class, and `save` no longer re-trims, so the value validated is the value
+  stored.
+- The migration's idempotency shim is gone; `MAX_EXP_SECONDS` is derived from the `Date` bound
+  rather than hand-computed; u-planner's `message` is truncated before it reaches a log.
+- Test gaps closed: an undecodable access token, an unreachable login through the scrape path, the
+  supersession warn, `remaining()`'s finite guard, the expiry boundary, the store's shape guard one
+  field at a time, the store's directory and file modes, and malformed ciphertext.
+
+**Known gap, recorded rather than hidden:** the per-course abort is covered by
+`isFatalScrapeError`'s own tests rather than end to end. `p-limit` is ESM and the service reaches it
+through a dynamic `import()` that jest cannot evaluate under `module: nodenext`, so every phase that
+takes a limiter is unreachable in tests. Fixing that means changing the test transform for the whole
+repository, which is not this change's job.
+
+**Deferred to a follow-up, with reasoning:** `PlannerTokenService` is a god service (auditor D,
+major) — 310 lines and five mutable fields across session caching, single-flight coordination and
+refresh policy. Every round has found a defect in it. It should be split, with the flight coordinator
+extracted. It is deliberately **not** being split here: it is the highest-risk refactor on the list,
+it has no failure scenario of its own, and this branch has now produced a regression from its own
+fixes in three consecutive rounds. Doing it under the same pressure that produced those regressions
+is how a fourth happens. Raise it as its own change against a green branch.
+
+**Commits** — five, not six. The new tests cannot travel separately from the behaviour they pin
+(`pre-commit` runs related tests, so the middle commit would be red), and the error taxonomy and
+the abort guards it broke are one change:
+
+1. `fix(planner): abort a scrape when no session can be obtained`
+2. `fix(planner): let the session file stay authoritative after a failed write`
+3. `fix(planner): validate the credentials payload before the pipe can coerce it`
+4. `fix(planner): harden the login client, session store and credential column`
+5. `docs(planner): record audit round 5 and correct the contract and runbook`

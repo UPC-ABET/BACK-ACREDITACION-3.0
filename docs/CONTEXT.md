@@ -215,10 +215,12 @@ routine regeneration silently drops 16 paths, every one under `/banner/*`, `/pla
 `/scraping/*`.
 
 **The Planner session state is per-process, so this service must not be scaled to more than one
-replica** until it moves into Postgres. The single-flight login, both cooldowns and the session file
-all live in one container's memory; a second replica would duplicate logins against u-planner,
-answer `GET /planner/session/status` differently depending on which instance served the request, and
-multiply the credential-verification throttle's allowance by the replica count.
+replica** until it moves into Postgres. The single-flight login and both cooldowns live in one
+container's memory; a second replica would duplicate logins against u-planner, answer
+`GET /planner/session/status` differently depending on which instance served the request, and
+multiply the credential-verification throttle's allowance by the replica count. Pointing every
+replica at one session file does not fix it: the file coordinates the session, nothing coordinates
+the throttles, and the login they guard is the expensive part.
 
 The migration rules are mandatory and live in
 [POLICIES.md § Migrations](./POLICIES.md#migrations).

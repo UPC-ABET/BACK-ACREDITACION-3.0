@@ -250,6 +250,11 @@ Settled before design; each one changes what "correct" means for the ACs below.
     AC-12 is unaffected: the scraper is untouched and the three methods it does use keep their
     signatures. `getStatus()` additionally became `async` (see design § AC-9); no caller passed it
     to anything expecting a synchronous return.
+    **Amended 2026-08-09 (round 5):** `planner-http.client.ts` is no longer byte-for-byte unmodified.
+    It carries a one-line **import path** change, because `session-expired.error.ts` was renamed to
+    `planner-session.errors.ts` — the file no longer holds only session-expired errors. No behaviour,
+    no signature and no call site changed. Recorded because AC-12 says "unmodified", and a reader
+    checking that literally would otherwise find it false with no explanation.
 
 13. **AC-13** — All database access for the new table lives in a repository; the service
     injects no `DataSource`/`EntityManager` and issues no query. Validation lives in a
