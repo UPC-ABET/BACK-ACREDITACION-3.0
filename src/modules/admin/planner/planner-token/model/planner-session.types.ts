@@ -1,13 +1,21 @@
-// Planner (u-planner) token session, persisted to the token store file. Unlike Banner,
-// Planner has no manual "stopper": the operator's username/password are submitted and the
-// login is driven automatically; an expired access token is refreshed via the validate API
-// without a new browser login.
+// Planner (u-planner) token session, persisted to the token store file. Unlike Banner, Planner
+// has no manual "stopper" and no refresh path — an expired access token is replaced by a fresh
+// two-call login. See PlannerTokenService for why the refresh branch was removed.
 export interface PlannerTokenSession {
 	userId: number;
 	accessToken: string;
-	refreshToken: string;
 	accessTokenExpiresAt: string; // ISO
-	refreshTokenExpiresAt: string; // ISO
+
+	/**
+	 * Kept for diagnostics only — nothing renews with it, deliberately (see PlannerTokenService).
+	 * Optional so a change in u-planner's response cannot fail a login over a field we do not use.
+	 */
+	refreshToken?: string;
+	refreshTokenExpiresAt?: string | null; // ISO
 }
 
-export type PlannerSessionStatus = 'active' | 'expiring' | 'expired';
+/**
+ * `not_configured` means no credentials have ever been stored for Planner — a different problem
+ * from a lapsed token, and the one the UI must answer with a setup form rather than a retry.
+ */
+export type PlannerSessionStatus = 'active' | 'expiring' | 'expired' | 'not_configured';
