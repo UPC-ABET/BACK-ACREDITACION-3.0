@@ -28,10 +28,15 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate sys_acc_back
 
 # D3. Configure the credentials ONCE through the API (bearer token from a user holding
 #    the SCRAPPING permission). Until the frontend form ships, this is the only way.
-curl -sS -X POST https://<host>/api/planner/session/credentials \
-  -H "Authorization: Bearer <token>" \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"<planner-user>","password":"<planner-password>"}'
+#    Read the password rather than typing it: a literal -d '{"password":"..."}' lands in
+#    ~/.bash_history and is visible in `ps` for the life of the request, on the production host.
+read -rs -p 'u-planner password: ' PLANNER_PW
+jq -n --arg u '<planner-user>' --arg p "$PLANNER_PW" '{username:$u,password:$p}' \
+  | curl -sS -X POST https://<host>/api/planner/session/credentials \
+      -H "Authorization: Bearer <token>" \
+      -H 'Content-Type: application/json' \
+      --data-binary @-
+unset PLANNER_PW
 # expected: {"code":200,"message":"success.ok","data":{"status":"active","tokenExp":"..."}}
 ```
 
@@ -76,7 +81,7 @@ like a genuine result — the trap that made the original diagnosis take hours.
 | 3   | `POST /credentials` with a **deliberately wrong** password                            | `400 error.planner.invalidCredentials`, and `SELECT count(*) FROM core.scraper_credentials` is **unchanged** (AC-7)                                                             |
 | 3b  | **Wait 30s** (step 3 armed the 30s penalty), or `POST /credentials` again immediately | Immediately: `400 error.planner.verificationCooldown` — proves the anti-spray throttle is live                                                                                  |
 | 4   | `POST /credentials` with the correct pair, **after the 30s has elapsed**              | `200`, `status: "active"`; `planner_token_store.json` reappears on the bind mount with mode `0600`                                                                              |
-| 5   | `GET /api/planner/session/credentials`                                                | `{ username, configured: true, updatedAt }` — **no password field in any form** (AC-8)                                                                                          |
+| 5   | `GET /api/planner/session/credentials`                                                | `{ username, configured: true, updatedAt }` — `updatedAt` carries the save time, and there is **no password field in any form** (AC-8)                                          |
 | 6   | `GET /api/planner/session/status`                                                     | `active`, with `tokenExp` roughly **12 hours** out                                                                                                                              |
 | 7   | Run a **full Planner scrape** end to end                                              | Completes, data lands in the raw datasource. This is the only proof that AC-12 holds and the scraper was untouched                                                              |
 | 8   | `docker exec sys_acc_back ps aux \| grep -i chrom` during a refresh                   | **No Chromium process.** Planner no longer launches a browser (AC-1)                                                                                                            |

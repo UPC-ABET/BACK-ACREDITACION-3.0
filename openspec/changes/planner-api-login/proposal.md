@@ -134,8 +134,9 @@ Settled before design; each one changes what "correct" means for the ACs below.
 2. **`refreshViaApi` is deleted, not fixed.** When the access token is expired or expiring,
    re-run the full 2-step login. It is two cheap HTTP calls with no browser, so the
    refresh-token path buys almost nothing and it is the exact branch that wedged production.
-   `refreshToken` is still persisted (it is part of the stored session and may be needed
-   later) but is never used to renew.
+   `refreshToken` is still persisted when u-planner returns one, but is never used to renew.
+   **Amended 2026-08-09:** it is also optional — a login is not failed over a field nothing
+   reads (design § AC-2).
 3. **Database only — no environment fallback.** `PLANNER_USER` and `PLANNER_PASSWORD` are
    removed from `env.config.ts` and from the server `.env`.
 4. **Credentials are verified before they are persisted.** The save endpoint runs the 2-step

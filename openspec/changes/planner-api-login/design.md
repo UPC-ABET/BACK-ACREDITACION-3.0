@@ -107,10 +107,10 @@ That ordering matters: the `status` boolean is checked _before_ the payload, so 
 
 The client throws two distinct subclasses of `PlannerSessionExpiredError`:
 
-| Error                          | Raised when                                                                          | Service maps to                        |
-| ------------------------------ | ------------------------------------------------------------------------------------ | -------------------------------------- |
-| `PlannerLoginRejectedError`    | 4xx (other than 408/429), `status:false`, or a missing/unparseable payload           | `400 error.planner.invalidCredentials` |
-| `PlannerLoginUnreachableError` | `fetch` throws, a refused redirect, the 15s timeout, a truncated body, 5xx, 408, 429 | `503 error.planner.unreachable`        |
+| Error                          | Raised when                                                                                     | Service maps to                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `PlannerLoginRejectedError`    | 4xx (other than 404/405/408/410/429), `status:false`, or a missing/unparseable payload          | `400 error.planner.invalidCredentials` |
+| `PlannerLoginUnreachableError` | `fetch` throws, a refused redirect, the timeout, a truncated body, 5xx, and 404/405/408/410/429 | `503 error.planner.unreachable`        |
 
 **Both** callers must honour the split: `POST /credentials` and `POST /refresh` each answer `503`
 for the unreachable case rather than blaming the credentials (round 3, Task C.1).
@@ -217,15 +217,21 @@ logged at `error`. It must never surface as `invalidCredentials`.
 The save path is ordered so that a rejected login cannot leave a trace:
 
 ```
+0. throttle guard — a rejected verification blocks the next attempt for a window   (round 2, B.5)
 1. session = await loginClient.login(dto.username, dto.password)   // throws -> nothing written
-2. await credentials.upsert('PLANNER', dto.username, encrypt(dto.password))
-3. store.save(session)                                             // AC-10: replaces any cached session
-4. return getStatus()
+2. await credentials.save('PLANNER', dto.username, encrypt(dto.password))
+3. tokenService.adoptSession(session)                              // AC-10, one writer for the store
+4. return tokenService.getStatus()
 ```
 
 Step 1 before step 2 is the whole of AC-7. Step 3 is AC-10: the new session comes from the
-credentials just verified, so no session obtained under the old credentials can survive —
-achieved by overwrite rather than by a separate invalidation call that could be forgotten.
+credentials just verified, so no session obtained under the old credentials survives _on disk_.
+
+**Amended 2026-08-09 (rounds 2–3):** step 3 originally called `store.save` directly, giving the
+store two writers. It now goes through `PlannerTokenService.adoptSession`, which also clears the
+refresh cooldown and bumps a generation counter — so a login already in flight under the previous
+credentials discards its own result and returns the adopted session instead of running a caller's
+whole request under the account that was just rotated away.
 
 There is no transaction spanning steps 2 and 3 (one is Postgres, one is a file). If step 3
 fails, the credentials are stored but the store file is stale; the next `resolveSession` finds
@@ -341,6 +347,21 @@ Plus `error.scraperCredential.*` in the credentials module for its own validatio
   `UPC-ABET/FRONT-ACREDITACION-3.0`, with `proposal.md` copied verbatim. Its scope is the
   credentials form plus handling `not_configured`. Not designed here.
 
+## Deployment assumption: a single instance
+
+Recorded because nothing else in the change says it and the asymmetry is new. Credentials moved
+into Postgres and are therefore shared, while the session file, the single-flight promise, the
+refresh cooldown and the verification throttle all remain **per process**.
+
+With one `sys_acc_back` container (the current `docker-compose.prod.yml`, no `deploy.replicas`)
+that is correct and simpler. With more than one: a credential saved on replica 1 updates the shared
+row but only replica 1's session file, so `GET /status` answers differently depending on which
+replica responds until the other's token lapses; each replica logs in independently; and both
+cooldowns become per-replica, multiplying the allowance by the replica count.
+
+Running more than one instance therefore requires moving the session out of the file — into
+`core.scraper_credentials.extra` or its own row — before scaling, not after.
+
 ## Testing strategy
 
 | AC  | Covered by                                                                                                                                                  | Kind        |
@@ -377,16 +398,16 @@ Anything marked manual appears in `runbook.md`.
 | `getStatus` becoming async breaks an unseen caller                        | Search showed two callers total. Typecheck catches any other                                                                              |
 | The store file write fails after credentials are saved                    | Self-healing — next `resolveSession` re-logs in. Documented under AC-7 so it is not read as an oversight                                  |
 | Cooldown masks a real failure during the runbook                          | Runbook says to restart the container (in-memory state) or wait 30s before each verification step                                         |
-| `APP_SECRET` differs between environments                                 | ADR-001 negative 1. Distinct `credentialDecryptionFailed` key and an `error` log so it is diagnosable in one line                         |
+| `APP_SECRET` differs between environments                                 | ADR-001 negative 1. Distinct `error.scraperCredential.decryptionFailed` key and an `error` log so it is diagnosable in one line           |
 
 ## Docs to update in this PR
 
-- [ ] `docs/CONTEXT.md` § External Integrations — the uPlanner row: session is obtained
+- [x] `docs/CONTEXT.md` § External Integrations — the uPlanner row: session is obtained
       through u-planner's HTTP API with stored credentials, not by driving a browser.
-- [ ] `docs/CONTEXT.md` § Security Decisions — a pointer to ADR-001, so the ADR is reachable
+- [x] `docs/CONTEXT.md` § Security Decisions — a pointer to ADR-001, so the ADR is reachable
       from where someone would actually be reading.
-- [ ] `docs/CONTEXT.md` § Environment Variables — drop `PLANNER_USER` / `PLANNER_PASSWORD`
+- [x] `docs/CONTEXT.md` § Environment Variables — drop `PLANNER_USER` / `PLANNER_PASSWORD`
       from the key groups; note that Planner credentials now live in the database.
-- [ ] `docs/adr/README.md` § Index — already updated by `/abet-adr`; verify it is committed.
-- [ ] `openapi.json` — regenerated via `pnpm openapi:export`.
-- [ ] **Not** `docs/POLICIES.md` — out of bounds for this change.
+- [x] `docs/adr/README.md` § Index — already updated by `/abet-adr`; verify it is committed.
+- [x] `openapi.json` — regenerated via `pnpm openapi:export`.
+- [x] **Not** `docs/POLICIES.md` — out of bounds for this change.

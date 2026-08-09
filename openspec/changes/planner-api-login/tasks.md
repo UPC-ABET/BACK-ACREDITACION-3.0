@@ -1171,9 +1171,43 @@ round 2's B.7, in code rather than docs:
 
 **Commit**: `docs(planner): correct comments falsified by the round-2 changes`
 
-### Task C.6 — Round-3 minors
+## Unplanned — `EncryptService` could never have worked (2026-08-09)
 
-- [ ] Task complete
+### Task U.2 — Derive the AES key instead of hex-decoding APP_SECRET ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Found while clearing the minors, and it would have broken this change in production.**
+
+Tightening `APP_SECRET` to exactly 64 hex characters (a B.11 minor) made `pnpm openapi:export`
+fail at boot. The local `.env` holds **128 hex characters — 64 bytes** — and
+`Buffer.from(secret, 'hex')` fed that straight to `aes-256-gcm`, which accepts only 32. Verified
+directly: `createCipheriv` throws `Invalid key length` on the real value.
+
+So `EncryptService` **could not encrypt or decrypt at all** in this environment, and almost
+certainly not in production either — same generator, and `.min(64)` never constrained it. It went
+unnoticed for exactly the reason ADR-001 records: nothing consumed the service until this change
+did. Every `POST /planner/session/credentials` would have returned a 500 on the encrypt.
+
+Fixed by deriving the key — `sha256(APP_SECRET)` is always exactly 32 bytes, so any sufficiently
+long secret works. `env.config.ts` reverted to `.min(64)`: constraining the secret would have made
+this a deploy-blocking change requiring an ops action, and derivation needs none.
+
+**Safe without a migration**, and this is the part worth checking rather than assuming:
+`APP_SECRET` has exactly one consumer (`EncryptService`), which had exactly none before this
+change. No ciphertext produced by the old behaviour can exist, because the old behaviour could not
+produce any.
+
+Verified with the real local secret end to end: encrypt → decrypt returns the plaintext. The
+existing `encrypt.service.spec.ts` (57 tests) stays green.
+
+**Commit**: `fix(libs): derive the encryption key so any valid APP_SECRET works`
+
+---
+
+### Task C.6 — Round-3 minors ✅ DONE (2026-08-09)
+
+- [x] Task complete
 
 - **`Number.isFinite(Number(data.user?.id))` accepts `null`/`''`/`[]` as `0`** — a `200` with
   `user: {id: null}` yields an accepted session with `userId: 0`, written to the store and reported
@@ -1215,9 +1249,9 @@ round 2's B.7, in code rather than docs:
 
 **Commit**: `refactor(planner): round-3 audit follow-ups`
 
-### Task B.11 — Round-2 minors
+### Task B.11 — Round-2 minors ✅ DONE (2026-08-09)
 
-- [ ] Task complete
+- [x] Task complete
 
 Consolidated; none blocking on its own.
 
@@ -1253,9 +1287,9 @@ Consolidated; none blocking on its own.
 
 **Commit**: `refactor(planner): round-2 audit follow-ups`
 
-### Task A.9 — Minor cleanups
+### Task A.9 — Minor cleanups ✅ DONE (2026-08-09)
 
-- [ ] Task complete
+- [x] Task complete
 
 Consolidated minors worth doing before the PR:
 

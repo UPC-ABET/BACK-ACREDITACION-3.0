@@ -207,6 +207,12 @@ datasource (`src/database/typeorm.raw.config.ts`, with its own `migration:raw:*`
 mirrors the external Banner / uPlanner scraping database. Entities under `admin/*/raw/`
 belong to it and map external shapes verbatim.
 
+**`RAW_DB_URL` gates whole modules, not just that connection.** `app.module.ts` registers
+`BannerModule`, `PlannerModule` and `ScrapingExportsModule` only when it is set, so a deployment
+without it serves none of those endpoints. `openapi.json` is exported with a placeholder value
+(`src/tools/export-openapi.env.ts`) so the committed spec always describes them — otherwise a
+routine regeneration silently drops roughly a fifth of the API.
+
 The migration rules are mandatory and live in
 [POLICIES.md § Migrations](./POLICIES.md#migrations).
 
