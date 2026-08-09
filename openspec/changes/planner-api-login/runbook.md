@@ -55,12 +55,16 @@ Leaving the two variables in the server `.env` is harmless to boot — `envSchem
 
 ## Manual validation
 
-**There are two independent 30-second cooldowns, and they bite in opposite directions.**
+**There are two cooldowns, they hold for different lengths, and they bite in opposite directions.**
 
-| Cooldown              | Armed by                                               | Held for                                                                                                | Suppresses                                                                                                             |
-| --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `REFRESH_COOLDOWN_MS` | a failed `POST /refresh`                               | 30s from the failure                                                                                    | further refresh attempts; the original failure's answer is replayed (`expired`, or `503` if u-planner was unreachable) |
-| verification throttle | **any** `POST /credentials`, from the moment it starts | the whole attempt; released on success and on an unreachable u-planner, re-armed 30s on a **rejection** | further credential verifications                                                                                       |
+| Cooldown              | Armed by                                               | Held for                                                                                                     | Suppresses                                                                                                             |
+| --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `REFRESH_COOLDOWN_MS` | a failed `POST /refresh`                               | 30s from the failure                                                                                         | further refresh attempts; the original failure's answer is replayed (`expired`, or `503` if u-planner was unreachable) |
+| verification throttle | **any** `POST /credentials`, from the moment it starts | **60s** from entry, released on success and on an unreachable u-planner, re-armed for 30s on a **rejection** | further credential verifications                                                                                       |
+
+The 60s is deliberate and is not the operator-facing number: it has to outlast the login it guards
+(two calls, 15s each), or it would lapse under a slow attempt and let a second one through behind
+it. What an operator waits after a **rejection** is 30s.
 
 The verification throttle is the one that surprises people: it is claimed on **entry**, not on
 failure, so a second `POST /credentials` while the first is still running — a double-click, a
@@ -71,8 +75,9 @@ So: **let each credential step finish, and wait 30 seconds after any step that f
 step 3 below deliberately submits a wrong password and therefore arms the 30s penalty; step 4 must
 wait it out.
 
-The single-flight promise also survives between requests. A short-circuited response looks exactly
-like a genuine result — the trap that made the original diagnosis take hours.
+A short-circuited response looks exactly like a genuine result — the trap that made the original
+diagnosis take hours. Only the cooldowns do that now; the single-flight promise is cleared as soon
+as its login settles, so it never spans two idle requests.
 
 | #   | Step                                                                                  | Expected                                                                                                                                                                        |
 | --- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

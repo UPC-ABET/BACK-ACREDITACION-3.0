@@ -211,7 +211,14 @@ belong to it and map external shapes verbatim.
 `BannerModule`, `PlannerModule` and `ScrapingExportsModule` only when it is set, so a deployment
 without it serves none of those endpoints. `openapi.json` is exported with a placeholder value
 (`src/tools/export-openapi.env.ts`) so the committed spec always describes them — otherwise a
-routine regeneration silently drops roughly a fifth of the API.
+routine regeneration silently drops 16 paths, every one under `/banner/*`, `/planner/*` or
+`/scraping/*`.
+
+**The Planner session state is per-process, so this service must not be scaled to more than one
+replica** until it moves into Postgres. The single-flight login, both cooldowns and the session file
+all live in one container's memory; a second replica would duplicate logins against u-planner,
+answer `GET /planner/session/status` differently depending on which instance served the request, and
+multiply the credential-verification throttle's allowance by the replica count.
 
 The migration rules are mandatory and live in
 [POLICIES.md § Migrations](./POLICIES.md#migrations).

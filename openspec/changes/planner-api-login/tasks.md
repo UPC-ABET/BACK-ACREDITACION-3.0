@@ -1247,7 +1247,17 @@ existing `encrypt.service.spec.ts` (57 tests) stays green.
 - Comments narrating change history rather than code (five instances), including a pointer to
   `the change's proposal` that breaks by design when the folder is archived.
 
-**Commit**: `refactor(planner): round-3 audit follow-ups`
+**Corrected 2026-08-09 (round 4).** This task was ticked `DONE` over three items that were never
+applied, which is worse than leaving it open — a later round is told not to re-report against this
+ledger, so a false tick makes the item invisible. Closed in round 4: the module naming
+(`ScraperCredentialsModule` → `ScraperCredentialModule`; the plural file stems beside singular class
+names are the established convention — `courses.validation.ts` holds `CourseValidation` — so only
+the module class was out of step), the `catch {}` causes (`cause()` now walks the chain, which was
+the point of the item and resolved one of its four named cases before), and the shared `afterEach`
+that asserted against an empty array.
+
+**Commit**: this work landed inside `3fe1f080` and `20cdf25f`, not under the message named here;
+round 4's follow-ups are their own commit.
 
 ### Task B.11 — Round-2 minors ✅ DONE (2026-08-09)
 
@@ -1285,7 +1295,14 @@ Consolidated; none blocking on its own.
   the session file, single-flight and both cooldowns are per-process. Record single-replica as an
   accepted constraint in `design.md`, or move the session into the database.
 
-**Commit**: `refactor(planner): round-2 audit follow-ups`
+**Corrected 2026-08-09 (round 4).** Two items in the paragraph above were ticked without being
+applied and are now done: `ScraperCredentialsModule` was renamed to `ScraperCredentialModule`, and
+`refresh()` no longer issues three SELECTs — it resolves the credential check once and shares the
+status shaping with `getStatus()`. The multi-replica constraint was recorded in `design.md`, which
+is the location this item explicitly rejected, so round 4 also put it in `docs/CONTEXT.md`: the
+change folder is archived after merge, and an operator scaling the service will not read it there.
+
+**Commit**: this work landed inside `3fe1f080` and `20cdf25f`, not under the message named here.
 
 ### Task A.9 — Minor cleanups ✅ DONE (2026-08-09)
 
@@ -1388,3 +1405,169 @@ regenerated and quietly omits every endpoint this change added.
 - `package.json` (modify — only under option 1)
 
 **Commit**: `chore(api): regenerate openapi.json for the Planner credentials endpoints`
+
+## Audit fixes (/abet-audit-pr)
+
+### Review round 4 — 2026-08-09
+
+Six auditors over the post-round-3 tree, on HEAD `20cdf25f`. **Verdict: NOT READY — 0 blockers,
+11 majors.** Round 3's five fixes had landed in `3fe1f080` / `7abe04c9` / `20cdf25f`, i.e. _after_
+its mutation campaign, so nothing had ever tested them. That is what this round was for, and it
+paid: three majors are round-3 fixes that do not work.
+
+| Round | Blocker                                   | Character of the majors                                   |
+| ----- | ----------------------------------------- | --------------------------------------------------------- |
+| 1     | Live credentials committed                | Real defects across every domain                          |
+| 2     | `refresh()` reported `active` when broken | 4 of 9 were round-1 regressions                           |
+| 3     | none                                      | 2 behavioural, 5 test-coverage gaps, 4 documentation      |
+| 4     | none                                      | 3 unverified round-3 fixes, 3 behavioural, 5 doc/contract |
+
+Two findings were reached independently by four auditors each (the error-hierarchy leak and the
+`getValidToken` traceability claim), and the audit ledger itself was found to be wrong: `C.6` and
+`B.11` carried `DONE` over items nobody had applied, plus three commit references that resolve to
+nothing. Both are corrected in place above rather than appended beside, since a false tick is
+exactly what makes a finding invisible to the next round.
+
+> **The three behavioural majors converge on one symptom**, which is why they are worth naming
+> together: a u-planner outage during a scrape reported the run as `expired`. That sends the
+> operator to re-enter credentials that were never wrong — the precise failure this whole change
+> was written to eliminate, reintroduced by three unrelated mechanisms.
+
+**All 11 majors and all 16 minors fixed 2026-08-09.** Every behavioural fix was mutation-verified
+before being called done — 10 mutants, all killed:
+
+> unconditional flight reset; forced caller joins any flight; the non-forced fast path removed;
+> `persist()` rethrowing; generation captured before the credential read; `REFRESH_COOLDOWN_MS`
+> shortened to 1ms; `cause()` not walking the chain; the `exp` range guard dropped; the key
+> derivation reverted to `Buffer.from(secret, 'hex')`; the GCM length pin removed.
+>
+> Plus the three round-3 throttle invariants that survived round 3's own campaign: unconditional
+> `release()`, `penalise()` without its `Math.max`, and `VERIFY_CLAIM_MS` shortened to the penalty.
+
+### Task D.1 — An unreachable u-planner is reported as an expired session ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major. Found independently by auditors A, D, E and F.** `PlannerLoginUnreachableError extends
+PlannerSessionExpiredError`, and `PlannerScraperService` classifies a whole run by that type alone.
+A transport outage therefore finished the run as `expired`.
+
+**Fix**: `PlannerLoginUnreachableError` now extends `Error`. Only `PlannerLoginRejectedError` — a
+refusal, which genuinely disproves the session — still extends `PlannerSessionExpiredError`. The
+paths that must treat both alike use the new `isPlannerLoginError` guard. The scraper needed no
+change, which is the test that the taxonomy is now right.
+
+### Task D.2 — A non-forced caller was conscripted into a forced flight ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditor F).** `if (current && (!forceRefresh || current.forced))` reduces to `if (current)`
+for a non-forced caller, so every scrape worker asking for "whatever is valid" joined whatever login
+was running — including an operator's forced refresh. With u-planner down they stalled for the full
+30s login ceiling and then inherited its failure, about a session they were not using and that was
+good for hours.
+
+**Fix**: the cached session is checked before any join can happen.
+
+### Task D.3 — A failed store write discarded the session it had just obtained ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditor F).** The store file was the only cache, so an `EACCES`/`ENOSPC`/read-only mount
+made `adoptSession` throw away a session u-planner had already granted — unlogged, because that
+error is not a `PlannerSessionExpiredError`. The scraper continues past a per-course failure, so the
+next request logged in again: roughly one institutional authentication per request, with no cooldown
+on that path at all.
+
+**Fix**: the session is held in memory before the write is attempted, and the write failure is
+caught and logged at `error`. A disk fault now costs the cross-restart cache, not the session.
+
+### Task D.4 — `POST /credentials` failed silently ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditor A).** Round 1 moved AC-3's `warn` into `PlannerTokenService.login()` on the grounds
+that "all paths go through it". The credential-save path does not — it calls `PlannerLoginClient`
+directly. Since every branch throws an i18n key and `AllExceptionsFilter` logs only non-i18n
+messages, the endpoint answered 400/503 with no server-side record at all. That is the proposal's
+problem #2, reproduced on the endpoint this change added.
+
+**Fix**: a `Logger` in `PlannerCredentialsService` — `warn` on the failure, `debug` on the throttle.
+
+### Task D.5 — Three round-3 fixes were never tested ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditor C), proven by a 68-mutation campaign — 50 killed, 18 survived.**
+
+1. **The chained-flight test could not fail.** Proven with a four-cell experiment: two
+   `await Promise.resolve()` ticks are not enough for the predecessor's promise to settle, so the
+   `.finally` the test is named after had not run. Fixed with a real macrotask flush, and the
+   fixture changed so the chained flight actually runs.
+2. **All three throttle invariants the source comments call load-bearing survived mutation** —
+   ownership on `release`, the `Math.max` in `penalise`, and the claim outlasting its login.
+3. **The key-derivation fix had zero tests.** Reverting it left the suite green, because the spec
+   only ever used the one secret length that already worked.
+
+### Task D.6 — `getValidToken` was deleted while the ACs certified it survived ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Major (auditors B and C).** AC-12 and traceability row 12 both stated it kept its signature. It
+was removed in round 3. **Fix**: dated amendment on AC-12 and a rewritten row 12.
+
+### Task D.7 — Contract and documentation defects ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+**Majors (auditor B) and the minors around them.** `design.md` gave `decryptionFailed` as 400 where
+the code returns 503 — round 3's C.4 class recurring in the file the round-4 docs commit had just
+edited. `/banner/scrape` and `/planner/scrape` published `required: true` bodies against **empty
+schemas**, and this PR is what puts the whole scraping surface into the frontend's source of truth
+for the first time. Both 400-carrying endpoints documented only their 503.
+
+**Fix**: `@ApiPropertyOptional` on both scrape DTOs; a 400 `ApiResponse` naming all three meanings
+on the save route and the one on refresh; the status table corrected; `design.md`'s throttle step,
+`refreshing` field name and store-writer row brought up to the code; the runbook's cooldown table
+corrected to 60s/30s and its stale surviving-flight paragraph removed; ADR-001 given the key
+derivation and the warning that changing it equals rotating the secret; `CONTEXT.md`'s "roughly a
+fifth of the API" corrected to the real 16 paths, and the single-instance constraint recorded there
+where an operator scaling the service will actually meet it.
+
+### Task D.8 — Round-4 minors ✅ DONE (2026-08-09)
+
+- [x] Task complete
+
+- **Ciphertext could overflow its column** (auditors A and E): `varchar(1000)` against a
+  200-character DTO, where GCM expands to `58 + 2 x utf8Bytes`. A 200-character CJK password reaches
+  1258 and throws Postgres `22001` — a bare 500, _after_ u-planner had accepted the pair. Column
+  widened to `varchar(5000)` in the same migration, which has not been applied anywhere.
+- **The DTO accepted non-strings** (auditor E): the global pipe's `enableImplicitConversion` coerces
+  before `@IsString()` runs, so `{"password": {"a": 1}}` validated as `"[object Object]"` and was
+  spent on a real u-planner login. Route-scoped pipe with the option off.
+- **`expFromJwt` could throw a raw `RangeError`** (auditor F) for an out-of-range `exp`, escaping
+  every classifier as a 500. Bounded — and, with `decodeJwt`, reclassified as _unreachable_
+  (auditor A): u-planner accepted the credentials and then returned a token it cannot have meant to
+  send, so blaming the pair would arm the penalty against a fault no password can fix.
+- **GCM accepted a truncated auth tag** (auditor E) — 128-bit integrity silently degrading to
+  32-bit on any row an attacker could write. IV and tag lengths now pinned.
+- **`APP_SECRET_HEX_LENGTH`** and its error message still described hex after the derivation change.
+- **`validateSave` ran after the live login** (auditor A), so a whitespace-only username was spent
+  on a real attempt and armed the throttle. Moved before `verify()`.
+- Test gaps closed: the store's shape guard and its config key, the `0600` assertion (which could
+  not detect removal of the `chmodSync` it existed for — it seeded the destination, which `save()`
+  never writes to), `Number.isInteger`/`NaN` on the user id, the `refreshToken` type guard, the
+  refresh cooldown's lower bound under fake timers, the generation-capture ordering, and the shared
+  `afterEach` whose emptiness made one case's secret-absence check vacuous.
+
+**Deferred, recorded rather than fixed:** the verification claim is released before the credential
+write rather than after it (auditors A and F, both `suggestion`), leaving a window in which two
+saves could land out of order. It requires the DB write to outlast a full network login.
+
+**Commits** — four, because the specs cannot travel separately from the behaviour they pin (a
+`fix` / `test` split would leave the middle commit red and the hooks would refuse it):
+
+1. `fix(libs): pin the GCM lengths and correct the APP_SECRET requirement message`
+2. `fix(planner): stop an unreachable u-planner reading as an expired session`
+3. `fix(api): describe the scrape request bodies and the credential 400s in the spec`
+4. `docs(planner): record audit round 4 and correct the stale task ledger`

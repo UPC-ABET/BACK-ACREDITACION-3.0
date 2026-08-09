@@ -40,6 +40,11 @@ S3 only. What it does have is `src/libs/encrypt.service.ts` — AES-256-GCM
 (`iv:ciphertext:authTag`) keyed off the `APP_SECRET` env var, already registered globally
 via `EncryptModule` in `app.module.ts`.
 
+The key is **derived** from `APP_SECRET` as `sha256(APP_SECRET)`, not hex-decoded from it. That was
+settled while implementing this decision: hex-decoding produced whatever length the secret happened
+to be, and the deployed environments hold a 128-character value, so aes-256-gcm rejected every call
+with `Invalid key length`. Nothing had ever noticed, because nothing consumed the service.
+
 **No alternative was built and reverted, so there is no PR to name here.** One honest fact
 belongs in its place: `EncryptService` currently has **no consumer anywhere in `src/`** — the
 only reference is a re-export in `src/libs/parameter.functions.ts`. It was written in
@@ -76,7 +81,9 @@ API endpoints, instead of through deployment-time environment variables.
   each credential is re-entered by hand. **There is no key-rotation mechanism in this
   codebase, and this decision does not add one.** Anyone who changes `APP_SECRET` in future
   must know that it silently invalidates stored credentials — this is the single most
-  likely way for this decision to hurt someone later.
+  likely way for this decision to hurt someone later. **Changing the key derivation
+  (`sha256(APP_SECRET)` in `EncryptService`) has exactly the same effect as rotating the secret**,
+  and is easier to do by accident: it looks like an implementation detail.
 - **Exposure widens from one file to every database copy.** A root-owned `.env` on one host
   is not routinely duplicated; a database is. These credentials now travel inside every
   backup, every restore into staging, and every dump a developer pulls to debug locally, and

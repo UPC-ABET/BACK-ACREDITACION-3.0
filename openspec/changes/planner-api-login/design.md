@@ -105,19 +105,27 @@ Only the access token's expiry is mandatory.
 That ordering matters: the `status` boolean is checked _before_ the payload, so a `200` with
 `status:false` reports as rejected credentials rather than as a malformed response.
 
-The client throws two distinct subclasses of `PlannerSessionExpiredError`:
+The client throws two distinct login errors:
 
-| Error                          | Raised when                                                                                     | Service maps to                        |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `PlannerLoginRejectedError`    | 4xx (other than 404/405/408/410/429), `status:false`, or a missing/unparseable payload          | `400 error.planner.invalidCredentials` |
-| `PlannerLoginUnreachableError` | `fetch` throws, a refused redirect, the timeout, a truncated body, 5xx, and 404/405/408/410/429 | `503 error.planner.unreachable`        |
+| Error                          | Raised when                                                                                                     | Service maps to                        |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `PlannerLoginRejectedError`    | 4xx (other than 404/405/408/410/429), `status:false`, or a missing/unparseable payload                          | `400 error.planner.invalidCredentials` |
+| `PlannerLoginUnreachableError` | `fetch` throws, a refused redirect, the timeout, a truncated body, 5xx, 404/405/408/410/429, an undecodable JWT | `503 error.planner.unreachable`        |
 
 **Both** callers must honour the split: `POST /credentials` and `POST /refresh` each answer `503`
 for the unreachable case rather than blaming the credentials (round 3, Task C.1).
 
-Both extend `PlannerSessionExpiredError` so every existing `catch` keeps working unchanged.
 The split exists because of the proposal's risk row: an operator must never be told a correct
 password is wrong because u-planner was down.
+
+**Amended 2026-08-09 (round 4, Task D.1):** this originally read "both extend
+`PlannerSessionExpiredError` so every existing `catch` keeps working unchanged". That inheritance
+was the defect. `PlannerScraperService` classifies a whole scrape run by `instanceof
+PlannerSessionExpiredError`, so an unreachable u-planner finished the run as `expired` — the
+misdiagnosis the split exists to prevent, arriving through the type hierarchy after the two HTTP
+paths had been fixed against it. Only `PlannerLoginRejectedError` extends it now; a refusal is the
+one case that genuinely disproves the stored session. `PlannerLoginUnreachableError` extends
+`Error`, and the paths that must log both without discriminating use `isPlannerLoginError`.
 
 ### AC-3 — No silent failure path, no secrets in logs
 
@@ -156,9 +164,18 @@ refresh-token call over a login, so the production wedge is unreachable by const
 rather than by correctness of a condition — which is the point, since the wedge was a correct
 condition guarding a broken call.
 
-The `refreshing` single-flight promise and `REFRESH_COOLDOWN_MS` are both kept. The cooldown's
-original rationale (don't relaunch Chromium) is gone, but it still protects u-planner from
-being hammered by repeated button presses, and it now logs (AC-3) instead of being invisible.
+The single-flight promise and `REFRESH_COOLDOWN_MS` are both kept. The cooldown's original
+rationale (don't relaunch Chromium) is gone, but it still protects u-planner from being hammered by
+repeated button presses, and it now logs (AC-3) instead of being invisible.
+
+**Amended 2026-08-09 (round 3, C.6):** the two fields `refreshing` / `refreshingIsForced` were
+collapsed into a single `flight: { promise, forced } | null`. This document called the field
+`refreshing` throughout; the code has one field named `flight`.
+
+**Amended 2026-08-09 (round 4):** a non-forced caller now checks the cached session _before_ it can
+join any flight. Without that it would be conscripted into an operator's forced refresh — waiting
+out the full login timeout and inheriting a failure about a session it was not using, which
+`PlannerScraperService` records as an expired run.
 
 ### AC-6 / AC-13 — The credentials table and its module
 
@@ -217,11 +234,13 @@ logged at `error`. It must never surface as `invalidCredentials`.
 The save path is ordered so that a rejected login cannot leave a trace:
 
 ```
-0. throttle guard — a rejected verification blocks the next attempt for a window   (round 2, B.5)
-1. session = await loginClient.login(dto.username, dto.password)   // throws -> nothing written
-2. await credentials.save('PLANNER', dto.username, encrypt(dto.password))
-3. tokenService.adoptSession(session)                              // AC-10, one writer for the store
-4. return tokenService.getStatus()
+0. validate the trimmed input                                      (round 4) -> nothing written
+1. throttle slot claimed on ENTRY for 60s, released on success and on an unreachable
+   u-planner, re-armed 30s on a rejection                          (round 3, C.2)
+2. session = await loginClient.login(dto.username, dto.password)   // throws -> nothing written
+3. await credentials.save('PLANNER', dto.username, encrypt(dto.password))
+4. tokenService.adoptSession(session)                              // AC-10, one writer for the store
+5. return tokenService.getStatus()
 ```
 
 Step 1 before step 2 is the whole of AC-7. Step 3 is AC-10: the new session comes from the
@@ -315,13 +334,19 @@ Covered under Testing strategy and the final milestone.
 - **i18n keys**, new file
   `planner-token/config/strings/planner-session.validation.ts`:
 
-| Key                                        | Status | Meaning                                                                         |
-| ------------------------------------------ | ------ | ------------------------------------------------------------------------------- |
-| `error.planner.credentialsNotConfigured`   | 400    | No credential row for `PLANNER`                                                 |
-| `error.planner.invalidCredentials`         | 400    | u-planner rejected the pair                                                     |
-| `error.planner.unreachable`                | 503    | u-planner did not answer                                                        |
-| `error.planner.verificationCooldown`       | 400    | A verification was rejected in the last 30s (added round 1, documented round 2) |
-| `error.scraperCredential.decryptionFailed` | 400    | Stored ciphertext will not decrypt                                              |
+| Key                                        | Status | Meaning                                                          |
+| ------------------------------------------ | ------ | ---------------------------------------------------------------- |
+| `error.planner.credentialsNotConfigured`   | 400    | No credential row for `PLANNER`                                  |
+| `error.planner.invalidCredentials`         | 400    | u-planner rejected the pair                                      |
+| `error.planner.unreachable`                | 503    | u-planner did not answer                                         |
+| `error.planner.verificationCooldown`       | 400    | A verification is in flight, or one was rejected in the last 30s |
+| `error.scraperCredential.decryptionFailed` | 503    | Stored ciphertext will not decrypt                               |
+
+`decryptionFailed` is a **503**, corrected round 4 — this table said 400 while the code has returned
+503 since round 3 (a server misconfiguration, not a malformed request). It shares that status with
+`error.planner.unreachable`, so the two are told apart by the key, never by the code: a frontend
+that routes on status alone reports an `APP_SECRET` mismatch as "u-planner is down", which is the
+misdiagnosis ADR-001 exists to prevent.
 
 `error.planner.saveCredentialsFailed` was specified here and never used — the save path throws
 `invalidCredentials` / `unreachable` directly. Removed in round 1.
@@ -375,7 +400,7 @@ Running more than one instance therefore requires moving the session out of the 
 | 7   | `planner-credentials.service.spec.ts` — rejected login ⇒ repository `upsert` never called                                                                   | unit        |
 | 8   | `openapi.json` grep for `passwordEncrypted` / `password` in any response schema                                                                             | manual/grep |
 | 9   | `planner-token.service.spec.ts` — no credential row ⇒ `not_configured`, even with a store file present                                                      | unit        |
-| 10  | `planner-credentials.service.spec.ts` — successful save ⇒ `store.save` called with the new session                                                          | unit        |
+| 10  | `planner-credentials.service.spec.ts` — successful save ⇒ `tokenService.adoptSession` called with the new session (it, not `store.save`, is the one writer) | unit        |
 | 11  | grep over `src/`; app boots with neither var set                                                                                                            | manual      |
 | 12  | **end-to-end Planner scrape run**                                                                                                                           | manual      |
 | 13  | `scraper-credentials.validation.spec.ts`; review of service imports                                                                                         | unit        |
