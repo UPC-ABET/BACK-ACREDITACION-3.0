@@ -12,6 +12,19 @@ export class EncryptService {
 		this.key = this.getRequiredAppSecret();
 	}
 
+	/**
+	 * The key is *derived* from APP_SECRET rather than being its hex decoding.
+	 *
+	 * `Buffer.from(secret, 'hex')` produced whatever length the secret happened to be, and
+	 * aes-256-gcm accepts only 32 bytes — so a 128-hex-character secret (64 bytes, which is what
+	 * the deployed environments actually hold) made every encrypt and decrypt throw
+	 * `Invalid key length`. That went unnoticed because nothing consumed this service until
+	 * scraper credentials did.
+	 *
+	 * SHA-256 always yields exactly 32 bytes, so any sufficiently long secret now works. Safe to
+	 * introduce without a migration: no ciphertext produced by the previous behaviour can exist,
+	 * because the previous behaviour could not produce any.
+	 */
 	private getRequiredAppSecret(): Buffer {
 		const secret = this.configService.get<string>('APP_SECRET');
 
@@ -21,7 +34,7 @@ export class EncryptService {
 			);
 		}
 
-		return Buffer.from(secret, 'hex');
+		return crypto.createHash('sha256').update(secret, 'utf8').digest();
 	}
 
 	encrypt(text: string): string {
