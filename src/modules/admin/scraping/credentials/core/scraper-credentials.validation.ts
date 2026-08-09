@@ -1,15 +1,7 @@
 import { BadRequestError } from 'src/commons/domain-error';
 import { scraperCredentialsValidationStrings } from '../config/strings/scraper-credentials.validation';
-import {
-	SCRAPER_PROVIDER_CODE_VALUES,
-	ScraperProviderCode,
-} from '../constants/scraper-provider-codes';
-
-export interface SaveScraperCredentialInput {
-	providerCode: ScraperProviderCode;
-	username: string;
-	password: string;
-}
+import { SCRAPER_PROVIDER_CODE_VALUES } from '../constants/scraper-provider-codes';
+import type { SaveScraperCredentialInput } from '../model/scraper-credentials.dtos';
 
 export class ScraperCredentialValidation {
 	static validateSave(data: SaveScraperCredentialInput): void {

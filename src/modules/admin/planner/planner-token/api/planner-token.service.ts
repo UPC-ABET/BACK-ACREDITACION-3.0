@@ -2,7 +2,7 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { BadRequestError } from 'src/commons/domain-error';
 import { ScraperCredentialService } from 'src/modules/admin/scraping/credentials/api/scraper-credentials.service';
 import { SCRAPER_PROVIDER_CODES } from 'src/modules/admin/scraping/credentials/constants/scraper-provider-codes';
-import { PlannerLoginClient } from '../core/planner-login.client';
+import { PLANNER_LOGIN_WORST_CASE_MS, PlannerLoginClient } from '../core/planner-login.client';
 import { PlannerSessionStore } from '../core/planner-session.store';
 import {
 	PlannerLoginUnreachableError,
@@ -13,7 +13,9 @@ import { PlannerSessionStatus, PlannerTokenSession } from '../model/planner-sess
 
 const REFRESH_SKEW_MS = 60_000;
 // Back off after a failed login so a repeated "Try to refresh" press does not hammer u-planner.
-const REFRESH_COOLDOWN_MS = 30_000;
+// Derived, not a literal: a cooldown shorter than one login would lapse while that login is still
+// running, letting the next press start a second one behind it.
+const REFRESH_COOLDOWN_MS = PLANNER_LOGIN_WORST_CASE_MS;
 const EXPIRING_WINDOW_MS = 30 * 60_000;
 
 /** Why the last refresh failed. The cooldown replays the same answer, so it has to remember. */
@@ -34,8 +36,7 @@ interface RefreshFailure {
 @Injectable()
 export class PlannerTokenService {
 	private readonly logger = new Logger(PlannerTokenService.name);
-	private refreshing: Promise<PlannerTokenSession> | null = null;
-	private refreshingIsForced = false;
+	private flight: { promise: Promise<PlannerTokenSession>; forced: boolean } | null = null;
 	private lastFailure: RefreshFailure | null = null;
 	private sessionGeneration = 0;
 
@@ -49,10 +50,6 @@ export class PlannerTokenService {
 	// rather than just the token.
 	async getValidSession(forceRefresh = false): Promise<PlannerTokenSession> {
 		return await this.ensureSession(forceRefresh);
-	}
-
-	async getValidToken(forceRefresh = false): Promise<string> {
-		return (await this.getValidSession(forceRefresh)).accessToken;
 	}
 
 	async getStatus(): Promise<{ status: PlannerSessionStatus; tokenExp: string | null }> {
@@ -140,26 +137,28 @@ export class PlannerTokenService {
 	 * retry is a forced call, so that would re-send the rejected token and abort the whole run.
 	 */
 	private ensureSession(forceRefresh: boolean): Promise<PlannerTokenSession> {
-		if (this.refreshing && (!forceRefresh || this.refreshingIsForced)) return this.refreshing;
+		const current = this.flight;
+		if (current && (!forceRefresh || current.forced)) return current.promise;
 
 		// What this caller wants replaced. If the flight it queues behind replaces it first, there
 		// is nothing left to force — see afterCurrentFlight.
 		const supersededToken = forceRefresh ? (this.store.read()?.accessToken ?? null) : null;
-		const flight = this.afterCurrentFlight(this.refreshing, forceRefresh, supersededToken);
-		this.refreshing = flight;
-		this.refreshingIsForced = forceRefresh;
+		const promise = this.afterCurrentFlight(
+			current?.promise ?? null,
+			forceRefresh,
+			supersededToken,
+		);
+		const flight = { promise, forced: forceRefresh };
+		this.flight = flight;
 
 		// Attached immediately so the reset runs before any caller's continuation.
-		void flight
+		void promise
 			.finally(() => {
-				if (this.refreshing === flight) {
-					this.refreshing = null;
-					this.refreshingIsForced = false;
-				}
+				if (this.flight === flight) this.flight = null;
 			})
 			.catch(() => undefined);
 
-		return flight;
+		return promise;
 	}
 
 	private async afterCurrentFlight(
@@ -207,28 +206,34 @@ export class PlannerTokenService {
 	 * recognise that its result is stale and decline to overwrite this one.
 	 */
 	adoptSession(session: PlannerTokenSession): void {
-		this.sessionGeneration += 1;
+		// Written before the generation moves: advertising a supersession that did not happen would
+		// make a concurrent login discard its own valid result and log a cause that is not true.
 		this.store.save(session);
+		this.sessionGeneration += 1;
 		this.lastFailure = null;
 	}
 
 	private async login(): Promise<PlannerTokenSession> {
-		const generation = this.sessionGeneration;
-
 		try {
 			const credential = await this.credentials.getDecrypted(SCRAPER_PROVIDER_CODES.PLANNER);
 			if (!credential) {
 				throw new PlannerSessionExpiredError('Planner credentials are not configured');
 			}
 
+			// Captured after the credentials are read, so a change that lands before this point is
+			// simply used rather than mistaken for a supersession.
+			const generation = this.sessionGeneration;
 			const session = await this.loginClient.login(credential.username, credential.password);
 
 			if (generation !== this.sessionGeneration) {
-				// The credentials changed while this login was in flight. The session is valid, so
-				// return it to the caller that is waiting, but it belongs to the superseded account
-				// and must not replace what was stored in the meantime.
-				this.logger.warn('Planner login superseded by a credential change; session not stored');
-				return session;
+				// The credentials were replaced while this login was in flight, so this session
+				// belongs to the retired account. Hand back what was adopted in the meantime rather
+				// than letting a caller run its whole request under an identity that was just
+				// rotated away.
+				this.logger.warn('Planner login superseded by a credential change; session discarded');
+				const adopted = this.store.read();
+				if (adopted) return adopted;
+				throw new PlannerSessionExpiredError('Planner credentials changed during login');
 			}
 
 			this.adoptSession(session);

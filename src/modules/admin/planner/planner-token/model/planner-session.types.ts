@@ -17,5 +17,15 @@ export interface PlannerTokenSession {
 /**
  * `not_configured` means no credentials have ever been stored for Planner — a different problem
  * from a lapsed token, and the one the UI must answer with a setup form rather than a retry.
+ *
+ * The values are the source of truth so the Swagger `enum:` array cannot drift from the union —
+ * adding `not_configured` originally had to be remembered in two places.
  */
-export type PlannerSessionStatus = 'active' | 'expiring' | 'expired' | 'not_configured';
+export const PLANNER_SESSION_STATUSES = [
+	'active',
+	'expiring',
+	'expired',
+	'not_configured',
+] as const;
+
+export type PlannerSessionStatus = (typeof PLANNER_SESSION_STATUSES)[number];

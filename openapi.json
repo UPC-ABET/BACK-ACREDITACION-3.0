@@ -17265,6 +17265,8 @@
 					"password": {
 						"type": "string",
 						"example": "the u-planner account password",
+						"format": "password",
+						"writeOnly": true,
 						"description": "Plaintext. Verified against u-planner before it is encrypted and stored."
 					}
 				},

@@ -1,15 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { BadRequestError } from 'src/commons/domain-error';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { EncryptService } from 'src/libs/encrypt.service';
 import { ScraperCredentialRepository } from '../core/scraper-credentials.repository';
-import {
-	SaveScraperCredentialInput,
-	ScraperCredentialValidation,
-} from '../core/scraper-credentials.validation';
+import { ScraperCredentialValidation } from '../core/scraper-credentials.validation';
 import { scraperCredentialsValidationStrings } from '../config/strings/scraper-credentials.validation';
 import { ScraperProviderCode } from '../constants/scraper-provider-codes';
 import {
 	DecryptedScraperCredential,
+	SaveScraperCredentialInput,
 	ScraperCredentialSummary,
 } from '../model/scraper-credentials.dtos';
 
@@ -64,11 +61,18 @@ export class ScraperCredentialService {
 				username: credential.username,
 				password: this.encryptService.decrypt(credential.passwordEncrypted),
 			};
-		} catch {
+		} catch (error) {
+			// The cause separates a changed APP_SECRET from a malformed or truncated ciphertext —
+			// otherwise the one log line sends an operator to rotate a key that was never the problem.
 			this.logger.error(
-				`Stored ${providerCode} credential could not be decrypted; APP_SECRET may have changed`,
+				`Stored ${providerCode} credential could not be decrypted (APP_SECRET may have changed): ${
+					error instanceof Error ? error.message : 'unknown error'
+				}`,
 			);
-			throw new BadRequestError(scraperCredentialsValidationStrings.error.decryptionFailed);
+			// A server misconfiguration, not a malformed request — 400 would blame the caller.
+			throw new ServiceUnavailableException(
+				scraperCredentialsValidationStrings.error.decryptionFailed,
+			);
 		}
 	}
 }

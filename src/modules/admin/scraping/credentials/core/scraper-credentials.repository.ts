@@ -37,20 +37,21 @@ export class ScraperCredentialRepository extends BaseRepository<ScraperCredentia
 		});
 	}
 
+	/**
+	 * A single statement rather than find-then-write: two concurrent first-time saves would both
+	 * see no row and race into a 23505 on `UQ_scraper_credentials_provider_code`.
+	 *
+	 * `updatedAt` is set explicitly — `BaseEntity` declares it with `@DateColumn`, not
+	 * `@UpdateDateColumn`, and no trigger maintains it, so nothing else would ever populate it.
+	 */
 	async upsertForProvider(
 		providerCode: ScraperProviderCode,
 		username: string,
 		passwordEncrypted: string,
-	): Promise<ScraperCredentialEntity> {
-		const existing = await this.repository.findOne({ where: { providerCode } });
-
-		if (existing) {
-			await this.repository.update(existing.id, { username, passwordEncrypted, isActive: true });
-			return (await this.repository.findOne({ where: { id: existing.id } }))!;
-		}
-
-		return await this.repository.save(
-			this.repository.create({ providerCode, username, passwordEncrypted }),
+	): Promise<void> {
+		await this.repository.upsert(
+			{ providerCode, username, passwordEncrypted, isActive: true, updatedAt: new Date() },
+			{ conflictPaths: ['providerCode'] },
 		);
 	}
 }

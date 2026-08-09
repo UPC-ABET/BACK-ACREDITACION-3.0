@@ -21,7 +21,22 @@ const REQUEST_TIMEOUT_MS = 15_000;
  */
 export const PLANNER_LOGIN_WORST_CASE_MS = REQUEST_TIMEOUT_MS * 2;
 
-type JsonBody = Record<string, any>;
+type JsonBody = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is JsonBody =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// 404/405/410 mean the endpoint moved or the configured URL drifted; 408/429 mean try later.
+// Neither is a verdict on the credentials.
+const UNREACHABLE_STATUSES = new Set([404, 405, 408, 410, 429]);
+
+/**
+ * The only artefact of a transport failure an operator ever sees is the log line built from this,
+ * so DNS, TLS, the abort timeout and a refused redirect have to remain distinguishable. Safe to
+ * include: fetch errors carry no request body, so the encoded password cannot reach it.
+ */
+const cause = (error: unknown): string =>
+	error instanceof Error ? ` (${error.name}: ${error.message})` : '';
 
 /**
  * The u-planner login, as the SPA itself performs it: a credential POST that returns a
@@ -74,10 +89,18 @@ export class PlannerLoginClient {
 			body: '{}',
 		});
 
-		const data = (body.data ?? {}) as JsonBody;
-		const userId = Number(data.user?.id);
+		const data = isRecord(body.data) ? body.data : {};
+		const user = isRecord(data.user) ? data.user : {};
+		const userId = user.id;
 
-		if (typeof data.token !== 'string' || !Number.isFinite(userId)) {
+		// `Number()` would coerce null, '' and [] to a finite 0 — a session that authenticates and
+		// then returns nothing for every `user=0` request, while reporting itself active.
+		if (
+			typeof data.token !== 'string' ||
+			typeof userId !== 'number' ||
+			!Number.isInteger(userId) ||
+			userId <= 0
+		) {
 			throw new PlannerLoginRejectedError('Planner validate returned an incomplete session');
 		}
 
@@ -108,12 +131,13 @@ export class PlannerLoginClient {
 				// across origins, so a hijacked or misconfigured redirect would forward them off-host.
 				redirect: 'error',
 			});
-		} catch {
-			throw new PlannerLoginUnreachableError(`Planner did not answer at ${url}`);
+		} catch (error) {
+			throw new PlannerLoginUnreachableError(`Planner did not answer at ${url}${cause(error)}`);
 		}
 
-		// 408 and 429 are u-planner telling us to come back, not a verdict on the credentials.
-		if (response.status >= 500 || response.status === 408 || response.status === 429) {
+		// Only a credential verdict belongs in the rejected bucket. A 404 or 405 means the endpoint
+		// moved or the configured URL drifted — retyping the password will never fix that.
+		if (response.status >= 500 || UNREACHABLE_STATUSES.has(response.status)) {
 			throw new PlannerLoginUnreachableError(`Planner returned ${response.status}`);
 		}
 
@@ -122,20 +146,28 @@ export class PlannerLoginClient {
 		let text: string;
 		try {
 			text = await response.text();
-		} catch {
+		} catch (error) {
 			throw new PlannerLoginUnreachableError(
-				`Planner response body was cut short (${response.status})`,
+				`Planner response body was cut short (${response.status})${cause(error)}`,
 			);
 		}
 
-		let body: JsonBody;
+		let parsed: unknown;
 		try {
-			body = JSON.parse(text) as JsonBody;
-		} catch {
+			parsed = JSON.parse(text);
+		} catch (error) {
 			throw new PlannerLoginRejectedError(
-				`Planner returned a non-JSON response (${response.status})`,
+				`Planner returned a non-JSON response (${response.status})${cause(error)}`,
 			);
 		}
+
+		// `JSON.parse('null')` succeeds and would then blow up on the property reads below.
+		if (!isRecord(parsed)) {
+			throw new PlannerLoginRejectedError(
+				`Planner returned a non-object response (${response.status})`,
+			);
+		}
+		const body = parsed;
 
 		if (!response.ok) {
 			throw new PlannerLoginRejectedError(

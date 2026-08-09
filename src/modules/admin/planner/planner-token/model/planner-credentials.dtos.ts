@@ -1,5 +1,6 @@
 import { IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PLANNER_SESSION_STATUSES } from './planner-session.types';
 import type { PlannerSessionStatus } from './planner-session.types';
 
 export class SavePlannerCredentialsDto {
@@ -13,6 +14,8 @@ export class SavePlannerCredentialsDto {
 	@ApiProperty({
 		example: 'the u-planner account password',
 		required: true,
+		format: 'password',
+		writeOnly: true,
 		description: 'Plaintext. Verified against u-planner before it is encrypted and stored.',
 	})
 	password: string;
@@ -40,11 +43,7 @@ export class PlannerCredentialsResponseDto {
 }
 
 export class PlannerSessionStatusDto {
-	@ApiProperty({
-		type: String,
-		example: 'active',
-		enum: ['active', 'expiring', 'expired', 'not_configured'],
-	})
+	@ApiProperty({ type: String, example: 'active', enum: PLANNER_SESSION_STATUSES })
 	status: PlannerSessionStatus;
 
 	@ApiProperty({

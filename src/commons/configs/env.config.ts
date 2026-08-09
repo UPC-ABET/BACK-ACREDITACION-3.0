@@ -72,9 +72,9 @@ const envSchema = z
 		BANNER_API_KEY: z.string().optional(),
 		BANNER_AUTH_STATE_PATH: z.string().optional(),
 
-		PLANNER_API_BASE: z.string().url().optional(),
-		// These two decide where the institutional password is sent, so `.url()` alone is not enough
-		// — it accepts http://, which would put the credential on the wire in cleartext.
+		// All three carry a credential or a session bearer token, so `.url()` alone is not enough —
+		// it accepts http://, which would put them on the wire in cleartext.
+		PLANNER_API_BASE: httpsUrl.optional(),
 		PLANNER_LOGIN_API_URL: httpsUrl.optional(),
 		PLANNER_VALIDATE_URL: httpsUrl.optional(),
 		PLANNER_TOKEN_STORE_PATH: z.string().optional(),
