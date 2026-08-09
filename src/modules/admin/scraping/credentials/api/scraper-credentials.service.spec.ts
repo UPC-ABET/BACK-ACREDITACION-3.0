@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DomainError } from 'src/commons/domain-error';
 import { EncryptService } from 'src/libs/encrypt.service';
@@ -97,17 +98,22 @@ describe('ScraperCredentialService', () => {
 			await expect(buildService().getDecrypted(SCRAPER_PROVIDER_CODES.PLANNER)).resolves.toBeNull();
 		});
 
-		it('reports a decryption failure as its own error, not as invalid credentials', async () => {
+		// A changed APP_SECRET is a server misconfiguration, so it must not come back as a 400
+		// blaming the caller — and it must never read as "invalid credentials".
+		it('reports a decryption failure as a service fault, not as invalid credentials', async () => {
 			mockRepo.findByProviderWithPassword.mockResolvedValue({
 				username: 'planner-operator',
 				passwordEncrypted: 'deadbeef:deadbeef:deadbeef',
 			});
 
-			await expect(
-				buildService().getDecrypted(SCRAPER_PROVIDER_CODES.PLANNER),
-			).rejects.toMatchObject({
-				messageKey: scraperCredentialsValidationStrings.error.decryptionFailed,
-			});
+			const error = await buildService()
+				.getDecrypted(SCRAPER_PROVIDER_CODES.PLANNER)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ServiceUnavailableException);
+			expect((error as ServiceUnavailableException).message).toBe(
+				scraperCredentialsValidationStrings.error.decryptionFailed,
+			);
 		});
 
 		it('does not leak the ciphertext or plaintext into the decryption error', async () => {

@@ -188,6 +188,41 @@ describe('PlannerCredentialsService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
+		// The window runs from the response, not from entry — a slow rejection must still cost a
+		// full penalty rather than whatever is left of the claim it was holding.
+		it('measures the penalty from the rejection, not from the request', async () => {
+			jest.useFakeTimers({ doNotFake: ['performance'] });
+			try {
+				mockLoginClient.login.mockImplementation(() => {
+					jest.advanceTimersByTime(20_000);
+					return Promise.reject(new PlannerLoginRejectedError('401'));
+				});
+				const service = buildService();
+				await expect(service.save(DTO)).rejects.toBeDefined();
+
+				mockLoginClient.login.mockResolvedValue(NEW_SESSION);
+				jest.advanceTimersByTime(25_000);
+				await expect(service.save(DTO)).rejects.toMatchObject({
+					messageKey: plannerSessionValidationStrings.error.verificationCooldown,
+				});
+
+				jest.advanceTimersByTime(10_000);
+				await expect(service.save(DTO)).resolves.toMatchObject({ status: 'active' });
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('releases the slot when the login throws something unexpected', async () => {
+			mockLoginClient.login.mockRejectedValueOnce(new TypeError('programmer error'));
+			const service = buildService();
+
+			await expect(service.save(DTO)).rejects.toThrow(TypeError);
+
+			mockLoginClient.login.mockResolvedValue(NEW_SESSION);
+			await expect(service.save(DTO)).resolves.toMatchObject({ status: 'active' });
+		});
+
 		it('does not throttle after an unreachable u-planner', async () => {
 			mockLoginClient.login.mockRejectedValue(new PlannerLoginUnreachableError('ECONNREFUSED'));
 			const service = buildService();

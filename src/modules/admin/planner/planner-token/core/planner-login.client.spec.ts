@@ -197,6 +197,14 @@ describe('PlannerLoginClient', () => {
 			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
 
+		it("carries u-planner's own message into the error", async () => {
+			fetchMock.mockResolvedValueOnce(
+				jsonResponse(401, { data: PRE_AUTH_TOKEN, status: true, message: 'Cuenta bloqueada' }),
+			);
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toThrow(/Cuenta bloqueada/);
+		});
+
 		it('appends nothing when the rejection carries no message', async () => {
 			fetchMock.mockResolvedValueOnce(jsonResponse(403, { data: PRE_AUTH_TOKEN, status: true }));
 
@@ -302,13 +310,22 @@ describe('PlannerLoginClient', () => {
 
 		// Both calls run inside the token service's single-flight promise, so an unbounded request
 		// stalls every caller, not just this one. Undici's 300s default is a wedge in all but name.
-		it('bounds the request with a timeout signal', async () => {
+		/**
+		 * Only asserts a signal is attached. `AbortSignal.timeout` schedules on Node's platform
+		 * timer, which jest's fake timers do not intercept, and the real bound is 15s — so a signal
+		 * that never fires is not distinguishable here. Closing that gap would mean making the
+		 * timeout configurable, which would break the cooldowns derived from it. The paired
+		 * assertion is `surfaces an aborted request as unreachable`, which pins what happens when
+		 * it does fire.
+		 */
+		it('attaches an abort signal to the request', async () => {
 			await buildClient()
 				.login(USERNAME, PASSWORD)
 				.catch(() => undefined);
 
 			const [, init] = fetchMock.mock.calls[0];
 			expect(init.signal).toBeInstanceOf(AbortSignal);
+			expect(init.signal.aborted).toBe(false);
 		});
 
 		// The abort signal covers the body stream, so a stall after the headers arrive fails during
@@ -331,7 +348,9 @@ describe('PlannerLoginClient', () => {
 			expect(error).not.toBeInstanceOf(PlannerLoginRejectedError);
 		});
 
-		it.each([408, 429])(
+		// 404/405/410 are the shape of a drifted PLANNER_LOGIN_API_URL — a deployment fault, not a
+		// wrong password. Reporting them as rejected sends an operator to retype a correct one.
+		it.each([404, 405, 408, 410, 429])(
 			'treats %i as unreachable rather than a credential verdict',
 			async (status) => {
 				fetchMock.mockResolvedValueOnce(jsonResponse(status, { message: 'slow down' }));
@@ -342,6 +361,34 @@ describe('PlannerLoginClient', () => {
 
 				expect(error).toBeInstanceOf(PlannerLoginUnreachableError);
 				expect(error).not.toBeInstanceOf(PlannerLoginRejectedError);
+			},
+		);
+
+		it('rejects a JSON null body rather than throwing a raw TypeError', async () => {
+			fetchMock.mockResolvedValueOnce({ ok: true, status: 200, text: async () => 'null' });
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
+				PlannerLoginRejectedError,
+			);
+		});
+
+		// `Number()` coerces null, '' and [] to a finite 0 — a session that authenticates and then
+		// returns nothing for every `user=0` request while reporting itself active.
+		it.each([null, '', [], 0, '7'])(
+			'rejects a session whose user id is %p rather than coercing it',
+			async (id) => {
+				fetchMock
+					.mockResolvedValueOnce(jsonResponse(200, { data: PRE_AUTH_TOKEN, status: true }))
+					.mockResolvedValueOnce(
+						jsonResponse(200, {
+							data: { user: { id }, token: ACCESS_TOKEN, status: true },
+							status: true,
+						}),
+					);
+
+				await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
+					PlannerLoginRejectedError,
+				);
 			},
 		);
 

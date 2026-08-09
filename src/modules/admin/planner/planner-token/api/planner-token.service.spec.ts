@@ -178,6 +178,38 @@ describe('PlannerTokenService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
 		});
 
+		// A settling predecessor must not clear the slot a chained flight now owns, or the next
+		// caller starts a third login instead of joining the one already running.
+		it('does not let a settled predecessor clear the chained flight', async () => {
+			const replacement = { ...freshSession(), accessToken: 'example-replacement-token' };
+			let releaseFirst: () => void = () => undefined;
+			let releaseSecond: () => void = () => undefined;
+			mockLoginClient.login
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						releaseFirst = () => resolve(freshSession());
+					}),
+				)
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						releaseSecond = () => resolve(replacement);
+					}),
+				);
+			const service = buildService();
+
+			const slow = service.getValidSession();
+			const forced = service.getValidSession(true);
+			releaseFirst();
+			await Promise.resolve();
+			await Promise.resolve();
+
+			const joiner = service.getValidSession();
+			releaseSecond();
+			await Promise.all([slow, forced, joiner]);
+
+			expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
+		});
+
 		it('lets concurrent forced callers share one login', async () => {
 			mockStore.read.mockReturnValue(freshSession());
 			const service = buildService();
@@ -185,14 +217,6 @@ describe('PlannerTokenService', () => {
 			await Promise.all([service.getValidSession(true), service.getValidSession(true)]);
 
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	describe('getValidToken', () => {
-		it('unwraps the access token from the session', async () => {
-			mockStore.read.mockReturnValue(freshSession());
-
-			await expect(buildService().getValidToken()).resolves.toBe('example-access-token');
 		});
 	});
 
@@ -458,24 +482,37 @@ describe('PlannerTokenService', () => {
 
 		// A login started under the previous credentials must not overwrite the session a credential
 		// change has since adopted — otherwise the DB holds account B while the store serves A.
-		it('does not store a login superseded by a credential change', async () => {
-			mockStore.read.mockReturnValue(null);
+		// The caller gets the adopted session instead: handing back a token for the account that was
+		// just rotated away would let a whole scrape run under the retired identity.
+		it('discards a login superseded by a credential change and returns the adopted session', async () => {
+			const newAccountSession = { ...freshSession(), accessToken: 'example-new-account-token' };
 			const oldCredentialSession = { ...freshSession(), accessToken: 'example-old-account-token' };
-			let releaseLogin: () => void = () => undefined;
-			mockLoginClient.login.mockReturnValue(
-				new Promise((resolve) => {
-					releaseLogin = () => resolve(oldCredentialSession);
-				}),
-			);
 			const service = buildService();
 
-			const inFlight = service.getValidSession();
-			service.adoptSession({ ...freshSession(), accessToken: 'example-new-account-token' });
-			mockStore.save.mockClear();
-			releaseLogin();
+			// The rotation lands *while the login is in flight* — after its credentials were read,
+			// which is the only interleaving that makes the result genuinely stale.
+			mockLoginClient.login.mockImplementation(() => {
+				mockStore.save.mockImplementation(() => mockStore.read.mockReturnValue(newAccountSession));
+				service.adoptSession(newAccountSession);
+				mockStore.save.mockClear();
+				return Promise.resolve(oldCredentialSession);
+			});
 
-			await expect(inFlight).resolves.toEqual(oldCredentialSession);
+			await expect(service.getValidSession()).resolves.toEqual(newAccountSession);
 			expect(mockStore.save).not.toHaveBeenCalled();
+		});
+
+		// The mirror case: a rotation that lands before the credentials are read is simply used,
+		// and must not be mistaken for a supersession that discards a valid result.
+		it('keeps a login whose credentials were read after the change', async () => {
+			const session = { ...freshSession(), accessToken: 'example-post-change-token' };
+			const service = buildService();
+			service.adoptSession({ ...freshSession(), accessToken: 'example-new-account-token' });
+			mockLoginClient.login.mockResolvedValue(session);
+			mockStore.save.mockClear();
+
+			await expect(service.getValidSession(true)).resolves.toEqual(session);
+			expect(mockStore.save).toHaveBeenCalledWith(session);
 		});
 
 		it('reports active after a successful refresh', async () => {
