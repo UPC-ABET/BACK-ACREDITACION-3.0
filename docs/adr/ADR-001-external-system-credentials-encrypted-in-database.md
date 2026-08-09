@@ -20,7 +20,7 @@ Today the u-planner pair lives in `PLANNER_USER` / `PLANNER_PASSWORD` in the ser
 and the shape of the failure is what forced this decision:
 
 - The u-planner session wedged (a separate defect, recorded in
-  `openspec/changes/planner-api-login/proposal.md`). The response was to rotate the account
+  `openspec/specs/planner-api-login/proposal.md`). The response was to rotate the account
   password and update the server `.env`.
 - **The new value never reached the running process.** `env_file` in
   `docker-compose.prod.yml` is read at container _create_ time, so `docker compose restart`
@@ -143,7 +143,7 @@ API endpoints, instead of through deployment-time environment variables.
 
 ## References
 
-- `openspec/changes/planner-api-login/proposal.md` — the change that forced this decision,
+- `openspec/specs/planner-api-login/proposal.md` — the change that forced this decision,
   including the production incident of 2026-08-08 and decisions 1, 3 and 6.
 - `src/libs/encrypt.service.ts` — the AES-256-GCM implementation this relies on.
 - `src/commons/configs/env.config.ts` — `APP_SECRET`'s validation (min 64 hex characters).
