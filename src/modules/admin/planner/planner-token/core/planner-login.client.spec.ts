@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import {
 	PlannerLoginRejectedError,
 	PlannerLoginUnreachableError,
-} from '../model/session-expired.error';
+} from '../model/planner-session.errors';
 import { PlannerLoginClient } from './planner-login.client';
 
 const USERNAME = 'planner-operator';
@@ -88,8 +88,6 @@ describe('PlannerLoginClient', () => {
 			});
 		});
 
-		// Nothing renews with the refresh token, so its absence must not fail an otherwise good
-		// login — the "fails closed on data it does not need" shape this client replaced.
 		it('succeeds when u-planner omits the refresh token entirely', async () => {
 			fetchMock.mockReset();
 			fetchMock
@@ -117,17 +115,16 @@ describe('PlannerLoginClient', () => {
 		// finite guard) and out of Date range, where `toISOString` throws a raw RangeError that is
 		// neither login error and so escapes every classifier as a 500.
 		it.each([
-			['carries no expiry', {}],
-			['carries an out-of-range expiry', { exp: 9e15 }],
-		])('treats an ACCESS token that %s as unreachable', async (_label, claims) => {
+			['carries no expiry', jwt({ userId: 804988 })],
+			['carries an out-of-range expiry', jwt({ userId: 804988, exp: 9e15 })],
+			['carries a negative expiry', jwt({ userId: 804988, exp: -1 })],
+			['cannot be decoded at all', 'not-a-jwt'],
+		])('treats an ACCESS token that %s as unreachable', async (_label, token) => {
 			fetchMock.mockReset();
 			fetchMock
 				.mockResolvedValueOnce(jsonResponse(200, { data: PRE_AUTH_TOKEN, status: true }))
 				.mockResolvedValueOnce(
-					jsonResponse(200, {
-						data: { user: { id: 804988 }, token: jwt({ userId: 804988, ...claims }) },
-						status: true,
-					}),
+					jsonResponse(200, { data: { user: { id: 804988 }, token }, status: true }),
 				);
 
 			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
@@ -157,8 +154,6 @@ describe('PlannerLoginClient', () => {
 			});
 		});
 
-		// Recorded only when it is a string. Passed through verbatim it would reach the store, and
-		// from there a consumer that assumes the declared type.
 		it('drops a refresh token that is not a string', async () => {
 			fetchMock.mockReset();
 			fetchMock
@@ -301,18 +296,6 @@ describe('PlannerLoginClient', () => {
 				PlannerLoginRejectedError,
 			);
 		});
-
-		it('rejects a non-JSON body', async () => {
-			fetchMock.mockResolvedValueOnce({
-				ok: true,
-				status: 200,
-				text: async () => '<html>502</html>',
-			});
-
-			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
-				PlannerLoginRejectedError,
-			);
-		});
 	});
 
 	describe('unreachable', () => {
@@ -335,8 +318,6 @@ describe('PlannerLoginClient', () => {
 			);
 		});
 
-		// undici reports DNS, TLS, a refused connection and a blocked redirect identically as
-		// `TypeError: fetch failed`, with the only discriminating text in `cause`.
 		it('carries the nested cause into the message', async () => {
 			fetchMock.mockRejectedValueOnce(
 				new TypeError('fetch failed', { cause: new Error('getaddrinfo ENOTFOUND') }),
@@ -401,11 +382,22 @@ describe('PlannerLoginClient', () => {
 			},
 		);
 
-		it('rejects a JSON null body rather than throwing a raw TypeError', async () => {
-			fetchMock.mockResolvedValueOnce({ ok: true, status: 200, text: async () => 'null' });
+		/**
+		 * A 2xx that is not a JSON object is a WAF, a captive proxy or a maintenance page answering
+		 * for u-planner — it says nothing about the credentials. Calling it a rejection returns 400
+		 * and arms the 30s penalty, so every operator is rate-limited while retyping a password that
+		 * was never wrong. `'null'` additionally parses, so without the object guard it would reach
+		 * the property reads as a raw TypeError.
+		 */
+		it.each([
+			['is not JSON at all', '<html>502 Bad Gateway</html>'],
+			['parses to JSON null', 'null'],
+			['parses to a JSON array', '[]'],
+		])('treats a 200 whose body %s as unreachable', async (_label, text) => {
+			fetchMock.mockResolvedValueOnce({ ok: true, status: 200, text: async () => text });
 
 			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
-				PlannerLoginRejectedError,
+				PlannerLoginUnreachableError,
 			);
 		});
 

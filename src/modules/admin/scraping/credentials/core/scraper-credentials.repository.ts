@@ -1,7 +1,7 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
-import { ScraperCredentialEntity } from '../model/scraper-credential.entity';
+import { ScraperCredentialEntity } from '../model/scraper-credentials.entity';
 import { ScraperProviderCode } from '../constants/scraper-provider-codes';
 
 export class ScraperCredentialRepository extends BaseRepository<ScraperCredentialEntity> {

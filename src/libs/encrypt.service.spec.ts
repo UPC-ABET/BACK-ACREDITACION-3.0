@@ -3,9 +3,9 @@ import { EncryptService } from './encrypt.service';
 
 const VALID_HEX_SECRET = 'e1fae13704956f47dcc7446d993d605709ad74f9846ad758f102569c89924447';
 
-// The two shapes the key derivation exists for. A 64-hex secret decodes to exactly 32 bytes, so it
-// is the one value that worked when the key was `Buffer.from(secret, 'hex')` — testing only that
-// leaves the derivation free to regress to the behaviour that broke every deployed environment.
+// A 64-hex secret decodes to exactly 32 bytes, the only length a hex-decoding derivation accepts,
+// so pinning a longer one is what keeps the derivation honest. `env.config` additionally requires
+// hex; this service does not, and the non-hex case is a lib-level guarantee only.
 const LONG_HEX_SECRET = VALID_HEX_SECRET.repeat(2);
 const NON_HEX_SECRET = 'correct-horse-battery-staple-correct-horse-battery-staple-zzzzzz';
 
@@ -31,9 +31,6 @@ describe('EncryptService', () => {
 			expect(() => buildService(VALID_HEX_SECRET)).not.toThrow();
 		});
 
-		// The production breakage: the deployed environments hold a 128-character secret, which the
-		// previous `Buffer.from(secret, 'hex')` turned into a 64-byte key and aes-256-gcm rejected
-		// with `Invalid key length` on every single call.
 		it('starts normally with a 128-char hex secret', () => {
 			expect(() => buildService(LONG_HEX_SECRET)).not.toThrow();
 		});
@@ -128,6 +125,15 @@ describe('EncryptService', () => {
 			expect(() => service.decrypt(`${iv.slice(0, 16)}:${enc}:${tag}`)).toThrow(
 				'expected a 12-byte iv and a 16-byte authTag',
 			);
+		});
+
+		it.each([
+			['is not hex', 'zz:zz:zz'],
+			['has too few parts', 'deadbeef:deadbeef'],
+			['has too many parts', 'de:ad:be:ef'],
+			['is empty', ''],
+		])('rejects ciphertext that %s', (_label, value) => {
+			expect(() => service.decrypt(value)).toThrow('Malformed ciphertext');
 		});
 	});
 

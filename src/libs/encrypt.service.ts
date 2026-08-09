@@ -4,9 +4,8 @@ import * as crypto from 'crypto';
 
 const APP_SECRET_MIN_LENGTH = 64;
 
-// GCM's defaults. Pinned rather than inferred from the ciphertext: `setAuthTag` accepts a short
-// tag, so a forged value carrying a 4-byte tag would decrypt against ~2^31 offline attempts instead
-// of 2^127 — silently reducing the integrity guarantee on every stored credential to nothing.
+// Pinned, not inferred from the ciphertext: `setAuthTag` accepts a short tag, so a forged 4-byte
+// one would need ~2^31 offline attempts instead of 2^127.
 const GCM_IV_BYTES = 12;
 const GCM_AUTH_TAG_BYTES = 16;
 
@@ -19,19 +18,18 @@ export class EncryptService {
 	}
 
 	/**
-	 * Derived, not hex-decoded: SHA-256 always yields the 32 bytes aes-256-gcm requires, so any
-	 * sufficiently long APP_SECRET works regardless of its charset or length.
+	 * Derived, not hex-decoded: SHA-256 always yields the 32 bytes aes-256-gcm requires, so the
+	 * secret's own length stops mattering. Hex-decoding did not, and a 128-character secret — what
+	 * the deployed environments hold — produced a 64-byte key that every call rejected.
 	 *
-	 * Changing this function is equivalent to rotating APP_SECRET — every stored ciphertext becomes
+	 * Changing this function is equivalent to rotating APP_SECRET: every stored ciphertext becomes
 	 * undecryptable and there is no rotation mechanism (ADR-001).
 	 */
 	private getRequiredAppSecret(): Buffer {
 		const secret = this.configService.get<string>('APP_SECRET');
 
 		if (!secret || secret.length < APP_SECRET_MIN_LENGTH) {
-			throw new Error(
-				`APP_SECRET must be at least ${APP_SECRET_MIN_LENGTH} characters (any charset; the AES key is derived by SHA-256)`,
-			);
+			throw new Error(`APP_SECRET must be at least ${APP_SECRET_MIN_LENGTH} characters`);
 		}
 
 		return crypto.createHash('sha256').update(secret, 'utf8').digest();

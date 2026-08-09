@@ -5,7 +5,7 @@ export class AddScraperCredentials1786244322642 implements MigrationInterface {
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`
-			CREATE TABLE IF NOT EXISTS "core"."scraper_credentials" (
+			CREATE TABLE "core"."scraper_credentials" (
 				"id" SERIAL NOT NULL,
 				"extra" jsonb NOT NULL DEFAULT '{}'::jsonb,
 				"is_active" boolean NOT NULL DEFAULT true,
@@ -19,15 +19,8 @@ export class AddScraperCredentials1786244322642 implements MigrationInterface {
 		`);
 
 		await queryRunner.query(`
-			DO $$
-			BEGIN
-				IF NOT EXISTS (
-					SELECT 1 FROM pg_constraint WHERE conname = 'UQ_scraper_credentials_provider_code'
-				) THEN
-					ALTER TABLE "core"."scraper_credentials"
-					ADD CONSTRAINT "UQ_scraper_credentials_provider_code" UNIQUE ("provider_code");
-				END IF;
-			END $$;
+			ALTER TABLE "core"."scraper_credentials"
+			ADD CONSTRAINT "UQ_scraper_credentials_provider_code" UNIQUE ("provider_code")
 		`);
 	}
 

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ScraperCredentialEntity } from './model/scraper-credential.entity';
+import { ScraperCredentialEntity } from './model/scraper-credentials.entity';
 import { ScraperCredentialRepository } from './core/scraper-credentials.repository';
 import { ScraperCredentialService } from './api/scraper-credentials.service';
 

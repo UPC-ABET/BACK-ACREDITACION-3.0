@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
 	PlannerLoginRejectedError,
 	PlannerLoginUnreachableError,
-} from '../model/session-expired.error';
+} from '../model/planner-session.errors';
 import { PlannerTokenSession } from '../model/planner-session.types';
 
 const DEFAULT_LOGIN_API_URL = 'https://upc-e2g-post-api.u-planner.com/api/user-api';
@@ -32,9 +32,13 @@ const UNREACHABLE_STATUSES = new Set([404, 405, 408, 410, 429]);
 
 // `new Date(ms).toISOString()` throws a raw RangeError past ±8.64e15 ms — an error that is neither
 // login failure, so it would escape every classifier and surface as a 500.
-const MAX_EXP_SECONDS = 8.64e12;
+const MAX_DATE_MS = 8.64e15;
+const MAX_EXP_SECONDS = MAX_DATE_MS / 1000;
 
+// Deep enough for undici, which wraps a transport failure at most two or three links down.
 const MAX_CAUSE_DEPTH = 4;
+
+const MAX_PROVIDER_MESSAGE_CHARS = 200;
 
 /**
  * The only artefact of a transport failure an operator ever sees is the log line built from this,
@@ -169,18 +173,22 @@ export class PlannerLoginClient {
 			);
 		}
 
+		// Unreachable, not rejected, on both of these: a 2xx that is not JSON is a WAF, a captive
+		// proxy or a maintenance page answering for u-planner, which says nothing about the pair.
+		// Calling it a rejection returns 400 and arms the penalty, so every operator is rate-limited
+		// while retyping a password that was never wrong.
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(text);
 		} catch (error) {
-			throw new PlannerLoginRejectedError(
+			throw new PlannerLoginUnreachableError(
 				`Planner returned a non-JSON response (${response.status})${cause(error)}`,
 			);
 		}
 
 		// `JSON.parse('null')` succeeds and would then blow up on the property reads below.
 		if (!isRecord(parsed)) {
-			throw new PlannerLoginRejectedError(
+			throw new PlannerLoginUnreachableError(
 				`Planner returned a non-object response (${response.status})`,
 			);
 		}
@@ -188,18 +196,28 @@ export class PlannerLoginClient {
 
 		if (!response.ok) {
 			throw new PlannerLoginRejectedError(
-				`Planner rejected the login (${response.status})${this.describe(body)}`,
+				`Planner rejected the login (${response.status})${this.providerMessage(body)}`,
 			);
 		}
 		if (body.status === false) {
-			throw new PlannerLoginRejectedError(`Planner rejected the login${this.describe(body)}`);
+			throw new PlannerLoginRejectedError(
+				`Planner rejected the login${this.providerMessage(body)}`,
+			);
 		}
 		return body;
 	}
 
-	// Response-side only. The request body holds the encoded password and must never be echoed.
-	private describe(body: JsonBody): string {
-		return typeof body.message === 'string' && body.message.length > 0 ? `: ${body.message}` : '';
+	/**
+	 * Response-side only. The request body holds the encoded password and must never be echoed.
+	 *
+	 * Truncated because this is the one path by which text from outside our process reaches our
+	 * logs: a verbose or compromised upstream could otherwise echo the submitted credential back,
+	 * or write unbounded volume into an aggregated log store.
+	 */
+	private providerMessage(body: JsonBody): string {
+		return typeof body.message === 'string' && body.message.length > 0
+			? `: ${body.message.slice(0, MAX_PROVIDER_MESSAGE_CHARS)}`
+			: '';
 	}
 
 	private optionalExpFromJwt(jwt: string): string | null {

@@ -65,31 +65,49 @@ describe('PlannerSessionStore', () => {
 		expect(store.read()).toBeNull();
 	});
 
-	// A file that parses but is missing a load-bearing field must not reach the HTTP client, where
-	// it would become `Bearer undefined` against u-planner rather than an obvious re-login.
-	it('returns null for a session that parses but is incomplete', () => {
+	// One case per field: a fixture missing everything cannot tell which guard is doing the work, so
+	// any single guard could be deleted without a test noticing.
+	it.each([
+		['userId', { accessToken: 'a', accessTokenExpiresAt: '2026-08-09T14:10:35.000Z' }],
+		['accessToken', { userId: 804988, accessTokenExpiresAt: '2026-08-09T14:10:35.000Z' }],
+		['accessTokenExpiresAt', { userId: 804988, accessToken: 'a' }],
+	])('returns null for a session with no %s', (_label, partial) => {
 		const store = buildStore();
 		fs.mkdirSync(path.dirname(file), { recursive: true });
-		fs.writeFileSync(file, '{"userId": 804988}');
+		fs.writeFileSync(file, JSON.stringify(partial));
 
 		expect(store.read()).toBeNull();
 	});
 
-	// chmod is not a no-op here: writeFileSync's mode applies only when it creates the file, so an
-	// existing file written under a looser umask would keep its old bits without it.
-	//
-	// The pre-existing file has to be the *temp* path, not the destination — save() never writes
-	// into the destination, it renames over it, so seeding the destination proves nothing and the
-	// assertion would hold with chmodSync deleted. A leftover `.tmp` is exactly what a crashed
-	// previous save leaves behind.
-	(process.platform === 'win32' ? it.skip : it)('forces 0600 on a leftover temp file', () => {
+	// The file holds a long-lived institutional JWT, so the mode is not incidental. `writeFileSync`'s
+	// mode applies only when it creates the file, hence the explicit fchmod on the descriptor.
+	const onPosix = process.platform === 'win32' ? it.skip : it;
+
+	onPosix('writes the session 0600', () => {
+		buildStore().save(SESSION);
+
+		expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+	});
+
+	onPosix('creates the directory 0700', () => {
+		buildStore().save(SESSION);
+
+		expect(fs.statSync(path.dirname(file)).mode & 0o777).toBe(0o700);
+	});
+
+	// The temp name is randomised and opened `wx`, so a planted symlink cannot be written through
+	// and a leftover temp file cannot be reused. Nothing may be left behind either.
+	it('leaves no temp file behind and does not reuse a predictable name', () => {
 		const store = buildStore();
 		fs.mkdirSync(path.dirname(file), { recursive: true });
-		fs.writeFileSync(`${file}.tmp`, '{}', { mode: 0o644 });
-		fs.chmodSync(`${file}.tmp`, 0o644);
+		fs.writeFileSync(`${file}.tmp`, 'planted', { mode: 0o644 });
 
 		store.save(SESSION);
 
-		expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+		expect(store.read()).toEqual(SESSION);
+		expect(fs.readFileSync(`${file}.tmp`, 'utf-8')).toBe('planted');
+		expect(fs.readdirSync(path.dirname(file)).filter((n) => n.endsWith('.tmp'))).toEqual([
+			'planner_token_store.json.tmp',
+		]);
 	});
 });
