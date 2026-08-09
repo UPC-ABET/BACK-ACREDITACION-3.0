@@ -35,8 +35,17 @@ export class PlannerLoginUnreachableError extends Error {
 	}
 }
 
-/** Either outcome of a login attempt, for the paths that must log both but discriminate neither. */
-export const isPlannerLoginError = (
+/**
+ * No usable Planner session can be obtained — the union of "the session is dead" and "we could not
+ * reach u-planner to get one".
+ *
+ * This is the predicate almost every caller actually wants, and it must be used in preference to a
+ * bare `instanceof PlannerSessionExpiredError`. Those two stopped being the same set when
+ * {@link PlannerLoginUnreachableError} left the hierarchy, and every site that kept the bare check
+ * silently changed meaning: `PlannerScraperService` stopped aborting a run on an outage and
+ * retried the login once per remaining item instead.
+ */
+export const isPlannerSessionFailure = (
 	error: unknown,
-): error is PlannerLoginRejectedError | PlannerLoginUnreachableError =>
-	error instanceof PlannerLoginRejectedError || error instanceof PlannerLoginUnreachableError;
+): error is PlannerSessionExpiredError | PlannerLoginUnreachableError =>
+	error instanceof PlannerSessionExpiredError || error instanceof PlannerLoginUnreachableError;

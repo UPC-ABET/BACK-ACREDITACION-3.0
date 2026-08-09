@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PlannerTokenService } from '../../planner-token/api/planner-token.service';
-import { PlannerSessionExpiredError } from '../../planner-token/model/session-expired.error';
+import { PlannerSessionExpiredError } from '../../planner-token/model/planner-session.errors';
 
 export class PlannerHttpError extends Error {
 	constructor(
