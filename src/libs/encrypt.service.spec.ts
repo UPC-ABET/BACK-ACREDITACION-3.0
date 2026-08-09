@@ -3,6 +3,12 @@ import { EncryptService } from './encrypt.service';
 
 const VALID_HEX_SECRET = 'e1fae13704956f47dcc7446d993d605709ad74f9846ad758f102569c89924447';
 
+// The two shapes the key derivation exists for. A 64-hex secret decodes to exactly 32 bytes, so it
+// is the one value that worked when the key was `Buffer.from(secret, 'hex')` — testing only that
+// leaves the derivation free to regress to the behaviour that broke every deployed environment.
+const LONG_HEX_SECRET = VALID_HEX_SECRET.repeat(2);
+const NON_HEX_SECRET = 'correct-horse-battery-staple-correct-horse-battery-staple-zzzzzz';
+
 function buildService(secret: string | undefined): EncryptService {
 	const configService = {
 		get: jest.fn().mockReturnValue(secret),
@@ -14,16 +20,44 @@ function buildService(secret: string | undefined): EncryptService {
 describe('EncryptService', () => {
 	describe('boot validation', () => {
 		it('throws when APP_SECRET is missing', () => {
-			expect(() => buildService(undefined)).toThrow('APP_SECRET must be configured');
+			expect(() => buildService(undefined)).toThrow('APP_SECRET must be at least');
 		});
 
 		it('throws when APP_SECRET is too short', () => {
-			expect(() => buildService('abcd1234')).toThrow('APP_SECRET must be configured');
+			expect(() => buildService('abcd1234')).toThrow('APP_SECRET must be at least');
 		});
 
 		it('starts normally with a valid 64-char hex secret', () => {
 			expect(() => buildService(VALID_HEX_SECRET)).not.toThrow();
 		});
+
+		// The production breakage: the deployed environments hold a 128-character secret, which the
+		// previous `Buffer.from(secret, 'hex')` turned into a 64-byte key and aes-256-gcm rejected
+		// with `Invalid key length` on every single call.
+		it('starts normally with a 128-char hex secret', () => {
+			expect(() => buildService(LONG_HEX_SECRET)).not.toThrow();
+		});
+
+		it('starts normally with a long non-hex secret', () => {
+			expect(() => buildService(NON_HEX_SECRET)).not.toThrow();
+		});
+	});
+
+	// Each asserts the *usable* outcome, not merely construction: a derivation that yields a wrong
+	// key length fails at encrypt time, not at boot.
+	describe.each([
+		['128-char hex', LONG_HEX_SECRET],
+		['non-hex passphrase', NON_HEX_SECRET],
+	])('key derivation from a %s secret', (_label, secret) => {
+		it('round-trips a password', () => {
+			const service = buildService(secret);
+			expect(service.decrypt(service.encrypt('example-pw'))).toBe('example-pw');
+		});
+	});
+
+	it('cannot decrypt ciphertext produced under a different secret', () => {
+		const ciphertext = buildService(VALID_HEX_SECRET).encrypt('example-pw');
+		expect(() => buildService(LONG_HEX_SECRET).decrypt(ciphertext)).toThrow();
 	});
 
 	describe('encrypt / decrypt round-trip', () => {
@@ -77,6 +111,23 @@ describe('EncryptService', () => {
 			const [iv, enc, tag] = ciphertext.split(':');
 			const tampered = `${iv}:${enc}:${flipHexByte(tag)}`;
 			expect(() => service.decrypt(tampered)).toThrow();
+		});
+
+		// GCM accepts a truncated tag, which would drop forgery resistance from 2^127 to 2^31 on
+		// every row an attacker with write access to core.scraper_credentials could reach. The
+		// length has to be pinned, not inferred from whatever the ciphertext carries.
+		it('rejects a truncated auth tag rather than verifying against it', () => {
+			const [iv, enc, tag] = service.encrypt('secret data').split(':');
+			expect(() => service.decrypt(`${iv}:${enc}:${tag.slice(0, 8)}`)).toThrow(
+				'expected a 12-byte iv and a 16-byte authTag',
+			);
+		});
+
+		it('rejects an iv that is not 12 bytes', () => {
+			const [iv, enc, tag] = service.encrypt('secret data').split(':');
+			expect(() => service.decrypt(`${iv.slice(0, 16)}:${enc}:${tag}`)).toThrow(
+				'expected a 12-byte iv and a 16-byte authTag',
+			);
 		});
 	});
 
