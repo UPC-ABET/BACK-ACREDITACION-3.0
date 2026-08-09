@@ -1,4 +1,4 @@
-import { Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, HttpCode, HttpStatus, ValidationPipe } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
@@ -42,10 +42,26 @@ export class PlannerSessionController {
 		return parseSuccessResponse(await this.credentialsService.getSummary());
 	}
 
+	/**
+	 * The pipe is route-scoped for one option: the global one sets
+	 * `transformOptions.enableImplicitConversion`, which coerces *before* `@IsString()` runs, so
+	 * `{"password": {"a": 1}}` would validate as the string `"[object Object]"` — and this endpoint
+	 * spends a real u-planner login attempt on whatever it is given.
+	 */
 	@SwaggerPlannerCredentialsSave()
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.POST })
-	async saveCredentials(@Body() dto: SavePlannerCredentialsDto) {
+	async saveCredentials(
+		@Body(
+			new ValidationPipe({
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				transform: true,
+				transformOptions: { enableImplicitConversion: false },
+			}),
+		)
+		dto: SavePlannerCredentialsDto,
+	) {
 		return parseSuccessResponse(await this.credentialsService.save(dto));
 	}
 }

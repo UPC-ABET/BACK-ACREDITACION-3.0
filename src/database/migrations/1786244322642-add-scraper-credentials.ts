@@ -13,7 +13,7 @@ export class AddScraperCredentials1786244322642 implements MigrationInterface {
 				"updated_at" TIMESTAMP WITH TIME ZONE,
 				"provider_code" character varying(50) NOT NULL,
 				"username" character varying(100) NOT NULL,
-				"password_encrypted" character varying(1000) NOT NULL,
+				"password_encrypted" character varying(5000) NOT NULL,
 				CONSTRAINT "PK_scraper_credentials" PRIMARY KEY ("id")
 			)
 		`);

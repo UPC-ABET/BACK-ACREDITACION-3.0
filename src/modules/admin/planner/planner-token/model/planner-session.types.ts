@@ -1,6 +1,6 @@
 // Planner (u-planner) token session, persisted to the token store file. Unlike Banner, Planner
 // has no manual "stopper" and no refresh path — an expired access token is replaced by a fresh
-// two-call login. See PlannerTokenService for why the refresh branch was removed.
+// two-call login.
 export interface PlannerTokenSession {
 	userId: number;
 	accessToken: string;
@@ -18,8 +18,8 @@ export interface PlannerTokenSession {
  * `not_configured` means no credentials have ever been stored for Planner — a different problem
  * from a lapsed token, and the one the UI must answer with a setup form rather than a retry.
  *
- * The values are the source of truth so the Swagger `enum:` array cannot drift from the union —
- * adding `not_configured` originally had to be remembered in two places.
+ * The array is the source of truth for both the union and the Swagger `enum:`, so a new value
+ * cannot reach one and miss the other.
  */
 export const PLANNER_SESSION_STATUSES = [
 	'active',

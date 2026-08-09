@@ -5,6 +5,7 @@ import { SCRAPER_PROVIDER_CODES } from 'src/modules/admin/scraping/credentials/c
 import { PLANNER_LOGIN_WORST_CASE_MS, PlannerLoginClient } from '../core/planner-login.client';
 import { PlannerSessionStore } from '../core/planner-session.store';
 import {
+	isPlannerLoginError,
 	PlannerLoginUnreachableError,
 	PlannerSessionExpiredError,
 } from '../model/session-expired.error';
@@ -39,6 +40,10 @@ export class PlannerTokenService {
 	private flight: { promise: Promise<PlannerTokenSession>; forced: boolean } | null = null;
 	private lastFailure: RefreshFailure | null = null;
 	private sessionGeneration = 0;
+	// The store file is a cache that survives restarts, not the only copy. Holding the adopted
+	// session here as well is what stops an unwritable disk costing a fresh institutional login on
+	// every single request — see adoptSession.
+	private adoptedSession: PlannerTokenSession | null = null;
 
 	constructor(
 		private readonly store: PlannerSessionStore,
@@ -57,8 +62,16 @@ export class PlannerTokenService {
 		if (!(await this.credentials.isConfigured(SCRAPER_PROVIDER_CODES.PLANNER))) {
 			return { status: 'not_configured', tokenExp: null };
 		}
+		return this.statusForStoredSession();
+	}
 
-		const session = this.store.read();
+	/** The configured-status half of {@link getStatus}, split out so a caller that has already
+	 * proven the credentials exist does not query for them a second time. */
+	private statusForStoredSession(): {
+		status: PlannerSessionStatus;
+		tokenExp: string | null;
+	} {
+		const session = this.readSession();
 		if (!session) return { status: 'expired', tokenExp: null };
 
 		const accessRemaining = this.remaining(session.accessTokenExpiresAt);
@@ -70,6 +83,15 @@ export class PlannerTokenService {
 			return { status: 'expiring', tokenExp: session.accessTokenExpiresAt };
 		}
 		return { status: 'expired', tokenExp: session.accessTokenExpiresAt };
+	}
+
+	/**
+	 * The adopted session wins over the file. Within one process it is always at least as new — it
+	 * is set by the same call that attempts the write — so preferring it is what makes a failed
+	 * write a lost cache rather than a lost session.
+	 */
+	private readSession(): PlannerTokenSession | null {
+		return this.adoptedSession ?? this.store.read();
 	}
 
 	/**
@@ -98,7 +120,7 @@ export class PlannerTokenService {
 			// already rejected server-side, which the cached fast path would report as healthy.
 			await this.ensureSession(true);
 		} catch (error) {
-			if (error instanceof PlannerSessionExpiredError) {
+			if (isPlannerLoginError(error) || error instanceof PlannerSessionExpiredError) {
 				const failure: RefreshFailure = {
 					atMs: Date.now(),
 					unreachable: error instanceof PlannerLoginUnreachableError,
@@ -108,7 +130,9 @@ export class PlannerTokenService {
 			}
 			throw error;
 		}
-		return await this.getStatus();
+		// The credential check above already answered `isConfigured`; re-asking would be a second
+		// query for a fact this call has proven.
+		return this.statusForStoredSession();
 	}
 
 	private coolingDown(): RefreshFailure | null {
@@ -126,7 +150,7 @@ export class PlannerTokenService {
 		if (failure.unreachable) {
 			throw new ServiceUnavailableException(plannerSessionValidationStrings.error.unreachable);
 		}
-		return { status: 'expired', tokenExp: this.store.read()?.accessTokenExpiresAt ?? null };
+		return { status: 'expired', tokenExp: this.readSession()?.accessTokenExpiresAt ?? null };
 	}
 
 	/**
@@ -135,14 +159,26 @@ export class PlannerTokenService {
 	 * A forced caller may only join a flight that is itself forced. Sharing a non-forced flight
 	 * would hand it the cached session it is trying to replace — and the scraper's one-shot 401
 	 * retry is a forced call, so that would re-send the rejected token and abort the whole run.
+	 *
+	 * The cached session is checked *before* any join, which is the other half of that rule. A
+	 * scrape worker asking for whatever is valid must not be conscripted into an operator's forced
+	 * "Try to refresh": it would wait out the full login timeout and then inherit a failure about a
+	 * session it was not using, which the scraper reports as an expired run.
 	 */
 	private ensureSession(forceRefresh: boolean): Promise<PlannerTokenSession> {
+		if (!forceRefresh) {
+			const cached = this.readSession();
+			if (cached && this.remaining(cached.accessTokenExpiresAt) > REFRESH_SKEW_MS) {
+				return Promise.resolve(cached);
+			}
+		}
+
 		const current = this.flight;
 		if (current && (!forceRefresh || current.forced)) return current.promise;
 
 		// What this caller wants replaced. If the flight it queues behind replaces it first, there
 		// is nothing left to force — see afterCurrentFlight.
-		const supersededToken = forceRefresh ? (this.store.read()?.accessToken ?? null) : null;
+		const supersededToken = forceRefresh ? (this.readSession()?.accessToken ?? null) : null;
 		const promise = this.afterCurrentFlight(
 			current?.promise ?? null,
 			forceRefresh,
@@ -173,7 +209,7 @@ export class PlannerTokenService {
 		// The predecessor may already have replaced what this caller wanted gone. Re-logging in
 		// would double the wall clock and, worse, would hand its own failure to every non-forced
 		// caller that has since joined this flight — even though a good session is now on disk.
-		const current = this.store.read();
+		const current = this.readSession();
 		if (
 			current &&
 			current.accessToken !== supersededToken &&
@@ -186,7 +222,7 @@ export class PlannerTokenService {
 	}
 
 	private async resolveSession(forceRefresh: boolean): Promise<PlannerTokenSession> {
-		const existing = this.store.read();
+		const existing = this.readSession();
 		if (
 			existing &&
 			!forceRefresh &&
@@ -206,11 +242,29 @@ export class PlannerTokenService {
 	 * recognise that its result is stale and decline to overwrite this one.
 	 */
 	adoptSession(session: PlannerTokenSession): void {
-		// Written before the generation moves: advertising a supersession that did not happen would
-		// make a concurrent login discard its own valid result and log a cause that is not true.
-		this.store.save(session);
+		// Held before the write is attempted, so the generation below is truthful either way: the
+		// session is adopted the moment it is in memory, whether or not it reaches disk.
+		this.adoptedSession = session;
+		this.persist(session);
 		this.sessionGeneration += 1;
 		this.lastFailure = null;
+	}
+
+	/**
+	 * A failed write must not discard the session. The store is the only cross-restart cache, so
+	 * throwing here would lose a session u-planner had already granted — and because the scraper
+	 * continues past a per-course failure, the next request would log in again, and the next, at one
+	 * institutional authentication per request until the disk recovered.
+	 */
+	private persist(session: PlannerTokenSession): void {
+		try {
+			this.store.save(session);
+		} catch (error) {
+			this.logger.error(
+				`Planner session could not be persisted; it is held in memory only and will not ` +
+					`survive a restart - ${error instanceof Error ? error.message : 'unknown error'}`,
+			);
+		}
 	}
 
 	private async login(): Promise<PlannerTokenSession> {
@@ -231,7 +285,7 @@ export class PlannerTokenService {
 				// than letting a caller run its whole request under an identity that was just
 				// rotated away.
 				this.logger.warn('Planner login superseded by a credential change; session discarded');
-				const adopted = this.store.read();
+				const adopted = this.readSession();
 				if (adopted) return adopted;
 				throw new PlannerSessionExpiredError('Planner credentials changed during login');
 			}
@@ -241,7 +295,7 @@ export class PlannerTokenService {
 		} catch (error) {
 			// Logged here rather than in refresh() so that scrape-time failures — which reach this
 			// through getValidSession() and never touch refresh() — are not silent.
-			if (error instanceof PlannerSessionExpiredError) {
+			if (isPlannerLoginError(error) || error instanceof PlannerSessionExpiredError) {
 				this.logger.warn(`Planner login failed - ${error.name}: ${error.message}`);
 			}
 			throw error;

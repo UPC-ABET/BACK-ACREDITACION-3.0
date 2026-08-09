@@ -109,22 +109,30 @@ describe('PlannerLoginClient', () => {
 			});
 		});
 
-		// A decodable JWT with no `exp` — distinct from an undecodable one, and the only input that
-		// reaches the Number.isFinite guard. Without it the access path builds Invalid Date and
-		// throws a raw RangeError, which escapes the login logger and surfaces as a 500.
-		it('rejects when the ACCESS token is decodable but carries no expiry', async () => {
+		// Unreachable rather than rejected: u-planner accepted the pair and then returned a token it
+		// cannot have meant to send, so blaming the credentials would arm the verification penalty
+		// and have an operator retype a correct password against a fault no password can fix.
+		//
+		// The `exp` values are the two that bypass an is-it-a-number check: absent (reaching the
+		// finite guard) and out of Date range, where `toISOString` throws a raw RangeError that is
+		// neither login error and so escapes every classifier as a 500.
+		it.each([
+			['carries no expiry', {}],
+			['carries an out-of-range expiry', { exp: 9e15 }],
+		])('treats an ACCESS token that %s as unreachable', async (_label, claims) => {
 			fetchMock.mockReset();
-			const noExp = jwt({ userId: 804988 });
 			fetchMock
 				.mockResolvedValueOnce(jsonResponse(200, { data: PRE_AUTH_TOKEN, status: true }))
 				.mockResolvedValueOnce(
 					jsonResponse(200, {
-						data: { user: { id: 804988 }, token: noExp, status: true },
+						data: { user: { id: 804988 }, token: jwt({ userId: 804988, ...claims }) },
 						status: true,
 					}),
 				);
 
-			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toThrow(/no usable expiry/);
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
+				PlannerLoginUnreachableError,
+			);
 		});
 
 		it('tolerates a decodable REFRESH token that carries no expiry', async () => {
@@ -145,6 +153,25 @@ describe('PlannerLoginClient', () => {
 
 			await expect(buildClient().login(USERNAME, PASSWORD)).resolves.toMatchObject({
 				accessToken: ACCESS_TOKEN,
+				refreshTokenExpiresAt: null,
+			});
+		});
+
+		// Recorded only when it is a string. Passed through verbatim it would reach the store, and
+		// from there a consumer that assumes the declared type.
+		it('drops a refresh token that is not a string', async () => {
+			fetchMock.mockReset();
+			fetchMock
+				.mockResolvedValueOnce(jsonResponse(200, { data: PRE_AUTH_TOKEN, status: true }))
+				.mockResolvedValueOnce(
+					jsonResponse(200, {
+						data: { user: { id: 804988 }, token: ACCESS_TOKEN, refreshToken: 12345 },
+						status: true,
+					}),
+				);
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).resolves.toMatchObject({
+				refreshToken: undefined,
 				refreshTokenExpiresAt: null,
 			});
 		});
@@ -308,8 +335,18 @@ describe('PlannerLoginClient', () => {
 			);
 		});
 
-		// Both calls run inside the token service's single-flight promise, so an unbounded request
-		// stalls every caller, not just this one. Undici's 300s default is a wedge in all but name.
+		// undici reports DNS, TLS, a refused connection and a blocked redirect identically as
+		// `TypeError: fetch failed`, with the only discriminating text in `cause`.
+		it('carries the nested cause into the message', async () => {
+			fetchMock.mockRejectedValueOnce(
+				new TypeError('fetch failed', { cause: new Error('getaddrinfo ENOTFOUND') }),
+			);
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toThrow(
+				/TypeError: fetch failed <- Error: getaddrinfo ENOTFOUND/,
+			);
+		});
+
 		/**
 		 * Only asserts a signal is attached. `AbortSignal.timeout` schedules on Node's platform
 		 * timer, which jest's fake timers do not intercept, and the real bound is 15s — so a signal
@@ -374,7 +411,7 @@ describe('PlannerLoginClient', () => {
 
 		// `Number()` coerces null, '' and [] to a finite 0 — a session that authenticates and then
 		// returns nothing for every `user=0` request while reporting itself active.
-		it.each([null, '', [], 0, '7'])(
+		it.each([null, '', [], 0, '7', 1.5, NaN])(
 			'rejects a session whose user id is %p rather than coercing it',
 			async (id) => {
 				fetchMock

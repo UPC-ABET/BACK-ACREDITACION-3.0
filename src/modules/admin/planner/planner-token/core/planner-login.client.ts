@@ -30,13 +30,30 @@ const isRecord = (value: unknown): value is JsonBody =>
 // Neither is a verdict on the credentials.
 const UNREACHABLE_STATUSES = new Set([404, 405, 408, 410, 429]);
 
+// `new Date(ms).toISOString()` throws a raw RangeError past ±8.64e15 ms — an error that is neither
+// login failure, so it would escape every classifier and surface as a 500.
+const MAX_EXP_SECONDS = 8.64e12;
+
+const MAX_CAUSE_DEPTH = 4;
+
 /**
  * The only artefact of a transport failure an operator ever sees is the log line built from this,
- * so DNS, TLS, the abort timeout and a refused redirect have to remain distinguishable. Safe to
- * include: fetch errors carry no request body, so the encoded password cannot reach it.
+ * so DNS, TLS, the abort timeout and a refused redirect have to remain distinguishable. The chain
+ * has to be walked to achieve that: undici reports all four as `TypeError: fetch failed` and puts
+ * the only discriminating text in `cause`. Safe to include — fetch errors carry no request body, so
+ * the encoded password cannot reach it.
  */
-const cause = (error: unknown): string =>
-	error instanceof Error ? ` (${error.name}: ${error.message})` : '';
+const cause = (error: unknown): string => {
+	if (!(error instanceof Error)) return '';
+
+	const chain: string[] = [];
+	let current: unknown = error;
+	while (current instanceof Error && chain.length < MAX_CAUSE_DEPTH) {
+		chain.push(`${current.name}: ${current.message}`);
+		current = current.cause;
+	}
+	return ` (${chain.join(' <- ')})`;
+};
 
 /**
  * The u-planner login, as the SPA itself performs it: a credential POST that returns a
@@ -193,10 +210,16 @@ export class PlannerLoginClient {
 		}
 	}
 
+	/**
+	 * Unreachable rather than rejected, on both this and {@link decodeJwt}: u-planner *accepted* the
+	 * credentials and then handed back a token it cannot have meant to send. Blaming the pair would
+	 * return 400 and arm the verification penalty, so an operator would retype a correct password
+	 * once every 30 seconds against a fault no password can fix.
+	 */
 	private expFromJwt(jwt: string): string {
 		const exp = Number(this.decodeJwt(jwt).exp);
-		if (!Number.isFinite(exp)) {
-			throw new PlannerLoginRejectedError('Planner token carried no usable expiry');
+		if (!Number.isFinite(exp) || exp <= 0 || exp > MAX_EXP_SECONDS) {
+			throw new PlannerLoginUnreachableError('Planner token carried no usable expiry');
 		}
 		return new Date(exp * 1000).toISOString();
 	}
@@ -209,7 +232,7 @@ export class PlannerLoginClient {
 			);
 			return JSON.parse(json) as Record<string, unknown>;
 		} catch {
-			throw new PlannerLoginRejectedError('Planner token could not be decoded');
+			throw new PlannerLoginUnreachableError('Planner token could not be decoded');
 		}
 	}
 }

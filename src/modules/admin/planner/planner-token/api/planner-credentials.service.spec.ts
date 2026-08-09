@@ -249,6 +249,108 @@ describe('PlannerCredentialsService', () => {
 			}
 		});
 
+		// The claim is taken on entry and must outlast the login it guards. Shortened to the penalty
+		// alone it would lapse at the tail of a slow call, and a second attempt would slip in behind
+		// one still running — which is the whole hole the owned claim was introduced to close.
+		it('holds the slot for longer than a login can take', async () => {
+			jest.useFakeTimers({ doNotFake: ['performance'] });
+			try {
+				mockLoginClient.login.mockReturnValue(new Promise(() => undefined));
+				const service = buildService();
+
+				const held = service.save(DTO).catch(() => undefined);
+				// Past a 30s login, still inside the claim.
+				jest.advanceTimersByTime(45_000);
+
+				await expect(service.save(DTO)).rejects.toMatchObject({
+					messageKey: plannerSessionValidationStrings.error.verificationCooldown,
+				});
+				expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
+				void held;
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		// Two attempts can only overlap if the first one's claim lapses under it, which the sizing
+		// above prevents — but the ownership guards are what stop that becoming a security hole if it
+		// ever does, so they are pinned independently of the sizing that makes them unreachable.
+		describe('claim ownership', () => {
+			// A slow rejection arms a penalty, then a concurrent success finishes and releases.
+			it('does not let a later success erase a penalty another attempt armed', async () => {
+				jest.useFakeTimers({ doNotFake: ['performance'] });
+				try {
+					let rejectFirst: () => void = () => undefined;
+					let resolveSecond: () => void = () => undefined;
+					mockLoginClient.login
+						.mockReturnValueOnce(
+							new Promise((_resolve, reject) => {
+								rejectFirst = () => reject(new PlannerLoginRejectedError('401'));
+							}),
+						)
+						.mockReturnValueOnce(
+							new Promise((resolve) => {
+								resolveSecond = () => resolve(NEW_SESSION);
+							}),
+						);
+					const service = buildService();
+
+					const first = service.save(DTO).catch((e: unknown) => e);
+					jest.advanceTimersByTime(61_000); // first claim lapses
+					const second = service.save(DTO).catch((e: unknown) => e);
+
+					jest.advanceTimersByTime(34_000);
+					rejectFirst();
+					await first;
+
+					jest.advanceTimersByTime(1_000);
+					resolveSecond();
+					await second;
+
+					jest.advanceTimersByTime(4_000);
+					await expect(service.save(DTO)).rejects.toMatchObject({
+						messageKey: plannerSessionValidationStrings.error.verificationCooldown,
+					});
+					expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
+				} finally {
+					jest.useRealTimers();
+				}
+			});
+
+			it('does not let a penalty shorten a longer block already in place', async () => {
+				jest.useFakeTimers({ doNotFake: ['performance'] });
+				try {
+					let rejectFirst: () => void = () => undefined;
+					mockLoginClient.login
+						.mockReturnValueOnce(
+							new Promise((_resolve, reject) => {
+								rejectFirst = () => reject(new PlannerLoginRejectedError('401'));
+							}),
+						)
+						.mockReturnValueOnce(new Promise(() => undefined));
+					const service = buildService();
+
+					const first = service.save(DTO).catch((e: unknown) => e);
+					jest.advanceTimersByTime(61_000); // first claim lapses
+					const second = service.save(DTO).catch(() => undefined);
+
+					// Rejects while the second attempt's claim still has longer to run than the
+					// 30s penalty this rejection earns.
+					rejectFirst();
+					await first;
+
+					jest.advanceTimersByTime(34_000);
+					await expect(service.save(DTO)).rejects.toMatchObject({
+						messageKey: plannerSessionValidationStrings.error.verificationCooldown,
+					});
+					expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
+					void second;
+				} finally {
+					jest.useRealTimers();
+				}
+			});
+		});
+
 		it('clears the throttle after a successful verification', async () => {
 			mockLoginClient.login.mockRejectedValueOnce(new PlannerLoginRejectedError('401'));
 			const service = buildService();

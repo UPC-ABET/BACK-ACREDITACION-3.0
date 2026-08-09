@@ -90,6 +90,31 @@ describe('PlannerTokenService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
+		// An unwritable store must cost the cache, not the session. Throwing here would discard a
+		// session u-planner had already granted, and because the scraper continues past a per-course
+		// failure the next request would log in again — one institutional authentication per request
+		// for as long as the disk stayed bad, with no cooldown on this path at all.
+		it('keeps serving a session whose write to disk failed', async () => {
+			const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+			try {
+				const granted = freshSession();
+				mockStore.read.mockReturnValue(null);
+				mockStore.save.mockImplementation(() => {
+					throw new Error('EROFS: read-only file system');
+				});
+				mockLoginClient.login.mockResolvedValue(granted);
+				const service = buildService();
+
+				await expect(service.getValidSession()).resolves.toEqual(granted);
+				await expect(service.getValidSession()).resolves.toEqual(granted);
+
+				expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
+				expect(error).toHaveBeenCalledTimes(1);
+			} finally {
+				error.mockRestore();
+			}
+		});
+
 		it('logs in when the access token is inside the refresh skew', async () => {
 			mockStore.read.mockReturnValue(session(30_000, 2 * HOUR));
 
@@ -107,27 +132,52 @@ describe('PlannerTokenService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
-		// A forced caller joining a non-forced flight would be handed the cached session it is
-		// trying to replace — which is the scraper's 401 retry silently re-sending a dead token.
+		// A forced caller must get its own attempt rather than the running flight's promise. Sharing
+		// it would hand the scraper's 401 retry whatever the other caller happened to get — including
+		// that caller's failure, about a session the forced caller was not using.
 		it('does not let a forced caller share a non-forced flight', async () => {
+			const replacement = { ...freshSession(), accessToken: 'example-replacement-token' };
+			let releaseFirst: (error: Error) => void = () => undefined;
+			mockLoginClient.login
+				.mockReturnValueOnce(
+					new Promise((_resolve, reject) => {
+						releaseFirst = (error) => reject(error);
+					}),
+				)
+				.mockResolvedValueOnce(replacement);
+			const service = buildService();
+
+			const slow = service.getValidSession();
+			const forced = service.getValidSession(true);
+			releaseFirst(new PlannerLoginRejectedError('Planner rejected the login (401)'));
+
+			await expect(slow).rejects.toBeInstanceOf(PlannerLoginRejectedError);
+			await expect(forced).resolves.toEqual(replacement);
+			expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
+		});
+
+		// The mirror rule, and the one that costs a scrape run when it is missing: a worker asking
+		// for "whatever is valid" must never be conscripted into an operator's forced refresh. It
+		// would wait out the full login timeout and then inherit a failure about a session it was
+		// not using, which PlannerScraperService reports as an expired run.
+		it('does not make a non-forced caller wait on a forced flight it has a valid session for', async () => {
 			const stored = freshSession();
 			mockStore.read.mockReturnValue(stored);
-			let releaseLogin: (session: PlannerTokenSession) => void = () => undefined;
-			mockCredentials.getDecrypted.mockReturnValue(
+			let releaseForced: () => void = () => undefined;
+			mockLoginClient.login.mockReturnValueOnce(
 				new Promise((resolve) => {
-					releaseLogin = () => resolve(CREDENTIAL);
+					releaseForced = () => resolve({ ...stored, accessToken: 'example-forced-token' });
 				}),
 			);
 			const service = buildService();
 
-			// Non-forced flight, held open inside credential resolution.
-			mockStore.read.mockReturnValueOnce(null);
-			const slow = service.getValidSession();
 			const forced = service.getValidSession(true);
-			releaseLogin(stored);
-			await Promise.all([slow, forced]);
 
-			expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
+			await expect(service.getValidSession()).resolves.toEqual(stored);
+			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
+
+			releaseForced();
+			await forced;
 		});
 
 		// If the flight it queued behind already replaced the session, the forced caller has nothing
@@ -180,14 +230,20 @@ describe('PlannerTokenService', () => {
 
 		// A settling predecessor must not clear the slot a chained flight now owns, or the next
 		// caller starts a third login instead of joining the one already running.
+		//
+		// The flush has to be a macrotask: two microtask ticks are not enough for the predecessor's
+		// promise to settle, so the `.finally` this test is named after would not have run and the
+		// assertion would hold whether the identity guard were there or not.
 		it('does not let a settled predecessor clear the chained flight', async () => {
+			// Inside the skew, so the chained forced flight is not satisfied by it and really runs.
+			const nearlyDead = { ...session(30_000, 2 * HOUR), accessToken: 'example-nearly-dead' };
 			const replacement = { ...freshSession(), accessToken: 'example-replacement-token' };
 			let releaseFirst: () => void = () => undefined;
 			let releaseSecond: () => void = () => undefined;
 			mockLoginClient.login
 				.mockReturnValueOnce(
 					new Promise((resolve) => {
-						releaseFirst = () => resolve(freshSession());
+						releaseFirst = () => resolve(nearlyDead);
 					}),
 				)
 				.mockReturnValueOnce(
@@ -200,8 +256,8 @@ describe('PlannerTokenService', () => {
 			const slow = service.getValidSession();
 			const forced = service.getValidSession(true);
 			releaseFirst();
-			await Promise.resolve();
-			await Promise.resolve();
+			await new Promise((resolve) => setImmediate(resolve));
+			await new Promise((resolve) => setImmediate(resolve));
 
 			const joiner = service.getValidSession();
 			releaseSecond();
@@ -310,6 +366,10 @@ describe('PlannerTokenService', () => {
 		// single dedicated test cannot: the log statements live on the failure paths, so a test
 		// driving a success asserts against no output at all.
 		afterEach(() => {
+			// Guards the guard: a case that logs nothing passes all four assertions below while
+			// proving nothing.
+			expect(logged.length).toBeGreaterThan(0);
+
 			const output = logged.join(' ');
 			expect(output).not.toContain(CREDENTIAL.password);
 			expect(output).not.toContain(CREDENTIAL.username);
@@ -384,13 +444,15 @@ describe('PlannerTokenService', () => {
 			expect(logged.length).toBeGreaterThan(0);
 			expect(debug).toHaveBeenCalledTimes(1);
 		});
+	});
 
-		it('rethrows anything that is not a session failure', async () => {
-			mockStore.read.mockReturnValue(null);
-			mockLoginClient.login.mockRejectedValue(new TypeError('programmer error'));
+	// Outside the block above: a programmer error is deliberately not classified and logs nothing,
+	// so it has no output for the shared secret-absence check to inspect.
+	it('rethrows anything that is not a session failure', async () => {
+		mockStore.read.mockReturnValue(null);
+		mockLoginClient.login.mockRejectedValue(new TypeError('programmer error'));
 
-			await expect(buildService().refresh()).rejects.toThrow(TypeError);
-		});
+		await expect(buildService().refresh()).rejects.toThrow(TypeError);
 	});
 
 	describe('cooldown and recovery', () => {
@@ -449,7 +511,10 @@ describe('PlannerTokenService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
-		it('releases the cooldown once it has elapsed', async () => {
+		// Both bounds, under fake timers. Without the lower one the window could be shortened to a
+		// millisecond — the back-off the runbook documents as 30s — and nothing would notice; a
+		// real-clock version of it only holds when two awaits land in the same millisecond.
+		it('holds the cooldown for the full window and releases it after', async () => {
 			jest.useFakeTimers({ doNotFake: ['performance'] });
 			try {
 				mockStore.read.mockReturnValue(null);
@@ -457,9 +522,13 @@ describe('PlannerTokenService', () => {
 				const service = buildService();
 
 				await service.refresh();
-				jest.advanceTimersByTime(31_000);
-				await service.refresh();
 
+				jest.advanceTimersByTime(29_999);
+				await service.refresh();
+				expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
+
+				jest.advanceTimersByTime(2);
+				await service.refresh();
 				expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
 			} finally {
 				jest.useRealTimers();
@@ -500,6 +569,30 @@ describe('PlannerTokenService', () => {
 
 			await expect(service.getValidSession()).resolves.toEqual(newAccountSession);
 			expect(mockStore.save).not.toHaveBeenCalled();
+		});
+
+		// The generation is captured after the credentials resolve, and this is the interleaving that
+		// distinguishes that from capturing it before: the rotation lands while the read is pending,
+		// so its credentials are already the new ones. Captured too early, the login would mistake
+		// its own valid result for a stale one and discard it.
+		it('keeps a login whose credentials resolved after an adoption', async () => {
+			const session = { ...freshSession(), accessToken: 'example-post-change-token' };
+			const adopted = { ...freshSession(), accessToken: 'example-adopted-token' };
+			const service = buildService();
+
+			let releaseCredentials: () => void = () => undefined;
+			mockCredentials.getDecrypted.mockReturnValue(
+				new Promise((resolve) => {
+					releaseCredentials = () => resolve(CREDENTIAL);
+				}),
+			);
+			mockLoginClient.login.mockResolvedValue(session);
+
+			const pending = service.getValidSession(true);
+			service.adoptSession(adopted);
+			releaseCredentials();
+
+			await expect(pending).resolves.toEqual(session);
 		});
 
 		// The mirror case: a rotation that lands before the credentials are read is simply used,

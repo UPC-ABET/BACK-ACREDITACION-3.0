@@ -14,4 +14,4 @@ import { ScraperCredentialService } from './api/scraper-credentials.service';
 	providers: [ScraperCredentialService, ScraperCredentialRepository],
 	exports: [ScraperCredentialService, ScraperCredentialRepository],
 })
-export class ScraperCredentialsModule {}
+export class ScraperCredentialModule {}

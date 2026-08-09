@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { BaseEntity } from 'src/commons/base.entity';
-import { CodeColumn, TextMediumColumn, TextShortColumn } from 'src/commons/configs/db.configs';
+import { CodeColumn, TextLargeColumn, TextShortColumn } from 'src/commons/configs/db.configs';
 import type { ScraperProviderCode } from '../constants/scraper-provider-codes';
 
 /**
@@ -25,7 +25,10 @@ export class ScraperCredentialEntity extends BaseEntity {
 	@TextShortColumn({ nullable: false })
 	username: string;
 
-	@TextMediumColumn({ nullable: false, select: false })
+	// Sized for the ciphertext, not the password: GCM expands to `58 + 2 x utf8Bytes` characters, so
+	// the 200-character maximum the DTO admits reaches 1258 when those characters are 3-byte UTF-8.
+	// A tighter column would overflow *after* u-planner had already accepted the pair.
+	@TextLargeColumn({ nullable: false, select: false })
 	passwordEncrypted: string;
 
 	// %% RELATIONS

@@ -16,7 +16,13 @@ const SESSION: PlannerTokenSession = {
 let dir: string;
 let file: string;
 
-const buildStore = () => new PlannerSessionStore({ get: () => file } as unknown as ConfigService);
+// Answers only for the key the store is supposed to ask for. A stub that returns the path for
+// every key cannot tell whether the store reads the right one — and when it does not, the spec
+// silently writes into the repository working tree instead of the temp dir.
+const buildStore = () =>
+	new PlannerSessionStore({
+		get: (key: string) => (key === 'PLANNER_TOKEN_STORE_PATH' ? file : undefined),
+	} as unknown as ConfigService);
 
 describe('PlannerSessionStore', () => {
 	beforeEach(() => {
@@ -59,12 +65,28 @@ describe('PlannerSessionStore', () => {
 		expect(store.read()).toBeNull();
 	});
 
-	// chmod is not a no-op here: writeFileSync's mode applies only when it creates the file, so an
-	// existing file written under a looser umask would keep its old bits without it.
-	(process.platform === 'win32' ? it.skip : it)('forces 0600 even on an existing file', () => {
+	// A file that parses but is missing a load-bearing field must not reach the HTTP client, where
+	// it would become `Bearer undefined` against u-planner rather than an obvious re-login.
+	it('returns null for a session that parses but is incomplete', () => {
 		const store = buildStore();
 		fs.mkdirSync(path.dirname(file), { recursive: true });
-		fs.writeFileSync(file, '{}', { mode: 0o644 });
+		fs.writeFileSync(file, '{"userId": 804988}');
+
+		expect(store.read()).toBeNull();
+	});
+
+	// chmod is not a no-op here: writeFileSync's mode applies only when it creates the file, so an
+	// existing file written under a looser umask would keep its old bits without it.
+	//
+	// The pre-existing file has to be the *temp* path, not the destination — save() never writes
+	// into the destination, it renames over it, so seeding the destination proves nothing and the
+	// assertion would hold with chmodSync deleted. A leftover `.tmp` is exactly what a crashed
+	// previous save leaves behind.
+	(process.platform === 'win32' ? it.skip : it)('forces 0600 on a leftover temp file', () => {
+		const store = buildStore();
+		fs.mkdirSync(path.dirname(file), { recursive: true });
+		fs.writeFileSync(`${file}.tmp`, '{}', { mode: 0o644 });
+		fs.chmodSync(`${file}.tmp`, 0o644);
 
 		store.save(SESSION);
 
