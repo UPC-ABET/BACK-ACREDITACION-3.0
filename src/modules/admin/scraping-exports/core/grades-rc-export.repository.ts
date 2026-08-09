@@ -2,22 +2,30 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
+import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
+
+import { GradeRcExportRow } from '../model/scraping-exports.types';
+import { DESIGNATED_GRADE_TYPES_SQL, GRADES_RC_SQL } from './grades-rc-export.sql';
 import { EXPORTS_RAW_CONNECTION, resolveAcademicPeriodCode } from './scraping-exports.repository';
 
-export interface RawGradeRcRow {
+export interface DesignatedGradeTypeRow {
 	sectionCode: string;
-	studentCode: string;
-	type: string;
-	weight: string;
-	gradeRaw: string;
+	gradeTypeCode: string;
 }
 
 /**
- * Builds the RC bulk-upload-ready data out of the Banner raw scraping tables (raw_notas +
- * raw_horario + raw_matricula, same run). Reads only: when Banner reports a non-numeric grade
- * value this catalog doesn't recognize yet (e.g. a new qualification-status code), the raw text
- * is passed through as-is in the exported Excel -- resolving or auto-provisioning it into
- * core.types (TG404) is the RC bulk upload's job (fn_upload_grades_rc), not this export's.
+ * Builds the RC bulk-upload-ready data out of BOTH scrapings — Banner (raw_notas + raw_horario +
+ * raw_matricula) and Planner (raw_planner_nota + raw_planner_seccion + raw_planner_evaluacion) —
+ * which live in the same raw DB, so the whole cross runs in one SQL pass. Each source contributes
+ * the grades it has; when both hold the same (section, student, grade type) the most recent scrape
+ * wins.
+ *
+ * Reads only. Two things this export deliberately does NOT resolve, because the RC bulk upload
+ * (audit.fn_upload_grades_rc) is the one that owns them:
+ *  - a non-numeric grade value whose text is not a known TG404 status is passed through as-is
+ *    (the upload auto-provisions it);
+ *  - a grade type rescued by the last-grade fallback keeps its raw code ("TF1", "NF"), which the
+ *    upload rejects until someone registers it in TG205 — see the change runbook.
  */
 @Injectable()
 export class GradesRcExportRepository {
@@ -26,52 +34,34 @@ export class GradesRcExportRepository {
 		@InjectDataSource() private readonly mainDataSource: DataSource,
 	) {}
 
-	// One row per (student, course, grade type) from the selected period's Banner run, with the
-	// section (NRC) resolved via raw_horario + raw_matricula of that same run. A student can only be
-	// enrolled in one section of a given course per academic period, so the join is unambiguous.
-	async getRawGradesRc(academicPeriodId: number | null): Promise<RawGradeRcRow[]> {
-		const period = await resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
-		return await this.rawDataSource.query(
-			`
-			WITH latest_run AS (
-				SELECT id FROM scrape_run
-				WHERE ($1::text IS NULL OR periodo = $1)
-				ORDER BY started_at DESC LIMIT 1
-			),
-			grades_exploded AS (
-				SELECT
-					rn.codigo_alumno,
-					rn.curso_codigo,
-					n->>'tipo' AS type,
-					n->>'peso' AS weight,
-					n->>'nota' AS grade_raw
-				FROM raw_notas rn
-				CROSS JOIN LATERAL jsonb_array_elements(rn.payload->'detalle'->'notas') AS n
-				WHERE rn.run_id = (SELECT id FROM latest_run)
-			),
-			section_lookup AS (
-				SELECT DISTINCT
-					m.codigo_alumno,
-					h.nrc,
-					(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS curso_codigo
-				FROM raw_matricula m
-				JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
-				WHERE m.run_id = (SELECT id FROM latest_run)
-				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
-			)
-			SELECT
-				sl.nrc           AS "sectionCode",
-				ge.codigo_alumno AS "studentCode",
-				ge.type          AS "type",
-				ge.weight        AS "weight",
-				ge.grade_raw     AS "gradeRaw"
-			FROM grades_exploded ge
-			JOIN section_lookup sl
-			  ON sl.codigo_alumno = ge.codigo_alumno AND sl.curso_codigo = ge.curso_codigo
-			ORDER BY sl.nrc, ge.codigo_alumno, ge.type
-		`,
-			[period],
-		);
+	async getGradesRcRows(academicPeriodId: number | null): Promise<GradeRcExportRow[]> {
+		const [period, gradeTypes, qualificationStatuses, designated] = await Promise.all([
+			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
+			this.getDesignatedGradeTypesBySection(academicPeriodId),
+		]);
+
+		return await this.rawDataSource.query(GRADES_RC_SQL, [
+			period,
+			[...gradeTypes.keys()],
+			[...gradeTypes.values()],
+			[...qualificationStatuses.keys()],
+			[...qualificationStatuses.values()],
+			designated.map((row) => row.sectionCode),
+			designated.map((row) => row.gradeTypeCode),
+			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
+			TYPE_CODES.QUALIFICATION_STATUS.SAN,
+		]);
+	}
+
+	// Not a filter on the export: sections missing here (not uploaded yet, or with no designated
+	// type configured) simply behave as "designated type absent", which arms the fallback.
+	async getDesignatedGradeTypesBySection(
+		academicPeriodId: number | null,
+	): Promise<DesignatedGradeTypeRow[]> {
+		if (academicPeriodId == null) return [];
+		return await this.mainDataSource.query(DESIGNATED_GRADE_TYPES_SQL, [academicPeriodId]);
 	}
 
 	// name (es, uppercased) -> code, for every active type in the given group (main DB).

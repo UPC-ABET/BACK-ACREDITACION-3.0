@@ -42,8 +42,10 @@ export interface AlumnoSeccionExportRow {
 }
 
 // uploads/grades-rc template: sectionCode | studentCode | gradeTypeCode | gradeTypePercentage |
-// grade | qualificationStatusCode. Built from raw_notas (Banner); grade/qualificationStatusCode
-// are resolved from the raw grade text (see GradesRcExportRepository).
+// grade | qualificationStatusCode. Built from both scrapings (Banner raw_notas + Planner
+// raw_planner_nota); grade/qualificationStatusCode are resolved from the raw grade text, and
+// gradeTypeCode is a TG205 code or — for a grade rescued by the last-grade fallback — the raw
+// scraped code (see GradesRcExportRepository).
 export interface GradeRcExportRow {
 	sectionCode: string;
 	studentCode: string;

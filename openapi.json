@@ -12309,7 +12309,7 @@
 					}
 				],
 				"responses": { "200": { "description": "" } },
-				"summary": "Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, from the latest Banner scrape",
+				"summary": "Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, merging the latest Banner and Planner scrapes",
 				"tags": ["Scraping — Exports"]
 			}
 		}
