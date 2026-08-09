@@ -20,6 +20,9 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { format, resolveConfig } from 'prettier';
 
+// MUST stay above the app.module import: it sets RAW_DB_URL, without which the module graph
+// omits every scraping endpoint and the exported spec silently loses them. See the file's comment.
+import './export-openapi.env';
 import { AppModule } from '../app.module';
 
 async function exportOpenApi(): Promise<void> {

@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+	HttpException,
+	HttpStatus,
+	Injectable,
+	Logger,
+	ServiceUnavailableException,
+} from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { PlannerScrapeRunRepository } from '../../raw/core/planner-scrape-run.repository';
 import {
@@ -15,10 +21,24 @@ import {
 } from '../../raw/core/raw-planner-nota.repository';
 import { PlannerSourceRepository } from '../core/planner-source.repository';
 import { PlannerHttpClient } from '../core/planner-http.client';
-import { PlannerSessionExpiredError } from '../../planner-token/model/session-expired.error';
+import {
+	isPlannerSessionFailure,
+	PlannerSessionExpiredError,
+} from '../../planner-token/model/planner-session.errors';
 import { PlannerScrapeRunStatus } from '../../raw/model/planner-scrape-run.entity';
 import { RunPlannerScrapeDto } from '../model/planner-scraper.dtos';
 import { plannerScraperValidationStrings } from '../config/strings/planner-scraper.validation';
+
+/**
+ * Aborts the whole run rather than being recorded against one course.
+ *
+ * The per-item catches continue on a missing or malformed course. They must not continue on "no
+ * session can be obtained": the client asks for a session on every request and that path has no
+ * cooldown, so one outage becomes one institutional login attempt per remaining item, and the run
+ * reports `partial` — which reads as "we got most of it".
+ */
+export const isFatalScrapeError = (error: unknown): boolean =>
+	isPlannerSessionFailure(error) || error instanceof ServiceUnavailableException;
 
 const DEFAULT_NIVEL = 'UG';
 const SECCION_CONCURRENCY = 20;
@@ -235,7 +255,7 @@ export class PlannerScraperService {
 						stats.counts.seccion += rows.length;
 						stats.courses.succeeded.push(curso);
 					} catch (error) {
-						if (error instanceof PlannerSessionExpiredError) throw error;
+						if (isFatalScrapeError(error)) throw error;
 						stats.courses.failed.push(curso);
 						stats.errors.push({ step: 'seccion', key: curso, message: (error as Error).message });
 					}
@@ -284,7 +304,7 @@ export class PlannerScraperService {
 						await this.rawEvaluacionRepository.bulkInsert(rows);
 						stats.counts.evaluacion += rows.length;
 					} catch (error) {
-						if (error instanceof PlannerSessionExpiredError) throw error;
+						if (isFatalScrapeError(error)) throw error;
 						stats.errors.push({
 							step: 'evaluacion',
 							key: sectionId,
@@ -330,7 +350,7 @@ export class PlannerScraperService {
 						await this.rawNotaRepository.bulkInsert(rows);
 						stats.counts.nota += rows.length;
 					} catch (error) {
-						if (error instanceof PlannerSessionExpiredError) throw error;
+						if (isFatalScrapeError(error)) throw error;
 						stats.errors.push({
 							step: 'nota',
 							key: `${pair.sectionId}/${pair.evalComponentId}`,

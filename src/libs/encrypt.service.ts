@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
-const APP_SECRET_HEX_LENGTH = 64;
+const APP_SECRET_MIN_LENGTH = 64;
+
+// Pinned, not inferred from the ciphertext: `setAuthTag` accepts a short tag, so a forged 4-byte
+// one would need ~2^31 offline attempts instead of 2^127.
+const GCM_IV_BYTES = 12;
+const GCM_AUTH_TAG_BYTES = 16;
 
 @Injectable()
 export class EncryptService {
@@ -12,21 +17,29 @@ export class EncryptService {
 		this.key = this.getRequiredAppSecret();
 	}
 
+	/**
+	 * Derived, not hex-decoded: SHA-256 always yields the 32 bytes aes-256-gcm requires, so the
+	 * secret's own length stops mattering. Hex-decoding did not, and a 128-character secret — what
+	 * the deployed environments hold — produced a 64-byte key that every call rejected.
+	 *
+	 * Changing this function is equivalent to rotating APP_SECRET: every stored ciphertext becomes
+	 * undecryptable and there is no rotation mechanism (ADR-001).
+	 */
 	private getRequiredAppSecret(): Buffer {
 		const secret = this.configService.get<string>('APP_SECRET');
 
-		if (!secret || secret.length < APP_SECRET_HEX_LENGTH) {
-			throw new Error(
-				`APP_SECRET must be configured as a hex string (>=${APP_SECRET_HEX_LENGTH} hex chars / 32 bytes)`,
-			);
+		if (!secret || secret.length < APP_SECRET_MIN_LENGTH) {
+			throw new Error(`APP_SECRET must be at least ${APP_SECRET_MIN_LENGTH} characters`);
 		}
 
-		return Buffer.from(secret, 'hex');
+		return crypto.createHash('sha256').update(secret, 'utf8').digest();
 	}
 
 	encrypt(text: string): string {
-		const iv = crypto.randomBytes(12);
-		const cipher = crypto.createCipheriv('aes-256-gcm', this.key, iv);
+		const iv = crypto.randomBytes(GCM_IV_BYTES);
+		const cipher = crypto.createCipheriv('aes-256-gcm', this.key, iv, {
+			authTagLength: GCM_AUTH_TAG_BYTES,
+		});
 		const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
 		const authTag = cipher.getAuthTag();
 
@@ -49,7 +62,15 @@ export class EncryptService {
 		const encrypted = Buffer.from(encryptedHex, 'hex');
 		const authTag = Buffer.from(authTagHex, 'hex');
 
-		const decipher = crypto.createDecipheriv('aes-256-gcm', this.key, iv);
+		if (iv.length !== GCM_IV_BYTES || authTag.length !== GCM_AUTH_TAG_BYTES) {
+			throw new Error(
+				`Malformed ciphertext: expected a ${GCM_IV_BYTES}-byte iv and a ${GCM_AUTH_TAG_BYTES}-byte authTag`,
+			);
+		}
+
+		const decipher = crypto.createDecipheriv('aes-256-gcm', this.key, iv, {
+			authTagLength: GCM_AUTH_TAG_BYTES,
+		});
 		decipher.setAuthTag(authTag);
 
 		const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

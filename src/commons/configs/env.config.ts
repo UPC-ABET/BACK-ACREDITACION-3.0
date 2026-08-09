@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+const httpsUrl = z
+	.string()
+	.url()
+	.refine((value) => value.startsWith('https://'), { message: 'must be an https:// URL' });
+
 const envSchema = z
 	.object({
 		NODE_ENV: z.enum(['development', 'staging', 'production']).optional(),
@@ -67,11 +72,11 @@ const envSchema = z
 		BANNER_API_KEY: z.string().optional(),
 		BANNER_AUTH_STATE_PATH: z.string().optional(),
 
-		PLANNER_LOGIN_URL: z.string().url().optional(),
-		PLANNER_API_BASE: z.string().url().optional(),
-		PLANNER_VALIDATE_URL: z.string().url().optional(),
-		PLANNER_USER: z.string().optional(),
-		PLANNER_PASSWORD: z.string().optional(),
+		// All three carry a credential or a session bearer token, so `.url()` alone is not enough —
+		// it accepts http://, which would put them on the wire in cleartext.
+		PLANNER_API_BASE: httpsUrl.optional(),
+		PLANNER_LOGIN_API_URL: httpsUrl.optional(),
+		PLANNER_VALIDATE_URL: httpsUrl.optional(),
 		PLANNER_TOKEN_STORE_PATH: z.string().optional(),
 
 		AUTH_SESSION_TOKEN_SECRET: z.string().min(32).optional(),

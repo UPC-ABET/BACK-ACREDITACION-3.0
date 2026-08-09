@@ -24,13 +24,11 @@ describe('GraReportService', () => {
 			}),
 		};
 		const reportGenerator = {
-			generateDocument: jest
-				.fn()
-				.mockImplementation(async (document, filename) => ({
-					pdf: Buffer.from('pdf'),
-					document,
-					filename,
-				})),
+			generateDocument: jest.fn().mockImplementation(async (document, filename) => ({
+				pdf: Buffer.from('pdf'),
+				document,
+				filename,
+			})),
 		};
 		const service = new GraReportService(notificationService as never, reportGenerator as never);
 

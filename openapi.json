@@ -11880,6 +11880,438 @@
 				"summary": "Buscar asignaciones (por roleId / moduleTypeId / permissionTypeId)",
 				"tags": ["IAM - Permisos por Rol y Modulo"]
 			}
+		},
+		"/banner/session/status": {
+			"get": {
+				"operationId": "BannerSessionController_getStatus",
+				"parameters": [],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Banner session / token health",
+				"tags": ["Banner Session"]
+			}
+		},
+		"/banner/session/refresh": {
+			"post": {
+				"operationId": "BannerSessionController_refresh",
+				"parameters": [],
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Force a headless token refresh from auth_state.json",
+				"tags": ["Banner Session"]
+			}
+		},
+		"/banner/scrape": {
+			"post": {
+				"operationId": "ScraperController_run",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/RunScrapeDto" } }
+					}
+				},
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Run a Banner scrape for the active academic period (header)",
+				"tags": ["Banner Scrape"]
+			},
+			"get": {
+				"operationId": "ScraperController_list",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "List scrape runs for the active academic period (header), newest first",
+				"tags": ["Banner Scrape"]
+			}
+		},
+		"/banner/scrape/{runId}": {
+			"get": {
+				"operationId": "ScraperController_getRun",
+				"parameters": [
+					{
+						"name": "runId",
+						"required": true,
+						"in": "path",
+						"description": "Scrape run id (uuid)",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Get scrape run status and stats",
+				"tags": ["Banner Scrape"]
+			}
+		},
+		"/banner/auth/sessions": {
+			"post": {
+				"operationId": "AuthSessionController_create",
+				"parameters": [
+					{ "name": "host", "required": true, "in": "header", "schema": { "type": "string" } },
+					{
+						"name": "x-forwarded-proto",
+						"required": true,
+						"in": "header",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Start a Banner login session (Option C)",
+				"tags": ["Banner Auth"]
+			}
+		},
+		"/banner/auth/sessions/{id}": {
+			"get": {
+				"operationId": "AuthSessionController_get",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Login session id (uuid)",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Get login session status",
+				"tags": ["Banner Auth"]
+			},
+			"delete": {
+				"operationId": "AuthSessionController_remove",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Login session id (uuid)",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Cancel / tear down a login session",
+				"tags": ["Banner Auth"]
+			}
+		},
+		"/planner/session/status": {
+			"get": {
+				"operationId": "PlannerSessionController_getStatus",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PlannerSessionStatusDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Planner session / token health",
+				"tags": ["Planner Session"]
+			}
+		},
+		"/planner/session/refresh": {
+			"post": {
+				"operationId": "PlannerSessionController_refresh",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PlannerSessionStatusDto" }
+							}
+						}
+					},
+					"400": {
+						"description": "Bad request\n\nerror.planner.credentialsNotConfigured - no Planner credentials have been saved yet"
+					},
+					"500": { "description": "Internal server error" },
+					"503": {
+						"description": "error.planner.unreachable - u-planner did not answer; error.scraperCredential.decryptionFailed - the stored credential will not decrypt, usually a changed APP_SECRET"
+					}
+				},
+				"summary": "Force a Planner token refresh (re-runs the u-planner API login)",
+				"tags": ["Planner Session"]
+			}
+		},
+		"/planner/session/credentials": {
+			"get": {
+				"operationId": "PlannerSessionController_getCredentials",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PlannerCredentialsResponseDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Configured Planner credentials (username only, never the password)",
+				"tags": ["Planner Session"]
+			},
+			"post": {
+				"operationId": "PlannerSessionController_saveCredentials",
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/SavePlannerCredentialsDto" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PlannerSessionStatusDto" }
+							}
+						}
+					},
+					"400": {
+						"description": "Bad request\n\nerror.planner.invalidCredentials - u-planner refused the pair; error.planner.verificationCooldown - a verification is in flight, or one was rejected in the last 30s; never a verdict on the submitted pair; error.planner.invalidCredentialsPayload - the body is malformed; details in data[]; error.scraperCredential.saveFailed - the pair is structurally unusable, e.g. a username that is only whitespace"
+					},
+					"500": { "description": "Internal server error" },
+					"503": {
+						"description": "error.planner.unreachable - u-planner did not answer; error.scraperCredential.decryptionFailed - the stored credential will not decrypt, usually a changed APP_SECRET"
+					}
+				},
+				"summary": "Set the Planner credentials; verified against u-planner before being stored",
+				"tags": ["Planner Session"]
+			}
+		},
+		"/planner/scrape": {
+			"post": {
+				"operationId": "PlannerScraperController_run",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/RunPlannerScrapeDto" } }
+					}
+				},
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Run a Planner scrape for the active academic period (header)",
+				"tags": ["Planner Scrape"]
+			},
+			"get": {
+				"operationId": "PlannerScraperController_list",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "List Planner scrape runs for the active academic period (header), newest first",
+				"tags": ["Planner Scrape"]
+			}
+		},
+		"/planner/scrape/{runId}": {
+			"get": {
+				"operationId": "PlannerScraperController_getRun",
+				"parameters": [
+					{
+						"name": "runId",
+						"required": true,
+						"in": "path",
+						"description": "Planner scrape run id (uuid)",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Get Planner scrape run status and stats",
+				"tags": ["Planner Scrape"]
+			}
+		},
+		"/scraping/exports/docentes": {
+			"get": {
+				"operationId": "ScrapingExportsController_docentes",
+				"parameters": [
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": false,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Generate the docentes (staff) Excel from the latest Planner scrape",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/secciones": {
+			"get": {
+				"operationId": "ScrapingExportsController_secciones",
+				"parameters": [
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": false,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Generate the secciones (sections) Excel from the latest Planner scrape",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/alumnos-matriculados": {
+			"get": {
+				"operationId": "ScrapingExportsController_alumnosMatriculados",
+				"parameters": [
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": false,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/alumnos-secciones": {
+			"get": {
+				"operationId": "ScrapingExportsController_alumnosSecciones",
+				"parameters": [
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": false,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/grades-rc": {
+			"get": {
+				"operationId": "ScrapingExportsController_gradesRc",
+				"parameters": [
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": false,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, from the latest Banner scrape",
+				"tags": ["Scraping — Exports"]
+			}
 		}
 	},
 	"info": {
@@ -16800,6 +17232,83 @@
 					"roleId": { "type": "number", "example": 1 },
 					"moduleTypeId": { "type": "number", "example": 1 },
 					"permissionTypeId": { "type": "number", "example": 1 }
+				}
+			},
+			"RunScrapeDto": {
+				"type": "object",
+				"properties": {
+					"nivel": {
+						"type": "string",
+						"example": "UG",
+						"description": "Academic level. Defaults to UG."
+					},
+					"departamentos": {
+						"example": ["IN", "SI"],
+						"description": "Department codes to scrape. Defaults to every active program's departments.",
+						"type": "array",
+						"items": { "type": "string" }
+					}
+				}
+			},
+			"PlannerSessionStatusDto": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "string",
+						"example": "active",
+						"enum": ["active", "expiring", "expired", "not_configured"]
+					},
+					"tokenExp": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2026-08-09T14:10:35.000Z",
+						"nullable": true
+					}
+				},
+				"required": ["status", "tokenExp"]
+			},
+			"PlannerCredentialsResponseDto": {
+				"type": "object",
+				"properties": {
+					"username": { "type": "string", "example": "planner-operator", "nullable": true },
+					"configured": { "type": "boolean", "example": true },
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2026-08-08T02:10:35.000Z",
+						"nullable": true
+					}
+				},
+				"required": ["username", "configured", "updatedAt"]
+			},
+			"SavePlannerCredentialsDto": {
+				"type": "object",
+				"properties": {
+					"username": { "type": "string", "example": "planner-operator" },
+					"password": {
+						"type": "string",
+						"example": "the u-planner account password",
+						"format": "password",
+						"writeOnly": true,
+						"description": "Plaintext. Verified against u-planner before it is encrypted and stored."
+					}
+				},
+				"required": ["username", "password"]
+			},
+			"RunPlannerScrapeDto": {
+				"type": "object",
+				"properties": {
+					"nivel": {
+						"type": "string",
+						"example": "UG",
+						"description": "Academic level. Defaults to UG."
+					},
+					"cursos": {
+						"example": ["CS101", "CS102"],
+						"description": "Course codes to scrape. Defaults to every active course code.",
+						"type": "array",
+						"items": { "type": "string" }
+					}
 				}
 			}
 		}
