@@ -12068,7 +12068,9 @@
 							}
 						}
 					},
-					"400": { "description": "Bad request" },
+					"400": {
+						"description": "Bad request\n\nerror.planner.credentialsNotConfigured - no Planner credentials have been saved yet"
+					},
 					"500": { "description": "Internal server error" },
 					"503": { "description": "error.planner.unreachable" }
 				},
@@ -12115,7 +12117,9 @@
 							}
 						}
 					},
-					"400": { "description": "Bad request" },
+					"400": {
+						"description": "Bad request\n\nerror.planner.invalidCredentials - u-planner refused the pair; error.planner.verificationCooldown - a verification is in flight, or one was rejected in the last 30s; never a verdict on the submitted pair; error.validation - the request body failed DTO validation"
+					},
 					"500": { "description": "Internal server error" },
 					"503": { "description": "error.planner.unreachable" }
 				},
@@ -17226,7 +17230,22 @@
 					"permissionTypeId": { "type": "number", "example": 1 }
 				}
 			},
-			"RunScrapeDto": { "type": "object", "properties": {} },
+			"RunScrapeDto": {
+				"type": "object",
+				"properties": {
+					"nivel": {
+						"type": "string",
+						"example": "UG",
+						"description": "Academic level. Defaults to UG."
+					},
+					"departamentos": {
+						"example": ["IN", "SI"],
+						"description": "Department codes to scrape. Defaults to every active program's departments.",
+						"type": "array",
+						"items": { "type": "string" }
+					}
+				}
+			},
 			"PlannerSessionStatusDto": {
 				"type": "object",
 				"properties": {
@@ -17272,7 +17291,22 @@
 				},
 				"required": ["username", "password"]
 			},
-			"RunPlannerScrapeDto": { "type": "object", "properties": {} }
+			"RunPlannerScrapeDto": {
+				"type": "object",
+				"properties": {
+					"nivel": {
+						"type": "string",
+						"example": "UG",
+						"description": "Academic level. Defaults to UG."
+					},
+					"cursos": {
+						"example": ["CS101", "CS102"],
+						"description": "Course codes to scrape. Defaults to every active course code.",
+						"type": "array",
+						"items": { "type": "string" }
+					}
+				}
+			}
 		}
 	},
 	"security": [{ "bearer": [] }]
