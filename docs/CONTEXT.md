@@ -134,7 +134,10 @@ Every feature module follows this exact structure:
 └── <module>.module.ts
 ```
 
-**Exceptions:** `auth` (no entity, orchestrates via other modules) and `mail` (utility module, no controller/model).
+**Exceptions:** `auth` (no entity, orchestrates via other modules), `mail` (utility module, no
+controller/model), and `admin/scraping/credentials` (no controller — it is infrastructure consumed
+by the provider modules, whose own endpoints expose it; a generic endpoint here would be a second
+way to write the same row with different validation).
 
 **Admin modules:** Functionality that is an administrator responsibility (configuration, settings, templates, notification rules) lives under `modules/admin/<domain>/<module>` — e.g. `admin/ifc/notification-configs`. Each admin module still follows the standard layout above; only its location signals admin ownership. This grouping does not change the database: entities keep their original `@Entity({ schema, name })` (e.g. notification configs remain in the `ifc` schema), and raw SQL keeps referencing the original schema-qualified table.
 
@@ -180,18 +183,18 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 PostgreSQL, organised into schemas that mirror the module tree:
 
-| Schema          | Holds                                                                             |
-| --------------- | --------------------------------------------------------------------------------- |
-| `academic`      | periods, programmes, courses, sections, study plans, students, professors, grades |
-| `core`          | types, type groups, parameters, email templates, notification logs                |
-| `evaluation`    | projects, rubrics, questions, criteria, scores, evaluators                        |
-| `evidence`      | IFCs, ARDs, evaluations, instruments, surveys, outcome grades                     |
-| `organization`  | schools, faculties, campuses, charts, staff, users                                |
-| `improvement`   | findings, actions, plans and their links                                          |
-| `accreditation` | outcomes, commissions, accreditors, conversions                                   |
-| `survey`        | notification messages                                                             |
-| `ifc`           | IFC findings and statuses                                                         |
-| `audit`         | upload/rollback undo stacks (`fn_upload_*`, `fn_rollback_*`)                      |
+| Schema          | Holds                                                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `academic`      | periods, programmes, courses, sections, study plans, students, professors, grades                                                                                                                |
+| `core`          | types, type groups, parameters, email templates, notification logs, scraper credentials (password encrypted — see [ADR-001](./adr/ADR-001-external-system-credentials-encrypted-in-database.md)) |
+| `evaluation`    | projects, rubrics, questions, criteria, scores, evaluators                                                                                                                                       |
+| `evidence`      | IFCs, ARDs, evaluations, instruments, surveys, outcome grades                                                                                                                                    |
+| `organization`  | schools, faculties, campuses, charts, staff, users                                                                                                                                               |
+| `improvement`   | findings, actions, plans and their links                                                                                                                                                         |
+| `accreditation` | outcomes, commissions, accreditors, conversions                                                                                                                                                  |
+| `survey`        | notification messages                                                                                                                                                                            |
+| `ifc`           | IFC findings and statuses                                                                                                                                                                        |
+| `audit`         | upload/rollback undo stacks (`fn_upload_*`, `fn_rollback_*`)                                                                                                                                     |
 
 Configuration:
 
@@ -233,6 +236,13 @@ Key groups:
 - **Survey:** `SURVEY_BASE_URL`
 - **Other:** `PUPPETEER_EXECUTABLE_PATH`
 
+Scraper credentials are **not** environment configuration. Banner's and uPlanner's operator
+credentials live encrypted in `core.scraper_credentials` and are set through the API, so they can
+be rotated by the people who own the accounts without a deploy — see
+[ADR-001](./adr/ADR-001-external-system-credentials-encrypted-in-database.md). The Planner
+endpoint URLs (`PLANNER_LOGIN_API_URL`, `PLANNER_VALIDATE_URL`, `PLANNER_API_BASE`) and the
+session file path (`PLANNER_TOKEN_STORE_PATH`) remain environment variables.
+
 Use `configService.get<T>('KEY')` to read. Use `configService.getOrThrow<T>('KEY')` when the var is guaranteed to exist (avoids `!` assertions).
 
 `NODE_ENV` is one of `development | staging | production`. Swagger is served at `/docs` (and
@@ -253,13 +263,13 @@ Use these shared helpers — never redeclare them locally.
 
 ## External Integrations
 
-| System                 | Role                                                            | Reached via                     |
-| ---------------------- | --------------------------------------------------------------- | ------------------------------- |
-| **Banner**             | University system of record for enrolment, schedules and grades | Scraped into the raw datasource |
-| **uPlanner**           | Source of planning and grade data                               | Scraped into the raw datasource |
-| **Microsoft Entra ID** | Institutional sign-in                                           | MSAL (`@azure/msal-node`)       |
-| **AWS S3**             | Evidence and export file storage                                | `@aws-sdk/client-s3`            |
-| **SMTP**               | All outbound email                                              | `MailService` only              |
+| System                 | Role                                                            | Reached via                                                                                                                                                                                                                                              |
+| ---------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Banner**             | University system of record for enrolment, schedules and grades | Scraped into the raw datasource                                                                                                                                                                                                                          |
+| **uPlanner**           | Source of planning and grade data                               | Scraped into the raw datasource. Authenticated through u-planner's own HTTP API (a credential POST, then a token exchange) using credentials stored in `core.scraper_credentials` — **not** by driving a browser. Banner still needs one, because of 2FA |
+| **Microsoft Entra ID** | Institutional sign-in                                           | MSAL (`@azure/msal-node`)                                                                                                                                                                                                                                |
+| **AWS S3**             | Evidence and export file storage                                | `@aws-sdk/client-s3`                                                                                                                                                                                                                                     |
+| **SMTP**               | All outbound email                                              | `MailService` only                                                                                                                                                                                                                                       |
 
 ## Related repositories
 
@@ -307,6 +317,12 @@ These are acknowledged and intentionally not fixed:
 > Each of these is a decision with a cost, which is what an ADR exists to record. They are
 > listed here as current reality; promoting them to `docs/adr/` with their reasoning is
 > worthwhile when someone has the context to write the _why_.
+
+One related decision **has** been written up, and should be read before touching scraping
+credentials or `APP_SECRET`:
+[ADR-001 — Store external-system credentials in our database, encrypted under `APP_SECRET`](./adr/ADR-001-external-system-credentials-encrypted-in-database.md).
+Its consequence worth knowing here: rotating or losing `APP_SECRET` makes every stored scraper
+credential undecryptable, and there is no key-rotation mechanism.
 
 ## Business Rules
 

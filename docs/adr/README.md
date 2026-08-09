@@ -44,6 +44,10 @@ directory.
 
 ## Index
 
-_None yet._ Candidates already identified in
+| ADR                                                                       | Decision                                                                        | Status   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------- |
+| [ADR-001](./ADR-001-external-system-credentials-encrypted-in-database.md) | Store external-system credentials in our database, encrypted under `APP_SECRET` | Accepted |
+
+Further candidates are already identified in
 [CONTEXT.md § Security Decisions](../CONTEXT.md#security-decisions-accepted-risks) — each of
 those is a decision with a real cost, waiting for someone with the context to write the why.
