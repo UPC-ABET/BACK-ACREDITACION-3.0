@@ -44,16 +44,32 @@ describe('ScraperCredentialService', () => {
 			expect(stored).toMatch(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/);
 		});
 
-		it('trims the username before storing', async () => {
+		// Trimming is the caller's job, so that the value the validation accepted is provably the
+		// value stored. Trimming here instead would mean the two could differ.
+		it('stores the username verbatim', async () => {
 			mockRepo.upsertForProvider.mockResolvedValue({ id: 1 });
 
 			await buildService().save({
 				providerCode: SCRAPER_PROVIDER_CODES.PLANNER,
-				username: '  planner-operator  ',
+				username: 'planner-operator',
 				password: PLAINTEXT,
 			});
 
 			expect(mockRepo.upsertForProvider.mock.calls[0][1]).toBe('planner-operator');
+		});
+
+		// The public pre-check exists so a caller can refuse bad input before doing expensive or
+		// irreversible work, without reaching past this service into the module's core/ layer.
+		it('exposes the same rule as a pre-check that touches nothing', () => {
+			expect(() =>
+				buildService().assertSavable({
+					providerCode: SCRAPER_PROVIDER_CODES.PLANNER,
+					username: '   ',
+					password: PLAINTEXT,
+				}),
+			).toThrow(DomainError);
+
+			expect(mockRepo.upsertForProvider).not.toHaveBeenCalled();
 		});
 
 		it('rejects invalid input without touching the repository', async () => {

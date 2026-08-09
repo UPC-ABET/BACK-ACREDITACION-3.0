@@ -1,4 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { describeError } from 'src/libs/error.functions';
 import { EncryptService } from 'src/libs/encrypt.service';
 import { ScraperCredentialRepository } from '../core/scraper-credentials.repository';
 import { ScraperCredentialValidation } from '../core/scraper-credentials.validation';
@@ -19,12 +20,22 @@ export class ScraperCredentialService {
 		private readonly encryptService: EncryptService,
 	) {}
 
-	async save(input: SaveScraperCredentialInput): Promise<void> {
+	/**
+	 * The module's public pre-check, so a caller that must refuse bad input *before* doing expensive
+	 * or irreversible work does not have to reach past this service into `core/` for the validation
+	 * class. `save` applies it too, so the rule has one owner however it is entered.
+	 */
+	assertSavable(input: SaveScraperCredentialInput): void {
 		ScraperCredentialValidation.validateSave(input);
+	}
+
+	/** `username` is stored verbatim — trim before calling, so the value validated is the value stored. */
+	async save(input: SaveScraperCredentialInput): Promise<void> {
+		this.assertSavable(input);
 
 		await this.repository.upsertForProvider(
 			input.providerCode,
-			input.username.trim(),
+			input.username,
 			this.encryptService.encrypt(input.password),
 		);
 	}
@@ -65,9 +76,7 @@ export class ScraperCredentialService {
 			// The cause separates a changed APP_SECRET from a malformed or truncated ciphertext —
 			// otherwise the one log line sends an operator to rotate a key that was never the problem.
 			this.logger.error(
-				`Stored ${providerCode} credential could not be decrypted (APP_SECRET may have changed): ${
-					error instanceof Error ? error.message : 'unknown error'
-				}`,
+				`Stored ${providerCode} credential could not be decrypted (APP_SECRET may have changed): ${describeError(error)}`,
 			);
 			// A server misconfiguration, not a malformed request — 400 would blame the caller.
 			throw new ServiceUnavailableException(

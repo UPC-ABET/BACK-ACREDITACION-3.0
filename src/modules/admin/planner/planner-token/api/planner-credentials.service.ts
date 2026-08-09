@@ -1,19 +1,19 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { BadRequestError } from 'src/commons/domain-error';
 import { ScraperCredentialService } from 'src/modules/admin/scraping/credentials/api/scraper-credentials.service';
-import { ScraperCredentialValidation } from 'src/modules/admin/scraping/credentials/core/scraper-credentials.validation';
 import { SCRAPER_PROVIDER_CODES } from 'src/modules/admin/scraping/credentials/constants/scraper-provider-codes';
 import { PLANNER_LOGIN_WORST_CASE_MS, PlannerLoginClient } from '../core/planner-login.client';
 import {
 	PlannerLoginRejectedError,
 	PlannerLoginUnreachableError,
-} from '../model/session-expired.error';
+} from '../model/planner-session.errors';
+import { describeError } from 'src/libs/error.functions';
 import { plannerSessionValidationStrings } from '../config/strings/planner-session.validation';
 import {
 	PlannerCredentialsResponseDto,
 	PlannerSessionStatusDto,
-	SavePlannerCredentialsDto,
 } from '../model/planner-credentials.dtos';
+import { PlannerCredentialsValidation } from '../core/planner-credentials.validation';
 import { PlannerTokenService } from './planner-token.service';
 
 // This endpoint reports accepted / rejected / unreachable distinctly for caller-supplied values,
@@ -46,7 +46,8 @@ export class PlannerCredentialsService {
 	 * failed attempt untouched. Saving the new session last means no session obtained under the old
 	 * credentials is left *on disk*; one already in flight still returns to its own caller.
 	 */
-	async save(dto: SavePlannerCredentialsDto): Promise<PlannerSessionStatusDto> {
+	async save(body: unknown): Promise<PlannerSessionStatusDto> {
+		const dto = PlannerCredentialsValidation.parse(body);
 		const input = {
 			providerCode: SCRAPER_PROVIDER_CODES.PLANNER,
 			username: dto.username.trim(),
@@ -55,7 +56,7 @@ export class PlannerCredentialsService {
 		// Before the live call, not after it: a username that is only whitespace passes @Length on
 		// the untrimmed value, and sending it to u-planner would spend a real login attempt and arm
 		// the 30s penalty on an input we can refuse for free.
-		ScraperCredentialValidation.validateSave(input);
+		this.credentials.assertSavable(input);
 
 		const session = await this.verify(input.username, input.password);
 
@@ -82,11 +83,7 @@ export class PlannerCredentialsService {
 			// Logged here because nothing downstream can: every branch below throws an i18n key, and
 			// AllExceptionsFilter deliberately logs only messages that are *not* i18n keys. Without
 			// this the endpoint answers 400/503 with no server-side record of why.
-			this.logger.warn(
-				`Planner credential verification failed - ${
-					error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
-				}`,
-			);
+			this.logger.warn(`Planner credential verification failed - ${describeError(error)}`);
 
 			if (error instanceof PlannerLoginUnreachableError) {
 				// Transport-level, so an HTTP exception rather than a domain error: the credentials

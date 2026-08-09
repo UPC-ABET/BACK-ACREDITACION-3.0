@@ -1,12 +1,14 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ScraperCredentialService } from 'src/modules/admin/scraping/credentials/api/scraper-credentials.service';
 import { SCRAPER_PROVIDER_CODES } from 'src/modules/admin/scraping/credentials/constants/scraper-provider-codes';
+import { ScraperCredentialValidation } from 'src/modules/admin/scraping/credentials/core/scraper-credentials.validation';
+import type { SaveScraperCredentialInput } from 'src/modules/admin/scraping/credentials/model/scraper-credentials.dtos';
 import { PlannerLoginClient } from '../core/planner-login.client';
 
 import {
 	PlannerLoginRejectedError,
 	PlannerLoginUnreachableError,
-} from '../model/session-expired.error';
+} from '../model/planner-session.errors';
 import { plannerSessionValidationStrings } from '../config/strings/planner-session.validation';
 import { PlannerTokenSession } from '../model/planner-session.types';
 import { PlannerTokenService } from './planner-token.service';
@@ -23,7 +25,16 @@ const NEW_SESSION: PlannerTokenSession = {
 const PLAINTEXT = 'example-pw';
 const DTO = { username: 'planner-operator', password: PLAINTEXT };
 
-const mockCredentials = { save: jest.fn(), getSummary: jest.fn() };
+// `assertSavable` delegates to the real rule rather than a no-op: it is the pre-check that stops a
+// whitespace username reaching a live login, so stubbing it out would make those cases pass for the
+// wrong reason.
+const mockCredentials = {
+	save: jest.fn(),
+	getSummary: jest.fn(),
+	assertSavable: jest.fn((input: SaveScraperCredentialInput) =>
+		ScraperCredentialValidation.validateSave(input),
+	),
+};
 const mockLoginClient = { login: jest.fn() };
 const mockTokenService = { getStatus: jest.fn(), adoptSession: jest.fn() };
 
@@ -42,6 +53,9 @@ describe('PlannerCredentialsService', () => {
 		mockLoginClient.login.mockResolvedValue(NEW_SESSION);
 		mockCredentials.save.mockResolvedValue(undefined);
 		mockCredentials.getSummary.mockResolvedValue(undefined);
+		mockCredentials.assertSavable.mockImplementation((input: SaveScraperCredentialInput) =>
+			ScraperCredentialValidation.validateSave(input),
+		);
 		mockTokenService.adoptSession.mockReturnValue(undefined);
 		mockTokenService.getStatus.mockResolvedValue({
 			status: 'active',
@@ -69,7 +83,6 @@ describe('PlannerCredentialsService', () => {
 			});
 		});
 
-		// AC-7: a rejected login must leave no trace at all.
 		it('writes nothing when u-planner rejects the credentials', async () => {
 			mockLoginClient.login.mockRejectedValue(new PlannerLoginRejectedError('401'));
 
@@ -81,7 +94,6 @@ describe('PlannerCredentialsService', () => {
 			expect(mockTokenService.adoptSession).not.toHaveBeenCalled();
 		});
 
-		// An operator must never be told a correct password is wrong because u-planner was down.
 		it('distinguishes an unreachable u-planner from rejected credentials', async () => {
 			mockLoginClient.login.mockRejectedValue(new PlannerLoginUnreachableError('ECONNREFUSED'));
 
@@ -97,8 +109,7 @@ describe('PlannerCredentialsService', () => {
 			expect(mockTokenService.adoptSession).not.toHaveBeenCalled();
 		});
 
-		// AC-10: no session obtained under the old credentials may survive the write. Handing it to
-		// the token service rather than the store keeps one writer and clears the refresh cooldown.
+		// Routed through the token service rather than the store: one writer, and it clears the cooldown.
 		it('hands the freshly obtained session to the token service', async () => {
 			await buildService().save(DTO);
 
@@ -140,6 +151,33 @@ describe('PlannerCredentialsService', () => {
 			expect(mockCredentials.save.mock.calls[0][0].username).toBe('planner-operator');
 		});
 
+		// Refused for free, before a live login attempt is spent on it and before the 30s penalty is
+		// armed against every other operator.
+		it.each([
+			['only whitespace', '   '],
+			['empty', ''],
+		])('refuses a username that is %s without contacting u-planner', async (_label, username) => {
+			await expect(buildService().save({ username, password: PLAINTEXT })).rejects.toBeDefined();
+
+			expect(mockLoginClient.login).not.toHaveBeenCalled();
+			expect(mockCredentials.save).not.toHaveBeenCalled();
+		});
+
+		// The type guarantee cannot come from the DTO: the global pipe's implicit conversion
+		// stringifies before any validator runs, so this would otherwise be spent on a real login as
+		// the literal "[object Object]".
+		it.each([
+			['an object', { a: 1 }],
+			['a number', 12345],
+		])('refuses a password that is %s without contacting u-planner', async (_label, password) => {
+			await expect(
+				buildService().save({ username: 'planner-operator', password }),
+			).rejects.toBeDefined();
+
+			expect(mockLoginClient.login).not.toHaveBeenCalled();
+			expect(mockCredentials.save).not.toHaveBeenCalled();
+		});
+
 		it('never puts the password in the thrown error', async () => {
 			mockLoginClient.login.mockRejectedValue(new PlannerLoginRejectedError('401'));
 
@@ -148,6 +186,68 @@ describe('PlannerCredentialsService', () => {
 				.catch((e: unknown) => e);
 
 			expect(JSON.stringify(error)).not.toContain(PLAINTEXT);
+		});
+	});
+
+	/**
+	 * Every branch here throws an i18n key, and `AllExceptionsFilter` deliberately logs only messages
+	 * that are *not* i18n keys — so without a logger of its own this endpoint answers 400/503 with no
+	 * server-side record at all. That is the failure the whole change exists to remove, and it was
+	 * reintroduced on the endpoint the change added.
+	 */
+	describe('failure paths are never silent', () => {
+		let logged: unknown[];
+
+		beforeEach(() => {
+			logged = [];
+			const collect = (...args: unknown[]) => void logged.push(...args);
+			for (const level of ['log', 'warn', 'error', 'debug', 'verbose'] as const) {
+				jest.spyOn(Logger.prototype, level).mockImplementation(collect);
+			}
+		});
+
+		afterEach(() => {
+			// Guards the guard: a case that logs nothing passes the secret checks while proving nothing.
+			expect(logged.length).toBeGreaterThan(0);
+
+			const output = logged.join(' ');
+			expect(output).not.toContain(PLAINTEXT);
+			expect(output).not.toContain(NEW_SESSION.accessToken);
+			expect(output).not.toContain(NEW_SESSION.refreshToken);
+		});
+
+		afterEach(() => jest.restoreAllMocks());
+
+		it('logs why a rejected pair was refused', async () => {
+			mockLoginClient.login.mockRejectedValue(
+				new PlannerLoginRejectedError('Planner rejected the login (401)'),
+			);
+
+			await expect(buildService().save(DTO)).rejects.toBeDefined();
+
+			expect(logged.join(' ')).toContain('Planner rejected the login (401)');
+		});
+
+		it('logs why an unreachable u-planner produced a 503', async () => {
+			mockLoginClient.login.mockRejectedValue(
+				new PlannerLoginUnreachableError('Planner did not answer at https://example.test'),
+			);
+
+			await expect(buildService().save(DTO)).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+			expect(logged.join(' ')).toContain('did not answer');
+		});
+
+		it('logs when the throttle short-circuits an attempt', async () => {
+			mockLoginClient.login.mockRejectedValue(new PlannerLoginRejectedError('401'));
+			const service = buildService();
+
+			await expect(service.save(DTO)).rejects.toBeDefined();
+			await expect(service.save(DTO)).rejects.toMatchObject({
+				messageKey: plannerSessionValidationStrings.error.verificationCooldown,
+			});
+
+			expect(logged.join(' ')).toContain('short-circuited by the throttle');
 		});
 	});
 
@@ -188,8 +288,6 @@ describe('PlannerCredentialsService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
-		// The window runs from the response, not from entry — a slow rejection must still cost a
-		// full penalty rather than whatever is left of the claim it was holding.
 		it('measures the penalty from the rejection, not from the request', async () => {
 			jest.useFakeTimers({ doNotFake: ['performance'] });
 			try {
@@ -276,7 +374,6 @@ describe('PlannerCredentialsService', () => {
 		// above prevents — but the ownership guards are what stop that becoming a security hole if it
 		// ever does, so they are pinned independently of the sizing that makes them unreachable.
 		describe('claim ownership', () => {
-			// A slow rejection arms a penalty, then a concurrent success finishes and releases.
 			it('does not let a later success erase a penalty another attempt armed', async () => {
 				jest.useFakeTimers({ doNotFake: ['performance'] });
 				try {

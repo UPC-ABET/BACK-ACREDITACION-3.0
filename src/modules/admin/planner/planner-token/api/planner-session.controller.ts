@@ -1,8 +1,7 @@
-import { Body, HttpCode, HttpStatus, ValidationPipe } from '@nestjs/common';
+import { Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
-import { SavePlannerCredentialsDto } from '../model/planner-credentials.dtos';
 import { PlannerCredentialsService } from './planner-credentials.service';
 import { PlannerTokenService } from './planner-token.service';
 import {
@@ -43,25 +42,16 @@ export class PlannerSessionController {
 	}
 
 	/**
-	 * The pipe is route-scoped for one option: the global one sets
-	 * `transformOptions.enableImplicitConversion`, which coerces *before* `@IsString()` runs, so
-	 * `{"password": {"a": 1}}` would validate as the string `"[object Object]"` — and this endpoint
-	 * spends a real u-planner login attempt on whatever it is given.
+	 * Typed as `unknown` on purpose, so the global pipe has no metatype to validate and leaves the
+	 * body untouched. `PlannerCredentialsValidation.parse` then validates it with implicit
+	 * conversion off — the only way to see that `password` was an object rather than the string
+	 * `"[object Object]"` the global pipe would have produced. Swagger still documents the real
+	 * shape, from the `body:` on the decorator factory.
 	 */
 	@SwaggerPlannerCredentialsSave()
 	@HttpCode(HttpStatus.OK)
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.POST })
-	async saveCredentials(
-		@Body(
-			new ValidationPipe({
-				whitelist: true,
-				forbidNonWhitelisted: true,
-				transform: true,
-				transformOptions: { enableImplicitConversion: false },
-			}),
-		)
-		dto: SavePlannerCredentialsDto,
-	) {
-		return parseSuccessResponse(await this.credentialsService.save(dto));
+	async saveCredentials(@Body() body: unknown) {
+		return parseSuccessResponse(await this.credentialsService.save(body));
 	}
 }
