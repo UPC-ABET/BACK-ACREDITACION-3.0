@@ -4,7 +4,7 @@ import {
 	PlannerLoginRejectedError,
 	PlannerLoginUnreachableError,
 	PlannerSessionExpiredError,
-} from '../model/session-expired.error';
+} from '../model/planner-session.errors';
 import { plannerSessionValidationStrings } from '../config/strings/planner-session.validation';
 import { PlannerLoginClient } from '../core/planner-login.client';
 import { PlannerSessionStore } from '../core/planner-session.store';
@@ -80,8 +80,6 @@ describe('PlannerTokenService', () => {
 			);
 		});
 
-		// The production wedge: the old code preferred a refresh-token call whenever the refresh
-		// token was still in date, and that call could never succeed. There must be no such branch.
 		it('performs a full login when the access token is dead but the refresh token is still valid', async () => {
 			mockStore.read.mockReturnValue(session(-1 * MINUTE, 2 * HOUR));
 
@@ -113,6 +111,17 @@ describe('PlannerTokenService', () => {
 			} finally {
 				error.mockRestore();
 			}
+		});
+
+		// Any string satisfies the store's shape check, so a hand-edited or partly-corrupt expiry
+		// reaches the comparison as NaN. Without the finite guard every comparison against it is
+		// false, and the session is treated as usable-but-never-refreshable.
+		it('treats an unparseable expiry as expired rather than as infinite', async () => {
+			mockStore.read.mockReturnValue({ ...freshSession(), accessTokenExpiresAt: 'not-a-date' });
+
+			await buildService().getValidSession();
+
+			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
 		it('logs in when the access token is inside the refresh skew', async () => {
@@ -228,12 +237,9 @@ describe('PlannerTokenService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(2);
 		});
 
-		// A settling predecessor must not clear the slot a chained flight now owns, or the next
-		// caller starts a third login instead of joining the one already running.
-		//
-		// The flush has to be a macrotask: two microtask ticks are not enough for the predecessor's
-		// promise to settle, so the `.finally` this test is named after would not have run and the
-		// assertion would hold whether the identity guard were there or not.
+		// The flush must be a macrotask: two microtask ticks are not enough for the predecessor to
+		// settle, so the `.finally` under test would not have run and the assertion would hold either
+		// way.
 		it('does not let a settled predecessor clear the chained flight', async () => {
 			// Inside the skew, so the chained forced flight is not satisfied by it and really runs.
 			const nearlyDead = { ...session(30_000, 2 * HOUR), accessToken: 'example-nearly-dead' };
@@ -319,8 +325,10 @@ describe('PlannerTokenService', () => {
 			});
 		});
 
+		// A second past the expiry, not a minute: a looser boundary would report a lapsed token as
+		// `expiring`, which the frontend renders as still usable.
 		it('reports expired once the access token has lapsed', async () => {
-			mockStore.read.mockReturnValue(session(-1 * MINUTE, 2 * HOUR));
+			mockStore.read.mockReturnValue(session(-1_000, 2 * HOUR));
 
 			await expect(buildService().getStatus()).resolves.toMatchObject({ status: 'expired' });
 		});
@@ -362,9 +370,6 @@ describe('PlannerTokenService', () => {
 			debug = jest.spyOn(Logger.prototype, 'debug');
 		});
 
-		// Runs after EVERY case in this block, so each failure path proves the absence itself. A
-		// single dedicated test cannot: the log statements live on the failure paths, so a test
-		// driving a success asserts against no output at all.
 		afterEach(() => {
 			// Guards the guard: a case that logs nothing passes all four assertions below while
 			// proving nothing.
@@ -406,6 +411,36 @@ describe('PlannerTokenService', () => {
 			expect(logged.join(' ')).toContain('rejected at 401');
 		});
 
+		// The failure an operator most needs the log line for, and the one an `instanceof
+		// PlannerSessionExpiredError` check no longer covers now that unreachable is outside that
+		// hierarchy — so if the guard here narrows, a mid-scrape outage goes silent again.
+		it('logs an unreachable u-planner reached through the scrape path', async () => {
+			mockStore.read.mockReturnValue(null);
+			mockLoginClient.login.mockRejectedValue(
+				new PlannerLoginUnreachableError('Planner did not answer at https://example.test'),
+			);
+
+			await expect(buildService().getValidSession()).rejects.toBeInstanceOf(
+				PlannerLoginUnreachableError,
+			);
+
+			expect(logged.join(' ')).toContain('did not answer');
+		});
+
+		it('logs when a login is discarded because the credentials changed under it', async () => {
+			const newAccount = { ...freshSession(), accessToken: 'example-new-account-token' };
+			const service = buildService();
+			mockLoginClient.login.mockImplementation(() => {
+				mockStore.save.mockImplementation(() => mockStore.read.mockReturnValue(newAccount));
+				service.adoptSession(newAccount);
+				return Promise.resolve({ ...freshSession(), accessToken: 'example-old-account-token' });
+			});
+
+			await service.getValidSession();
+
+			expect(logged.join(' ')).toContain('superseded by a credential change');
+		});
+
 		it('logs when credentials vanish between the check and the login', async () => {
 			mockStore.read.mockReturnValue(null);
 			mockCredentials.getDecrypted.mockResolvedValue(null);
@@ -430,9 +465,6 @@ describe('PlannerTokenService', () => {
 			expect(mockLoginClient.login).toHaveBeenCalledTimes(1);
 		});
 
-		// Drives both statements that exist — the warn in login()'s catch and the debug in the
-		// cooldown branch — with a real session on disk, so the shared afterEach has actual output
-		// to inspect rather than an empty array.
 		it('emits both failure log lines without leaking a secret', async () => {
 			mockStore.read.mockReturnValue(freshSession());
 			mockLoginClient.login.mockRejectedValue(new PlannerLoginRejectedError('401'));

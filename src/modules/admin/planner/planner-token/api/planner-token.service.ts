@@ -5,10 +5,11 @@ import { SCRAPER_PROVIDER_CODES } from 'src/modules/admin/scraping/credentials/c
 import { PLANNER_LOGIN_WORST_CASE_MS, PlannerLoginClient } from '../core/planner-login.client';
 import { PlannerSessionStore } from '../core/planner-session.store';
 import {
-	isPlannerLoginError,
+	isPlannerSessionFailure,
 	PlannerLoginUnreachableError,
 	PlannerSessionExpiredError,
-} from '../model/session-expired.error';
+} from '../model/planner-session.errors';
+import { describeError } from 'src/libs/error.functions';
 import { plannerSessionValidationStrings } from '../config/strings/planner-session.validation';
 import { PlannerSessionStatus, PlannerTokenSession } from '../model/planner-session.types';
 
@@ -40,10 +41,10 @@ export class PlannerTokenService {
 	private flight: { promise: Promise<PlannerTokenSession>; forced: boolean } | null = null;
 	private lastFailure: RefreshFailure | null = null;
 	private sessionGeneration = 0;
-	// The store file is a cache that survives restarts, not the only copy. Holding the adopted
-	// session here as well is what stops an unwritable disk costing a fresh institutional login on
-	// every single request — see adoptSession.
-	private adoptedSession: PlannerTokenSession | null = null;
+	// Cleared the moment a write succeeds, so the file stays authoritative. A permanent copy would
+	// shadow it for the process lifetime: replacing the store file would do nothing, and `getStatus`
+	// would report a session that is not on disk as `active`.
+	private unpersistedSession: PlannerTokenSession | null = null;
 
 	constructor(
 		private readonly store: PlannerSessionStore,
@@ -86,12 +87,12 @@ export class PlannerTokenService {
 	}
 
 	/**
-	 * The adopted session wins over the file. Within one process it is always at least as new — it
-	 * is set by the same call that attempts the write — so preferring it is what makes a failed
-	 * write a lost cache rather than a lost session.
+	 * The file is authoritative. The in-memory copy is consulted only when a write failed, which is
+	 * the one case where it is newer than the disk — so an unwritable disk costs the cross-restart
+	 * cache rather than the session, without the file ceasing to mean anything.
 	 */
 	private readSession(): PlannerTokenSession | null {
-		return this.adoptedSession ?? this.store.read();
+		return this.store.read() ?? this.unpersistedSession;
 	}
 
 	/**
@@ -120,7 +121,7 @@ export class PlannerTokenService {
 			// already rejected server-side, which the cached fast path would report as healthy.
 			await this.ensureSession(true);
 		} catch (error) {
-			if (isPlannerLoginError(error) || error instanceof PlannerSessionExpiredError) {
+			if (isPlannerSessionFailure(error)) {
 				const failure: RefreshFailure = {
 					atMs: Date.now(),
 					unreachable: error instanceof PlannerLoginUnreachableError,
@@ -242,9 +243,6 @@ export class PlannerTokenService {
 	 * recognise that its result is stale and decline to overwrite this one.
 	 */
 	adoptSession(session: PlannerTokenSession): void {
-		// Held before the write is attempted, so the generation below is truthful either way: the
-		// session is adopted the moment it is in memory, whether or not it reaches disk.
-		this.adoptedSession = session;
 		this.persist(session);
 		this.sessionGeneration += 1;
 		this.lastFailure = null;
@@ -255,14 +253,19 @@ export class PlannerTokenService {
 	 * throwing here would lose a session u-planner had already granted — and because the scraper
 	 * continues past a per-course failure, the next request would log in again, and the next, at one
 	 * institutional authentication per request until the disk recovered.
+	 *
+	 * The fallback is cleared on success rather than merely overwritten: leaving it set would let it
+	 * outlive the failure that justified it and shadow the file for the rest of the process.
 	 */
 	private persist(session: PlannerTokenSession): void {
 		try {
 			this.store.save(session);
+			this.unpersistedSession = null;
 		} catch (error) {
+			this.unpersistedSession = session;
 			this.logger.error(
 				`Planner session could not be persisted; it is held in memory only and will not ` +
-					`survive a restart - ${error instanceof Error ? error.message : 'unknown error'}`,
+					`survive a restart - ${describeError(error)}`,
 			);
 		}
 	}
@@ -295,7 +298,7 @@ export class PlannerTokenService {
 		} catch (error) {
 			// Logged here rather than in refresh() so that scrape-time failures — which reach this
 			// through getValidSession() and never touch refresh() — are not silent.
-			if (isPlannerLoginError(error) || error instanceof PlannerSessionExpiredError) {
+			if (isPlannerSessionFailure(error)) {
 				this.logger.warn(`Planner login failed - ${error.name}: ${error.message}`);
 			}
 			throw error;

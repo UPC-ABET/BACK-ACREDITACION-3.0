@@ -1,17 +1,20 @@
 // Planner (u-planner) token session, persisted to the token store file. Unlike Banner, Planner
 // has no manual "stopper" and no refresh path — an expired access token is replaced by a fresh
 // two-call login.
+// `readonly` because one instance is shared: concurrent callers of `getValidSession` all receive
+// the object the single flight resolved with, so an in-place edit anywhere would rewrite the token
+// every other caller is using.
 export interface PlannerTokenSession {
-	userId: number;
-	accessToken: string;
-	accessTokenExpiresAt: string; // ISO
+	readonly userId: number;
+	readonly accessToken: string;
+	readonly accessTokenExpiresAt: string; // ISO
 
 	/**
 	 * Kept for diagnostics only — nothing renews with it, deliberately (see PlannerTokenService).
 	 * Optional so a change in u-planner's response cannot fail a login over a field we do not use.
 	 */
-	refreshToken?: string;
-	refreshTokenExpiresAt?: string | null; // ISO
+	readonly refreshToken?: string;
+	readonly refreshTokenExpiresAt?: string | null; // ISO
 }
 
 /**
