@@ -5,6 +5,7 @@ import {
 	PlannerLoginUnreachableError,
 } from '../model/planner-session.errors';
 import { PlannerTokenSession } from '../model/planner-session.types';
+import { unwrapBase64Body } from '../../shared/planner-wire.functions';
 
 const DEFAULT_LOGIN_API_URL = 'https://upc-e2g-post-api.u-planner.com/api/user-api';
 const DEFAULT_VALIDATE_URL = 'https://upc-e2g-post-api.u-planner.com/api/user-api/validate';
@@ -41,6 +42,14 @@ const MAX_CAUSE_DEPTH = 4;
 const MAX_PROVIDER_MESSAGE_CHARS = 200;
 
 /**
+ * A login envelope is a few hundred bytes; the reply to a credential POST has no legitimate reason
+ * to approach this. The read itself is bounded only by the abort timeout, which caps how long a
+ * body may take to arrive but not how large it may be — and the unwrap below decodes and re-parses
+ * whatever arrives, so an unbounded body costs several times its own size in peak memory.
+ */
+const MAX_BODY_BYTES = 256 * 1024;
+
+/**
  * The only artefact of a transport failure an operator ever sees is the log line built from this,
  * so DNS, TLS, the abort timeout and a refused redirect have to remain distinguishable. The chain
  * has to be walked to achieve that: undici reports all four as `TypeError: fetch failed` and puts
@@ -63,9 +72,10 @@ const cause = (error: unknown): string => {
  * The u-planner login, as the SPA itself performs it: a credential POST that returns a
  * short-lived pre-auth token, then an exchange of that token for the real session.
  *
- * The failure shape was never captured from the live system, so this fails closed: anything
- * missing that is load-bearing — `token`, `user.id` — is a rejection, never a session built from
- * partial data. Fields nothing reads are recorded when present and ignored when absent.
+ * The rejection shape was captured live on 2026-08-09 (a 200 carrying a base64-wrapped
+ * `status: false`); the success shape still has not been, so this fails closed: anything missing
+ * that is load-bearing — `token`, `user.id` — is a rejection, never a session built from partial
+ * data. Fields nothing reads are recorded when present and ignored when absent.
  */
 @Injectable()
 export class PlannerLoginClient {
@@ -173,6 +183,12 @@ export class PlannerLoginClient {
 			);
 		}
 
+		if (text.length > MAX_BODY_BYTES) {
+			throw new PlannerLoginUnreachableError(
+				`Planner returned an oversized body (${response.status}, ${text.length} bytes)`,
+			);
+		}
+
 		// Unreachable, not rejected, on both of these: a 2xx that is not JSON is a WAF, a captive
 		// proxy or a maintenance page answering for u-planner, which says nothing about the pair.
 		// Calling it a rejection returns 400 and arms the penalty, so every operator is rate-limited
@@ -186,19 +202,30 @@ export class PlannerLoginClient {
 			);
 		}
 
-		// `JSON.parse('null')` succeeds and would then blow up on the property reads below.
-		if (!isRecord(parsed)) {
+		const body = unwrapBase64Body(parsed);
+		// `JSON.parse('null')` succeeds, and a body that could not be unwrapped is returned as the
+		// string it was given — both would blow up on the property reads below.
+		if (!isRecord(body)) {
 			throw new PlannerLoginUnreachableError(
-				`Planner returned a non-object response (${response.status})`,
+				`Planner returned a non-object response (${response.status}, ${typeof parsed})`,
 			);
 		}
-		const body = parsed;
 
 		if (!response.ok) {
 			throw new PlannerLoginRejectedError(
 				`Planner rejected the login (${response.status})${this.providerMessage(body)}`,
 			);
 		}
+		/**
+		 * Deliberately a catch-all, and the one place worth knowing it. Every LDAP verdict arrives
+		 * here as `status: false` — wrong password (`data 52e`), locked (`775`), disabled (`533`),
+		 * expired (`532`) — and so, presumably, would a directory-side fault, which is not a
+		 * credential verdict at all. Narrowing on the payload's `error` code would need the code
+		 * for each condition, and only `52e` has been observed; anything unrecognised would then
+		 * fall back to unreachable, which is exactly the 503-for-a-wrong-password defect this
+		 * classification exists to prevent. Rejecting by default keeps the common case right and
+		 * costs a mistaken 400 on a fault nobody has seen yet.
+		 */
 		if (body.status === false) {
 			throw new PlannerLoginRejectedError(
 				`Planner rejected the login${this.providerMessage(body)}`,
@@ -208,16 +235,22 @@ export class PlannerLoginClient {
 	}
 
 	/**
-	 * Response-side only. The request body holds the encoded password and must never be echoed.
+	 * Response-side only, and `message` only. The request body holds the encoded password and must
+	 * never be echoed; the rest of the payload is not read either, so the directory internals
+	 * u-planner returns alongside it (an `LdapErr` code, the resolved account name) stay out of our
+	 * logs. Widening this to another field would put both there.
 	 *
-	 * Truncated because this is the one path by which text from outside our process reaches our
-	 * logs: a verbose or compromised upstream could otherwise echo the submitted credential back,
-	 * or write unbounded volume into an aggregated log store.
+	 * Truncated and stripped of control characters because this is the one path by which text from
+	 * outside our process reaches our logs: a verbose or compromised upstream could otherwise write
+	 * unbounded volume into an aggregated log store, or forge an extra line with an embedded
+	 * newline and make it look like ours.
 	 */
 	private providerMessage(body: JsonBody): string {
-		return typeof body.message === 'string' && body.message.length > 0
-			? `: ${body.message.slice(0, MAX_PROVIDER_MESSAGE_CHARS)}`
-			: '';
+		if (typeof body.message !== 'string' || body.message.length === 0) return '';
+		const message = body.message
+			.replace(/[\p{Cc}\p{Cf}]+/gu, ' ')
+			.slice(0, MAX_PROVIDER_MESSAGE_CHARS);
+		return `: ${message}`;
 	}
 
 	private optionalExpFromJwt(jwt: string): string | null {
