@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
+import type { Response } from 'express';
+
+import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
@@ -9,6 +12,7 @@ import {
 	alumnoMatriculadoExportLabels,
 	alumnoSeccionExportLabels,
 	docenteExportLabels,
+	gradesRcDescriptiveLabels,
 	gradesRcExportLabels,
 	seccionExportLabels,
 } from '../model/scraping-exports.labels';
@@ -72,21 +76,106 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateGradesRc(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+	// Streamed straight to the response instead of going through buildExcel: a full period can be
+	// hundreds of thousands of rows (Banner + Planner merged), and buildExcel's in-memory Workbook +
+	// writeBuffer() held three full copies of the dataset at once (row array, ExcelJS sheet model,
+	// final xlsx Buffer), which OOM-crashed the process on a real period. WorkbookWriter discards
+	// each row's in-memory representation as soon as it's committed to the stream, so memory stays
+	// bounded by the row array alone.
+	async streamGradesRc(
+		academicPeriodId: number,
+		lang: string | undefined,
+		res: Response,
+	): Promise<void> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
 		const rows = await this.gradesRcRepository.getGradesRcRows(academicPeriodId);
-		const data = rows.map((r) => [
-			r.sectionCode,
-			r.studentCode,
-			r.gradeTypeCode,
-			r.gradeTypePercentage,
-			r.grade,
-			r.qualificationStatusCode,
-		]);
-		return this.buildExcel(labels, data);
+
+		const encoded = encodeURIComponent(labels.fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${labels.fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		// No Content-Length: the file size isn't known until the stream finishes.
+
+		const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res, useStyles: true });
+
+		// Sheet order is load-bearing: the RC bulk upload parses worksheets[0] positionally, so the
+		// upload-shaped sheet must stay first and the descriptive one must come after. The writer
+		// streams sheets in creation order and a committed sheet cannot be reopened.
+		// Both sheets describe the same rows; the query already scoped them to sections the app knows.
+		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
+		for (const r of rows) {
+			uploadSheet
+				.addRow([
+					r.sectionCode,
+					r.studentCode,
+					r.gradeTypeCode,
+					r.gradeTypePercentage,
+					r.grade,
+					r.qualificationStatusCode,
+				])
+				.commit();
+		}
+		uploadSheet.commit();
+
+		const descriptive = this.resolveLabels(gradesRcDescriptiveLabels, lang);
+		// The observations are full sentences addressed to whoever reviews the file, so the last
+		// column is given room to hold one instead of the header-sized width the others get.
+		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
+			[descriptive.headers.length]: 90,
+		});
+		for (const r of rows) {
+			detailSheet
+				.addRow([
+					r.academicPeriod,
+					r.sectionCode,
+					r.courseCode,
+					r.courseName,
+					r.studentCode,
+					r.studentName,
+					r.gradeTypeCode,
+					r.gradeTypeName,
+					r.gradeTypePercentage,
+					r.grade,
+					r.qualificationStatusCode,
+					r.qualificationStatusName,
+					r.source,
+					r.scrapedAt,
+					(r.observations ?? []).map((code) => descriptive.observations[code] ?? code).join(' | '),
+				])
+				.commit();
+		}
+		detailSheet.commit();
+
+		await workbook.commit();
 	}
 
-	private resolveLabels(map: Record<string, ExportLabels>, lang?: string): ExportLabels {
+	// Same red bold header as buildExcel, against the streaming writer. Column widths have to be set
+	// before the first commit -- the writer seals the sheet's metadata once rows start flowing.
+	private startSheet(
+		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
+		name: string,
+		headers: string[],
+		wideColumns: Record<number, number> = {},
+	): ExcelJS.Worksheet {
+		const sheet = workbook.addWorksheet(name);
+		sheet.columns = headers.map((header, index) =>
+			wideColumns[index + 1]
+				? { width: wideColumns[index + 1], style: { alignment: { wrapText: true } } }
+				: { width: header.length + 2 },
+		);
+
+		const headerRow = sheet.addRow(headers);
+		headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+		headerRow.eachCell((cell) => {
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+		});
+		headerRow.commit();
+		return sheet;
+	}
+
+	private resolveLabels<T>(map: Record<string, T>, lang?: string): T {
 		return lang && map[lang] ? map[lang] : map[DEFAULT_TEMPLATE_LANGUAGE];
 	}
 

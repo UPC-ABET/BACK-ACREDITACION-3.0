@@ -5,7 +5,11 @@ import { DataSource } from 'typeorm';
 import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 
 import { GradeRcExportRow } from '../model/scraping-exports.types';
-import { DESIGNATED_GRADE_TYPES_SQL, GRADES_RC_SQL } from './grades-rc-export.sql';
+import {
+	DESIGNATED_GRADE_TYPES_SQL,
+	GRADES_RC_SQL,
+	UPLOADED_SECTIONS_SQL,
+} from './grades-rc-export.sql';
 import { EXPORTS_RAW_CONNECTION, resolveAcademicPeriodCode } from './scraping-exports.repository';
 
 export interface DesignatedGradeTypeRow {
@@ -34,13 +38,15 @@ export class GradesRcExportRepository {
 		@InjectDataSource() private readonly mainDataSource: DataSource,
 	) {}
 
-	async getGradesRcRows(academicPeriodId: number | null): Promise<GradeRcExportRow[]> {
-		const [period, gradeTypes, qualificationStatuses, designated] = await Promise.all([
-			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
-			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
-			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
-			this.getDesignatedGradeTypesBySection(academicPeriodId),
-		]);
+	async getGradesRcRows(academicPeriodId: number): Promise<GradeRcExportRow[]> {
+		const [period, gradeTypes, qualificationStatuses, designated, uploadedSections] =
+			await Promise.all([
+				resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
+				this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
+				this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
+				this.getDesignatedGradeTypesBySection(academicPeriodId),
+				this.getUploadedSectionCodes(academicPeriodId),
+			]);
 
 		return await this.rawDataSource.query(GRADES_RC_SQL, [
 			period,
@@ -52,16 +58,28 @@ export class GradesRcExportRepository {
 			designated.map((row) => row.gradeTypeCode),
 			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
 			TYPE_CODES.QUALIFICATION_STATUS.SAN,
+			uploadedSections,
+			TYPE_CODES.QUALIFICATION_STATUS.RET,
 		]);
 	}
 
 	// Not a filter on the export: sections missing here (not uploaded yet, or with no designated
 	// type configured) simply behave as "designated type absent", which arms the fallback.
 	async getDesignatedGradeTypesBySection(
-		academicPeriodId: number | null,
+		academicPeriodId: number,
 	): Promise<DesignatedGradeTypeRow[]> {
-		if (academicPeriodId == null) return [];
 		return await this.mainDataSource.query(DESIGNATED_GRADE_TYPES_SQL, [academicPeriodId]);
+	}
+
+	// Sections the app knows for the period. Grades of any other section stay out of the upload
+	// sheet (they would make the RC upload reject the whole file) and are reported in the
+	// descriptive sheet instead.
+	async getUploadedSectionCodes(academicPeriodId: number): Promise<string[]> {
+		const rows: Array<{ sectionCode: string }> = await this.mainDataSource.query(
+			UPLOADED_SECTIONS_SQL,
+			[academicPeriodId],
+		);
+		return rows.map((row) => row.sectionCode);
 	}
 
 	// name (es, uppercased) -> code, for every active type in the given group (main DB).

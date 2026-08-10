@@ -23,11 +23,15 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 					])
 				: Promise.resolve([{ name: 'RET', code: 'TG404-T005' }]);
 		}
-		if (sql.includes('course_sections')) {
+		// Both section queries read course_sections; only the designated one joins the study plans.
+		if (sql.includes('study_plan_courses')) {
 			return Promise.resolve([
 				{ sectionCode: 'NRC1', gradeTypeCode: 'TG205-T001' },
 				{ sectionCode: 'NRC2', gradeTypeCode: 'TG205-T002' },
 			]);
+		}
+		if (sql.includes('course_sections')) {
+			return Promise.resolve([{ sectionCode: 'NRC1' }, { sectionCode: 'NRC2' }]);
 		}
 		throw new Error(`unexpected main query: ${sql}`);
 	};
@@ -52,6 +56,7 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 		expect(params[6]).toEqual(['TG205-T001', 'TG205-T002']);
 		expect(params[7]).toBe('TG404-T001');
 		expect(params[8]).toBe('TG404-T006');
+		expect(params[9]).toEqual(['NRC1', 'NRC2']);
 	});
 
 	it('returns the raw rows untouched: the whole transformation is in SQL', async () => {
@@ -68,26 +73,30 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 		await expect(repo.getGradesRcRows(1)).resolves.toEqual([row]);
 	});
 
-	it('exports every section with an empty designated map when no period is given', async () => {
-		await repo.getGradesRcRows(null);
-
-		expect(mainQuery).not.toHaveBeenCalledWith(
-			expect.stringContaining('course_sections'),
-			expect.anything(),
+	// The loaded sections are what keeps a grade out of the upload sheet, so they have to reach the
+	// raw query even when the period has none — an empty array means "nothing is loaded", not
+	// "skip the check".
+	it('ships an empty loaded-sections array when the period has no sections yet', async () => {
+		mainQuery.mockImplementation((sql: string, params: unknown[]) =>
+			sql.includes('study_plan_courses') || sql.includes('course_sections')
+				? Promise.resolve([])
+				: mainQueryFake(sql, params),
 		);
+
+		await repo.getGradesRcRows(1);
+
 		const [, params] = rawQuery.mock.calls[0];
-		expect(params[0]).toBeNull();
-		expect(params[5]).toEqual([]);
-		expect(params[6]).toEqual([]);
+		expect(params[9]).toEqual([]);
 	});
 
-	// A run left in 'running' or 'failed' has a newer started_at than the last good one, so without
-	// this filter the export silently ships a half-scraped period.
-	it('reads only finished runs, on both sources', () => {
+	// Only the newest run is read, so a run that is unusable ('running', 'failed') or narrower than
+	// its predecessor ('partial': scoped to one school, or died halfway) must not win on started_at
+	// -- it would silently ship a half-scraped period.
+	it('reads only complete runs, on both sources', () => {
 		const runCtes = GRADES_RC_SQL.split('banner_grades AS')[0];
 		expect(runCtes).toContain('FROM scrape_run');
 		expect(runCtes).toContain('FROM planner_scrape_run');
-		expect(runCtes.match(/status IN \('completed', 'partial'\)/g)).toHaveLength(2);
+		expect(runCtes.match(/status IN \('completed'\)/g)).toHaveLength(2);
 	});
 });
 
@@ -99,11 +108,6 @@ describe('GradesRcExportRepository.getDesignatedGradeTypesBySection', () => {
 	);
 
 	beforeEach(() => jest.clearAllMocks());
-
-	it('does not hit the main DB when there is no active period', async () => {
-		await expect(repo.getDesignatedGradeTypesBySection(null)).resolves.toEqual([]);
-		expect(mainQuery).not.toHaveBeenCalled();
-	});
 
 	it('keeps every designated type of a section: a course can live in several study plans', async () => {
 		const designated = [

@@ -46,6 +46,8 @@ export interface AlumnoSeccionExportRow {
 // raw_planner_nota); grade/qualificationStatusCode are resolved from the raw grade text, and
 // gradeTypeCode is a TG205 code or — for a grade rescued by the last-grade fallback — the raw
 // scraped code (see GradesRcExportRepository).
+// The trailing fields carry no upload meaning: they feed the descriptive second worksheet, which
+// the RC bulk upload never parses (it reads worksheets[0] positionally).
 export interface GradeRcExportRow {
 	sectionCode: string;
 	studentCode: string;
@@ -53,4 +55,21 @@ export interface GradeRcExportRow {
 	gradeTypePercentage: string;
 	grade: string;
 	qualificationStatusCode: string;
+	academicPeriod: string;
+	courseCode: string;
+	courseName: string;
+	studentName: string;
+	gradeTypeName: string;
+	qualificationStatusName: string;
+	// False when the scraped section is not in academic.course_sections for the period. Those rows
+	// are kept out of the upload sheet (one unknown section makes the RC upload reject the whole
+	// file) and surface in the descriptive sheet so the gap is visible.
+	// Which scrape the exported grade came from, and when it was captured. Both sources have to be
+	// scraped before exporting; these make it visible when one of them is stale.
+	source: string;
+	scrapedAt: string;
+	// Observation codes (GRADE_RC_OBSERVATIONS) explaining why a row needs a look: grade rescued by
+	// the fallback, missing designated grade, unexplained zero. Resolved to localized text by the
+	// service and shown only in the descriptive sheet.
+	observations: string[];
 }

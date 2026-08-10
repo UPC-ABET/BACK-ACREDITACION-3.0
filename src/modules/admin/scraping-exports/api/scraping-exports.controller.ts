@@ -72,17 +72,22 @@ export class ScrapingExportsController {
 		this.send(res, await this.service.generateAlumnosSecciones(academicPeriodId, lang));
 	}
 
+	// The academic period is required here, unlike the other exports: the grades are scoped to the
+	// sections already loaded for that period, and a file carrying a section the app does not know
+	// makes audit.fn_upload_grades_rc reject the upload wholesale. Without the period there is
+	// nothing to scope against, so failing early beats handing back an unusable file.
 	@Get(routes.operation.gradesRc.route)
 	@ApiOperation({ summary: routes.operation.gradesRc.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@ApiAcademicPeriodHeader(false)
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	async gradesRc(
 		@Query('lang') lang: string,
-		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		this.send(res, await this.service.generateGradesRc(academicPeriodId, lang));
+		// Streamed directly to `res` (not buffered) — see ScrapingExportsService.streamGradesRc.
+		await this.service.streamGradesRc(academicPeriodId, lang, res);
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {
