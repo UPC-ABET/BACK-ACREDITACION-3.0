@@ -35,6 +35,10 @@ const jsonResponse = (status: number, body: unknown) => ({
 	text: async () => JSON.stringify(body),
 });
 
+// The shape u-planner's LDAP path returns, captured live on 2026-08-09.
+const base64Response = (status: number, body: unknown) =>
+	jsonResponse(status, Buffer.from(JSON.stringify(body), 'utf-8').toString('base64'));
+
 const validateBody = {
 	data: {
 		user: { username: 'PLANNER-OPERATOR', id: 804988, name: 'Planner Operator' },
@@ -53,6 +57,12 @@ const fetchMock = jest.fn();
 describe('PlannerLoginClient', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		// Preventive: `clearAllMocks` drops recorded calls but not queued `mockResolvedValueOnce`
+		// values, so a test that ever leaves one unconsumed would hand it to the next test as its
+		// first response — which is how a single failure here cascades into unrelated ones. The
+		// per-test `mockReset()` calls below are separate; they clear what a describe-level
+		// `beforeEach` queued, and are not made redundant by this.
+		fetchMock.mockReset();
 		global.fetch = fetchMock as unknown as typeof fetch;
 	});
 
@@ -227,6 +237,33 @@ describe('PlannerLoginClient', () => {
 			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toThrow(/Cuenta bloqueada/);
 		});
 
+		// The provider's message is the one piece of outside text that reaches our logs. A newline
+		// in it would forge what looks like a second log line of our own.
+		it('collapses control characters in the provider message', async () => {
+			fetchMock.mockResolvedValueOnce(
+				jsonResponse(401, {
+					message: 'Cuenta bloqueada\n2026-08-09 WARN [PlannerCredentialsService] Session active',
+				}),
+			);
+
+			const error = (await buildClient()
+				.login(USERNAME, PASSWORD)
+				.catch((e: unknown) => e)) as Error;
+
+			expect(error.message).not.toMatch(/[\n\r]/);
+			expect(error.message).toContain('Cuenta bloqueada');
+		});
+
+		it('truncates a provider message that would flood the log', async () => {
+			fetchMock.mockResolvedValueOnce(jsonResponse(401, { message: 'x'.repeat(5_000) }));
+
+			const error = (await buildClient()
+				.login(USERNAME, PASSWORD)
+				.catch((e: unknown) => e)) as Error;
+
+			expect(error.message.length).toBeLessThan(300);
+		});
+
 		it('appends nothing when the rejection carries no message', async () => {
 			fetchMock.mockResolvedValueOnce(jsonResponse(403, { data: PRE_AUTH_TOKEN, status: true }));
 
@@ -235,8 +272,9 @@ describe('PlannerLoginClient', () => {
 			);
 		});
 
-		// The captured sample was a success, so this shape was never observed. A `status: false`
-		// body on a 200 is the most likely way u-planner reports a bad password.
+		// Confirmed live on 2026-08-09: `status: false` on a 200 is how u-planner reports a bad
+		// password. It arrives base64-wrapped in practice — see 'the base64-wrapped envelope' — but
+		// the unwrapped shape is what the input-validation path returns and is pinned here.
 		//
 		// The payload is deliberately VALID so only the `status` flag can reject it — a fixture
 		// with `data: null` trips the payload guard first and would pass with the flag check gone.
@@ -294,6 +332,140 @@ describe('PlannerLoginClient', () => {
 
 			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
 				PlannerLoginRejectedError,
+			);
+		});
+	});
+
+	// Why this envelope exists and what it looks like: see `unwrapBase64Body`. Treating the wrapped
+	// shape as unparseable made a wrong password report `503 unreachable`, so the operator was told
+	// u-planner was down and the credential penalty never armed.
+	describe('the base64-wrapped envelope', () => {
+		// `data` is the pre-auth token the live payload does NOT carry, so that only `status: false`
+		// can reject this fixture. With it absent, the step-1 no-token guard rejects first and the
+		// test would stay green with the whole `status` branch deleted.
+		const wrappedRejection = {
+			data: PRE_AUTH_TOKEN,
+			status: false,
+			message: 'Usuario o clave incorrectos!',
+			error:
+				'80090308: LdapErr: DSID-0C090451, comment: AcceptSecurityContext error, data 52e, v3839',
+			username: 'planner-operator@example.edu',
+		};
+
+		it('reports a wrapped rejection as rejected credentials, not as an unreachable host', async () => {
+			fetchMock.mockResolvedValueOnce(base64Response(200, wrappedRejection));
+
+			const error = await buildClient()
+				.login(USERNAME, PASSWORD)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PlannerLoginRejectedError);
+			expect(error).not.toBeInstanceOf(PlannerLoginUnreachableError);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it("carries the wrapped payload's own message into the error", async () => {
+			fetchMock.mockResolvedValueOnce(base64Response(200, wrappedRejection));
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toThrow(
+				/Usuario o clave incorrectos!/,
+			);
+		});
+
+		/**
+		 * The live payload proves u-planner returns directory internals alongside the message: the
+		 * raw `LdapErr` code and the resolved account name. `providerMessage` reads `message` only,
+		 * and this is what objects if that is ever widened to another field.
+		 */
+		it('leaves the directory internals out of the error message', async () => {
+			fetchMock.mockResolvedValueOnce(base64Response(200, wrappedRejection));
+
+			const error = (await buildClient()
+				.login(USERNAME, PASSWORD)
+				.catch((e: unknown) => e)) as Error;
+
+			expect(error.message).not.toContain('LdapErr');
+			expect(error.message).not.toContain(wrappedRejection.username);
+		});
+
+		it('reports a wrapped status:false on step 2 as rejected credentials', async () => {
+			fetchMock
+				.mockResolvedValueOnce(jsonResponse(200, { data: PRE_AUTH_TOKEN, status: true }))
+				.mockResolvedValueOnce(base64Response(200, { ...validateBody, status: false }));
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
+				PlannerLoginRejectedError,
+			);
+		});
+
+		// Whether a *successful* login is wrapped could not be observed without a working operator
+		// account, so both shapes have to work on both steps rather than one being assumed.
+		it('logs in when both steps arrive wrapped', async () => {
+			fetchMock
+				.mockResolvedValueOnce(base64Response(200, { data: PRE_AUTH_TOKEN, status: true }))
+				.mockResolvedValueOnce(base64Response(200, validateBody));
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).resolves.toMatchObject({
+				userId: 804988,
+				accessToken: ACCESS_TOKEN,
+			});
+		});
+
+		it('logs in when only step 1 arrives wrapped', async () => {
+			fetchMock
+				.mockResolvedValueOnce(base64Response(200, { data: PRE_AUTH_TOKEN, status: true }))
+				.mockResolvedValueOnce(jsonResponse(200, validateBody));
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).resolves.toMatchObject({
+				accessToken: ACCESS_TOKEN,
+			});
+		});
+
+		it('reports a wrapped 401 as rejected credentials', async () => {
+			fetchMock.mockResolvedValueOnce(
+				base64Response(401, { data: PRE_AUTH_TOKEN, status: true, message: 'Cuenta bloqueada' }),
+			);
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toThrow(
+				/rejected the login \(401\): Cuenta bloqueada/,
+			);
+		});
+
+		// The unwrap must not become a second way to accept a payload the guards would refuse: a
+		// wrapped body still has to satisfy every check an unwrapped one does.
+		it('still rejects a wrapped step 1 that carries no token', async () => {
+			fetchMock.mockResolvedValueOnce(base64Response(200, { data: '', status: true }));
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
+				PlannerLoginRejectedError,
+			);
+		});
+
+		// The boundary of the unwrap: anything that does not come back a JSON object is still an
+		// unreachable host, never a credential verdict. Double-wrapping is included because the
+		// unwrap is single-level by design (see `unwrapBase64Body`), so it lands here rather than
+		// silently costing a second decode.
+		it.each([
+			['is a plain JSON string', '"service temporarily unavailable"'],
+			['is an empty JSON string', '""'],
+			[
+				'base64-decodes to something that is not JSON',
+				`"${Buffer.from('nope').toString('base64')}"`,
+			],
+			['base64-decodes to a JSON scalar', `"${Buffer.from('42').toString('base64')}"`],
+			[
+				'is wrapped twice',
+				JSON.stringify(
+					Buffer.from(Buffer.from(JSON.stringify({ status: true })).toString('base64')).toString(
+						'base64',
+					),
+				),
+			],
+		])('treats a 200 whose body %s as an unreachable host', async (_label, text) => {
+			fetchMock.mockResolvedValueOnce({ ok: true, status: 200, text: async () => text });
+
+			await expect(buildClient().login(USERNAME, PASSWORD)).rejects.toBeInstanceOf(
+				PlannerLoginUnreachableError,
 			);
 		});
 	});
@@ -364,6 +536,23 @@ describe('PlannerLoginClient', () => {
 
 			expect(error).toBeInstanceOf(PlannerLoginUnreachableError);
 			expect(error).not.toBeInstanceOf(PlannerLoginRejectedError);
+		});
+
+		// The abort signal bounds how long a body may take to arrive, not how large it may be, and
+		// the unwrap decodes and re-parses whatever does arrive.
+		it('treats an oversized body as unreachable', async () => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				text: async () => JSON.stringify({ data: 'x'.repeat(400_000), status: true }),
+			});
+
+			const error = await buildClient()
+				.login(USERNAME, PASSWORD)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PlannerLoginUnreachableError);
+			expect((error as Error).message).toMatch(/oversized body/);
 		});
 
 		// 404/405/410 are the shape of a drifted PLANNER_LOGIN_API_URL — a deployment fault, not a

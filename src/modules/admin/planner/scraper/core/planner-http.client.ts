@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PlannerTokenService } from '../../planner-token/api/planner-token.service';
 import { PlannerSessionExpiredError } from '../../planner-token/model/planner-session.errors';
+import { unwrapBase64Body } from '../../shared/planner-wire.functions';
 
 export class PlannerHttpError extends Error {
 	constructor(
@@ -78,7 +79,15 @@ export class PlannerHttpClient {
 		};
 	}
 
-	// Envelope: { data: [...] } -> the array; { data: {...} } -> [obj]; missing -> [].
+	/**
+	 * Envelope: `{ data: [...] }` -> the array; `{ data: {...} }` -> [obj]; missing -> [].
+	 *
+	 * The base64 unwrap is precautionary rather than observed: the login endpoint on this same host
+	 * returns its payload base64-encoded inside a JSON string, and this method reports anything it
+	 * cannot read as an empty result rather than an error. So if the data API ever answers with
+	 * that envelope, the failure would be a scrape that completes successfully having stored
+	 * nothing — indistinguishable from a section that genuinely has no records.
+	 */
 	private unwrap<T>(text: string): T[] {
 		let json: unknown;
 		try {
@@ -86,7 +95,7 @@ export class PlannerHttpClient {
 		} catch {
 			return [];
 		}
-		const data = (json as { data?: unknown })?.data;
+		const data = (unwrapBase64Body(json) as { data?: unknown })?.data;
 		if (Array.isArray(data)) return data as T[];
 		if (data && typeof data === 'object') return [data as T];
 		return [];
