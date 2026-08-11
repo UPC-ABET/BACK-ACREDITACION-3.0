@@ -26,7 +26,6 @@ export interface GeneratedExcel {
 // rows behind it are already loaded by the time this object exists.
 export interface StreamedExcel {
 	fileName: string;
-	rowCount: number;
 	write: (out: Writable) => Promise<void>;
 }
 
@@ -102,7 +101,6 @@ export class ScrapingExportsService {
 
 		return {
 			fileName: labels.fileName,
-			rowCount: rows.length,
 			write: async (out: Writable) => {
 				const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: out, useStyles: true });
 				await this.writeGradesRcSheets(workbook, rows, labels, lang);

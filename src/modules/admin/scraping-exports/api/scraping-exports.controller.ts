@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Logger, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
@@ -18,6 +18,8 @@ const routes = scrapingExportsRoutes.exports;
 @ApiTags(routes.tag)
 @Controller(routes.route)
 export class ScrapingExportsController {
+	private readonly logger = new Logger(ScrapingExportsController.name);
+
 	constructor(private readonly service: ScrapingExportsService) {}
 
 	@Get(routes.operation.docentes.route)
@@ -97,13 +99,11 @@ export class ScrapingExportsController {
 		try {
 			await write(res);
 		} catch (error) {
-			// The headers went out with the first row, so AllExceptionsFilter can no longer turn this
-			// into an error response: whatever happens now, the client already has a 200. Destroying
-			// the socket aborts the transfer mid-body, which is what makes the download fail visibly
-			// instead of landing as a short .xlsx that opens fine, is missing rows, says nothing about
-			// it — and then gets uploaded.
+			this.logger.error(
+				`Grades RC export failed after the download had started (period ${academicPeriodId})`,
+				error instanceof Error ? error.stack : String(error),
+			);
 			res.destroy(error instanceof Error ? error : new Error(String(error)));
-			throw error;
 		}
 	}
 

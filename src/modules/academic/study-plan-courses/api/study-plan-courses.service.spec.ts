@@ -23,15 +23,24 @@ describe('StudyPlanCourseService.update', () => {
 	it('merges extra instead of writing the column, so sibling keys survive', async () => {
 		await service.update(1, { extra: { gradeTypeId: 12 } });
 
-		expect(repository.mergeExtra).toHaveBeenCalledWith(1, { gradeTypeId: 12 });
+		expect(repository.mergeExtra).toHaveBeenCalledWith(1, { gradeTypeId: 12 }, undefined);
 		expect(repository.update).not.toHaveBeenCalled();
 	});
 
 	it('writes the remaining columns through the base update', async () => {
 		await service.update(1, { extra: { gradeTypeId: 12 }, isElective: true });
 
-		expect(repository.mergeExtra).toHaveBeenCalledWith(1, { gradeTypeId: 12 });
+		expect(repository.mergeExtra).toHaveBeenCalledWith(1, { gradeTypeId: 12 }, undefined);
 		expect(repository.update).toHaveBeenCalledWith(1, { isElective: true }, undefined);
+	});
+
+	it('routes the extra merge through the caller transaction, like the column write', async () => {
+		const manager = {} as never;
+
+		await service.update(1, { extra: { gradeTypeId: 12 }, isElective: true }, manager);
+
+		expect(repository.mergeExtra).toHaveBeenCalledWith(1, { gradeTypeId: 12 }, manager);
+		expect(repository.update).toHaveBeenCalledWith(1, { isElective: true }, manager);
 	});
 
 	it('leaves extra untouched when the payload does not mention it', async () => {

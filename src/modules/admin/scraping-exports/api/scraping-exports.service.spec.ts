@@ -64,11 +64,10 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	it('writes the six template columns in order', async () => {
 		getGradesRcRows.mockResolvedValueOnce([row()]);
 
-		const { fileName, rowCount, buffer } = await streamToBuffer();
+		const { fileName, buffer } = await streamToBuffer();
 		const [header, first] = readSheet(await loadWorkbook(buffer), 'Data');
 
 		expect(fileName).toBe('NotasRC.xlsx');
-		expect(rowCount).toBe(1);
 		expect(header.slice(1)).toEqual([
 			'Código de sección',
 			'Código del alumno',

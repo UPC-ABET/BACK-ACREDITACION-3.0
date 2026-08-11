@@ -29,7 +29,7 @@ export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepositor
 		await StudyPlanCourseValidation.validateUpdate(this.repository, id, dto);
 
 		const { extra, ...columns } = dto;
-		if (extra) await this.repository.mergeExtra(id, extra);
+		if (extra) await this.repository.mergeExtra(id, extra, manager);
 		if (Object.keys(columns).length === 0) return await this.repository.findOneById(id);
 
 		return await super.update(id, columns, manager);
