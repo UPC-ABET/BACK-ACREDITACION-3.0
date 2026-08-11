@@ -525,25 +525,25 @@ export const GRADES_RC_TEMP_TABLE = 'grades_rc_export_rows';
 // once. It also dissolves the two-worksheet problem: a result set can only be streamed once, but a
 // table can be read twice.
 //
-// export_seq is the paging key: ORDER BY is stated explicitly rather than inherited from the inner
+// "exportSeq" is the paging key: ORDER BY is stated explicitly rather than inherited from the inner
 // query, since a subquery's ordering is not guaranteed to survive. It reproduces the same order the
 // merge ends on, so the sheets keep their sort.
 export const MATERIALIZE_GRADES_RC_SQL = `
 CREATE TEMP TABLE ${GRADES_RC_TEMP_TABLE} AS
-SELECT row_number() OVER (ORDER BY q."sectionCode", q."studentCode") AS export_seq, q.*
+SELECT row_number() OVER (ORDER BY q."sectionCode", q."studentCode") AS "exportSeq", q.*
 FROM (${GRADES_RC_SQL}) q
 `;
 
-// Keyset, not OFFSET: with an index on export_seq each page is an index scan from where the last
+// Keyset, not OFFSET: with an index on "exportSeq" each page is an index scan from where the last
 // one stopped, instead of re-scanning and re-sorting the whole table once per page.
 export const INDEX_GRADES_RC_TEMP_SQL = `
-CREATE INDEX ON ${GRADES_RC_TEMP_TABLE} (export_seq)
+CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_export_seq" ON ${GRADES_RC_TEMP_TABLE} ("exportSeq")
 `;
 
 export const READ_GRADES_RC_PAGE_SQL = `
 SELECT * FROM ${GRADES_RC_TEMP_TABLE}
-WHERE export_seq > $1::bigint
-ORDER BY export_seq
+WHERE "exportSeq" > $1::bigint
+ORDER BY "exportSeq"
 LIMIT $2::int
 `;
 

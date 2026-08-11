@@ -100,14 +100,14 @@ export class GradesRcExportRepository {
 		let lastSeq = '0';
 
 		for (;;) {
-			const page: Array<GradeRcExportRow & { export_seq: string }> = await runner.query(
+			const page: Array<GradeRcExportRow & { exportSeq: string }> = await runner.query(
 				READ_GRADES_RC_PAGE_SQL,
 				[lastSeq, GRADES_RC_PAGE_SIZE],
 			);
 			if (page.length === 0) return;
 
 			for (const row of page) yield row;
-			lastSeq = page[page.length - 1].export_seq;
+			lastSeq = page[page.length - 1].exportSeq;
 		}
 	}
 

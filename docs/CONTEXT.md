@@ -222,6 +222,13 @@ multiply the credential-verification throttle's allowance by the replica count. 
 replica at one session file does not fix it: the file coordinates the session, nothing coordinates
 the throttles, and the login they guard is the expensive part.
 
+The grades RC export is a **second, independent** reason for the same constraint. It admits one
+export at a time through an in-process flag in `ScrapingExportsController`, because each run pins a
+pooled connection for the minutes it takes and runs the cross-scrape merge against a Postgres shared
+with the application database. Each replica would get its own flag, so N replicas allow N concurrent
+exports. Worth knowing when the Planner session state does move into Postgres: that removes the
+reason above, not this one.
+
 The migration rules are mandatory and live in
 [POLICIES.md § Migrations](./POLICIES.md#migrations).
 

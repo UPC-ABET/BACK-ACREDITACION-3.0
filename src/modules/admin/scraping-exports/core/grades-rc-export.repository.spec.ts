@@ -88,7 +88,7 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 	// untouched: the whole transformation is in SQL.
 	it('walks the scratch table a page at a time and yields the rows untouched', async () => {
 		const row = (seq: string, studentCode: string) => ({
-			export_seq: seq,
+			exportSeq: seq,
 			sectionCode: 'NRC1',
 			studentCode,
 			gradeTypeCode: 'TF1',

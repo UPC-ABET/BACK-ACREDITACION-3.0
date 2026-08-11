@@ -3,8 +3,10 @@ import * as ExcelJS from 'exceljs';
 import type { Writable } from 'stream';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
-import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
-import { GradesRcExportHandle } from '../core/grades-rc-export.repository';
+import {
+	GradesRcExportHandle,
+	GradesRcExportRepository,
+} from '../core/grades-rc-export.repository';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,

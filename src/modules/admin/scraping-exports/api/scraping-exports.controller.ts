@@ -1,5 +1,5 @@
 import { ConflictException, Controller, Get, Logger, Query, Res } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -99,6 +99,13 @@ export class ScrapingExportsController {
 	@ApiOperation({ summary: routes.operation.gradesRc.summary })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@ApiAcademicPeriodHeader()
+	// The 200 is declared only because declaring the 409 drops the implicit one the other endpoints
+	// here rely on.
+	@ApiResponse({ status: 200, description: 'The generated grades RC workbook' })
+	@ApiResponse({
+		status: 409,
+		description: 'A grades RC export is already running; try again once it has finished',
+	})
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	async gradesRc(
 		@Query('lang') lang: string,
