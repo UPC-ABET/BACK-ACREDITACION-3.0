@@ -125,6 +125,7 @@ export interface StudyPlanCourseViewItem {
 	courseCode: string;
 	courseName: I18nText;
 	learningOutcome: I18nText;
+	gradeTypeId: number | null;
 }
 
 export interface StudyPlanLevelGroup {

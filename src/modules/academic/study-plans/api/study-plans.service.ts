@@ -18,6 +18,13 @@ import { EntityManager } from 'typeorm';
 import { StudyPlanEntity } from '../model/study-plans.entity';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 
+// extra.grade_type_id has been set by hand in SQL until now, so it may hold a string or even a
+// type code; anything that is not a positive integer reads as "no grade type designated".
+function toGradeTypeId(value: unknown): number | null {
+	const parsed = Number(value);
+	return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 @Injectable()
 export class StudyPlanService extends BaseService<StudyPlanRepository> {
 	constructor(protected readonly repository: StudyPlanRepository) {
@@ -107,6 +114,7 @@ export class StudyPlanService extends BaseService<StudyPlanRepository> {
 				courseCode: spc.course.code,
 				courseName: spc.course.name,
 				learningOutcome: spc.course.learningOutcome,
+				gradeTypeId: toGradeTypeId(spc.extra?.gradeTypeId),
 			};
 
 			if (spc.isElective) {

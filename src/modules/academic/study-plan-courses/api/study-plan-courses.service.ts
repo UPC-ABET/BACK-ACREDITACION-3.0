@@ -27,7 +27,12 @@ export class StudyPlanCourseService extends BaseService<StudyPlanCourseRepositor
 
 	async update(id: number, dto: UpdateStudyPlanCourseDto, manager?: EntityManager) {
 		await StudyPlanCourseValidation.validateUpdate(this.repository, id, dto);
-		return await super.update(id, dto, manager);
+
+		const { extra, ...columns } = dto;
+		if (extra) await this.repository.mergeExtra(id, extra);
+		if (Object.keys(columns).length === 0) return await this.repository.findOneById(id);
+
+		return await super.update(id, columns, manager);
 	}
 
 	async delete(id: number, manager?: EntityManager) {
