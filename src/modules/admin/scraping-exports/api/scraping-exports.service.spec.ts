@@ -9,8 +9,22 @@ import { gradesRcDescriptiveLabels } from '../model/scraping-exports.labels';
 // column order exactly. This is the only thing standing between a reordered mapping and an upload
 // that assigns weights to grades.
 describe('ScrapingExportsService.prepareGradesRc', () => {
-	const getGradesRcRows = jest.fn();
-	const service = new ScrapingExportsService({} as any, { getGradesRcRows } as any);
+	// Stands in for the scratch-table reader: the service walks it once per worksheet, so `rows` has
+	// to hand back a fresh generator each time it is called.
+	const exportedRows: unknown[] = [];
+	const openGradesRcExport = jest.fn().mockImplementation(() =>
+		Promise.resolve({
+			rows: async function* () {
+				for (const r of exportedRows) yield r;
+			},
+			close: jest.fn().mockResolvedValue(undefined),
+		}),
+	);
+	const givenRows = (rows: unknown[]) => {
+		exportedRows.length = 0;
+		exportedRows.push(...rows);
+	};
+	const service = new ScrapingExportsService({} as any, { openGradesRcExport } as any);
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -62,7 +76,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	});
 
 	it('writes the six template columns in order', async () => {
-		getGradesRcRows.mockResolvedValueOnce([row()]);
+		givenRows([row()]);
 
 		const { fileName, buffer } = await streamToBuffer();
 		const [header, first] = readSheet(await loadWorkbook(buffer), 'Data');
@@ -81,7 +95,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 
 	// The upload parses worksheets[0], so the descriptive sheet must never displace it.
 	it('keeps the upload sheet first and puts the descriptive sheet after it', async () => {
-		getGradesRcRows.mockResolvedValueOnce([row()]);
+		givenRows([row()]);
 
 		const workbook = await loadWorkbook((await streamToBuffer()).buffer);
 
@@ -89,7 +103,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	});
 
 	it('writes the descriptive sheet with codes resolved to names', async () => {
-		getGradesRcRows.mockResolvedValueOnce([row()]);
+		givenRows([row()]);
 
 		const [header, first] = readSheet(
 			await loadWorkbook((await streamToBuffer()).buffer),
@@ -137,7 +151,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	// The observation codes are what tell a reviewer which rows to look at before uploading, so they
 	// have to reach the sheet as readable text, not as raw codes.
 	it('resolves observation codes to localized text, joined when a row has several', async () => {
-		getGradesRcRows.mockResolvedValueOnce([
+		givenRows([
 			row({
 				observations: [
 					GRADE_RC_OBSERVATIONS.FALLBACK_GRADE,
@@ -162,10 +176,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	// Both sheets describe the same rows -- the scoping to loaded sections happens in SQL, so neither
 	// sheet may drop or add rows on its own.
 	it('writes the same rows in both sheets', async () => {
-		getGradesRcRows.mockResolvedValueOnce([
-			row(),
-			row({ sectionCode: 'NRC2', studentCode: 'A2', source: 'Planner' }),
-		]);
+		givenRows([row(), row({ sectionCode: 'NRC2', studentCode: 'A2', source: 'Planner' })]);
 
 		const workbook = await loadWorkbook((await streamToBuffer()).buffer);
 
@@ -177,7 +188,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	});
 
 	it('keeps the raw grade type code of a grade rescued by the fallback', async () => {
-		getGradesRcRows.mockResolvedValueOnce([
+		givenRows([
 			row({ sectionCode: 'NRC2', studentCode: 'A2', gradeTypeCode: 'TF1', gradeTypeName: 'TF1' }),
 		]);
 

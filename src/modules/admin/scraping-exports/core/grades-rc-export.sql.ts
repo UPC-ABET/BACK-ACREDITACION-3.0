@@ -511,19 +511,63 @@ FROM academic.course_sections
 WHERE academic_period_id = $1::int
 `;
 
+// Name of the per-session scratch table the export is read from. TEMP, so it is scoped to the one
+// connection that creates it and cannot collide with anything else; still dropped explicitly,
+// because a pooled connection outlives the request that borrowed it.
+export const GRADES_RC_TEMP_TABLE = 'grades_rc_export_rows';
+
+// The merge above, run ONCE into a scratch table that both worksheets are then paged out of.
+//
+// Two problems this solves at the same time. The rows used to be materialized in Node -- a full
+// period at once, in an API capped at 640 MB -- and paging the merge itself instead would have
+// re-run 400+ lines of cross-scrape merge per page. Materializing once and paging over the result
+// is a cheap sequential scan, so memory stops scaling with the period and the merge still runs
+// once. It also dissolves the two-worksheet problem: a result set can only be streamed once, but a
+// table can be read twice.
+//
+// export_seq is the paging key: ORDER BY is stated explicitly rather than inherited from the inner
+// query, since a subquery's ordering is not guaranteed to survive. It reproduces the same order the
+// merge ends on, so the sheets keep their sort.
+export const MATERIALIZE_GRADES_RC_SQL = `
+CREATE TEMP TABLE ${GRADES_RC_TEMP_TABLE} AS
+SELECT row_number() OVER (ORDER BY q."sectionCode", q."studentCode") AS export_seq, q.*
+FROM (${GRADES_RC_SQL}) q
+`;
+
+// Keyset, not OFFSET: with an index on export_seq each page is an index scan from where the last
+// one stopped, instead of re-scanning and re-sorting the whole table once per page.
+export const INDEX_GRADES_RC_TEMP_SQL = `
+CREATE INDEX ON ${GRADES_RC_TEMP_TABLE} (export_seq)
+`;
+
+export const READ_GRADES_RC_PAGE_SQL = `
+SELECT * FROM ${GRADES_RC_TEMP_TABLE}
+WHERE export_seq > $1::bigint
+ORDER BY export_seq
+LIMIT $2::int
+`;
+
 // The enrollments the app has for the period, in the same shape audit.fn_upload_grades_rc checks
 // them: a row whose (section, student) pair is missing here is rejected as enrollmentNotFound (or
 // studentNotFound, which this subsumes -- a student absent from academic.students has no enrollment
 // either), and the rejection discards the whole file. The export cannot fix it, so it flags it.
+//
+// Aggregated into two arrays by the database rather than returned row by row: these are the two
+// parallel arrays the merge takes as $12/$13, and a period's worth of enrollments returned as rows
+// would be hundreds of thousands of throwaway objects built only to be flattened. COALESCE because
+// array_agg over no rows yields NULL, and a NULL there would mark EVERY student as not enrolled.
 export const ENROLLED_SECTION_STUDENTS_SQL = `
-SELECT DISTINCT
-	cs.section_code AS "sectionCode",
-	st.code         AS "studentCode"
-FROM academic.student_section_enrollments sse
-JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-JOIN academic.students st ON st.id = es.student_id
-WHERE cs.academic_period_id = $1::int
+SELECT
+	COALESCE(array_agg(pair.section_code), '{}') AS "sectionCodes",
+	COALESCE(array_agg(pair.student_code), '{}') AS "studentCodes"
+FROM (
+	SELECT DISTINCT cs.section_code, st.code AS student_code
+	FROM academic.student_section_enrollments sse
+	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+	JOIN academic.students st ON st.id = es.student_id
+	WHERE cs.academic_period_id = $1::int
+) pair
 `;
 
 // Query the main DB runs against academic.course_sections: the grade type designated for a

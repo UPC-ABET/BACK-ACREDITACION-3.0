@@ -4,7 +4,7 @@ import type { Writable } from 'stream';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
-import { GradeRcExportRow } from '../model/scraping-exports.types';
+import { GradesRcExportHandle } from '../core/grades-rc-export.repository';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
@@ -27,6 +27,9 @@ export interface GeneratedExcel {
 export interface StreamedExcel {
 	fileName: string;
 	write: (out: Writable) => Promise<void>;
+	// Releases the pooled connection and the scratch table behind `write`. Must be called in a
+	// `finally` by whoever asked for the export, including when `write` was never reached.
+	close: () => Promise<void>;
 }
 
 @Injectable()
@@ -83,34 +86,34 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	// Streamed instead of going through buildExcel: a full period can be hundreds of thousands of
-	// rows (Banner + Planner merged), and buildExcel's in-memory Workbook + writeBuffer() held three
-	// full copies of the dataset at once (row array, ExcelJS sheet model, final xlsx Buffer), which
-	// OOM-crashed the process on a real period. WorkbookWriter discards each row's in-memory
-	// representation as soon as it's committed to the stream, so memory stays bounded by the row
-	// array alone.
+	// Nothing here is ever held whole. buildExcel kept three full copies of the dataset at once (row
+	// array, ExcelJS sheet model, final xlsx Buffer) and OOM-crashed the process on a real period, in
+	// an API capped at 640 MB. Now the rows live in a scratch table in the database and arrive a page
+	// at a time, and WorkbookWriter discards each row as soon as it is committed to the stream, so
+	// the peak is one page rather than one period.
 	//
 	// The other exports return a GeneratedExcel and let the controller do the transport; this one
 	// cannot, since the point is that the file never exists as one buffer. So it returns the file
-	// name plus a writer over any Writable: the rows are already fetched when this resolves, which
-	// is what lets the controller send its headers only once the query has succeeded, and HTTP stays
-	// in the controller.
+	// name plus a writer over any Writable: the merge has already run by the time this resolves,
+	// which is what lets the controller send its headers only once the query has succeeded, and HTTP
+	// stays in the controller.
 	async prepareGradesRc(academicPeriodId: number, lang?: string): Promise<StreamedExcel> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
-		const rows = await this.gradesRcRepository.getGradesRcRows(academicPeriodId);
+		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
 
 		return {
 			fileName: labels.fileName,
+			close: () => handle.close(),
 			write: async (out: Writable) => {
 				const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: out, useStyles: true });
-				await this.writeGradesRcSheets(workbook, rows, labels, lang);
+				await this.writeGradesRcSheets(workbook, handle, labels, lang);
 			},
 		};
 	}
 
 	private async writeGradesRcSheets(
 		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
-		rows: GradeRcExportRow[],
+		handle: GradesRcExportHandle,
 		labels: ExportLabels,
 		lang: string | undefined,
 	): Promise<void> {
@@ -119,7 +122,7 @@ export class ScrapingExportsService {
 		// streams sheets in creation order and a committed sheet cannot be reopened.
 		// Both sheets describe the same rows; the query already scoped them to sections the app knows.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
-		for (const r of rows) {
+		for await (const r of handle.rows()) {
 			uploadSheet
 				.addRow([
 					r.sectionCode,
@@ -139,7 +142,9 @@ export class ScrapingExportsService {
 		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
 			[descriptive.headers.length]: 90,
 		});
-		for (const r of rows) {
+		// The scratch table is read a second time rather than the rows being kept from the first pass:
+		// re-reading is what keeps the peak at one page.
+		for await (const r of handle.rows()) {
 			detailSheet
 				.addRow([
 					r.academicPeriod,

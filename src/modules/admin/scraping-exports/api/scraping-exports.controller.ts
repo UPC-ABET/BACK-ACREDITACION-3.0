@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, Query, Res } from '@nestjs/common';
+import { ConflictException, Controller, Get, Logger, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
@@ -12,6 +12,7 @@ import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
 
 import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
 import { scrapingExportsRoutes } from '../config/scraping-exports.routes';
+import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 
 const routes = scrapingExportsRoutes.exports;
 
@@ -19,6 +20,22 @@ const routes = scrapingExportsRoutes.exports;
 @Controller(routes.route)
 export class ScrapingExportsController {
 	private readonly logger = new Logger(ScrapingExportsController.name);
+
+	// Admission control for the grades RC export. NOT about memory: the rows live in a scratch table
+	// and are paged out of it, so the peak is one page however large the period is. What is still
+	// worth bounding is what each export holds for the minutes it runs:
+	//
+	//  - a pooled connection, pinned for the whole export because the scratch table lives in that
+	//    session. A handful of concurrent exports would starve the pool and the rest of the API
+	//    starts queueing behind them.
+	//  - one run of the 400-line cross-scrape merge. Postgres runs on the host, shared with the
+	//    application database, so several at once degrade every other query -- not just this export.
+	//
+	// A plain field rather than a lock library: controllers are singletons and Node is
+	// single-threaded, so the check and the set cannot interleave. Per PROCESS, not per deployment --
+	// if this ever runs as several replicas or under a cluster manager, each one gets its own flag
+	// and this stops bounding anything.
+	private gradesRcInProgress = false;
 
 	constructor(private readonly service: ScrapingExportsService) {}
 
@@ -88,22 +105,44 @@ export class ScrapingExportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		// Written into `res` as it is produced rather than buffered — see
-		// ScrapingExportsService.prepareGradesRc. The query has already succeeded by the time this
-		// resolves, so a failure to build the rows still gets a normal error response.
-		const { fileName, write } = await this.service.prepareGradesRc(academicPeriodId, lang);
-
-		// No Content-Length: the file size isn't known until the stream finishes.
-		this.setDownloadHeaders(res, fileName);
+		// Refused rather than queued: the file takes minutes and the caller is a browser download, so
+		// a queued request would sit there until the client times out and then hand back a file nobody
+		// is waiting for -- while holding the memory that made it wait in the first place. A 409 the
+		// user can act on is the honest answer.
+		if (this.gradesRcInProgress) {
+			throw new ConflictException({
+				message: scrapingExportsValidationStrings.error.gradesRcInProgress,
+			});
+		}
+		this.gradesRcInProgress = true;
 
 		try {
-			await write(res);
-		} catch (error) {
-			this.logger.error(
-				`Grades RC export failed after the download had started (period ${academicPeriodId})`,
-				error instanceof Error ? error.stack : String(error),
-			);
-			res.destroy(error instanceof Error ? error : new Error(String(error)));
+			// Written into `res` as it is produced rather than buffered — see
+			// ScrapingExportsService.prepareGradesRc. The query has already succeeded by the time this
+			// resolves, so a failure to build the rows still gets a normal error response.
+			const { fileName, write, close } = await this.service.prepareGradesRc(academicPeriodId, lang);
+
+			// No Content-Length: the file size isn't known until the stream finishes.
+			this.setDownloadHeaders(res, fileName);
+
+			try {
+				await write(res);
+			} catch (error) {
+				this.logger.error(
+					`Grades RC export failed after the download had started (period ${academicPeriodId})`,
+					error instanceof Error ? error.stack : String(error),
+				);
+				res.destroy(error instanceof Error ? error : new Error(String(error)));
+			} finally {
+				// Holds a pooled database connection and a scratch table until this runs, so it has to
+				// run on the success path, on the stream failing, and on the client hanging up alike.
+				await close();
+			}
+		} finally {
+			// In a finally, not after the write: the flag has to clear on the query failing, on the
+			// stream failing, and on the client disconnecting mid-download. Missing any one of those
+			// would leave the endpoint permanently answering 409 until the process restarts.
+			this.gradesRcInProgress = false;
 		}
 	}
 

@@ -1,5 +1,5 @@
 import { GradesRcExportRepository } from './grades-rc-export.repository';
-import { GRADES_RC_SQL } from './grades-rc-export.sql';
+import { MATERIALIZE_GRADES_RC_SQL } from './grades-rc-export.sql';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 
 // The merge itself (Banner + Planner cross, newest scrape wins, last-grade fallback) is SQL, so it
@@ -7,13 +7,25 @@ import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 // `test/manual/grades-rc-export.verify.ts` against a real Postgres, by hand: nothing in CI does it.
 // What is testable here is the contract between the two connections: everything the main DB owns
 // must reach the raw query as parameters, in the order the SQL binds them.
-describe('GradesRcExportRepository.getGradesRcRows', () => {
+describe('GradesRcExportRepository.openGradesRcExport', () => {
 	const rawQuery = jest.fn();
+	const release = jest.fn();
+	// The export pins one connection: the scratch table lives in that session and the pages are read
+	// back from it, so every raw statement goes through this runner rather than the pool.
+	const createQueryRunner = jest.fn(() => ({
+		connect: jest.fn().mockResolvedValue(undefined),
+		query: rawQuery,
+		release,
+	}));
 	const mainQuery = jest.fn();
 	const repo = new GradesRcExportRepository(
-		{ query: rawQuery } as any,
+		{ createQueryRunner } as any,
 		{ query: mainQuery } as any,
 	);
+
+	// The statements the export issues on the raw connection, in order: drop leftovers, materialize,
+	// index, then one read per page, then drop again on close.
+	const materializeCall = () => rawQuery.mock.calls[1];
 
 	const mainQueryFake = (sql: string, params: unknown[]) => {
 		if (sql.includes('FROM academic.academic_periods'))
@@ -35,10 +47,7 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 			]);
 		}
 		if (sql.includes('student_section_enrollments')) {
-			return Promise.resolve([
-				{ sectionCode: 'NRC1', studentCode: 'A1' },
-				{ sectionCode: 'NRC2', studentCode: 'A2' },
-			]);
+			return Promise.resolve([{ sectionCodes: ['NRC1', 'NRC2'], studentCodes: ['A1', 'A2'] }]);
 		}
 		if (sql.includes('course_sections')) {
 			return Promise.resolve([{ sectionCode: 'NRC1' }, { sectionCode: 'NRC2' }]);
@@ -53,10 +62,10 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 	});
 
 	it('ships the period code, both catalogs and the designated types as parallel arrays', async () => {
-		await repo.getGradesRcRows(1);
+		await repo.openGradesRcExport(1);
 
-		const [sql, params] = rawQuery.mock.calls[0];
-		expect(sql).toBe(GRADES_RC_SQL);
+		const [sql, params] = materializeCall();
+		expect(sql).toBe(MATERIALIZE_GRADES_RC_SQL);
 		expect(params[0]).toBe('202610');
 		expect(params[1]).toEqual(['EA1', 'EB1']);
 		expect(params[2]).toEqual(['TG205-T001', 'TG205-T002']);
@@ -75,18 +84,58 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 	});
 
-	it('returns the raw rows untouched: the whole transformation is in SQL', async () => {
-		const row = {
+	// Pages are read until one comes back short of the page size, and the rows are handed on
+	// untouched: the whole transformation is in SQL.
+	it('walks the scratch table a page at a time and yields the rows untouched', async () => {
+		const row = (seq: string, studentCode: string) => ({
+			export_seq: seq,
 			sectionCode: 'NRC1',
-			studentCode: 'A1',
+			studentCode,
 			gradeTypeCode: 'TF1',
 			gradeTypePercentage: '40',
 			grade: '18.00',
 			qualificationStatusCode: 'TG404-T001',
-		};
-		rawQuery.mockResolvedValueOnce([row]);
+		});
 
-		await expect(repo.getGradesRcRows(1)).resolves.toEqual([row]);
+		const handle = await repo.openGradesRcExport(1);
+		rawQuery.mockResolvedValueOnce([row('1', 'A1'), row('2', 'A2')]).mockResolvedValueOnce([]);
+
+		const collected: unknown[] = [];
+		for await (const r of handle.rows()) collected.push(r);
+
+		expect(collected).toEqual([row('1', 'A1'), row('2', 'A2')]);
+		// Second page asked for everything after the last row of the first: keyset, not offset.
+		const [, pageParams] = rawQuery.mock.calls[rawQuery.mock.calls.length - 1];
+		expect(pageParams[0]).toBe('2');
+	});
+
+	// The scratch table can be walked twice, which is what lets both worksheets come out of one run
+	// of the merge instead of two.
+	it('can be walked more than once', async () => {
+		const handle = await repo.openGradesRcExport(1);
+		const callsAfterOpen = rawQuery.mock.calls.length;
+
+		for await (const _ of handle.rows());
+		for await (const _ of handle.rows());
+
+		expect(rawQuery.mock.calls.length).toBeGreaterThan(callsAfterOpen + 1);
+	});
+
+	// The handle owns a pooled connection; leaking one leaks it for the life of the process.
+	it('drops the scratch table and releases the connection on close', async () => {
+		const handle = await repo.openGradesRcExport(1);
+		await handle.close();
+
+		const [lastSql] = rawQuery.mock.calls[rawQuery.mock.calls.length - 1];
+		expect(lastSql).toContain('DROP TABLE IF EXISTS');
+		expect(release).toHaveBeenCalled();
+	});
+
+	it('releases the connection when the merge itself fails', async () => {
+		rawQuery.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('merge failed'));
+
+		await expect(repo.openGradesRcExport(1)).rejects.toThrow('merge failed');
+		expect(release).toHaveBeenCalled();
 	});
 
 	// The loaded sections are what keeps a grade out of the upload sheet, so they have to reach the
@@ -99,9 +148,9 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 				: mainQueryFake(sql, params),
 		);
 
-		await repo.getGradesRcRows(1);
+		await repo.openGradesRcExport(1);
 
-		const [, params] = rawQuery.mock.calls[0];
+		const [, params] = materializeCall();
 		expect(params[9]).toEqual([]);
 	});
 
@@ -109,7 +158,7 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 	// its predecessor ('partial': scoped to one school, or died halfway) must not win on started_at
 	// -- it would silently ship a half-scraped period.
 	it('reads only complete runs, on both sources', () => {
-		const runCtes = GRADES_RC_SQL.split('banner_grades AS')[0];
+		const runCtes = MATERIALIZE_GRADES_RC_SQL.split('banner_grades AS')[0];
 		expect(runCtes).toContain('FROM scrape_run');
 		expect(runCtes).toContain('FROM planner_scrape_run');
 		expect(runCtes.match(/status IN \('completed'\)/g)).toHaveLength(2);
