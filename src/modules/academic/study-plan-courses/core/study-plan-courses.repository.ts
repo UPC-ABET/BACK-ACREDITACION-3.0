@@ -1,5 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { StudyPlanCourseEntity } from '../model/study-plan-courses.entity';
 import { StudyPlanAcademicPeriodEntity } from '../../study-plan-academic-periods/model/study-plan-academic-periods.entity';
@@ -10,7 +10,7 @@ import {
 	schoolProgramFilterParams,
 } from 'src/libs/school-program.functions';
 import { CourseEntity } from '../../courses/model/courses.entity';
-import { camelToSnake } from 'src/libs/case.functions';
+import { camelToSnake, snakeizeKeys } from 'src/libs/case.functions';
 import {
 	FilterStudyPlanCourseDto,
 	CreateStudyPlanCourseMaintenanceDto,
@@ -28,6 +28,32 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 		dataSource: DataSource,
 	) {
 		super(repository, dataSource);
+	}
+
+	// `extra` is a shared bag (is_evaluable, grade_type_id): a caller that names one key must not
+	// wipe the ones it never mentioned, so this merges instead of replacing. A key sent as null is
+	// a removal. Raw SQL because `repository.update()` would write the whole column.
+	//
+	// Takes the caller's EntityManager when there is one, the way BaseRepository resolves it: without
+	// it this write would sit outside the caller's transaction, so a rolled-back update would leave
+	// `extra` committed and the two halves of one update silently disagreeing.
+	async mergeExtra(
+		id: number,
+		extra: Record<string, unknown>,
+		manager?: EntityManager,
+	): Promise<void> {
+		const snakeCased = snakeizeKeys(extra) as Record<string, unknown>;
+		const entries = Object.entries(snakeCased);
+		const removedKeys = entries.filter(([, value]) => value === null).map(([key]) => key);
+		const mergedKeys = Object.fromEntries(entries.filter(([, value]) => value !== null));
+
+		await (manager ?? this.dataSource).query(
+			`UPDATE "academic"."study_plan_courses"
+			 SET extra = (COALESCE(extra, '{}'::jsonb) || $1::jsonb) - $2::text[],
+			     updated_at = now()
+			 WHERE id = $3`,
+			[JSON.stringify(mergedKeys), removedKeys, id],
+		);
 	}
 
 	async enableEvaluation(id: number, isEvaluable: boolean): Promise<void> {

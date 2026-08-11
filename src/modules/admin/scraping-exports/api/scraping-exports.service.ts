@@ -1,23 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
+import type { Writable } from 'stream';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
-import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
+import {
+	GradesRcExportHandle,
+	GradesRcExportRepository,
+} from '../core/grades-rc-export.repository';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
 	alumnoMatriculadoExportLabels,
 	alumnoSeccionExportLabels,
 	docenteExportLabels,
+	gradesRcDescriptiveLabels,
 	gradesRcExportLabels,
 	seccionExportLabels,
 } from '../model/scraping-exports.labels';
-import { GradeRcExportRow } from '../model/scraping-exports.types';
-import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export interface GeneratedExcel {
 	buffer: Buffer;
 	fileName: string;
+}
+
+// An export too large to hold in memory: the file is written into the caller's stream instead of
+// being handed over as a Buffer. `write` resolves once the workbook is fully committed, and the
+// rows behind it are already loaded by the time this object exists.
+export interface StreamedExcel {
+	fileName: string;
+	write: (out: Writable) => Promise<void>;
+	// Releases the pooled connection and the scratch table behind `write`. Must be called in a
+	// `finally` by whoever asked for the export, including when `write` was never reached.
+	close: () => Promise<void>;
 }
 
 @Injectable()
@@ -74,67 +88,116 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateGradesRc(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+	// Nothing here is ever held whole. buildExcel kept three full copies of the dataset at once (row
+	// array, ExcelJS sheet model, final xlsx Buffer) and OOM-crashed the process on a real period, in
+	// an API capped at 640 MB. Now the rows live in a scratch table in the database and arrive a page
+	// at a time, and WorkbookWriter discards each row as soon as it is committed to the stream, so
+	// the peak is one page rather than one period.
+	//
+	// The other exports return a GeneratedExcel and let the controller do the transport; this one
+	// cannot, since the point is that the file never exists as one buffer. So it returns the file
+	// name plus a writer over any Writable: the merge has already run by the time this resolves,
+	// which is what lets the controller send its headers only once the query has succeeded, and HTTP
+	// stays in the controller.
+	async prepareGradesRc(academicPeriodId: number, lang?: string): Promise<StreamedExcel> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
-		const rows = await this.buildGradesRcRows(academicPeriodId);
-		const data = rows.map((r) => [
-			r.sectionCode,
-			r.studentCode,
-			r.gradeTypeCode,
-			r.gradeTypePercentage,
-			r.grade,
-			r.qualificationStatusCode,
-		]);
-		return this.buildExcel(labels, data);
+		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
+
+		return {
+			fileName: labels.fileName,
+			close: () => handle.close(),
+			write: async (out: Writable) => {
+				const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: out, useStyles: true });
+				await this.writeGradesRcSheets(workbook, handle, labels, lang);
+			},
+		};
 	}
 
-	// Resolves each raw Banner grade into an RC-upload-ready row:
-	//  - gradeTypeCode: matched from the raw "type" (e.g. "EA1") against TG205's short name.
-	//    Rows whose type doesn't match any known grade type are skipped -- there is no code to
-	//    put in the Excel for them.
-	//  - grade / qualificationStatusCode: if the raw grade text parses as a number, it's the grade and
-	//    the status is ASISTIO. If it doesn't (Banner returned "SAN"/"RET"/"NR"/etc. as the grade
-	//    value itself), the grade defaults to 0 and that raw text is put as-is in the
-	//    qualificationStatusCode cell -- if it isn't a known TG404 code/name yet, the RC bulk
-	//    upload (fn_upload_grades_rc) is the one that resolves or auto-provisions it, not this
-	//    export.
-	private async buildGradesRcRows(academicPeriodId: number | null): Promise<GradeRcExportRow[]> {
-		const [rawRows, gradeTypeCodesByName, qualificationStatusCodesByName] = await Promise.all([
-			this.gradesRcRepository.getRawGradesRc(academicPeriodId),
-			this.gradesRcRepository.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
-			this.gradesRcRepository.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
-		]);
-
-		const asistioCode = TYPE_CODES.QUALIFICATION_STATUS.ASISTIO;
-		const rows: GradeRcExportRow[] = [];
-
-		for (const raw of rawRows) {
-			const gradeTypeCode = gradeTypeCodesByName.get((raw.type ?? '').toUpperCase());
-			if (!gradeTypeCode) continue;
-
-			const gradeText = (raw.gradeRaw ?? '').trim();
-			const parsed = Number(gradeText);
-			const isNumeric = gradeText !== '' && !Number.isNaN(parsed);
-
-			const grade = isNumeric ? String(parsed) : '0';
-			const qualificationStatusCode = isNumeric
-				? asistioCode
-				: (qualificationStatusCodesByName.get(gradeText.toUpperCase()) ?? gradeText);
-
-			rows.push({
-				sectionCode: raw.sectionCode,
-				studentCode: raw.studentCode,
-				gradeTypeCode,
-				gradeTypePercentage: raw.weight,
-				grade,
-				qualificationStatusCode,
-			});
+	private async writeGradesRcSheets(
+		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
+		handle: GradesRcExportHandle,
+		labels: ExportLabels,
+		lang: string | undefined,
+	): Promise<void> {
+		// Sheet order is load-bearing: the RC bulk upload parses worksheets[0] positionally, so the
+		// upload-shaped sheet must stay first and the descriptive one must come after. The writer
+		// streams sheets in creation order and a committed sheet cannot be reopened.
+		// Both sheets describe the same rows; the query already scoped them to sections the app knows.
+		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
+		for await (const r of handle.rows()) {
+			uploadSheet
+				.addRow([
+					r.sectionCode,
+					r.studentCode,
+					r.gradeTypeCode,
+					r.gradeTypePercentage,
+					r.grade,
+					r.qualificationStatusCode,
+				])
+				.commit();
 		}
+		uploadSheet.commit();
 
-		return rows;
+		const descriptive = this.resolveLabels(gradesRcDescriptiveLabels, lang);
+		// The observations are full sentences addressed to whoever reviews the file, so the last
+		// column is given room to hold one instead of the header-sized width the others get.
+		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
+			[descriptive.headers.length]: 90,
+		});
+		// The scratch table is read a second time rather than the rows being kept from the first pass:
+		// re-reading is what keeps the peak at one page.
+		for await (const r of handle.rows()) {
+			detailSheet
+				.addRow([
+					r.academicPeriod,
+					r.sectionCode,
+					r.courseCode,
+					r.courseName,
+					r.studentCode,
+					r.studentName,
+					r.careerCode,
+					r.gradeTypeCode,
+					r.gradeTypeName,
+					r.gradeTypePercentage,
+					r.grade,
+					r.qualificationStatusCode,
+					r.qualificationStatusName,
+					r.source,
+					r.scrapedAt,
+					(r.observations ?? []).map((code) => descriptive.observations[code] ?? code).join(' | '),
+				])
+				.commit();
+		}
+		detailSheet.commit();
+
+		await workbook.commit();
 	}
 
-	private resolveLabels(map: Record<string, ExportLabels>, lang?: string): ExportLabels {
+	// Same red bold header as buildExcel, against the streaming writer. Column widths have to be set
+	// before the first commit -- the writer seals the sheet's metadata once rows start flowing.
+	private startSheet(
+		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
+		name: string,
+		headers: string[],
+		wideColumns: Record<number, number> = {},
+	): ExcelJS.Worksheet {
+		const sheet = workbook.addWorksheet(name);
+		sheet.columns = headers.map((header, index) =>
+			wideColumns[index + 1]
+				? { width: wideColumns[index + 1], style: { alignment: { wrapText: true } } }
+				: { width: header.length + 2 },
+		);
+
+		const headerRow = sheet.addRow(headers);
+		headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+		headerRow.eachCell((cell) => {
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+		});
+		headerRow.commit();
+		return sheet;
+	}
+
+	private resolveLabels<T>(map: Record<string, T>, lang?: string): T {
 		return lang && map[lang] ? map[lang] : map[DEFAULT_TEMPLATE_LANGUAGE];
 	}
 

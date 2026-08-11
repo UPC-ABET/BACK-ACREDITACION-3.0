@@ -12304,12 +12304,17 @@
 						"name": "X-Academic-Period-Id",
 						"in": "header",
 						"description": "Active academic period scope id",
-						"required": false,
+						"required": true,
 						"schema": { "type": "integer", "example": 1 }
 					}
 				],
-				"responses": { "200": { "description": "" } },
-				"summary": "Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, from the latest Banner scrape",
+				"responses": {
+					"200": { "description": "The generated grades RC workbook" },
+					"409": {
+						"description": "A grades RC export is already running; try again once it has finished"
+					}
+				},
+				"summary": "Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, merging the latest Banner and Planner scrapes",
 				"tags": ["Scraping — Exports"]
 			}
 		}

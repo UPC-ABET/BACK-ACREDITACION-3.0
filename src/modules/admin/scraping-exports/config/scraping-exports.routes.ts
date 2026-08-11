@@ -29,7 +29,7 @@ export const scrapingExportsRoutes = {
 				method: 'GET',
 				route: '/grades-rc',
 				summary:
-					'Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, from the latest Banner scrape',
+					'Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, merging the latest Banner and Planner scrapes',
 			},
 		},
 	},
