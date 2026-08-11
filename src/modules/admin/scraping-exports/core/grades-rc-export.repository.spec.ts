@@ -1,9 +1,12 @@
 import { GradesRcExportRepository } from './grades-rc-export.repository';
 import { GRADES_RC_SQL } from './grades-rc-export.sql';
+import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 
-// The merge itself (Banner + Planner cross, newest scrape wins, last-grade fallback) is SQL and is
-// exercised against a real Postgres in the change runbook. What is testable here is the contract
-// between the two connections: everything the main DB owns must reach the raw query as parameters.
+// The merge itself (Banner + Planner cross, newest scrape wins, last-grade fallback) is SQL, so it
+// is NOT exercised here -- `query` is mocked. It is verified by running
+// `test/manual/grades-rc-export.verify.ts` against a real Postgres, by hand: nothing in CI does it.
+// What is testable here is the contract between the two connections: everything the main DB owns
+// must reach the raw query as parameters, in the order the SQL binds them.
 describe('GradesRcExportRepository.getGradesRcRows', () => {
 	const rawQuery = jest.fn();
 	const mainQuery = jest.fn();
@@ -23,11 +26,18 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 					])
 				: Promise.resolve([{ name: 'RET', code: 'TG404-T005' }]);
 		}
-		// Both section queries read course_sections; only the designated one joins the study plans.
+		// All three section queries read course_sections; the designated one joins the study plans and
+		// the enrollment one joins student_section_enrollments, so those are matched first.
 		if (sql.includes('study_plan_courses')) {
 			return Promise.resolve([
 				{ sectionCode: 'NRC1', gradeTypeCode: 'TG205-T001' },
 				{ sectionCode: 'NRC2', gradeTypeCode: 'TG205-T002' },
+			]);
+		}
+		if (sql.includes('student_section_enrollments')) {
+			return Promise.resolve([
+				{ sectionCode: 'NRC1', studentCode: 'A1' },
+				{ sectionCode: 'NRC2', studentCode: 'A2' },
 			]);
 		}
 		if (sql.includes('course_sections')) {
@@ -57,6 +67,12 @@ describe('GradesRcExportRepository.getGradesRcRows', () => {
 		expect(params[7]).toBe('TG404-T001');
 		expect(params[8]).toBe('TG404-T006');
 		expect(params[9]).toEqual(['NRC1', 'NRC2']);
+		expect(params[10]).toBe('TG404-T005');
+		expect(params[11]).toEqual(['NRC1', 'NRC2']);
+		expect(params[12]).toEqual(['A1', 'A2']);
+		// The career map is a constant, not a query: assert the shape, not every program.
+		expect(params[13]).toEqual(Object.keys(PROGRAM_CAREER_MAP));
+		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 	});
 
 	it('returns the raw rows untouched: the whole transformation is in SQL', async () => {

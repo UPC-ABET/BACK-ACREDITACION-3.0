@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import type { Response } from 'express';
-
-import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
+import type { Writable } from 'stream';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
+import { GradeRcExportRow } from '../model/scraping-exports.types';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
@@ -20,6 +19,15 @@ import {
 export interface GeneratedExcel {
 	buffer: Buffer;
 	fileName: string;
+}
+
+// An export too large to hold in memory: the file is written into the caller's stream instead of
+// being handed over as a Buffer. `write` resolves once the workbook is fully committed, and the
+// rows behind it are already loaded by the time this object exists.
+export interface StreamedExcel {
+	fileName: string;
+	rowCount: number;
+	write: (out: Writable) => Promise<void>;
 }
 
 @Injectable()
@@ -76,30 +84,38 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	// Streamed straight to the response instead of going through buildExcel: a full period can be
-	// hundreds of thousands of rows (Banner + Planner merged), and buildExcel's in-memory Workbook +
-	// writeBuffer() held three full copies of the dataset at once (row array, ExcelJS sheet model,
-	// final xlsx Buffer), which OOM-crashed the process on a real period. WorkbookWriter discards
-	// each row's in-memory representation as soon as it's committed to the stream, so memory stays
-	// bounded by the row array alone.
-	async streamGradesRc(
-		academicPeriodId: number,
-		lang: string | undefined,
-		res: Response,
-	): Promise<void> {
+	// Streamed instead of going through buildExcel: a full period can be hundreds of thousands of
+	// rows (Banner + Planner merged), and buildExcel's in-memory Workbook + writeBuffer() held three
+	// full copies of the dataset at once (row array, ExcelJS sheet model, final xlsx Buffer), which
+	// OOM-crashed the process on a real period. WorkbookWriter discards each row's in-memory
+	// representation as soon as it's committed to the stream, so memory stays bounded by the row
+	// array alone.
+	//
+	// The other exports return a GeneratedExcel and let the controller do the transport; this one
+	// cannot, since the point is that the file never exists as one buffer. So it returns the file
+	// name plus a writer over any Writable: the rows are already fetched when this resolves, which
+	// is what lets the controller send its headers only once the query has succeeded, and HTTP stays
+	// in the controller.
+	async prepareGradesRc(academicPeriodId: number, lang?: string): Promise<StreamedExcel> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
 		const rows = await this.gradesRcRepository.getGradesRcRows(academicPeriodId);
 
-		const encoded = encodeURIComponent(labels.fileName);
-		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
-		res.setHeader(
-			'Content-Disposition',
-			`attachment; filename="${labels.fileName}"; filename*=UTF-8''${encoded}`,
-		);
-		// No Content-Length: the file size isn't known until the stream finishes.
+		return {
+			fileName: labels.fileName,
+			rowCount: rows.length,
+			write: async (out: Writable) => {
+				const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: out, useStyles: true });
+				await this.writeGradesRcSheets(workbook, rows, labels, lang);
+			},
+		};
+	}
 
-		const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res, useStyles: true });
-
+	private async writeGradesRcSheets(
+		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
+		rows: GradeRcExportRow[],
+		labels: ExportLabels,
+		lang: string | undefined,
+	): Promise<void> {
 		// Sheet order is load-bearing: the RC bulk upload parses worksheets[0] positionally, so the
 		// upload-shaped sheet must stay first and the descriptive one must come after. The writer
 		// streams sheets in creation order and a committed sheet cannot be reopened.
@@ -134,6 +150,7 @@ export class ScrapingExportsService {
 					r.courseName,
 					r.studentCode,
 					r.studentName,
+					r.careerCode,
 					r.gradeTypeCode,
 					r.gradeTypeName,
 					r.gradeTypePercentage,

@@ -12304,7 +12304,7 @@
 						"name": "X-Academic-Period-Id",
 						"in": "header",
 						"description": "Active academic period scope id",
-						"required": false,
+						"required": true,
 						"schema": { "type": "integer", "example": 1 }
 					}
 				],

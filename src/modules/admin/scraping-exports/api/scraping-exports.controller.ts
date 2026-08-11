@@ -86,18 +86,39 @@ export class ScrapingExportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		// Streamed directly to `res` (not buffered) — see ScrapingExportsService.streamGradesRc.
-		await this.service.streamGradesRc(academicPeriodId, lang, res);
+		// Written into `res` as it is produced rather than buffered — see
+		// ScrapingExportsService.prepareGradesRc. The query has already succeeded by the time this
+		// resolves, so a failure to build the rows still gets a normal error response.
+		const { fileName, write } = await this.service.prepareGradesRc(academicPeriodId, lang);
+
+		// No Content-Length: the file size isn't known until the stream finishes.
+		this.setDownloadHeaders(res, fileName);
+
+		try {
+			await write(res);
+		} catch (error) {
+			// The headers went out with the first row, so AllExceptionsFilter can no longer turn this
+			// into an error response: whatever happens now, the client already has a 200. Destroying
+			// the socket aborts the transfer mid-body, which is what makes the download fail visibly
+			// instead of landing as a short .xlsx that opens fine, is missing rows, says nothing about
+			// it — and then gets uploaded.
+			res.destroy(error instanceof Error ? error : new Error(String(error)));
+			throw error;
+		}
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {
+		this.setDownloadHeaders(res, fileName);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
+	}
+
+	private setDownloadHeaders(res: Response, fileName: string): void {
 		const encoded = encodeURIComponent(fileName);
 		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
 		res.setHeader(
 			'Content-Disposition',
 			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
 		);
-		res.setHeader('Content-Length', buffer.length.toString());
-		res.end(buffer);
 	}
 }

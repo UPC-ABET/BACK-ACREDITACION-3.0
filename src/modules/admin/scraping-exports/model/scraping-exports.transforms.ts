@@ -24,7 +24,10 @@ export function mapCampus(bannerCampusCode: string | null | undefined): string {
 //   - UFC_* = EPE careers    (period 202615) -> the FC / EPE codes (CIVFC, INDFC, IS, RED).
 // The programCode column feeds the enrolled-students upload, which JOINs academic.programs on this
 // code (all-or-nothing), so every value here must be a real academic.programs.code.
-const PROGRAM_CAREER_MAP: Record<string, string> = {
+// Exported as well as used through mapProgramToCareer(): the grades RC export resolves the career
+// inside its SQL (the whole row is shaped in one pass), so it injects the map as parallel arrays
+// instead of mapping row by row in Node.
+export const PROGRAM_CAREER_MAP: Record<string, string> = {
 	// --- Regular (UAC_) ---
 	UAC_ISOF_SP1: 'SW', // Software Engineering
 	UAC_COMP_SP1: 'CC', // Computer Science

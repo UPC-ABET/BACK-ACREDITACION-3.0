@@ -1,3 +1,13 @@
+// IF YOU CHANGE GRADES_RC_SQL, RUN `test/manual/grades-rc-export.verify.ts`.
+//
+// Nothing runs it for you: it is not a .spec.ts, jest only collects those under src/, and CI does
+// not call it. The jest suite around this file mocks `query`, so it can assert which parameters are
+// passed and nothing about what the SQL does with them -- the merge, the newest-scrape-wins rule,
+// the dedup, the designated/fallback pick and the status classification are all in this string, and
+// that script is the only thing that executes it. Its header says how to point it at a throwaway
+// Postgres; it refuses to touch anything else.
+import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
+
 // Banner writes non-numeric qualification statuses ("SAN", "RET", "NR") into the grade field
 // itself, so a grade value is only a grade when it parses as a number.
 const NUMERIC_GRADE_PATTERN = String.raw`^-?[0-9]+(\.[0-9]+)?$`;
@@ -17,17 +27,6 @@ const EXPORTABLE_RUN_STATUSES = `('completed')`;
 // would drop it (it ignores every grade whose status is not ASISTIO).
 const VERIFIED_ZERO_MARK = `'CAL'`;
 
-// Codes emitted in the observations array. They are resolved to localized text by the service and
-// only ever reach the descriptive sheet -- the upload sheet keeps its six template columns.
-export const GRADE_RC_OBSERVATIONS = {
-	COURSE_LEVEL_STATUS: 'courseLevelStatus',
-	MISSING_DESIGNATED_GRADE: 'missingDesignatedGrade',
-	MISSING_DESIGNATED_GRADE_PENDING: 'missingDesignatedGradePending',
-	MISSING_DESIGNATED_GRADE_UNEXPLAINED: 'missingDesignatedGradeUnexplained',
-	FALLBACK_GRADE: 'fallbackGrade',
-	ZERO_GRADE_UNEXPLAINED: 'zeroGradeUnexplained',
-} as const;
-
 // Banner + Planner cross, merge, grade-type resolution and last-grade fallback, in one pass. Both
 // scrapings live in the same physical DB, so nothing is joined in Node; everything the main DB
 // owns (TG205, TG404, the per-section designated grade type) is injected as parallel arrays.
@@ -35,9 +34,18 @@ export const GRADE_RC_OBSERVATIONS = {
 // $1 period code | $2/$3 TG205 names/codes | $4/$5 TG404 names/codes
 // $6/$7 section codes / designated grade type codes | $8 ASISTIO code | $9 SAN code
 // $10 section codes loaded in academic.course_sections for the period | $11 RET code
+// $12/$13 the (section, student) pairs enrolled in the period (academic.student_section_enrollments)
+// $14/$15 Banner program codes / career codes (PROGRAM_CAREER_MAP)
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
 export const GRADES_RC_SQL = `
 WITH grade_types AS (SELECT * FROM unnest($2::text[], $3::text[]) AS t(name, code)),
+-- Banner program code -> career code (PROGRAM_CAREER_MAP). Injected rather than resolved in Node so
+-- the whole row is shaped in one pass, like the two type catalogs above.
+--
+-- Unlike the matriculados export, a program missing from the map does NOT drop the row: this is a
+-- grades export, and losing a student's grade because their program is outside the accreditation
+-- scope would silently shorten the file. The career simply comes out empty.
+careers AS (SELECT * FROM unnest($14::text[], $15::text[]) AS t(program_code, career_code)),
 -- Declared before the legs on purpose: Planner's status fields are whitelisted against this
 -- catalog rather than passed through. Measured against the data, markType also carries the literal
 -- string "null" (2,871 rows, most of them with a real grade) and 'CAL'; passing either on would
@@ -125,6 +133,9 @@ banner_legs AS (
 		bs.course_code,
 		bs.course_name,
 		NULLIF(TRIM(CONCAT_WS(', ', a.payload->>'apellidos', a.payload->>'nombres')), '') AS student_name,
+		-- Banner's own program code ("UAC_ISOF_SP1"); resolved to the career code the rest of the
+		-- system speaks ("SW") through the map injected in $14/$15.
+		NULLIF(TRIM(a.payload->'programa'->>'codigo'), '') AS program_code,
 		'Banner'::text AS source
 	FROM banner_grades bg
 	JOIN banner_sections bs
@@ -170,6 +181,9 @@ planner_raw AS (
 		         n.payload->>'nameCourse')                             AS course_name,
 		NULLIF(TRIM(CONCAT_WS(', ', n.payload->>'studentLastName',
 		                            n.payload->>'studentFirstName')), '') AS student_name,
+		-- Planner carries no program: the career is filled from the Banner leg by the window in
+		-- merged, exactly as the student name is.
+		NULL::text                                                     AS program_code,
 		'Planner'::text                                                AS source
 	FROM raw_planner_nota n
 	JOIN raw_planner_seccion s
@@ -199,7 +213,7 @@ planner_raw AS (
 planner_legs AS (
 	SELECT section_code, student_code, raw_type, weight, grade_raw, status_raw, has_grade,
 		zero_verified, is_submitted, order_no, scraped_at, course_code, course_name, student_name,
-		source
+		program_code, source
 	FROM planner_raw
 	WHERE has_grade OR status_raw IS NOT NULL
 ),
@@ -222,16 +236,17 @@ merged AS (
 			max(course_name) FILTER (WHERE source = 'Planner') OVER (PARTITION BY section_code),
 			max(course_name) FILTER (WHERE source = 'Banner')  OVER (PARTITION BY section_code)
 		) AS course_name,
-		max(student_name) OVER (PARTITION BY student_code) AS student_name
+		max(student_name) OVER (PARTITION BY student_code) AS student_name,
+		max(program_code) OVER (PARTITION BY student_code) AS program_code
 	FROM (
 		SELECT section_code, student_code, raw_type, weight, grade_raw, status_raw, has_grade,
 			zero_verified, is_submitted, order_no, scraped_at, course_code, course_name, student_name,
-			source
+			program_code, source
 		FROM banner_legs
 		UNION ALL
 		SELECT section_code, student_code, raw_type, weight, grade_raw, status_raw, has_grade,
 			zero_verified, is_submitted, order_no, scraped_at, course_code, course_name, student_name,
-			source
+			program_code, source
 		FROM planner_legs
 	) u
 	-- Scoped to the sections the app knows, and scoped HERE so everything downstream -- the name
@@ -300,6 +315,26 @@ classified AS (
 	FROM resolved r
 	LEFT JOIN qual_status qs ON qs.name = UPPER(r.status_text)
 ),
+-- The designated type is picked ONCE per section, here, and code/name/weight are read from that
+-- single row. Doing it with three separate max() windows would pick per expression rather than per
+-- row: a section designated by two study plans with different types would export the greater code
+-- alongside the weight of the other type, and fn_upload_grades_rc writes that weight into
+-- student_course_grades.grade_type_percentage -- the RC computation would then run on a weight
+-- belonging to a different evaluation. (max() on weight is also a TEXT max, where '5' beats '20'.)
+-- The pick is ordered by grade type code purely to be deterministic.
+section_designated AS (
+	SELECT DISTINCT ON (r.section_code)
+		r.section_code,
+		r.grade_type_code AS designated_code,
+		r.raw_type        AS designated_name,
+		r.weight          AS designated_weight
+	FROM classified r
+	JOIN designated d ON d.section_code = r.section_code
+	WHERE r.grade_type_code = ANY(d.grade_type_codes)
+	-- student_code only breaks the tie between several students' rows of the SAME type: the weight is
+	-- a property of the evaluation, so they carry the same one, but the pick still has to be stable.
+	ORDER BY r.section_code, r.grade_type_code, r.student_code
+),
 -- The RC semaphore reads a single grade per enrollment: the one whose type is the course's
 -- designated type. So this export emits AT MOST ONE row per (section, student) -- never every
 -- scraped grade.
@@ -322,15 +357,13 @@ flagged AS (
 	SELECT
 		r.*,
 		COALESCE(r.grade_type_code = ANY(d.grade_type_codes), false) AS is_designated,
-		bool_or(COALESCE(r.grade_type_code = ANY(d.grade_type_codes), false))
-			OVER (PARTITION BY r.section_code) AS section_has_designated,
-		max(CASE WHEN r.grade_type_code = ANY(d.grade_type_codes) THEN r.grade_type_code END)
-			OVER (PARTITION BY r.section_code) AS designated_code,
-		max(CASE WHEN r.grade_type_code = ANY(d.grade_type_codes) THEN r.raw_type END)
-			OVER (PARTITION BY r.section_code) AS designated_name,
-		max(CASE WHEN r.grade_type_code = ANY(d.grade_type_codes) THEN r.weight END)
-			OVER (PARTITION BY r.section_code) AS designated_weight,
-		bool_or(CASE WHEN r.grade_type_code = ANY(d.grade_type_codes) THEN r.is_submitted END)
+		(sd.designated_code IS NOT NULL) AS section_has_designated,
+		sd.designated_code,
+		sd.designated_name,
+		sd.designated_weight,
+		-- Whether the designated evaluation is closed is a fact about the evaluation, not about one
+		-- student, so it stays an aggregate -- but over the type that was actually picked.
+		bool_or(CASE WHEN r.grade_type_code = sd.designated_code THEN r.is_submitted END)
 			OVER (PARTITION BY r.section_code) AS designated_submitted,
 		max(CASE WHEN r.status_is_course_level THEN r.status_code END)
 			OVER (PARTITION BY r.section_code, r.student_code) AS student_course_status_code,
@@ -345,6 +378,7 @@ flagged AS (
 		) AS pick_rank
 	FROM classified r
 	LEFT JOIN designated d ON d.section_code = r.section_code
+	LEFT JOIN section_designated sd ON sd.section_code = r.section_code
 ),
 shaped AS (
 	SELECT
@@ -366,11 +400,20 @@ shaped AS (
 	FROM flagged f
 	WHERE f.pick_rank = 1
 ),
+-- The (section, student) pairs the app has enrolled. audit.fn_upload_grades_rc refuses the whole
+-- file when a row's student is unknown (studentNotFound) or not enrolled in its section
+-- (enrollmentNotFound), and a student can only be missing here, never wrong: the pair either exists
+-- or it does not. So the pairs are injected and anti-joined once, rather than checked per row.
+enrolled AS (
+	SELECT DISTINCT section_code, student_code
+	FROM unnest($12::text[], $13::text[]) AS t(section_code, student_code)
+),
 -- The exported status is settled here rather than in the SELECT so the observations can key off the
 -- value that actually ships, instead of re-deriving it and drifting from it.
 final AS (
 	SELECT
 		s.*,
+		(e.student_code IS NULL) AS not_enrolled,
 		CASE
 			WHEN s.missing_designated THEN COALESCE(s.explained_status_code, '')
 			-- A zero Planner marked as awarded (CAL) is a real grade: attended, scored 0. Anything
@@ -378,7 +421,11 @@ final AS (
 			WHEN s.is_numeric AND s.is_zero AND NOT s.zero_verified
 				THEN COALESCE(s.explained_status_code, $8::text)
 			WHEN s.is_numeric THEN $8::text
-			ELSE COALESCE(s.explained_status_code, '')
+			-- Non-numeric and not a known TG404 status: the raw text ships as-is rather than being
+			-- dropped. fn_upload_grades_rc auto-provisions an unrecognized status code, so passing it
+			-- through is what lets the row load; emptying it would hit qualificationStatusEmpty and
+			-- refuse the whole file over a status the source actually stated.
+			ELSE COALESCE(s.explained_status_code, s.status_text, '')
 		END AS final_status_code,
 		CASE
 			WHEN s.missing_designated THEN COALESCE(s.explained_status_name, '')
@@ -386,9 +433,12 @@ final AS (
 				THEN COALESCE(s.explained_status_name, (SELECT name FROM qual_status WHERE code = $8), '')
 			WHEN s.is_numeric
 				THEN COALESCE((SELECT name FROM qual_status WHERE code = $8), '')
-			ELSE COALESCE(s.explained_status_name, '')
+			ELSE COALESCE(s.explained_status_name, s.status_text, '')
 		END AS final_status_name
 	FROM shaped s
+	LEFT JOIN enrolled e
+	  ON e.section_code = s.section_code
+	 AND e.student_code = s.student_code
 )
 -- The first six columns are the upload template, in order, and nothing may be inserted among them:
 -- the RC bulk upload parses positionally. Everything after them is descriptive only and feeds the
@@ -411,6 +461,7 @@ SELECT
 	COALESCE(s.course_code, '')  AS "courseCode",
 	COALESCE(s.course_name, '')  AS "courseName",
 	COALESCE(s.student_name, '') AS "studentName",
+	COALESCE(c.career_code, '')  AS "careerCode",
 	CASE WHEN s.missing_designated THEN s.designated_name ELSE s.raw_type END AS "gradeTypeName",
 	s.final_status_name AS "qualificationStatusName",
 	s.source AS "source",
@@ -434,9 +485,19 @@ SELECT
 			THEN '${GRADE_RC_OBSERVATIONS.FALLBACK_GRADE}' END,
 		CASE WHEN NOT s.missing_designated AND s.is_numeric AND s.is_zero
 		          AND NOT s.zero_verified AND s.explained_status_code IS NULL
-			THEN '${GRADE_RC_OBSERVATIONS.ZERO_GRADE_UNEXPLAINED}' END
+			THEN '${GRADE_RC_OBSERVATIONS.ZERO_GRADE_UNEXPLAINED}' END,
+		-- The exported code is the raw scraped one: the row resolved through no TG205 type, which is
+		-- exactly what the upload rejects as gradeTypeInvalid. Only reachable on a fallback row (a
+		-- designated row resolved through TG205 by definition), but keyed off the code that actually
+		-- ships rather than off the fallback, since the fallback often rescues a KNOWN type and those
+		-- rows upload fine.
+		CASE WHEN NOT s.missing_designated AND s.grade_type_code IS NULL
+			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE}' END,
+		CASE WHEN s.not_enrolled
+			THEN '${GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED}' END
 	], NULL) AS "observations"
 FROM final s
+LEFT JOIN careers c ON c.program_code = s.program_code
 ORDER BY s.section_code, s.student_code
 `;
 
@@ -448,6 +509,21 @@ export const UPLOADED_SECTIONS_SQL = `
 SELECT section_code AS "sectionCode"
 FROM academic.course_sections
 WHERE academic_period_id = $1::int
+`;
+
+// The enrollments the app has for the period, in the same shape audit.fn_upload_grades_rc checks
+// them: a row whose (section, student) pair is missing here is rejected as enrollmentNotFound (or
+// studentNotFound, which this subsumes -- a student absent from academic.students has no enrollment
+// either), and the rejection discards the whole file. The export cannot fix it, so it flags it.
+export const ENROLLED_SECTION_STUDENTS_SQL = `
+SELECT DISTINCT
+	cs.section_code AS "sectionCode",
+	st.code         AS "studentCode"
+FROM academic.student_section_enrollments sse
+JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+JOIN academic.students st ON st.id = es.student_id
+WHERE cs.academic_period_id = $1::int
 `;
 
 // Query the main DB runs against academic.course_sections: the grade type designated for a
