@@ -101,12 +101,22 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		rawQuery.mockResolvedValueOnce([row('1', 'A1'), row('2', 'A2')]).mockResolvedValueOnce([]);
 
 		const collected: unknown[] = [];
-		for await (const r of handle.rows()) collected.push(r);
+		for await (const r of handle.rows(false)) collected.push(r);
 
 		expect(collected).toEqual([row('1', 'A1'), row('2', 'A2')]);
 		// Second page asked for everything after the last row of the first: keyset, not offset.
 		const [, pageParams] = rawQuery.mock.calls[rawQuery.mock.calls.length - 1];
 		expect(pageParams[0]).toBe('2');
+	});
+
+	// Each worksheet reads its own half of the scratch table.
+	it('asks the page query for the requested half', async () => {
+		const handle = await repo.openGradesRcExport(1);
+
+		for await (const _ of handle.rows(true));
+
+		const [, pageParams] = rawQuery.mock.calls[rawQuery.mock.calls.length - 1];
+		expect(pageParams[2]).toBe(true);
 	});
 
 	// The scratch table can be walked twice, which is what lets both worksheets come out of one run
@@ -115,8 +125,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		const handle = await repo.openGradesRcExport(1);
 		const callsAfterOpen = rawQuery.mock.calls.length;
 
-		for await (const _ of handle.rows());
-		for await (const _ of handle.rows());
+		for await (const _ of handle.rows(false));
+		for await (const _ of handle.rows(true));
 
 		expect(rawQuery.mock.calls.length).toBeGreaterThan(callsAfterOpen + 1);
 	});
