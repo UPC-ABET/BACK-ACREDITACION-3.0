@@ -33,32 +33,60 @@ const RV_CLASSIFIED_GRADES_CTE = `
 	)
 `;
 
+/**
+ * The RC grade of an enrollment: one grade per enrolled student, never a weighted sum across grade
+ * types. Rows whose qualification status isn't ASISTIO (TG404-T001) are excluded -- a 0 from
+ * RET/NR/DPI/SAN is not a real grade.
+ *
+ * The grade type is NOT filtered here. `audit.fn_upload_grades_rc` refuses any RC grade whose type
+ * is not the one designated for the course in `study_plan_courses.extra.grade_type_id`, so the rule
+ * is enforced where it can still be explained to whoever uploads, instead of here where it silently
+ * dropped the grade from the report. It also took the report down outright: the old
+ * `scg.grade_type_id = (spc.extra->>'grade_type_id')::int` cast was unguarded, and
+ * `extra.grade_type_id` has been set by hand, so a single row holding a type code ('TG205-T002')
+ * aborted the whole report with a cast error.
+ *
+ * `DISTINCT ON` is the guard for everything that predates the upload rule: grades loaded before it,
+ * or written through the CRUD endpoint, can still leave several grades on one enrollment, and
+ * counting one student in two performance levels at once would break the semaphore -- the per-level
+ * counts would stop summing to the total, and the >= critical threshold would fire on percentages
+ * that no longer mean anything. The pick prefers the designated type, so every enrollment the report
+ * already showed keeps the exact grade it showed; the ones it used to drop now surface their most
+ * recent grade instead of vanishing.
+ */
+const RC_COURSE_GRADES_CTE = `
+	course_grades AS (
+		SELECT DISTINCT ON (sse.id)
+			sse.id AS enrollment_id,
+			scg.grade AS grade
+		FROM academic.student_course_grades scg
+		JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
+		JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
+		JOIN academic.course_sections cs ON cs.id = sse.course_section_id
+		JOIN academic.courses c ON c.id = cs.course_id
+		JOIN academic.study_plan_courses spc ON spc.course_id = c.id
+		JOIN academic.study_plan_academic_periods spap
+			ON spap.id = spc.study_plan_academic_period_id
+			AND spap.academic_period_id = cs.academic_period_id
+		JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
+		WHERE cs.academic_period_id = $1::int
+		  AND sse.is_active = true
+		  AND es.is_active = true
+		  AND qst.code = 'TG404-T001'
+		ORDER BY
+			sse.id,
+			(scg.grade_type_id = CASE
+				WHEN spc.extra->>'grade_type_id' ~ '^[0-9]+$'
+				THEN (spc.extra->>'grade_type_id')::int
+			END) DESC NULLS LAST,
+			COALESCE(scg.updated_at, scg.created_at) DESC NULLS LAST,
+			scg.id DESC
+	)
+`;
+
 // Unfiltered course+outcome breakdown, used by the JSON screen endpoint (no critical/representative filtering).
 export const SEMAPHORE_RC_SCREEN_SQL = `
-WITH course_grades AS (
-	-- The RC grade is the single student_course_grades row whose grade_type_id matches the
-	-- grade type designated for this course (study_plan_courses.extra.grade_type_id) -- not a
-	-- weighted sum across all grade types. Rows whose qualification status isn't ASISTIO
-	-- (TG404-T001) are excluded: a 0 from RET/NR/DPI/SAN is not a real grade.
-	SELECT
-		sse.id AS enrollment_id,
-		scg.grade AS grade
-	FROM academic.student_course_grades scg
-	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
-	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-	JOIN academic.courses c ON c.id = cs.course_id
-	JOIN academic.study_plan_courses spc ON spc.course_id = c.id
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.id = spc.study_plan_academic_period_id
-		AND spap.academic_period_id = cs.academic_period_id
-	JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
-	WHERE cs.academic_period_id = $1::int
-	  AND sse.is_active = true
-	  AND es.is_active = true
-	  AND scg.grade_type_id = (spc.extra->>'grade_type_id')::int
-	  AND qst.code = 'TG404-T001'
-),
+WITH ${RC_COURSE_GRADES_CTE},
 filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
@@ -173,27 +201,7 @@ ORDER BY campus, course_code, outcome_code
 `;
 
 export const SEMAPHORE_RC_DETAIL_SQL = `
-WITH course_grades AS (
-	-- See SEMAPHORE_RC_SCREEN_SQL: single designated-grade-type row, ASISTIO only.
-	SELECT
-		sse.id AS enrollment_id,
-		scg.grade AS grade
-	FROM academic.student_course_grades scg
-	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
-	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-	JOIN academic.courses c ON c.id = cs.course_id
-	JOIN academic.study_plan_courses spc ON spc.course_id = c.id
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.id = spc.study_plan_academic_period_id
-		AND spap.academic_period_id = cs.academic_period_id
-	JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
-	WHERE cs.academic_period_id = $1::int
-	  AND sse.is_active = true
-	  AND es.is_active = true
-	  AND scg.grade_type_id = (spc.extra->>'grade_type_id')::int
-	  AND qst.code = 'TG404-T001'
-),
+WITH ${RC_COURSE_GRADES_CTE},
 filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
@@ -306,27 +314,7 @@ ORDER BY campus, outcome_code, level_rank, course_code
 `;
 
 export const SEMAPHORE_RC_SUMMARY_SQL = `
-WITH course_grades AS (
-	-- See SEMAPHORE_RC_SCREEN_SQL: single designated-grade-type row, ASISTIO only.
-	SELECT
-		sse.id AS enrollment_id,
-		scg.grade AS grade
-	FROM academic.student_course_grades scg
-	JOIN academic.student_section_enrollments sse ON sse.id = scg.student_section_enrollment_id
-	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
-	JOIN academic.course_sections cs ON cs.id = sse.course_section_id
-	JOIN academic.courses c ON c.id = cs.course_id
-	JOIN academic.study_plan_courses spc ON spc.course_id = c.id
-	JOIN academic.study_plan_academic_periods spap
-		ON spap.id = spc.study_plan_academic_period_id
-		AND spap.academic_period_id = cs.academic_period_id
-	JOIN core.types qst ON qst.id = (scg.extra->>'qualification_status_type_id')::int
-	WHERE cs.academic_period_id = $1::int
-	  AND sse.is_active = true
-	  AND es.is_active = true
-	  AND scg.grade_type_id = (spc.extra->>'grade_type_id')::int
-	  AND qst.code = 'TG404-T001'
-),
+WITH ${RC_COURSE_GRADES_CTE},
 filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes

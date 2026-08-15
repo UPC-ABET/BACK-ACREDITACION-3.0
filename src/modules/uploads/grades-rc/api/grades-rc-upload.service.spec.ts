@@ -84,6 +84,31 @@ describe('GradesRcUploadService — positional parsing', () => {
 		expect(result.errorRows).toBe(1);
 		expect(result.excelWithErrors).toBeTruthy();
 	});
+
+	// The designated-grade-type rule lives in audit.fn_upload_grades_rc, so what is asserted here is
+	// the half that is in TypeScript: its two codes reach the user as text instead of as a raw code.
+	it.each([
+		['gradeTypeNotDesignated', 'no es el designado para el curso'],
+		['courseGradeTypeNotDesignated', 'no tiene un tipo de nota designado'],
+	])('renders the %s error as localized text', async (errorCode, expectedText) => {
+		const { repository } = makeRepository([
+			{ row_number: 2, error_code: errorCode, upload_log_id: null },
+		]);
+		const service = new GradesRcUploadService(repository, uploadLogServiceStub);
+
+		const buffer = await makeXlsx([
+			['SEC-001', 'STU-001', 'TG205-T003', '40', '15.5', 'TG404-T001'],
+		]);
+		const result = await service.processUpload(buffer, 'grades-rc.xlsx', 1, 1, {
+			lang: 'es',
+		} as any);
+
+		expect(result.success).toBe(false);
+		const annotated = new ExcelJS.Workbook();
+		await annotated.xlsx.load(Buffer.from(result.excelWithErrors!, 'base64') as any);
+		const message = annotated.worksheets[0].getRow(2).getCell(7).value as string;
+		expect(message).toContain(expectedText);
+	});
 });
 
 describe('GradesRcUploadService — template', () => {

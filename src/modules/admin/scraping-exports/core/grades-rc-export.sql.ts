@@ -335,9 +335,9 @@ section_designated AS (
 	-- a property of the evaluation, so they carry the same one, but the pick still has to be stable.
 	ORDER BY r.section_code, r.grade_type_code, r.student_code
 ),
--- The RC semaphore reads a single grade per enrollment: the one whose type is the course's
--- designated type. So this export emits AT MOST ONE row per (section, student) -- never every
--- scraped grade.
+-- audit.fn_upload_grades_rc accepts a single grade per enrollment -- the one whose type is the
+-- course's designated type -- and rejects the whole file over any other. So this export emits AT
+-- MOST ONE row per (section, student), never every scraped grade.
 --
 -- Which one, decided per SECTION (the course), never per student:
 --  - the section holds grades of the designated type -> that grade is the one exported. A student
@@ -571,7 +571,7 @@ FROM (
 `;
 
 // Query the main DB runs against academic.course_sections: the grade type designated for a
-// section's course, which is what the RC semaphore looks up per enrollment.
+// section's course, which is the only one audit.fn_upload_grades_rc accepts for it.
 export const DESIGNATED_GRADE_TYPES_SQL = `
 SELECT DISTINCT
 	cs.section_code AS "sectionCode",

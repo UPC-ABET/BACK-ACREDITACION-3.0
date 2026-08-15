@@ -55,6 +55,12 @@ export const gradesRcErrorMessages: Record<string, Record<string, string>> = {
 		enrollmentNotFound: 'El alumno no está matriculado en esa sección.',
 		gradeTypeEmpty: 'El código de tipo de nota es obligatorio.',
 		gradeTypeInvalid: 'El código de tipo de nota no es válido.',
+		gradeTypeNotDesignated:
+			'El tipo de nota no es el designado para el curso en el plan de estudios, por lo que esta ' +
+			'nota no entraría al informe RC.',
+		courseGradeTypeNotDesignated:
+			'El curso de esta sección no tiene un tipo de nota designado en el plan de estudios del ' +
+			'periodo. Configúralo antes de cargar sus notas.',
 		gradeTypePercentageInvalid: 'El peso del tipo de nota no es un número válido.',
 		gradeEmpty: 'La nota es obligatoria.',
 		gradeInvalid: 'La nota no es un número válido.',
@@ -70,6 +76,12 @@ export const gradesRcErrorMessages: Record<string, Record<string, string>> = {
 		enrollmentNotFound: 'The student is not enrolled in that section.',
 		gradeTypeEmpty: 'Grade type code is required.',
 		gradeTypeInvalid: 'The grade type code is not valid.',
+		gradeTypeNotDesignated:
+			'The grade type is not the one designated for the course in the study plan, so this grade ' +
+			'would not reach the RC report.',
+		courseGradeTypeNotDesignated:
+			"This section's course has no designated grade type in the study plan for the period. " +
+			'Configure it before uploading its grades.',
 		gradeTypePercentageInvalid: 'The grade type weight is not a valid number.',
 		gradeEmpty: 'Grade is required.',
 		gradeInvalid: 'The grade is not a valid number.',
@@ -103,7 +115,10 @@ export const gradesRcFieldInstructions: Record<string, FieldInstruction[]> = {
 		},
 		{
 			field: 'Código de tipo de nota',
-			description: 'Código del tipo de evaluación. Debe existir en el grupo de tipos TG205.',
+			description:
+				'Código del tipo de evaluación. Debe existir en el grupo de tipos TG205 y ser el tipo de ' +
+				'nota designado para el curso en el plan de estudios del periodo: es la única nota que ' +
+				'lee el informe RC.',
 			required: true,
 			example: 'TG205-T008',
 		},
@@ -143,7 +158,10 @@ export const gradesRcFieldInstructions: Record<string, FieldInstruction[]> = {
 		},
 		{
 			field: 'Grade type code',
-			description: 'Code of the evaluation type. Must exist in type group TG205.',
+			description:
+				'Code of the evaluation type. Must exist in type group TG205 and be the grade type ' +
+				'designated for the course in the study plan for the period: it is the only grade the RC ' +
+				'report reads.',
 			required: true,
 			example: 'TG205-T008',
 		},
