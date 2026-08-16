@@ -54,29 +54,39 @@ export function readI18nCells(
 	return result;
 }
 
+/** One data row from {@link sheetToObjects}, paired with its actual worksheet row
+ *  number — rows with every mapped cell blank are skipped during parsing, so the
+ *  array index alone (`i + 2`) does not reliably map back to the sheet once a blank
+ *  row appears anywhere before it. */
+export interface SheetRow {
+	rowNumber: number;
+	values: Record<string, CellValue>;
+}
+
 /**
- * Parses a worksheet into row objects keyed by the header cells in row 1.
- * Rows where every mapped cell is blank are skipped. Shared by the survey
- * Excel importers (GRA / PPP) so they use one parser.
+ * Parses a worksheet into row objects keyed by the header cells in row 1, each
+ * paired with its real worksheet row number (see {@link SheetRow}). Rows where
+ * every mapped cell is blank are skipped. Shared by the survey Excel importers
+ * (GRA / PPP) so they use one parser.
  */
-export function sheetToObjects(worksheet: Worksheet): Record<string, CellValue>[] {
+export function sheetToObjects(worksheet: Worksheet): SheetRow[] {
 	const headers = new Map<number, string>();
 	worksheet.getRow(1).eachCell((cell, col) => {
 		const header = normalizeCellText(cell.value);
 		if (header) headers.set(col, header);
 	});
 
-	const rows: Record<string, CellValue>[] = [];
+	const rows: SheetRow[] = [];
 	for (let i = 2; i <= worksheet.rowCount; i++) {
 		const row = worksheet.getRow(i);
-		const obj: Record<string, CellValue> = {};
+		const values: Record<string, CellValue> = {};
 		let hasValue = false;
 		for (const [col, header] of headers) {
 			const value = row.getCell(col).value;
-			obj[header] = value;
+			values[header] = value;
 			if (normalizeCellText(value) !== '') hasValue = true;
 		}
-		if (hasValue) rows.push(obj);
+		if (hasValue) rows.push({ rowNumber: i, values });
 	}
 	return rows;
 }

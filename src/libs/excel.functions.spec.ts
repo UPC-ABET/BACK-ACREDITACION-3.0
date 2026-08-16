@@ -1,6 +1,7 @@
+import * as ExcelJS from 'exceljs';
 import type { CellValue, Row } from 'exceljs';
 
-import { normalizeCellText, readCell } from './excel.functions';
+import { normalizeCellText, readCell, sheetToObjects } from './excel.functions';
 
 describe('normalizeCellText', () => {
 	it('returns an empty string for null and undefined', () => {
@@ -54,5 +55,46 @@ describe('readCell', () => {
 		} as unknown as Row;
 		expect(readCell(row, 2)).toBe('hello');
 		expect(readCell(row, 1)).toBe('');
+	});
+});
+
+describe('sheetToObjects', () => {
+	function buildSheet(rows: Array<string[] | null>): ExcelJS.Worksheet {
+		const workbook = new ExcelJS.Workbook();
+		const sheet = workbook.addWorksheet('Sheet1');
+		sheet.addRow(['Codigo Alumno', 'Nombre']);
+		for (const row of rows) {
+			// `addRow(undefined)` still advances the row index in ExcelJS the same way a
+			// visually-blank row does when a user leaves a gap in the middle of a file.
+			sheet.addRow(row ?? undefined);
+		}
+		return sheet;
+	}
+
+	it('pairs each row with its own worksheet row number', () => {
+		const sheet = buildSheet([
+			['EST-1', 'Ana'],
+			['EST-2', 'Luis'],
+		]);
+		const rows = sheetToObjects(sheet);
+		expect(rows).toEqual([
+			{ rowNumber: 2, values: { 'Codigo Alumno': 'EST-1', Nombre: 'Ana' } },
+			{ rowNumber: 3, values: { 'Codigo Alumno': 'EST-2', Nombre: 'Luis' } },
+		]);
+	});
+
+	it('skips blank rows without shifting the row number of the data that follows', () => {
+		const sheet = buildSheet([
+			['EST-1', 'Ana'], // row 2
+			null, // row 3, blank — must be skipped, not counted as data
+			['EST-2', 'Luis'], // row 4
+		]);
+		const rows = sheetToObjects(sheet);
+		// Array index 1 is EST-2, but its real worksheet row is 4, not 3 (index + 2) —
+		// this is exactly what a naive `i + 2` gets wrong once a blank row is involved.
+		expect(rows).toEqual([
+			{ rowNumber: 2, values: { 'Codigo Alumno': 'EST-1', Nombre: 'Ana' } },
+			{ rowNumber: 4, values: { 'Codigo Alumno': 'EST-2', Nombre: 'Luis' } },
+		]);
 	});
 });

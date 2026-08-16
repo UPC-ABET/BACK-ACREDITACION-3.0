@@ -3,6 +3,20 @@ import { PppConfigRepository } from './ppp-config.repository';
 import { CreatePppConfigDto, CreatePppSurveyDto } from '../model/ppp.dtos';
 import { pppValidationStrings } from '../config/strings/ppp.validation';
 
+/**
+ * Spanish text for the bulk-upload row errors — not i18n keys resolved by the
+ * frontend, because these are written directly into the "Errores" column of the
+ * downloaded Excel (whose own headers, e.g. "Codigo Alumno", are already Spanish)
+ * and into the job's error list, both consumed by the same Spanish-speaking users.
+ */
+export const pppUploadRowMessages = {
+	studentCodeRequired: 'El código de alumno es obligatorio',
+	invalidPracticeNumber: 'Número de práctica inválido (debe ser 1 o 2)',
+	studentNotFound: (code: string) => `No se encontró al alumno con código "${code}"`,
+	noCourseSection: 'No hay una sección de curso disponible para registrar la práctica',
+	saveError: (reason: string) => `Error al guardar: ${reason}`,
+};
+
 export class PppValidation {
 	static async validateCreateConfig(
 		repo: PppConfigRepository,
@@ -52,12 +66,12 @@ export class PppValidation {
 		}
 	}
 
-	static validateExcelRow(row: any, rowNumber: number): { valid: boolean; errors: string[] } {
+	static validateExcelRow(row: any): { valid: boolean; errors: string[] } {
 		const errors: string[] = [];
 
-		if (!row.studentCode) errors.push(`Row ${rowNumber}: Student code is required`);
+		if (!row.studentCode) errors.push(pppUploadRowMessages.studentCodeRequired);
 		if (!row.practiceNumber || ![1, 2].includes(Number(row.practiceNumber))) {
-			errors.push(`Row ${rowNumber}: Invalid practice number (must be 1 or 2)`);
+			errors.push(pppUploadRowMessages.invalidPracticeNumber);
 		}
 
 		return { valid: errors.length === 0, errors };

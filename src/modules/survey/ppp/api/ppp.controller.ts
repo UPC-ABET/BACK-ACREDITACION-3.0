@@ -38,6 +38,8 @@ import {
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
@@ -143,14 +145,17 @@ export class PppController {
 	async surveyUploadExcel(
 		@Body() dto: UploadPppExcelDto,
 		@AcademicPeriodId() academicPeriodId: number,
+		@CurrentUser() user: RequestUser,
 	) {
-		return parseSuccessResponse(await this.pppService.startUploadExcel(dto, academicPeriodId));
+		return parseSuccessResponse(
+			await this.pppService.startUploadExcel(dto, academicPeriodId, user.userId),
+		);
 	}
 
 	@SwaggerPppSurveyUploadStatus()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
-	async surveyUploadStatus(@Param('jobId') jobId: string) {
-		return parseSuccessResponse(this.pppService.getUploadStatus(jobId));
+	async surveyUploadStatus(@Param('jobId') jobId: string, @CurrentUser() user: RequestUser) {
+		return parseSuccessResponse(this.pppService.getUploadStatus(jobId, user.userId));
 	}
 
 	@SwaggerPppSurveyTemplate()

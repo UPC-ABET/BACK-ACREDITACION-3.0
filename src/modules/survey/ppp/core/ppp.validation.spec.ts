@@ -105,15 +105,18 @@ describe('PppValidation', () => {
 
 	describe('validateExcelRow', () => {
 		it('returns valid for a well-formed row', () => {
-			const result = PppValidation.validateExcelRow({ studentCode: 'EST-1', practiceNumber: 1 }, 2);
+			const result = PppValidation.validateExcelRow({ studentCode: 'EST-1', practiceNumber: 1 });
 			expect(result.valid).toBe(true);
 			expect(result.errors).toEqual([]);
 		});
 
-		it('collects errors for a missing student code and a bad practice number', () => {
-			const result = PppValidation.validateExcelRow({ studentCode: '', practiceNumber: 9 }, 5);
+		it('collects errors for a missing student code and a bad practice number, in Spanish and without a row prefix', () => {
+			const result = PppValidation.validateExcelRow({ studentCode: '', practiceNumber: 9 });
 			expect(result.valid).toBe(false);
-			expect(result.errors).toHaveLength(2);
+			expect(result.errors).toEqual([
+				'El código de alumno es obligatorio',
+				'Número de práctica inválido (debe ser 1 o 2)',
+			]);
 		});
 	});
 

@@ -14,5 +14,6 @@ export const pppValidationStrings = {
 		invalidScore: 'error.survey.ppp.invalidScore',
 		invalidRuc: 'error.survey.ppp.invalidRuc',
 		uploadJobNotFound: 'error.survey.ppp.uploadJobNotFound',
+		tooManyUploadJobs: 'error.survey.ppp.tooManyUploadJobs',
 	},
 };

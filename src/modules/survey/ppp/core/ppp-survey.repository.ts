@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -13,6 +13,12 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 		dataSource: DataSource,
 	) {
 		super(repository, dataSource);
+	}
+
+	/** Exposes a DB transaction to services without them injecting `DataSource`
+	 *  directly (repository boundary — see `docs/POLICIES.md`). */
+	async transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+		return this.dataSource.transaction(work);
 	}
 
 	async findAllPpp(

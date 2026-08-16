@@ -203,7 +203,10 @@ export class GraNotificationService {
 		// Resolve every student code up front in a single query to avoid an N+1 lookup per row.
 		const codeByRow = rows.map((row) =>
 			normalizeCellText(
-				row['Codigo Alumno'] ?? row['Código Alumno'] ?? row['CODIGO_ALUMNO'] ?? row['student_code'],
+				row.values['Codigo Alumno'] ??
+					row.values['Código Alumno'] ??
+					row.values['CODIGO_ALUMNO'] ??
+					row.values['student_code'],
 			),
 		);
 		const uniqueCodes = [...new Set(codeByRow.filter((code) => code !== ''))];
@@ -221,7 +224,7 @@ export class GraNotificationService {
 		// independently — we deliberately do NOT wrap the loop in a single transaction, which
 		// would roll back every previously-succeeded row on the first failure.
 		for (let i = 0; i < rows.length; i++) {
-			const rowNum = i + 2; // +2: row 1 is the header
+			const rowNum = rows[i].rowNumber;
 			const studentCode = codeByRow[i];
 
 			if (!studentCode) {
