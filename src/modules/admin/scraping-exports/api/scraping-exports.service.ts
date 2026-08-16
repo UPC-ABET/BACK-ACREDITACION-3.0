@@ -119,9 +119,16 @@ export class ScrapingExportsService {
 		// in creation order.
 		//
 		// The two are disjoint halves split on whether the row carries an observation, so this one
-		// uploads without a single rejection. A row that WOULD upload fine but carries one -- a
-		// withdrawn student's 0/RET, a fallback grade -- is not here either; it ships from the review
-		// sheet once someone confirms it.
+		// uploads without a single rejection.
+		//
+		// The cost is that a row which WOULD upload fine but carries an observation -- a withdrawn
+		// student's 0/RET, a genuine unexplained 0 -- is held back with no way through: the upload
+		// parses worksheets[0] only, and the review sheet is 16 descriptive columns rather than this
+		// 6-column template. Observations that clear once someone fixes the source (a fallback grade,
+		// an unregistered type, a missing enrollment) come back in the next download; COURSE_LEVEL_STATUS
+		// and ZERO_GRADE_UNEXPLAINED never do, so those enrollments stay out of
+		// academic.student_course_grades permanently. ZERO_GRADE_UNEXPLAINED ships ASISTIO, which is
+		// the one status the RC semaphore counts -- holding it back moves the RC average.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
 		for await (const r of handle.rows(false)) {
 			uploadSheet
