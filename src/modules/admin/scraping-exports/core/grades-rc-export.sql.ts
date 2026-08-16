@@ -12,6 +12,8 @@ const EXPORTABLE_RUN_STATUSES = `('completed')`;
 
 // Planner marks an awarded zero with markType 'CAL', to tell it from the default 0 of a still
 // ungraded evaluation. It must not become a status: the RC semaphore drops anything not ASISTIO.
+// Measured against the data: CAL appears only on zeros, and Banner independently reports 0 for 97.6%
+// of the rows that match.
 const VERIFIED_ZERO_MARK = `'CAL'`;
 
 // $1 period code | $2/$3 TG205 names/codes | $4/$5 TG404 names/codes
@@ -28,8 +30,9 @@ WITH grade_types AS (SELECT * FROM unnest($2::text[], $3::text[]) AS t(name, cod
 -- comes out empty rather than the grade going missing.
 careers AS (SELECT * FROM unnest($14::text[], $15::text[]) AS t(program_code, career_code)),
 -- Declared before the legs: Planner's status fields are whitelisted against this catalog rather
--- than passed through. markType also carries 'CAL' and the literal string "null", and
--- fn_upload_grades_rc would auto-provision either as a permanent TG404 type.
+-- than passed through. markType also carries 'CAL' and the literal string "null" (2,871 rows, most
+-- of them with a real grade), and fn_upload_grades_rc would auto-provision either as a permanent
+-- TG404 type.
 qual_status AS (SELECT * FROM unnest($4::text[], $5::text[]) AS t(name, code)),
 banner_run AS (
 	SELECT id FROM scrape_run
@@ -212,6 +215,12 @@ candidates AS (
 	) u
 	WHERE u.section_code = ANY($10::text[])
 ),
+-- Statuses do not all have the same reach, and treating them alike is how a status gets invented.
+--  - COURSE level (RET, SAN): withdrawing from or being sanctioned in a course applies to every one
+--    of its evaluations, so it legitimately explains an evaluation the student has no row for. The
+--    data backs it: all 204,130 RET rows carry no grade on ANY evaluation.
+--  - EVALUATION level (NR): "no rindió" is a fact about ONE evaluation. Borrowing the NR of PC1 to
+--    explain a missing DD1 asserts something the source never said, so it is never propagated.
 classified AS (
 	SELECT
 		c.*,
@@ -290,6 +299,8 @@ section_designated AS (
 	FROM resolved r
 	JOIN designated d ON d.section_code = r.section_code
 	WHERE r.grade_type_code = ANY(d.grade_type_codes)
+	-- student_code only breaks the tie between several students' rows of the SAME type: the weight is
+	-- a property of the evaluation, so they carry the same one, but the pick still has to be stable.
 	ORDER BY r.section_code, r.grade_type_code, r.student_code
 ),
 -- At most ONE row per (section, student): the RC semaphore reads a single grade per enrollment.
@@ -424,7 +435,15 @@ SELECT
 		-- The shipped status is raw source text, resolved through no TG404 type: the upload would
 		-- auto-provision it as a permanent one, so it has to be confirmed by hand first.
 		CASE WHEN NOT EXISTS (SELECT 1 FROM qual_status q WHERE q.code = s.final_status_code)
-			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS}' END
+			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS}' END,
+		-- The source stated nothing at all -- no grade, no status, and no reason for either -- so the
+		-- $16 default in final_status_code is this export's own guess, not something Banner or Planner
+		-- said. banner_legs does not filter on has_grade (planner_legs does), so a Banner notas entry
+		-- with a tipo and an empty nota reaches here; without this the row ships 0 + NR to the upload
+		-- sheet and becomes a real grade for a student nobody ever graded.
+		CASE WHEN NOT s.missing_designated AND NOT s.is_numeric
+		          AND s.explained_status_code IS NULL AND s.status_text IS NULL
+			THEN '${GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS}' END
 	], NULL) AS "observations"
 FROM final s
 LEFT JOIN careers c ON c.program_code = s.program_code

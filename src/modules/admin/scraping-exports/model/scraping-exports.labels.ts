@@ -143,7 +143,7 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 			'Fecha de scrapeo',
 			'Observación',
 		],
-		// Para quien descarga el archivo: qué pasó y, si aplica, qué hacer.
+		// Written for whoever downloads the file: what happened and, where it applies, what to do.
 		observations: {
 			[GRADE_RC_OBSERVATIONS.COURSE_LEVEL_STATUS]:
 				'El alumno figura retirado o sancionado en el curso, por eso la nota es 0.',
@@ -159,6 +159,8 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 				'La nota es 0 y no hay nada que indique por qué. Puede ser un 0 real o una evaluación sin calificar.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS]:
 				'REQUIERE ATENCIÓN. El estado de calificación no está registrado en el sistema: se muestra tal cual viene del origen. Verificarlo antes de cargar.',
+			[GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS]:
+				'REQUIERE ATENCIÓN. El origen no reporta nota ni estado para esta evaluación: no hay nada que indique que el alumno la haya rendido ni por qué no. Se muestra 0 con estado "NR" como valor por defecto, no porque el sistema de origen lo diga. Revisar el caso antes de cargar.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE]:
 				'REQUIERE ATENCIÓN. El tipo de nota no está registrado en el sistema. Registrarlo o configurar el tipo de nota del curso, y volver a descargar.',
 			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED]:
@@ -200,6 +202,8 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 				'The grade is 0 and nothing indicates why. It may be a real 0 or an evaluation that was never graded.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS]:
 				'NEEDS ATTENTION. The qualification status is not registered in the system: it is shown exactly as it comes from the source. Check it before uploading.',
+			[GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS]:
+				'NEEDS ATTENTION. The source reports neither a grade nor a status for this evaluation: nothing indicates that the student sat it, or why they did not. It is shown as 0 with status "NR" as a default, not because the source system says so. Review the case before uploading.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE]:
 				"NEEDS ATTENTION. The grade type is not registered in the system. Register it or configure the course's grade type, and download again.",
 			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED]:

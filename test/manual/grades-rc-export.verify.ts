@@ -84,6 +84,7 @@ const DESIGNATED: Array<[string, string]> = [
 	['NRC9', 'TG205-T001'],
 	['NRC11', 'TG205-T008'],
 	['NRC12', 'TG205-T005'],
+	['NRC13', 'TG205-T001'],
 ];
 
 // academic.course_sections for the period. NRC9 is deliberately missing: its grades have nowhere to
@@ -101,6 +102,7 @@ const LOADED_SECTIONS = [
 	'NRC8',
 	'NRC11',
 	'NRC12',
+	'NRC13',
 ];
 
 // academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: the
@@ -122,6 +124,7 @@ const ENROLLED: Array<[string, string]> = [
 	['NRC11', 'A11'],
 	['NRC11', 'A11B'],
 	['NRC12', 'A12'],
+	['NRC13', 'A13'],
 ];
 
 interface ExportedRow {
@@ -327,6 +330,7 @@ async function loadFixtures(db: Client): Promise<void> {
 		['NRC8', '8', 'A8B'],
 		['NRC9', '9', 'A9'],
 		['NRC12', '12', 'A12'],
+		['NRC13', '13', 'A13'],
 	];
 	const seenSections = new Set<string>();
 	for (const [nrc, courseNumber, student] of banner) {
@@ -395,6 +399,10 @@ async function loadFixtures(db: Client): Promise<void> {
 	await notas('A12', '1ASI12', [{ tipo: 'TB1', peso: 25, nota: '15.00', numero: 4 }], {
 		scrapedAt: NEWER_SCRAPE,
 	});
+	// NRC13 (designated EA1): the designated type IS present, so nothing is "missing", but its nota
+	// is blank and no status explains it -- banner_legs keeps it because, unlike planner_legs, it does
+	// not filter on has_grade. Nothing about this row comes from the source except the type itself.
+	await notas('A13', '1ASI13', [{ tipo: 'EA1', peso: 100, nota: '', numero: 1 }]);
 	// NRC9 is not in academic.course_sections: nothing of it may be exported.
 	await notas('A9', '1ASI9', [{ tipo: 'EA1', peso: 100, nota: '19.00', numero: 1 }]);
 	// Same student, same grade, unfinished run: must lose to the completed one.
@@ -623,6 +631,18 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 		[
 			'R7 a course-level status beats a numeric grade from the other source, however new',
 			of('NRC12|A12')?.grade === '0' && of('NRC12|A12')?.source === 'Planner',
+		],
+		[
+			'R7 a defaulted status is flagged, so a 0 the source never stated cannot reach the upload sheet',
+			of('NRC13|A13')?.grade === '0' &&
+				of('NRC13|A13')?.qualificationStatusCode === QUALIFICATION_STATUSES.NR &&
+				has('NRC13|A13', GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS),
+		],
+		[
+			'R7 a stated status is not flagged as defaulted',
+			!has('NRC1|A1D', GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS) &&
+				!has('NRC6|A6C', GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS) &&
+				!has('NRC12|A12', GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS),
 		],
 		[
 			'R7 a course-level status suppresses the fallback observation',

@@ -12,6 +12,7 @@ export const GRADE_RC_OBSERVATIONS = {
 	FALLBACK_GRADE: 'fallbackGrade',
 	ZERO_GRADE_UNEXPLAINED: 'zeroGradeUnexplained',
 	UNREGISTERED_STATUS: 'unregisteredStatus',
+	NO_SOURCE_GRADE_OR_STATUS: 'noSourceGradeOrStatus',
 	// gradeTypeInvalid and studentNotFound/enrollmentNotFound: with sectionNotFound already covered
 	// by the scope filter, these are the remaining reasons the upload refuses a whole file.
 	UNREGISTERED_GRADE_TYPE: 'unregisteredGradeType',
