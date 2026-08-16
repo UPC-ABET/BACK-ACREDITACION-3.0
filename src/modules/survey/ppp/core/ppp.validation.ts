@@ -59,9 +59,6 @@ export class PppValidation {
 		if (!row.practiceNumber || ![1, 2].includes(Number(row.practiceNumber))) {
 			errors.push(`Row ${rowNumber}: Invalid practice number (must be 1 or 2)`);
 		}
-		if (row.ruc && !/^\d{11}$/.test(String(row.ruc))) {
-			errors.push(`Row ${rowNumber}: Invalid RUC (must have 11 digits)`);
-		}
 
 		return { valid: errors.length === 0, errors };
 	}
