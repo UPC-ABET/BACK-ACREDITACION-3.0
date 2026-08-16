@@ -13,5 +13,6 @@ export const pppValidationStrings = {
 		noScores: 'error.survey.ppp.noScores',
 		invalidScore: 'error.survey.ppp.invalidScore',
 		invalidRuc: 'error.survey.ppp.invalidRuc',
+		uploadJobNotFound: 'error.survey.ppp.uploadJobNotFound',
 	},
 };

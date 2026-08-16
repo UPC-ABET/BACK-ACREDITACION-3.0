@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import * as ExcelJS from 'exceljs';
 import { DataSource } from 'typeorm';
 import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
@@ -31,6 +32,24 @@ const FIXED_TEMPLATE_HEADERS = [
 	'Fecha Fin',
 ];
 const ERRORS_COLUMN_HEADER = 'Errores';
+const UPLOAD_JOB_STATUS_TTL_MS = 30 * 60 * 1000;
+
+type PppUploadJobResult = {
+	total: number;
+	success: number;
+	failed: number;
+	errors: string[];
+	excelWithErrors: string | null;
+	fileName: string | null;
+};
+
+type PppUploadJobStatus = {
+	progressPct: number;
+	totalRows: number;
+	processedRows: number;
+	done: boolean;
+	result: PppUploadJobResult | null;
+};
 
 /**
  * Labels competences as CE1..CEn (Competencia Específica) / CG1..CGn (Competencia
@@ -59,6 +78,9 @@ function buildTemplateHeaders(
 
 @Injectable()
 export class PppSurveyService {
+	private readonly logger = new Logger(PppSurveyService.name);
+	private readonly uploadJobs = new Map<string, PppUploadJobStatus>();
+
 	constructor(
 		private readonly surveyRepo: PppSurveyRepository,
 		private readonly scoreRepo: PppScoreRepository,
@@ -179,15 +201,14 @@ export class PppSurveyService {
 	}
 
 	/**
-	 * Bulk-imports PPP surveys from an Excel file with all-or-nothing semantics: every
-	 * row is validated first, without writing anything; if any row is invalid, nothing
-	 * is persisted and an annotated copy of the same file (one added "Errores" column)
-	 * is returned as base64 so the caller can fix and re-upload it. Only when every row
-	 * passes validation are the surveys/scores actually inserted, inside a single DB
-	 * transaction so a late failure (e.g. a race-condition duplicate) still rolls back
-	 * everything instead of leaving a partial import.
+	 * Kicks off the bulk import in the background and returns a job id to poll for
+	 * real progress. Validating every row against the DB (student lookup, section/
+	 * campus resolution) is slow enough — for a few hundred rows — that returning
+	 * only after everything finishes would leave the user staring at a spinner with
+	 * no feedback. The file itself is parsed synchronously here (fast) so the caller
+	 * gets an accurate `totalRows` immediately.
 	 */
-	async uploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
+	async startUploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
 		const configs = await this.configRepo.findAllPpp({
@@ -219,8 +240,88 @@ export class PppSurveyService {
 		if (!worksheet) throw new BadRequestException(pppValidationStrings.error.excelNoSheets);
 
 		const rows = sheetToObjects(worksheet);
-
 		if (rows.length === 0) throw new BadRequestException(pppValidationStrings.error.excelEmpty);
+
+		const jobId = randomUUID();
+		this.uploadJobs.set(jobId, {
+			progressPct: 0,
+			totalRows: rows.length,
+			processedRows: 0,
+			done: false,
+			result: null,
+		});
+		this.logger.log(`PPP upload job ${jobId} queued: totalRows=${rows.length}`);
+
+		void this.processUploadExcel({
+			dto,
+			academicPeriodId,
+			typeId,
+			statusId,
+			configs,
+			competenceLabels,
+			headerCount,
+			workbook,
+			worksheet,
+			rows,
+			jobId,
+		})
+			.catch((err) => {
+				this.logger.error(
+					`PPP upload job ${jobId} failed: ${(err as Error).message}`,
+					(err as Error).stack,
+				);
+			})
+			.finally(() => {
+				setTimeout(() => this.uploadJobs.delete(jobId), UPLOAD_JOB_STATUS_TTL_MS);
+			});
+
+		return { accepted: true, jobId, totalRows: rows.length };
+	}
+
+	getUploadStatus(jobId: string): PppUploadJobStatus {
+		const status = this.uploadJobs.get(jobId);
+		if (!status) {
+			throw new NotFoundException(pppValidationStrings.error.uploadJobNotFound);
+		}
+		return status;
+	}
+
+	/**
+	 * Runs in the background after {@link startUploadExcel} returns. All-or-nothing
+	 * semantics: every row is validated first, without writing anything; if any row
+	 * is invalid, nothing is persisted and an annotated copy of the same file (one
+	 * added "Errores" column) is exposed as base64 in the job result so the caller
+	 * can fix and re-upload it. Only when every row passes validation are the
+	 * surveys/scores actually inserted, inside a single DB transaction so a late
+	 * failure (e.g. a race-condition duplicate) still rolls back everything instead
+	 * of leaving a partial import.
+	 */
+	private async processUploadExcel(ctx: {
+		dto: UploadPppExcelDto;
+		academicPeriodId: number;
+		typeId: number;
+		statusId: number;
+		configs: OutcomeConfigEntity[];
+		competenceLabels: Map<number, string>;
+		headerCount: number;
+		workbook: ExcelJS.Workbook;
+		worksheet: ExcelJS.Worksheet;
+		rows: ReturnType<typeof sheetToObjects>;
+		jobId: string;
+	}): Promise<void> {
+		const {
+			dto,
+			academicPeriodId,
+			typeId,
+			statusId,
+			configs,
+			competenceLabels,
+			headerCount,
+			workbook,
+			worksheet,
+			rows,
+			jobId,
+		} = ctx;
 
 		type ReadyRow = {
 			studentId: number;
@@ -306,27 +407,30 @@ export class PppSurveyService {
 
 			if (messages.length > 0) {
 				rowErrors.set(rowNum, messages);
-				continue;
+			} else {
+				readyRows.set(rowNum, {
+					studentId: studentId as number,
+					practiceNumber: Number(normalizedRow.practiceNumber),
+					campusId: dto.campusId || (placement as { campusId: number }).campusId,
+					courseSectionId: (placement as { courseSectionId: number }).courseSectionId,
+					information: JSON.stringify({
+						companyName: normalizedRow.companyName,
+						bossName: normalizedRow.bossName,
+						totalHours: normalizedRow.totalHours,
+						startDate: normalizedRow.startDate,
+						endDate: normalizedRow.endDate,
+					}),
+					scores,
+				});
 			}
 
-			readyRows.set(rowNum, {
-				studentId: studentId as number,
-				practiceNumber: Number(normalizedRow.practiceNumber),
-				campusId: dto.campusId || (placement as { campusId: number }).campusId,
-				courseSectionId: (placement as { courseSectionId: number }).courseSectionId,
-				information: JSON.stringify({
-					companyName: normalizedRow.companyName,
-					bossName: normalizedRow.bossName,
-					totalHours: normalizedRow.totalHours,
-					startDate: normalizedRow.startDate,
-					endDate: normalizedRow.endDate,
-				}),
-				scores,
-			});
+			// Reserve the last 10% of the bar for the commit phase below, so it doesn't
+			// sit at 100% while rows are still being inserted.
+			this.updateUploadProgress(jobId, rows.length, i + 1);
 		}
 
 		if (rowErrors.size > 0) {
-			return await this.buildUploadErrorResult(
+			const result = await this.buildUploadErrorResult(
 				workbook,
 				worksheet,
 				headerCount,
@@ -335,6 +439,8 @@ export class PppSurveyService {
 				dto,
 				academicPeriodId,
 			);
+			this.finishUploadJob(jobId, result);
+			return;
 		}
 
 		// Phase 2: every row is valid — persist all of them atomically. If anything
@@ -370,7 +476,7 @@ export class PppSurveyService {
 			// downloaded file makes clear none of it was saved.
 			const message = `Save error – ${(err as Error).message}`;
 			for (const rowNum of readyRows.keys()) rowErrors.set(rowNum, [message]);
-			return await this.buildUploadErrorResult(
+			const result = await this.buildUploadErrorResult(
 				workbook,
 				worksheet,
 				headerCount,
@@ -379,16 +485,41 @@ export class PppSurveyService {
 				dto,
 				academicPeriodId,
 			);
+			this.finishUploadJob(jobId, result);
+			return;
 		}
 
-		return {
+		this.finishUploadJob(jobId, {
 			total: rows.length,
 			success: readyRows.size,
 			failed: 0,
-			errors: [] as string[],
+			errors: [],
 			excelWithErrors: null,
 			fileName: null,
-		};
+		});
+	}
+
+	/** Real progress: the share of rows actually validated so far, capped at 90% so the
+	 *  bar doesn't read 100% while the commit transaction below is still running. */
+	private updateUploadProgress(jobId: string, total: number, processed: number): void {
+		const current = this.uploadJobs.get(jobId);
+		if (!current) return;
+		this.uploadJobs.set(jobId, {
+			...current,
+			processedRows: processed,
+			progressPct: Math.min(90, Math.round((processed / total) * 90)),
+		});
+	}
+
+	private finishUploadJob(jobId: string, result: PppUploadJobResult): void {
+		const current = this.uploadJobs.get(jobId);
+		this.uploadJobs.set(jobId, {
+			progressPct: 100,
+			totalRows: current?.totalRows ?? result.total,
+			processedRows: current?.totalRows ?? result.total,
+			done: true,
+			result,
+		});
 	}
 
 	private async buildUploadErrorResult(

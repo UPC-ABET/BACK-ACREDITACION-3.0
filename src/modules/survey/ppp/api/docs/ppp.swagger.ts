@@ -59,6 +59,11 @@ export const SwaggerPppSurveyGetById = () =>
 	});
 export const SwaggerPppSurveyUploadExcel = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.uploadExcel, body: UploadPppExcelDto });
+export const SwaggerPppSurveyUploadStatus = () =>
+	HttpMethodWithSwagger({
+		...cfg.survey.uploadStatus,
+		params: [{ name: 'jobId', description: 'ID del proceso de carga masiva PPP', type: String }],
+	});
 export const SwaggerPppSurveyTemplate = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.template, produces: XLSX_CONTENT_TYPE });
 export const SwaggerPppSurveyDashboard = () =>

@@ -82,8 +82,12 @@ export class PppService {
 		return this.surveyService.getById(id);
 	}
 
-	uploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
-		return this.surveyService.uploadExcel(dto, academicPeriodId);
+	startUploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
+		return this.surveyService.startUploadExcel(dto, academicPeriodId);
+	}
+
+	getUploadStatus(jobId: string) {
+		return this.surveyService.getUploadStatus(jobId);
 	}
 
 	generateTemplate(academicPeriodId: number, programId?: number) {

@@ -18,6 +18,7 @@ import {
 	SwaggerPppSurveyGetByFilters,
 	SwaggerPppSurveyGetById,
 	SwaggerPppSurveyUploadExcel,
+	SwaggerPppSurveyUploadStatus,
 	SwaggerPppSurveyTemplate,
 	SwaggerPppSurveyDashboard,
 	SwaggerPppSurveyGenerateFindings,
@@ -143,7 +144,13 @@ export class PppController {
 		@Body() dto: UploadPppExcelDto,
 		@AcademicPeriodId() academicPeriodId: number,
 	) {
-		return parseSuccessResponse(await this.pppService.uploadExcel(dto, academicPeriodId));
+		return parseSuccessResponse(await this.pppService.startUploadExcel(dto, academicPeriodId));
+	}
+
+	@SwaggerPppSurveyUploadStatus()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async surveyUploadStatus(@Param('jobId') jobId: string) {
+		return parseSuccessResponse(this.pppService.getUploadStatus(jobId));
 	}
 
 	@SwaggerPppSurveyTemplate()
