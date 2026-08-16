@@ -88,17 +88,13 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	// Nothing here is ever held whole. buildExcel kept three full copies of the dataset at once (row
-	// array, ExcelJS sheet model, final xlsx Buffer) and OOM-crashed the process on a real period, in
-	// an API capped at 640 MB. Now the rows live in a scratch table in the database and arrive a page
-	// at a time, and WorkbookWriter discards each row as soon as it is committed to the stream, so
-	// the peak is one page rather than one period.
+	// Nothing here is ever held whole: buildExcel's three copies of the dataset (row array, sheet
+	// model, xlsx Buffer) OOM-crashed the process on a real period. The rows page out of a scratch
+	// table and WorkbookWriter drops each one on commit, so the peak is a page rather than a period.
 	//
-	// The other exports return a GeneratedExcel and let the controller do the transport; this one
-	// cannot, since the point is that the file never exists as one buffer. So it returns the file
-	// name plus a writer over any Writable: the merge has already run by the time this resolves,
-	// which is what lets the controller send its headers only once the query has succeeded, and HTTP
-	// stays in the controller.
+	// Returns a writer over any Writable instead of a GeneratedExcel because the file never exists as
+	// one buffer. The merge has already run once this resolves, which lets the controller send its
+	// headers only after the query succeeded.
 	async prepareGradesRc(academicPeriodId: number, lang?: string): Promise<StreamedExcel> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
 		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
@@ -119,12 +115,22 @@ export class ScrapingExportsService {
 		labels: ExportLabels,
 		lang: string | undefined,
 	): Promise<void> {
-		// Sheet order is load-bearing: the RC bulk upload parses worksheets[0] positionally, so the
-		// upload-shaped sheet must stay first and the descriptive one must come after. The writer
-		// streams sheets in creation order and a committed sheet cannot be reopened.
-		// Both sheets describe the same rows; the query already scoped them to sections the app knows.
+		// Sheet order is load-bearing: the upload parses worksheets[0], and the writer streams sheets
+		// in creation order.
+		//
+		// The two are disjoint halves split on whether the row carries an observation, so this one
+		// uploads without a single rejection.
+		//
+		// The cost is that a row which WOULD upload fine but carries an observation -- a withdrawn
+		// student's 0/RET, a genuine unexplained 0 -- is held back with no way through: the upload
+		// parses worksheets[0] only, and the review sheet is 16 descriptive columns rather than this
+		// 6-column template. Observations that clear once someone fixes the source (a fallback grade,
+		// an unregistered type, a missing enrollment) come back in the next download; COURSE_LEVEL_STATUS
+		// and ZERO_GRADE_UNEXPLAINED never do, so those enrollments stay out of
+		// academic.student_course_grades permanently. ZERO_GRADE_UNEXPLAINED ships ASISTIO, which is
+		// the one status the RC semaphore counts -- holding it back moves the RC average.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
-		for await (const r of handle.rows()) {
+		for await (const r of handle.rows(false)) {
 			uploadSheet
 				.addRow([
 					r.sectionCode,
@@ -139,14 +145,12 @@ export class ScrapingExportsService {
 		uploadSheet.commit();
 
 		const descriptive = this.resolveLabels(gradesRcDescriptiveLabels, lang);
-		// The observations are full sentences addressed to whoever reviews the file, so the last
-		// column is given room to hold one instead of the header-sized width the others get.
+		// The observations are full sentences, so the last column gets room for one.
 		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
 			[descriptive.headers.length]: 90,
 		});
-		// The scratch table is read a second time rather than the rows being kept from the first pass:
-		// re-reading is what keeps the peak at one page.
-		for await (const r of handle.rows()) {
+		// Re-read rather than keeping the first pass's rows: that is what holds the peak at one page.
+		for await (const r of handle.rows(true)) {
 			detailSheet
 				.addRow([
 					r.academicPeriod,
@@ -173,8 +177,7 @@ export class ScrapingExportsService {
 		await workbook.commit();
 	}
 
-	// Same red bold header as buildExcel, against the streaming writer. Column widths have to be set
-	// before the first commit -- the writer seals the sheet's metadata once rows start flowing.
+	// Widths have to be set before the first commit: the writer seals the sheet's metadata then.
 	private startSheet(
 		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
 		name: string,

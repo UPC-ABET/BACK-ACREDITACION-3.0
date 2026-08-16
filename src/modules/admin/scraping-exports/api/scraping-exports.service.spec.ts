@@ -10,17 +10,21 @@ import { gradesRcDescriptiveLabels } from '../model/scraping-exports.labels';
 // that assigns weights to grades.
 describe('ScrapingExportsService.prepareGradesRc', () => {
 	// Stands in for the scratch-table reader: the service walks it once per worksheet, so `rows` has
-	// to hand back a fresh generator each time it is called.
-	const exportedRows: unknown[] = [];
+	// to hand back a fresh generator each time it is called. The observation split is reproduced here
+	// the way READ_GRADES_RC_PAGE_SQL does it, so the sheets get the same disjoint halves they would
+	// in production.
+	const exportedRows: Array<{ observations?: string[] }> = [];
 	const openGradesRcExport = jest.fn().mockImplementation(() =>
 		Promise.resolve({
-			rows: async function* () {
-				for (const r of exportedRows) yield r;
+			rows: async function* (withObservations: boolean) {
+				for (const r of exportedRows) {
+					if ((r.observations ?? []).length > 0 === withObservations) yield r;
+				}
 			},
 			close: jest.fn().mockResolvedValue(undefined),
 		}),
 	);
-	const givenRows = (rows: unknown[]) => {
+	const givenRows = (rows: Array<{ observations?: string[] }>) => {
 		exportedRows.length = 0;
 		exportedRows.push(...rows);
 	};
@@ -103,7 +107,9 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	});
 
 	it('writes the descriptive sheet with codes resolved to names', async () => {
-		givenRows([row()]);
+		// Carries an observation so it lands in the descriptive sheet: that is what the two sheets
+		// are split on.
+		givenRows([row({ observations: [GRADE_RC_OBSERVATIONS.FALLBACK_GRADE] })]);
 
 		const [header, first] = readSheet(
 			await loadWorkbook((await streamToBuffer()).buffer),
@@ -144,7 +150,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 			'Asistió',
 			'Banner',
 			'2026-08-08 16:20',
-			// no observation: ExcelJS drops the trailing empty cell, so it is absent rather than ''
+			gradesRcDescriptiveLabels.es.observations[GRADE_RC_OBSERVATIONS.FALLBACK_GRADE],
 		]);
 	});
 
@@ -173,30 +179,49 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 		);
 	});
 
-	// Both sheets describe the same rows -- the scoping to loaded sections happens in SQL, so neither
-	// sheet may drop or add rows on its own.
-	it('writes the same rows in both sheets', async () => {
-		givenRows([row(), row({ sectionCode: 'NRC2', studentCode: 'A2', source: 'Planner' })]);
+	// The sheets are disjoint halves: the upload sheet holds only rows that came out complete, so it
+	// can be uploaded without a single rejection, and anything with something to say about it goes to
+	// the review sheet -- including rows that would upload fine, like a withdrawn student's 0/RET.
+	it('splits the rows between the sheets by whether they carry an observation', async () => {
+		givenRows([
+			row(),
+			row({ sectionCode: 'NRC2', studentCode: 'A2' }),
+			row({
+				sectionCode: 'NRC3',
+				studentCode: 'A3',
+				source: 'Planner',
+				observations: [GRADE_RC_OBSERVATIONS.COURSE_LEVEL_STATUS],
+			}),
+		]);
 
 		const workbook = await loadWorkbook((await streamToBuffer()).buffer);
 
-		expect(readSheet(workbook, 'Data').slice(1)).toHaveLength(2);
+		const uploadRows = readSheet(workbook, 'Data').slice(1);
+		expect(uploadRows.map((r) => r[1])).toEqual(['NRC1', 'NRC2']);
 
 		const detailRows = readSheet(workbook, 'Detalle').slice(1);
-		expect(detailRows).toHaveLength(2);
-		expect(detailRows.map((r) => r[14])).toEqual(['Banner', 'Planner']);
+		expect(detailRows.map((r) => r[2])).toEqual(['NRC3']);
 	});
 
+	// A rescued row always carries FALLBACK_GRADE in production, so it is the review sheet that has
+	// to keep the raw code -- asserting it on the upload sheet would pin a state that cannot happen.
 	it('keeps the raw grade type code of a grade rescued by the fallback', async () => {
 		givenRows([
-			row({ sectionCode: 'NRC2', studentCode: 'A2', gradeTypeCode: 'TF1', gradeTypeName: 'TF1' }),
+			row({
+				sectionCode: 'NRC2',
+				studentCode: 'A2',
+				gradeTypeCode: 'TF1',
+				gradeTypeName: 'TF1',
+				observations: [GRADE_RC_OBSERVATIONS.FALLBACK_GRADE],
+			}),
 		]);
 
 		const workbook = await loadWorkbook((await streamToBuffer('en')).buffer);
-		const [header, first] = readSheet(workbook, 'Data');
+		expect(readSheet(workbook, 'Data')).toHaveLength(1);
+		const [header, first] = readSheet(workbook, 'Details');
 
-		expect(header[1]).toBe('Section code');
-		expect(first[3]).toBe('TF1');
+		expect(header[2]).toBe('Section code');
+		expect(first[8]).toBe('TF1');
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Details']);
 	});
 });
