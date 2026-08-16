@@ -143,26 +143,26 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 			'Fecha de scrapeo',
 			'Observación',
 		],
-		// Written for whoever downloads the file, not for whoever wrote the query: no column names
-		// from the database, no internal vocabulary. Each one says what happened, whether the file
-		// can still be uploaded, and what to do about it.
+		// Para quien descarga el archivo: qué pasó y, si aplica, qué hacer.
 		observations: {
 			[GRADE_RC_OBSERVATIONS.COURSE_LEVEL_STATUS]:
-				'El alumno figura retirado o sancionado en el curso; puede verlo en la columna "Estado de calificación". Ese estado aplica a todo el curso, por eso la nota queda en 0: no es el resultado de una evaluación que haya rendido. Si el estado es correcto, esta fila se puede cargar tal como está.',
+				'El alumno figura retirado o sancionado en el curso, por eso la nota es 0.',
 			[GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE]:
-				'El alumno no tiene la nota con la que se evalúa este curso (la que aparece en la columna "Tipo de nota"). Como figura retirado o sancionado, esa ausencia queda explicada: se registra 0 con ese estado y la fila se puede cargar.',
+				'No tiene la nota con la que se evalúa el curso; su retiro o sanción lo explica. Se registra 0.',
 			[GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE_PENDING]:
-				'REQUIERE ATENCIÓN. El alumno no tiene la nota con la que se evalúa este curso, y esa evaluación todavía figura abierta: el docente aún no la cerró, así que lo más probable es que falte calificarla. Se registra 0 con el estado "SN" (sin nota). Lo recomendable es esperar a que el docente termine de calificar y volver a descargar el archivo, en vez de cargar esta fila.',
+				'REQUIERE ATENCIÓN. No tiene la nota con la que se evalúa el curso y esa evaluación sigue abierta. Se registra 0 con estado "NR". Esperar a que el docente califique y volver a descargar.',
 			[GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE_UNEXPLAINED]:
-				'REQUIERE ATENCIÓN. El alumno no tiene la nota con la que se evalúa este curso y no se encontró ningún motivo que lo explique: no figura retirado, ni sancionado, ni con la evaluación pendiente. Se registra 0 con el estado "SN" (sin nota). Hay que revisar el caso y corregir la nota o el estado antes de cargar esta fila.',
+				'REQUIERE ATENCIÓN. No tiene la nota con la que se evalúa el curso y no hay motivo que lo explique. Se registra 0 con estado "NR". Revisar el caso.',
 			[GRADE_RC_OBSERVATIONS.FALLBACK_GRADE]:
-				'REQUIERE ATENCIÓN. Este curso no tiene configurado con qué nota se evalúa, o no se encontró ninguna nota de ese tipo, así que se usó la última evaluación del alumno; cuál es se ve en la columna "Tipo de nota". No es necesariamente la nota que corresponde para este curso: hay que revisarla antes de cargar el archivo, y lo correcto es configurar el tipo de nota del curso y volver a descargarlo.',
+				'REQUIERE ATENCIÓN. El curso no tiene configurado con qué nota se evalúa: se usó la última evaluación del alumno. Configurar el tipo de nota del curso y volver a descargar.',
 			[GRADE_RC_OBSERVATIONS.ZERO_GRADE_UNEXPLAINED]:
-				'La nota es 0 y no hay nada que indique por qué: el alumno no figura retirado, ni sancionado, ni ausente. Puede ser un 0 que realmente sacó, o una evaluación que nunca llegó a calificarse. Conviene verificarlo antes de cargar.',
+				'La nota es 0 y no hay nada que indique por qué. Puede ser un 0 real o una evaluación sin calificar.',
+			[GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS]:
+				'REQUIERE ATENCIÓN. El estado de calificación no está registrado en el sistema: se muestra tal cual viene del origen. Verificarlo antes de cargar.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE]:
-				'REQUIERE ATENCIÓN. El tipo de nota de esta fila (columna "Código del tipo de nota") no está registrado en el sistema: viene tal cual del sistema de origen. El sistema rechazará el archivo completo mientras siga así, incluidas las filas de todos los demás cursos. Hay que registrar ese tipo de nota o configurar con qué nota se evalúa el curso, y volver a descargar el archivo.',
+				'REQUIERE ATENCIÓN. El tipo de nota no está registrado en el sistema. Registrarlo o configurar el tipo de nota del curso, y volver a descargar.',
 			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED]:
-				'REQUIERE ATENCIÓN. El alumno no figura matriculado en esta sección: o no está registrado en el sistema, o no tiene matrícula en ella. El sistema rechazará el archivo completo mientras siga así, incluidas las filas de todos los demás cursos. Hay que cargar antes los archivos de matriculados y de alumno-sección del periodo, y volver a descargar este archivo.',
+				'REQUIERE ATENCIÓN. El alumno no figura matriculado en esta sección. Cargar antes matriculados y alumno-sección del periodo, y volver a descargar.',
 		},
 	},
 	en: {
@@ -187,21 +187,23 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 		],
 		observations: {
 			[GRADE_RC_OBSERVATIONS.COURSE_LEVEL_STATUS]:
-				'The student is recorded as withdrawn or sanctioned in the course; you can see it in the "Qualification status" column. That status applies to the whole course, which is why the grade is 0: it is not the result of an evaluation the student sat. If the status is right, this row can be uploaded as it is.',
+				'The student is recorded as withdrawn or sanctioned in the course, which is why the grade is 0.',
 			[GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE]:
-				'The student has no grade of the type this course is evaluated with (the one in the "Grade type" column). Since they are recorded as withdrawn or sanctioned, that absence is explained: it is recorded as 0 with that status and the row can be uploaded.',
+				'No grade of the type this course is evaluated with; their withdrawal or sanction explains it. Recorded as 0.',
 			[GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE_PENDING]:
-				'NEEDS ATTENTION. The student has no grade of the type this course is evaluated with, and that evaluation is still open: the teacher has not closed it, so it has most likely not been graded yet. It is recorded as 0 with status "SN" (no grade). Best to wait until the teacher finishes grading and download the file again, rather than uploading this row.',
+				'NEEDS ATTENTION. No grade of the type this course is evaluated with, and that evaluation is still open. Recorded as 0 with status "NR". Wait for the teacher to grade it and download again.',
 			[GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE_UNEXPLAINED]:
-				'NEEDS ATTENTION. The student has no grade of the type this course is evaluated with and no reason was found for it: they are not recorded as withdrawn, sanctioned, or with the evaluation pending. It is recorded as 0 with status "SN" (no grade). The case has to be reviewed and the grade or the status corrected before uploading this row.',
+				'NEEDS ATTENTION. No grade of the type this course is evaluated with and no reason for it. Recorded as 0 with status "NR". Review the case.',
 			[GRADE_RC_OBSERVATIONS.FALLBACK_GRADE]:
-				'NEEDS ATTENTION. This course has no grade type configured to be evaluated with, or no grade of that type was found, so the student\'s last evaluation was used; the "Grade type" column shows which one. It is not necessarily the right grade for this course: it has to be reviewed before uploading, and the proper fix is to configure the course\'s grade type and download the file again.',
+				"NEEDS ATTENTION. The course has no grade type configured to be evaluated with: the student's last evaluation was used. Configure the course's grade type and download again.",
 			[GRADE_RC_OBSERVATIONS.ZERO_GRADE_UNEXPLAINED]:
-				'The grade is 0 and nothing indicates why: the student is not recorded as withdrawn, sanctioned, or absent. It may be a 0 they actually scored, or an evaluation that was never graded. Worth checking before uploading.',
+				'The grade is 0 and nothing indicates why. It may be a real 0 or an evaluation that was never graded.',
+			[GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS]:
+				'NEEDS ATTENTION. The qualification status is not registered in the system: it is shown exactly as it comes from the source. Check it before uploading.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE]:
-				"NEEDS ATTENTION. This row's grade type (\"Grade type code\" column) is not registered in the system: it comes straight from the source system. The system will reject the whole file while that is the case, including every other course's rows. That grade type has to be registered, or the course's grade type configured, and the file downloaded again.",
+				"NEEDS ATTENTION. The grade type is not registered in the system. Register it or configure the course's grade type, and download again.",
 			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED]:
-				"NEEDS ATTENTION. The student is not recorded as enrolled in this section: either they are not registered in the system, or they have no enrollment in it. The system will reject the whole file while that is the case, including every other course's rows. The period's enrolled-students and student-section files have to be uploaded first, and this file downloaded again.",
+				"NEEDS ATTENTION. The student is not recorded as enrolled in this section. Upload the period's enrolled-students and student-section files first, and download again.",
 		},
 	},
 };

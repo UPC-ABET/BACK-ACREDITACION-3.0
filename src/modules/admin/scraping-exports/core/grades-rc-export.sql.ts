@@ -14,16 +14,13 @@ const EXPORTABLE_RUN_STATUSES = `('completed')`;
 // ungraded evaluation. It must not become a status: the RC semaphore drops anything not ASISTIO.
 const VERIFIED_ZERO_MARK = `'CAL'`;
 
-// Shipped when the student has no grade and nothing explains why. Not a TG404 code: the upload
-// auto-provisions an unrecognized status by name, so the first file carrying it registers "SN" as a
-// real one -- and being anything but ASISTIO, the semaphore leaves those zeros out of the RC average.
-const NO_GRADE_STATUS = `'SN'`;
-
 // $1 period code | $2/$3 TG205 names/codes | $4/$5 TG404 names/codes
 // $6/$7 section codes / designated grade type codes | $8 ASISTIO code | $9 SAN code
 // $10 section codes loaded in academic.course_sections for the period | $11 RET code
 // $12/$13 the (section, student) pairs enrolled in the period (academic.student_section_enrollments)
 // $14/$15 Banner program codes / career codes (PROGRAM_CAREER_MAP)
+// $16 NR code, shipped when the student has no grade: not ASISTIO, so the semaphore leaves those
+// zeros out of the RC average.
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
 export const GRADES_RC_SQL = `
 WITH grade_types AS (SELECT * FROM unnest($2::text[], $3::text[]) AS t(name, code)),
@@ -229,7 +226,8 @@ classified AS (
 --     supersedes any grade recorded for one of its evaluations;
 --  2. a numeric grade -- it beats an evaluation-level status, because "no rindió" is a claim about
 --     that one evaluation and the other source holding a grade contradicts it directly;
---  3. anything else.
+--  3. any value at all, so a stated status does not lose to a blank scraped later;
+--  4. anything else.
 --
 -- The name/career windows run before DISTINCT ON, so the surviving row carries values backfilled
 -- from the source that had them.
@@ -248,7 +246,7 @@ merged AS (
 		max(program_code) OVER (PARTITION BY student_code) AS program_code
 	FROM classified
 	ORDER BY section_code, student_code, raw_type,
-		status_is_course_level DESC, is_numeric DESC, scraped_at DESC
+		status_is_course_level DESC, is_numeric DESC, has_grade DESC, scraped_at DESC
 ),
 -- Backstop for a course that kept two loaded sections for the same student: one section per
 -- (student, course), the same invariant the alumno-sección export enforces.
@@ -354,22 +352,24 @@ final AS (
 		s.*,
 		(e.student_code IS NULL) AS not_enrolled,
 		CASE
-			WHEN s.missing_designated THEN COALESCE(s.explained_status_code, ${NO_GRADE_STATUS})
+			WHEN s.missing_designated THEN COALESCE(s.explained_status_code, $16::text)
 			-- A plain zero yields to a status when one exists; a CAL zero is an awarded grade.
 			WHEN s.is_numeric AND s.is_zero AND NOT s.zero_verified
 				THEN COALESCE(s.explained_status_code, $8::text)
 			WHEN s.is_numeric THEN $8::text
 			-- Unrecognized status text ships as-is: the upload auto-provisions it, while emptying it
 			-- would refuse the file over a status the source actually stated.
-			ELSE COALESCE(s.explained_status_code, s.status_text, ${NO_GRADE_STATUS})
+			ELSE COALESCE(s.explained_status_code, s.status_text, $16::text)
 		END AS final_status_code,
 		CASE
-			WHEN s.missing_designated THEN COALESCE(s.explained_status_name, ${NO_GRADE_STATUS})
+			WHEN s.missing_designated
+				THEN COALESCE(s.explained_status_name, (SELECT name FROM qual_status WHERE code = $16), '')
 			WHEN s.is_numeric AND s.is_zero AND NOT s.zero_verified
 				THEN COALESCE(s.explained_status_name, (SELECT name FROM qual_status WHERE code = $8), '')
 			WHEN s.is_numeric
 				THEN COALESCE((SELECT name FROM qual_status WHERE code = $8), '')
-			ELSE COALESCE(s.explained_status_name, s.status_text, ${NO_GRADE_STATUS})
+			ELSE COALESCE(s.explained_status_name, s.status_text,
+				(SELECT name FROM qual_status WHERE code = $16), '')
 		END AS final_status_name
 	FROM shaped s
 	LEFT JOIN enrolled e
@@ -420,7 +420,11 @@ SELECT
 		CASE WHEN NOT s.missing_designated AND s.grade_type_code IS NULL
 			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE}' END,
 		CASE WHEN s.not_enrolled
-			THEN '${GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED}' END
+			THEN '${GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED}' END,
+		-- The shipped status is raw source text, resolved through no TG404 type: the upload would
+		-- auto-provision it as a permanent one, so it has to be confirmed by hand first.
+		CASE WHEN NOT EXISTS (SELECT 1 FROM qual_status q WHERE q.code = s.final_status_code)
+			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS}' END
 	], NULL) AS "observations"
 FROM final s
 LEFT JOIN careers c ON c.program_code = s.program_code
@@ -448,15 +452,16 @@ export const MATERIALIZE_GRADES_RC_SQL = `
 CREATE TEMP TABLE ${GRADES_RC_TEMP_TABLE} AS
 SELECT
 	row_number() OVER (ORDER BY q."sectionCode", q."studentCode") AS "exportSeq",
-	cardinality(q."observations") > 0                            AS "hasObservations",
+	COALESCE(cardinality(q."observations"), 0) > 0                AS "hasObservations",
 	q.*
 FROM (${GRADES_RC_SQL}) q
 `;
 
-// Keyset, not OFFSET: with an index on "exportSeq" each page is an index scan from where the last
-// one stopped, instead of re-scanning and re-sorting the whole table once per page.
+// Keyset, not OFFSET: each page is an index scan from where the last one stopped, instead of
+// re-scanning and re-sorting the whole table once per page. "hasObservations" leads because every
+// page filters on it.
 export const INDEX_GRADES_RC_TEMP_SQL = `
-CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_export_seq"
+CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_has_observations_export_seq"
 	ON ${GRADES_RC_TEMP_TABLE} ("hasObservations", "exportSeq")
 `;
 

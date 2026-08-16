@@ -34,7 +34,13 @@
 import { Client } from 'pg';
 import * as dotenv from 'dotenv';
 
-import { GRADES_RC_SQL } from 'src/modules/admin/scraping-exports/core/grades-rc-export.sql';
+import {
+	GRADES_RC_SQL,
+	GRADES_RC_TEMP_TABLE,
+	INDEX_GRADES_RC_TEMP_SQL,
+	MATERIALIZE_GRADES_RC_SQL,
+	READ_GRADES_RC_PAGE_SQL,
+} from 'src/modules/admin/scraping-exports/core/grades-rc-export.sql';
 import { GRADE_RC_OBSERVATIONS } from 'src/modules/admin/scraping-exports/model/scraping-exports.types';
 import { PROGRAM_CAREER_MAP } from 'src/modules/admin/scraping-exports/model/scraping-exports.transforms';
 
@@ -127,6 +133,7 @@ interface ExportedRow {
 	qualificationStatusCode: string;
 	gradeTypeName: string;
 	careerCode: string;
+	source: string;
 	observations: string[];
 }
 
@@ -319,6 +326,7 @@ async function loadFixtures(db: Client): Promise<void> {
 		['NRC8', '8', 'A8'],
 		['NRC8', '8', 'A8B'],
 		['NRC9', '9', 'A9'],
+		['NRC12', '12', 'A12'],
 	];
 	const seenSections = new Set<string>();
 	for (const [nrc, courseNumber, student] of banner) {
@@ -382,6 +390,11 @@ async function loadFixtures(db: Client): Promise<void> {
 		{ tipo: 'PA', peso: 10, nota: 'RET', numero: 4 },
 	]);
 	await notas('A8B', '1ASI8', [{ tipo: 'EA1', peso: 70, nota: '15.00', numero: 1 }]);
+	// NRC12: the same designated grade Planner reports as a sanction, here as a number and scraped
+	// LATER. The sanction has to win anyway -- newest-scrape-wins only applies within a tier.
+	await notas('A12', '1ASI12', [{ tipo: 'TB1', peso: 25, nota: '15.00', numero: 4 }], {
+		scrapedAt: NEWER_SCRAPE,
+	});
 	// NRC9 is not in academic.course_sections: nothing of it may be exported.
 	await notas('A9', '1ASI9', [{ tipo: 'EA1', peso: 100, nota: '19.00', numero: 1 }]);
 	// Same student, same grade, unfinished run: must lose to the completed one.
@@ -598,8 +611,18 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 		],
 		['R7 unknown status text passed through', of('NRC1|A1D')?.qualificationStatusCode === 'XXX'],
 		[
+			'R7 an unregistered status is flagged for review',
+			has('NRC1|A1D', GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS) &&
+				!has('NRC1|A1', GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS) &&
+				!has('NRC1|A1C', GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS),
+		],
+		[
 			'R7 sanctioned designated grade -> 0 + SAN',
 			of('NRC12|A12')?.grade === '0' && of('NRC12|A12')?.qualificationStatusCode === 'TG404-T006',
+		],
+		[
+			'R7 a course-level status beats a numeric grade from the other source, however new',
+			of('NRC12|A12')?.grade === '0' && of('NRC12|A12')?.source === 'Planner',
 		],
 		[
 			'R7 a course-level status suppresses the fallback observation',
@@ -640,8 +663,8 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 				of('NRC6|A6C')?.grade === '0',
 		],
 		[
-			'R6 missing designated with no reason -> empty status + unexplained',
-			of('NRC6|A6C')?.qualificationStatusCode === '' &&
+			'R6 missing designated with no reason -> NR + unexplained',
+			of('NRC6|A6C')?.qualificationStatusCode === QUALIFICATION_STATUSES.NR &&
 				has('NRC6|A6C', GRADE_RC_OBSERVATIONS.MISSING_DESIGNATED_GRADE_UNEXPLAINED),
 		],
 		[
@@ -675,13 +698,58 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 	];
 }
 
+// The worksheet split lives in MATERIALIZE_GRADES_RC_SQL, which the export runs and this script
+// otherwise never touches. Both halves are paged the way the repository does it, so what is checked
+// is that they partition the export: disjoint, and together the whole thing.
+async function verifySplit(
+	db: Client,
+	params: unknown[],
+	rows: ExportedRow[],
+): Promise<Array<[string, boolean]>> {
+	await db.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
+	await db.query(MATERIALIZE_GRADES_RC_SQL, params);
+	await db.query(INDEX_GRADES_RC_TEMP_SQL);
+
+	const page = async (withObservations: boolean): Promise<ExportedRow[]> => {
+		const collected: ExportedRow[] = [];
+		let lastSeq = '0';
+		for (;;) {
+			const { rows: pageRows } = await db.query<ExportedRow & { exportSeq: string }>(
+				READ_GRADES_RC_PAGE_SQL,
+				[lastSeq, 2, withObservations],
+			);
+			if (pageRows.length === 0) return collected;
+			collected.push(...pageRows);
+			lastSeq = pageRows[pageRows.length - 1].exportSeq;
+		}
+	};
+
+	const key = (row: ExportedRow) => `${row.sectionCode}|${row.studentCode}`;
+	const clean = await page(false);
+	const review = await page(true);
+	const cleanKeys = new Set(clean.map(key));
+
+	return [
+		[
+			'R9 the upload sheet carries no observation at all',
+			clean.every((r) => r.observations.length === 0),
+		],
+		[
+			'R9 every reviewed row carries one',
+			review.length > 0 && review.every((r) => r.observations.length > 0),
+		],
+		['R9 the halves are disjoint', !review.some((r) => cleanKeys.has(key(r)))],
+		['R9 the halves add up to the whole export', clean.length + review.length === rows.length],
+	];
+}
+
 async function main(): Promise<void> {
 	const db = new Client({ connectionString: resolveConnectionString() });
 	await db.connect();
 	try {
 		await assertThrowaway(db);
 		await loadFixtures(db);
-		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, [
+		const params = [
 			'202610',
 			Object.keys(GRADE_TYPES),
 			Object.values(GRADE_TYPES),
@@ -697,12 +765,14 @@ async function main(): Promise<void> {
 			ENROLLED.map(([, student]) => student),
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
-		]);
+			QUALIFICATION_STATUSES.NR,
+		];
+		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, params);
 
 		console.table(
 			rows.map((row) => ({ ...row, observations: (row.observations ?? []).join(',') })),
 		);
-		const results = assertions(rows);
+		const results = [...assertions(rows), ...(await verifySplit(db, params, rows))];
 		for (const [label, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}`);
 
 		const failed = results.filter(([, ok]) => !ok).length;

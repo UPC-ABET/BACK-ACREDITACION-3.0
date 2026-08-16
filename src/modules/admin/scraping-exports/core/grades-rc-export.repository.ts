@@ -71,6 +71,9 @@ export class GradesRcExportRepository {
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
 			await runner.query(MATERIALIZE_GRADES_RC_SQL, params);
 			await runner.query(INDEX_GRADES_RC_TEMP_SQL);
+			// CREATE TABLE AS writes no statistics and autovacuum never analyzes a TEMP table, so
+			// without this the planner guesses at the "hasObservations" selectivity of every page.
+			await runner.query(`ANALYZE ${GRADES_RC_TEMP_TABLE}`);
 		} catch (error) {
 			await this.closeGradesRcExport(runner);
 			throw error;
@@ -89,10 +92,12 @@ export class GradesRcExportRepository {
 		let lastSeq = '0';
 
 		for (;;) {
-			const page: Array<GradeRcExportRow & { exportSeq: string }> = await runner.query(
-				READ_GRADES_RC_PAGE_SQL,
-				[lastSeq, GRADES_RC_PAGE_SIZE, withObservations],
-			);
+			const page: Array<GradeRcExportRow & { exportSeq: string; hasObservations: boolean }> =
+				await runner.query(READ_GRADES_RC_PAGE_SQL, [
+					lastSeq,
+					GRADES_RC_PAGE_SIZE,
+					withObservations,
+				]);
 			if (page.length === 0) return;
 
 			for (const row of page) yield row;
@@ -137,6 +142,7 @@ export class GradesRcExportRepository {
 			enrollments.studentCodes,
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
+			TYPE_CODES.QUALIFICATION_STATUS.NR,
 		];
 	}
 

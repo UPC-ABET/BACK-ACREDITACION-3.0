@@ -203,16 +203,25 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 		expect(detailRows.map((r) => r[2])).toEqual(['NRC3']);
 	});
 
+	// A rescued row always carries FALLBACK_GRADE in production, so it is the review sheet that has
+	// to keep the raw code -- asserting it on the upload sheet would pin a state that cannot happen.
 	it('keeps the raw grade type code of a grade rescued by the fallback', async () => {
 		givenRows([
-			row({ sectionCode: 'NRC2', studentCode: 'A2', gradeTypeCode: 'TF1', gradeTypeName: 'TF1' }),
+			row({
+				sectionCode: 'NRC2',
+				studentCode: 'A2',
+				gradeTypeCode: 'TF1',
+				gradeTypeName: 'TF1',
+				observations: [GRADE_RC_OBSERVATIONS.FALLBACK_GRADE],
+			}),
 		]);
 
 		const workbook = await loadWorkbook((await streamToBuffer('en')).buffer);
-		const [header, first] = readSheet(workbook, 'Data');
+		expect(readSheet(workbook, 'Data')).toHaveLength(1);
+		const [header, first] = readSheet(workbook, 'Details');
 
-		expect(header[1]).toBe('Section code');
-		expect(first[3]).toBe('TF1');
+		expect(header[2]).toBe('Section code');
+		expect(first[8]).toBe('TF1');
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Details']);
 	});
 });
