@@ -21,6 +21,10 @@ import {
 const PPP_TYPE_CODE = TYPE_CODES.SURVEY_TYPE.PPP;
 const PPP_STATUS_ACTIVE_CODE = 'TG602-T001';
 
+// The bulk template is intentionally lighter than the manual form: it omits `ruc`, `bossRole`,
+// `phone` and `email`, so a bulk-imported survey stores five `information` keys where `create`
+// stores nine. Those four remain in `CreatePppSurveyDto` — they are out of scope for the import,
+// not for PPP — which is why the 11-digit RUC rule lives in `validateCreateSurvey` alone.
 const FIXED_TEMPLATE_HEADERS = [
 	'Codigo Alumno',
 	'# Practica',
@@ -33,9 +37,15 @@ const FIXED_TEMPLATE_HEADERS = [
 const ERRORS_COLUMN_HEADER = 'Errores';
 const UPLOAD_JOB_STATUS_TTL_MS = 30 * 60 * 1000;
 // One in-memory Map per process — see docs/CONTEXT.md § Database (single-replica constraints).
-// Bounded so a burst of uploads (or a client retrying a stuck request) cannot grow it unboundedly;
-// each retained job also holds a full base64 copy of the annotated Excel until its TTL expires.
+// Two separate bounds, because they defend against different things and must not be conflated:
+// `MAX_CONCURRENT_UPLOAD_JOBS` caps jobs actually running, which is what
+// `error.survey.ppp.tooManyUploadJobs` reports to the client — finished entries linger until their
+// TTL expires, so counting them here would reject the 21st upload of any half-hour window even with
+// nothing running, and the feature's own loop is upload → read the annotated file → fix → re-upload.
+// `MAX_RETAINED_UPLOAD_JOBS` caps total entries kept, since each finished job holds a full base64
+// copy of the annotated Excel; going over it evicts the oldest *finished* jobs, never running ones.
 const MAX_CONCURRENT_UPLOAD_JOBS = 20;
+const MAX_RETAINED_UPLOAD_JOBS = 100;
 
 type PppUploadJobResult = {
 	total: number;
@@ -212,9 +222,11 @@ export class PppSurveyService {
 	 * gets an accurate `totalRows` immediately.
 	 */
 	async startUploadExcel(dto: UploadPppExcelDto, academicPeriodId: number, userId: number) {
-		if (this.uploadJobs.size >= MAX_CONCURRENT_UPLOAD_JOBS) {
+		const runningJobs = [...this.uploadJobs.values()].filter((j) => !j.done).length;
+		if (runningJobs >= MAX_CONCURRENT_UPLOAD_JOBS) {
 			throw new BadRequestException(pppValidationStrings.error.tooManyUploadJobs);
 		}
+		this.evictFinishedJobsOverRetentionBound();
 
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
@@ -431,6 +443,12 @@ export class PppSurveyService {
 					practiceNumber: Number(normalizedRow.practiceNumber),
 					campusId: dto.campusId || (placement as { campusId: number }).campusId,
 					courseSectionId: (placement as { courseSectionId: number }).courseSectionId,
+					// Deliberately five keys, against the nine that `create` writes: the bulk
+					// template is the lighter path and does not collect `ruc`, `bossRole`,
+					// `phone` or `email` (see FIXED_TEMPLATE_HEADERS). Those four stay valid on
+					// the manual form, which is why `validateCreateSurvey` still enforces the RUC
+					// format there — there is simply nothing to validate here. Anything reading
+					// `information` back for PPP must treat all four as optional.
 					information: {
 						companyName: normalizedRow.companyName,
 						bossName: normalizedRow.bossName,
@@ -524,6 +542,24 @@ export class PppSurveyService {
 			processedRows: processed,
 			progressPct: Math.min(90, Math.round((processed / total) * 90)),
 		});
+	}
+
+	/**
+	 * Frees the oldest finished jobs once the retained map grows past its bound. The
+	 * concurrency cap deliberately ignores finished entries, so without this a user
+	 * cycling through the fix-and-re-upload loop would accumulate one base64 copy of the
+	 * annotated Excel per attempt until each entry's TTL expired. Map iteration is in
+	 * insertion order, so this drops the least recently started jobs first; running jobs
+	 * are skipped, since their caller is still polling for a result.
+	 */
+	private evictFinishedJobsOverRetentionBound(): void {
+		if (this.uploadJobs.size < MAX_RETAINED_UPLOAD_JOBS) return;
+		for (const [jobId, job] of this.uploadJobs) {
+			if (this.uploadJobs.size < MAX_RETAINED_UPLOAD_JOBS) break;
+			if (!job.done) continue;
+			this.uploadJobs.delete(jobId);
+			this.uploadJobOwners.delete(jobId);
+		}
 	}
 
 	private finishUploadJob(jobId: string, result: PppUploadJobResult): void {

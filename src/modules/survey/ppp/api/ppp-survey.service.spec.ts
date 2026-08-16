@@ -1,7 +1,13 @@
 import * as ExcelJS from 'exceljs';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import type { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
-import { buildCompetenceLabels, annotateUploadErrors } from './ppp-survey.service';
+import {
+	buildCompetenceLabels,
+	annotateUploadErrors,
+	PppSurveyService,
+} from './ppp-survey.service';
+import { pppValidationStrings } from '../config/strings/ppp.validation';
+import type { UploadPppExcelDto } from '../model/ppp.dtos';
 
 function config(id: number, commissionTypeCode?: string): OutcomeConfigEntity {
 	return {
@@ -111,5 +117,77 @@ describe('annotateUploadErrors', () => {
 		annotateUploadErrors(sheet, new Map([[2, ['Error uno', 'Error dos']]]));
 
 		expect(sheet.getRow(2).getCell(2).value).toBe('Error uno | Error dos');
+	});
+});
+
+describe('PppSurveyService upload job caps', () => {
+	type JobEntry = { done: boolean };
+
+	function buildService() {
+		const surveyRepo = {
+			getPppTypeId: jest.fn().mockResolvedValue(1),
+			getPppStatusTypeId: jest.fn().mockResolvedValue(2),
+		};
+		// No active config, so a call that clears the cap fails with `noActiveConfig`
+		// further down — which is exactly how these tests tell "the cap let it through"
+		// apart from "the cap rejected it".
+		const configRepo = { findAllPpp: jest.fn().mockResolvedValue([]) };
+		const service = new PppSurveyService(surveyRepo as never, {} as never, configRepo as never);
+		return service;
+	}
+
+	function seedJobs(service: PppSurveyService, count: number, done: boolean): void {
+		const jobs = service['uploadJobs'] as Map<string, JobEntry>;
+		const owners = service['uploadJobOwners'] as Map<string, number>;
+		for (let i = 0; i < count; i++) {
+			const id = `${done ? 'done' : 'running'}-${i}`;
+			jobs.set(id, { done } as JobEntry);
+			owners.set(id, 1);
+		}
+	}
+
+	const dto = { programId: 1, campusId: 1, fileBase64: '' } as UploadPppExcelDto;
+	const start = (service: PppSurveyService) => service.startUploadExcel(dto, 1, 1);
+
+	it('rejects a new upload once the concurrency cap of running jobs is reached', async () => {
+		const service = buildService();
+		seedJobs(service, 20, false);
+
+		await expect(start(service)).rejects.toThrow(pppValidationStrings.error.tooManyUploadJobs);
+	});
+
+	it('admits a new upload when the retained jobs are all finished — the cap counts only running ones', async () => {
+		const service = buildService();
+		// Far more finished entries than the concurrency cap: under the old `.size` check
+		// this was rejected as "too many concurrent" with nothing actually running.
+		seedJobs(service, 40, true);
+
+		await expect(start(service)).rejects.toThrow(pppValidationStrings.error.noActiveConfig);
+	});
+
+	it('counts only the running jobs when finished and running ones are mixed', async () => {
+		const service = buildService();
+		seedJobs(service, 30, true);
+		seedJobs(service, 19, false);
+
+		await expect(start(service)).rejects.toThrow(pppValidationStrings.error.noActiveConfig);
+	});
+
+	it('evicts the oldest finished jobs once the retention bound is passed, keeping running ones', async () => {
+		const service = buildService();
+		seedJobs(service, 99, true);
+		seedJobs(service, 5, false);
+		const jobs = service['uploadJobs'] as Map<string, JobEntry>;
+		expect(jobs.size).toBe(104);
+
+		await expect(start(service)).rejects.toThrow(pppValidationStrings.error.noActiveConfig);
+
+		expect(jobs.size).toBeLessThan(100);
+		// Every job still running survived the eviction; only finished ones were dropped.
+		expect([...jobs.values()].filter((j) => !j.done)).toHaveLength(5);
+		// Oldest-first: the earliest finished entries are the ones that went.
+		expect(jobs.has('done-0')).toBe(false);
+		expect(jobs.has('done-98')).toBe(true);
+		expect(service['uploadJobOwners'].has('done-0')).toBe(false);
 	});
 });
