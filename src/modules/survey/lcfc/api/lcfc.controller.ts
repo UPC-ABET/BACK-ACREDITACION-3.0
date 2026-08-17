@@ -49,6 +49,8 @@ import {
 	LcfcReportQueryDto,
 } from '../model/lcfc.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { Public } from 'src/modules/auth/protocols/jwt/decorators/public.decorator';
 import { SchoolId } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
@@ -189,17 +191,18 @@ export class LcfcController {
 	async notificationSend(
 		@Body() dto: SendLcfcNotificationDto,
 		@AcademicPeriodId() academicPeriodId: number,
+		@CurrentUser() user: RequestUser,
 	) {
 		return parseSuccessResponse(
-			this.lcfcService.startSendNotifications(dto, academicPeriodId),
+			this.lcfcService.startSendNotifications(dto, academicPeriodId, user.userId),
 			HttpStatus.ACCEPTED,
 		);
 	}
 
 	@SwaggerLcfcNotificationStatus()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
-	async notificationStatus(@Param('jobId') jobId: string) {
-		return parseSuccessResponse(this.lcfcService.getSendNotificationStatus(jobId));
+	async notificationStatus(@Param('jobId') jobId: string, @CurrentUser() user: RequestUser) {
+		return parseSuccessResponse(this.lcfcService.getSendNotificationStatus(jobId, user.userId));
 	}
 
 	@SwaggerLcfcTokenValidate()

@@ -1,5 +1,6 @@
 import { DomainError } from 'src/commons/domain-error';
-import { PppValidation } from './ppp.validation';
+import { PppValidation, type PppExcelRow } from './ppp.validation';
+import { pppValidationStrings } from '../config/strings/ppp.validation';
 
 const mockRepo = {
 	existsPpp: jest.fn(),
@@ -104,22 +105,66 @@ describe('PppValidation', () => {
 	});
 
 	describe('validateExcelRow', () => {
+		const excelRow = (overrides: Partial<PppExcelRow> = {}): PppExcelRow => ({
+			studentCode: 'EST-1',
+			practiceNumber: 1,
+			totalHours: 200,
+			companyName: 'ACME',
+			bossName: 'Ana',
+			startDate: null,
+			endDate: null,
+			...overrides,
+		});
+
 		it('returns valid for a well-formed row', () => {
-			const result = PppValidation.validateExcelRow(
-				{ studentCode: 'EST-1', practiceNumber: 1, ruc: '12345678901' },
-				2,
-			);
+			const result = PppValidation.validateExcelRow(excelRow());
 			expect(result.valid).toBe(true);
 			expect(result.errors).toEqual([]);
 		});
 
-		it('collects errors for a missing student code, bad practice number, and bad RUC', () => {
+		it('collects i18n keys, not rendered text, for a missing code and a bad practice number', () => {
 			const result = PppValidation.validateExcelRow(
-				{ studentCode: '', practiceNumber: 9, ruc: '123' },
-				5,
+				excelRow({ studentCode: '', practiceNumber: 9 }),
 			);
 			expect(result.valid).toBe(false);
-			expect(result.errors).toHaveLength(3);
+			expect(result.errors).toEqual([
+				{ key: pppValidationStrings.error.upload.studentCodeRequired },
+				{ key: pppValidationStrings.error.upload.invalidPracticeNumber },
+			]);
+		});
+	});
+
+	describe('validateExcelScore', () => {
+		it('accepts a score inside 1..5', () => {
+			expect(PppValidation.validateExcelScore('4.5', 'CE1')).toEqual({ score: 4.5, error: null });
+		});
+
+		it('treats a blank cell as unanswered rather than invalid', () => {
+			expect(PppValidation.validateExcelScore('', 'CE1')).toEqual({ score: null, error: null });
+		});
+
+		it.each([
+			['out of range above', '7'],
+			['out of range below', '0'],
+			['not a number at all', 'cuatro'],
+			// parseFloat would read this as 4 and save it; the whole point of the check is
+			// that a filled cell we cannot read becomes a reported error, never a silent 4.
+			['a number with trailing text', '4abc'],
+		])('rejects a filled cell that is %s', (_case, raw) => {
+			const { score, error } = PppValidation.validateExcelScore(raw, 'CG2');
+
+			expect(score).toBeNull();
+			expect(error).toEqual({
+				key: pppValidationStrings.error.upload.invalidScore,
+				args: { label: 'CG2', value: raw },
+			});
+		});
+
+		it('carries the column label so the message can point at the offending column', () => {
+			expect(PppValidation.validateExcelScore('9', 'CE3').error?.args).toEqual({
+				label: 'CE3',
+				value: '9',
+			});
 		});
 	});
 

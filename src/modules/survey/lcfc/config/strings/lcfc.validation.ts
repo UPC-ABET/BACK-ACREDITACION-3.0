@@ -11,6 +11,7 @@ export const lcfcValidationStrings = {
 		noMatchingSections: 'error.survey.lcfc.noMatchingSections',
 		noEnrolledStudents: 'error.survey.lcfc.noEnrolledStudents',
 		notificationJobNotFound: 'error.survey.lcfc.notificationJobNotFound',
+		tooManySendJobs: 'error.survey.lcfc.tooManySendJobs',
 		processFailed: 'error.survey.lcfc.processFailed',
 		completeFailed: 'error.survey.lcfc.completeFailed',
 		noCourseSections: 'error.survey.lcfc.noCourseSections',

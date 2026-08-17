@@ -88,7 +88,10 @@ export abstract class BaseRepository<
 		return await this.repository.findOne(this.normalizeFindOneOptions(options, relations));
 	}
 
-	private resolveRepository(manager?: EntityManager): Repository<E> {
+	/** Protected rather than private so concrete repositories writing their own
+	 *  multi-row inserts honour a caller's transaction the same way the CRUD methods
+	 *  above do, instead of each re-deriving `manager.getRepository(...)`. */
+	protected resolveRepository(manager?: EntityManager): Repository<E> {
 		return manager ? manager.getRepository(this.repository.target) : this.repository;
 	}
 

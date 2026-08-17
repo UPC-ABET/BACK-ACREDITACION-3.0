@@ -22,6 +22,7 @@ export const graValidationStrings = {
 		alreadyInList: 'error.survey.gra.alreadyInList',
 		programRequired: 'error.survey.gra.programRequired',
 		notificationJobNotFound: 'error.survey.gra.notificationJobNotFound',
+		tooManySendJobs: 'error.survey.gra.tooManySendJobs',
 		alreadyResponded: 'error.survey.gra.alreadyResponded',
 		configExists: 'error.survey.gra.configExists',
 	},
