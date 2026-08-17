@@ -35,7 +35,7 @@ export class PppScoreRepository extends BaseRepository<ScoreEntity> {
 		}[],
 		manager?: EntityManager,
 	): Promise<ScoreEntity[]> {
-		const repository = manager ? manager.getRepository(ScoreEntity) : this.repository;
+		const repository = this.resolveRepository(manager);
 		const entities = scores.map((s) => repository.create(s as any) as unknown as ScoreEntity);
 		return await repository.save(entities);
 	}

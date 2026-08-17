@@ -64,6 +64,12 @@ export const SwaggerPppSurveyUploadStatus = () =>
 		...cfg.survey.uploadStatus,
 		params: [{ name: 'jobId', description: 'PPP bulk-upload job id', type: String }],
 	});
+export const SwaggerPppSurveyUploadErrors = () =>
+	HttpMethodWithSwagger({
+		...cfg.survey.uploadErrors,
+		params: [{ name: 'jobId', description: 'PPP bulk-upload job id', type: String }],
+		produces: XLSX_CONTENT_TYPE,
+	});
 export const SwaggerPppSurveyTemplate = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.template, produces: XLSX_CONTENT_TYPE });
 export const SwaggerPppSurveyDashboard = () =>

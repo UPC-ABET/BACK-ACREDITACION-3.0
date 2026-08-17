@@ -8538,6 +8538,27 @@
 				"tags": ["PPP - Pre-Professional Internship Survey"]
 			}
 		},
+		"/ppp/survey/upload-errors/{jobId}": {
+			"get": {
+				"operationId": "PppController_surveyUploadErrors",
+				"parameters": [
+					{
+						"name": "jobId",
+						"required": true,
+						"in": "path",
+						"description": "PPP bulk-upload job id",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Download the annotated Excel of a failed PPP bulk upload job",
+				"tags": ["PPP - Pre-Professional Internship Survey"]
+			}
+		},
 		"/ppp/survey/template": {
 			"get": {
 				"operationId": "PppController_surveyTemplate",

@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
-import { randomUUID } from 'crypto';
 import * as ExcelJS from 'exceljs';
 import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
 import { MailService } from 'src/modules/mail/mail.service';
@@ -24,6 +23,7 @@ import { GraValidation } from '../core/gra.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { i18nText } from 'src/shared/types/i18n';
 import { graValidationStrings } from '../config/strings/gra.validation';
+import { JobRegistry } from 'src/modules/survey/shared/core/job-registry';
 import {
 	SaveGraNotificationDto,
 	BulkUploadGraNotificationDto,
@@ -59,6 +59,11 @@ const STUDENT_SEARCH_MAX_RESULTS = 30;
 const SEND_CONCURRENCY = 20;
 const MAX_SEND_ERROR_DETAILS = 100;
 const JOB_STATUS_TTL_MS = 30 * 60 * 1000;
+// Bounds for the send-job registry; what each defends against is documented on
+// `JobRegistry`, and why they live in this process on docs/CONTEXT.md § Database.
+const MAX_CONCURRENT_SEND_JOBS = 10;
+const MAX_CONCURRENT_SEND_JOBS_PER_USER = 2;
+const MAX_RETAINED_SEND_JOBS = 100;
 
 type GraNotificationJobStatus = {
 	progressPct: number;
@@ -71,7 +76,12 @@ type GraNotificationJobStatus = {
 @Injectable()
 export class GraNotificationService {
 	private readonly logger = new Logger(GraNotificationService.name);
-	private readonly notificationJobs = new Map<string, GraNotificationJobStatus>();
+	private readonly notificationJobs = new JobRegistry<GraNotificationJobStatus>({
+		ttlMs: JOB_STATUS_TTL_MS,
+		maxConcurrent: MAX_CONCURRENT_SEND_JOBS,
+		maxConcurrentPerOwner: MAX_CONCURRENT_SEND_JOBS_PER_USER,
+		maxRetained: MAX_RETAINED_SEND_JOBS,
+	});
 
 	constructor(
 		private readonly notifRepo: GraNotificationRepository,
@@ -458,7 +468,11 @@ export class GraNotificationService {
 	}
 
 	/** Kicks off email sending in the background and returns a job id to poll for progress. */
-	async startSendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
+	async startSendEmails(dto: SendGraEmailDto, academicPeriodId: number, userId: number) {
+		if (!this.notificationJobs.hasCapacity(userId)) {
+			throw new BadRequestException(graValidationStrings.error.tooManySendJobs);
+		}
+
 		const { graSurveyTypeId, scheduledStatusId, closedStatusId } = await this.getTypeIds();
 
 		const pending = await this.notifRepo.findSendCandidates(
@@ -467,7 +481,7 @@ export class GraNotificationService {
 			{ academicPeriodId, programId: dto.programId, includeAlreadySent: dto.resend ?? false },
 		);
 
-		return this.startJob(dto, pending);
+		return this.startJob(dto, pending, userId);
 	}
 
 	/** Shared job bookkeeping for the send flow (with or without the resend toggle) — both just
@@ -475,11 +489,11 @@ export class GraNotificationService {
 	private startJob(
 		dto: SendGraEmailDto,
 		pending: Awaited<ReturnType<GraNotificationRepository['findSendCandidates']>>,
+		userId: number,
 	) {
 		GraValidation.validateSendEmailRequest(pending.length);
 
-		const jobId = randomUUID();
-		this.notificationJobs.set(jobId, {
+		const jobId = this.notificationJobs.register(userId, {
 			progressPct: 0,
 			totalStudents: pending.length,
 			emailsSent: 0,
@@ -504,15 +518,15 @@ export class GraNotificationService {
 					(err as Error).stack,
 				);
 			})
-			.finally(() => {
-				setTimeout(() => this.notificationJobs.delete(jobId), JOB_STATUS_TTL_MS);
-			});
+			.finally(() => this.notificationJobs.finish(jobId));
 
 		return { accepted: true, jobId };
 	}
 
-	getSendStatus(jobId: string) {
-		const status = this.notificationJobs.get(jobId);
+	getSendStatus(jobId: string, userId: number) {
+		// One answer for "unknown" and "not yours", so a 404 never confirms a job id to
+		// whoever is guessing.
+		const status = this.notificationJobs.get(jobId, userId);
 		if (!status) {
 			throw new NotFoundException(graValidationStrings.error.notificationJobNotFound);
 		}
@@ -537,7 +551,7 @@ export class GraNotificationService {
 			// Thrown from a fire-and-forget job (see startJob): without this, a missing/misconfigured
 			// template fails silently — the job status map is left at 0/N sent forever and the
 			// frontend never learns why no emails went out.
-			this.notificationJobs.set(jobId, {
+			this.notificationJobs.patch(jobId, {
 				progressPct: 100,
 				totalStudents: total,
 				emailsSent: 0,
@@ -582,7 +596,7 @@ export class GraNotificationService {
 					errors.push(`Student ${student.studentCode}: ${extractSendErrorMessage(err)}`);
 				}
 			} finally {
-				this.notificationJobs.set(jobId, {
+				this.notificationJobs.patch(jobId, {
 					progressPct: Math.round(((sent + failed) / total) * 100),
 					totalStudents: total,
 					emailsSent: sent,

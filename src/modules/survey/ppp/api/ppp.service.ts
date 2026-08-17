@@ -90,6 +90,10 @@ export class PppService {
 		return this.surveyService.getUploadStatus(jobId, userId);
 	}
 
+	getUploadErrorFile(jobId: string, userId: number) {
+		return this.surveyService.getUploadErrorFile(jobId, userId);
+	}
+
 	generateTemplate(academicPeriodId: number, programId?: number) {
 		return this.surveyService.generateTemplate(academicPeriodId, programId);
 	}

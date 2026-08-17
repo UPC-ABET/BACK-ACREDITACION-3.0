@@ -4,12 +4,19 @@ import {
 	IsNumber,
 	IsOptional,
 	IsString,
+	MaxLength,
 	ValidateNested,
 	Min,
 	Max,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+
+/** ~9 MB of workbook once decoded, comfortably above any real PPP roster and well
+ *  under the 25 MB body limit in `main.ts`. The bound matters because the file is
+ *  base64-decoded and parsed on the request path: without it, one oversized upload
+ *  blocks the event loop for every other request. */
+const MAX_UPLOAD_FILE_BASE64_LENGTH = 12 * 1024 * 1024;
 
 export class CreatePppConfigDto {
 	@IsNumber()
@@ -271,6 +278,7 @@ export class FilterPppSurveyDto {
 
 export class UploadPppExcelDto {
 	@IsString()
+	@MaxLength(MAX_UPLOAD_FILE_BASE64_LENGTH)
 	@ApiProperty({ example: 'fileBase64Example', description: 'Archivo Excel codificado en base64' })
 	fileBase64: string;
 

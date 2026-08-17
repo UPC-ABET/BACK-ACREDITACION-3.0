@@ -6,7 +6,6 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'crypto';
 import * as ExcelJS from 'exceljs';
 import { MailService } from 'src/modules/mail/mail.service';
 import { SurveyEmailTemplateService } from 'src/modules/survey/shared/survey-email.service';
@@ -22,6 +21,7 @@ import { LcfcConversionService } from './lcfc-conversion.service';
 import { LcfcValidation } from '../core/lcfc.validation';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { lcfcValidationStrings } from '../config/strings/lcfc.validation';
+import { JobRegistry } from 'src/modules/survey/shared/core/job-registry';
 import { i18nText } from 'src/shared/types/i18n';
 import {
 	SendLcfcNotificationDto,
@@ -34,6 +34,11 @@ const NOTIFICATION_BATCH_SIZE = 1000;
 const NOTIFICATION_SEND_CONCURRENCY = 50;
 const MAX_SEND_ERROR_DETAILS = 100;
 const JOB_STATUS_TTL_MS = 30 * 60 * 1000;
+// Bounds for the send-job registry; what each defends against is documented on
+// `JobRegistry`, and why they live in this process on docs/CONTEXT.md § Database.
+const MAX_CONCURRENT_SEND_JOBS = 10;
+const MAX_CONCURRENT_SEND_JOBS_PER_USER = 2;
+const MAX_RETAINED_SEND_JOBS = 100;
 
 type LcfcNotificationJobStatus = {
 	progressPct: number;
@@ -46,7 +51,12 @@ type LcfcNotificationJobStatus = {
 @Injectable()
 export class LcfcNotificationService {
 	private readonly logger = new Logger(LcfcNotificationService.name);
-	private readonly notificationJobs = new Map<string, LcfcNotificationJobStatus>();
+	private readonly notificationJobs = new JobRegistry<LcfcNotificationJobStatus>({
+		ttlMs: JOB_STATUS_TTL_MS,
+		maxConcurrent: MAX_CONCURRENT_SEND_JOBS,
+		maxConcurrentPerOwner: MAX_CONCURRENT_SEND_JOBS_PER_USER,
+		maxRetained: MAX_RETAINED_SEND_JOBS,
+	});
 
 	constructor(
 		private readonly notifRepo: LcfcNotificationRepository,
@@ -58,9 +68,12 @@ export class LcfcNotificationService {
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
 	) {}
 
-	startSendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number) {
-		const jobId = randomUUID();
-		this.notificationJobs.set(jobId, {
+	startSendNotifications(dto: SendLcfcNotificationDto, academicPeriodId: number, userId: number) {
+		if (!this.notificationJobs.hasCapacity(userId)) {
+			throw new BadRequestException(lcfcValidationStrings.error.tooManySendJobs);
+		}
+
+		const jobId = this.notificationJobs.register(userId, {
 			progressPct: 0,
 			emailsSent: 0,
 			emailsFailed: 0,
@@ -83,15 +96,15 @@ export class LcfcNotificationService {
 					(err as Error).stack,
 				);
 			})
-			.finally(() => {
-				setTimeout(() => this.notificationJobs.delete(jobId), JOB_STATUS_TTL_MS);
-			});
+			.finally(() => this.notificationJobs.finish(jobId));
 
 		return { accepted: true, jobId };
 	}
 
-	getSendNotificationStatus(jobId: string) {
-		const status = this.notificationJobs.get(jobId);
+	getSendNotificationStatus(jobId: string, userId: number) {
+		// One answer for "unknown" and "not yours", so a 404 never confirms a job id to
+		// whoever is guessing.
+		const status = this.notificationJobs.get(jobId, userId);
 		if (!status) {
 			throw new NotFoundException(lcfcValidationStrings.error.notificationJobNotFound);
 		}
@@ -389,9 +402,7 @@ export class LcfcNotificationService {
 		patch: Partial<LcfcNotificationJobStatus>,
 	) {
 		if (!jobId) return;
-		const current = this.notificationJobs.get(jobId);
-		if (!current) return;
-		this.notificationJobs.set(jobId, { ...current, ...patch });
+		this.notificationJobs.patch(jobId, patch);
 	}
 
 	private pushSendError(errors: string[], message: string) {

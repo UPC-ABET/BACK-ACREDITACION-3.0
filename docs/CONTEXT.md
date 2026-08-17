@@ -229,14 +229,17 @@ with the application database. Each replica would get its own flag, so N replica
 exports. Worth knowing when the Planner session state does move into Postgres: that removes the
 reason above, not this one.
 
-The survey background-job status maps are a **third, independent** reason. `PppSurveyService`,
-`GraNotificationService` and `LcfcNotificationService` each keep an in-process `Map<jobId, status>`
-for their long-running bulk-upload / bulk-send jobs, populated by a fire-and-forget async task and
-polled by the frontend every second via `GET .../upload-status/:jobId` (or `.../send-status/:jobId`).
-With more than one replica, that `GET` 404s whenever it lands on an instance other than the one
-running the job — the client sees the progress bar freeze and then an "job not found" error roughly
-half the time, depending on the load balancer. None of these maps live in Postgres or a shared cache;
-moving any one of the three reasons above into shared storage does not fix the other two.
+The survey background-job registries are a **third, independent** reason. `PppSurveyService`,
+`GraNotificationService` and `LcfcNotificationService` each hold a `JobRegistry`
+(`survey/shared/core/job-registry.ts`) — an in-process `Map<jobId, status>` for their long-running
+bulk-upload / bulk-send jobs, populated by a fire-and-forget async task and polled by the frontend
+every second via `GET .../upload-status/:jobId` (or `.../send-status/:jobId`). With more than one
+replica, that `GET` 404s whenever it lands on an instance other than the one running the job — the
+client sees the progress bar freeze and then a "job not found" error roughly half the time,
+depending on the load balancer. The registry's concurrency caps are per-process for the same
+reason, so N replicas would allow N times the intended number of concurrent jobs. Nothing here
+lives in Postgres or a shared cache; moving any one of the three reasons above into shared storage
+does not fix the other two.
 
 The migration rules are mandatory and live in
 [POLICIES.md § Migrations](./POLICIES.md#migrations).

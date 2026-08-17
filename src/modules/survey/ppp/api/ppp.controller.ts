@@ -19,6 +19,7 @@ import {
 	SwaggerPppSurveyGetById,
 	SwaggerPppSurveyUploadExcel,
 	SwaggerPppSurveyUploadStatus,
+	SwaggerPppSurveyUploadErrors,
 	SwaggerPppSurveyTemplate,
 	SwaggerPppSurveyDashboard,
 	SwaggerPppSurveyGenerateFindings,
@@ -156,6 +157,24 @@ export class PppController {
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
 	async surveyUploadStatus(@Param('jobId') jobId: string, @CurrentUser() user: RequestUser) {
 		return parseSuccessResponse(this.pppService.getUploadStatus(jobId, user.userId));
+	}
+
+	@SwaggerPppSurveyUploadErrors()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
+	async surveyUploadErrors(
+		@Param('jobId') jobId: string,
+		@CurrentUser() user: RequestUser,
+		@Res() res: Response,
+	) {
+		const { buffer, fileName } = this.pppService.getUploadErrorFile(jobId, user.userId);
+		const encoded = encodeURIComponent(fileName);
+		res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${fileName}"; filename*=UTF-8''${encoded}`,
+		);
+		res.setHeader('Content-Length', buffer.length.toString());
+		res.end(buffer);
 	}
 
 	@SwaggerPppSurveyTemplate()

@@ -53,6 +53,8 @@ import {
 	ListGraSurveyOutcomesDto,
 } from '../model/gra.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
+import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
+import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import {
 	AcademicPeriodId,
 	ApiAcademicPeriodHeader,
@@ -213,14 +215,20 @@ export class GraController {
 	@SwaggerGraEmailSend()
 	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
-	async emailSend(@Body() dto: SendGraEmailDto, @AcademicPeriodId() academicPeriodId: number) {
-		return parseSuccessResponse(await this.graService.startSendEmails(dto, academicPeriodId));
+	async emailSend(
+		@Body() dto: SendGraEmailDto,
+		@AcademicPeriodId() academicPeriodId: number,
+		@CurrentUser() user: RequestUser,
+	) {
+		return parseSuccessResponse(
+			await this.graService.startSendEmails(dto, academicPeriodId, user.userId),
+		);
 	}
 
 	@SwaggerGraEmailSendStatus()
 	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.GET })
-	async emailSendStatus(@Param('jobId') jobId: string) {
-		return parseSuccessResponse(this.graService.getSendStatus(jobId));
+	async emailSendStatus(@Param('jobId') jobId: string, @CurrentUser() user: RequestUser) {
+		return parseSuccessResponse(this.graService.getSendStatus(jobId, user.userId));
 	}
 
 	@SwaggerGraEmailGetTemplate()
