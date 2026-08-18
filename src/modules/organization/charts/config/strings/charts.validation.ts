@@ -9,6 +9,7 @@ export const chartsValidationStrings = {
 		entityCodeRequired: 'error.chart.entityCodeRequired',
 		entityNotFound: 'error.chart.entityNotFound',
 		entityAlreadyAssigned: 'error.chart.entityAlreadyAssigned',
+		programAncestorRequired: 'error.chart.programAncestorRequired',
 		readOnlyNode: 'error.chart.readOnlyNode',
 		hasIfc: 'error.chart.hasIfc',
 	},

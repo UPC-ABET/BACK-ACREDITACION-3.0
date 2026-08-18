@@ -7,13 +7,21 @@ import { CreateChartNodeDto, UpdateChartNodeDto } from '../model/charts.dtos';
 const ENTITY = TYPE_CODES.ENTITY_TYPE;
 
 const ENTITY_TYPES_WITH_CODE: string[] = [ENTITY.SCHOOL, ENTITY.PROGRAM, ENTITY.COURSE];
-const READ_ONLY_ENTITY_TYPES: string[] = [ENTITY.DEAN, ENTITY.SCHOOL];
+// Program joins Dean/School: it is written only by the chart-heads pre-configuration step, never
+// by the Excel upload, the maintenance UI, or generic CRUD.
+const READ_ONLY_ENTITY_TYPES: string[] = [ENTITY.DEAN, ENTITY.SCHOOL, ENTITY.PROGRAM];
+const PROGRAM_ANCESTOR_ENTITY_TYPES: string[] = [ENTITY.AREA, ENTITY.SUBAREA, ENTITY.COURSE];
 
 export const entityTypeNeedsCode = (entityTypeCode: string): boolean =>
 	ENTITY_TYPES_WITH_CODE.includes(entityTypeCode);
 
 export const isReadOnlyEntityType = (entityTypeCode: string | null): boolean =>
 	entityTypeCode !== null && READ_ONLY_ENTITY_TYPES.includes(entityTypeCode);
+
+// Program itself is excluded (it's the thing being required, not a thing that needs one); Dean
+// and School are excluded because they're read-only and never reach this check at all.
+export const requiresProgramAncestor = (entityTypeCode: string | null): boolean =>
+	entityTypeCode !== null && PROGRAM_ANCESTOR_ENTITY_TYPES.includes(entityTypeCode);
 
 export const resolveEntityCode = (
 	entityTypeCode: string,
@@ -73,8 +81,42 @@ export class ChartValidation {
 		return found !== null && found.id !== excludeChartId;
 	}
 
+	// The one place the read-only and program-ancestor checks are expressed: every write path
+	// (generic create/update, maintenance create/update) resolves its own typeCode/rootChartId,
+	// then calls this. A rule expressed four times instead of once is exactly what drifts — see
+	// the entity-uniqueness rule above, which learned this lesson first.
+	static async checkTypeConstraints(
+		repo: ChartRepository,
+		typeCode: string | null,
+		rootChartId: number | null,
+		academicPeriodId: number,
+	): Promise<string[]> {
+		if (typeCode && isReadOnlyEntityType(typeCode)) {
+			return [chartsValidationStrings.error.entityTypeReadOnly];
+		}
+		if (
+			requiresProgramAncestor(typeCode) &&
+			!(await repo.hasProgramAncestor(rootChartId, academicPeriodId))
+		) {
+			return [chartsValidationStrings.error.programAncestorRequired];
+		}
+		return [];
+	}
+
 	static async validateCreate(repo: ChartRepository, data: any) {
 		const errors: Array<string> = [];
+
+		if (data.entityTypeId != null) {
+			const typeCode = await repo.getEntityTypeCode(data.entityTypeId);
+			errors.push(
+				...(await ChartValidation.checkTypeConstraints(
+					repo,
+					typeCode,
+					data.rootChartId ?? null,
+					data.academicPeriodId,
+				)),
+			);
+		}
 
 		if (
 			await ChartValidation.isEntityTakenInPeriod(repo, {
@@ -100,15 +142,36 @@ export class ChartValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
 			errors.push(chartsValidationStrings.error.notFound);
-		} else if (
-			await ChartValidation.isEntityTakenInPeriod(repo, {
-				academicPeriodId: data.academicPeriodId ?? entity.academicPeriodId,
-				entityTypeId: data.entityTypeId ?? entity.entityTypeId,
-				entityCode: data.entityCode ?? entity.entityCode,
-				excludeChartId: id,
-			})
-		) {
-			errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+		} else {
+			// Only re-checked when the parent or the type is actually part of this write — a
+			// staff/title-only edit never re-walks ancestry.
+			if (data.rootChartId !== undefined || data.entityTypeId !== undefined) {
+				const effectiveTypeId = data.entityTypeId ?? entity.entityTypeId;
+				const typeCode =
+					effectiveTypeId != null ? await repo.getEntityTypeCode(effectiveTypeId) : null;
+				const effectiveRoot =
+					data.rootChartId !== undefined ? data.rootChartId : entity.rootChartId;
+				const effectivePeriod = data.academicPeriodId ?? entity.academicPeriodId;
+				errors.push(
+					...(await ChartValidation.checkTypeConstraints(
+						repo,
+						typeCode,
+						effectiveRoot ?? null,
+						effectivePeriod,
+					)),
+				);
+			}
+
+			if (
+				await ChartValidation.isEntityTakenInPeriod(repo, {
+					academicPeriodId: data.academicPeriodId ?? entity.academicPeriodId,
+					entityTypeId: data.entityTypeId ?? entity.entityTypeId,
+					entityCode: data.entityCode ?? entity.entityCode,
+					excludeChartId: id,
+				})
+			) {
+				errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+			}
 		}
 
 		if (errors.length > 0) {
@@ -148,21 +211,30 @@ export class ChartValidation {
 		const typeCode = await repo.getEntityTypeCode(dto.entityTypeId);
 		if (!typeCode) {
 			errors.push(chartsValidationStrings.error.entityTypeInvalid);
-		} else if (isReadOnlyEntityType(typeCode)) {
-			errors.push(chartsValidationStrings.error.entityTypeReadOnly);
-		} else if (entityTypeNeedsCode(typeCode)) {
-			if (dto.entityCode == null) {
-				errors.push(chartsValidationStrings.error.entityCodeRequired);
-			} else if (!(await repo.entityExists(typeCode, dto.entityCode))) {
-				errors.push(chartsValidationStrings.error.entityNotFound);
-			} else if (
-				await ChartValidation.isEntityTakenInPeriod(repo, {
+		} else {
+			errors.push(
+				...(await ChartValidation.checkTypeConstraints(
+					repo,
+					typeCode,
+					dto.rootChartId,
 					academicPeriodId,
-					entityTypeId: dto.entityTypeId,
-					entityCode: resolveEntityCode(typeCode, dto.entityCode),
-				})
-			) {
-				errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+				)),
+			);
+
+			if (!isReadOnlyEntityType(typeCode) && entityTypeNeedsCode(typeCode)) {
+				if (dto.entityCode == null) {
+					errors.push(chartsValidationStrings.error.entityCodeRequired);
+				} else if (!(await repo.entityExists(typeCode, dto.entityCode))) {
+					errors.push(chartsValidationStrings.error.entityNotFound);
+				} else if (
+					await ChartValidation.isEntityTakenInPeriod(repo, {
+						academicPeriodId,
+						entityTypeId: dto.entityTypeId,
+						entityCode: resolveEntityCode(typeCode, dto.entityCode),
+					})
+				) {
+					errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+				}
 			}
 		}
 
@@ -203,13 +275,25 @@ export class ChartValidation {
 			newTypeCode = await repo.getEntityTypeCode(dto.entityTypeId);
 			if (!newTypeCode) {
 				errors.push(chartsValidationStrings.error.entityTypeInvalid);
-			} else if (isReadOnlyEntityType(newTypeCode)) {
-				errors.push(chartsValidationStrings.error.entityTypeReadOnly);
-			} else if (entityTypeNeedsCode(newTypeCode)) {
-				if (dto.entityCode == null) {
-					errors.push(chartsValidationStrings.error.entityCodeRequired);
-				} else if (!(await repo.entityExists(newTypeCode, dto.entityCode))) {
-					errors.push(chartsValidationStrings.error.entityNotFound);
+			} else {
+				// UpdateChartNodeDto carries no rootChartId — a maintenance update can never move a
+				// node, so re-typing into Area/Subarea/Course is checked against the node's own,
+				// already-fixed parent and period.
+				errors.push(
+					...(await ChartValidation.checkTypeConstraints(
+						repo,
+						newTypeCode,
+						node.rootChartId,
+						node.academicPeriodId,
+					)),
+				);
+
+				if (!isReadOnlyEntityType(newTypeCode) && entityTypeNeedsCode(newTypeCode)) {
+					if (dto.entityCode == null) {
+						errors.push(chartsValidationStrings.error.entityCodeRequired);
+					} else if (!(await repo.entityExists(newTypeCode, dto.entityCode))) {
+						errors.push(chartsValidationStrings.error.entityNotFound);
+					}
 				}
 			}
 		} else if (

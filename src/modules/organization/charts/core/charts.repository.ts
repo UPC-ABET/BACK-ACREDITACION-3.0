@@ -23,6 +23,7 @@ export interface SchoolChartNode {
 export interface ChartNodeRecord {
 	id: number;
 	academicPeriodId: number;
+	rootChartId: number | null;
 	entityTypeId: number | null;
 	entityTypeCode: string | null;
 	entityCode: number | null;
@@ -212,6 +213,7 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 			`SELECT
 				c.id,
 				c.academic_period_id AS "academicPeriodId",
+				c.root_chart_id      AS "rootChartId",
 				c.entity_type_id     AS "entityTypeId",
 				et.code              AS "entityTypeCode",
 				c.entity_code        AS "entityCode"
@@ -221,6 +223,32 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 			[id],
 		);
 		return row ?? null;
+	}
+
+	// The academic_period_id filter matters: generic CRUD accepts any existing chart id as
+	// rootChartId, including one from a different period. Without the filter, an ancestor from
+	// last year's tree could satisfy this period's requirement.
+	async hasProgramAncestor(chartId: number | null, academicPeriodId: number): Promise<boolean> {
+		if (chartId === null) return false;
+		const [row] = await this.dataSource.query(
+			`WITH RECURSIVE up AS (
+				SELECT c.id, c.root_chart_id, c.entity_type_id
+				FROM organization.charts c
+				WHERE c.id = $1 AND c.is_active = true AND c.academic_period_id = $3
+				UNION ALL
+				SELECT c.id, c.root_chart_id, c.entity_type_id
+				FROM organization.charts c
+				INNER JOIN up ON c.id = up.root_chart_id
+				WHERE c.is_active = true AND c.academic_period_id = $3
+			)
+			SELECT EXISTS (
+				SELECT 1 FROM up
+				INNER JOIN core.types et ON et.id = up.entity_type_id
+				WHERE et.code = $2
+			) AS "hasProgram"`,
+			[chartId, ENTITY.PROGRAM, academicPeriodId],
+		);
+		return Boolean(row?.hasProgram);
 	}
 
 	async getEntityTypeCode(entityTypeId: number): Promise<string | null> {

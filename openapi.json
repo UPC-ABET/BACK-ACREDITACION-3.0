@@ -15058,6 +15058,28 @@
 				},
 				"required": ["staffId", "title"]
 			},
+			"ChartProgramDto": {
+				"type": "object",
+				"properties": {
+					"programId": { "type": "number", "example": 5, "description": "academic.programs id" },
+					"staffId": {
+						"type": "number",
+						"example": 11,
+						"description": "Linked teacher staff id coordinating this program"
+					},
+					"userId": {
+						"type": "object",
+						"example": 46,
+						"nullable": true,
+						"description": "User to link to this staff (1:1). Only applied when the staff is unlinked and the user is free; an existing link on either side wins and this is ignored."
+					},
+					"title": {
+						"type": "object",
+						"example": { "es": "Coordinacion de Software", "en": "Software Coordination" }
+					}
+				},
+				"required": ["programId", "staffId", "title"]
+			},
 			"ChartDirectorDto": {
 				"type": "object",
 				"properties": {
@@ -15080,6 +15102,11 @@
 					"title": {
 						"type": "object",
 						"example": { "es": "Direccion EISCB", "en": "EISCB Direction" }
+					},
+					"programs": {
+						"description": "Programs (careers) pre-configured under this school for the period",
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ChartProgramDto" }
 					}
 				},
 				"required": ["schoolId", "staffId", "title"]
@@ -15137,6 +15164,37 @@
 					"title"
 				]
 			},
+			"ChartHeadProgramViewDto": {
+				"type": "object",
+				"properties": {
+					"chartId": { "type": "number", "example": 1 },
+					"staffId": { "type": "number", "example": 9 },
+					"code": { "type": "object", "example": "PROF-1001", "nullable": true },
+					"lastName": { "type": "string", "example": "Perez" },
+					"firstName": { "type": "string", "example": "Juan" },
+					"userId": { "type": "object", "example": 12, "nullable": true },
+					"user": {
+						"nullable": true,
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/ChartHeadUserViewDto" }]
+					},
+					"title": { "type": "object", "example": { "es": "Decanato", "en": "Dean's Office" } },
+					"programId": { "type": "number", "example": 5 },
+					"programCode": { "type": "string", "example": "ISOFT" }
+				},
+				"required": [
+					"chartId",
+					"staffId",
+					"code",
+					"lastName",
+					"firstName",
+					"userId",
+					"user",
+					"title",
+					"programId",
+					"programCode"
+				]
+			},
 			"ChartHeadDirectorViewDto": {
 				"type": "object",
 				"properties": {
@@ -15153,7 +15211,11 @@
 					},
 					"title": { "type": "object", "example": { "es": "Decanato", "en": "Dean's Office" } },
 					"schoolId": { "type": "number", "example": 3 },
-					"schoolCode": { "type": "string", "example": "EISCB" }
+					"schoolCode": { "type": "string", "example": "EISCB" },
+					"programs": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ChartHeadProgramViewDto" }
+					}
 				},
 				"required": [
 					"chartId",
@@ -15165,7 +15227,8 @@
 					"user",
 					"title",
 					"schoolId",
-					"schoolCode"
+					"schoolCode",
+					"programs"
 				]
 			},
 			"ChartHeadsConfigurationDto": {

@@ -304,13 +304,14 @@ describe('ChartsUploadService — template', () => {
 		expect(legendHeader[1]).toBe('Tipo de entidad');
 		expect(legendHeader[2]).toBe('¿Requiere código de entidad?');
 
-		// Carrera/Curso require the entity code; Area/Subarea do not
+		// Program (Carrera) is configured separately and never appears here. Curso requires the
+		// entity code; Area/Subarea do not.
 		const usageByType = new Map<string, string>();
 		legend.eachRow((row, rowNumber) => {
 			if (rowNumber === 1) return;
 			usageByType.set(String(row.getCell(1).value), String(row.getCell(2).value));
 		});
-		expect(usageByType.get('Carrera')).toBe('Sí');
+		expect(usageByType.has('Carrera')).toBe(false);
 		expect(usageByType.get('Curso')).toBe('Sí');
 		expect(usageByType.get('Area')).toBe('No');
 		expect(usageByType.get('Subarea')).toBe('No');
