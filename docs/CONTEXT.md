@@ -382,5 +382,16 @@ _why_ writes them down. Do not populate it by guessing from the code.
   two competing answers rather than failing. Enforced in `ChartValidation`, in
   `audit.fn_upload_charts`, and by the partial unique index
   `UQ_charts_academic_period_entity_type_entity_code`.
+- **An Area, Subarea or Course chart node must resolve, directly or through its ancestry, to a
+  Program node — and a Program node can only ever be created through the `chart-heads`
+  pre-configuration step**, never through the Excel upload, the maintenance UI, or generic
+  CRUD (Program joined `DEAN`/`SCHOOL` in `READ_ONLY_ENTITY_TYPES` for exactly this reason).
+  The Excel upload's `parentCode` column resolves either to another row's own code in the same
+  file, or to a pre-configured program's business code (`academic.programs.code`) — a blank
+  `parentCode` is rejected outright. This is what lets IFC routing and evidence reporting
+  attribute a course to a career reliably, the same reason the entity-uniqueness rule above
+  exists: without it, a course could sit directly under a School with no career in between, and
+  nothing would ever surface that as wrong. Enforced in `ChartValidation`
+  (`hasProgramAncestor`) and in `audit.fn_upload_charts`.
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->
