@@ -7,13 +7,22 @@ import { CreateChartNodeDto, UpdateChartNodeDto } from '../model/charts.dtos';
 const ENTITY = TYPE_CODES.ENTITY_TYPE;
 
 const ENTITY_TYPES_WITH_CODE: string[] = [ENTITY.SCHOOL, ENTITY.PROGRAM, ENTITY.COURSE];
-const READ_ONLY_ENTITY_TYPES: string[] = [ENTITY.DEAN, ENTITY.SCHOOL];
+// Program joins Dean/School: it is written only by the chart-heads pre-configuration step, never
+// by the Excel upload, the maintenance UI, or generic CRUD.
+const READ_ONLY_ENTITY_TYPES: string[] = [ENTITY.DEAN, ENTITY.SCHOOL, ENTITY.PROGRAM];
+const PROGRAM_ANCESTOR_ENTITY_TYPES: string[] = [ENTITY.AREA, ENTITY.SUBAREA, ENTITY.COURSE];
 
 export const entityTypeNeedsCode = (entityTypeCode: string): boolean =>
 	ENTITY_TYPES_WITH_CODE.includes(entityTypeCode);
 
 export const isReadOnlyEntityType = (entityTypeCode: string | null): boolean =>
 	entityTypeCode !== null && READ_ONLY_ENTITY_TYPES.includes(entityTypeCode);
+
+// Area, Subarea and Course must resolve to a Program node before reaching the School root.
+// Program itself never needs this (it is the thing being required), and Dean/School are
+// read-only, so they never reach this check either.
+export const requiresProgramAncestor = (entityTypeCode: string | null): boolean =>
+	entityTypeCode !== null && PROGRAM_ANCESTOR_ENTITY_TYPES.includes(entityTypeCode);
 
 export const resolveEntityCode = (
 	entityTypeCode: string,
@@ -76,6 +85,18 @@ export class ChartValidation {
 	static async validateCreate(repo: ChartRepository, data: any) {
 		const errors: Array<string> = [];
 
+		if (data.entityTypeId != null) {
+			const typeCode = await repo.getEntityTypeCode(data.entityTypeId);
+			if (typeCode && isReadOnlyEntityType(typeCode)) {
+				errors.push(chartsValidationStrings.error.entityTypeReadOnly);
+			} else if (
+				requiresProgramAncestor(typeCode) &&
+				!(await repo.hasProgramAncestor(data.rootChartId ?? null))
+			) {
+				errors.push(chartsValidationStrings.error.programAncestorRequired);
+			}
+		}
+
 		if (
 			await ChartValidation.isEntityTakenInPeriod(repo, {
 				academicPeriodId: data.academicPeriodId,
@@ -100,15 +121,34 @@ export class ChartValidation {
 		const entity = await repo.findOneById(id);
 		if (!entity) {
 			errors.push(chartsValidationStrings.error.notFound);
-		} else if (
-			await ChartValidation.isEntityTakenInPeriod(repo, {
-				academicPeriodId: data.academicPeriodId ?? entity.academicPeriodId,
-				entityTypeId: data.entityTypeId ?? entity.entityTypeId,
-				entityCode: data.entityCode ?? entity.entityCode,
-				excludeChartId: id,
-			})
-		) {
-			errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+		} else {
+			// Only re-checked when the parent or the type is actually part of this write — a
+			// staff/title-only edit never re-walks ancestry.
+			if (data.rootChartId !== undefined || data.entityTypeId !== undefined) {
+				const effectiveTypeId = data.entityTypeId ?? entity.entityTypeId;
+				const typeCode =
+					effectiveTypeId != null ? await repo.getEntityTypeCode(effectiveTypeId) : null;
+				if (typeCode && isReadOnlyEntityType(typeCode)) {
+					errors.push(chartsValidationStrings.error.entityTypeReadOnly);
+				} else if (requiresProgramAncestor(typeCode)) {
+					const effectiveRoot =
+						data.rootChartId !== undefined ? data.rootChartId : entity.rootChartId;
+					if (!(await repo.hasProgramAncestor(effectiveRoot ?? null))) {
+						errors.push(chartsValidationStrings.error.programAncestorRequired);
+					}
+				}
+			}
+
+			if (
+				await ChartValidation.isEntityTakenInPeriod(repo, {
+					academicPeriodId: data.academicPeriodId ?? entity.academicPeriodId,
+					entityTypeId: data.entityTypeId ?? entity.entityTypeId,
+					entityCode: data.entityCode ?? entity.entityCode,
+					excludeChartId: id,
+				})
+			) {
+				errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+			}
 		}
 
 		if (errors.length > 0) {
@@ -150,19 +190,25 @@ export class ChartValidation {
 			errors.push(chartsValidationStrings.error.entityTypeInvalid);
 		} else if (isReadOnlyEntityType(typeCode)) {
 			errors.push(chartsValidationStrings.error.entityTypeReadOnly);
-		} else if (entityTypeNeedsCode(typeCode)) {
-			if (dto.entityCode == null) {
-				errors.push(chartsValidationStrings.error.entityCodeRequired);
-			} else if (!(await repo.entityExists(typeCode, dto.entityCode))) {
-				errors.push(chartsValidationStrings.error.entityNotFound);
-			} else if (
-				await ChartValidation.isEntityTakenInPeriod(repo, {
-					academicPeriodId,
-					entityTypeId: dto.entityTypeId,
-					entityCode: resolveEntityCode(typeCode, dto.entityCode),
-				})
-			) {
-				errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+		} else {
+			if (entityTypeNeedsCode(typeCode)) {
+				if (dto.entityCode == null) {
+					errors.push(chartsValidationStrings.error.entityCodeRequired);
+				} else if (!(await repo.entityExists(typeCode, dto.entityCode))) {
+					errors.push(chartsValidationStrings.error.entityNotFound);
+				} else if (
+					await ChartValidation.isEntityTakenInPeriod(repo, {
+						academicPeriodId,
+						entityTypeId: dto.entityTypeId,
+						entityCode: resolveEntityCode(typeCode, dto.entityCode),
+					})
+				) {
+					errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
+				}
+			}
+
+			if (requiresProgramAncestor(typeCode) && !(await repo.hasProgramAncestor(dto.rootChartId))) {
+				errors.push(chartsValidationStrings.error.programAncestorRequired);
 			}
 		}
 
@@ -205,11 +251,23 @@ export class ChartValidation {
 				errors.push(chartsValidationStrings.error.entityTypeInvalid);
 			} else if (isReadOnlyEntityType(newTypeCode)) {
 				errors.push(chartsValidationStrings.error.entityTypeReadOnly);
-			} else if (entityTypeNeedsCode(newTypeCode)) {
-				if (dto.entityCode == null) {
-					errors.push(chartsValidationStrings.error.entityCodeRequired);
-				} else if (!(await repo.entityExists(newTypeCode, dto.entityCode))) {
-					errors.push(chartsValidationStrings.error.entityNotFound);
+			} else {
+				if (entityTypeNeedsCode(newTypeCode)) {
+					if (dto.entityCode == null) {
+						errors.push(chartsValidationStrings.error.entityCodeRequired);
+					} else if (!(await repo.entityExists(newTypeCode, dto.entityCode))) {
+						errors.push(chartsValidationStrings.error.entityNotFound);
+					}
+				}
+
+				// UpdateChartNodeDto carries no rootChartId — a maintenance update can never move a
+				// node, so re-typing into Area/Subarea/Course is checked against the node's own,
+				// already-fixed parent.
+				if (
+					requiresProgramAncestor(newTypeCode) &&
+					!(await repo.hasProgramAncestor(node.rootChartId))
+				) {
+					errors.push(chartsValidationStrings.error.programAncestorRequired);
 				}
 			}
 		} else if (
