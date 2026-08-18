@@ -367,7 +367,9 @@ they are the best input to the next design.
 ## Unplanned — <what and why>
 
 ### Task U.1 — <title>
-- [ ] Task complete
+(checkbox omitted from this template line on purpose — see "The task checkbox rule" in
+reference/conventions.md for the real pattern; a literal example here would be mistaken for
+an actual open task by the completeness gate)
 
 ## Post-QA fixes
 
