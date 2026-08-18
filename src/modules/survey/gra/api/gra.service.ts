@@ -133,12 +133,12 @@ export class GraService {
 		return this.notifService.getSendSummary(dto, academicPeriodId);
 	}
 
-	startSendEmails(dto: SendGraEmailDto, academicPeriodId: number) {
-		return this.notifService.startSendEmails(dto, academicPeriodId);
+	startSendEmails(dto: SendGraEmailDto, academicPeriodId: number, userId: number) {
+		return this.notifService.startSendEmails(dto, academicPeriodId, userId);
 	}
 
-	getSendStatus(jobId: string) {
-		return this.notifService.getSendStatus(jobId);
+	getSendStatus(jobId: string, userId: number) {
+		return this.notifService.getSendStatus(jobId, userId);
 	}
 
 	getEmailTemplateConfig() {

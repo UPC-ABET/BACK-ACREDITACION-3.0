@@ -29,10 +29,10 @@ export interface EnrolledSectionStudentRow {
 	studentCodes: string[];
 }
 
-// A reader over the materialized export. `rows()` may be consumed more than once (once per
-// worksheet); `close()` drops the scratch table and returns the connection to the pool.
+// A reader over the materialized export. Each worksheet asks for its own half: `withObservations`
+// false yields the clean rows, true the ones carrying an observation.
 export interface GradesRcExportHandle {
-	rows: () => AsyncGenerator<GradeRcExportRow>;
+	rows: (withObservations: boolean) => AsyncGenerator<GradeRcExportRow>;
 	close: () => Promise<void>;
 }
 
@@ -41,19 +41,8 @@ export interface GradesRcExportHandle {
 const GRADES_RC_PAGE_SIZE = 5000;
 
 /**
- * Builds the RC bulk-upload-ready data out of BOTH scrapings — Banner (raw_notas + raw_horario +
- * raw_matricula) and Planner (raw_planner_nota + raw_planner_seccion + raw_planner_evaluacion) —
- * which live in the same raw DB, so the whole cross runs in one SQL pass. Each source contributes
- * the grades it has; when both hold the same (section, student, grade type) the most recent scrape
- * wins.
- *
- * Reads only. Two things this export deliberately does NOT resolve, because the RC bulk upload
- * (audit.fn_upload_grades_rc) is the one that owns them:
- *  - a non-numeric grade value whose text is not a known TG404 status is passed through as-is
- *    (the upload auto-provisions it);
- *  - a grade type rescued by the last-grade fallback keeps its raw code ("TF1", "NF"), which the
- *    upload rejects until someone registers it in TG205 — see the change runbook. The row still
- *    ships, carrying the observation that says so.
+ * Builds the RC bulk-upload-ready data out of both scrapings — Banner and Planner, which share the
+ * raw DB, so the whole cross runs in one SQL pass. Reads only.
  */
 @Injectable()
 export class GradesRcExportRepository {
@@ -63,19 +52,16 @@ export class GradesRcExportRepository {
 	) {}
 
 	/**
-	 * Runs the merge into a per-session scratch table and hands back a reader over it. The rows are
-	 * never all in memory: `rows()` walks the table a page at a time, and may be walked more than
-	 * once — which is what lets the two worksheets be written from one execution of the merge.
+	 * Runs the merge into a per-session scratch table and hands back a paging reader over it.
 	 *
-	 * The returned handle OWNS a pooled connection until `close()` is called. Callers must call it in
-	 * a `finally`; leaking one leaks a connection for the life of the process.
+	 * The handle OWNS a pooled connection until `close()`. Callers must call it in a `finally`;
+	 * leaking one leaks a connection for the life of the process.
 	 */
 	async openGradesRcExport(academicPeriodId: number): Promise<GradesRcExportHandle> {
 		const params = await this.buildGradesRcParams(academicPeriodId);
 
-		// One connection for the whole export: a TEMP table lives in the session that created it, and
-		// dataSource.query() takes an arbitrary connection from the pool each call, so the create and
-		// the reads have to be pinned to the same one.
+		// A TEMP table lives in the session that created it, and dataSource.query() takes an arbitrary
+		// pooled connection each call, so create and reads are pinned to one runner.
 		const runner = this.rawDataSource.createQueryRunner();
 		await runner.connect();
 
@@ -85,25 +71,33 @@ export class GradesRcExportRepository {
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
 			await runner.query(MATERIALIZE_GRADES_RC_SQL, params);
 			await runner.query(INDEX_GRADES_RC_TEMP_SQL);
+			// CREATE TABLE AS writes no statistics and autovacuum never analyzes a TEMP table, so
+			// without this the planner guesses at the "hasObservations" selectivity of every page.
+			await runner.query(`ANALYZE ${GRADES_RC_TEMP_TABLE}`);
 		} catch (error) {
 			await this.closeGradesRcExport(runner);
 			throw error;
 		}
 
 		return {
-			rows: () => this.readGradesRcPages(runner),
+			rows: (withObservations: boolean) => this.readGradesRcPages(runner, withObservations),
 			close: () => this.closeGradesRcExport(runner),
 		};
 	}
 
-	private async *readGradesRcPages(runner: QueryRunner): AsyncGenerator<GradeRcExportRow> {
+	private async *readGradesRcPages(
+		runner: QueryRunner,
+		withObservations: boolean,
+	): AsyncGenerator<GradeRcExportRow> {
 		let lastSeq = '0';
 
 		for (;;) {
-			const page: Array<GradeRcExportRow & { exportSeq: string }> = await runner.query(
-				READ_GRADES_RC_PAGE_SQL,
-				[lastSeq, GRADES_RC_PAGE_SIZE],
-			);
+			const page: Array<GradeRcExportRow & { exportSeq: string; hasObservations: boolean }> =
+				await runner.query(READ_GRADES_RC_PAGE_SQL, [
+					lastSeq,
+					GRADES_RC_PAGE_SIZE,
+					withObservations,
+				]);
 			if (page.length === 0) return;
 
 			for (const row of page) yield row;
@@ -111,8 +105,7 @@ export class GradesRcExportRepository {
 		}
 	}
 
-	// Both halves guarded: a failed DROP must not keep the connection out of the pool, and the
-	// release has to happen even then.
+	// A failed DROP must not keep the connection out of the pool, hence the finally.
 	private async closeGradesRcExport(runner: QueryRunner): Promise<void> {
 		try {
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
@@ -121,8 +114,7 @@ export class GradesRcExportRepository {
 		}
 	}
 
-	// Everything the main DB owns, shaped as the parallel arrays the merge binds. Gathered before the
-	// scratch table exists so a failure here costs no connection.
+	// Gathered before the scratch table exists, so a failure here costs no connection.
 	private async buildGradesRcParams(academicPeriodId: number): Promise<unknown[]> {
 		const [period, gradeTypes, qualificationStatuses, designated, uploadedSections, enrollments] =
 			await Promise.all([
@@ -150,12 +142,11 @@ export class GradesRcExportRepository {
 			enrollments.studentCodes,
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
+			TYPE_CODES.QUALIFICATION_STATUS.NR,
 		];
 	}
 
-	// Not a filter either: a row whose (section, student) pair is missing is still exported, and
-	// carries an observation saying the upload will reject the file over it. See
-	// ENROLLED_SECTION_STUDENTS_SQL.
+	// Not a filter: a row whose pair is missing still ships, carrying the observation that says so.
 	async getEnrolledSectionStudents(academicPeriodId: number): Promise<EnrolledSectionStudentRow> {
 		const [row]: EnrolledSectionStudentRow[] = await this.mainDataSource.query(
 			ENROLLED_SECTION_STUDENTS_SQL,
@@ -164,20 +155,16 @@ export class GradesRcExportRepository {
 		return row ?? { sectionCodes: [], studentCodes: [] };
 	}
 
-	// Not a filter on the export: sections missing here (not uploaded yet, or with no designated
-	// type configured) simply behave as "designated type absent", which arms the fallback.
+	// Not a filter either: a section missing here behaves as "designated type absent", arming the
+	// fallback.
 	async getDesignatedGradeTypesBySection(
 		academicPeriodId: number,
 	): Promise<DesignatedGradeTypeRow[]> {
 		return await this.mainDataSource.query(DESIGNATED_GRADE_TYPES_SQL, [academicPeriodId]);
 	}
 
-	// Sections the app knows for the period. This is a hard scope, not a partition: the merged CTE
-	// filters on it before either worksheet is built, so a grade whose section is not here appears in
-	// NEITHER sheet. It is dropped rather than reported because the RC upload rejects the whole file
-	// on the first unknown section (sectionNotFound), and a row that cannot be uploaded and cannot be
-	// fixed from this file has nothing to say in it. The gap is visible where it can be acted on --
-	// the section is missing from academic.course_sections, which is a data-load matter.
+	// This one IS a hard scope: a grade whose section is not here appears in neither sheet. Dropped
+	// rather than reported, since it can only be fixed by loading the section, not from this file.
 	async getUploadedSectionCodes(academicPeriodId: number): Promise<string[]> {
 		const rows: Array<{ sectionCode: string }> = await this.mainDataSource.query(
 			UPLOADED_SECTIONS_SQL,

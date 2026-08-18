@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
@@ -13,6 +13,12 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 		dataSource: DataSource,
 	) {
 		super(repository, dataSource);
+	}
+
+	/** Exposes a DB transaction to services without them injecting `DataSource`
+	 *  directly (repository boundary — see `docs/POLICIES.md`). */
+	async transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+		return this.dataSource.transaction(work);
 	}
 
 	async findAllPpp(
@@ -108,35 +114,64 @@ export class PppSurveyRepository extends BaseRepository<SurveyEntity> {
 		);
 	}
 
-	async findStudentByCode(code: string): Promise<{ id: number } | null> {
+	/** Codes that do not exist simply come back missing, which is what marks their
+	 *  row as failed upstream. */
+	async findStudentsByCodes(codes: string[]): Promise<{ id: number; code: string }[]> {
+		if (codes.length === 0) return [];
+		return await this.dataSource.query(
+			`SELECT id, code FROM academic.students WHERE code = ANY($1::text[])`,
+			[codes],
+		);
+	}
+
+	// PPP surveys are tied to a campus + course section (NOT NULL FKs). The Excel
+	// upload does not carry these, so resolve each student's actual section/campus
+	// from their latest enrolment; students with none fall back to
+	// `findFallbackCourseSection`.
+	async findCourseSectionAndCampusByStudents(
+		studentIds: number[],
+	): Promise<{ studentId: number; courseSectionId: number; campusId: number }[]> {
+		if (studentIds.length === 0) return [];
+		return await this.dataSource.query(
+			`SELECT DISTINCT ON (es.student_id)
+			        es.student_id         AS "studentId",
+			        sse.course_section_id AS "courseSectionId",
+			        es.campus_id          AS "campusId"
+			 FROM academic.enrolled_students es
+			 JOIN academic.student_section_enrollments sse ON sse.enrolled_student_id = es.id
+			 WHERE es.student_id = ANY($1::int[])
+			 ORDER BY es.student_id, sse.id DESC`,
+			[studentIds],
+		);
+	}
+
+	async findFallbackCourseSection(): Promise<{ courseSectionId: number; campusId: number } | null> {
 		const rows = await this.dataSource.query(
-			`SELECT id FROM academic.students WHERE code = $1 LIMIT 1`,
-			[code],
+			`SELECT id AS "courseSectionId", campus_id AS "campusId"
+			 FROM academic.course_sections ORDER BY id LIMIT 1`,
 		);
 		return rows?.[0] ?? null;
 	}
 
-	// PPP surveys are tied to a campus + course section (NOT NULL FKs). The Excel
-	// upload does not carry these, so resolve the student's actual section/campus
-	// when enrolled, falling back to the first available section otherwise.
-	async resolveCourseSectionAndCampus(
-		studentId: number,
-	): Promise<{ courseSectionId: number; campusId: number } | null> {
-		const enrolled = await this.dataSource.query(
-			`SELECT sse.course_section_id AS "courseSectionId", es.campus_id AS "campusId"
-			 FROM academic.enrolled_students es
-			 JOIN academic.student_section_enrollments sse ON sse.enrolled_student_id = es.id
-			 WHERE es.student_id = $1
-			 ORDER BY sse.id DESC LIMIT 1`,
-			[studentId],
+	/** The (student, practice number) pairs already registered for this programme and
+	 *  period, so the importer can reject a re-upload of rows it has already saved
+	 *  rather than duplicating them. */
+	async findExistingPracticeKeys(
+		pppTypeId: number,
+		academicPeriodId: number,
+		programId: number,
+		studentIds: number[],
+	): Promise<{ studentId: number; practiceNumber: number }[]> {
+		if (studentIds.length === 0) return [];
+		return await this.dataSource.query(
+			`SELECT DISTINCT student_id AS "studentId", survey_number AS "practiceNumber"
+			 FROM evidence.surveys
+			 WHERE survey_type_id = $1
+			   AND academic_period_id = $2
+			   AND program_id = $3
+			   AND student_id = ANY($4::int[])`,
+			[pppTypeId, academicPeriodId, programId, studentIds],
 		);
-		if (enrolled?.[0]) return enrolled[0];
-
-		const fallback = await this.dataSource.query(
-			`SELECT id AS "courseSectionId", campus_id AS "campusId"
-			 FROM academic.course_sections ORDER BY id LIMIT 1`,
-		);
-		return fallback?.[0] ?? null;
 	}
 
 	async getPppTypeId(code: string = TYPE_CODES.SURVEY_TYPE.PPP): Promise<number | null> {

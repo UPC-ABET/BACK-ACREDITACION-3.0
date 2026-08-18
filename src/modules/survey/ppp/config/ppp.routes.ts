@@ -50,7 +50,17 @@ export const pppRoutes = {
 		uploadExcel: {
 			method: 'POST',
 			route: 'survey/upload-excel',
-			summary: 'Bulk import PPP data from base64 Excel',
+			summary: 'Start a bulk import of PPP data from base64 Excel (returns a job id)',
+		},
+		uploadStatus: {
+			method: 'GET',
+			route: 'survey/upload-status/:jobId',
+			summary: 'Poll the progress of a PPP bulk upload job',
+		},
+		uploadErrors: {
+			method: 'GET',
+			route: 'survey/upload-errors/:jobId',
+			summary: 'Download the annotated Excel of a failed PPP bulk upload job',
 		},
 		template: {
 			method: 'GET',

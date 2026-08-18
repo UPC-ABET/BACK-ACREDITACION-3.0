@@ -1,10 +1,9 @@
 // Row shapes produced by the scraping-export queries. Each one is built to line up, column for
 // column, with the matching uploads/* Excel template so a generated file can be re-uploaded as-is.
 
-// Codes emitted in the observations array of GradeRcExportRow. The query writes them, the labels
-// map them to localized text and the service resolves them; they only ever reach the descriptive
-// sheet -- the upload sheet keeps its six template columns. Declared here, in model, so both core
-// (the SQL) and model (the labels) depend downwards on the same constant.
+// Codes emitted in the observations array of GradeRcExportRow, and the split between the two
+// worksheets: a row carrying any of them goes to the descriptive sheet instead of the upload one.
+// Declared in model so both the SQL and the labels depend downwards on the same constant.
 export const GRADE_RC_OBSERVATIONS = {
 	COURSE_LEVEL_STATUS: 'courseLevelStatus',
 	MISSING_DESIGNATED_GRADE: 'missingDesignatedGrade',
@@ -12,10 +11,10 @@ export const GRADE_RC_OBSERVATIONS = {
 	MISSING_DESIGNATED_GRADE_UNEXPLAINED: 'missingDesignatedGradeUnexplained',
 	FALLBACK_GRADE: 'fallbackGrade',
 	ZERO_GRADE_UNEXPLAINED: 'zeroGradeUnexplained',
-	// The two remaining reasons audit.fn_upload_grades_rc refuses the WHOLE file for. The export
-	// scopes rows to academic.course_sections, which covers sectionNotFound; these cover
-	// gradeTypeInvalid and studentNotFound/enrollmentNotFound, so one read of the descriptive sheet
-	// now accounts for every all-or-nothing rejection the file can hit.
+	UNREGISTERED_STATUS: 'unregisteredStatus',
+	NO_SOURCE_GRADE_OR_STATUS: 'noSourceGradeOrStatus',
+	// gradeTypeInvalid and studentNotFound/enrollmentNotFound: with sectionNotFound already covered
+	// by the scope filter, these are the remaining reasons the upload refuses a whole file.
 	UNREGISTERED_GRADE_TYPE: 'unregisteredGradeType',
 	STUDENT_NOT_ENROLLED: 'studentNotEnrolled',
 } as const;
@@ -78,18 +77,14 @@ export interface GradeRcExportRow {
 	courseCode: string;
 	courseName: string;
 	studentName: string;
-	// Career code (SW, CC, CIVAC…), resolved from the student's Banner program through
-	// PROGRAM_CAREER_MAP. Empty when the program is outside that map (a non-engineering student) or
-	// when the student has no Banner record at all — the row still ships either way.
+	// Empty when the program is outside PROGRAM_CAREER_MAP or the student has no Banner record; the
+	// row still ships either way.
 	careerCode: string;
 	gradeTypeName: string;
 	qualificationStatusName: string;
-	// Which scrape the exported grade came from, and when it was captured. Both sources have to be
-	// scraped before exporting; these make it visible when one of them is stale.
+	// Both sources have to be scraped before exporting; these make it visible when one is stale.
 	source: string;
 	scrapedAt: string;
-	// Observation codes (GRADE_RC_OBSERVATIONS) explaining why a row needs a look: grade rescued by
-	// the fallback, missing designated grade, unexplained zero. Resolved to localized text by the
-	// service and shown only in the descriptive sheet.
+	// GRADE_RC_OBSERVATIONS codes. A non-empty array sends the row to the descriptive sheet.
 	observations: string[];
 }

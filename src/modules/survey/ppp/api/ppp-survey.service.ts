@@ -1,13 +1,25 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { normalizeCellText, sheetToObjects } from 'src/libs/excel.functions';
+import {
+	annotateRowErrors,
+	normalizeCellText,
+	sheetToObjects,
+	type SheetRow,
+} from 'src/libs/excel.functions';
 import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
-import { PppValidation } from '../core/ppp.validation';
+import { PppValidation, type PppExcelRow } from '../core/ppp.validation';
 import { pppValidationStrings } from '../config/strings/ppp.validation';
-import { i18nText, i18nTrim } from 'src/shared/types/i18n';
+import {
+	renderPppUploadRowError,
+	type PppUploadRowError,
+	type PppUploadRowErrorItem,
+} from '../config/strings/ppp-upload-messages';
+import { JobRegistry } from 'src/modules/survey/shared/core/job-registry';
+import { i18nText, i18nTrim, type I18nText } from 'src/shared/types/i18n';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import { OutcomeConfigEntity } from 'src/modules/survey/outcome-configs/model/outcome-configs.entity';
 import {
 	CreatePppSurveyDto,
 	FilterPppSurveyDto,
@@ -19,8 +31,103 @@ import {
 const PPP_TYPE_CODE = TYPE_CODES.SURVEY_TYPE.PPP;
 const PPP_STATUS_ACTIVE_CODE = 'TG602-T001';
 
+// The bulk template is intentionally lighter than the manual form: it omits `ruc`, `bossRole`,
+// `phone` and `email`, so a bulk-imported survey stores five `information` keys where `create`
+// stores nine. Those four remain in `CreatePppSurveyDto` — they are out of scope for the import,
+// not for PPP — which is why the 11-digit RUC rule lives in `validateCreateSurvey` alone.
+const FIXED_TEMPLATE_HEADERS = [
+	'Codigo Alumno',
+	'# Practica',
+	'Horas',
+	'Razon Social',
+	'Nombre Jefe',
+	'Fecha Inicio',
+	'Fecha Fin',
+];
+const ERRORS_COLUMN_HEADER = 'Errores';
+// Bounds for the upload job registry; what each one defends against is documented on
+// `JobRegistry`, and why they live in this process at all on docs/CONTEXT.md § Database.
+const UPLOAD_JOB_STATUS_TTL_MS = 30 * 60 * 1000;
+const MAX_CONCURRENT_UPLOAD_JOBS = 20;
+const MAX_CONCURRENT_UPLOAD_JOBS_PER_USER = 3;
+const MAX_RETAINED_UPLOAD_JOBS = 100;
+// The bar is split across the three stages that actually take time. The batched
+// lookups own the first stretch and the commit transaction the last, so the bar
+// neither sits at 0 while the queries run nor reads 100% before the data is saved.
+// Row validation itself is in-memory and would otherwise complete in a single tick.
+const LOOKUP_SHARE_OF_PROGRESS = 40;
+const VALIDATION_SHARE_OF_PROGRESS = 90;
+
+type PppUploadJobResult = {
+	total: number;
+	success: number;
+	failed: number;
+	errors: PppUploadRowErrorItem[];
+	fileName: string | null;
+	hasErrorFile: boolean;
+};
+
+type PppUploadJobState = {
+	progressPct: number;
+	totalRows: number;
+	processedRows: number;
+	result: PppUploadJobResult | null;
+	/** The annotated workbook. Held here but never returned by the status poll — the
+	 *  client polls once a second and this is the whole file; `getUploadErrorFile`
+	 *  serves it once instead. */
+	errorFile: Buffer | null;
+};
+
+export type PppUploadJobStatus = Omit<PppUploadJobState, 'errorFile'> & { done: boolean };
+
+/**
+ * Orders configs the way the competence columns are numbered: every specific one
+ * (CE) before every general one (CG), so neither the labels nor the columns they
+ * head interleave when the two kinds share an `extra.order`.
+ */
+export function orderConfigsByCompetence(configs: OutcomeConfigEntity[]): OutcomeConfigEntity[] {
+	const isSpecific = (c: OutcomeConfigEntity) =>
+		c.outcome?.programCommission?.commissionType?.code === TYPE_CODES.COMMISSION_TYPE.SPECIFIC;
+	return [...configs.filter(isSpecific), ...configs.filter((c) => !isSpecific(c))];
+}
+
+/** Labels competences as CE1..CEn (Competencia Específica) / CG1..CGn (Competencia
+ *  General), keyed by config id so callers never depend on array order. */
+export function buildCompetenceLabels(configs: OutcomeConfigEntity[]): Map<number, string> {
+	const labels = new Map<number, string>();
+	let specificCount = 0;
+	let generalCount = 0;
+
+	for (const config of orderConfigsByCompetence(configs)) {
+		const isSpecific =
+			config.outcome?.programCommission?.commissionType?.code ===
+			TYPE_CODES.COMMISSION_TYPE.SPECIFIC;
+		labels.set(config.id, isSpecific ? `CE${++specificCount}` : `CG${++generalCount}`);
+	}
+
+	return labels;
+}
+
+function buildTemplateHeaders(
+	configs: OutcomeConfigEntity[],
+	competenceLabels: Map<number, string>,
+): string[] {
+	return [
+		...FIXED_TEMPLATE_HEADERS,
+		...orderConfigsByCompetence(configs).map((c) => competenceLabels.get(c.id) as string),
+	];
+}
+
 @Injectable()
 export class PppSurveyService {
+	private readonly logger = new Logger(PppSurveyService.name);
+	private readonly uploadJobs = new JobRegistry<PppUploadJobState>({
+		ttlMs: UPLOAD_JOB_STATUS_TTL_MS,
+		maxConcurrent: MAX_CONCURRENT_UPLOAD_JOBS,
+		maxConcurrentPerOwner: MAX_CONCURRENT_UPLOAD_JOBS_PER_USER,
+		maxRetained: MAX_RETAINED_UPLOAD_JOBS,
+	});
+
 	constructor(
 		private readonly surveyRepo: PppSurveyRepository,
 		private readonly scoreRepo: PppScoreRepository,
@@ -44,18 +151,6 @@ export class PppSurveyService {
 
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
-		const information = JSON.stringify({
-			companyName: dto.companyName ?? null,
-			bossName: dto.bossName ?? null,
-			bossRole: dto.bossRole ?? null,
-			phone: dto.phone ?? null,
-			email: dto.email ?? null,
-			ruc: dto.ruc ?? null,
-			totalHours: dto.totalHours ?? null,
-			startDate: dto.startDate ?? null,
-			endDate: dto.endDate ?? null,
-		});
-
 		const survey = await this.surveyRepo.create({
 			surveyTypeId: typeId,
 			surveyStatusTypeId: statusId,
@@ -64,7 +159,17 @@ export class PppSurveyService {
 			campusId: dto.campusId,
 			programId: dto.programId,
 			surveyNumber: dto.practiceNumber,
-			information: information as any,
+			information: {
+				companyName: dto.companyName ?? null,
+				bossName: dto.bossName ?? null,
+				bossRole: dto.bossRole ?? null,
+				phone: dto.phone ?? null,
+				email: dto.email ?? null,
+				ruc: dto.ruc ?? null,
+				totalHours: dto.totalHours ?? null,
+				startDate: dto.startDate ?? null,
+				endDate: dto.endDate ?? null,
+			} as unknown as I18nText,
 			courseSectionId: 1,
 		});
 
@@ -106,7 +211,7 @@ export class PppSurveyService {
 
 	/**
 	 * Builds the PPP bulk-import Excel template: the fixed data columns plus one
-	 * "Competencia N" column per active config (same headers uploadExcel parses).
+	 * "CE"/"CG" column per active config (same headers uploadExcel parses).
 	 * A second sheet lists which competency each column maps to.
 	 */
 	async generateTemplate(
@@ -118,21 +223,8 @@ export class PppSurveyService {
 			academicPeriodId,
 			isActive: true,
 		});
-
-		const headers = [
-			'Codigo Alumno',
-			'# Practica',
-			'Horas',
-			'Razon Social',
-			'RUC',
-			'Nombre Jefe',
-			'Cargo Jefe',
-			'Telefono',
-			'Email Jefe',
-			'Fecha Inicio',
-			'Fecha Fin',
-			...configs.map((_, idx) => `Competencia ${idx + 1}`),
-		];
+		const competenceLabels = buildCompetenceLabels(configs);
+		const headers = buildTemplateHeaders(configs, competenceLabels);
 
 		const workbook = new ExcelJS.Workbook();
 
@@ -141,8 +233,8 @@ export class PppSurveyService {
 
 		const legendSheet = workbook.addWorksheet('Competencias');
 		legendSheet.addRow(['Columna', 'Competencia']);
-		configs.forEach((config, idx) => {
-			legendSheet.addRow([`Competencia ${idx + 1}`, i18nTrim(config.userOutcomeName) ?? '']);
+		orderConfigsByCompetence(configs).forEach((config) => {
+			legendSheet.addRow([competenceLabels.get(config.id), i18nTrim(config.userOutcomeName) ?? '']);
 		});
 
 		const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -152,7 +244,72 @@ export class PppSurveyService {
 		return { buffer, fileName };
 	}
 
-	async uploadExcel(dto: UploadPppExcelDto, academicPeriodId: number) {
+	/**
+	 * Kicks off the bulk import in the background and returns a job id to poll for
+	 * real progress. Even with every lookup batched, validating and committing a few
+	 * hundred rows takes long enough that returning only at the end would leave the
+	 * user staring at a spinner; the file is parsed up front so the caller gets an
+	 * accurate `totalRows` with the job id.
+	 */
+	async startUploadExcel(dto: UploadPppExcelDto, academicPeriodId: number, userId: number) {
+		if (!this.uploadJobs.hasCapacity(userId)) {
+			throw new BadRequestException(pppValidationStrings.error.tooManyUploadJobs);
+		}
+		// Registered before the first `await` — see `JobRegistry.register`.
+		const jobId = this.uploadJobs.register(userId, {
+			progressPct: 0,
+			totalRows: 0,
+			processedRows: 0,
+			result: null,
+			errorFile: null,
+		});
+
+		let prepared: Awaited<ReturnType<PppSurveyService['prepareUpload']>>;
+		try {
+			prepared = await this.prepareUpload(dto, academicPeriodId);
+		} catch (err) {
+			// The upload never started, so it must not hold a running slot until its TTL.
+			this.uploadJobs.remove(jobId);
+			throw err;
+		}
+
+		const totalRows = prepared.rows.length;
+		this.uploadJobs.patch(jobId, { totalRows });
+		this.logger.log(`PPP upload job ${jobId} queued: totalRows=${totalRows}`);
+
+		void this.processUploadExcel({ ...prepared, dto, academicPeriodId, jobId })
+			.catch((err) => {
+				this.logger.error(
+					`PPP upload job ${jobId} failed: ${(err as Error).message}`,
+					(err as Error).stack,
+				);
+				// The rows already validated (if any) are meaningless once the job itself
+				// blew up outside the per-row handling below (e.g. writing the workbook
+				// buffer) — without this, `done` stays false forever and the poller only
+				// finds out via a 404 once the TTL deletes the entry.
+				this.finishUploadJob(jobId, totalRows, {
+					total: totalRows,
+					success: 0,
+					failed: totalRows,
+					errors: [
+						{
+							row: 0,
+							key: pppValidationStrings.error.upload.saveFailed,
+							args: { reason: (err as Error).message },
+						},
+					],
+					fileName: null,
+					hasErrorFile: false,
+				});
+			})
+			// Guarantees the entry is marked done and scheduled for eviction on every
+			// path; `finish` is idempotent, so the normal completion above still wins.
+			.finally(() => this.uploadJobs.finish(jobId));
+
+		return { accepted: true, jobId, totalRows };
+	}
+
+	private async prepareUpload(dto: UploadPppExcelDto, academicPeriodId: number) {
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
 		const configs = await this.configRepo.findAllPpp({
@@ -182,126 +339,341 @@ export class PppSurveyService {
 		if (!worksheet) throw new BadRequestException(pppValidationStrings.error.excelNoSheets);
 
 		const rows = sheetToObjects(worksheet);
-
 		if (rows.length === 0) throw new BadRequestException(pppValidationStrings.error.excelEmpty);
 
-		const results = {
-			total: rows.length,
-			success: 0,
-			failed: 0,
-			errors: [] as string[],
+		return {
+			typeId,
+			statusId,
+			configs,
+			competenceLabels: buildCompetenceLabels(configs),
+			workbook,
+			worksheet,
+			rows,
 		};
+	}
 
-		for (let i = 0; i < rows.length; i++) {
-			const row = rows[i];
-			const rowNum = i + 2; // +2 because row 1 is headers
+	getUploadStatus(jobId: string, userId: number): PppUploadJobStatus {
+		const status = this.uploadJobs.get(jobId, userId);
+		if (!status) {
+			throw new NotFoundException(pppValidationStrings.error.uploadJobNotFound);
+		}
+		return {
+			progressPct: status.progressPct,
+			totalRows: status.totalRows,
+			processedRows: status.processedRows,
+			done: status.done,
+			result: status.result,
+		};
+	}
 
-			const normalizedRow = {
-				studentCode: normalizeCellText(
-					row['Codigo Alumno'] ??
-						row['Código Alumno'] ??
-						row['CODIGO_ALUMNO'] ??
-						row['student_code'],
-				),
-				practiceNumber: Number(
-					normalizeCellText(
-						row['# Practica'] ?? row['N Practica'] ?? row['practice_number'] ?? row['Practica'],
-					) || 0,
-				),
-				totalHours:
-					Number(
-						normalizeCellText(
-							row['Horas'] ?? row['Total Horas'] ?? row['TOTAL_HORAS'] ?? row['total_hours'],
-						) || 0,
-					) || null,
-				companyName:
-					normalizeCellText(row['Razon Social'] ?? row['Razón Social'] ?? row['company_name']) ||
-					null,
-				ruc: normalizeCellText(row['RUC'] ?? row['ruc']) || null,
-				bossName: normalizeCellText(row['Nombre Jefe'] ?? row['boss_name']) || null,
-				bossRole: normalizeCellText(row['Cargo Jefe'] ?? row['Cargo'] ?? row['boss_role']) || null,
-				phone: normalizeCellText(row['Telefono'] ?? row['Teléfono'] ?? row['phone']) || null,
-				email: normalizeCellText(row['Email Jefe'] ?? row['email']) || null,
-				startDate: row['Fecha Inicio'] ?? row['start_date'] ?? null,
-				endDate: row['Fecha Fin'] ?? row['end_date'] ?? null,
-			};
+	getUploadErrorFile(jobId: string, userId: number): { buffer: Buffer; fileName: string } {
+		const status = this.uploadJobs.get(jobId, userId);
+		if (!status) {
+			throw new NotFoundException(pppValidationStrings.error.uploadJobNotFound);
+		}
+		if (!status.errorFile || !status.result?.fileName) {
+			throw new NotFoundException(pppValidationStrings.error.uploadErrorFileNotFound);
+		}
+		return { buffer: status.errorFile, fileName: status.result.fileName };
+	}
 
-			const { valid, errors } = PppValidation.validateExcelRow(normalizedRow, rowNum);
-			if (!valid) {
-				results.failed++;
-				results.errors.push(...errors);
-				continue;
-			}
+	/**
+	 * Runs in the background after {@link startUploadExcel} returns. All-or-nothing
+	 * semantics: every row is validated first, without writing anything; if any row
+	 * is invalid, nothing is persisted and an annotated copy of the same file (one
+	 * added "Errores" column) is kept for {@link getUploadErrorFile} so the caller
+	 * can fix and re-upload it. Only when every row passes validation are the
+	 * surveys/scores actually inserted, inside a single DB transaction so a late
+	 * failure still rolls back everything instead of leaving a partial import.
+	 */
+	private async processUploadExcel(ctx: {
+		dto: UploadPppExcelDto;
+		academicPeriodId: number;
+		typeId: number;
+		statusId: number;
+		configs: OutcomeConfigEntity[];
+		competenceLabels: Map<number, string>;
+		workbook: ExcelJS.Workbook;
+		worksheet: ExcelJS.Worksheet;
+		rows: SheetRow[];
+		jobId: string;
+	}): Promise<void> {
+		const {
+			dto,
+			academicPeriodId,
+			typeId,
+			statusId,
+			configs,
+			competenceLabels,
+			workbook,
+			worksheet,
+			rows,
+			jobId,
+		} = ctx;
 
-			const student = await this.surveyRepo.findStudentByCode(normalizedRow.studentCode);
-			if (!student) {
-				results.failed++;
-				results.errors.push(
-					`Row ${rowNum}: Student with code "${normalizedRow.studentCode}" not found`,
-				);
-				continue;
+		const parsed = rows.map((sheetRow) => ({
+			rowNumber: sheetRow.rowNumber,
+			values: sheetRow.values,
+			row: normalizeUploadRow(sheetRow.values),
+		}));
+
+		const rowErrors = new Map<number, PppUploadRowError[]>();
+		const shapeErrors = new Map<number, PppUploadRowError[]>();
+		for (const { rowNumber, row } of parsed) {
+			const { valid, errors } = PppValidation.validateExcelRow(row);
+			if (!valid) shapeErrors.set(rowNumber, errors);
+		}
+
+		// Every lookup phase 1 needs, batched: one query for the students, one for their
+		// placements, one for the practices already registered. Per row this was two
+		// round-trips each — the N+1 that made the job slow enough to need a progress
+		// bar in the first place.
+		const codes = [
+			...new Set(parsed.filter((p) => !shapeErrors.has(p.rowNumber)).map((p) => p.row.studentCode)),
+		];
+		const students = await this.surveyRepo.findStudentsByCodes(codes);
+		const studentIdByCode = new Map(students.map((s) => [s.code, s.id]));
+		const studentIds = [...new Set(students.map((s) => s.id))];
+
+		const [placements, registered] = await Promise.all([
+			this.surveyRepo.findCourseSectionAndCampusByStudents(studentIds),
+			this.surveyRepo.findExistingPracticeKeys(typeId, academicPeriodId, dto.programId, studentIds),
+		]);
+		const placementByStudent = new Map(placements.map((p) => [p.studentId, p]));
+		const registeredPractices = new Set(
+			registered.map((r) => practiceKey(r.studentId, r.practiceNumber)),
+		);
+		// Only worth a query when at least one student has no enrolment of their own.
+		const fallbackPlacement =
+			placements.length < studentIds.length
+				? await this.surveyRepo.findFallbackCourseSection()
+				: null;
+
+		this.uploadJobs.patch(jobId, { progressPct: LOOKUP_SHARE_OF_PROGRESS });
+
+		const readyRows = new Map<number, ReadyRow>();
+		const firstRowOfPractice = new Map<string, number>();
+
+		parsed.forEach(({ rowNumber, values, row }, index) => {
+			const messages: PppUploadRowError[] = [...(shapeErrors.get(rowNumber) ?? [])];
+
+			const studentId =
+				messages.length === 0 ? (studentIdByCode.get(row.studentCode) ?? null) : null;
+			if (messages.length === 0 && studentId === null) {
+				messages.push({
+					key: pppValidationStrings.error.upload.studentNotFound,
+					args: { code: row.studentCode },
+				});
 			}
 
 			// campus_id and course_section_id are NOT NULL FKs on the survey; the Excel
 			// does not provide them, so resolve them from the student (or a fallback).
-			const placement = await this.surveyRepo.resolveCourseSectionAndCampus(student.id);
-			if (!placement) {
-				results.failed++;
-				results.errors.push(`Row ${rowNum}: No course section available to register the survey`);
-				continue;
+			const placement =
+				studentId !== null ? (placementByStudent.get(studentId) ?? fallbackPlacement) : null;
+			if (studentId !== null && !placement) {
+				messages.push({ key: pppValidationStrings.error.upload.noCourseSection });
 			}
-			const resolvedCampusId = dto.campusId || placement.campusId;
 
-			// Extract scores from Excel columns (one column per outcome config, in order)
+			if (studentId !== null) {
+				const key = practiceKey(studentId, row.practiceNumber);
+				if (registeredPractices.has(key)) {
+					messages.push({
+						key: pppValidationStrings.error.upload.duplicateSurvey,
+						args: { code: row.studentCode, practiceNumber: row.practiceNumber },
+					});
+				}
+				const firstRow = firstRowOfPractice.get(key);
+				if (firstRow !== undefined) {
+					messages.push({
+						key: pppValidationStrings.error.upload.duplicateInFile,
+						args: { code: row.studentCode, practiceNumber: row.practiceNumber, firstRow },
+					});
+				} else {
+					firstRowOfPractice.set(key, rowNumber);
+				}
+			}
+
+			// One column per outcome config, matched by its CE/CG label. A cell that is
+			// filled but unreadable is an error, never a silently dropped score: these
+			// are the whole payload of the survey, and `validateCreateSurvey` rejects the
+			// same values on the manual path.
 			const scores: { outcomeId: number; score: number }[] = [];
-			configs.forEach((config, idx) => {
-				const colName = `Competencia ${idx + 1}`;
-				const altColName = config.userOutcomeName as unknown as string;
-				const rawScore = normalizeCellText(row[colName] ?? row[altColName]);
-				const score = rawScore !== '' ? parseFloat(rawScore) : null;
+			let filledScoreCells = 0;
+			for (const config of configs) {
+				const label = competenceLabels.get(config.id) as string;
+				const altLabel = config.userOutcomeName as unknown as string;
+				const rawScore = normalizeCellText(values[label] ?? values[altLabel]);
+				if (rawScore === '') continue;
 
-				if (score !== null && !isNaN(score) && score >= 1 && score <= 5) {
-					scores.push({ outcomeId: config.outcomeId, score });
-				}
-			});
-
-			const information = JSON.stringify({
-				companyName: normalizedRow.companyName,
-				bossName: normalizedRow.bossName,
-				bossRole: normalizedRow.bossRole,
-				phone: normalizedRow.phone,
-				email: normalizedRow.email,
-				ruc: normalizedRow.ruc,
-				totalHours: normalizedRow.totalHours,
-				startDate: normalizedRow.startDate,
-				endDate: normalizedRow.endDate,
-			});
-
-			try {
-				const survey = await this.surveyRepo.create({
-					surveyTypeId: typeId,
-					surveyStatusTypeId: statusId,
-					studentId: student.id,
-					academicPeriodId,
-					campusId: resolvedCampusId,
-					programId: dto.programId,
-					surveyNumber: Number(normalizedRow.practiceNumber),
-					information: information as any,
-					courseSectionId: placement.courseSectionId,
-				});
-
-				if (scores.length > 0) {
-					await this.scoreRepo.bulkCreate(scores.map((s) => ({ ...s, surveyId: survey.id })));
-				}
-
-				results.success++;
-			} catch (err) {
-				results.failed++;
-				results.errors.push(`Row ${rowNum}: Save error – ${(err as Error).message}`);
+				filledScoreCells++;
+				const { score, error } = PppValidation.validateExcelScore(rawScore, label);
+				if (error) messages.push(error);
+				else scores.push({ outcomeId: config.outcomeId, score: score as number });
 			}
+			if (filledScoreCells === 0) {
+				messages.push({ key: pppValidationStrings.error.upload.noScores });
+			}
+
+			if (messages.length > 0) {
+				rowErrors.set(rowNumber, messages);
+			} else {
+				readyRows.set(rowNumber, {
+					studentId: studentId as number,
+					practiceNumber: row.practiceNumber,
+					campusId: dto.campusId || (placement as { campusId: number }).campusId,
+					courseSectionId: (placement as { courseSectionId: number }).courseSectionId,
+					// Deliberately five keys, against the nine that `create` writes: the bulk
+					// template is the lighter path and does not collect `ruc`, `bossRole`,
+					// `phone` or `email` (see FIXED_TEMPLATE_HEADERS). Those four stay valid on
+					// the manual form, which is why `validateCreateSurvey` still enforces the RUC
+					// format there — there is simply nothing to validate here. Anything reading
+					// `information` back for PPP must treat all four as optional.
+					information: {
+						companyName: row.companyName,
+						bossName: row.bossName,
+						totalHours: row.totalHours,
+						startDate: row.startDate,
+						endDate: row.endDate,
+					},
+					scores,
+				});
+			}
+
+			this.updateUploadProgress(jobId, rows.length, index + 1);
+		});
+
+		if (rowErrors.size > 0) {
+			const { result, errorFile } = await this.buildUploadErrorResult(
+				workbook,
+				worksheet,
+				rows.length,
+				rowErrors,
+				dto,
+				academicPeriodId,
+			);
+			this.finishUploadJob(jobId, rows.length, result, errorFile);
+			return;
 		}
 
-		return results;
+		// Phase 2: every row is valid — persist all of them atomically. If anything
+		// unexpected fails here, the transaction rolls back and none of it is kept.
+		try {
+			await this.surveyRepo.transaction(async (manager) => {
+				for (const [, r] of readyRows) {
+					const survey = await this.surveyRepo.create(
+						{
+							surveyTypeId: typeId,
+							surveyStatusTypeId: statusId,
+							studentId: r.studentId,
+							academicPeriodId,
+							campusId: r.campusId,
+							programId: dto.programId,
+							surveyNumber: r.practiceNumber,
+							information: r.information as unknown as I18nText,
+							courseSectionId: r.courseSectionId,
+						},
+						manager,
+					);
+
+					if (r.scores.length > 0) {
+						await this.scoreRepo.bulkCreate(
+							r.scores.map((s) => ({ ...s, surveyId: survey.id })),
+							manager,
+						);
+					}
+				}
+			});
+		} catch (err) {
+			// Nothing was committed (the transaction rolled back); flag every row so the
+			// downloaded file makes clear none of it was saved.
+			const message: PppUploadRowError = {
+				key: pppValidationStrings.error.upload.saveFailed,
+				args: { reason: (err as Error).message },
+			};
+			for (const rowNumber of readyRows.keys()) rowErrors.set(rowNumber, [message]);
+			const { result, errorFile } = await this.buildUploadErrorResult(
+				workbook,
+				worksheet,
+				rows.length,
+				rowErrors,
+				dto,
+				academicPeriodId,
+			);
+			this.finishUploadJob(jobId, rows.length, result, errorFile);
+			return;
+		}
+
+		this.finishUploadJob(jobId, rows.length, {
+			total: rows.length,
+			success: readyRows.size,
+			failed: 0,
+			errors: [],
+			fileName: null,
+			hasErrorFile: false,
+		});
+	}
+
+	private updateUploadProgress(jobId: string, total: number, processed: number): void {
+		const validationSpan = VALIDATION_SHARE_OF_PROGRESS - LOOKUP_SHARE_OF_PROGRESS;
+		this.uploadJobs.patch(jobId, {
+			processedRows: processed,
+			progressPct: Math.min(
+				VALIDATION_SHARE_OF_PROGRESS,
+				LOOKUP_SHARE_OF_PROGRESS + Math.round((processed / total) * validationSpan),
+			),
+		});
+	}
+
+	private finishUploadJob(
+		jobId: string,
+		totalRows: number,
+		result: PppUploadJobResult,
+		errorFile: Buffer | null = null,
+	): void {
+		this.uploadJobs.finish(jobId, {
+			progressPct: 100,
+			totalRows,
+			processedRows: totalRows,
+			result,
+			errorFile,
+		});
+	}
+
+	private async buildUploadErrorResult(
+		workbook: ExcelJS.Workbook,
+		worksheet: ExcelJS.Worksheet,
+		totalRows: number,
+		rowErrors: Map<number, PppUploadRowError[]>,
+		dto: UploadPppExcelDto,
+		academicPeriodId: number,
+	): Promise<{ result: PppUploadJobResult; errorFile: Buffer }> {
+		// The spreadsheet is the one surface the backend renders itself, so keys become
+		// words here and nowhere else; the API keeps returning the keys.
+		annotateRowErrors(
+			worksheet,
+			new Map(
+				[...rowErrors].map(([rowNumber, errors]) => [
+					rowNumber,
+					errors.map((error) => renderPppUploadRowError(error)),
+				]),
+			),
+			ERRORS_COLUMN_HEADER,
+		);
+		const errorFile = Buffer.from(await workbook.xlsx.writeBuffer());
+
+		return {
+			result: {
+				total: totalRows,
+				success: 0,
+				failed: rowErrors.size,
+				errors: [...rowErrors].flatMap(([row, errors]) =>
+					errors.map((error) => ({ row, ...error })),
+				),
+				fileName: `errores_ppp_${dto.programId}_${academicPeriodId}.xlsx`,
+				hasErrorFile: true,
+			},
+			errorFile,
+		};
 	}
 
 	async getDashboard(dto: DashboardPppDto & { academicPeriodId?: number | null }) {
@@ -394,4 +766,57 @@ export class PppSurveyService {
 					: 'All outcomes are within the acceptance threshold',
 		};
 	}
+}
+
+type ReadyRow = {
+	studentId: number;
+	practiceNumber: number;
+	campusId: number;
+	courseSectionId: number;
+	information: Record<string, unknown>;
+	scores: { outcomeId: number; score: number }[];
+};
+
+/** A student may hold at most one survey per practice number in a given programme
+ *  and period; this is the key both the in-file and the already-registered
+ *  duplicate checks compare on. */
+function practiceKey(studentId: number, practiceNumber: number): string {
+	return `${studentId}:${practiceNumber}`;
+}
+
+/** Resolves the header aliases the importer accepts into one shape. Pure, so the
+ *  validation pass can run before any of the batched lookups. */
+function normalizeUploadRow(values: Record<string, ExcelJS.CellValue>): PppExcelRow {
+	return {
+		studentCode: normalizeCellText(
+			values['Codigo Alumno'] ??
+				values['Código Alumno'] ??
+				values['CODIGO_ALUMNO'] ??
+				values['student_code'],
+		),
+		practiceNumber: Number(
+			normalizeCellText(
+				values['# Practica'] ??
+					values['N Practica'] ??
+					values['practice_number'] ??
+					values['Practica'],
+			) || 0,
+		),
+		totalHours:
+			Number(
+				normalizeCellText(
+					values['Horas'] ??
+						values['Total Horas'] ??
+						values['TOTAL_HORAS'] ??
+						values['total_hours'],
+				) || 0,
+			) || null,
+		companyName:
+			normalizeCellText(
+				values['Razon Social'] ?? values['Razón Social'] ?? values['company_name'],
+			) || null,
+		bossName: normalizeCellText(values['Nombre Jefe'] ?? values['boss_name']) || null,
+		startDate: values['Fecha Inicio'] ?? values['start_date'] ?? null,
+		endDate: values['Fecha Fin'] ?? values['end_date'] ?? null,
+	};
 }

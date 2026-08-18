@@ -1,5 +1,5 @@
 import { GradesRcExportRepository } from './grades-rc-export.repository';
-import { MATERIALIZE_GRADES_RC_SQL } from './grades-rc-export.sql';
+import { MATERIALIZE_GRADES_RC_SQL, READ_GRADES_RC_PAGE_SQL } from './grades-rc-export.sql';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 
 // The merge itself (Banner + Planner cross, newest scrape wins, last-grade fallback) is SQL, so it
@@ -26,6 +26,10 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 	// The statements the export issues on the raw connection, in order: drop leftovers, materialize,
 	// index, then one read per page, then drop again on close.
 	const materializeCall = () => rawQuery.mock.calls[1];
+	const pageCalls = (): unknown[][] =>
+		rawQuery.mock.calls
+			.filter(([sql]) => sql === READ_GRADES_RC_PAGE_SQL)
+			.map(([, params]) => params);
 
 	const mainQueryFake = (sql: string, params: unknown[]) => {
 		if (sql.includes('FROM academic.academic_periods'))
@@ -82,6 +86,7 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		// The career map is a constant, not a query: assert the shape, not every program.
 		expect(params[13]).toEqual(Object.keys(PROGRAM_CAREER_MAP));
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
+		expect(params[15]).toBe('TG404-T002');
 	});
 
 	// Pages are read until one comes back short of the page size, and the rows are handed on
@@ -101,7 +106,7 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		rawQuery.mockResolvedValueOnce([row('1', 'A1'), row('2', 'A2')]).mockResolvedValueOnce([]);
 
 		const collected: unknown[] = [];
-		for await (const r of handle.rows()) collected.push(r);
+		for await (const r of handle.rows(false)) collected.push(r);
 
 		expect(collected).toEqual([row('1', 'A1'), row('2', 'A2')]);
 		// Second page asked for everything after the last row of the first: keyset, not offset.
@@ -109,16 +114,31 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(pageParams[0]).toBe('2');
 	});
 
-	// The scratch table can be walked twice, which is what lets both worksheets come out of one run
-	// of the merge instead of two.
-	it('can be walked more than once', async () => {
+	// Each worksheet reads its own half. Both are driven here because asserting only the `true` walk
+	// passes just as well with the flag hardcoded -- which would ship an empty upload sheet.
+	it('asks the page query for each half separately', async () => {
 		const handle = await repo.openGradesRcExport(1);
-		const callsAfterOpen = rawQuery.mock.calls.length;
 
-		for await (const _ of handle.rows());
-		for await (const _ of handle.rows());
+		for await (const _ of handle.rows(false));
+		for await (const _ of handle.rows(true));
 
-		expect(rawQuery.mock.calls.length).toBeGreaterThan(callsAfterOpen + 1);
+		expect(pageCalls().map((params) => params[2])).toEqual([false, true]);
+	});
+
+	// Both worksheets come out of one run of the merge, so the cursor has to restart per walk: a
+	// shared one would silently truncate the second sheet. The first walk is given a real page so
+	// that a leaked cursor would be visible.
+	it('restarts the keyset cursor on every walk', async () => {
+		const handle = await repo.openGradesRcExport(1);
+		rawQuery
+			.mockResolvedValueOnce([{ exportSeq: '7', sectionCode: 'NRC1', studentCode: 'A1' }])
+			.mockResolvedValueOnce([]);
+
+		for await (const _ of handle.rows(false));
+		expect(pageCalls().map((params) => params[0])).toEqual(['0', '7']);
+
+		for await (const _ of handle.rows(true));
+		expect(pageCalls().map((params) => params[0])).toEqual(['0', '7', '0']);
 	});
 
 	// The handle owns a pooled connection; leaking one leaks it for the life of the process.
