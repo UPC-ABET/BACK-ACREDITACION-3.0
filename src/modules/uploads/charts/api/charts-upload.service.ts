@@ -22,12 +22,9 @@ import { ROLE_CODES } from 'src/shared/constants/role-codes';
 const SINGLE_COLUMNS_BEFORE_TITLE = 2; // code, parentCode
 const SINGLE_COLUMNS_AFTER_TITLE = 4; // professorCode, email, entityType, entityCode
 
-// Entity-type tags a chart node may declare in this upload (School/Dean/Program come from prior
-// configuration — chart-heads for School/Dean, its program pre-configuration for Program — so
-// they are excluded here). Blank is not allowed: every row must resolve to a parent, either
-// another row's code in this file or a pre-configured program's own code in the parentCode
-// column (see fn_upload_charts). A row can still be a generic intermediate unit by leaving its
-// own entityType blank; only Program itself can never be a row's own tag any more.
+// School, Dean and Program are excluded: all three are written only by chart-heads
+// pre-configuration, never by this upload. A row still reaches a program by naming its code in
+// parentCode (see fn_upload_charts), not by tagging itself with entityType = Program.
 const UPLOADABLE_ENTITY_TYPE_CODES: string[] = [
 	TYPE_CODES.ENTITY_TYPE.AREA,
 	TYPE_CODES.ENTITY_TYPE.SUBAREA,
