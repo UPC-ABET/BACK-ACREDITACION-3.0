@@ -225,27 +225,28 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 		return row ?? null;
 	}
 
-	// True when chartId itself, or any ancestor reached by walking root_chart_id upward, is
-	// Program-typed. chartId === null means no parent at all, so no ancestor.
-	async hasProgramAncestor(chartId: number | null): Promise<boolean> {
+	// The academic_period_id filter matters: generic CRUD accepts any existing chart id as
+	// rootChartId, including one from a different period. Without the filter, an ancestor from
+	// last year's tree could satisfy this period's requirement.
+	async hasProgramAncestor(chartId: number | null, academicPeriodId: number): Promise<boolean> {
 		if (chartId === null) return false;
 		const [row] = await this.dataSource.query(
 			`WITH RECURSIVE up AS (
 				SELECT c.id, c.root_chart_id, c.entity_type_id
 				FROM organization.charts c
-				WHERE c.id = $1 AND c.is_active = true
+				WHERE c.id = $1 AND c.is_active = true AND c.academic_period_id = $3
 				UNION ALL
 				SELECT c.id, c.root_chart_id, c.entity_type_id
 				FROM organization.charts c
 				INNER JOIN up ON c.id = up.root_chart_id
-				WHERE c.is_active = true
+				WHERE c.is_active = true AND c.academic_period_id = $3
 			)
 			SELECT EXISTS (
 				SELECT 1 FROM up
 				INNER JOIN core.types et ON et.id = up.entity_type_id
 				WHERE et.code = $2
 			) AS "hasProgram"`,
-			[chartId, ENTITY.PROGRAM],
+			[chartId, ENTITY.PROGRAM, academicPeriodId],
 		);
 		return Boolean(row?.hasProgram);
 	}

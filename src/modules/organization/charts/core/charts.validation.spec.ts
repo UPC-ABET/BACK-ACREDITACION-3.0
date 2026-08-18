@@ -68,7 +68,7 @@ describe('ChartValidation', () => {
 			await expect(
 				ChartValidation.validateCreate(mockRepo as any, { ...createDto, rootChartId: 3 }),
 			).resolves.toBeUndefined();
-			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(3);
+			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(3, 100);
 		});
 
 		it('throws creating a course with no rootChartId at all', async () => {
@@ -78,11 +78,23 @@ describe('ChartValidation', () => {
 			await expect(ChartValidation.validateCreate(mockRepo as any, createDto)).rejects.toThrow(
 				DomainError,
 			);
-			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(null);
+			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(null, 100);
 		});
 
 		it('throws creating a program directly (read-only)', async () => {
 			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.PROGRAM);
+			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
+			await expect(
+				ChartValidation.validateCreate(mockRepo as any, { ...createDto, rootChartId: 3 }),
+			).rejects.toThrow(DomainError);
+			expect(mockRepo.hasProgramAncestor).not.toHaveBeenCalled();
+		});
+
+		it('throws creating a school directly through generic CRUD (read-only)', async () => {
+			// Generic CRUD never checked read-only entity types at all before this change — School
+			// and Dean could previously be created here with no guard. Program joining
+			// READ_ONLY_ENTITY_TYPES closed that gap for every type in the list, not just Program.
+			mockRepo.getEntityTypeCode.mockResolvedValue(ENTITY.SCHOOL);
 			mockRepo.findActiveNodeByEntity.mockResolvedValue(null);
 			await expect(
 				ChartValidation.validateCreate(mockRepo as any, { ...createDto, rootChartId: 3 }),
@@ -134,7 +146,7 @@ describe('ChartValidation', () => {
 			await expect(
 				ChartValidation.validateUpdate(mockRepo as any, 1, { rootChartId: 8 }),
 			).rejects.toThrow(DomainError);
-			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(8);
+			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(8, 100);
 		});
 
 		it('passes moving a course-typed node onto a parent with a program ancestor', async () => {
@@ -202,7 +214,7 @@ describe('ChartValidation', () => {
 			await expect(
 				ChartValidation.validateMaintenanceCreate(mockRepo as any, 100, courseDto),
 			).rejects.toThrow(DomainError);
-			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(courseDto.rootChartId);
+			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(courseDto.rootChartId, 100);
 		});
 
 		it('throws when the entity already has an active node in the period', async () => {
@@ -340,7 +352,10 @@ describe('ChartValidation', () => {
 				ChartValidation.validateMaintenanceUpdate(mockRepo as any, 5, { entityTypeId: 12 }),
 			).resolves.toBeUndefined();
 			expect(mockRepo.findActiveNodeByEntity).not.toHaveBeenCalled();
-			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(courseNode.rootChartId);
+			expect(mockRepo.hasProgramAncestor).toHaveBeenCalledWith(
+				courseNode.rootChartId,
+				courseNode.academicPeriodId,
+			);
 		});
 
 		it('throws re-typing into a course when the node has no program ancestor', async () => {

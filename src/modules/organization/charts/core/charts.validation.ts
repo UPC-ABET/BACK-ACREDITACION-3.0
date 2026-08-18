@@ -18,9 +18,8 @@ export const entityTypeNeedsCode = (entityTypeCode: string): boolean =>
 export const isReadOnlyEntityType = (entityTypeCode: string | null): boolean =>
 	entityTypeCode !== null && READ_ONLY_ENTITY_TYPES.includes(entityTypeCode);
 
-// Area, Subarea and Course must resolve to a Program node before reaching the School root.
-// Program itself never needs this (it is the thing being required), and Dean/School are
-// read-only, so they never reach this check either.
+// Program itself is excluded (it's the thing being required, not a thing that needs one); Dean
+// and School are excluded because they're read-only and never reach this check at all.
 export const requiresProgramAncestor = (entityTypeCode: string | null): boolean =>
 	entityTypeCode !== null && PROGRAM_ANCESTOR_ENTITY_TYPES.includes(entityTypeCode);
 
@@ -82,19 +81,41 @@ export class ChartValidation {
 		return found !== null && found.id !== excludeChartId;
 	}
 
+	// The one place the read-only and program-ancestor checks are expressed: every write path
+	// (generic create/update, maintenance create/update) resolves its own typeCode/rootChartId,
+	// then calls this. A rule expressed four times instead of once is exactly what drifts — see
+	// the entity-uniqueness rule above, which learned this lesson first.
+	static async checkTypeConstraints(
+		repo: ChartRepository,
+		typeCode: string | null,
+		rootChartId: number | null,
+		academicPeriodId: number,
+	): Promise<string[]> {
+		if (typeCode && isReadOnlyEntityType(typeCode)) {
+			return [chartsValidationStrings.error.entityTypeReadOnly];
+		}
+		if (
+			requiresProgramAncestor(typeCode) &&
+			!(await repo.hasProgramAncestor(rootChartId, academicPeriodId))
+		) {
+			return [chartsValidationStrings.error.programAncestorRequired];
+		}
+		return [];
+	}
+
 	static async validateCreate(repo: ChartRepository, data: any) {
 		const errors: Array<string> = [];
 
 		if (data.entityTypeId != null) {
 			const typeCode = await repo.getEntityTypeCode(data.entityTypeId);
-			if (typeCode && isReadOnlyEntityType(typeCode)) {
-				errors.push(chartsValidationStrings.error.entityTypeReadOnly);
-			} else if (
-				requiresProgramAncestor(typeCode) &&
-				!(await repo.hasProgramAncestor(data.rootChartId ?? null))
-			) {
-				errors.push(chartsValidationStrings.error.programAncestorRequired);
-			}
+			errors.push(
+				...(await ChartValidation.checkTypeConstraints(
+					repo,
+					typeCode,
+					data.rootChartId ?? null,
+					data.academicPeriodId,
+				)),
+			);
 		}
 
 		if (
@@ -128,15 +149,17 @@ export class ChartValidation {
 				const effectiveTypeId = data.entityTypeId ?? entity.entityTypeId;
 				const typeCode =
 					effectiveTypeId != null ? await repo.getEntityTypeCode(effectiveTypeId) : null;
-				if (typeCode && isReadOnlyEntityType(typeCode)) {
-					errors.push(chartsValidationStrings.error.entityTypeReadOnly);
-				} else if (requiresProgramAncestor(typeCode)) {
-					const effectiveRoot =
-						data.rootChartId !== undefined ? data.rootChartId : entity.rootChartId;
-					if (!(await repo.hasProgramAncestor(effectiveRoot ?? null))) {
-						errors.push(chartsValidationStrings.error.programAncestorRequired);
-					}
-				}
+				const effectiveRoot =
+					data.rootChartId !== undefined ? data.rootChartId : entity.rootChartId;
+				const effectivePeriod = data.academicPeriodId ?? entity.academicPeriodId;
+				errors.push(
+					...(await ChartValidation.checkTypeConstraints(
+						repo,
+						typeCode,
+						effectiveRoot ?? null,
+						effectivePeriod,
+					)),
+				);
 			}
 
 			if (
@@ -188,10 +211,17 @@ export class ChartValidation {
 		const typeCode = await repo.getEntityTypeCode(dto.entityTypeId);
 		if (!typeCode) {
 			errors.push(chartsValidationStrings.error.entityTypeInvalid);
-		} else if (isReadOnlyEntityType(typeCode)) {
-			errors.push(chartsValidationStrings.error.entityTypeReadOnly);
 		} else {
-			if (entityTypeNeedsCode(typeCode)) {
+			errors.push(
+				...(await ChartValidation.checkTypeConstraints(
+					repo,
+					typeCode,
+					dto.rootChartId,
+					academicPeriodId,
+				)),
+			);
+
+			if (!isReadOnlyEntityType(typeCode) && entityTypeNeedsCode(typeCode)) {
 				if (dto.entityCode == null) {
 					errors.push(chartsValidationStrings.error.entityCodeRequired);
 				} else if (!(await repo.entityExists(typeCode, dto.entityCode))) {
@@ -205,10 +235,6 @@ export class ChartValidation {
 				) {
 					errors.push(chartsValidationStrings.error.entityAlreadyAssigned);
 				}
-			}
-
-			if (requiresProgramAncestor(typeCode) && !(await repo.hasProgramAncestor(dto.rootChartId))) {
-				errors.push(chartsValidationStrings.error.programAncestorRequired);
 			}
 		}
 
@@ -249,25 +275,25 @@ export class ChartValidation {
 			newTypeCode = await repo.getEntityTypeCode(dto.entityTypeId);
 			if (!newTypeCode) {
 				errors.push(chartsValidationStrings.error.entityTypeInvalid);
-			} else if (isReadOnlyEntityType(newTypeCode)) {
-				errors.push(chartsValidationStrings.error.entityTypeReadOnly);
 			} else {
-				if (entityTypeNeedsCode(newTypeCode)) {
+				// UpdateChartNodeDto carries no rootChartId — a maintenance update can never move a
+				// node, so re-typing into Area/Subarea/Course is checked against the node's own,
+				// already-fixed parent and period.
+				errors.push(
+					...(await ChartValidation.checkTypeConstraints(
+						repo,
+						newTypeCode,
+						node.rootChartId,
+						node.academicPeriodId,
+					)),
+				);
+
+				if (!isReadOnlyEntityType(newTypeCode) && entityTypeNeedsCode(newTypeCode)) {
 					if (dto.entityCode == null) {
 						errors.push(chartsValidationStrings.error.entityCodeRequired);
 					} else if (!(await repo.entityExists(newTypeCode, dto.entityCode))) {
 						errors.push(chartsValidationStrings.error.entityNotFound);
 					}
-				}
-
-				// UpdateChartNodeDto carries no rootChartId — a maintenance update can never move a
-				// node, so re-typing into Area/Subarea/Course is checked against the node's own,
-				// already-fixed parent.
-				if (
-					requiresProgramAncestor(newTypeCode) &&
-					!(await repo.hasProgramAncestor(node.rootChartId))
-				) {
-					errors.push(chartsValidationStrings.error.programAncestorRequired);
 				}
 			}
 		} else if (
