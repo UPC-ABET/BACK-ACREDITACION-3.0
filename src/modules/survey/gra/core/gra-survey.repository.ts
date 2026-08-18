@@ -27,6 +27,7 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			.andWhere('s.student_id = :studentId', { studentId })
 			.andWhere('s.academic_period_id = :periodId', { periodId: academicPeriodId })
 			.andWhere('s.program_id = :programId', { programId })
+			.andWhere('s.is_active = true')
 			.getOne();
 	}
 
