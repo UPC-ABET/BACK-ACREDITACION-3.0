@@ -153,20 +153,20 @@ is wrong.
 
 Filled in by `/abet-design-feature` and kept current through implementation.
 
-| AC  | Criterion                                                      | Satisfied by |
-| --- | -------------------------------------------------------------- | ------------ |
-| 1   | Pre-config upserts a Program node idempotently                 | TBD          |
-| 2   | A program may belong to at most one school per period          | TBD          |
-| 3   | Excel row attaches under its school's pre-configured program   | TBD          |
-| 4   | Program configured for a different school is rejected          | TBD          |
-| 5   | Unresolvable `parentCode` keeps today's parent-not-found error | TBD          |
-| 6   | Blank `parentCode` is always rejected                          | TBD          |
-| 7   | Only the topmost broken row in a chain is flagged              | TBD          |
-| 8   | `PROGRAM` removed from uploadable row types and template       | TBD          |
-| 9   | Maintenance UI / generic CRUD enforce the same ancestry rule   | TBD          |
-| 10  | Upload rollback never touches Program nodes                    | TBD          |
-| 11  | `openapi.json` regenerated for the pre-config endpoint         | TBD          |
-| 12  | Spec coverage for the new rule, confirmed red-then-green       | TBD          |
+| AC  | Criterion                                                      | Satisfied by                                                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Pre-config upserts a Program node idempotently                 | `chart-heads.repository.ts` → `configure()`/`upsertHead()`                                                                                                                                                                           |
+| 2   | A program may belong to at most one school per period          | `chart-heads.validation.ts` → `validateConfigure` (`findProgramsConfiguredForOtherSchool` pre-check) + `chart-heads.repository.ts` → `translateDuplicateNode` (race backstop on `UQ_charts_academic_period_entity_type_entity_code`) |
+| 3   | Excel row attaches under its school's pre-configured program   | migration `1787086142663` → `audit.fn_upload_charts`, parent-resolution + pass 3 wiring                                                                                                                                              |
+| 4   | Program configured for a different school is rejected          | same migration → `programNotConfiguredForSchool`                                                                                                                                                                                     |
+| 5   | Unresolvable `parentCode` keeps today's parent-not-found error | same migration → `parentNotFound`                                                                                                                                                                                                    |
+| 6   | Blank `parentCode` is always rejected                          | same migration → `parentCodeEmpty`                                                                                                                                                                                                   |
+| 7   | Only the topmost broken row in a chain is flagged              | same migration — falls out of per-row parent-resolution, no chain-walk needed                                                                                                                                                        |
+| 8   | `PROGRAM` removed from uploadable row types and template       | `charts-upload.service.ts` → `UPLOADABLE_ENTITY_TYPE_CODES`; `charts-template.labels.ts`                                                                                                                                             |
+| 9   | Maintenance UI / generic CRUD enforce the same ancestry rule   | `charts.validation.ts` → `checkTypeConstraints`, called from `validateCreate`/`validateUpdate`/`validateMaintenanceCreate`/`validateMaintenanceUpdate`; `charts.repository.ts` → `hasProgramAncestor`                                |
+| 10  | Upload rollback never touches Program nodes                    | structural — `audit.fn_rollback_charts` deletes by `upload_log_id`, which Program nodes never carry                                                                                                                                  |
+| 11  | `openapi.json` regenerated for the pre-config endpoint         | committed in `chore(openapi): regenerate spec for program pre-configuration`                                                                                                                                                         |
+| 12  | Spec coverage for the new rule, confirmed red-then-green       | `charts.validation.spec.ts`, `chart-heads.validation.spec.ts`, `chart-heads.repository.spec.ts`, `charts-upload.service.spec.ts` — retros in `tasks.md` record each confirmed-red case                                               |
 
 ## Dependencies
 
