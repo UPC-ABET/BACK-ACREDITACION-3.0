@@ -360,6 +360,136 @@ function` before `mockRepo` was updated); the `courseNode` fixture needed a `roo
 
 ---
 
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1 (2026-08-18)
+
+Six parallel auditors (code quality, architecture/docs, testing, antipatterns, security,
+runtime robustness) ran over `origin/develop...HEAD`. Verdict: **NOT READY** — 3 majors, 2
+minors, 2 suggestions. All fixed below except one suggestion, explicitly left out with reason.
+
+### Task R1.1 — Scope `hasProgramAncestor` to the write's own academic period ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+**Why**: Auditor F (runtime robustness, major). Generic CRUD accepts any existing chart id as
+`rootChartId` with no check that it belongs to the same period as the node being written, and
+`hasProgramAncestor`'s recursive CTE had no `academic_period_id` filter — an ancestor from a
+different period's tree could satisfy the current period's requirement.
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.repository.ts` (modify)
+- `src/modules/organization/charts/core/charts.validation.ts` (modify — all four call sites)
+- `src/modules/organization/charts/core/charts.validation.spec.ts` (test)
+
+**Steps**
+
+1. `hasProgramAncestor(chartId, academicPeriodId)` — the CTE's anchor and recursive terms both
+   now filter on `academic_period_id = $3`.
+2. Every call site threads its own already-resolved `academicPeriodId` through.
+3. Updated the 5 existing `toHaveBeenCalledWith(...)` assertions across
+   `charts.validation.spec.ts` for the new second argument.
+
+**Commit**: `fix(charts): scope program-ancestor lookup to the write's own period`
+
+### Task R1.2 — Translate `upsertHead`'s race into a domain conflict ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+**Why**: Auditor F (runtime robustness, major). `upsertHead` writes through TypeORM's own
+repository, not `ChartRepository`, so it never inherited `translateDuplicateNode` — a
+concurrent race on a brand-new program (two schools targeting the same unclaimed `programId`)
+would surface to the loser as a raw `500` instead of the `ConflictError` every other chart
+write path already produces for this exact index.
+
+**Files**
+
+- `src/modules/admin/organization/chart-heads/core/chart-heads.repository.ts` (modify)
+- `src/modules/admin/organization/chart-heads/core/chart-heads.repository.spec.ts` (create)
+
+**Steps**
+
+1. Added a local `translateDuplicateNode`, mirroring `ChartRepository`'s own, wrapping both
+   `upsertHead`'s `save` and `update` paths.
+2. New spec file (none existed for this repository before) covering: unique-violation on
+   insert → conflict, unique-violation on update → conflict, a different constraint's
+   violation → rethrown untouched, an unrelated error → rethrown untouched.
+
+**Commit**: `fix(chart-heads): translate a concurrent duplicate-program race into a conflict`
+
+### Task R1.3 — Extract the duplicated read-only/ancestor check ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+**Why**: Auditor A (code quality, major). The read-only-type check + program-ancestor check
+pair was copy-pasted near-verbatim across `validateCreate`, `validateUpdate`,
+`validateMaintenanceCreate`, `validateMaintenanceUpdate` — the exact "same rule, four places,
+drifts" pattern this PR's own design and the `unique-chart-entity-per-period` prior art warn
+against.
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.validation.ts` (modify)
+
+**Steps**
+
+1. Extracted `ChartValidation.checkTypeConstraints(repo, typeCode, rootChartId,
+academicPeriodId): Promise<string[]>` — the one place both checks are expressed.
+2. All four methods now resolve their own `typeCode`/`rootChartId`/`academicPeriodId` and call
+   it, folded together with Task R1.1's period-scoping fix rather than done twice.
+3. Full `charts.validation.spec.ts` suite (37 cases) re-run green with no behavior change for
+   any case the refactor wasn't meant to touch.
+
+**Commit**: folded into the commits above (touches the same methods as R1.1).
+
+### Task R1.4 — Disclose the Dean/School side effect + lock it in with a test ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+**Why**: Auditor B (minor) + Auditor C via the same finding (suggestion). Program joining
+`READ_ONLY_ENTITY_TYPES` also newly blocks Dean/School writes through generic CRUD — correct
+and intentional, but undisclosed in `design.md` and untested for those two types.
+
+**Files**
+
+- `openspec/changes/chart-program-ancestry/design.md` (modify)
+- `src/modules/organization/charts/core/charts.validation.spec.ts` (test)
+
+**Commit**: `docs(chart-program-ancestry): disclose the dean/school read-only side effect`
+
+### Task R1.5 — Runbook step for the file-code-wins precedence ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+**Why**: Auditor C (minor). The migration's own docstring calls out "file-local code wins over
+a program code on collision" as a deliberate decision; nothing in the runbook exercised it.
+
+**Files**
+
+- `openspec/changes/chart-program-ancestry/runbook.md` (modify)
+
+**Commit**: `docs(chart-program-ancestry): add runbook step for code-collision precedence`
+
+### Not fixed — self-referential `rootChartId` cycle test (Auditor C, suggestion)
+
+Deliberately left out. Auditor C's own finding says so explicitly: "N/A this PR — track
+separately," because the gap it describes (no test for `validateUpdate` moving a node's
+`rootChartId` onto itself) is pre-existing and unrelated to program ancestry — it predates this
+change and isn't touched by it. Fixing it here would exceed this change's own scope discipline.
+Tracked as a follow-up, not part of `chart-program-ancestry`.
+
+### Comment audit (post-fix, user-requested)
+
+Swept every comment added in this diff against POLICIES § Comments ("only for complex,
+high-reasoning code... never restate what the code already says"). Trimmed four that opened
+with a restatement of the function's own signature/behavior before getting to the actual
+reasoning (`hasProgramAncestor`, `findProgramsConfiguredForOtherSchool`,
+`requiresProgramAncestor`, `UPLOADABLE_ENTITY_TYPE_CODES`) — kept the "why" sentence in each,
+cut the "what" sentence. Left the migration's SQL comments untouched: POLICIES names the
+upload/rollback PG functions specifically as material that warrants comments, and every one
+of them explains a non-obvious precedence or business rule, not an obvious step.
+
 <!--
 Append-only sections below. These record what actually happened, not what was planned, and
 they are the best input to the next design.
@@ -372,8 +502,4 @@ reference/conventions.md for the real pattern; a literal example here would be m
 an actual open task by the completeness gate)
 
 ## Post-QA fixes
-
-## Audit fixes (/abet-audit-pr)
-
-### Review round 1
 -->

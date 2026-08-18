@@ -132,36 +132,78 @@ decision: without it, the maintenance UI and generic CRUD would remain a second,
 way to create or retarget a Program node, reopening exactly the loophole this change closes on
 the Excel side.
 
+**Side effect worth stating explicitly** (caught in `/abet-audit-pr`, Auditor B): generic CRUD
+(`ChartValidation.validateCreate`/`validateUpdate`, behind `POST /organization/charts/create`
+and `PUT .../update/:id`) never checked `isReadOnlyEntityType` at all before this change — it
+was a second, unguarded way to write a Dean- or School-typed node, something the maintenance UI
+already blocked. Program joining `READ_ONLY_ENTITY_TYPES` closes that gap for **all three**
+read-only types through generic CRUD, not just Program — Dean and School writes through that
+path are newly rejected too. This is the correct fix (the alternative, gating only Program,
+would reopen the same "read-only in three places, not four" drift this rule exists to avoid),
+but it is a real behavior change to disclose in the PR description.
+
 With Program read-only, only Area/Subarea/Course can ever be created or re-typed through these
-paths, and a new repository method decides ancestry for exactly those three:
+paths. Both the read-only check and the ancestor check are expressed once, in
+`ChartValidation.checkTypeConstraints(repo, typeCode, rootChartId, academicPeriodId)`, and every
+write path resolves its own `typeCode`/`rootChartId`/`academicPeriodId` and calls it — this
+replaced an earlier draft that inlined the same two checks separately in all four methods
+(flagged as a major by `/abet-audit-pr`, Auditor A, since that duplication is exactly the "same
+rule, four places, drifts" pattern this PR's own `unique-chart-entity-per-period` prior art
+warns about).
+
+`ChartRepository.hasProgramAncestor`:
 
 ```
-hasProgramAncestor(chartId: number | null): Promise<boolean>
+hasProgramAncestor(chartId: number | null, academicPeriodId: number): Promise<boolean>
 ```
 
 A recursive CTE starting at `chartId` (inclusive) and walking `root_chart_id` upward, true if
-any node in that walk — including `chartId` itself — is Program-typed.
-`chartId === null` short-circuits to `false` (no parent, no ancestor).
+any node in that walk — including `chartId` itself — is Program-typed. `chartId === null`
+short-circuits to `false` (no parent, no ancestor). **The `academicPeriodId` filter is load-bearing**,
+added after `/abet-audit-pr` (Auditor F) found that generic CRUD accepts any existing chart id as
+`rootChartId` with no check that it belongs to the same period as the node being written —
+without filtering the walk to that period, a caller could satisfy the ancestor requirement with
+a Program from a completely different (e.g. last year's) tree. `validateMaintenanceCreate`
+already independently rejects a cross-period parent via its own `parentNotFound` check, so it
+was not exploitable there, but the filter belongs in the shared repository method regardless —
+one fix, every caller.
 
-Applied at four call sites:
+Applied via `checkTypeConstraints` at four call sites:
 
-- `validateMaintenanceCreate` — after `typeCode` resolves and only for Area/Subarea/Course,
-  check `hasProgramAncestor(dto.rootChartId)`.
+- `validateMaintenanceCreate` — after `typeCode` resolves, `hasProgramAncestor(dto.rootChartId, academicPeriodId)`
+  (the function's own `academicPeriodId` parameter).
 - `validateMaintenanceUpdate` — `UpdateChartNodeDto` has no `rootChartId` field, so a node's
   parent cannot move through this path; the only new case is re-typing an existing node
   _into_ Area/Subarea/Course, so the check runs against the node's own **existing**
-  `rootChartId` (which `getNodeWithType` must now also return — currently it does not) when
-  `newTypeCode` requires an ancestor.
+  `rootChartId`/`academicPeriodId` (both of which `getNodeWithType` must now also return —
+  previously it returned neither).
 - Generic `validateCreate` — `CreateChartDto.rootChartId` is optional; the check runs when
-  the resolved entity type requires an ancestor, against `data.rootChartId ?? null`.
+  the resolved entity type requires an ancestor, against `data.rootChartId ?? null` and
+  `data.academicPeriodId`.
 - Generic `validateUpdate` — `UpdateChartDto.rootChartId` can move a node, so the check runs
-  against `data.rootChartId ?? entity.rootChartId` whenever either `rootChartId` or
-  `entityTypeId` is present in the payload (mirrors the existing condition that already
-  guards the uniqueness re-check in this method, so it does not re-walk ancestry on every
-  staff/title-only edit).
+  against `data.rootChartId ?? entity.rootChartId` and `data.academicPeriodId ?? entity.academicPeriodId`
+  whenever either `rootChartId` or `entityTypeId` is present in the payload (mirrors the
+  existing condition that already guards the uniqueness re-check in this method, so it does
+  not re-walk ancestry on every staff/title-only edit).
 
 New i18n key: `chartsValidationStrings.error.programAncestorRequired`
 (`error.chart.programAncestorRequired`).
+
+### Post-audit fix — `upsertHead` race translation (Auditor F, major)
+
+`ChartHeadsRepository.upsertHead` writes through TypeORM's own `manager.getRepository(ChartEntity)`,
+not `ChartRepository` — so unlike every other chart write path, it never inherited
+`ChartRepository.translateDuplicateNode`'s translation of the partial unique index's SQLSTATE
+`23505` into a clean `ConflictError`. Two `configure()` calls racing to create the same
+brand-new program under different schools both pass `findProgramsConfiguredForOtherSchool`
+(no row exists yet for either), then race inside `upsertHead`; the loser previously surfaced as
+a raw `500`. `upsertHead` now wraps its `save`/`update` calls in a local
+`translateDuplicateNode`, mirroring `ChartRepository`'s own method exactly and reusing
+`UNIQUE_CHART_ENTITY_INDEX` from it, translating to
+`chartHeadsValidationStrings.error.programAssignedToOtherSchool`. This mechanism pre-existed for
+Dean/Director upserts (same bypass, same exposure) — this diff doesn't introduce it, but does
+route substantially more concurrent write volume through it via the new `programs` loop, which
+is what made it worth fixing now rather than leaving for a separate change.
 
 ### AC-10 — Rollback never touches Program nodes
 

@@ -67,6 +67,13 @@ at least one Program pre-configured under that school via
    upload's `uploadLogId`. Confirm the Area/Course nodes it created are gone, and confirm the
    Program node used as their parent is untouched (`organization.charts`, still active, still
    under the same school).
+7. **Precedence** (flagged by `/abet-audit-pr`, Auditor C — the migration's own docstring calls
+   this out as a deliberate decision with no other coverage). In one file, give a row a `code`
+   value that intentionally equals a real, pre-configured program's code (e.g. a Course row
+   with `code = "ISOFT"` where `ISOFT` is also a real program code), and give a second row a
+   `parentCode` of `"ISOFT"`. Expect the second row to wire under the **first row** (file-local
+   match wins), not under the Program's chart node — confirm via `organization.charts.root_chart_id`
+   pointing at the first row's inserted chart id, not the program's.
 
 ## Revert
 
