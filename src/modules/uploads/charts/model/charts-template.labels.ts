@@ -13,6 +13,8 @@ export const chartsTemplateLabels: Record<string, Record<string, string>> = {
 		legendEntityCodeUsage: '¿Requiere código de entidad?',
 		legendYes: 'Sí',
 		legendNo: 'No',
+		parentCodeHint:
+			'El "Padre" de una fila puede ser el código de otra fila de este archivo, o el código de una carrera ya configurada para esta escuela (Administración > Configuración del organigrama). No puede quedar en blanco.',
 		errorColumn: 'Mensaje de error',
 		errorsFileName: 'ErroresCargaOrganigrama.xlsx',
 		templateFileName: 'PlantillaOrganigrama.xlsx',
@@ -31,6 +33,8 @@ export const chartsTemplateLabels: Record<string, Record<string, string>> = {
 		legendEntityCodeUsage: 'Requires entity code?',
 		legendYes: 'Yes',
 		legendNo: 'No',
+		parentCodeHint:
+			'A row\'s "Parent" may be another row\'s code in this file, or the code of a program already configured for this school (Admin > Org chart configuration). It cannot be left blank.',
 		errorColumn: 'Error message',
 		errorsFileName: 'OrgChartUploadErrors.xlsx',
 		templateFileName: 'OrgChartTemplate.xlsx',
@@ -61,7 +65,12 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 		duplicateEntityInFile: 'La misma entidad aparece en más de una fila del archivo.',
 		entityAlreadyInPeriod:
 			'La entidad ya tiene un nodo en el organigrama para este periodo académico.',
-		parentNotFound: 'El código del padre no existe en el archivo.',
+		parentNotFound:
+			'El código del padre no existe en el archivo ni corresponde a un código de programa (carrera).',
+		parentCodeEmpty:
+			'El código del padre es obligatorio: indique el código de otra fila del archivo o el código de una carrera ya configurada.',
+		programNotConfiguredForSchool:
+			'El código del padre corresponde a una carrera, pero esa carrera no está configurada para esta escuela en este periodo.',
 	},
 	en: {
 		duplicateCodeInFile: 'Duplicate code in the file.',
@@ -82,7 +91,11 @@ export const chartsErrorMessages: Record<string, Record<string, string>> = {
 		entityNotFound: 'No entity exists with that code for the given type.',
 		duplicateEntityInFile: 'The same entity appears in more than one row of the file.',
 		entityAlreadyInPeriod: 'The entity already has a chart node for this academic period.',
-		parentNotFound: 'The parent code does not exist in the file.',
+		parentNotFound: 'The parent code does not exist in the file and does not match a program code.',
+		parentCodeEmpty:
+			"Parent code is required: use another row's code, or an already-configured program code.",
+		programNotConfiguredForSchool:
+			'The parent code names a program, but that program is not configured for this school in this period.',
 	},
 };
 

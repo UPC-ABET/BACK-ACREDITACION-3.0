@@ -22,19 +22,18 @@ import { ROLE_CODES } from 'src/shared/constants/role-codes';
 const SINGLE_COLUMNS_BEFORE_TITLE = 2; // code, parentCode
 const SINGLE_COLUMNS_AFTER_TITLE = 4; // professorCode, email, entityType, entityCode
 
-// Entity-type tags a chart node may declare in this upload (School/Dean come from the prior
-// configuration, so they are excluded). Blank is allowed for generic intermediate units.
+// Entity-type tags a chart node may declare in this upload (School/Dean/Program come from prior
+// configuration — chart-heads for School/Dean, its program pre-configuration for Program — so
+// they are excluded here). Blank is not allowed: every row must resolve to a parent, either
+// another row's code in this file or a pre-configured program's own code in the parentCode
+// column (see fn_upload_charts). A row can still be a generic intermediate unit by leaving its
+// own entityType blank; only Program itself can never be a row's own tag any more.
 const UPLOADABLE_ENTITY_TYPE_CODES: string[] = [
-	TYPE_CODES.ENTITY_TYPE.PROGRAM,
 	TYPE_CODES.ENTITY_TYPE.AREA,
 	TYPE_CODES.ENTITY_TYPE.SUBAREA,
 	TYPE_CODES.ENTITY_TYPE.COURSE,
 ];
-const ENTITY_TYPE_CODES_REQUIRING_CODE: string[] = [
-	TYPE_CODES.ENTITY_TYPE.SCHOOL,
-	TYPE_CODES.ENTITY_TYPE.PROGRAM,
-	TYPE_CODES.ENTITY_TYPE.COURSE,
-];
+const ENTITY_TYPE_CODES_REQUIRING_CODE: string[] = [TYPE_CODES.ENTITY_TYPE.COURSE];
 const TEMPLATE_MAX_ROWS = 1000;
 
 @Injectable()
@@ -227,6 +226,11 @@ export class ChartsUploadService {
 			const requiresCode = ENTITY_TYPE_CODES_REQUIRING_CODE.includes(entityType.code);
 			sheet.addRow([entityType.name, requiresCode ? labels.legendYes : labels.legendNo]);
 		}
+
+		sheet.addRow([]);
+		sheet.addRow([labels.parentCodeHint]);
+		sheet.mergeCells(sheet.lastRow!.number, 1, sheet.lastRow!.number, 2);
+		sheet.lastRow!.getCell(1).alignment = { wrapText: true };
 	}
 
 	// Locks the entity-type column to a dropdown of the uploadable tags (localized names). Blank stays
