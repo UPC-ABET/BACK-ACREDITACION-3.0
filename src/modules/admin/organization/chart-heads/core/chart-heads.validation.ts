@@ -25,15 +25,51 @@ export class ChartHeadsValidation {
 			errors.push(chartHeadsValidationStrings.error.schoolNotFound);
 		}
 
-		const staffIds = [dto.dean.staffId, ...dto.directors.map((d) => d.staffId)];
+		const allPrograms = dto.directors.flatMap((d) => d.programs ?? []);
+		const programIds = allPrograms.map((p) => p.programId);
+		if (new Set(programIds).size !== programIds.length) {
+			errors.push(chartHeadsValidationStrings.error.duplicateProgramInPayload);
+		}
+
+		const missingPrograms = await repo.findMissingProgramIds(programIds);
+		if (missingPrograms.length > 0) {
+			errors.push(chartHeadsValidationStrings.error.programNotFound);
+		}
+
+		// Checked per director (excluding that director's own school): a program already active
+		// under a different school must be rejected, not silently re-parented. upsertHead alone
+		// cannot catch this — it only sees a repeat call for the same entity, not which school it
+		// used to belong to.
+		const programConflicts: number[] = [];
+		for (const director of dto.directors) {
+			const directorProgramIds = (director.programs ?? []).map((p) => p.programId);
+			if (directorProgramIds.length === 0) continue;
+			const conflicting = await repo.findProgramsConfiguredForOtherSchool(
+				directorProgramIds,
+				dto.academicPeriodId,
+				director.schoolId,
+			);
+			programConflicts.push(...conflicting);
+		}
+		if (programConflicts.length > 0) {
+			errors.push(chartHeadsValidationStrings.error.programAssignedToOtherSchool);
+		}
+
+		const staffIds = [
+			dto.dean.staffId,
+			...dto.directors.map((d) => d.staffId),
+			...allPrograms.map((p) => p.staffId),
+		];
 		const missingStaff = await repo.findMissingStaffIds(staffIds);
 		if (missingStaff.length > 0) {
 			errors.push(chartHeadsValidationStrings.error.staffNotFound);
 		}
 
-		const userIds = [dto.dean.userId, ...dto.directors.map((d) => d.userId)].filter(
-			(id): id is number => id !== undefined && id !== null,
-		);
+		const userIds = [
+			dto.dean.userId,
+			...dto.directors.map((d) => d.userId),
+			...allPrograms.map((p) => p.userId),
+		].filter((id): id is number => id !== undefined && id !== null);
 		const missingUsers = await repo.findMissingUserIds(userIds);
 		if (missingUsers.length > 0) {
 			errors.push(chartHeadsValidationStrings.error.userNotFound);

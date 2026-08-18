@@ -28,6 +28,38 @@ export class ChartDeanDto {
 	title: I18nText;
 }
 
+export class ChartProgramDto {
+	@IsNumber()
+	@ApiProperty({ example: 5, required: true, description: 'academic.programs id' })
+	programId: number;
+
+	@IsNumber()
+	@ApiProperty({
+		example: 11,
+		required: true,
+		description: 'Linked teacher staff id coordinating this program',
+	})
+	staffId: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 46,
+		required: false,
+		nullable: true,
+		description:
+			'User to link to this staff (1:1). Only applied when the staff is unlinked and the user is free; an existing link on either side wins and this is ignored.',
+	})
+	userId?: number | null;
+
+	@IsObject()
+	@ApiProperty({
+		example: { es: 'Coordinacion de Software', en: 'Software Coordination' },
+		required: true,
+	})
+	title: I18nText;
+}
+
 export class ChartDirectorDto {
 	@IsNumber()
 	@ApiProperty({ example: 3, required: true, description: 'School id this director leads' })
@@ -55,6 +87,17 @@ export class ChartDirectorDto {
 	@IsObject()
 	@ApiProperty({ example: { es: 'Direccion EISCB', en: 'EISCB Direction' }, required: true })
 	title: I18nText;
+
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => ChartProgramDto)
+	@ApiProperty({
+		type: [ChartProgramDto],
+		required: false,
+		description: 'Programs (careers) pre-configured under this school for the period',
+	})
+	programs?: ChartProgramDto[];
 }
 
 export class ConfigureChartHeadsDto {
@@ -118,12 +161,23 @@ export class ChartHeadDeanViewDto {
 	title: I18nText;
 }
 
+export class ChartHeadProgramViewDto extends ChartHeadDeanViewDto {
+	@ApiProperty({ example: 5 })
+	programId: number;
+
+	@ApiProperty({ example: 'ISOFT' })
+	programCode: string;
+}
+
 export class ChartHeadDirectorViewDto extends ChartHeadDeanViewDto {
 	@ApiProperty({ example: 3 })
 	schoolId: number;
 
 	@ApiProperty({ example: 'EISCB' })
 	schoolCode: string;
+
+	@ApiProperty({ type: [ChartHeadProgramViewDto] })
+	programs: ChartHeadProgramViewDto[];
 }
 
 export class ChartHeadsConfigurationDto {

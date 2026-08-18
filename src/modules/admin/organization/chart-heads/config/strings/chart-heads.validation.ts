@@ -5,6 +5,9 @@ export const chartHeadsValidationStrings = {
 		staffNotFound: 'error.chartHeads.staffNotFound',
 		userNotFound: 'error.chartHeads.userNotFound',
 		duplicateSchoolInPayload: 'error.chartHeads.duplicateSchoolInPayload',
+		duplicateProgramInPayload: 'error.chartHeads.duplicateProgramInPayload',
+		programNotFound: 'error.chartHeads.programNotFound',
+		programAssignedToOtherSchool: 'error.chartHeads.programAssignedToOtherSchool',
 	},
 	result: {
 		configureFailed: 'error.chartHeads.configureFailed',

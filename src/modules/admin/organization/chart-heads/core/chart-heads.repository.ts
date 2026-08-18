@@ -7,6 +7,7 @@ import type { I18nText } from 'src/shared/types/i18n';
 import type {
 	ChartHeadDeanViewDto,
 	ChartHeadDirectorViewDto,
+	ChartHeadProgramViewDto,
 	ChartHeadsConfigurationDto,
 	ConfigureChartHeadsDto,
 } from '../model/chart-heads.dtos';
@@ -63,10 +64,53 @@ export class ChartHeadsRepository {
 		return ids.filter((id) => !foundIds.has(id));
 	}
 
+	async findMissingProgramIds(ids: number[]): Promise<number[]> {
+		if (ids.length === 0) return [];
+		const found: Array<{ id: number }> = await this.dataSource.query(
+			'SELECT id FROM academic.programs WHERE id = ANY($1::int[])',
+			[ids],
+		);
+		const foundIds = new Set(found.map((r) => Number(r.id)));
+		return ids.filter((id) => !foundIds.has(id));
+	}
+
+	// Returns the subset of programIds that already hold an active chart node under a school
+	// other than excludeSchoolId this period. A program re-configured for its own school is not a
+	// conflict; that is upsertHead's ordinary idempotent-update case.
+	async findProgramsConfiguredForOtherSchool(
+		programIds: number[],
+		academicPeriodId: number,
+		excludeSchoolId: number,
+	): Promise<number[]> {
+		if (programIds.length === 0) return [];
+		const rows: Array<{ programId: number }> = await this.dataSource.query(
+			`SELECT ch_prog.entity_code AS "programId"
+			 FROM organization.charts ch_prog
+			 INNER JOIN core.types prog_t ON prog_t.id = ch_prog.entity_type_id
+			 INNER JOIN organization.charts ch_sch ON ch_sch.id = ch_prog.root_chart_id
+			 INNER JOIN core.types sch_t ON sch_t.id = ch_sch.entity_type_id
+			 WHERE prog_t.code = $1
+			   AND sch_t.code = $2
+			   AND ch_prog.academic_period_id = $3
+			   AND ch_prog.entity_code = ANY($4::int[])
+			   AND ch_prog.is_active = true
+			   AND ch_sch.entity_code <> $5`,
+			[
+				TYPE_CODES.ENTITY_TYPE.PROGRAM,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				academicPeriodId,
+				programIds,
+				excludeSchoolId,
+			],
+		);
+		return rows.map((r) => Number(r.programId));
+	}
+
 	async configure(dto: ConfigureChartHeadsDto): Promise<void> {
 		await this.dataSource.transaction(async (manager) => {
 			const deanTypeId = await this.typeIdByCode(manager, TYPE_CODES.ENTITY_TYPE.DEAN);
 			const schoolTypeId = await this.typeIdByCode(manager, TYPE_CODES.ENTITY_TYPE.SCHOOL);
+			const programTypeId = await this.typeIdByCode(manager, TYPE_CODES.ENTITY_TYPE.PROGRAM);
 
 			const deanChartId = await this.upsertHead(manager, {
 				entityTypeId: deanTypeId,
@@ -79,7 +123,7 @@ export class ChartHeadsRepository {
 			});
 
 			for (const director of dto.directors) {
-				await this.upsertHead(manager, {
+				const directorChartId = await this.upsertHead(manager, {
 					entityTypeId: schoolTypeId,
 					entityCode: director.schoolId,
 					rootChartId: deanChartId,
@@ -88,6 +132,18 @@ export class ChartHeadsRepository {
 					userId: director.userId ?? null,
 					title: director.title,
 				});
+
+				for (const program of director.programs ?? []) {
+					await this.upsertHead(manager, {
+						entityTypeId: programTypeId,
+						entityCode: program.programId,
+						rootChartId: directorChartId,
+						academicPeriodId: dto.academicPeriodId,
+						staffId: program.staffId,
+						userId: program.userId ?? null,
+						title: program.title,
+					});
+				}
 			}
 		});
 	}
@@ -130,6 +186,31 @@ export class ChartHeadsRepository {
 			 ORDER BY sch.code`,
 			[academicPeriodId, TYPE_CODES.ENTITY_TYPE.SCHOOL],
 		);
+
+		const programs: Array<ChartHeadProgramViewDto & { directorChartId: number }> =
+			await this.dataSource.query(
+				`SELECT c.id AS "chartId", s.id AS "staffId", p.code AS "code",
+					s.first_name AS "firstName", s.last_name AS "lastName", s.user_id AS "userId",
+					CASE WHEN u.id IS NULL THEN NULL ELSE
+						json_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name,
+							'email', u.email)
+					END AS "user",
+					c.title AS "title", c.entity_code AS "programId", prog.code AS "programCode",
+					c.root_chart_id AS "directorChartId"
+				 FROM organization.charts c
+				 JOIN organization.staff s ON s.id = c.staff_id
+				 JOIN core.types et ON et.id = c.entity_type_id
+				 LEFT JOIN academic.professors p ON p.staff_id = s.id
+				 LEFT JOIN organization.users u ON u.id = s.user_id
+				 LEFT JOIN academic.programs prog ON prog.id = c.entity_code
+				 WHERE c.academic_period_id = $1 AND et.code = $2 AND c.is_active = true
+				 ORDER BY prog.code`,
+				[academicPeriodId, TYPE_CODES.ENTITY_TYPE.PROGRAM],
+			);
+
+		for (const director of directors) {
+			director.programs = programs.filter((p) => p.directorChartId === director.chartId);
+		}
 
 		return { dean: deanRows[0] ?? null, directors };
 	}
