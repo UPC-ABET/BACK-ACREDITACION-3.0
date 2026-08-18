@@ -27,6 +27,11 @@ export class GraSurveyRepository extends BaseRepository<SurveyEntity> {
 			.andWhere('s.student_id = :studentId', { studentId })
 			.andWhere('s.academic_period_id = :periodId', { periodId: academicPeriodId })
 			.andWhere('s.program_id = :programId', { programId })
+			// A previously-deactivated survey (student removed from the GRA list, see
+			// deactivateSurvey) must not be reused here — doing so would attach a new
+			// notification to a survey that stays invisible to every dashboard/report query,
+			// which all filter on is_active = true.
+			.andWhere('s.is_active = true')
 			.getOne();
 	}
 
