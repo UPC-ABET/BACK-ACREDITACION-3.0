@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 
+import { ConflictError } from 'src/commons/domain-error';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ChartEntity } from 'src/modules/organization/charts/model/charts.entity';
+import { UNIQUE_CHART_ENTITY_INDEX } from 'src/modules/organization/charts/core/charts.repository';
 import type { I18nText } from 'src/shared/types/i18n';
+import { chartHeadsValidationStrings } from '../config/strings/chart-heads.validation';
 import type {
 	ChartHeadDeanViewDto,
 	ChartHeadDirectorViewDto,
@@ -11,6 +14,8 @@ import type {
 	ChartHeadsConfigurationDto,
 	ConfigureChartHeadsDto,
 } from '../model/chart-heads.dtos';
+
+const UNIQUE_VIOLATION_SQLSTATE = '23505';
 
 interface HeadInput {
 	entityTypeId: number;
@@ -74,9 +79,8 @@ export class ChartHeadsRepository {
 		return ids.filter((id) => !foundIds.has(id));
 	}
 
-	// Returns the subset of programIds that already hold an active chart node under a school
-	// other than excludeSchoolId this period. A program re-configured for its own school is not a
-	// conflict; that is upsertHead's ordinary idempotent-update case.
+	// A program re-configured for its own school is not a conflict — that is upsertHead's
+	// ordinary idempotent-update case — so excludeSchoolId excludes it here.
 	async findProgramsConfiguredForOtherSchool(
 		programIds: number[],
 		academicPeriodId: number,
@@ -238,25 +242,52 @@ export class ChartHeadsRepository {
 		});
 
 		if (existing) {
-			await charts.update(existing.id, {
-				staffId: input.staffId,
-				title: input.title,
-				rootChartId: input.rootChartId,
-			});
+			await this.translateDuplicateNode(() =>
+				charts.update(existing.id, {
+					staffId: input.staffId,
+					title: input.title,
+					rootChartId: input.rootChartId,
+				}),
+			);
 			return existing.id;
 		}
 
-		const createdChart = await charts.save(
-			charts.create({
-				staffId: input.staffId,
-				academicPeriodId: input.academicPeriodId,
-				rootChartId: input.rootChartId,
-				title: input.title,
-				entityTypeId: input.entityTypeId,
-				entityCode: input.entityCode,
-			}),
+		const createdChart = await this.translateDuplicateNode(() =>
+			charts.save(
+				charts.create({
+					staffId: input.staffId,
+					academicPeriodId: input.academicPeriodId,
+					rootChartId: input.rootChartId,
+					title: input.title,
+					entityTypeId: input.entityTypeId,
+					entityCode: input.entityCode,
+				}),
+			),
 		);
 		return createdChart.id;
+	}
+
+	// Two concurrent configure() calls can both pass the pre-checks above and then race here,
+	// since upsertHead writes through TypeORM's own repository, not ChartRepository — so it
+	// never inherits ChartRepository's own create/update translation. Without this, the losing
+	// call surfaces as a raw 500 instead of a domain conflict. Mirrors
+	// ChartRepository.translateDuplicateNode; keep both in sync if the index name ever changes.
+	private async translateDuplicateNode<T>(operation: () => Promise<T>): Promise<T> {
+		try {
+			return await operation();
+		} catch (error) {
+			const driver = error as { code?: string; constraint?: string };
+			if (
+				driver?.code === UNIQUE_VIOLATION_SQLSTATE &&
+				driver?.constraint === UNIQUE_CHART_ENTITY_INDEX
+			) {
+				throw Object.assign(
+					new ConflictError(chartHeadsValidationStrings.error.programAssignedToOtherSchool),
+					{ cause: error },
+				);
+			}
+			throw error;
+		}
 	}
 
 	// "Current wins": links only when both sides are free; an existing link on either side makes this
