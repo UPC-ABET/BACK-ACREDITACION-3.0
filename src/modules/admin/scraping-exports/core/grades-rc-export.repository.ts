@@ -135,6 +135,13 @@ export class GradesRcExportRepository {
 			this.getControlOutcomeSectionCodes(academicPeriodId),
 		]);
 
+		// Intersected here, not as a second array the SQL ANDs together: two scope arrays on
+		// section_code read as independent to the planner, which multiplies their selectivities and
+		// underestimates the scope by orders of magnitude. That flipped the merge's joins and the
+		// export stopped finishing at all.
+		const controlScope = new Set(controlSections);
+		const scopedSections = uploadedSections.filter((section) => controlScope.has(section));
+
 		return [
 			period,
 			[...gradeTypes.keys()],
@@ -145,14 +152,13 @@ export class GradesRcExportRepository {
 			designated.map((row) => row.gradeTypeCode),
 			TYPE_CODES.QUALIFICATION_STATUS.ASISTIO,
 			TYPE_CODES.QUALIFICATION_STATUS.SAN,
-			uploadedSections,
+			scopedSections,
 			TYPE_CODES.QUALIFICATION_STATUS.RET,
 			enrollments.sectionCodes,
 			enrollments.studentCodes,
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			TYPE_CODES.QUALIFICATION_STATUS.NR,
-			controlSections,
 		];
 	}
 
