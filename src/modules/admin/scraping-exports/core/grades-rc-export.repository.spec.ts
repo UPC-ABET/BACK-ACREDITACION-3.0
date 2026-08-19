@@ -84,7 +84,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(params[6]).toEqual(['TG205-T001', 'TG205-T002']);
 		expect(params[7]).toBe('TG404-T001');
 		expect(params[8]).toBe('TG404-T006');
-		expect(params[9]).toEqual(['NRC1', 'NRC2']);
+		// Already intersected with the control-outcome sections -- see the dedicated test below.
+		expect(params[9]).toEqual(['NRC1']);
 		expect(params[10]).toBe('TG404-T005');
 		expect(params[11]).toEqual(['NRC1', 'NRC2']);
 		expect(params[12]).toEqual(['A1', 'A2']);
@@ -92,17 +93,17 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(params[13]).toEqual(Object.keys(PROGRAM_CAREER_MAP));
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 		expect(params[15]).toBe('TG404-T002');
-		expect(params[16]).toEqual(['NRC1']);
+		expect(params).toHaveLength(16);
 	});
 
-	// The control-outcome scope is what keeps a course the semaphore cannot read out of the export,
-	// so it must be a list of its own -- reusing the loaded sections would silently disable it.
-	it('ships the control-outcome sections separately from the loaded ones', async () => {
+	// One scope array, not two ANDed in SQL: the planner reads two arrays over section_code as
+	// independent and underestimates the scope badly enough to stop the merge finishing at all.
+	// NRC2 is loaded but carries no control outcome, so it must not survive the intersection.
+	it('scopes the export to the loaded sections that carry a control outcome', async () => {
 		await repo.openGradesRcExport(1);
 
 		const [, params] = materializeCall();
-		expect(params[9]).toEqual(['NRC1', 'NRC2']);
-		expect(params[16]).toEqual(['NRC1']);
+		expect(params[9]).toEqual(['NRC1']);
 		expect(mainQuery.mock.calls.some(([sql]) => sql.includes('course_outcome_mappings'))).toBe(
 			true,
 		);

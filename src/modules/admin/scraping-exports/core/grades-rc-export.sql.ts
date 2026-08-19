@@ -18,13 +18,19 @@ const VERIFIED_ZERO_MARK = `'CAL'`;
 
 // $1 period code | $2/$3 TG205 names/codes | $4/$5 TG404 names/codes
 // $6/$7 section codes / designated grade type codes | $8 ASISTIO code | $9 SAN code
-// $10 section codes loaded in academic.course_sections for the period | $11 RET code
+// $10 the export's section scope: loaded in academic.course_sections AND carrying a CONTROL
+// outcome, already intersected by the repository | $11 RET code
 // $12/$13 the (section, student) pairs enrolled in the period (academic.student_section_enrollments)
 // $14/$15 Banner program codes / career codes (PROGRAM_CAREER_MAP)
 // $16 NR code, shipped when the student has no grade: not ASISTIO, so the semaphore leaves those
 // zeros out of the RC average.
-// $17 section codes whose course is mapped to a CONTROL outcome for the period.
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
+//
+// $10 is applied inside EACH leg rather than once over their union: the union is the whole
+// Banner-by-Planner cross, so scoping afterwards leaves both legs to be built in full first. That
+// only ever worked because the planner chose to push the predicate down on its own, and a second
+// scope array on the same column was enough to stop it -- the export then ran forever in production.
+// Filtering where the sections are read makes the scope part of the plan instead of a hint.
 export const GRADES_RC_SQL = `
 WITH grade_types AS (SELECT * FROM unnest($2::text[], $3::text[]) AS t(name, code)),
 -- A program outside the map does NOT drop the row, unlike the matriculados export: the career just
@@ -92,6 +98,7 @@ banner_sections AS (
 	WHERE m.run_id = (SELECT id FROM banner_run)
 	  AND NULLIF(TRIM(m.codigo_alumno), '') IS NOT NULL
 	  AND NULLIF(TRIM(m.nrc), '') IS NOT NULL
+	  AND h.nrc = ANY($10::text[])
 ),
 banner_legs AS (
 	SELECT
@@ -174,6 +181,7 @@ planner_raw AS (
 	  -- Drop the computed "Nota Final": it is a formula over the other components, not a grade.
 	  AND COALESCE(n.payload->>'isFinal', '0') IN ('0', 'false')
 	  AND COALESCE(ev.payload->>'isFinal', '0') IN ('0', 'false')
+	  AND s.payload->>'sectionNumber'                        = ANY($10::text[])
 	  AND NULLIF(TRIM(s.payload->>'sectionNumber'), '')      IS NOT NULL
 	  AND NULLIF(TRIM(n.student_code), '')                   IS NOT NULL
 	  AND NULLIF(TRIM(ev.payload->>'evalComponentCode'), '') IS NOT NULL
@@ -190,13 +198,11 @@ planner_legs AS (
 -- Both sources' rows, with the status resolved BEFORE the merge: which row wins depends on the
 -- status's reach, so it cannot be classified afterwards.
 --
--- Scoped HERE so every window and collapse downstream only sees exportable rows. A section not in
--- academic.course_sections has nowhere to land: the upload rejects the whole file over it.
---
--- $17 is the second hard scope, and it is deliberately NOT an observation: only a course mapped to a
--- CONTROL outcome (TG302-T002) reaches the RC semaphore, so a grade from any other course is loaded
--- and then read by nothing. Kept separate from $10 because the two drop rows for unrelated reasons:
--- $10 means the section was never loaded, $17 that the course is not measured for accreditation.
+-- Both legs are already scoped to $10, so every window and collapse downstream only sees exportable
+-- rows. Two things ride on that one array, and neither is reported as an observation because a row
+-- outside it has nowhere to go: a section absent from academic.course_sections would make
+-- audit.fn_upload_grades_rc reject the whole file, and a course with no CONTROL outcome (TG302-T002)
+-- mapped in the period's study plan is never read by the RC semaphore.
 candidates AS (
 	SELECT
 		u.*,
@@ -219,8 +225,6 @@ candidates AS (
 			program_code, source
 		FROM planner_legs
 	) u
-	WHERE u.section_code = ANY($10::text[])
-	  AND u.section_code = ANY($17::text[])
 ),
 -- Statuses do not all have the same reach, and treating them alike is how a status gets invented.
 --  - COURSE level (RET, SAN): withdrawing from or being sanctioned in a course applies to every one
