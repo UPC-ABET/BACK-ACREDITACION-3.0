@@ -63,6 +63,18 @@ const envSchema = z
 		SMTP_REQUIRE_TLS: z.enum(['true', 'false']).optional(),
 
 		PUPPETEER_EXECUTABLE_PATH: z.string().optional(),
+		REPORT_RENDER_CONCURRENCY: z
+			.string()
+			.regex(/^\d+$/, 'REPORT_RENDER_CONCURRENCY must be a number')
+			.optional(),
+		REPORT_RENDER_TIMEOUT_MS: z
+			.string()
+			.regex(/^\d+$/, 'REPORT_RENDER_TIMEOUT_MS must be a number')
+			.optional(),
+		REPORT_RENDER_QUEUE_TIMEOUT_MS: z
+			.string()
+			.regex(/^\d+$/, 'REPORT_RENDER_QUEUE_TIMEOUT_MS must be a number')
+			.optional(),
 
 		RAW_DB_URL: z.string().url().optional(),
 		RAW_DB_SSL: z.string().optional(),

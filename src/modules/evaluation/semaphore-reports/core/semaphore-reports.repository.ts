@@ -64,9 +64,37 @@ export interface MetadataRow {
 const RC_INSTRUMENT_TYPE_CODE = 'TG206-T003';
 const RV_INSTRUMENT_TYPE_CODE = 'TG206-T004';
 
+const REPORT_STATEMENT_TIMEOUT_MS = 120_000;
+
 @Injectable()
 export class SemaphoreReportsRepository {
 	constructor(private readonly dataSource: DataSource) {}
+
+	/**
+	 * These reports are the heaviest reads in the app and the pool is small (`DB_POOL_MAX`), so a
+	 * single runaway plan would otherwise hold its connection indefinitely and starve every other
+	 * request. `SET LOCAL` needs a transaction to be scoped to this statement and to unwind on
+	 * commit -- a session-level `SET` would leak the timeout onto the next borrower of the
+	 * connection.
+	 */
+	private async runReportQuery<T>(sql: string, parameters: unknown[]): Promise<T[]> {
+		const runner = this.dataSource.createQueryRunner();
+		try {
+			await runner.connect();
+			await runner.startTransaction();
+			try {
+				await runner.query(`SET LOCAL statement_timeout = ${REPORT_STATEMENT_TIMEOUT_MS}`);
+				const rows = (await runner.query(sql, parameters)) as T[];
+				await runner.commitTransaction();
+				return rows;
+			} catch (error) {
+				await runner.rollbackTransaction().catch(() => undefined);
+				throw error;
+			}
+		} finally {
+			await runner.release().catch(() => undefined);
+		}
+	}
 
 	async getRcScreen(
 		academicPeriodId: number,
@@ -75,7 +103,7 @@ export class SemaphoreReportsRepository {
 		campusId: number | null,
 		language: string,
 	): Promise<SemaphoreCourseOutcomeRow[]> {
-		return this.dataSource.query(SEMAPHORE_RC_SCREEN_SQL, [
+		return this.runReportQuery(SEMAPHORE_RC_SCREEN_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
@@ -93,7 +121,7 @@ export class SemaphoreReportsRepository {
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
 	): Promise<SemaphoreCourseOutcomeRow[]> {
-		return this.dataSource.query(SEMAPHORE_RV_SCREEN_SQL, [
+		return this.runReportQuery(SEMAPHORE_RV_SCREEN_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
@@ -111,7 +139,7 @@ export class SemaphoreReportsRepository {
 		campusId: number | null,
 		language: string,
 	): Promise<SemaphoreDetailRow[]> {
-		return this.dataSource.query(SEMAPHORE_RC_DETAIL_SQL, [
+		return this.runReportQuery(SEMAPHORE_RC_DETAIL_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
@@ -127,7 +155,7 @@ export class SemaphoreReportsRepository {
 		campusId: number | null,
 		language: string,
 	): Promise<SemaphoreSummaryRow[]> {
-		return this.dataSource.query(SEMAPHORE_RC_SUMMARY_SQL, [
+		return this.runReportQuery(SEMAPHORE_RC_SUMMARY_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
@@ -145,7 +173,7 @@ export class SemaphoreReportsRepository {
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
 	): Promise<SemaphoreDetailRow[]> {
-		return this.dataSource.query(SEMAPHORE_RV_DETAIL_SQL, [
+		return this.runReportQuery(SEMAPHORE_RV_DETAIL_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
@@ -165,7 +193,7 @@ export class SemaphoreReportsRepository {
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
 	): Promise<SemaphoreSummaryRow[]> {
-		return this.dataSource.query(SEMAPHORE_RV_SUMMARY_SQL, [
+		return this.runReportQuery(SEMAPHORE_RV_SUMMARY_SQL, [
 			academicPeriodId,
 			outcomeId,
 			campusId,
@@ -183,7 +211,7 @@ export class SemaphoreReportsRepository {
 	): Promise<SemaphoreLevelLegendRow[]> {
 		const instrumentTypeCode =
 			instrument === 'rc' ? RC_INSTRUMENT_TYPE_CODE : RV_INSTRUMENT_TYPE_CODE;
-		return this.dataSource.query(SEMAPHORE_LEVELS_LEGEND_SQL, [
+		return this.runReportQuery(SEMAPHORE_LEVELS_LEGEND_SQL, [
 			academicPeriodId,
 			instrumentTypeCode,
 			language,
@@ -195,7 +223,7 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		language: string,
 	): Promise<MetadataRow | null> {
-		const [row] = await this.dataSource.query(SEMAPHORE_METADATA_SQL, [
+		const [row] = await this.runReportQuery<MetadataRow>(SEMAPHORE_METADATA_SQL, [
 			programCommissionId,
 			academicPeriodId,
 			language,
