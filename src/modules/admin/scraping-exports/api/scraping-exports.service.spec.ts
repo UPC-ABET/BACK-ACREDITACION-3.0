@@ -1,9 +1,22 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PassThrough } from 'node:stream';
 import * as ExcelJS from 'exceljs';
 
 import { ScrapingExportsService } from './scraping-exports.service';
 import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
 import { gradesRcDescriptiveLabels } from '../model/scraping-exports.labels';
+
+const waitUntilDone = async (
+	service: { getGradesRcStatus: (jobId: string, userId: number) => { done: boolean } },
+	jobId: string,
+	userId: number,
+): Promise<void> => {
+	for (let i = 0; i < 100; i++) {
+		if (service.getGradesRcStatus(jobId, userId).done) return;
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	}
+	throw new Error('grades RC export job did not finish in time');
+};
 
 // The RC bulk upload parses the file positionally, so the generated sheet has to keep the template
 // column order exactly. This is the only thing standing between a reordered mapping and an upload
@@ -223,5 +236,98 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 		expect(header[2]).toBe('Section code');
 		expect(first[8]).toBe('TF1');
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Details']);
+	});
+});
+
+describe('ScrapingExportsService — grades RC export job', () => {
+	let openGradesRcExport: jest.Mock;
+	let service: ScrapingExportsService;
+
+	beforeEach(() => {
+		openGradesRcExport = jest.fn();
+		service = new ScrapingExportsService({} as any, { openGradesRcExport } as any);
+	});
+
+	const emptyHandle = (close = jest.fn().mockResolvedValue(undefined)) => ({
+		rows: async function* () {},
+		close,
+	});
+
+	it('refuses a second export while one is running, system-wide', async () => {
+		openGradesRcExport.mockImplementation(() => new Promise(() => undefined));
+
+		await service.startGradesRcExport(1, 'es', 1);
+
+		await expect(service.startGradesRcExport(1, 'es', 2)).rejects.toBeInstanceOf(ConflictException);
+	});
+
+	it('reports running, then completed with a downloadable file, once the merge finishes', async () => {
+		openGradesRcExport.mockResolvedValue(emptyHandle());
+
+		const { jobId } = await service.startGradesRcExport(1, 'es', 1);
+		expect(service.getGradesRcStatus(jobId, 1)).toMatchObject({ status: 'running', done: false });
+
+		await waitUntilDone(service, jobId, 1);
+
+		expect(service.getGradesRcStatus(jobId, 1)).toMatchObject({
+			status: 'completed',
+			done: true,
+			fileName: 'NotasRC.xlsx',
+		});
+		expect(service.getGradesRcFile(jobId, 1).fileName).toBe('NotasRC.xlsx');
+	});
+
+	it('reports failed with no downloadable file when the merge itself fails', async () => {
+		openGradesRcExport.mockRejectedValue(new Error('merge failed'));
+
+		const { jobId } = await service.startGradesRcExport(1, 'es', 1);
+		await waitUntilDone(service, jobId, 1);
+
+		expect(service.getGradesRcStatus(jobId, 1)).toMatchObject({
+			status: 'failed',
+			done: true,
+			errorMessage: 'merge failed',
+		});
+		expect(() => service.getGradesRcFile(jobId, 1)).toThrow(NotFoundException);
+	});
+
+	it('releases the runner once the job completes', async () => {
+		const close = jest.fn().mockResolvedValue(undefined);
+		openGradesRcExport.mockResolvedValue(emptyHandle(close));
+
+		const { jobId } = await service.startGradesRcExport(1, 'es', 1);
+		await waitUntilDone(service, jobId, 1);
+
+		expect(close).toHaveBeenCalled();
+	});
+
+	it('releases the runner when writing the workbook fails after the merge succeeded', async () => {
+		const close = jest.fn().mockResolvedValue(undefined);
+		openGradesRcExport.mockResolvedValue({
+			rows: () => {
+				throw new Error('stream died');
+			},
+			close,
+		});
+
+		const { jobId } = await service.startGradesRcExport(1, 'es', 1);
+		await waitUntilDone(service, jobId, 1);
+
+		expect(service.getGradesRcStatus(jobId, 1)).toMatchObject({ status: 'failed' });
+		expect(close).toHaveBeenCalled();
+	});
+
+	it('does not confirm a job id to a user who did not start it', async () => {
+		openGradesRcExport.mockResolvedValue(emptyHandle());
+		const { jobId } = await service.startGradesRcExport(1, 'es', 1);
+		await waitUntilDone(service, jobId, 1);
+
+		expect(() => service.getGradesRcStatus(jobId, 999)).toThrow(NotFoundException);
+		expect(() => service.getGradesRcFile(jobId, 999)).toThrow(NotFoundException);
+	});
+
+	it('throws for an unknown job id', () => {
+		expect(() => service.getGradesRcStatus('unknown', 1)).toThrow(NotFoundException);
+		expect(() => service.getGradesRcFile('unknown', 1)).toThrow(NotFoundException);
 	});
 });

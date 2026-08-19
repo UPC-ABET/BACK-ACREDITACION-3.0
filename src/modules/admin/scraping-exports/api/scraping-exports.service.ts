@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import type { Writable } from 'stream';
+import { Writable } from 'stream';
+
+import { JobRegistry } from 'src/modules/survey/shared/core/job-registry';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import {
@@ -17,11 +19,32 @@ import {
 	gradesRcExportLabels,
 	seccionExportLabels,
 } from '../model/scraping-exports.labels';
+import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 
 export interface GeneratedExcel {
 	buffer: Buffer;
 	fileName: string;
 }
+
+// maxConcurrent=1 is system-wide, not per-user: more than one merge at a time degrades the shared
+// Postgres for every other query, not just this export.
+const GRADES_RC_JOB_TTL_MS = 30 * 60 * 1000;
+const MAX_CONCURRENT_GRADES_RC_JOBS = 1;
+const MAX_CONCURRENT_GRADES_RC_JOBS_PER_USER = 1;
+const MAX_RETAINED_GRADES_RC_JOBS = 20;
+
+export type GradesRcExportJobResult = { fileName: string; file: Buffer };
+
+type GradesRcExportJobState = {
+	status: 'running' | 'completed' | 'failed';
+	result: GradesRcExportJobResult | null;
+	errorMessage: string | null;
+};
+
+export type GradesRcExportJobStatus = Omit<GradesRcExportJobState, 'result'> & {
+	done: boolean;
+	fileName: string | null;
+};
 
 // An export too large to hold in memory: the file is written into the caller's stream instead of
 // being handed over as a Buffer. `write` resolves once the workbook is fully committed, and the
@@ -36,6 +59,15 @@ export interface StreamedExcel {
 
 @Injectable()
 export class ScrapingExportsService {
+	private readonly logger = new Logger(ScrapingExportsService.name);
+
+	private readonly gradesRcJobs = new JobRegistry<GradesRcExportJobState>({
+		ttlMs: GRADES_RC_JOB_TTL_MS,
+		maxConcurrent: MAX_CONCURRENT_GRADES_RC_JOBS,
+		maxConcurrentPerOwner: MAX_CONCURRENT_GRADES_RC_JOBS_PER_USER,
+		maxRetained: MAX_RETAINED_GRADES_RC_JOBS,
+	});
+
 	constructor(
 		private readonly repository: ScrapingExportsRepository,
 		private readonly gradesRcRepository: GradesRcExportRepository,
@@ -93,8 +125,7 @@ export class ScrapingExportsService {
 	// table and WorkbookWriter drops each one on commit, so the peak is a page rather than a period.
 	//
 	// Returns a writer over any Writable instead of a GeneratedExcel because the file never exists as
-	// one buffer. The merge has already run once this resolves, which lets the controller send its
-	// headers only after the query succeeded.
+	// one buffer.
 	async prepareGradesRc(academicPeriodId: number, lang?: string): Promise<StreamedExcel> {
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
 		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
@@ -107,6 +138,105 @@ export class ScrapingExportsService {
 				await this.writeGradesRcSheets(workbook, handle, labels, lang);
 			},
 		};
+	}
+
+	// The merge alone was measured well over ten minutes under real load, past any HTTP gateway's read
+	// timeout, so it cannot run inside the request that asks for it: a client that gives up does not
+	// cancel the query, and a synchronous handler ends up writing to an already-dead response socket,
+	// hanging forever and leaking the connection along with the single-flight guard.
+	async startGradesRcExport(
+		academicPeriodId: number,
+		lang: string | undefined,
+		userId: number,
+	): Promise<{ accepted: true; jobId: string }> {
+		if (!this.gradesRcJobs.hasCapacity(userId)) {
+			throw new ConflictException({
+				message: scrapingExportsValidationStrings.error.gradesRcInProgress,
+			});
+		}
+		const jobId = this.gradesRcJobs.register(userId, {
+			status: 'running',
+			result: null,
+			errorMessage: null,
+		});
+
+		void this.runGradesRcExport(jobId, academicPeriodId, lang);
+
+		return { accepted: true, jobId };
+	}
+
+	getGradesRcStatus(jobId: string, userId: number): GradesRcExportJobStatus {
+		const status = this.gradesRcJobs.get(jobId, userId);
+		if (!status) {
+			throw new NotFoundException({
+				message: scrapingExportsValidationStrings.error.gradesRcJobNotFound,
+			});
+		}
+		return {
+			status: status.status,
+			done: status.done,
+			fileName: status.result?.fileName ?? null,
+			errorMessage: status.errorMessage,
+		};
+	}
+
+	getGradesRcFile(jobId: string, userId: number): GeneratedExcel {
+		const status = this.gradesRcJobs.get(jobId, userId);
+		if (!status) {
+			throw new NotFoundException({
+				message: scrapingExportsValidationStrings.error.gradesRcJobNotFound,
+			});
+		}
+		if (!status.result) {
+			throw new NotFoundException({
+				message: scrapingExportsValidationStrings.error.gradesRcFileNotReady,
+			});
+		}
+		return { buffer: status.result.file, fileName: status.result.fileName };
+	}
+
+	// collectToBuffer only accumulates the serialized xlsx bytes, not the rows -- writeGradesRcSheets
+	// still pages the merge out a row at a time, so this does not reintroduce the OOM prepareGradesRc's
+	// streaming design avoids.
+	private async runGradesRcExport(
+		jobId: string,
+		academicPeriodId: number,
+		lang: string | undefined,
+	): Promise<void> {
+		try {
+			const { fileName, write, close } = await this.prepareGradesRc(academicPeriodId, lang);
+			try {
+				const file = await this.collectToBuffer(write);
+				this.gradesRcJobs.finish(jobId, {
+					status: 'completed',
+					result: { fileName, file },
+					errorMessage: null,
+				});
+			} finally {
+				await close();
+			}
+		} catch (error) {
+			this.logger.error(
+				`Grades RC export job ${jobId} failed (period ${academicPeriodId})`,
+				error instanceof Error ? error.stack : String(error),
+			);
+			this.gradesRcJobs.finish(jobId, {
+				status: 'failed',
+				result: null,
+				errorMessage: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private collectToBuffer(write: (out: Writable) => Promise<void>): Promise<Buffer> {
+		const chunks: Buffer[] = [];
+		const sink = new Writable({
+			write(chunk: Buffer, _encoding, callback) {
+				chunks.push(chunk);
+				callback();
+			},
+		});
+		return write(sink).then(() => Buffer.concat(chunks));
 	}
 
 	private async writeGradesRcSheets(
