@@ -117,21 +117,8 @@ export class GradesRcExportRepository {
 
 	// Gathered before the scratch table exists, so a failure here costs no connection.
 	private async buildGradesRcParams(academicPeriodId: number): Promise<unknown[]> {
-		const [
-			period,
-			gradeTypes,
-			qualificationStatuses,
-			designated,
-			uploadedSections,
-			enrollments,
-			controlSections,
-		] = await Promise.all([
-			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
-			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
-			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
-			this.getDesignatedGradeTypesBySection(academicPeriodId),
+		const [uploadedSections, controlSections] = await Promise.all([
 			this.getUploadedSectionCodes(academicPeriodId),
-			this.getEnrolledSectionStudents(academicPeriodId),
 			this.getControlOutcomeSectionCodes(academicPeriodId),
 		]);
 
@@ -141,6 +128,14 @@ export class GradesRcExportRepository {
 		// export stopped finishing at all.
 		const controlScope = new Set(controlSections);
 		const scopedSections = uploadedSections.filter((section) => controlScope.has(section));
+
+		const [period, gradeTypes, qualificationStatuses, designated, enrollments] = await Promise.all([
+			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
+			this.getDesignatedGradeTypesBySection(academicPeriodId),
+			this.getEnrolledSectionStudents(academicPeriodId, scopedSections),
+		]);
 
 		return [
 			period,
@@ -173,10 +168,15 @@ export class GradesRcExportRepository {
 	}
 
 	// Not a filter: a row whose pair is missing still ships, carrying the observation that says so.
-	async getEnrolledSectionStudents(academicPeriodId: number): Promise<EnrolledSectionStudentRow> {
+	// sectionScope narrows which sections' enrollments are worth fetching at all -- see
+	// ENROLLED_SECTION_STUDENTS_SQL.
+	async getEnrolledSectionStudents(
+		academicPeriodId: number,
+		sectionScope: string[],
+	): Promise<EnrolledSectionStudentRow> {
 		const [row]: EnrolledSectionStudentRow[] = await this.mainDataSource.query(
 			ENROLLED_SECTION_STUDENTS_SQL,
-			[academicPeriodId],
+			[academicPeriodId, sectionScope],
 		);
 		return row ?? { sectionCodes: [], studentCodes: [] };
 	}

@@ -109,6 +109,17 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		);
 	});
 
+	// The enrollment lookup only ever needs pairs the merge could actually use, so it takes the same
+	// scoped set rather than every enrollment in the period.
+	it('scopes the enrollment lookup to the same intersected sections', async () => {
+		await repo.openGradesRcExport(1);
+
+		const enrollmentCall = mainQuery.mock.calls.find(([sql]) =>
+			sql.includes('student_section_enrollments'),
+		);
+		expect(enrollmentCall?.[1]).toEqual([1, ['NRC1']]);
+	});
+
 	// Pages are read until one comes back short of the page size, and the rows are handed on
 	// untouched: the whole transformation is in SQL.
 	it('walks the scratch table a page at a time and yields the rows untouched', async () => {

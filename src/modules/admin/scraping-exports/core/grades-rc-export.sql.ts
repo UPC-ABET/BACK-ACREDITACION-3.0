@@ -537,6 +537,9 @@ LIMIT $2::int
 // The period's enrollments, aggregated into the two parallel arrays the merge takes as $12/$13 --
 // returned row by row they would be hundreds of thousands of objects built only to be flattened.
 // COALESCE because array_agg over no rows yields NULL, which would mark EVERY student as unenrolled.
+// $2 is the same scoped-section set GRADES_RC_SQL's $10 uses -- only those rows ever reach the
+// "not_enrolled" check these pairs feed, so scoping here avoids pulling the whole period's
+// enrollments just to discard most of them downstream.
 export const ENROLLED_SECTION_STUDENTS_SQL = `
 SELECT
 	COALESCE(array_agg(pair.section_code), '{}') AS "sectionCodes",
@@ -548,6 +551,7 @@ FROM (
 	JOIN academic.enrolled_students es ON es.id = sse.enrolled_student_id
 	JOIN academic.students st ON st.id = es.student_id
 	WHERE cs.academic_period_id = $1::int
+	  AND cs.section_code = ANY($2::text[])
 ) pair
 `;
 
