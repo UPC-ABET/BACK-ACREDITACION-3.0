@@ -85,6 +85,7 @@ const DESIGNATED: Array<[string, string]> = [
 	['NRC11', 'TG205-T008'],
 	['NRC12', 'TG205-T005'],
 	['NRC13', 'TG205-T001'],
+	['NRC14', 'TG205-T001'],
 ];
 
 // academic.course_sections for the period. NRC9 is deliberately missing: its grades have nowhere to
@@ -103,7 +104,13 @@ const LOADED_SECTIONS = [
 	'NRC11',
 	'NRC12',
 	'NRC13',
+	'NRC14',
 ];
+
+// Sections whose course carries a CONTROL outcome (TG302-T002) in the period's study plan. NRC14 is
+// loaded, designated, enrolled and graded, and is deliberately absent here: only the missing control
+// mapping stands between it and the export, so nothing else can explain its rows disappearing.
+const CONTROL_SECTIONS = LOADED_SECTIONS.filter((section) => section !== 'NRC14');
 
 // academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: the
 // upload rejects the whole file over it, so the row has to ship carrying that warning.
@@ -125,6 +132,7 @@ const ENROLLED: Array<[string, string]> = [
 	['NRC11', 'A11B'],
 	['NRC12', 'A12'],
 	['NRC13', 'A13'],
+	['NRC14', 'A14'],
 ];
 
 interface ExportedRow {
@@ -331,6 +339,7 @@ async function loadFixtures(db: Client): Promise<void> {
 		['NRC9', '9', 'A9'],
 		['NRC12', '12', 'A12'],
 		['NRC13', '13', 'A13'],
+		['NRC14', '14', 'A14'],
 	];
 	const seenSections = new Set<string>();
 	for (const [nrc, courseNumber, student] of banner) {
@@ -403,6 +412,8 @@ async function loadFixtures(db: Client): Promise<void> {
 	// is blank and no status explains it -- banner_legs keeps it because, unlike planner_legs, it does
 	// not filter on has_grade. Nothing about this row comes from the source except the type itself.
 	await notas('A13', '1ASI13', [{ tipo: 'EA1', peso: 100, nota: '', numero: 1 }]);
+	// NRC14: a perfectly exportable grade whose course is mapped to no CONTROL outcome.
+	await notas('A14', '1ASI14', [{ tipo: 'EA1', peso: 100, nota: '16.00', numero: 1 }]);
 	// NRC9 is not in academic.course_sections: nothing of it may be exported.
 	await notas('A9', '1ASI9', [{ tipo: 'EA1', peso: 100, nota: '19.00', numero: 1 }]);
 	// Same student, same grade, unfinished run: must lose to the completed one.
@@ -612,6 +623,7 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 			rows.filter((row) => row.studentCode === 'A1').length === 1,
 		],
 		['R2 section outside academic.course_sections dropped', inSection('NRC9').length === 0],
+		['R2 section whose course has no CONTROL outcome dropped', inSection('NRC14').length === 0],
 		['R7 numeric grade -> ASISTIO', of('NRC1|A1')?.qualificationStatusCode === 'TG404-T001'],
 		[
 			'R7 non-numeric designated grade -> 0 + known TG404 code',
@@ -786,6 +798,7 @@ async function main(): Promise<void> {
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			QUALIFICATION_STATUSES.NR,
+			CONTROL_SECTIONS,
 		];
 		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, params);
 

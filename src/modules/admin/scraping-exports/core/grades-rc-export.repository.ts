@@ -7,6 +7,7 @@ import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/t
 import { GradeRcExportRow } from '../model/scraping-exports.types';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 import {
+	CONTROL_OUTCOME_SECTIONS_SQL,
 	DESIGNATED_GRADE_TYPES_SQL,
 	ENROLLED_SECTION_STUDENTS_SQL,
 	GRADES_RC_TEMP_TABLE,
@@ -116,15 +117,23 @@ export class GradesRcExportRepository {
 
 	// Gathered before the scratch table exists, so a failure here costs no connection.
 	private async buildGradesRcParams(academicPeriodId: number): Promise<unknown[]> {
-		const [period, gradeTypes, qualificationStatuses, designated, uploadedSections, enrollments] =
-			await Promise.all([
-				resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
-				this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
-				this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
-				this.getDesignatedGradeTypesBySection(academicPeriodId),
-				this.getUploadedSectionCodes(academicPeriodId),
-				this.getEnrolledSectionStudents(academicPeriodId),
-			]);
+		const [
+			period,
+			gradeTypes,
+			qualificationStatuses,
+			designated,
+			uploadedSections,
+			enrollments,
+			controlSections,
+		] = await Promise.all([
+			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
+			this.getDesignatedGradeTypesBySection(academicPeriodId),
+			this.getUploadedSectionCodes(academicPeriodId),
+			this.getEnrolledSectionStudents(academicPeriodId),
+			this.getControlOutcomeSectionCodes(academicPeriodId),
+		]);
 
 		return [
 			period,
@@ -143,7 +152,18 @@ export class GradesRcExportRepository {
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			TYPE_CODES.QUALIFICATION_STATUS.NR,
+			controlSections,
 		];
+	}
+
+	// The second hard scope: a course with no CONTROL outcome mapped in the period's study plan is
+	// invisible to the RC semaphore, so exporting its grades only loads data nothing reads.
+	async getControlOutcomeSectionCodes(academicPeriodId: number): Promise<string[]> {
+		const rows: Array<{ sectionCode: string }> = await this.mainDataSource.query(
+			CONTROL_OUTCOME_SECTIONS_SQL,
+			[academicPeriodId, TYPE_CODES.OUTCOME_TYPE.CONTROL],
+		);
+		return rows.map((row) => row.sectionCode);
 	}
 
 	// Not a filter: a row whose pair is missing still ships, carrying the observation that says so.
