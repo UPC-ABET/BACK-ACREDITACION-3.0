@@ -12367,9 +12367,9 @@
 				"tags": ["Scraping — Exports"]
 			}
 		},
-		"/scraping/exports/grades-rc": {
-			"get": {
-				"operationId": "ScrapingExportsController_gradesRc",
+		"/scraping/exports/grades-rc/start": {
+			"post": {
+				"operationId": "ScrapingExportsController_gradesRcStart",
 				"parameters": [
 					{
 						"name": "lang",
@@ -12386,12 +12386,45 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "The generated grades RC workbook" },
 					"409": {
 						"description": "A grades RC export is already running; try again once it has finished"
 					}
 				},
-				"summary": "Generate the grades RC (course grades) Excel, ready to re-upload via the RC bulk grade upload, merging the latest Banner and Planner scrapes",
+				"summary": "Start building the grades RC (course grades) Excel in the background, merging the latest Banner and Planner scrapes",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/grades-rc/status/{jobId}": {
+			"get": {
+				"operationId": "ScrapingExportsController_gradesRcStatus",
+				"parameters": [
+					{
+						"name": "jobId",
+						"required": true,
+						"in": "path",
+						"description": "Grades RC export job id",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Poll the progress of a grades RC export job",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/grades-rc/download/{jobId}": {
+			"get": {
+				"operationId": "ScrapingExportsController_gradesRcDownload",
+				"parameters": [
+					{
+						"name": "jobId",
+						"required": true,
+						"in": "path",
+						"description": "Grades RC export job id",
+						"schema": { "type": "string" }
+					}
+				],
+				"responses": { "200": { "description": "The generated grades RC workbook" } },
+				"summary": "Download the finished grades RC Excel, ready to re-upload via the RC bulk grade upload",
 				"tags": ["Scraping — Exports"]
 			}
 		}

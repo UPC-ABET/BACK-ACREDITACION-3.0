@@ -1,160 +1,55 @@
-import { ConflictException } from '@nestjs/common';
-import { PassThrough } from 'node:stream';
-
-import { ABANDONED_WRITE_GRACE_MS, ScrapingExportsController } from './scraping-exports.controller';
+import { ScrapingExportsController } from './scraping-exports.controller';
 import { ScrapingExportsService } from './scraping-exports.service';
 
-// Each grades RC export pins a pooled connection and one run of the cross-scrape merge for the
-// minutes it takes, against a Postgres shared with the application database -- so the admission
-// guard is what keeps one user's download from slowing the API down for everyone. These pin it,
-// including all three release paths: a guard that never clears is a permanent 409 until restart.
-describe('ScrapingExportsController.gradesRc — one export at a time', () => {
-	const prepareGradesRc = jest.fn();
+describe('ScrapingExportsController — grades RC job endpoints', () => {
+	const startGradesRcExport = jest.fn();
+	const getGradesRcStatus = jest.fn();
+	const getGradesRcFile = jest.fn();
 	const controller = new ScrapingExportsController({
-		prepareGradesRc,
+		startGradesRcExport,
+		getGradesRcStatus,
+		getGradesRcFile,
 	} as unknown as ScrapingExportsService);
 
-	// Enough of an express Response for the controller: header sink + writable stream.
-	const fakeResponse = () => {
-		const stream = new PassThrough();
-		stream.resume();
-		Object.assign(stream, { setHeader: jest.fn(), destroy: jest.fn() });
-		return stream as never;
-	};
-
-	// What prepareGradesRc hands the controller: a file name, a writer, and the release for the
-	// pooled connection the scratch table sits on.
-	const prepared = (over: Record<string, unknown> = {}) => ({
-		fileName: 'NotasRC.xlsx',
-		write: jest.fn().mockResolvedValue(undefined),
-		close: jest.fn().mockResolvedValue(undefined),
-		...over,
-	});
+	const fakeResponse = () => ({ setHeader: jest.fn(), end: jest.fn() }) as never;
+	const user = { userId: 7 } as never;
 
 	beforeEach(() => jest.clearAllMocks());
 
-	it('lets a second export through once the first has finished', async () => {
-		prepareGradesRc.mockResolvedValue(prepared());
+	it('starts a job for the current user and returns it wrapped as a success response', async () => {
+		startGradesRcExport.mockResolvedValue({ accepted: true, jobId: 'job-1' });
 
-		await controller.gradesRc('es', 1, fakeResponse());
-		await controller.gradesRc('es', 1, fakeResponse());
+		const response = await controller.gradesRcStart('es', 1, user);
 
-		expect(prepareGradesRc).toHaveBeenCalledTimes(2);
+		expect(startGradesRcExport).toHaveBeenCalledWith(1, 'es', 7);
+		expect(response.data).toEqual({ accepted: true, jobId: 'job-1' });
 	});
 
-	it('refuses a second export while the first is still running', async () => {
-		let releaseFirst!: () => void;
-		prepareGradesRc.mockImplementation(() =>
-			Promise.resolve(
-				prepared({ write: () => new Promise<void>((resolve) => (releaseFirst = resolve)) }),
-			),
-		);
+	it('polls status for the current user', async () => {
+		getGradesRcStatus.mockReturnValue({ status: 'running', done: false });
 
-		const first = controller.gradesRc('es', 1, fakeResponse());
-		// Let the first request reach its write() before the second one arrives.
-		await Promise.resolve();
+		const response = await controller.gradesRcStatus('job-1', user);
 
-		await expect(controller.gradesRc('es', 1, fakeResponse())).rejects.toBeInstanceOf(
-			ConflictException,
-		);
-
-		releaseFirst();
-		await first;
+		expect(getGradesRcStatus).toHaveBeenCalledWith('job-1', 7);
+		expect(response.data).toEqual({ status: 'running', done: false });
 	});
 
-	// The query runs before any header goes out, so this failure is a normal error response -- but it
-	// still has to release the guard on the way out.
-	it('releases the guard when building the rows fails', async () => {
-		prepareGradesRc.mockRejectedValueOnce(new Error('query failed'));
-
-		await expect(controller.gradesRc('es', 1, fakeResponse())).rejects.toThrow('query failed');
-
-		prepareGradesRc.mockResolvedValueOnce(prepared());
-		await controller.gradesRc('es', 1, fakeResponse());
-
-		expect(prepareGradesRc).toHaveBeenCalledTimes(2);
-	});
-
-	// A failure mid-download is swallowed on purpose (the socket is destroyed instead), so nothing
-	// throws here -- which is exactly why the release has to be in a finally rather than after it.
-	it('releases the guard when the download fails midway', async () => {
+	it('streams the finished file with download headers', async () => {
+		getGradesRcFile.mockReturnValue({
+			buffer: Buffer.from('xlsx-bytes'),
+			fileName: 'NotasRC.xlsx',
+		});
 		const res = fakeResponse();
-		const closeAfterFailure = jest.fn().mockResolvedValue(undefined);
-		prepareGradesRc.mockResolvedValueOnce(
-			prepared({
-				write: jest.fn().mockRejectedValue(new Error('stream died')),
-				close: closeAfterFailure,
-			}),
+
+		await controller.gradesRcDownload('job-1', user, res);
+
+		expect(getGradesRcFile).toHaveBeenCalledWith('job-1', 7);
+		expect((res as unknown as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith(
+			'Content-Disposition',
+			expect.stringContaining('NotasRC.xlsx'),
 		);
-
-		await controller.gradesRc('es', 1, res);
-
-		expect((res as unknown as { destroy: jest.Mock }).destroy).toHaveBeenCalled();
-		// The scratch table and its pooled connection have to go back even when the download died.
-		expect(closeAfterFailure).toHaveBeenCalled();
-
-		prepareGradesRc.mockResolvedValueOnce(prepared());
-		await controller.gradesRc('es', 1, fakeResponse());
-
-		expect(prepareGradesRc).toHaveBeenCalledTimes(2);
-	});
-
-	// write() never settling is the disconnected case exactly: ExcelJS's backpressure has nothing
-	// left to drain into. close() gives it ABANDONED_WRITE_GRACE_MS to land on its own (in case a
-	// page query was already in flight) before releasing regardless -- fake timers stand in for
-	// that wait so the test doesn't actually take three seconds.
-	it('releases the guard when the client disconnects mid-download, even though write() never settles', async () => {
-		jest.useFakeTimers();
-		try {
-			const res = fakeResponse();
-			const closeAfterDisconnect = jest.fn().mockResolvedValue(undefined);
-			prepareGradesRc.mockResolvedValueOnce(
-				prepared({
-					write: jest.fn(() => new Promise<void>(() => undefined)),
-					close: closeAfterDisconnect,
-				}),
-			);
-
-			const pending = controller.gradesRc('es', 1, res);
-			await Promise.resolve();
-			(res as unknown as { emit: (event: string) => void }).emit('close');
-			await jest.advanceTimersByTimeAsync(ABANDONED_WRITE_GRACE_MS);
-			await pending;
-
-			expect((res as unknown as { destroy: jest.Mock }).destroy).toHaveBeenCalled();
-			expect(closeAfterDisconnect).toHaveBeenCalled();
-
-			prepareGradesRc.mockResolvedValueOnce(prepared());
-			await controller.gradesRc('es', 1, fakeResponse());
-
-			expect(prepareGradesRc).toHaveBeenCalledTimes(2);
-		} finally {
-			jest.useRealTimers();
-		}
-	});
-
-	// 'close' fires on an ordinary completed download too -- writableEnded distinguishes that from
-	// an actual disconnect, so a client closing its socket right after receiving the last byte
-	// doesn't get logged as a failed export.
-	it('does not treat a normal completed download as a disconnect', async () => {
-		const res = fakeResponse();
-		prepareGradesRc.mockResolvedValueOnce(
-			prepared({
-				// A real write() ends the stream itself before its promise resolves, exactly like
-				// ExcelJS's WorkbookWriter does on commit -- that's what makes writableEnded true by
-				// the time 'close' fires next.
-				write: jest.fn(() => {
-					(res as unknown as { end: () => void }).end();
-					return Promise.resolve();
-				}),
-			}),
+		expect((res as unknown as { end: jest.Mock }).end).toHaveBeenCalledWith(
+			Buffer.from('xlsx-bytes'),
 		);
-
-		const pending = controller.gradesRc('es', 1, res);
-		await Promise.resolve();
-		(res as unknown as { emit: (event: string) => void }).emit('close');
-		await pending;
-
-		expect((res as unknown as { destroy: jest.Mock }).destroy).not.toHaveBeenCalled();
 	});
 });
