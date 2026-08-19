@@ -42,8 +42,13 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 					])
 				: Promise.resolve([{ name: 'RET', code: 'TG404-T005' }]);
 		}
-		// All three section queries read course_sections; the designated one joins the study plans and
-		// the enrollment one joins student_section_enrollments, so those are matched first.
+		// All four section queries read course_sections and two of them join study_plan_courses, so
+		// each is matched on the narrowest table it owns, most specific first: the control-outcome
+		// query is the only one touching course_outcome_mappings, so it has to precede the designated
+		// one below.
+		if (sql.includes('course_outcome_mappings')) {
+			return Promise.resolve([{ sectionCode: 'NRC1' }]);
+		}
 		if (sql.includes('study_plan_courses')) {
 			return Promise.resolve([
 				{ sectionCode: 'NRC1', gradeTypeCode: 'TG205-T001' },
@@ -87,6 +92,20 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(params[13]).toEqual(Object.keys(PROGRAM_CAREER_MAP));
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 		expect(params[15]).toBe('TG404-T002');
+		expect(params[16]).toEqual(['NRC1']);
+	});
+
+	// The control-outcome scope is what keeps a course the semaphore cannot read out of the export,
+	// so it must be a list of its own -- reusing the loaded sections would silently disable it.
+	it('ships the control-outcome sections separately from the loaded ones', async () => {
+		await repo.openGradesRcExport(1);
+
+		const [, params] = materializeCall();
+		expect(params[9]).toEqual(['NRC1', 'NRC2']);
+		expect(params[16]).toEqual(['NRC1']);
+		expect(mainQuery.mock.calls.some(([sql]) => sql.includes('course_outcome_mappings'))).toBe(
+			true,
+		);
 	});
 
 	// Pages are read until one comes back short of the page size, and the rows are handed on

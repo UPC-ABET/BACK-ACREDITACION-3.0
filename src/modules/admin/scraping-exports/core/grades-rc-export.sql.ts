@@ -23,6 +23,7 @@ const VERIFIED_ZERO_MARK = `'CAL'`;
 // $14/$15 Banner program codes / career codes (PROGRAM_CAREER_MAP)
 // $16 NR code, shipped when the student has no grade: not ASISTIO, so the semaphore leaves those
 // zeros out of the RC average.
+// $17 section codes whose course is mapped to a CONTROL outcome for the period.
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
 export const GRADES_RC_SQL = `
 WITH grade_types AS (SELECT * FROM unnest($2::text[], $3::text[]) AS t(name, code)),
@@ -191,6 +192,11 @@ planner_legs AS (
 --
 -- Scoped HERE so every window and collapse downstream only sees exportable rows. A section not in
 -- academic.course_sections has nowhere to land: the upload rejects the whole file over it.
+--
+-- $17 is the second hard scope, and it is deliberately NOT an observation: only a course mapped to a
+-- CONTROL outcome (TG302-T002) reaches the RC semaphore, so a grade from any other course is loaded
+-- and then read by nothing. Kept separate from $10 because the two drop rows for unrelated reasons:
+-- $10 means the section was never loaded, $17 that the course is not measured for accreditation.
 candidates AS (
 	SELECT
 		u.*,
@@ -214,6 +220,7 @@ candidates AS (
 		FROM planner_legs
 	) u
 	WHERE u.section_code = ANY($10::text[])
+	  AND u.section_code = ANY($17::text[])
 ),
 -- Statuses do not all have the same reach, and treating them alike is how a status gets invented.
 --  - COURSE level (RET, SAN): withdrawing from or being sanctioned in a course applies to every one
@@ -448,6 +455,34 @@ SELECT
 FROM final s
 LEFT JOIN careers c ON c.program_code = s.program_code
 ORDER BY s.section_code, s.student_code
+`;
+
+// Sections whose course carries a CONTROL outcome (TG302-T002) in the study plan of the period --
+// the same join SEMAPHORE_RC_SCREEN_SQL makes, so the export ships exactly what the semaphore can
+// read. Three things it deliberately inherits from that query:
+//  - the mapping hangs off study_plan_course, not course: the same course may be control in one plan
+//    and not in another, so the plan is pinned to the section's period through spap;
+//  - outcome_type_id lives on the MAPPING, not on the outcome -- an outcome can be control for one
+//    course and verification (TG302-T001) for the next;
+//  - an inactive outcome does not count, matching the semaphore's filtered_outcomes.
+// DISTINCT because a course mapped to several control outcomes must not repeat its section.
+export const CONTROL_OUTCOME_SECTIONS_SQL = `
+SELECT DISTINCT cs.section_code AS "sectionCode"
+FROM academic.course_sections cs
+JOIN academic.study_plan_courses spc
+	ON spc.course_id = cs.course_id
+JOIN academic.study_plan_academic_periods spap
+	ON spap.id = spc.study_plan_academic_period_id
+	AND spap.academic_period_id = cs.academic_period_id
+JOIN academic.course_outcome_mappings com
+	ON com.study_plan_course_id = spc.id
+JOIN accreditation.outcomes o
+	ON o.id = com.outcome_id
+	AND o.is_active = true
+JOIN core.types ot
+	ON ot.id = com.outcome_type_id
+WHERE cs.academic_period_id = $1::int
+  AND ot.code = $2::text
 `;
 
 // Sections the app knows for the period: the hard scope of the export.
