@@ -86,6 +86,43 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 		return spap?.id ?? null;
 	}
 
+	async findAcademicPeriodId(studyPlanAcademicPeriodId: number): Promise<number | null> {
+		const spap = await this.dataSource
+			.createQueryBuilder(StudyPlanAcademicPeriodEntity, 'spap')
+			.where('spap.id = :id', { id: studyPlanAcademicPeriodId })
+			.getOne();
+		return spap?.academicPeriodId ?? null;
+	}
+
+	// A student may hold at most one ACTIVE enrollment per academic period — enforced at the DB
+	// level by academic.fn_enforce_unique_student_academic_period (see migration
+	// EnforceUniqueStudentEnrollmentPeriod1787164196191). This mirrors that check for validation,
+	// keyed by academic_period_id (via study_plan_academic_periods) rather than by the exact
+	// study_plan_academic_period_id — a student re-linked to a different plan for the SAME period
+	// must be treated as the same enrollment, not a new one.
+	async findActiveEnrollmentInPeriod(
+		studentId: number,
+		academicPeriodId: number,
+		excludeId?: number,
+	): Promise<EnrolledStudentEntity | null> {
+		const qb = this.dataSource
+			.createQueryBuilder(EnrolledStudentEntity, 'enrolled')
+			.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = enrolled.study_plan_academic_period_id',
+			)
+			.where('enrolled.student_id = :studentId', { studentId })
+			.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId })
+			.andWhere('enrolled.is_active = true');
+
+		if (excludeId !== undefined) {
+			qb.andWhere('enrolled.id <> :excludeId', { excludeId });
+		}
+
+		return await qb.getOne();
+	}
+
 	async findStudentIdByCode(code: string): Promise<number | null> {
 		const student = await this.dataSource
 			.createQueryBuilder(StudentEntity, 's')
@@ -143,7 +180,17 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 		return { studentSectionEnrollments: Number(row.studentSectionEnrollments) };
 	}
 
-	async updateMaintenance(id: number, dto: UpdateEnrolledStudentMaintenanceDto): Promise<void> {
+	// newStudyPlanAcademicPeriodId is the caller-resolved plan link for a program change: when
+	// dto.programId moves the student to a different program, the enrollment's own
+	// study_plan_academic_period_id must move with it (to that program's plan for the SAME
+	// academic period), or the row is left pointing at the old program's plan while the student
+	// entity already reports the new program — exactly the mismatch that produced duplicate
+	// enrollments before EnforceUniqueStudentEnrollmentPeriod1787164196191.
+	async updateMaintenance(
+		id: number,
+		dto: UpdateEnrolledStudentMaintenanceDto,
+		newStudyPlanAcademicPeriodId?: number,
+	): Promise<void> {
 		await this.dataSource.transaction(async (manager) => {
 			const enrolled = await manager
 				.getRepository(EnrolledStudentEntity)
@@ -163,6 +210,9 @@ export class EnrolledStudentRepository extends BaseRepository<EnrolledStudentEnt
 			if (dto.campusId !== undefined) enrolledChange.campusId = dto.campusId;
 			if (dto.enrollementModalityTypeId !== undefined) {
 				enrolledChange.enrollementModalityTypeId = dto.enrollementModalityTypeId;
+			}
+			if (newStudyPlanAcademicPeriodId !== undefined) {
+				enrolledChange.studyPlanAcademicPeriodId = newStudyPlanAcademicPeriodId;
 			}
 			if (Object.keys(enrolledChange).length > 0) {
 				await manager.getRepository(EnrolledStudentEntity).update(id, enrolledChange);

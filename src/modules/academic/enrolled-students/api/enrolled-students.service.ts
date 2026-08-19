@@ -66,9 +66,9 @@ export class EnrolledStudentService extends BaseService<EnrolledStudentRepositor
 
 		await EnrolledStudentValidation.validateMaintenanceCreate(
 			this.repository,
+			academicPeriodId,
 			studyPlanAcademicPeriodId,
 			existingStudentId,
-			dto,
 		);
 
 		const id = await this.repository.createMaintenance(dto, studyPlanAcademicPeriodId as number);
@@ -76,8 +76,23 @@ export class EnrolledStudentService extends BaseService<EnrolledStudentRepositor
 	}
 
 	async updateMaintenance(id: number, dto: UpdateEnrolledStudentMaintenanceDto) {
-		await EnrolledStudentValidation.validateMaintenanceUpdate(this.repository, id, dto);
-		await this.repository.updateMaintenance(id, dto);
+		const entity = await EnrolledStudentValidation.validateMaintenanceUpdate(
+			this.repository,
+			id,
+			dto,
+		);
+
+		let newStudyPlanAcademicPeriodId: number | undefined;
+		if (dto.programId !== undefined && dto.programId !== entity.student.programId) {
+			newStudyPlanAcademicPeriodId =
+				await EnrolledStudentValidation.resolveMaintenanceProgramChange(
+					this.repository,
+					entity,
+					dto.programId,
+				);
+		}
+
+		await this.repository.updateMaintenance(id, dto, newStudyPlanAcademicPeriodId);
 		return await this.getMaintenanceItem(id);
 	}
 
