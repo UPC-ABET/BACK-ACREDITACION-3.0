@@ -217,6 +217,12 @@ export class IfcHeaderDto {
 			'True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). Drives the Approve/Reject buttons on the view page.',
 	})
 	requesterHasHigherLevel: boolean;
+	@ApiProperty({
+		example: true,
+		description:
+			"True when the requester may view the IFC status history — a strict ancestor in the chart tree, OR an admin. Drives the History button on the view page; mirrors GET .../status-history's own access check exactly, so the frontend does not need to know the requester is an admin.",
+	})
+	showHistory: boolean;
 }
 
 export class IfcOutcomeItemDto {

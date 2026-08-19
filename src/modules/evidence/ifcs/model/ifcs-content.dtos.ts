@@ -195,4 +195,16 @@ export class IfcPrefillResponseDto {
 		items: { type: 'object' },
 	})
 	outcomeCourseResult: any[];
+	@ApiProperty({
+		example: true,
+		description:
+			'True when the requester is the own coordinator OR any ancestor of the course in the chart tree.',
+	})
+	requesterInChain: boolean;
+	@ApiProperty({
+		example: true,
+		description:
+			'True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). An admin is NOT automatically true here.',
+	})
+	requesterHasHigherLevel: boolean;
 }

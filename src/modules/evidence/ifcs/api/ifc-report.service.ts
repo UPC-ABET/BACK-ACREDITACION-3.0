@@ -33,7 +33,7 @@ export class IfcReportService {
 	) {}
 
 	async generatePdf(ifcId: number, userId: number, schoolId: number, lang: ReportLanguage) {
-		const data = await this.view.getView(ifcId, userId, schoolId);
+		const data = await this.view.getView(ifcId, userId, schoolId, false);
 
 		if (data.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED) {
 			throw new HttpException(
@@ -60,7 +60,7 @@ export class IfcReportService {
 		const renderLimit = pLimit(3);
 
 		const payloads = await Promise.all(
-			ifcIds.map((id) => viewLimit(() => this.view.getView(id, userId, schoolId))),
+			ifcIds.map((id) => viewLimit(() => this.view.getView(id, userId, schoolId, false))),
 		);
 		const nonApproved = payloads.find((p) => p.ifc.status?.code !== TYPE_CODES.IFC_STATUS.APPROVED);
 		if (nonApproved) {

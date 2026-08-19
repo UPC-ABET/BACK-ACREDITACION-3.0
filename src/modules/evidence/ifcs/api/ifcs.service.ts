@@ -61,8 +61,8 @@ export class IfcService extends BaseService<IfcRepository> {
 		return this.content.patch(id, dto, userId, schoolId);
 	}
 
-	async getView(id: number, userId: number, schoolId: number) {
-		return this.view.getView(id, userId, schoolId);
+	async getView(id: number, userId: number, schoolId: number, isAdminUser: boolean) {
+		return this.view.getView(id, userId, schoolId, isAdminUser);
 	}
 
 	async getStatusHistory(id: number, userId: number, schoolId: number, isAdminUser: boolean) {
@@ -95,9 +95,14 @@ export class IfcService extends BaseService<IfcRepository> {
 		return await this.repository.findIfcListRows(dto.chartIds, academicPeriodId);
 	}
 
-	async prefill(query: IfcPrefillQueryDto, schoolId: number, academicPeriodId: number) {
+	async prefill(
+		query: IfcPrefillQueryDto,
+		schoolId: number,
+		academicPeriodId: number,
+		userId: number,
+	) {
 		const [headerRows, outcomeRows] = await Promise.all([
-			this.repository.findPrefillHeaderRows(query.chartId, academicPeriodId, schoolId),
+			this.repository.findPrefillHeaderRows(query.chartId, academicPeriodId, schoolId, userId),
 			this.repository.findOutcomeCourseRowsByChart(query.chartId),
 		]);
 
@@ -113,6 +118,8 @@ export class IfcService extends BaseService<IfcRepository> {
 			...header,
 			coordinatorUserId:
 				header.coordinatorUserId === null ? null : Number(header.coordinatorUserId),
+			requesterInChain: Boolean(header.requesterInChain),
+			requesterHasHigherLevel: Boolean(header.requesterHasHigherLevel),
 			outcomeCourseResult: this.view.groupOutcomeRows(outcomeRows),
 			previousActions,
 		};

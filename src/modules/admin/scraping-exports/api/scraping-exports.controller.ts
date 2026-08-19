@@ -1,6 +1,7 @@
 import { ConflictException, Controller, Get, Logger, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import type { Writable } from 'stream';
 
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import {
@@ -15,6 +16,12 @@ import { scrapingExportsRoutes } from '../config/scraping-exports.routes';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 
 const routes = scrapingExportsRoutes.exports;
+
+// How long close() waits for an abandoned write() to settle on its own before releasing the runner
+// regardless -- long enough to cover a page query that was already in flight at the moment the
+// client disconnected, short enough that a client that vanishes mid-download doesn't hold the guard
+// noticeably longer than before.
+export const ABANDONED_WRITE_GRACE_MS = 3000;
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
@@ -132,8 +139,9 @@ export class ScrapingExportsController {
 			// No Content-Length: the file size isn't known until the stream finishes.
 			this.setDownloadHeaders(res, fileName);
 
+			const { result, drained } = this.writeUntilClientGone(res, write);
 			try {
-				await write(res);
+				await result;
 			} catch (error) {
 				this.logger.error(
 					`Grades RC export failed after the download had started (period ${academicPeriodId})`,
@@ -141,8 +149,12 @@ export class ScrapingExportsController {
 				);
 				res.destroy(error instanceof Error ? error : new Error(String(error)));
 			} finally {
-				// Holds a pooled database connection and a scratch table until this runs, so it has to
-				// run on the success path, on the stream failing, and on the client hanging up alike.
+				// A client-gone `result` doesn't mean write() has stopped touching the runner -- it may
+				// still be mid page-query. `drained` gives it a short grace window to land before this
+				// runs, rather than releasing the runner out from under an in-flight query; it cannot be
+				// awaited unboundedly, since the disconnected case is exactly the one where write() may
+				// never settle on its own (see writeUntilClientGone).
+				await drained;
 				await close();
 			}
 		} finally {
@@ -151,6 +163,59 @@ export class ScrapingExportsController {
 			// would leave the endpoint permanently answering 409 until the process restarts.
 			this.gradesRcInProgress = false;
 		}
+	}
+
+	// A dead client leaves ExcelJS's write backpressure waiting on a 'drain' that will never come, so
+	// write() hangs forever unless raced against 'close'. `result` is that race; `drained` tracks the
+	// abandoned write() call separately (see the grace-period comment at its one caller) since 'close'
+	// also fires on an ordinary completed download, which writableEnded rules out below.
+	private writeUntilClientGone(
+		res: Response,
+		write: (out: Writable) => Promise<void>,
+	): { result: Promise<void>; drained: Promise<void> } {
+		let resolveWriteSettled: () => void;
+		const writeSettled = new Promise<void>((resolve) => {
+			resolveWriteSettled = resolve;
+		});
+
+		const result = new Promise<void>((resolve, reject) => {
+			let settled = false;
+			const onClose = () => {
+				if (settled || res.writableEnded) return;
+				settled = true;
+				reject(new Error('Client disconnected before the grades RC export finished'));
+			};
+			res.once('close', onClose);
+			write(res).then(
+				() => {
+					resolveWriteSettled();
+					if (settled) return;
+					settled = true;
+					res.off('close', onClose);
+					resolve();
+				},
+				(error: unknown) => {
+					resolveWriteSettled();
+					if (settled) return;
+					settled = true;
+					res.off('close', onClose);
+					reject(error);
+				},
+			);
+		});
+
+		// A bare Promise.race here would leave the losing side's timer pending for the rest of
+		// ABANDONED_WRITE_GRACE_MS on the (overwhelmingly common) success path, which is a real handle
+		// leak across however many exports run before the process restarts.
+		const drained = new Promise<void>((resolve) => {
+			const timer = setTimeout(resolve, ABANDONED_WRITE_GRACE_MS);
+			void writeSettled.then(() => {
+				clearTimeout(timer);
+				resolve();
+			});
+		});
+
+		return { result, drained };
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {

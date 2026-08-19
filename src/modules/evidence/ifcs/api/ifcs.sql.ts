@@ -1,9 +1,73 @@
+// Shared by every chart-ancestry query below: Area, Subarea and the read-only layer above Program
+// are each optional in depth, so a fixed hop count can land on the wrong node or none at all -- the
+// real hierarchy (School -> Program -> Area/Subarea -> Course) is far shallower than this cap.
+const MAX_CHART_ANCESTRY_DEPTH = 20;
+
+// One anchor row (via `anchorJoin`, e.g. `JOIN course_chart cc ON c.id = cc.id`), walked up through
+// root_chart_id and pinned to `periodExpr`'s period -- charts are period-scoped, so an ancestor from
+// a different period is not a valid ancestor, just a coincidentally-matching id further up the tree.
+const ancestorsCte = (anchorJoin: string, periodExpr: string) => `ancestors AS (
+	SELECT c.id, c.root_chart_id, c.entity_type_id, c.entity_code, c.title, 0 AS depth
+	FROM organization.charts c
+	${anchorJoin}
+
+	UNION ALL
+
+	SELECT c.id, c.root_chart_id, c.entity_type_id, c.entity_code, c.title, a.depth + 1
+	FROM organization.charts c
+	JOIN ancestors a ON c.id = a.root_chart_id
+	WHERE a.depth < ${MAX_CHART_ANCESTRY_DEPTH}
+	  AND c.is_active = true
+	  AND c.academic_period_id = ${periodExpr}
+)`;
+
+// Nearest ancestor tagged the given entity-type code, e.g. the nearest Program/Area/Subarea above a
+// course chart.
+const nearestAncestorCte = (name: string, typeCodeParam: string) => `${name} AS (
+	SELECT a.entity_code, a.title
+	FROM ancestors a
+	JOIN core.types pt ON pt.id = a.entity_type_id
+	WHERE pt.code = ${typeCodeParam}
+	ORDER BY a.depth
+	LIMIT 1
+)`;
+
+// $4 = Program entity-type code, used to find each course chart's nearest Program ancestor.
 export const LIST_SQL = `
+WITH RECURSIVE ancestors AS (
+	SELECT c.id AS origin_id, c.id, c.root_chart_id, c.entity_type_id, c.entity_code, c.title,
+		0 AS depth
+	FROM organization.charts c
+	WHERE c.id = ANY($1::int[])
+	  AND c.is_active = true
+
+	UNION ALL
+
+	SELECT a.origin_id, c.id, c.root_chart_id, c.entity_type_id, c.entity_code, c.title,
+		a.depth + 1
+	FROM organization.charts c
+	JOIN ancestors a ON c.id = a.root_chart_id
+	WHERE a.depth < ${MAX_CHART_ANCESTRY_DEPTH}
+	  AND c.is_active = true
+	  AND c.academic_period_id = $2::int
+),
+-- Nearest ancestor tagged Program, not a fixed hop count: Area/Subarea/the read-only layer above
+-- Program are each optional in depth, so a fixed count can land on the wrong node or none at all.
+program_ancestor AS (
+	SELECT DISTINCT ON (a.origin_id) a.origin_id, a.entity_code, a.title
+	FROM ancestors a
+	JOIN core.types pt ON pt.id = a.entity_type_id
+	WHERE pt.code = $4
+	ORDER BY a.origin_id, a.depth
+)
 SELECT
 	c.id::int                                          AS "chartId",
 	ac.code                                            AS "courseCode",
 	ac.name                                            AS "courseName",
-	c_program.title                              AS "programLabel",
+	-- A chart's own title can drift from the program it represents (renamed program) since
+	-- nothing keeps them in sync after creation; the entity's own name is the source of truth
+	-- whenever the ancestor Program node has one attached.
+	COALESCE(prog.name, pa.title)                      AS "programLabel",
 	u.id::int                                          AS "coordinatorUserId",
 	u.first_name || ' ' || u.last_name                 AS "coordinatorName",
 	CASE WHEN i.id IS NULL THEN NULL ELSE jsonb_build_object(
@@ -21,9 +85,8 @@ JOIN core.types ct_entity            ON ct_entity.id = c.entity_type_id
 JOIN academic.courses ac             ON ac.id = c.entity_code
 JOIN organization.staff st           ON st.id = c.staff_id
 JOIN organization.users u            ON u.id = st.user_id
-JOIN organization.charts c_sub       ON c_sub.id     = c.root_chart_id
-JOIN organization.charts c_area      ON c_area.id    = c_sub.root_chart_id
-JOIN organization.charts c_program   ON c_program.id = c_area.root_chart_id
+LEFT JOIN program_ancestor pa        ON pa.origin_id = c.id
+LEFT JOIN academic.programs prog     ON prog.id = pa.entity_code
 LEFT JOIN evidence.ifcs i
 	ON  i.course_id          = ac.id
 	AND i.academic_period_id = $2
@@ -41,9 +104,9 @@ ORDER BY c.id
 `;
 
 export const HEADER_SQL = `
--- NOTE: WITH RECURSIVE is required at the top of the WITH block because chain_up is
--- self-referential. The RECURSIVE keyword applies to the whole block — the non-recursive
--- CTEs (course_chart, school_check, requester_staff) coexist under it without issue.
+-- NOTE: WITH RECURSIVE is required at the top of the WITH block because ancestors and chain_up are
+-- self-referential. The RECURSIVE keyword applies to the whole block — the non-recursive CTEs
+-- (course_chart, program_ancestor, school_check, requester_staff) coexist under it without issue.
 WITH RECURSIVE course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
@@ -54,16 +117,19 @@ WITH RECURSIVE course_chart AS (
 	  AND c.is_active           = true
 	LIMIT 1
 ),
+${ancestorsCte(
+	'JOIN course_chart cc ON c.id = cc.id',
+	'(SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)',
+)},
+${nearestAncestorCte('program_ancestor', '$6')},
+${nearestAncestorCte('area_ancestor', '$7')},
+${nearestAncestorCte('subarea_ancestor', '$8')},
 school_check AS (
 	SELECT 1
-	FROM course_chart cc
-	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
-	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
+	FROM ancestors a
+	JOIN core.types ct_sch ON ct_sch.id = a.entity_type_id
 	WHERE ct_sch.code = $4
-	  AND c_school.entity_code = $2
+	  AND a.entity_code = $2
 ),
 chain_up AS (
 	SELECT id, root_chart_id, staff_id, 1 AS depth
@@ -75,7 +141,7 @@ chain_up AS (
 	SELECT c.id, c.root_chart_id, c.staff_id, cu.depth + 1
 	FROM organization.charts c
 	JOIN chain_up cu ON c.id = cu.root_chart_id
-	WHERE c.is_active = true AND cu.depth < 20
+	WHERE c.is_active = true AND cu.depth < ${MAX_CHART_ANCESTRY_DEPTH}
 ),
 requester_staff AS (
 	SELECT s.id AS staff_id
@@ -91,9 +157,9 @@ SELECT
 	i.extra,
 	i.created_at                                    AS "ifcCreatedAt",
 	ap.code                                         AS "academicPeriodCode",
-	c_program.title                           AS "programLabel",
-	c_area.title                              AS "areaLabel",
-	c_sub.title                               AS "subareaLabel",
+	COALESCE(prog.name, pa.title)                   AS "programLabel",
+	aa.title                                        AS "areaLabel",
+	sa.title                                        AS "subareaLabel",
 	ac.code                                         AS "courseCode",
 	ac.name                                         AS "courseName",
 	ac.learning_outcome                             AS "courseLearningOutcome",
@@ -121,9 +187,10 @@ FROM evidence.ifcs i
 JOIN academic.academic_periods ap ON ap.id = i.academic_period_id
 JOIN academic.courses          ac ON ac.id = i.course_id
 JOIN course_chart c_course        ON true
-JOIN organization.charts c_sub    ON c_sub.id     = c_course.root_chart_id
-JOIN organization.charts c_area   ON c_area.id    = c_sub.root_chart_id
-JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
+LEFT JOIN program_ancestor pa     ON true
+LEFT JOIN academic.programs prog  ON prog.id = pa.entity_code
+LEFT JOIN area_ancestor aa        ON true
+LEFT JOIN subarea_ancestor sa     ON true
 LEFT JOIN organization.staff   coord_st   ON coord_st.id   = c_course.staff_id
 LEFT JOIN organization.users   coord_u    ON coord_u.id    = coord_st.user_id
 LEFT JOIN academic.professors  coord_prof ON coord_prof.staff_id = coord_st.id
@@ -268,8 +335,8 @@ ORDER BY p.code, comm.code, o.outcome_code
 `;
 
 export const TRANSITION_CONTEXT_SQL = `
-WITH course_chart AS (
-	SELECT c.id AS course_chart_id, c.staff_id
+WITH RECURSIVE course_chart AS (
+	SELECT c.id AS course_chart_id, c.root_chart_id, c.staff_id
 	FROM organization.charts c
 	JOIN core.types ct                ON ct.id = c.entity_type_id
 	WHERE ct.code               = $4
@@ -278,25 +345,16 @@ WITH course_chart AS (
 	  AND c.is_active           = true
 	LIMIT 1
 ),
+${ancestorsCte(
+	'JOIN course_chart cc ON c.id = cc.course_chart_id',
+	'(SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)',
+)},
 school_check AS (
 	SELECT 1
-	FROM organization.charts c
-	JOIN core.types ct                ON ct.id = c.entity_type_id
-	WHERE ct.code               = $4
-	  AND c.academic_period_id  = (SELECT academic_period_id FROM evidence.ifcs WHERE id = $1)
-	  AND c.entity_code         = (SELECT course_id          FROM evidence.ifcs WHERE id = $1)
-	  AND c.is_active           = true
-	  AND EXISTS (
-			SELECT 1
-			FROM organization.charts c_sub
-			JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
-			JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
-			JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
-			JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
-			WHERE c_sub.id           = c.root_chart_id
-			  AND ct_sch.code        = $5
-			  AND c_school.entity_code = $2
-	  )
+	FROM ancestors a
+	JOIN core.types ct_sch ON ct_sch.id = a.entity_type_id
+	WHERE ct_sch.code = $5
+	  AND a.entity_code = $2
 )
 SELECT
 	(SELECT course_chart_id FROM course_chart)::int AS "courseChartId",
@@ -337,7 +395,7 @@ LEFT JOIN organization.users u  ON u.id  = st.user_id
 `;
 
 export const PREFILL_HEADER_SQL = `
-WITH course_chart AS (
+WITH RECURSIVE course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
 	JOIN core.types ct                ON ct.id = c.entity_type_id
@@ -347,32 +405,56 @@ WITH course_chart AS (
 	  AND c.is_active           = true
 	LIMIT 1
 ),
+${ancestorsCte('JOIN course_chart cc ON c.id = cc.id', '$2::int')},
+${nearestAncestorCte('area_ancestor', '$7')},
+${nearestAncestorCte('subarea_ancestor', '$8')},
 school_check AS (
 	SELECT 1
-	FROM course_chart cc
-	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
-	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
+	FROM ancestors a
+	JOIN core.types ct_sch ON ct_sch.id = a.entity_type_id
 	WHERE ct_sch.code = $5
-	  AND c_school.entity_code = $3
+	  AND a.entity_code = $3
+),
+chain_up AS (
+	SELECT id, root_chart_id, staff_id, 1 AS depth
+	FROM organization.charts
+	WHERE id = (SELECT id FROM course_chart) AND is_active = true
+
+	UNION ALL
+
+	SELECT c.id, c.root_chart_id, c.staff_id, cu.depth + 1
+	FROM organization.charts c
+	JOIN chain_up cu ON c.id = cu.root_chart_id
+	WHERE c.is_active = true AND cu.depth < ${MAX_CHART_ANCESTRY_DEPTH}
+),
+requester_staff AS (
+	SELECT s.id AS staff_id
+	FROM organization.staff s
+	WHERE s.user_id = $6
+	LIMIT 1
 )
 SELECT
 	ap.code                                         AS "academicPeriodCode",
-	c_area.title                              AS "areaLabel",
-	c_sub.title                               AS "subareaLabel",
+	aa.title                                        AS "areaLabel",
+	sa.title                                        AS "subareaLabel",
 	ac.id::int                                      AS "courseId",
 	ac.name                                         AS "courseName",
 	ac.learning_outcome                             AS "courseLearningOutcome",
 	coord_u.id::int                                 AS "coordinatorUserId",
 	coord_prof.code                                 AS "coordinatorCode",
-	coord_u.first_name || ' ' || coord_u.last_name  AS "coordinatorName"
+	coord_u.first_name || ' ' || coord_u.last_name  AS "coordinatorName",
+	EXISTS (
+		SELECT 1 FROM chain_up cu, requester_staff rs WHERE cu.staff_id = rs.staff_id
+	)                                               AS "requesterInChain",
+	EXISTS (
+		SELECT 1 FROM chain_up cu, requester_staff rs
+		WHERE cu.staff_id = rs.staff_id AND cu.depth > 1
+	)                                               AS "requesterHasHigherLevel"
 FROM course_chart c_course
 JOIN academic.academic_periods ap   ON ap.id = c_course.academic_period_id
 JOIN academic.courses          ac   ON ac.id = c_course.entity_code
-JOIN organization.charts c_sub      ON c_sub.id  = c_course.root_chart_id
-JOIN organization.charts c_area     ON c_area.id = c_sub.root_chart_id
+LEFT JOIN area_ancestor aa          ON true
+LEFT JOIN subarea_ancestor sa       ON true
 LEFT JOIN organization.staff   coord_st   ON coord_st.id   = c_course.staff_id
 LEFT JOIN organization.users   coord_u    ON coord_u.id    = coord_st.user_id
 LEFT JOIN academic.professors  coord_prof ON coord_prof.staff_id = coord_st.id
@@ -380,7 +462,7 @@ WHERE EXISTS (SELECT 1 FROM school_check)
 `;
 
 export const CHART_RESOLUTION_SQL = `
-WITH course_chart AS (
+WITH RECURSIVE course_chart AS (
 	SELECT c.*
 	FROM organization.charts c
 	JOIN core.types ct                ON ct.id = c.entity_type_id
@@ -390,40 +472,41 @@ WITH course_chart AS (
 	  AND c.is_active           = true
 	LIMIT 1
 ),
+${ancestorsCte('JOIN course_chart cc ON c.id = cc.id', '$2::int')},
+${nearestAncestorCte('program_ancestor', '$7')},
 school_check AS (
 	SELECT 1
-	FROM course_chart cc
-	JOIN organization.charts c_sub     ON c_sub.id     = cc.root_chart_id
-	JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
-	JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
-	JOIN organization.charts c_school  ON c_school.id  = c_program.root_chart_id
-	JOIN core.types ct_sch             ON ct_sch.id    = c_school.entity_type_id
+	FROM ancestors a
+	JOIN core.types ct_sch ON ct_sch.id = a.entity_type_id
 	WHERE ct_sch.code = $5
-	  AND c_school.entity_code = $3
+	  AND a.entity_code = $3
 )
 SELECT
-	c_course.entity_code::int    AS "courseId",
-	c_program.entity_code::int   AS "programId",
-	rs.id::int                    AS "requesterStaffId"
+	c_course.entity_code::int                        AS "courseId",
+	(SELECT entity_code FROM program_ancestor)::int  AS "programId",
+	rs.id::int                                       AS "requesterStaffId"
 FROM course_chart c_course
-JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
-JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
-JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
 LEFT JOIN organization.staff rs    ON rs.user_id = $6
 WHERE EXISTS (SELECT 1 FROM school_check)
 `;
 
 export const PROGRAM_BY_COURSE_PERIOD_SQL = `
-SELECT c_program.entity_code::int AS "programId"
-FROM organization.charts c_course
-JOIN core.types ct                 ON ct.id = c_course.entity_type_id
-JOIN organization.charts c_sub     ON c_sub.id     = c_course.root_chart_id
-JOIN organization.charts c_area    ON c_area.id    = c_sub.root_chart_id
-JOIN organization.charts c_program ON c_program.id = c_area.root_chart_id
-WHERE c_course.entity_code        = $1
-  AND c_course.academic_period_id = $2
-  AND ct.code                     = $3
-  AND c_course.is_active          = true
+WITH RECURSIVE course_chart AS (
+	SELECT c.id, c.root_chart_id
+	FROM organization.charts c
+	JOIN core.types ct  ON ct.id = c.entity_type_id
+	WHERE c.entity_code        = $1
+	  AND c.academic_period_id = $2
+	  AND ct.code               = $3
+	  AND c.is_active           = true
+	LIMIT 1
+),
+${ancestorsCte('JOIN course_chart cc ON c.id = cc.id', '$2::int')}
+SELECT a.entity_code::int AS "programId"
+FROM ancestors a
+JOIN core.types pt ON pt.id = a.entity_type_id
+WHERE pt.code = $4
+ORDER BY a.depth
 LIMIT 1
 `;
 

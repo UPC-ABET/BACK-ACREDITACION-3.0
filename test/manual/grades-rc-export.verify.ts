@@ -112,6 +112,10 @@ const LOADED_SECTIONS = [
 // mapping stands between it and the export, so nothing else can explain its rows disappearing.
 const CONTROL_SECTIONS = LOADED_SECTIONS.filter((section) => section !== 'NRC14');
 
+// What the repository actually binds: the two scopes intersected before the query, never ANDed as
+// two arrays inside it -- see the $10 note in GRADES_RC_SQL.
+const SCOPED_SECTIONS = LOADED_SECTIONS.filter((section) => CONTROL_SECTIONS.includes(section));
+
 // academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: the
 // upload rejects the whole file over it, so the row has to ship carrying that warning.
 const ENROLLED: Array<[string, string]> = [
@@ -791,14 +795,13 @@ async function main(): Promise<void> {
 			DESIGNATED.map(([, code]) => code),
 			QUALIFICATION_STATUSES.ASISTIO,
 			QUALIFICATION_STATUSES.SAN,
-			LOADED_SECTIONS,
+			SCOPED_SECTIONS,
 			QUALIFICATION_STATUSES.RET,
 			ENROLLED.map(([section]) => section),
 			ENROLLED.map(([, student]) => student),
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			QUALIFICATION_STATUSES.NR,
-			CONTROL_SECTIONS,
 		];
 		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, params);
 

@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { PassThrough } from 'node:stream';
 
-import { ScrapingExportsController } from './scraping-exports.controller';
+import { ABANDONED_WRITE_GRACE_MS, ScrapingExportsController } from './scraping-exports.controller';
 import { ScrapingExportsService } from './scraping-exports.service';
 
 // Each grades RC export pins a pooled connection and one run of the cross-scrape merge for the
@@ -97,5 +97,64 @@ describe('ScrapingExportsController.gradesRc — one export at a time', () => {
 		await controller.gradesRc('es', 1, fakeResponse());
 
 		expect(prepareGradesRc).toHaveBeenCalledTimes(2);
+	});
+
+	// write() never settling is the disconnected case exactly: ExcelJS's backpressure has nothing
+	// left to drain into. close() gives it ABANDONED_WRITE_GRACE_MS to land on its own (in case a
+	// page query was already in flight) before releasing regardless -- fake timers stand in for
+	// that wait so the test doesn't actually take three seconds.
+	it('releases the guard when the client disconnects mid-download, even though write() never settles', async () => {
+		jest.useFakeTimers();
+		try {
+			const res = fakeResponse();
+			const closeAfterDisconnect = jest.fn().mockResolvedValue(undefined);
+			prepareGradesRc.mockResolvedValueOnce(
+				prepared({
+					write: jest.fn(() => new Promise<void>(() => undefined)),
+					close: closeAfterDisconnect,
+				}),
+			);
+
+			const pending = controller.gradesRc('es', 1, res);
+			await Promise.resolve();
+			(res as unknown as { emit: (event: string) => void }).emit('close');
+			await jest.advanceTimersByTimeAsync(ABANDONED_WRITE_GRACE_MS);
+			await pending;
+
+			expect((res as unknown as { destroy: jest.Mock }).destroy).toHaveBeenCalled();
+			expect(closeAfterDisconnect).toHaveBeenCalled();
+
+			prepareGradesRc.mockResolvedValueOnce(prepared());
+			await controller.gradesRc('es', 1, fakeResponse());
+
+			expect(prepareGradesRc).toHaveBeenCalledTimes(2);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	// 'close' fires on an ordinary completed download too -- writableEnded distinguishes that from
+	// an actual disconnect, so a client closing its socket right after receiving the last byte
+	// doesn't get logged as a failed export.
+	it('does not treat a normal completed download as a disconnect', async () => {
+		const res = fakeResponse();
+		prepareGradesRc.mockResolvedValueOnce(
+			prepared({
+				// A real write() ends the stream itself before its promise resolves, exactly like
+				// ExcelJS's WorkbookWriter does on commit -- that's what makes writableEnded true by
+				// the time 'close' fires next.
+				write: jest.fn(() => {
+					(res as unknown as { end: () => void }).end();
+					return Promise.resolve();
+				}),
+			}),
+		);
+
+		const pending = controller.gradesRc('es', 1, res);
+		await Promise.resolve();
+		(res as unknown as { emit: (event: string) => void }).emit('close');
+		await pending;
+
+		expect((res as unknown as { destroy: jest.Mock }).destroy).not.toHaveBeenCalled();
 	});
 });

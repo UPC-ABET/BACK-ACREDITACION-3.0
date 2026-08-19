@@ -65,8 +65,9 @@ export class IfcController extends BaseController<IfcService> {
 		@Query() query: IfcPrefillQueryDto,
 		@SchoolId() schoolId: number,
 		@AcademicPeriodId() academicPeriodId: number,
+		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.prefill(query, schoolId, academicPeriodId);
+		const result = await this.service.prefill(query, schoolId, academicPeriodId, user.userId);
 		return parseSuccessResponse(result);
 	}
 
@@ -136,7 +137,7 @@ export class IfcController extends BaseController<IfcService> {
 		@SchoolId() schoolId: number,
 		@CurrentUser() user: RequestUser,
 	) {
-		const result = await this.service.getView(id, user.userId, schoolId);
+		const result = await this.service.getView(id, user.userId, schoolId, isAdmin(user));
 		return parseSuccessResponse(result);
 	}
 

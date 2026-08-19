@@ -14093,6 +14093,16 @@
 						"type": "array",
 						"example": [{ "key": "outcomeCourseResultValue" }],
 						"items": { "type": "object" }
+					},
+					"requesterInChain": {
+						"type": "boolean",
+						"example": true,
+						"description": "True when the requester is the own coordinator OR any ancestor of the course in the chart tree."
+					},
+					"requesterHasHigherLevel": {
+						"type": "boolean",
+						"example": true,
+						"description": "True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). An admin is NOT automatically true here."
 					}
 				},
 				"required": [
@@ -14104,7 +14114,9 @@
 					"coordinatorCode",
 					"coordinatorName",
 					"coordinatorUserId",
-					"outcomeCourseResult"
+					"outcomeCourseResult",
+					"requesterInChain",
+					"requesterHasHigherLevel"
 				]
 			},
 			"IfcFindingPayloadDto": {
@@ -14317,6 +14329,11 @@
 						"type": "boolean",
 						"example": true,
 						"description": "True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). Drives the Approve/Reject buttons on the view page."
+					},
+					"showHistory": {
+						"type": "boolean",
+						"example": true,
+						"description": "True when the requester may view the IFC status history — a strict ancestor in the chart tree, OR an admin. Drives the History button on the view page; mirrors GET .../status-history's own access check exactly, so the frontend does not need to know the requester is an admin."
 					}
 				},
 				"required": [
@@ -14334,7 +14351,8 @@
 					"coordinator",
 					"status",
 					"requesterInChain",
-					"requesterHasHigherLevel"
+					"requesterHasHigherLevel",
+					"showHistory"
 				]
 			},
 			"IfcOutcomeItemDto": {
