@@ -115,9 +115,22 @@ export class GradesRcExportRepository {
 		}
 	}
 
-	// Gathered before the scratch table exists, so a failure here costs no connection.
+	// Gathered before the scratch table exists, so a failure here costs no connection. Only the
+	// enrollment lookup depends on the scoped sections, so it's the only one held back behind that
+	// intersection -- the rest run alongside it rather than paying an avoidable extra round trip.
 	private async buildGradesRcParams(academicPeriodId: number): Promise<unknown[]> {
-		const [uploadedSections, controlSections] = await Promise.all([
+		const [
+			period,
+			gradeTypes,
+			qualificationStatuses,
+			designated,
+			uploadedSections,
+			controlSections,
+		] = await Promise.all([
+			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
+			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
+			this.getDesignatedGradeTypesBySection(academicPeriodId),
 			this.getUploadedSectionCodes(academicPeriodId),
 			this.getControlOutcomeSectionCodes(academicPeriodId),
 		]);
@@ -129,13 +142,7 @@ export class GradesRcExportRepository {
 		const controlScope = new Set(controlSections);
 		const scopedSections = uploadedSections.filter((section) => controlScope.has(section));
 
-		const [period, gradeTypes, qualificationStatuses, designated, enrollments] = await Promise.all([
-			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
-			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
-			this.getTypeCodesByName(TYPE_GROUP_CODES.QUALIFICATION_STATUS),
-			this.getDesignatedGradeTypesBySection(academicPeriodId),
-			this.getEnrolledSectionStudents(academicPeriodId, scopedSections),
-		]);
+		const enrollments = await this.getEnrolledSectionStudents(academicPeriodId, scopedSections);
 
 		return [
 			period,
