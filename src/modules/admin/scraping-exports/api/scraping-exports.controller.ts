@@ -1,6 +1,7 @@
 import { ConflictException, Controller, Get, Logger, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import type { Writable } from 'stream';
 
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import {
@@ -133,7 +134,7 @@ export class ScrapingExportsController {
 			this.setDownloadHeaders(res, fileName);
 
 			try {
-				await write(res);
+				await this.writeUntilClientGone(res, write);
 			} catch (error) {
 				this.logger.error(
 					`Grades RC export failed after the download had started (period ${academicPeriodId})`,
@@ -151,6 +152,37 @@ export class ScrapingExportsController {
 			// would leave the endpoint permanently answering 409 until the process restarts.
 			this.gradesRcInProgress = false;
 		}
+	}
+
+	// A dead client leaves ExcelJS's write backpressure waiting on a 'drain' that will never come, so
+	// write() hangs forever unless raced against 'close'.
+	private writeUntilClientGone(
+		res: Response,
+		write: (out: Writable) => Promise<void>,
+	): Promise<void> {
+		return new Promise((resolve, reject) => {
+			let settled = false;
+			const onClose = () => {
+				if (settled) return;
+				settled = true;
+				reject(new Error('Client disconnected before the grades RC export finished'));
+			};
+			res.once('close', onClose);
+			write(res).then(
+				() => {
+					if (settled) return;
+					settled = true;
+					res.off('close', onClose);
+					resolve();
+				},
+				(error: unknown) => {
+					if (settled) return;
+					settled = true;
+					res.off('close', onClose);
+					reject(error);
+				},
+			);
+		});
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {

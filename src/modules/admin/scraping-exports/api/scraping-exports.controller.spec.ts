@@ -98,4 +98,28 @@ describe('ScrapingExportsController.gradesRc — one export at a time', () => {
 
 		expect(prepareGradesRc).toHaveBeenCalledTimes(2);
 	});
+
+	it('releases the guard when the client disconnects mid-download, even though write() never settles', async () => {
+		const res = fakeResponse();
+		const closeAfterDisconnect = jest.fn().mockResolvedValue(undefined);
+		prepareGradesRc.mockResolvedValueOnce(
+			prepared({
+				write: jest.fn(() => new Promise<void>(() => undefined)),
+				close: closeAfterDisconnect,
+			}),
+		);
+
+		const pending = controller.gradesRc('es', 1, res);
+		await Promise.resolve();
+		(res as unknown as { emit: (event: string) => void }).emit('close');
+		await pending;
+
+		expect((res as unknown as { destroy: jest.Mock }).destroy).toHaveBeenCalled();
+		expect(closeAfterDisconnect).toHaveBeenCalled();
+
+		prepareGradesRc.mockResolvedValueOnce(prepared());
+		await controller.gradesRc('es', 1, fakeResponse());
+
+		expect(prepareGradesRc).toHaveBeenCalledTimes(2);
+	});
 });
