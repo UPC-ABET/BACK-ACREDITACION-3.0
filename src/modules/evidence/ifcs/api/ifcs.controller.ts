@@ -12,6 +12,7 @@ import {
 	SwaggerIfcList,
 	SwaggerIfcSchools,
 	SwaggerIfcGetView,
+	SwaggerIfcStatusHistory,
 	SwaggerIfcSubmit,
 	SwaggerIfcApprove,
 	SwaggerIfcReject,
@@ -136,6 +137,18 @@ export class IfcController extends BaseController<IfcService> {
 		@CurrentUser() user: RequestUser,
 	) {
 		const result = await this.service.getView(id, user.userId, schoolId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerIfcStatusHistory()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.IFCS, action: PERMISSION_ACTIONS.GET })
+	async statusHistory(
+		@Param('id', ParseIntPipe) id: number,
+		@SchoolId() schoolId: number,
+		@CurrentUser() user: RequestUser,
+	) {
+		const result = await this.service.getStatusHistory(id, user.userId, schoolId, isAdmin(user));
 		return parseSuccessResponse(result);
 	}
 

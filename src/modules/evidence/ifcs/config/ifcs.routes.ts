@@ -16,6 +16,12 @@ export const ifcsRoutes = {
 				route: '/get-by-id/:id',
 				summary: 'Obtener el IFC completo (cabecera, resultado de logros, hallazgos, acciones)',
 			},
+			statusHistory: {
+				method: 'GET',
+				route: '/:id/status-history',
+				summary:
+					'Obtener el historial completo de cambios de estado del IFC (solo para quienes están por encima del coordinador del curso en el organigrama, o el administrador)',
+			},
 			getByFilters: { method: 'POST', route: '/get-by-filters', summary: 'Buscar IFCs' },
 			list: { method: 'POST', route: '/list', summary: 'Listar IFCs por nodos de organigrama' },
 			schools: {

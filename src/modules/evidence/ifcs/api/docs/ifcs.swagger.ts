@@ -6,6 +6,7 @@ import {
 	ListIfcsDto,
 	RejectIfcDto,
 	IfcViewResponseDto,
+	IfcStatusHistoryResponseDto,
 	IfcPdfQueryDto,
 	IfcPdfBulkDto,
 	IfcStatusReportDto,
@@ -48,6 +49,13 @@ export const SwaggerIfcGetView = () =>
 		...cfg.operation.getById,
 		param: { name: 'id', type: 'number' },
 		responseType: IfcViewResponseDto,
+	});
+
+export const SwaggerIfcStatusHistory = () =>
+	HttpMethodWithSwagger({
+		...cfg.operation.statusHistory,
+		param: { name: 'id', type: 'number' },
+		responseType: IfcStatusHistoryResponseDto,
 	});
 
 export const SwaggerIfcSubmit = () =>

@@ -5237,6 +5237,41 @@
 				"tags": ["IFCs"]
 			}
 		},
+		"/ifcs/{id}/status-history": {
+			"get": {
+				"operationId": "IfcController_statusHistory",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "id",
+						"schema": { "type": "number" }
+					},
+					{
+						"name": "X-School-Id",
+						"in": "header",
+						"description": "Active school scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 3 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IfcStatusHistoryResponseDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Obtener el historial completo de cambios de estado del IFC (solo para quienes están por encima del coordinador del curso en el organigrama, o el administrador)",
+				"tags": ["IFCs"]
+			}
+		},
 		"/ifcs/{id}/submit": {
 			"post": {
 				"operationId": "IfcController_submit",
@@ -14441,6 +14476,17 @@
 					}
 				},
 				"required": ["ifc", "outcomeCourseResult", "findings"]
+			},
+			"IfcStatusHistoryResponseDto": {
+				"type": "object",
+				"properties": {
+					"statuses": {
+						"example": {},
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/IfcStatusInfoDto" }
+					}
+				},
+				"required": ["statuses"]
 			},
 			"RejectIfcDto": {
 				"type": "object",
