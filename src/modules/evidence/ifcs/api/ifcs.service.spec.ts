@@ -51,7 +51,12 @@ function buildServices(dataSource: any) {
 				language,
 			]),
 		findIfcListRows: (chartIds: number[], academicPeriodId: number) =>
-			ds.query('', [chartIds, academicPeriodId, TYPE_CODES.ENTITY_TYPE.COURSE]),
+			ds.query('', [
+				chartIds,
+				academicPeriodId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.PROGRAM,
+			]),
 		findViewHeaderRows: (ifcId: number, schoolId: number, userId: number) =>
 			ds.query('', [
 				ifcId,
@@ -60,6 +65,8 @@ function buildServices(dataSource: any) {
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
 				TYPE_CODES.ENTITY_TYPE.PROGRAM,
+				TYPE_CODES.ENTITY_TYPE.AREA,
+				TYPE_CODES.ENTITY_TYPE.SUBAREA,
 			]),
 		findFindingRows: (ifcId: number, findingPrefixKey: string) =>
 			ds.query('', [ifcId, findingPrefixKey]),
@@ -104,6 +111,8 @@ function buildServices(dataSource: any) {
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
+				TYPE_CODES.ENTITY_TYPE.AREA,
+				TYPE_CODES.ENTITY_TYPE.SUBAREA,
 			]),
 		resolveCurrentStatusCode: async (chartId: number, periodId: number, fallback: string) => {
 			const rows = await ds.query('', [chartId, periodId, fallback]);
@@ -157,9 +166,15 @@ function buildServices(dataSource: any) {
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
+				TYPE_CODES.ENTITY_TYPE.PROGRAM,
 			]),
 		findProgramByCoursePeriod: (courseId: number, periodId: number, manager?: any) =>
-			(manager ?? ds).query('', [courseId, periodId, TYPE_CODES.ENTITY_TYPE.COURSE]),
+			(manager ?? ds).query('', [
+				courseId,
+				periodId,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+				TYPE_CODES.ENTITY_TYPE.PROGRAM,
+			]),
 		insertIfc: async (
 			courseId: number,
 			academicPeriodId: number,
@@ -276,7 +291,7 @@ describe('IfcService.list', () => {
 		({ service } = buildServices(dataSource));
 	});
 
-	it('forwards chart_ids, period_id, and the COURSE type code to the SQL query', async () => {
+	it('forwards chart_ids, period_id, and the COURSE and PROGRAM type codes to the SQL query', async () => {
 		const expected = [
 			{ chartId: 310, courseCode: 'CRS_FUND_PROG', ifc: null },
 			{ chartId: 311, courseCode: 'CRS_REQ_ENG', ifc: { id: 1, statusCode: 'TG701-T001' } },
@@ -289,7 +304,12 @@ describe('IfcService.list', () => {
 		expect(result).toBe(expected);
 		expect(dataSource.query).toHaveBeenCalledTimes(1);
 		const [, params] = dataSource.query.mock.calls[0];
-		expect(params).toEqual([[310, 311], 5, TYPE_CODES.ENTITY_TYPE.COURSE]);
+		expect(params).toEqual([
+			[310, 311],
+			5,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+		]);
 	});
 
 	it('returns whatever the DataSource returns (passthrough)', async () => {
@@ -355,6 +375,8 @@ describe('IfcService.getView', () => {
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			99,
 			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+			TYPE_CODES.ENTITY_TYPE.AREA,
+			TYPE_CODES.ENTITY_TYPE.SUBAREA,
 		]);
 
 		const [, findingParams] = dataSource.query.mock.calls[1];
@@ -910,6 +932,8 @@ describe('IfcService.prefill', () => {
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			1,
+			TYPE_CODES.ENTITY_TYPE.AREA,
+			TYPE_CODES.ENTITY_TYPE.SUBAREA,
 		]);
 		const [, outcomeParams] = dataSource.query.mock.calls[1];
 		expect(outcomeParams).toEqual([310]);
@@ -1018,6 +1042,16 @@ describe('IfcService.createIfc', () => {
 		await expect(service.createIfc(baseDto(), 99, 9, 5)).rejects.toMatchObject({
 			kind: 'notFound',
 		});
+
+		expect(em.query.mock.calls[0][1]).toEqual([
+			310,
+			5,
+			9,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
+			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			99,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+		]);
 	});
 
 	it('rejects 409 when an IFC already exists for the (course, period)', async () => {
