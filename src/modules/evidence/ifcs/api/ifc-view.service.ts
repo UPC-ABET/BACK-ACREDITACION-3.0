@@ -60,7 +60,7 @@ export class IfcViewService {
 
 	constructor(private readonly repository: IfcRepository) {}
 
-	async getView(id: number, userId: number, schoolId: number) {
+	async getView(id: number, userId: number, schoolId: number, isAdminUser: boolean) {
 		const errors: string[] = [];
 
 		const [headerResult, findingsResult, outcomeCourseResult] = await Promise.allSettled([
@@ -153,6 +153,7 @@ export class IfcViewService {
 				findingOutcomeRows,
 				findingActionRows,
 				previousActions,
+				isAdminUser,
 			}),
 			...(errors.length > 0 && { errors }),
 		};
@@ -240,6 +241,7 @@ export class IfcViewService {
 		findingOutcomeRows: IfcFindingOutcomeRow[];
 		findingActionRows: IfcFindingActionRow[];
 		previousActions: IfcViewPreviousAction[];
+		isAdminUser: boolean;
 	}) {
 		const {
 			header,
@@ -248,6 +250,7 @@ export class IfcViewService {
 			findingOutcomeRows,
 			findingActionRows,
 			previousActions,
+			isAdminUser,
 		} = input;
 
 		const ifc = {
@@ -279,6 +282,7 @@ export class IfcViewService {
 				: null,
 			requesterInChain: Boolean(header.requesterInChain),
 			requesterHasHigherLevel: Boolean(header.requesterHasHigherLevel),
+			showHistory: isAdminUser || Boolean(header.requesterHasHigherLevel),
 		};
 
 		const outcomesByFinding = new Map<number, IfcViewFindingOutcome[]>();

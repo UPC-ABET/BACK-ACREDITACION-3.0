@@ -145,6 +145,8 @@ export interface IfcPrefillHeaderRow {
 	coordinatorUserId: number | null;
 	coordinatorCode: string | null;
 	coordinatorName: string | null;
+	requesterInChain: boolean;
+	requesterHasHigherLevel: boolean;
 }
 
 export interface IfcTransitionContextRow {
@@ -247,6 +249,7 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			chartIds,
 			academicPeriodId,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
 		]);
 	}
 
@@ -261,6 +264,7 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			userId,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
 		]);
 	}
 
@@ -319,6 +323,7 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 		chartId: number,
 		academicPeriodId: number,
 		schoolId: number,
+		userId: number,
 	): Promise<IfcPrefillHeaderRow[]> {
 		return this.dataSource.query(PREFILL_HEADER_SQL, [
 			chartId,
@@ -326,6 +331,7 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			schoolId,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			userId,
 		]);
 	}
 
@@ -414,6 +420,7 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			userId,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
 		]);
 	}
 
@@ -426,6 +433,7 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			courseId,
 			periodId,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
 		]);
 	}
 

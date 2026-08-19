@@ -14093,6 +14093,16 @@
 						"type": "array",
 						"example": [{ "key": "outcomeCourseResultValue" }],
 						"items": { "type": "object" }
+					},
+					"requesterInChain": {
+						"type": "boolean",
+						"example": true,
+						"description": "True when the requester is the own coordinator OR any ancestor of the course in the chart tree."
+					},
+					"requesterHasHigherLevel": {
+						"type": "boolean",
+						"example": true,
+						"description": "True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). An admin is NOT automatically true here."
 					}
 				},
 				"required": [
@@ -14104,7 +14114,9 @@
 					"coordinatorCode",
 					"coordinatorName",
 					"coordinatorUserId",
-					"outcomeCourseResult"
+					"outcomeCourseResult",
+					"requesterInChain",
+					"requesterHasHigherLevel"
 				]
 			},
 			"IfcFindingPayloadDto": {
@@ -14316,7 +14328,7 @@
 					"requesterHasHigherLevel": {
 						"type": "boolean",
 						"example": true,
-						"description": "True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). Drives the Approve/Reject buttons on the view page."
+						"description": "True only when the requester is a strict ancestor of the course in the chart tree (excludes the own coordinator). Drives the Approve/Reject buttons on the view page. An admin is NOT automatically true here — status history access for admins is granted server-side regardless of this flag; see GET .../status-history."
 					}
 				},
 				"required": [

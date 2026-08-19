@@ -24,6 +24,8 @@ export class OrgScopeRepository {
 			schoolId,
 			periodId,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+			TYPE_CODES.ENTITY_TYPE.COURSE,
 		]);
 	}
 }
@@ -94,11 +96,18 @@ SELECT
 	st.depth                                           AS "levelNum",
 	et.code                                            AS "tagCode",
 	et.name                                            AS "tagName",
-	c.title                                            AS "label",
+	-- A chart's own title can drift from the entity it represents (renamed course, retitled
+	-- program) since nothing keeps them in sync after creation; the entity's own name is the
+	-- source of truth whenever one is attached. Area, Subarea and Dean never carry entity_code
+	-- (see ENTITY_TYPES_WITH_CODE), so they fall straight through to the title.
+	COALESCE(sch.name, prog.name, crs.name, c.title)   AS "label",
 	EXISTS(SELECT 1 FROM anchors a WHERE a.id = c.id)  AS "isAnchor"
 FROM scope s
 JOIN organization.charts c ON c.id = s.id
 JOIN school_subtree st     ON st.id = s.id
 LEFT JOIN core.types et    ON et.id = c.entity_type_id
+LEFT JOIN organization.schools sch ON et.code = $4 AND sch.id  = c.entity_code
+LEFT JOIN academic.programs prog   ON et.code = $5 AND prog.id = c.entity_code
+LEFT JOIN academic.courses crs     ON et.code = $6 AND crs.id  = c.entity_code
 ORDER BY st.depth ASC, c.id ASC
 `;

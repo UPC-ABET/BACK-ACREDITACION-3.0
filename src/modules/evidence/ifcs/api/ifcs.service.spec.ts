@@ -59,6 +59,7 @@ function buildServices(dataSource: any) {
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 				userId,
+				TYPE_CODES.ENTITY_TYPE.PROGRAM,
 			]),
 		findFindingRows: (ifcId: number, findingPrefixKey: string) =>
 			ds.query('', [ifcId, findingPrefixKey]),
@@ -90,13 +91,19 @@ function buildServices(dataSource: any) {
 				implementedCode,
 				findingPrefixKey,
 			]),
-		findPrefillHeaderRows: (chartId: number, academicPeriodId: number, schoolId: number) =>
+		findPrefillHeaderRows: (
+			chartId: number,
+			academicPeriodId: number,
+			schoolId: number,
+			userId: number,
+		) =>
 			ds.query('', [
 				chartId,
 				academicPeriodId,
 				schoolId,
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				userId,
 			]),
 		resolveCurrentStatusCode: async (chartId: number, periodId: number, fallback: string) => {
 			const rows = await ds.query('', [chartId, periodId, fallback]);
@@ -336,7 +343,7 @@ describe('IfcService.getView', () => {
 			.mockResolvedValueOnce([]) // FINDING_ACTIONS
 			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
-		await service.getView(42, 99, 9);
+		await service.getView(42, 99, 9, false);
 
 		expect(dataSource.query).toHaveBeenCalledTimes(6);
 
@@ -347,6 +354,7 @@ describe('IfcService.getView', () => {
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			99,
+			TYPE_CODES.ENTITY_TYPE.PROGRAM,
 		]);
 
 		const [, findingParams] = dataSource.query.mock.calls[1];
@@ -384,7 +392,7 @@ describe('IfcService.getView', () => {
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
-		await expect(service.getView(42, 99, 9)).rejects.toMatchObject({
+		await expect(service.getView(42, 99, 9, false)).rejects.toMatchObject({
 			status: HttpStatus.NOT_FOUND,
 		});
 	});
@@ -396,7 +404,7 @@ describe('IfcService.getView', () => {
 			.mockResolvedValueOnce([]) // OUTCOME_COURSE
 			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
-		const result = await service.getView(42, 99, 9);
+		const result = await service.getView(42, 99, 9, false);
 
 		expect(dataSource.query).toHaveBeenCalledTimes(4);
 		expect(result.findings).toEqual([]);
@@ -412,7 +420,7 @@ describe('IfcService.getView', () => {
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
-		const result = await service.getView(42, 99, 9);
+		const result = await service.getView(42, 99, 9, false);
 
 		expect(result.ifc.status).toBeNull();
 	});
@@ -424,7 +432,7 @@ describe('IfcService.getView', () => {
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
-		const result = await service.getView(42, 99, 9);
+		const result = await service.getView(42, 99, 9, false);
 
 		expect(result.ifc.requesterInChain).toBe(false);
 	});
@@ -438,9 +446,46 @@ describe('IfcService.getView', () => {
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
-		const result = await service.getView(42, 99, 9);
+		const result = await service.getView(42, 99, 9, false);
 
 		expect(result.ifc.requesterInChain).toBe(true);
+		expect(result.ifc.requesterHasHigherLevel).toBe(false);
+	});
+
+	it('sets showHistory from requesterHasHigherLevel when not admin', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([{ ...headerRow, requesterHasHigherLevel: true }])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
+
+		const result = await service.getView(42, 99, 9, false);
+
+		expect(result.ifc.showHistory).toBe(true);
+	});
+
+	it('sets showHistory=false when neither a higher-level requester nor an admin', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([{ ...headerRow, requesterHasHigherLevel: false }])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
+
+		const result = await service.getView(42, 99, 9, false);
+
+		expect(result.ifc.showHistory).toBe(false);
+	});
+
+	it('sets showHistory=true for an admin even when requesterHasHigherLevel is false', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([{ ...headerRow, requesterHasHigherLevel: false }])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
+
+		const result = await service.getView(42, 99, 9, true);
+
+		expect(result.ifc.showHistory).toBe(true);
 		expect(result.ifc.requesterHasHigherLevel).toBe(false);
 	});
 });
@@ -844,6 +889,8 @@ describe('IfcService.prefill', () => {
 		coordinatorUserId: 7,
 		coordinatorCode: 'PROF-001',
 		coordinatorName: 'Ada Lovelace',
+		requesterInChain: false,
+		requesterHasHigherLevel: false,
 	};
 
 	it('calls the three SQL queries with the correct positional params', async () => {
@@ -852,7 +899,7 @@ describe('IfcService.prefill', () => {
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([]);
 
-		await service.prefill({ chartId: 310 }, 9, 5);
+		await service.prefill({ chartId: 310 }, 9, 5, 1);
 
 		expect(dataSource.query).toHaveBeenCalledTimes(3);
 		const [, headerParams] = dataSource.query.mock.calls[0];
@@ -862,6 +909,7 @@ describe('IfcService.prefill', () => {
 			9,
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
+			1,
 		]);
 		const [, outcomeParams] = dataSource.query.mock.calls[1];
 		expect(outcomeParams).toEqual([310]);
@@ -880,7 +928,7 @@ describe('IfcService.prefill', () => {
 	it('returns 404 when the header is empty (chart not in school)', async () => {
 		dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
-		await expect(service.prefill({ chartId: 310 }, 9, 5)).rejects.toMatchObject({
+		await expect(service.prefill({ chartId: 310 }, 9, 5, 1)).rejects.toMatchObject({
 			kind: 'notFound',
 		});
 	});
@@ -910,12 +958,26 @@ describe('IfcService.prefill', () => {
 			])
 			.mockResolvedValueOnce([]); // PREVIOUS_ACTIONS
 
-		const result = await service.prefill({ chartId: 310 }, 9, 5);
+		const result = await service.prefill({ chartId: 310 }, 9, 5, 1);
 
 		expect(result.outcomeCourseResult).toHaveLength(1);
 		expect(result.outcomeCourseResult[0].commissions[0].outcomes).toHaveLength(2);
 		expect(result.coordinatorUserId).toBe(7);
 		expect(result.previousActions).toEqual([]);
+	});
+
+	it('maps requesterInChain/requesterHasHigherLevel from the header', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([
+				{ ...headerRow, requesterInChain: true, requesterHasHigherLevel: false },
+			])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
+
+		const result = await service.prefill({ chartId: 310 }, 9, 5, 1);
+
+		expect(result.requesterInChain).toBe(true);
+		expect(result.requesterHasHigherLevel).toBe(false);
 	});
 });
 
