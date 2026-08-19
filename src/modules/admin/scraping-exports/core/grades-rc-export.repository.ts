@@ -70,6 +70,11 @@ export class GradesRcExportRepository {
 			// The pooled connection may still carry the table from an export that died before its
 			// close(); TEMP tables outlive the request, not the session.
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
+			// Plain SET, not SET LOCAL: this runner is never in an explicit transaction, and SET LOCAL
+			// outside one has no effect. Reset before release in closeGradesRcExport instead, since a
+			// pooled connection is reused by unrelated queries once returned.
+			await runner.query(`SET work_mem = '128MB'`);
+			await runner.query(`SET jit = off`);
 			await runner.query(MATERIALIZE_GRADES_RC_SQL, params);
 			await runner.query(INDEX_GRADES_RC_TEMP_SQL);
 			// CREATE TABLE AS writes no statistics and autovacuum never analyzes a TEMP table, so
@@ -106,12 +111,17 @@ export class GradesRcExportRepository {
 		}
 	}
 
-	// A failed DROP must not keep the connection out of the pool, hence the finally.
+	// A failed DROP or RESET must not keep the connection out of the pool, hence the nested finally.
 	private async closeGradesRcExport(runner: QueryRunner): Promise<void> {
 		try {
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
 		} finally {
-			await runner.release();
+			try {
+				await runner.query(`RESET work_mem`);
+				await runner.query(`RESET jit`);
+			} finally {
+				await runner.release();
+			}
 		}
 	}
 

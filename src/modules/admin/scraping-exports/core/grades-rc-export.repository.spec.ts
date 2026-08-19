@@ -23,9 +23,10 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		{ query: mainQuery } as any,
 	);
 
-	// The statements the export issues on the raw connection, in order: drop leftovers, materialize,
-	// index, then one read per page, then drop again on close.
-	const materializeCall = () => rawQuery.mock.calls[1];
+	// The statements the export issues on the raw connection, in order: drop leftovers, session tuning,
+	// materialize, index, then one read per page, then drop and reset again on close.
+	const materializeCall = () =>
+		rawQuery.mock.calls.find(([sql]) => sql === MATERIALIZE_GRADES_RC_SQL);
 	const pageCalls = (): unknown[][] =>
 		rawQuery.mock.calls
 			.filter(([sql]) => sql === READ_GRADES_RC_PAGE_SQL)
@@ -173,12 +174,17 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 	});
 
 	// The handle owns a pooled connection; leaking one leaks it for the life of the process.
-	it('drops the scratch table and releases the connection on close', async () => {
+	it('drops the scratch table, resets the session tuning and releases the connection on close', async () => {
 		const handle = await repo.openGradesRcExport(1);
+		rawQuery.mockClear();
 		await handle.close();
 
-		const [lastSql] = rawQuery.mock.calls[rawQuery.mock.calls.length - 1];
-		expect(lastSql).toContain('DROP TABLE IF EXISTS');
+		const sqls = rawQuery.mock.calls.map(([sql]) => sql);
+		expect(sqls).toEqual([
+			'DROP TABLE IF EXISTS grades_rc_export_rows',
+			'RESET work_mem',
+			'RESET jit',
+		]);
 		expect(release).toHaveBeenCalled();
 	});
 
