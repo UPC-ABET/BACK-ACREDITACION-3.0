@@ -29,5 +29,6 @@ export const ifcsValidationStrings = {
 		pdfFailed: 'error.ifc.pdfFailed',
 		pdfBulkFailed: 'error.ifc.pdfBulkFailed',
 		statusReportFailed: 'error.ifc.statusReportFailed',
+		statusHistoryFailed: 'error.ifc.statusHistoryFailed',
 	},
 };

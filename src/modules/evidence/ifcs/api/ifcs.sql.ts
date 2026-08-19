@@ -141,6 +141,22 @@ WHERE i.id = $1
   AND EXISTS (SELECT 1 FROM school_check)
 `;
 
+export const STATUS_HISTORY_SQL = `
+SELECT
+	t.code                              AS "statusCode",
+	t.name                              AS "statusName",
+	(t.extra->>'color')                 AS "statusColor",
+	s.register_at                       AS "registerAt",
+	s.comment                           AS "comment",
+	(u.first_name || ' ' || u.last_name) AS "staffName"
+FROM ifc.statuses s
+JOIN core.types t               ON t.id = s.status_type_id
+LEFT JOIN organization.staff st ON st.id = s.staff_id
+LEFT JOIN organization.users u  ON u.id  = st.user_id
+WHERE s.ifc_id = $1
+ORDER BY s.created_at DESC
+`;
+
 export const FINDINGS_SQL = `
 SELECT
 	f.id::int                          AS "findingId",

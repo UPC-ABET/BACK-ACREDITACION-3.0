@@ -12,6 +12,7 @@ export const IFC_OPS = {
 	SUBMIT: 'submit',
 	APPROVE: 'approve',
 	REJECT: 'reject',
+	STATUS_HISTORY: 'statusHistory',
 } as const;
 
 export type IfcOp = (typeof IFC_OPS)[keyof typeof IFC_OPS];

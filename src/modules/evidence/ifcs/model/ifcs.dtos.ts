@@ -288,3 +288,7 @@ export class IfcViewResponseDto {
 	outcomeCourseResult: IfcProgramGroupDto[];
 	@ApiProperty({ example: {}, type: [IfcFindingDto] }) findings: IfcFindingDto[];
 }
+
+export class IfcStatusHistoryResponseDto {
+	@ApiProperty({ example: {}, type: [IfcStatusInfoDto] }) statuses: IfcStatusInfoDto[];
+}

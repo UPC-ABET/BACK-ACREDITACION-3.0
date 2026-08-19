@@ -15,6 +15,7 @@ import { IfcStateMachineService } from './ifc-state-machine.service';
 import { IfcContentService } from './ifc-content.service';
 import { IfcViewService } from './ifc-view.service';
 import { IfcReportService } from './ifc-report.service';
+import { IfcStatusHistoryService } from './ifc-status-history.service';
 import {
 	USER_SCHOOLS_REPOSITORY,
 	type UserSchoolsRepository,
@@ -28,6 +29,7 @@ export class IfcService extends BaseService<IfcRepository> {
 		private readonly content: IfcContentService,
 		private readonly view: IfcViewService,
 		private readonly report: IfcReportService,
+		private readonly history: IfcStatusHistoryService,
 		private readonly dispatcher: NotificationDispatcherService,
 		@Inject(USER_SCHOOLS_REPOSITORY)
 		private readonly schoolsRepository: UserSchoolsRepository,
@@ -61,6 +63,10 @@ export class IfcService extends BaseService<IfcRepository> {
 
 	async getView(id: number, userId: number, schoolId: number) {
 		return this.view.getView(id, userId, schoolId);
+	}
+
+	async getStatusHistory(id: number, userId: number, schoolId: number, isAdminUser: boolean) {
+		return this.history.getHistory(id, userId, schoolId, isAdminUser);
 	}
 
 	async generatePdf(ifcId: number, userId: number, schoolId: number, lang: 'es' | 'en') {

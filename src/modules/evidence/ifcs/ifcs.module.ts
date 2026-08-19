@@ -8,6 +8,7 @@ import { IfcStateMachineService } from './api/ifc-state-machine.service';
 import { IfcContentService } from './api/ifc-content.service';
 import { IfcViewService } from './api/ifc-view.service';
 import { IfcReportService } from './api/ifc-report.service';
+import { IfcStatusHistoryService } from './api/ifc-status-history.service';
 import { IfcController } from './api/ifcs.controller';
 import { ReportModule } from 'src/libs/reporting/report.module';
 import { NotificationsModule } from 'src/modules/ifc/notifications/notifications.module';
@@ -23,6 +24,7 @@ import { USER_SCHOOLS_REPOSITORY } from 'src/modules/organization/org-scope/core
 		IfcContentService,
 		IfcViewService,
 		IfcReportService,
+		IfcStatusHistoryService,
 		IfcRepository,
 		IfcSchoolsChartRepository,
 		{ provide: USER_SCHOOLS_REPOSITORY, useExisting: IfcSchoolsChartRepository },

@@ -5,6 +5,7 @@ import { IfcStateMachineService } from './ifc-state-machine.service';
 import { IfcContentService } from './ifc-content.service';
 import { IfcViewService } from './ifc-view.service';
 import { IfcReportService } from './ifc-report.service';
+import { IfcStatusHistoryService } from './ifc-status-history.service';
 
 const reportGenerator = {
 	generateDocument: jest
@@ -119,6 +120,7 @@ function buildServices(dataSource: any) {
 				TYPE_CODES.ENTITY_TYPE.COURSE,
 				TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			]),
+		findStatusHistoryRows: (ifcId: number) => ds.query('', [ifcId]),
 		insertStatus: async (
 			ifcId: number,
 			newStatusCode: string,
@@ -243,6 +245,7 @@ function buildServices(dataSource: any) {
 	const view = new IfcViewService(repository);
 	const content = new IfcContentService(repository, stateMachine, dispatcher as any);
 	const report = new IfcReportService(repository, reportGenerator as any, view);
+	const history = new IfcStatusHistoryService(repository, stateMachine);
 	const schoolsRepository = { findUserSchools: jest.fn() };
 	const service = new IfcService(
 		repository,
@@ -250,10 +253,11 @@ function buildServices(dataSource: any) {
 		content,
 		view,
 		report,
+		history,
 		dispatcher as any,
 		schoolsRepository as any,
 	);
-	return { service, stateMachine, content, view, report };
+	return { service, stateMachine, content, view, report, history };
 }
 
 describe('IfcService.list', () => {
@@ -438,6 +442,175 @@ describe('IfcService.getView', () => {
 
 		expect(result.ifc.requesterInChain).toBe(true);
 		expect(result.ifc.requesterHasHigherLevel).toBe(false);
+	});
+});
+
+describe('IfcService.getStatusHistory', () => {
+	let service: IfcService;
+	let dataSource: { query: jest.Mock; transaction: jest.Mock };
+
+	beforeEach(() => {
+		dataSource = {
+			query: jest.fn(),
+			transaction: jest.fn(async (fn: any) => fn(dataSource)),
+		};
+		({ service } = buildServices(dataSource));
+	});
+
+	const contextRow = {
+		courseChartId: '310',
+		requesterStaffId: '55',
+		currentStatusCode: 'TG701-T003',
+	};
+
+	const historyRows = [
+		{
+			statusCode: 'TG701-T003',
+			statusName: { es: 'Aprobado' },
+			statusColor: '#00FF00',
+			registerAt: '2026-01-03T00:00:00Z',
+			comment: null,
+			staffName: 'Grace Hopper',
+		},
+		{
+			statusCode: 'TG701-T004',
+			statusName: { es: 'Observado' },
+			statusColor: '#FF0000',
+			registerAt: '2026-01-02T00:00:00Z',
+			comment: { es: 'Falta evidencia', en: 'Missing evidence' },
+			staffName: 'Grace Hopper',
+		},
+		{
+			statusCode: 'TG701-T002',
+			statusName: { es: 'Enviado' },
+			statusColor: null,
+			registerAt: '2026-01-01T00:00:00Z',
+			comment: null,
+			staffName: null,
+		},
+	];
+
+	it('non-admin with a higher-level match: returns the full history, most recent first, mapped to code/name/color/at/comment/by', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([contextRow]) // findTransitionContextRows
+			.mockResolvedValueOnce([{ ok: 1 }]) // assertHasHigherLevel chain query — match found
+			.mockResolvedValueOnce(historyRows); // findStatusHistoryRows
+
+		const result = await service.getStatusHistory(42, 99, 9, false);
+
+		expect(dataSource.query).toHaveBeenCalledTimes(3);
+		expect(result).toEqual({
+			statuses: [
+				{
+					code: 'TG701-T003',
+					name: { es: 'Aprobado' },
+					color: '#00FF00',
+					at: '2026-01-03T00:00:00Z',
+					comment: null,
+					by: 'Grace Hopper',
+				},
+				{
+					code: 'TG701-T004',
+					name: { es: 'Observado' },
+					color: '#FF0000',
+					at: '2026-01-02T00:00:00Z',
+					comment: { es: 'Falta evidencia', en: 'Missing evidence' },
+					by: 'Grace Hopper',
+				},
+				{
+					code: 'TG701-T002',
+					name: { es: 'Enviado' },
+					color: null,
+					at: '2026-01-01T00:00:00Z',
+					comment: null,
+					by: null,
+				},
+			],
+		});
+
+		const [, chainParams] = dataSource.query.mock.calls[1];
+		expect(chainParams).toEqual([310, 55]);
+	});
+
+	it('throws 404 when the IFC does not exist or is outside the requester school', async () => {
+		dataSource.query.mockResolvedValueOnce([]); // findTransitionContextRows empty
+
+		await expect(service.getStatusHistory(42, 99, 9, false)).rejects.toMatchObject({
+			status: HttpStatus.NOT_FOUND,
+		});
+		expect(dataSource.query).toHaveBeenCalledTimes(1);
+	});
+
+	it('throws 403 when the requester is the course coordinator themselves (no higher-level match)', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([contextRow]) // findTransitionContextRows
+			.mockResolvedValueOnce([]); // assertHasHigherLevel chain query — no match
+
+		await expect(service.getStatusHistory(42, 99, 9, false)).rejects.toMatchObject({
+			kind: 'forbidden',
+		});
+		expect(dataSource.query).toHaveBeenCalledTimes(2);
+	});
+
+	it('throws 403 with error.ifc.staffRequired when the requester has no staff record at all', async () => {
+		dataSource.query.mockResolvedValueOnce([
+			{ courseChartId: null, requesterStaffId: null, currentStatusCode: null },
+		]);
+
+		await expect(service.getStatusHistory(42, 99, 9, false)).rejects.toMatchObject({
+			kind: 'forbidden',
+			errors: ['error.ifc.staffRequired'],
+		});
+		// Rejected inside loadTransitionContext (assertRequesterIsStaff), before the
+		// higher-level chain check ever runs — a requester with no staff record at all
+		// gets the specific "you must be staff" key, not the chain-check's generic one.
+		expect(dataSource.query).toHaveBeenCalledTimes(1);
+	});
+
+	it('throws 403 with error.ifc.higherLevelRequired when the requester is staff but no course chart resolved', async () => {
+		dataSource.query.mockResolvedValueOnce([
+			{ courseChartId: null, requesterStaffId: '55', currentStatusCode: null },
+		]);
+
+		await expect(service.getStatusHistory(42, 99, 9, false)).rejects.toMatchObject({
+			kind: 'forbidden',
+			errors: ['error.ifc.higherLevelRequired'],
+		});
+		// assertHasHigherLevel short-circuits on a null courseChartId before issuing the
+		// chain-walk query, so still only the one context-load call.
+		expect(dataSource.query).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns a single-entry history unchanged (no ordering/mapping assumption breaks on one row)', async () => {
+		const singleRow = [historyRows[0]];
+		dataSource.query
+			.mockResolvedValueOnce([contextRow])
+			.mockResolvedValueOnce([{ ok: 1 }])
+			.mockResolvedValueOnce(singleRow);
+
+		const result = await service.getStatusHistory(42, 99, 9, false);
+
+		expect(result.statuses).toEqual([
+			{
+				code: 'TG701-T003',
+				name: { es: 'Aprobado' },
+				color: '#00FF00',
+				at: '2026-01-03T00:00:00Z',
+				comment: null,
+				by: 'Grace Hopper',
+			},
+		]);
+	});
+
+	it('admin bypasses the chain check entirely (no chain query executed), even when it would otherwise fail', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([contextRow]) // findTransitionContextRows
+			.mockResolvedValueOnce(historyRows); // findStatusHistoryRows (no chain query in between)
+
+		const result = await service.getStatusHistory(42, 99, 9, true);
+
+		expect(dataSource.query).toHaveBeenCalledTimes(2);
+		expect(result.statuses).toHaveLength(3);
 	});
 });
 

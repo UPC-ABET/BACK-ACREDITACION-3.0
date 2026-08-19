@@ -19,6 +19,7 @@ import {
 	INSERT_STATUS_SQL,
 	CHART_RESOLUTION_SQL,
 	PROGRAM_BY_COURSE_PERIOD_SQL,
+	STATUS_HISTORY_SQL,
 } from '../api/ifcs.sql';
 
 export interface IfcStatusReportRow {
@@ -158,6 +159,15 @@ export interface IfcStatusInsertResult {
 	at: string;
 	comment: I18nText | null;
 	by: string | null;
+}
+
+export interface IfcStatusHistoryRow {
+	statusCode: string;
+	statusName: I18nText;
+	statusColor: string | null;
+	registerAt: string;
+	comment: I18nText | null;
+	staffName: string | null;
 }
 
 export interface IfcChartResolutionRow {
@@ -368,6 +378,10 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 		]);
+	}
+
+	async findStatusHistoryRows(ifcId: number): Promise<IfcStatusHistoryRow[]> {
+		return this.dataSource.query(STATUS_HISTORY_SQL, [ifcId]);
 	}
 
 	async insertStatus(
