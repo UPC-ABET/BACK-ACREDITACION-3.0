@@ -26,6 +26,7 @@ import * as ExcelJS from 'exceljs';
 const XLSX_HEADER_BG = 'FFE30613';
 const XLSX_HEADER_TEXT = 'FFFFFFFF';
 const CRITICAL_RED_THRESHOLD = 23;
+const PG_QUERY_CANCELED = '57014';
 
 interface SemaphoreChartData {
 	categories: string[];
@@ -90,7 +91,7 @@ export class SemaphoreReportsService {
 	): Promise<{ xlsx: Buffer; filename: string }> {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const data = await this.fetchRenderData(dto, academicPeriodId, 'rc');
-		const xlsx = await this.buildExcel(data, 'rc', lang);
+		const xlsx = await this.renderExcel(data, 'rc', lang);
 		const filename = this.buildExcelFilename('rc', lang);
 		return { xlsx, filename };
 	}
@@ -101,9 +102,42 @@ export class SemaphoreReportsService {
 	): Promise<{ xlsx: Buffer; filename: string }> {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const data = await this.fetchRenderData(dto, academicPeriodId, 'rv');
-		const xlsx = await this.buildExcel(data, 'rv', lang);
+		const xlsx = await this.renderExcel(data, 'rv', lang);
 		const filename = this.buildExcelFilename('rv', lang);
 		return { xlsx, filename };
+	}
+
+	/**
+	 * Turns a failed report read into a typed HTTP answer. Postgres reports a `statement_timeout`
+	 * cancellation as SQLSTATE 57014, which is a "too heavy right now, retry" condition rather than
+	 * a bug -- reporting it as a bare 500 leaves the client with nothing actionable.
+	 */
+	private async runQuery<T>(read: () => Promise<T>): Promise<T> {
+		try {
+			return await read();
+		} catch (error) {
+			const code = (error as { code?: string })?.code;
+			if (code === PG_QUERY_CANCELED) {
+				this.logger.error('Semaphore report query hit statement_timeout');
+				throw new HttpException(
+					{
+						message: semaphoreReportsValidationStrings.result.generateFailed,
+						errors: [semaphoreReportsValidationStrings.error.queryTimeout],
+					},
+					HttpStatus.SERVICE_UNAVAILABLE,
+				);
+			}
+			this.logger.error(
+				`Semaphore report query failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			throw new HttpException(
+				{
+					message: semaphoreReportsValidationStrings.result.generateFailed,
+					errors: [semaphoreReportsValidationStrings.error.queryFailed],
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
+		}
 	}
 
 	/** JSON for the screen: full, unfiltered course+outcome breakdown. */
@@ -119,16 +153,16 @@ export class SemaphoreReportsService {
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
-		const rows =
+		const rows = await this.runQuery(() =>
 			instrument === 'rc'
-				? await this.repository.getRcScreen(
+				? this.repository.getRcScreen(
 						academicPeriodId,
 						programCommissionId,
 						outcomeId,
 						campusId,
 						lang,
 					)
-				: await this.repository.getRvScreen(
+				: this.repository.getRvScreen(
 						academicPeriodId,
 						programCommissionId,
 						outcomeId,
@@ -136,7 +170,8 @@ export class SemaphoreReportsService {
 						lang,
 						rubricIds,
 						gradeTypeIds,
-					);
+					),
+		);
 		if (rows.length === 0) {
 			throw new HttpException(
 				{
@@ -146,8 +181,12 @@ export class SemaphoreReportsService {
 				HttpStatus.NOT_FOUND,
 			);
 		}
-		const legendRows = await this.repository.getLevelsLegend(academicPeriodId, instrument, lang);
-		const metadata = await this.repository.getMetadata(programCommissionId, academicPeriodId, lang);
+		const [legendRows, metadata] = await this.runQuery(() =>
+			Promise.all([
+				this.repository.getLevelsLegend(academicPeriodId, instrument, lang),
+				this.repository.getMetadata(programCommissionId, academicPeriodId, lang),
+			]),
+		);
 		return this.buildScreenReport(rows, legendRows, metadata);
 	}
 
@@ -164,24 +203,66 @@ export class SemaphoreReportsService {
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
-		const detailRows =
-			instrument === 'rc'
-				? await this.repository.getRcDetail(
-						academicPeriodId,
-						programCommissionId,
-						outcomeId,
-						campusId,
-						lang,
-					)
-				: await this.repository.getRvDetail(
-						academicPeriodId,
-						programCommissionId,
-						outcomeId,
-						campusId,
-						lang,
-						rubricIds,
-						gradeTypeIds,
-					);
+		// Detail, summary and the (unfiltered, chart-feeding) screen breakdown each re-derive the same
+		// expensive base CTE, so running them concurrently cuts the wait to the slowest one instead of
+		// their sum. Three is also the ceiling this report may take from a pool shared app-wide.
+		const [detailRows, summaryRows, screenRows] = await this.runQuery(() =>
+			Promise.all(
+				instrument === 'rc'
+					? ([
+							this.repository.getRcDetail(
+								academicPeriodId,
+								programCommissionId,
+								outcomeId,
+								campusId,
+								lang,
+							),
+							this.repository.getRcSummary(
+								academicPeriodId,
+								programCommissionId,
+								outcomeId,
+								campusId,
+								lang,
+							),
+							this.repository.getRcScreen(
+								academicPeriodId,
+								programCommissionId,
+								outcomeId,
+								campusId,
+								lang,
+							),
+						] as const)
+					: ([
+							this.repository.getRvDetail(
+								academicPeriodId,
+								programCommissionId,
+								outcomeId,
+								campusId,
+								lang,
+								rubricIds,
+								gradeTypeIds,
+							),
+							this.repository.getRvSummary(
+								academicPeriodId,
+								programCommissionId,
+								outcomeId,
+								campusId,
+								lang,
+								rubricIds,
+								gradeTypeIds,
+							),
+							this.repository.getRvScreen(
+								academicPeriodId,
+								programCommissionId,
+								outcomeId,
+								campusId,
+								lang,
+								rubricIds,
+								gradeTypeIds,
+							),
+						] as const),
+			),
+		);
 		if (detailRows.length === 0) {
 			throw new HttpException(
 				{
@@ -191,45 +272,12 @@ export class SemaphoreReportsService {
 				HttpStatus.NOT_FOUND,
 			);
 		}
-		const summaryRows =
-			instrument === 'rc'
-				? await this.repository.getRcSummary(
-						academicPeriodId,
-						programCommissionId,
-						outcomeId,
-						campusId,
-						lang,
-					)
-				: await this.repository.getRvSummary(
-						academicPeriodId,
-						programCommissionId,
-						outcomeId,
-						campusId,
-						lang,
-						rubricIds,
-						gradeTypeIds,
-					);
-		// Unfiltered course+outcome breakdown feeds the grouped-bar chart embedded in the PDF.
-		const screenRows =
-			instrument === 'rc'
-				? await this.repository.getRcScreen(
-						academicPeriodId,
-						programCommissionId,
-						outcomeId,
-						campusId,
-						lang,
-					)
-				: await this.repository.getRvScreen(
-						academicPeriodId,
-						programCommissionId,
-						outcomeId,
-						campusId,
-						lang,
-						rubricIds,
-						gradeTypeIds,
-					);
-		const legendRows = await this.repository.getLevelsLegend(academicPeriodId, instrument, lang);
-		const metadata = await this.repository.getMetadata(programCommissionId, academicPeriodId, lang);
+		const [legendRows, metadata] = await this.runQuery(() =>
+			Promise.all([
+				this.repository.getLevelsLegend(academicPeriodId, instrument, lang),
+				this.repository.getMetadata(programCommissionId, academicPeriodId, lang),
+			]),
+		);
 		return this.buildRenderReport(
 			detailRows,
 			summaryRows,
@@ -517,6 +565,27 @@ export class SemaphoreReportsService {
 		};
 	}
 
+	private async renderExcel(
+		data: SemaphoreRenderReportDto,
+		type: 'rc' | 'rv',
+		lang: 'es' | 'en',
+	): Promise<Buffer> {
+		try {
+			return await this.buildExcel(data, type, lang);
+		} catch (error) {
+			this.logger.error(
+				`Semaphore ${type} Excel build failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			throw new HttpException(
+				{
+					message: semaphoreReportsValidationStrings.result.generateFailed,
+					errors: [semaphoreReportsValidationStrings.error.excelFailed],
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
+		}
+	}
+
 	private async buildExcel(
 		data: SemaphoreRenderReportDto,
 		type: 'rc' | 'rv',
@@ -567,8 +636,9 @@ export class SemaphoreReportsService {
 			L.colPercentage,
 			L.colTotalStudentsByOutcome,
 		];
+		const takenSheetNames = new Set<string>();
 		const addDetailSheet = (name: string, items: SemaphoreCourseDetailRowDto[]) => {
-			const sheet = wb.addWorksheet(name);
+			const sheet = wb.addWorksheet(this.toSheetName(name, takenSheetNames));
 			this.writeExcelHeader(sheet, detailHeaders);
 			for (const r of items) {
 				const row = sheet.addRow([
@@ -586,11 +656,25 @@ export class SemaphoreReportsService {
 			sheet.views = [{ state: 'frozen', ySplit: 1 }];
 		};
 
-		addDetailSheet(L.redDetail.slice(0, 31), data.redDetail);
-		addDetailSheet(L.yellowDetail.slice(0, 31), data.yellowDetail);
-		addDetailSheet(L.greenDetail.slice(0, 31), data.greenDetail);
+		addDetailSheet(L.redDetail, data.redDetail);
+		addDetailSheet(L.yellowDetail, data.yellowDetail);
+		addDetailSheet(L.greenDetail, data.greenDetail);
 
 		return Buffer.from(await wb.xlsx.writeBuffer());
+	}
+
+	/**
+	 * Excel rejects the workbook outright on a duplicate or illegal sheet name, and the level labels
+	 * are translated free text that can collide once truncated to the 31-character limit.
+	 */
+	private toSheetName(label: string, taken: Set<string>): string {
+		const base = label.replace(/[*?:\\/[\]]/g, ' ').slice(0, 31) || 'Sheet';
+		let name = base;
+		for (let suffix = 2; taken.has(name); suffix++) {
+			name = `${base.slice(0, 31 - String(suffix).length - 1)} ${suffix}`;
+		}
+		taken.add(name);
+		return name;
 	}
 
 	private hexToArgb(hex: string): string {
