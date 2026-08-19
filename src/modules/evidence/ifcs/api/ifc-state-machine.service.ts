@@ -149,6 +149,7 @@ export class IfcStateMachineService {
 		schoolId: number,
 		op: IfcOp,
 		em?: EntityManager,
+		isAdminUser = false,
 	): Promise<IfcTransitionContext> {
 		const rows = await this.repository.findTransitionContextRows(ifcId, schoolId, userId, em);
 
@@ -170,7 +171,9 @@ export class IfcStateMachineService {
 			currentStatusCode: row.currentStatusCode ?? null,
 		};
 
-		IfcValidation.assertRequesterIsStaff(ctx.requesterStaffId, op);
+		if (!(op === IFC_OPS.STATUS_HISTORY && isAdminUser)) {
+			IfcValidation.assertRequesterIsStaff(ctx.requesterStaffId, op);
+		}
 		return ctx;
 	}
 

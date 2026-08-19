@@ -679,6 +679,19 @@ describe('IfcService.getStatusHistory', () => {
 		expect(dataSource.query).toHaveBeenCalledTimes(2);
 		expect(result.statuses).toHaveLength(3);
 	});
+
+	it('admin with no staff record at all still gets the full history (no error.ifc.staffRequired)', async () => {
+		dataSource.query
+			.mockResolvedValueOnce([
+				{ courseChartId: null, requesterStaffId: null, currentStatusCode: null },
+			]) // findTransitionContextRows
+			.mockResolvedValueOnce(historyRows); // findStatusHistoryRows (no chain query in between)
+
+		const result = await service.getStatusHistory(42, 99, 9, true);
+
+		expect(dataSource.query).toHaveBeenCalledTimes(2);
+		expect(result.statuses).toHaveLength(3);
+	});
 });
 
 describe('IfcService status transitions', () => {

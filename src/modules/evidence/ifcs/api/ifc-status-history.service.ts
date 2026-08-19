@@ -32,6 +32,8 @@ export class IfcStatusHistoryService {
 			userId,
 			schoolId,
 			IFC_OPS.STATUS_HISTORY,
+			undefined,
+			isAdminUser,
 		);
 
 		if (!isAdminUser) {
