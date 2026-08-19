@@ -265,6 +265,8 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			userId,
 			TYPE_CODES.ENTITY_TYPE.PROGRAM,
+			TYPE_CODES.ENTITY_TYPE.AREA,
+			TYPE_CODES.ENTITY_TYPE.SUBAREA,
 		]);
 	}
 
@@ -332,6 +334,8 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 			TYPE_CODES.ENTITY_TYPE.COURSE,
 			TYPE_CODES.ENTITY_TYPE.SCHOOL,
 			userId,
+			TYPE_CODES.ENTITY_TYPE.AREA,
+			TYPE_CODES.ENTITY_TYPE.SUBAREA,
 		]);
 	}
 
