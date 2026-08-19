@@ -6,8 +6,10 @@ No migration, no seed, no deploy-time step. This exists only for the manual chec
 tests cannot cover: they exercise `IfcStatusHistoryService` against a **faked** `DataSource`
 that returns programmed rows, so the actual recursive `chain_up` SQL never runs against a
 real org chart in CI. `assertHasHigherLevel` is production-proven (already gates
-`approve`/`reject`), but this is the first time it runs outside a transaction via the new
-`IfcRepository.queryRunner()` accessor — worth one real check before merge.
+`approve`/`reject`), and this endpoint now runs it exactly the same way — inside a
+transaction obtained from `IfcRepository.transaction(...)` — so this is lower risk than the
+first draft (which briefly used a since-removed `queryRunner()` accessor), but still worth
+one real check before merge since the endpoint itself is new.
 
 ## Manual verification
 
@@ -30,6 +32,12 @@ comment), and its course chart's chain (course → area/subarea → programme �
 5. **With an IFC id from a different school** (or a nonexistent id) — expect `404`.
 
 If step 1 or 3 returns `200`, or step 2 or 4 returns `403`, stop and re-check the
-`chain_up` depth logic / the `queryRunner()` wiring before merging — this endpoint exists
-specifically to keep rejection comments and reviewer identities scoped to the people above
-the coordinator, so a false `200` here is an information-disclosure bug, not a cosmetic one.
+`chain_up` depth logic before merging — this endpoint exists specifically to keep
+rejection comments and reviewer identities scoped to the people above the coordinator, so a
+false `200` here is an information-disclosure bug, not a cosmetic one.
+
+Note: as of the audit-fix commit, any requester with **no** `organization.staff` row at
+all (admin or not) gets `403 error.ifc.staffRequired` before the chain check even runs —
+consistent with every other IFC transition op in this module. This doesn't affect steps
+1-5 above (all assume a real staff member or a real admin account), just worth knowing if
+a test account turns out to have no staff record.
