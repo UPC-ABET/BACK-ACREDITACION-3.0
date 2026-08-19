@@ -103,7 +103,7 @@ export class IfcValidation {
 	static async assertHasHigherLevel(
 		runner: SqlRunner,
 		ctx: IfcTransitionContext,
-		op: typeof IFC_OPS.APPROVE | typeof IFC_OPS.REJECT,
+		op: typeof IFC_OPS.APPROVE | typeof IFC_OPS.REJECT | typeof IFC_OPS.STATUS_HISTORY,
 	) {
 		if (ctx.courseChartId == null || ctx.requesterStaffId == null) {
 			throw new ForbiddenError({

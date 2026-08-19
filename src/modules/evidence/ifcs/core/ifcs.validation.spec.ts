@@ -142,6 +142,20 @@ describe('IfcValidation', () => {
 				IfcValidation.assertHasHigherLevel(mockRunner as any, ctx, IFC_OPS.APPROVE),
 			).rejects.toThrow(DomainError);
 		});
+
+		it('passes for the statusHistory op when a higher level in the chain matches the requester', async () => {
+			mockRunner.query.mockResolvedValue([{ '?column?': 1 }]);
+			await expect(
+				IfcValidation.assertHasHigherLevel(mockRunner as any, ctx, IFC_OPS.STATUS_HISTORY),
+			).resolves.toBeUndefined();
+		});
+
+		it('throws 403 for the statusHistory op when no higher level matches', async () => {
+			mockRunner.query.mockResolvedValue([]);
+			await expect(
+				IfcValidation.assertHasHigherLevel(mockRunner as any, ctx, IFC_OPS.STATUS_HISTORY),
+			).rejects.toThrow(DomainError);
+		});
 	});
 
 	describe('assertCurrentStatusEditable', () => {
