@@ -166,3 +166,27 @@ results) — see `runbook.md` for the manual check that closes that gap.
 - No `docs/CONTEXT.md` change — no new schema, module, domain term, or business rule beyond
   what `assertHasHigherLevel` already documents implicitly via its existing use in
   `approve`/`reject`
+
+## Audit round 1 revisions (2026-08-18)
+
+`/abet-audit-pr` found two majors, both addressed in `tasks.md` (Tasks R1.1/R1.2). Recorded
+here because they change what's described above, not just how it's implemented:
+
+- **Context loading now goes through `IfcStateMachineService.loadTransitionContext`**
+  instead of `IfcStatusHistoryService` re-fetching `findTransitionContextRows` and
+  hand-building the `IfcTransitionContext` itself. Consequence worth knowing: this makes
+  `getHistory` call `IfcValidation.assertRequesterIsStaff` unconditionally (before the
+  `isAdminUser` branch), same as every other IFC transition op. **AC-4's "regardless of
+  their position (or absence) in that course's org chart chain" bypass still holds in
+  full for chain membership/depth** (`assertHasHigherLevel` is still skipped entirely for
+  admins) — but an admin with literally zero `organization.staff` row now gets `403
+error.ifc.staffRequired`, same as a non-admin would. This isn't a new restriction
+  invented for this endpoint: `submit`/`approve`/`reject`/`patch`/`createIfc` already
+  require a staff record unconditionally, with no admin exemption anywhere in this module
+  today, so this endpoint is now consistent with that existing precedent rather than
+  carving out a new, narrower one.
+- **`IfcRepository.queryRunner()` was removed.** The higher-level chain check now gets its
+  runner from `this.repository.transaction(async (em) => ...)`, matching how
+  `approve`/`reject` already obtain theirs, instead of a new public method that handed out
+  a raw `{ query() }` handle. The Risks-table trade-off this design originally accepted
+  ("kept intentionally thin") is now moot — there's no new repository surface to weigh.

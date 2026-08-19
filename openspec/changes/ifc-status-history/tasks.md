@@ -204,6 +204,155 @@ isAdmin(user))`, returns `parseSuccessResponse(result)`.
 
 ---
 
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1 (2026-08-18)
+
+Six parallel auditors (code quality, architecture/docs/contract, testing, antipatterns,
+security, runtime robustness) reviewed `origin/develop...HEAD`. No blockers. Testing (C),
+security (E) and runtime robustness (F) came back clean (E and C each noted only
+suggestion-level items, folded into the tasks below where applicable). Two majors,
+independently raised by 2–3 auditors each, need fixing before `/abet-create-pr`:
+
+### Task R1.1 — Route status-history's context load through IfcStateMachineService.loadTransitionContext ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+Raised independently by Auditor A (code quality) and Auditor D (antipatterns), echoed by
+Auditor E (security) as a duplication note.
+
+**Why**: `IfcStatusHistoryService.getHistory` re-implements
+`IfcStateMachineService.loadTransitionContext`'s job inline — fetch
+`findTransitionContextRows`, throw 404 when empty, hand-build the `IfcTransitionContext`
+with the same null-coercions — instead of reusing it, even though `IfcContentService`
+already reuses it for the same purpose (`ifc-content.service.ts:111`) and its `op`
+parameter was already widened in this same change to accept `IFC_OPS.STATUS_HISTORY`.
+Concretely, this isn't just style: `loadTransitionContext` also calls
+`IfcValidation.assertRequesterIsStaff`, which `getHistory` skips — so a requester with no
+`organization.staff` row (a real, reachable case: any authenticated user without a staff
+record) gets rejected with `error.ifc.higherLevelRequired` today instead of the correct,
+more specific `error.ifc.staffRequired` every other IFC transition op reports for that
+exact condition. Both are 403s, so authorization itself is not broken, but the wrong
+detail key reaches the frontend and diverges from this module's established convention.
+
+**Files**
+
+- `src/modules/evidence/ifcs/api/ifc-status-history.service.ts` (modify)
+- `src/modules/evidence/ifcs/api/ifcs.service.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Add a test case: requester has no staff record (`requesterStaffId: null` from
+   `findTransitionContextRows`), not admin → expect `errors: ['error.ifc.staffRequired']`
+   (not `higherLevelRequired`). Run it against the current implementation → expect **red**
+   (today it throws `higherLevelRequired` instead).
+2. Inject `IfcStateMachineService` into `IfcStatusHistoryService`'s constructor. Replace
+   the manual `findTransitionContextRows` call + 404 throw + `IfcTransitionContext`
+   construction with `const ctx = await this.stateMachine.loadTransitionContext(ifcId,
+userId, schoolId, IFC_OPS.STATUS_HISTORY)` (this already throws the same 404 shape and
+   calls `assertRequesterIsStaff`). Keep the `if (!isAdminUser) await
+IfcValidation.assertHasHigherLevel(...)` call as-is (or per Task R1.2, adjust its
+   runner source).
+3. Register the new constructor dependency wherever `IfcStatusHistoryService` is
+   constructed: `ifcs.module.ts` already provides `IfcStateMachineService`, so Nest DI
+   needs no change there; update the fake-repository test harness in
+   `ifcs.service.spec.ts`'s `buildServices` to pass the real `stateMachine` instance
+   already built there into `new IfcStatusHistoryService(repository, stateMachine)`.
+4. Re-run the new test → expect **green**. Re-run the full
+   `IfcService.getStatusHistory` describe block → expect **green**, no regressions.
+5. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `fix(ifcs): reuse loadTransitionContext in IfcStatusHistoryService`
+
+> Green on the first attempt. Split the old combined "no course chart / staff record at
+> all" test into two precise cases, since the two null fields now fail at different points
+> for different reasons: `requesterStaffId: null` now throws `staffRequired` from inside
+> `loadTransitionContext` (1 query — fails before the transaction is even opened);
+> `courseChartId: null` with a real `requesterStaffId` still throws `higherLevelRequired`
+> from `assertHasHigherLevel`'s own null-check, also without issuing its chain-walk query
+> (still 1 query). Confirmed the behavioral nuance for admins: `assertRequesterIsStaff` now
+> runs unconditionally (same as every other IFC transition op), so an admin with zero
+> `organization.staff` row gets `403 staffRequired` — the AC-4 bypass still fully covers
+> chain membership/depth, just not "having no staff record whatsoever," which no other IFC
+> operation exempts either. Recorded in `design.md`'s new "Audit round 1 revisions" section.
+
+### Task R1.2 — Stop exposing a raw query handle from IfcRepository ✅ DONE (2026-08-18)
+
+- [x] Task complete
+
+Raised by Auditor D as major (repository-boundary policy: "services must not call
+`.query(...)`" — `queryRunner()` is a general, permanent, unscoped escape hatch, unlike
+the existing carve-out where validation classes only ever receive a runner from inside
+`repository.transaction(...)`), and independently by Auditor A (minor — the name
+`queryRunner` also collides with TypeORM's own `QueryRunner` concept, which is a
+transaction/connection-scoped object; this one is neither) and Auditor B (minor — the
+repository is `exports: [IfcService, IfcRepository]`, so this widens what any consumer of
+`IfcModule` can do with `IfcRepository`, even though today's only call site is narrow).
+
+**Why**: The purpose (letting `IfcValidation.assertHasHigherLevel` run outside a
+transaction) is legitimate, but a public method that hands out `{ query(sql, params) }`
+is a bigger, more permanent capability than the one call site needs, and it's the kind of
+thing the repository boundary exists to prevent from spreading.
+
+**Files**
+
+- `src/modules/evidence/ifcs/core/ifcs.repository.ts` (modify — remove `queryRunner`)
+- `src/modules/evidence/ifcs/api/ifc-status-history.service.ts` (modify)
+- `src/modules/evidence/ifcs/api/ifcs.service.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Update the fake-repository harness in `ifcs.service.spec.ts`: remove the
+   `queryRunner` fake; the existing `transaction: (work) => ds.transaction(work as any)`
+   fake (already present for the state-machine tests) is reused instead. Re-run the
+   `IfcService.getStatusHistory` tests → expect **red** if `queryRunner` is still
+   referenced in the implementation (it will be, until step 2).
+2. In `IfcRepository`, delete the public `queryRunner(manager?)` method added in Task
+   1.1 (leave the private `runner()` it wrapped untouched — other methods still use it
+   internally).
+3. In `IfcStatusHistoryService.getHistory`, wrap the higher-level check in a transaction,
+   matching how `approve`/`reject` already obtain their runner: `await
+this.repository.transaction(async (em) => { await IfcValidation.assertHasHigherLevel(em,
+ctx, IFC_OPS.STATUS_HISTORY); })` — called only when `!isAdminUser`, same as before.
+   (A transaction for a pure read is a minor overhead accepted here specifically to avoid
+   widening the repository's public surface; note this trade-off in a one-line comment if
+   the pattern looks surprising next to the rest of the read-only method.)
+4. Re-run the full `IfcService.getStatusHistory` describe block plus
+   `IfcService status transitions` (to confirm no collateral change to `approve`/`reject`,
+   which use the same `transaction` fake) → expect **green**.
+5. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `fix(ifcs): drop IfcRepository.queryRunner, use a transaction for the higher-level check instead`
+
+> Green on the first attempt. `IfcService status transitions` (submit/approve/reject, the
+> existing consumers of `repository.transaction`) re-run alongside `getStatusHistory` to
+> confirm no collateral change — unaffected, since the transaction fake was already shared
+> infrastructure, not something this task modified. `queryRunner()` is gone from
+> `IfcRepository`; the only way to reach `assertHasHigherLevel`'s SQL now is via a runner
+> obtained from `repository.transaction(...)`, same as every other caller in this module.
+
+### Minor / suggestion follow-ups
+
+- ✅ **Auditor C** — no single-entry (length-1) status history fixture case: added
+  (`ifcs.service.spec.ts`, "returns a single-entry history unchanged").
+- ✅ **Auditor C** — admin-bypass test title overstated what it proves in isolation:
+  renamed to "admin bypasses the chain check entirely (no chain query executed) ...".
+- ✅ **Auditor A** — 404 branch hardcoded `ifcsValidationStrings.result.statusHistoryFailed`
+  instead of deriving it generically via `op`: resolved as a side effect of Task R1.1 —
+  `loadTransitionContext` now owns that derivation, `getHistory` no longer references the
+  key directly at all.
+- **Skipped, with reason** — Auditor E's suggestion of query-level defense-in-depth for
+  school scope (re-checking `schoolId` inside `STATUS_HISTORY_SQL` itself, not just in
+  `TRANSITION_CONTEXT_SQL` beforehand). Not implemented: Auditor F independently traced
+  the exact call order and confirmed `findStatusHistoryRows(ifcId)` (unscoped) is only
+  ever reached after `findTransitionContextRows`'s school check has already passed — for
+  every caller, admin included, with no code path that skips it. Adding a second,
+  independent school check inside `STATUS_HISTORY_SQL` would mean a fourth copy of the
+  chart-ancestry-to-school walk in this file (`HEADER_SQL`, `TRANSITION_CONTEXT_SQL`,
+  `CHART_RESOLUTION_SQL` already each have one), which is exactly the duplication risk
+  `proposal.md`'s own Risks table warned against — redundant defense with no reachable
+  gap to defend, at the cost of a fourth divergence point to keep in sync.
+
 <!--
 Append-only sections below. These record what actually happened, not what was planned,
 and they are the best input to the next design.
@@ -214,8 +363,4 @@ and they are the best input to the next design.
 - [ ] Task complete
 
 ## Post-QA fixes
-
-## Audit fixes (/abet-audit-pr)
-
-### Review round 1
 -->

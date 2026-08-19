@@ -384,10 +384,6 @@ export class IfcRepository extends BaseRepository<IfcEntity> {
 		return this.dataSource.query(STATUS_HISTORY_SQL, [ifcId]);
 	}
 
-	queryRunner(manager?: EntityManager): Pick<DataSource, 'query'> {
-		return this.runner(manager);
-	}
-
 	async insertStatus(
 		ifcId: number,
 		newStatusCode: string,
