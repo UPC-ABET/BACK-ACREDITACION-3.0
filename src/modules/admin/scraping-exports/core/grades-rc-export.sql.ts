@@ -458,22 +458,23 @@ ORDER BY s.section_code, s.student_code
 `;
 
 // Sections whose course carries a CONTROL outcome (TG302-T002) in the study plan of the period --
-// the same join SEMAPHORE_RC_SCREEN_SQL makes, so the export ships exactly what the semaphore can
-// read. Three things it deliberately inherits from that query:
-//  - the mapping hangs off study_plan_course, not course: the same course may be control in one plan
-//    and not in another, so the plan is pinned to the section's period through spap;
+// the same join SEMAPHORE_RC_SCREEN_SQL's course_outcome_results CTE makes, so the export ships
+// exactly what the semaphore can read. Two things it deliberately inherits from that query:
+//  - study_plan_courses is joined by course_id only, NOT pinned to the section's own
+//    study_plan_academic_period. The semaphore itself does not pin it there either, so a course
+//    keeps counting as CONTROL here even when the mapping lives on a different period's
+//    study-plan row for that course. Pinning it (as an earlier version of this query did) makes
+//    the export stricter than the semaphore and silently drops sections it still reports on --
+//    exactly the mismatch this query exists to avoid.
 //  - outcome_type_id lives on the MAPPING, not on the outcome -- an outcome can be control for one
 //    course and verification (TG302-T001) for the next;
-//  - an inactive outcome does not count, matching the semaphore's filtered_outcomes.
-// DISTINCT because a course mapped to several control outcomes must not repeat its section.
+// An inactive outcome does not count, matching the semaphore's filtered_outcomes. DISTINCT because
+// a course mapped to several control outcomes must not repeat its section.
 export const CONTROL_OUTCOME_SECTIONS_SQL = `
 SELECT DISTINCT cs.section_code AS "sectionCode"
 FROM academic.course_sections cs
 JOIN academic.study_plan_courses spc
 	ON spc.course_id = cs.course_id
-JOIN academic.study_plan_academic_periods spap
-	ON spap.id = spc.study_plan_academic_period_id
-	AND spap.academic_period_id = cs.academic_period_id
 JOIN academic.course_outcome_mappings com
 	ON com.study_plan_course_id = spc.id
 JOIN accreditation.outcomes o
