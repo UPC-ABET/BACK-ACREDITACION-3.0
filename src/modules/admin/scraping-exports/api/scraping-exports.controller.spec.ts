@@ -44,6 +44,20 @@ describe('ScrapingExportsController', () => {
 			expect(getStatus).toHaveBeenCalledWith('docentes', '202610', 'es');
 		});
 
+		// resolveLang only defaults an empty/falsy lang to DEFAULT_TEMPLATE_LANGUAGE -- it never
+		// validates against the supported set (currently 'es'/'en'). An unsupported value is passed
+		// through unchanged as the lookup key; ScrapingExportsService.resolveLabels falls back to
+		// DEFAULT_TEMPLATE_LANGUAGE for actual file generation regardless of what key the row is
+		// stored under, so this never breaks generation -- but a row generated this way persists with
+		// a `lang` column that does not describe the language its content is actually in.
+		it('passes an unsupported lang through unchanged rather than defaulting it', async () => {
+			getStatus.mockResolvedValue({ status: 'notGenerated' });
+
+			await controller.status('docentes', 'fr', 1);
+
+			expect(getStatus).toHaveBeenCalledWith('docentes', '202610', 'fr');
+		});
+
 		it('rejects an exportType outside the fixed set', async () => {
 			await expect(controller.status('bogus', 'es', 1)).rejects.toThrow(BadRequestError);
 			expect(getStatus).not.toHaveBeenCalled();

@@ -19,6 +19,7 @@ import type { GeneratedExcel } from './scraping-exports.service';
 import { scrapingExportsRoutes } from '../config/scraping-exports.routes';
 import { EXPORT_TYPE_PARAM_VALUES, parseExportTypeParam } from '../model/scraping-exports.dtos';
 import { DEFAULT_TEMPLATE_LANGUAGE } from '../model/scraping-exports.labels';
+import { ScrapingExportStatusResponseDto } from '../model/scraping-exports.response.dtos';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 
 const routes = scrapingExportsRoutes.exports;
@@ -33,6 +34,7 @@ export class ScrapingExportsController {
 	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@ApiAcademicPeriodHeader()
+	@ApiResponse({ status: 200, type: ScrapingExportStatusResponseDto })
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	async status(
 		@Param('exportType') exportTypeParam: string,
@@ -84,6 +86,7 @@ export class ScrapingExportsController {
 	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@ApiAcademicPeriodHeader()
+	@ApiResponse({ status: 200, type: ScrapingExportStatusResponseDto })
 	@ApiResponse({
 		status: 409,
 		description: 'This export is already being generated; try again once it has finished',

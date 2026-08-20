@@ -12084,7 +12084,16 @@
 						"schema": { "type": "integer", "example": 1 }
 					}
 				],
-				"responses": { "200": { "description": "" } },
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ScrapingExportStatusResponseDto" }
+							}
+						}
+					}
+				},
 				"summary": "Poll the generation status of a scraping export",
 				"tags": ["Scraping — Exports"]
 			}
@@ -12166,6 +12175,14 @@
 					}
 				],
 				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ScrapingExportStatusResponseDto" }
+							}
+						}
+					},
 					"409": {
 						"description": "This export is already being generated; try again once it has finished"
 					}
@@ -17426,6 +17443,26 @@
 						"items": { "type": "string" }
 					}
 				}
+			},
+			"ScrapingExportStatusResponseDto": {
+				"type": "object",
+				"properties": {
+					"exportType": {
+						"type": "string",
+						"enum": ["docentes", "secciones", "alumnosMatriculados", "alumnosSecciones", "gradesRc"]
+					},
+					"periodo": { "type": "string" },
+					"lang": { "type": "string" },
+					"status": {
+						"type": "string",
+						"enum": ["running", "completed", "failed", "notGenerated"]
+					},
+					"fileName": { "type": "string", "nullable": true },
+					"errorMessage": { "type": "string", "nullable": true },
+					"startedAt": { "format": "date-time", "type": "string", "nullable": true },
+					"finishedAt": { "format": "date-time", "type": "string", "nullable": true }
+				},
+				"required": ["status"]
 			},
 			"PlannerSessionStatusDto": {
 				"type": "object",
