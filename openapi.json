@@ -12060,13 +12060,7 @@
 						"required": true,
 						"in": "path",
 						"schema": {
-							"enum": [
-								"docentes",
-								"secciones",
-								"alumnos-matriculados",
-								"alumnos-secciones",
-								"grades-rc"
-							],
+							"enum": ["staff", "sections", "enrolled-students", "student-sections", "grades-rc"],
 							"type": "string"
 						}
 					},
@@ -12107,13 +12101,7 @@
 						"required": true,
 						"in": "path",
 						"schema": {
-							"enum": [
-								"docentes",
-								"secciones",
-								"alumnos-matriculados",
-								"alumnos-secciones",
-								"grades-rc"
-							],
+							"enum": ["staff", "sections", "enrolled-students", "student-sections", "grades-rc"],
 							"type": "string"
 						}
 					},
@@ -12150,13 +12138,7 @@
 						"required": true,
 						"in": "path",
 						"schema": {
-							"enum": [
-								"docentes",
-								"secciones",
-								"alumnos-matriculados",
-								"alumnos-secciones",
-								"grades-rc"
-							],
+							"enum": ["staff", "sections", "enrolled-students", "student-sections", "grades-rc"],
 							"type": "string"
 						}
 					},
@@ -17449,7 +17431,7 @@
 				"properties": {
 					"exportType": {
 						"type": "string",
-						"enum": ["docentes", "secciones", "alumnosMatriculados", "alumnosSecciones", "gradesRc"]
+						"enum": ["staff", "sections", "enrolledStudents", "studentSections", "gradesRc"]
 					},
 					"periodo": { "type": "string" },
 					"lang": { "type": "string" },

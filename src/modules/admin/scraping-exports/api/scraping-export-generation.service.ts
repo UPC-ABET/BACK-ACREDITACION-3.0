@@ -8,23 +8,23 @@ import { ScrapingExportRunRepository } from '../core/scraping-export-run.reposit
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
 import { ScrapingExportStatusResponse, ScrapingExportType } from '../model/scraping-exports.types';
-import { docenteExportLabels } from '../model/scraping-exports.labels';
+import { staffExportLabels } from '../model/scraping-exports.labels';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
 
 // Every export is generated once per language a downloaded file can be labeled in. Derived from
 // the labels map (rather than hardcoded) so this stays in sync with whatever langs the export
 // templates actually support — see model/scraping-exports.labels.ts.
-const SUPPORTED_EXPORT_LANGS = Object.keys(docenteExportLabels);
+const SUPPORTED_EXPORT_LANGS = Object.keys(staffExportLabels);
 
 // The four exports built straight from a completed Banner scrape. `gradesRc` is deliberately
 // excluded here: it depends on a completed Planner run too (see triggerForBannerRun) and its
 // generation is wired in Milestone 6.
 const BANNER_EXPORT_TYPES: Array<Exclude<ScrapingExportType, 'gradesRc'>> = [
-	'docentes',
-	'secciones',
-	'alumnosMatriculados',
-	'alumnosSecciones',
+	'staff',
+	'sections',
+	'enrolledStudents',
+	'studentSections',
 ];
 
 // Comfortably above Grades RC's documented multi-minute merge (see design.md § AC-9), so a
@@ -354,14 +354,14 @@ export class ScrapingExportGenerationService {
 		}
 
 		switch (exportType) {
-			case 'docentes':
-				return this.exportsService.generateDocentes(academicPeriodId, lang);
-			case 'secciones':
-				return this.exportsService.generateSecciones(academicPeriodId, lang);
-			case 'alumnosMatriculados':
-				return this.exportsService.generateAlumnosMatriculados(academicPeriodId, lang);
-			case 'alumnosSecciones':
-				return this.exportsService.generateAlumnosSecciones(academicPeriodId, lang);
+			case 'staff':
+				return this.exportsService.generateStaff(academicPeriodId, lang);
+			case 'sections':
+				return this.exportsService.generateSections(academicPeriodId, lang);
+			case 'enrolledStudents':
+				return this.exportsService.generateEnrolledStudents(academicPeriodId, lang);
+			case 'studentSections':
+				return this.exportsService.generateStudentSections(academicPeriodId, lang);
 		}
 	}
 

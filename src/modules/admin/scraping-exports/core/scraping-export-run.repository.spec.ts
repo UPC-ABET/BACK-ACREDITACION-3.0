@@ -16,19 +16,19 @@ describe('ScrapingExportRunRepository', () => {
 		it('returns null when no row exists for the key', async () => {
 			mockTypeormRepository.findOne.mockResolvedValue(null);
 
-			const result = await repo.findByKey('docentes', '202610', 'es');
+			const result = await repo.findByKey('staff', '202610', 'es');
 
 			expect(result).toBeNull();
 			expect(mockTypeormRepository.findOne).toHaveBeenCalledWith({
-				where: { exportType: 'docentes', periodo: '202610', lang: 'es' },
+				where: { exportType: 'staff', periodo: '202610', lang: 'es' },
 			});
 		});
 
 		it('returns the row when one exists for the key', async () => {
-			const row = { id: 1, exportType: 'docentes', periodo: '202610', lang: 'es' };
+			const row = { id: 1, exportType: 'staff', periodo: '202610', lang: 'es' };
 			mockTypeormRepository.findOne.mockResolvedValue(row);
 
-			await expect(repo.findByKey('docentes', '202610', 'es')).resolves.toEqual(row);
+			await expect(repo.findByKey('staff', '202610', 'es')).resolves.toEqual(row);
 		});
 	});
 
@@ -37,18 +37,18 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.upsert.mockResolvedValue(undefined);
 			const created: Partial<ScrapingExportRunEntity> = {
 				id: 1,
-				exportType: 'docentes',
+				exportType: 'staff',
 				periodo: '202610',
 				lang: 'es',
 				status: 'running',
 			};
 			mockTypeormRepository.findOne.mockResolvedValue(created);
 
-			const result = await repo.upsertByKey('docentes', '202610', 'es', { status: 'running' });
+			const result = await repo.upsertByKey('staff', '202610', 'es', { status: 'running' });
 
 			expect(mockTypeormRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
-					exportType: 'docentes',
+					exportType: 'staff',
 					periodo: '202610',
 					lang: 'es',
 					status: 'running',
@@ -62,14 +62,14 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.upsert.mockResolvedValue(undefined);
 			mockTypeormRepository.findOne.mockResolvedValue({
 				id: 1,
-				exportType: 'docentes',
+				exportType: 'staff',
 				periodo: '202610',
 				lang: 'es',
 				status: 'completed',
 				fileName: 'docentes.xlsx',
 			});
 
-			const result = await repo.upsertByKey('docentes', '202610', 'es', {
+			const result = await repo.upsertByKey('staff', '202610', 'es', {
 				status: 'completed',
 				fileName: 'docentes.xlsx',
 			});
@@ -84,7 +84,7 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.findOne.mockResolvedValue(null);
 
 			await expect(
-				repo.upsertByKey('docentes', '202610', 'es', { status: 'running' }),
+				repo.upsertByKey('staff', '202610', 'es', { status: 'running' }),
 			).rejects.toThrow();
 		});
 	});

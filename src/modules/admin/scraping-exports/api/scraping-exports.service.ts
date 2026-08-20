@@ -10,12 +10,12 @@ import {
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
-	alumnoMatriculadoExportLabels,
-	alumnoSeccionExportLabels,
-	docenteExportLabels,
+	enrolledStudentExportLabels,
 	gradesRcDescriptiveLabels,
 	gradesRcExportLabels,
-	seccionExportLabels,
+	sectionExportLabels,
+	staffExportLabels,
+	studentSectionExportLabels,
 } from '../model/scraping-exports.labels';
 
 export interface GeneratedExcel {
@@ -43,16 +43,16 @@ export class ScrapingExportsService {
 		private readonly gradesRcRepository: GradesRcExportRepository,
 	) {}
 
-	async generateDocentes(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(docenteExportLabels, lang);
-		const rows = await this.repository.getDocentes(academicPeriodId);
+	async generateStaff(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+		const labels = this.resolveLabels(staffExportLabels, lang);
+		const rows = await this.repository.getStaff(academicPeriodId);
 		const data = rows.map((r) => [r.professorCode, r.lastName, r.firstName, r.email]);
 		return this.buildExcel(labels, data);
 	}
 
-	async generateSecciones(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(seccionExportLabels, lang);
-		const rows = await this.repository.getSecciones(academicPeriodId);
+	async generateSections(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+		const labels = this.resolveLabels(sectionExportLabels, lang);
+		const rows = await this.repository.getSections(academicPeriodId);
 		const data = rows.map((r) => [
 			r.courseCode,
 			r.sectionCode,
@@ -63,12 +63,12 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosMatriculados(
+	async generateEnrolledStudents(
 		academicPeriodId: number | null,
 		lang?: string,
 	): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(alumnoMatriculadoExportLabels, lang);
-		const rows = await this.repository.getAlumnosMatriculados(academicPeriodId);
+		const labels = this.resolveLabels(enrolledStudentExportLabels, lang);
+		const rows = await this.repository.getEnrolledStudents(academicPeriodId);
 		const data = rows.map((r) => [
 			r.studentCode,
 			r.lastName,
@@ -80,12 +80,12 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosSecciones(
+	async generateStudentSections(
 		academicPeriodId: number | null,
 		lang?: string,
 	): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(alumnoSeccionExportLabels, lang);
-		const rows = await this.repository.getAlumnosSecciones(academicPeriodId);
+		const labels = this.resolveLabels(studentSectionExportLabels, lang);
+		const rows = await this.repository.getStudentSections(academicPeriodId);
 		const data = rows.map((r) => [r.sectionCode, r.studentCode]);
 		return this.buildExcel(labels, data);
 	}

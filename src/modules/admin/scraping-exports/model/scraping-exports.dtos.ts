@@ -9,20 +9,20 @@ import { ScrapingExportType } from './scraping-exports.types';
 // Wire values (kebab-case, matching this file's existing route-naming style) mapped to the
 // internal camelCase ScrapingExportType.
 export const EXPORT_TYPE_PARAM_VALUES = [
-	'docentes',
-	'secciones',
-	'alumnos-matriculados',
-	'alumnos-secciones',
+	'staff',
+	'sections',
+	'enrolled-students',
+	'student-sections',
 	'grades-rc',
 ] as const;
 
 export type ExportTypeParam = (typeof EXPORT_TYPE_PARAM_VALUES)[number];
 
 const EXPORT_TYPE_PARAM_MAP: Record<ExportTypeParam, ScrapingExportType> = {
-	docentes: 'docentes',
-	secciones: 'secciones',
-	'alumnos-matriculados': 'alumnosMatriculados',
-	'alumnos-secciones': 'alumnosSecciones',
+	staff: 'staff',
+	sections: 'sections',
+	'enrolled-students': 'enrolledStudents',
+	'student-sections': 'studentSections',
 	'grades-rc': 'gradesRc',
 };
 

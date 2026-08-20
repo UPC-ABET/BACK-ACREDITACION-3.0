@@ -16,7 +16,7 @@ import { GradesRcExportRepository } from './core/grades-rc-export.repository';
 import { ScrapingExportRunEntity } from './model/scraping-export-run.entity';
 import { ScrapingExportRunRepository } from './core/scraping-export-run.repository';
 
-// Builds the uploads-ready Excel files (docentes, secciones, matriculados, alumno-sección) out of
+// Builds the uploads-ready Excel files (staff, sections, enrolled students, student-sections) out of
 // the raw scraping tables. Banner and Planner raw tables share one physical DB, so this module
 // uses a single, read-only, self-contained datasource ("exports-raw") that runs raw cross-source
 // SQL. No entities are registered on that connection — every query is hand-written SQL. Same

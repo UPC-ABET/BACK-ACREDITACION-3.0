@@ -29,19 +29,19 @@ describe('ScrapingExportsController', () => {
 		it('resolves exportType and periodo, and returns the service result wrapped', async () => {
 			getStatus.mockResolvedValue({ status: 'completed' });
 
-			const response = await controller.status('alumnos-matriculados', 'es', 1);
+			const response = await controller.status('enrolled-students', 'es', 1);
 
 			expect(resolvePeriodo).toHaveBeenCalledWith(1);
-			expect(getStatus).toHaveBeenCalledWith('alumnosMatriculados', '202610', 'es');
+			expect(getStatus).toHaveBeenCalledWith('enrolledStudents', '202610', 'es');
 			expect(response.data).toEqual({ status: 'completed' });
 		});
 
 		it('defaults lang to "es" when not provided', async () => {
 			getStatus.mockResolvedValue({ status: 'notGenerated' });
 
-			await controller.status('docentes', undefined as unknown as string, 1);
+			await controller.status('staff', undefined as unknown as string, 1);
 
-			expect(getStatus).toHaveBeenCalledWith('docentes', '202610', 'es');
+			expect(getStatus).toHaveBeenCalledWith('staff', '202610', 'es');
 		});
 
 		// resolveLang only defaults an empty/falsy lang to DEFAULT_TEMPLATE_LANGUAGE -- it never
@@ -53,9 +53,9 @@ describe('ScrapingExportsController', () => {
 		it('passes an unsupported lang through unchanged rather than defaulting it', async () => {
 			getStatus.mockResolvedValue({ status: 'notGenerated' });
 
-			await controller.status('docentes', 'fr', 1);
+			await controller.status('staff', 'fr', 1);
 
-			expect(getStatus).toHaveBeenCalledWith('docentes', '202610', 'fr');
+			expect(getStatus).toHaveBeenCalledWith('staff', '202610', 'fr');
 		});
 
 		it('rejects an exportType outside the fixed set', async () => {
@@ -66,7 +66,7 @@ describe('ScrapingExportsController', () => {
 		it('throws NotFoundError when the academic period cannot be resolved to a periodo', async () => {
 			resolvePeriodo.mockResolvedValue(null);
 
-			await expect(controller.status('docentes', 'es', 999)).rejects.toThrow(NotFoundError);
+			await expect(controller.status('staff', 'es', 999)).rejects.toThrow(NotFoundError);
 			expect(getStatus).not.toHaveBeenCalled();
 		});
 	});
@@ -79,9 +79,9 @@ describe('ScrapingExportsController', () => {
 			});
 			const res = fakeResponse();
 
-			await controller.download('docentes', 'es', 1, res);
+			await controller.download('staff', 'es', 1, res);
 
-			expect(download).toHaveBeenCalledWith('docentes', '202610', 'es');
+			expect(download).toHaveBeenCalledWith('staff', '202610', 'es');
 			expect((res as unknown as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith(
 				'Content-Type',
 				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -99,8 +99,8 @@ describe('ScrapingExportsController', () => {
 			download.mockResolvedValue(null);
 			const res = fakeResponse();
 
-			await expect(controller.download('docentes', 'es', 1, res)).rejects.toThrow(NotFoundError);
-			await expect(controller.download('docentes', 'es', 1, res)).rejects.toMatchObject({
+			await expect(controller.download('staff', 'es', 1, res)).rejects.toThrow(NotFoundError);
+			await expect(controller.download('staff', 'es', 1, res)).rejects.toMatchObject({
 				messageKey: scrapingExportsValidationStrings.error.notGenerated,
 			});
 			expect((res as unknown as { end: jest.Mock }).end).not.toHaveBeenCalled();
@@ -121,7 +121,7 @@ describe('ScrapingExportsController', () => {
 			const conflict = new Error('already generating');
 			regenerate.mockRejectedValue(conflict);
 
-			await expect(controller.regenerate('docentes', 'es', 1, user)).rejects.toBe(conflict);
+			await expect(controller.regenerate('staff', 'es', 1, user)).rejects.toBe(conflict);
 		});
 	});
 });

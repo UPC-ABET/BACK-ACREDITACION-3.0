@@ -7,10 +7,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // Mirrors `ScrapingExportType`.
 const SCRAPING_EXPORT_TYPE_VALUES = [
-	'docentes',
-	'secciones',
-	'alumnosMatriculados',
-	'alumnosSecciones',
+	'staff',
+	'sections',
+	'enrolledStudents',
+	'studentSections',
 	'gradesRc',
 ] as const;
 

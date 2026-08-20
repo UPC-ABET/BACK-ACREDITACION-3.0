@@ -1,6 +1,6 @@
 // Column headers + output file names for each generated export. Headers mirror the matching
 // uploads/* template (so the file reads naturally and stays upload-compatible), with the extra
-// docente `email` column appended. The upload parsers read positionally, so the leading columns
+// staff `email` column appended. The upload parsers read positionally, so the leading columns
 // must keep the template order.
 
 import { GRADE_RC_OBSERVATIONS } from './scraping-exports.types';
@@ -24,7 +24,7 @@ export interface DescriptiveSheetLabels {
 
 type LangMap = Record<string, ExportLabels>;
 
-export const docenteExportLabels: LangMap = {
+export const staffExportLabels: LangMap = {
 	es: {
 		headers: ['Código de docente', 'Apellidos', 'Nombres', 'Correo'],
 		fileName: 'Docentes.xlsx',
@@ -35,7 +35,7 @@ export const docenteExportLabels: LangMap = {
 	},
 };
 
-export const seccionExportLabels: LangMap = {
+export const sectionExportLabels: LangMap = {
 	es: {
 		headers: [
 			'Código del curso',
@@ -58,7 +58,7 @@ export const seccionExportLabels: LangMap = {
 	},
 };
 
-export const alumnoMatriculadoExportLabels: LangMap = {
+export const enrolledStudentExportLabels: LangMap = {
 	es: {
 		headers: [
 			'Código del alumno',
@@ -83,7 +83,7 @@ export const alumnoMatriculadoExportLabels: LangMap = {
 	},
 };
 
-export const alumnoSeccionExportLabels: LangMap = {
+export const studentSectionExportLabels: LangMap = {
 	es: {
 		headers: ['Código de sección', 'Código del alumno'],
 		fileName: 'AlumnoSeccion.xlsx',

@@ -1,5 +1,5 @@
 // Value transformations that turn raw Banner codes into the codes the upload templates / original
-// system expect. Kept in one place so docentes/secciones/matriculados stay consistent.
+// system expect. Kept in one place so staff/sections/enrolled-students stay consistent.
 
 // Banner campus code -> short campus/local code used by the original system (CS, MO, SI, VL).
 // San Miguel (both SMI and the "HUB – San Miguel" code) maps to CS.

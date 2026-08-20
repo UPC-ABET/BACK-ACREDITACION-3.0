@@ -43,14 +43,14 @@ describe('ScrapingExportsRepository RUN_FOR_PERIOD status filter', () => {
 	});
 
 	it('only selects a completed run when resolving the run to export from', async () => {
-		await repo.getDocentes(1);
+		await repo.getStaff(1);
 
 		const [sql] = rawQuery.mock.calls[0];
 		expect(sql).toContain("status = 'completed'");
 	});
 });
 
-describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
+describe('ScrapingExportsRepository.getStudentSections', () => {
 	const rawQuery = jest.fn();
 	const mainQuery = jest.fn();
 	const repo = new ScrapingExportsRepository(
@@ -66,7 +66,7 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		mainQuery.mockResolvedValueOnce([{ code: '202610' }]); // resolveAcademicPeriodCode
 		mainQuery.mockResolvedValueOnce([]); // uploaded sections
 
-		await expect(repo.getAlumnosSecciones(1)).resolves.toEqual([]);
+		await expect(repo.getStudentSections(1)).resolves.toEqual([]);
 		expect(rawQuery).not.toHaveBeenCalled();
 	});
 
@@ -75,7 +75,7 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		mainQuery.mockResolvedValueOnce([{ sectionCode: 'NRC1' }]); // uploaded sections
 		rawQuery.mockResolvedValueOnce([]); // no candidate enrollments
 
-		await expect(repo.getAlumnosSecciones(1)).resolves.toEqual([]);
+		await expect(repo.getStudentSections(1)).resolves.toEqual([]);
 		// only the period-code + uploaded-sections queries ran; the malla validation was skipped
 		expect(mainQuery).toHaveBeenCalledTimes(2);
 	});
@@ -90,7 +90,7 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		// the validate+collapse query returns the surviving rows directly (NRC2/A2 dropped by the malla)
 		mainQuery.mockResolvedValueOnce([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
 
-		const result = await repo.getAlumnosSecciones(1);
+		const result = await repo.getStudentSections(1);
 
 		// the repository returns the query result as-is (validation + collapse happen in SQL)
 		expect(result).toEqual([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
