@@ -25,7 +25,9 @@ built on top of it.
 - **Mail:** SMTP via nodemailer (`MailService`) — all email goes through this single service
 - **Validation:** class-validator + class-transformer on DTOs, custom validation classes for business rules
 - **Environment:** Zod-validated env schema (`src/commons/configs/env.config.ts`)
-- **Files/export:** ExcelJS for spreadsheets, archiver for bundles, AWS S3 for storage
+- **Files/export:** ExcelJS for spreadsheets, archiver for bundles. AWS S3 credentials are
+  configured (`@aws-sdk/client-s3` is a dependency) but not yet wired to any code path — see
+  the External Integrations table below
 - **Package manager:** pnpm
 
 ## Domain Vocabulary
@@ -183,18 +185,18 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 PostgreSQL, organised into schemas that mirror the module tree:
 
-| Schema          | Holds                                                                                                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `academic`      | periods, programmes, courses, sections, study plans, students, professors, grades                                                                                                                |
-| `core`          | types, type groups, parameters, email templates, notification logs, scraper credentials (password encrypted — see [ADR-001](./adr/ADR-001-external-system-credentials-encrypted-in-database.md)) |
-| `evaluation`    | projects, rubrics, questions, criteria, scores, evaluators                                                                                                                                       |
-| `evidence`      | IFCs, ARDs, evaluations, instruments, surveys, outcome grades                                                                                                                                    |
-| `organization`  | schools, faculties, campuses, charts, staff, users                                                                                                                                               |
-| `improvement`   | findings, actions, plans and their links                                                                                                                                                         |
-| `accreditation` | outcomes, commissions, accreditors, conversions                                                                                                                                                  |
-| `survey`        | notification messages                                                                                                                                                                            |
-| `ifc`           | IFC findings and statuses                                                                                                                                                                        |
-| `audit`         | upload/rollback undo stacks (`fn_upload_*`, `fn_rollback_*`)                                                                                                                                     |
+| Schema          | Holds                                                                                                                                                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `academic`      | periods, programmes, courses, sections, study plans, students, professors, grades                                                                                                                                                                                                                                                                     |
+| `core`          | types, type groups, parameters, email templates, notification logs, scraper credentials (password encrypted — see [ADR-001](./adr/ADR-001-external-system-credentials-encrypted-in-database.md)), persisted scraping export generation state (`scraping_export_runs` — see [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md)) |
+| `evaluation`    | projects, rubrics, questions, criteria, scores, evaluators                                                                                                                                                                                                                                                                                            |
+| `evidence`      | IFCs, ARDs, evaluations, instruments, surveys, outcome grades                                                                                                                                                                                                                                                                                         |
+| `organization`  | schools, faculties, campuses, charts, staff, users                                                                                                                                                                                                                                                                                                    |
+| `improvement`   | findings, actions, plans and their links                                                                                                                                                                                                                                                                                                              |
+| `accreditation` | outcomes, commissions, accreditors, conversions                                                                                                                                                                                                                                                                                                       |
+| `survey`        | notification messages                                                                                                                                                                                                                                                                                                                                 |
+| `ifc`           | IFC findings and statuses                                                                                                                                                                                                                                                                                                                             |
+| `audit`         | upload/rollback undo stacks (`fn_upload_*`, `fn_rollback_*`)                                                                                                                                                                                                                                                                                          |
 
 Configuration:
 
@@ -297,13 +299,13 @@ Use these shared helpers — never redeclare them locally.
 
 ## External Integrations
 
-| System                 | Role                                                            | Reached via                                                                                                                                                                                                                                              |
-| ---------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Banner**             | University system of record for enrolment, schedules and grades | Scraped into the raw datasource                                                                                                                                                                                                                          |
-| **uPlanner**           | Source of planning and grade data                               | Scraped into the raw datasource. Authenticated through u-planner's own HTTP API (a credential POST, then a token exchange) using credentials stored in `core.scraper_credentials` — **not** by driving a browser. Banner still needs one, because of 2FA |
-| **Microsoft Entra ID** | Institutional sign-in                                           | MSAL (`@azure/msal-node`)                                                                                                                                                                                                                                |
-| **AWS S3**             | Evidence and export file storage                                | `@aws-sdk/client-s3`                                                                                                                                                                                                                                     |
-| **SMTP**               | All outbound email                                              | `MailService` only                                                                                                                                                                                                                                       |
+| System                 | Role                                                                                                                                                                                                                                                                                      | Reached via                                                                                                                                                                                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Banner**             | University system of record for enrolment, schedules and grades                                                                                                                                                                                                                           | Scraped into the raw datasource                                                                                                                                                                                                                          |
+| **uPlanner**           | Source of planning and grade data                                                                                                                                                                                                                                                         | Scraped into the raw datasource. Authenticated through u-planner's own HTTP API (a credential POST, then a token exchange) using credentials stored in `core.scraper_credentials` — **not** by driving a browser. Banner still needs one, because of 2FA |
+| **Microsoft Entra ID** | Institutional sign-in                                                                                                                                                                                                                                                                     | MSAL (`@azure/msal-node`)                                                                                                                                                                                                                                |
+| **AWS S3**             | Configured (env vars, `@aws-sdk/client-s3` dependency) but not yet used by any code path — no client/service wrapper exists. Generated scraping exports use `core.scraping_export_runs.file_bytes` instead; see [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md) | `@aws-sdk/client-s3` (installed, unused)                                                                                                                                                                                                                 |
+| **SMTP**               | All outbound email                                                                                                                                                                                                                                                                        | `MailService` only                                                                                                                                                                                                                                       |
 
 ## Related repositories
 
@@ -393,5 +395,17 @@ _why_ writes them down. Do not populate it by guessing from the code.
   exists: without it, a course could sit directly under a School with no career in between, and
   nothing would ever surface that as wrong. Enforced in `ChartValidation`
   (`hasProgramAncestor`) and in `audit.fn_upload_charts`.
+- **A completed Banner or Planner scrape run deletes every other raw-data run for the same
+  `periodo`; a run that itself finishes partial/failed/expired deletes only its own rows.**
+  Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno`/`raw_notas` on the `raw`
+  connection; `raw_planner_seccion`/`raw_planner_evaluacion`/`raw_planner_nota` on
+  `planner-raw`) is otherwise insert-only, tagged by a `runId` FK to `scrape_run` /
+  `planner_scrape_run` with `onDelete: 'CASCADE'` — nothing ever removed a superseded run
+  before this, so every re-scrape of the same period grew the raw datasource forever, even
+  though only the newest completed run per period is ever read. Retention is keyed on
+  `periodo` alone, not `departamentos`/`escuela` — Banner's own `findByPeriodo` ignores
+  `departamentos`, and Planner's `escuela` column is never actually populated. Enforced in
+  `ScraperService.execute()` / `PlannerScraperService.execute()`, right after each run's
+  `finish()` call. See [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md).
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->

@@ -1,6 +1,56 @@
 import { ScrapingExportsRepository } from './scraping-exports.repository';
 
-describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
+describe('ScrapingExportsRepository.findAcademicPeriodIdByCode', () => {
+	const rawQuery = jest.fn();
+	const mainQuery = jest.fn();
+	const repo = new ScrapingExportsRepository(
+		{ query: rawQuery } as any,
+		{ query: mainQuery } as any,
+	);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('resolves an academic period id from its code', async () => {
+		mainQuery.mockResolvedValueOnce([{ id: 5 }]);
+
+		await expect(repo.findAcademicPeriodIdByCode('202610')).resolves.toBe(5);
+		expect(mainQuery).toHaveBeenCalledWith(expect.stringContaining('academic.academic_periods'), [
+			'202610',
+		]);
+	});
+
+	it('returns null when no period matches the code', async () => {
+		mainQuery.mockResolvedValueOnce([]);
+
+		await expect(repo.findAcademicPeriodIdByCode('unknown')).resolves.toBeNull();
+	});
+});
+
+describe('ScrapingExportsRepository RUN_FOR_PERIOD status filter', () => {
+	const rawQuery = jest.fn();
+	const mainQuery = jest.fn();
+	const repo = new ScrapingExportsRepository(
+		{ query: rawQuery } as any,
+		{ query: mainQuery } as any,
+	);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mainQuery.mockResolvedValueOnce([{ code: '202610' }]); // resolveAcademicPeriodCode
+		rawQuery.mockResolvedValueOnce([]);
+	});
+
+	it('only selects a completed run when resolving the run to export from', async () => {
+		await repo.getStaff(1);
+
+		const [sql] = rawQuery.mock.calls[0];
+		expect(sql).toContain("status = 'completed'");
+	});
+});
+
+describe('ScrapingExportsRepository.getStudentSections', () => {
 	const rawQuery = jest.fn();
 	const mainQuery = jest.fn();
 	const repo = new ScrapingExportsRepository(
@@ -16,7 +66,7 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		mainQuery.mockResolvedValueOnce([{ code: '202610' }]); // resolveAcademicPeriodCode
 		mainQuery.mockResolvedValueOnce([]); // uploaded sections
 
-		await expect(repo.getAlumnosSecciones(1)).resolves.toEqual([]);
+		await expect(repo.getStudentSections(1)).resolves.toEqual([]);
 		expect(rawQuery).not.toHaveBeenCalled();
 	});
 
@@ -25,7 +75,7 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		mainQuery.mockResolvedValueOnce([{ sectionCode: 'NRC1' }]); // uploaded sections
 		rawQuery.mockResolvedValueOnce([]); // no candidate enrollments
 
-		await expect(repo.getAlumnosSecciones(1)).resolves.toEqual([]);
+		await expect(repo.getStudentSections(1)).resolves.toEqual([]);
 		// only the period-code + uploaded-sections queries ran; the malla validation was skipped
 		expect(mainQuery).toHaveBeenCalledTimes(2);
 	});
@@ -40,7 +90,7 @@ describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 		// the validate+collapse query returns the surviving rows directly (NRC2/A2 dropped by the malla)
 		mainQuery.mockResolvedValueOnce([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
 
-		const result = await repo.getAlumnosSecciones(1);
+		const result = await repo.getStudentSections(1);
 
 		// the repository returns the query result as-is (validation + collapse happen in SQL)
 		expect(result).toEqual([{ sectionCode: 'NRC1', studentCode: 'A1' }]);

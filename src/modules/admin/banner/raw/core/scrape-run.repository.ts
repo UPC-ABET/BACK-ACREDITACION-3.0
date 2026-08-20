@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { ScrapeRunEntity, ScrapeRunStatus } from '../model/scrape-run.entity';
 
 export interface CreateScrapeRunData {
@@ -40,5 +40,13 @@ export class ScrapeRunRepository {
 			where: { periodo },
 			order: { startedAt: 'DESC' },
 		});
+	}
+
+	async deleteRun(id: string): Promise<void> {
+		await this.repository.delete(id);
+	}
+
+	async deleteOtherRunsForPeriodo(periodo: string, keepRunId: string): Promise<void> {
+		await this.repository.delete({ periodo, id: Not(keepRunId) });
 	}
 }

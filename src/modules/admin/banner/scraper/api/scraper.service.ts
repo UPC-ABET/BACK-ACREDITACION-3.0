@@ -14,6 +14,7 @@ import { SessionExpiredError } from '../../banner-token/model/session-expired.er
 import { ScrapeRunStatus } from '../../raw/model/scrape-run.entity';
 import { RunScrapeDto } from '../model/scraper.dtos';
 import { scraperValidationStrings } from '../config/strings/scraper.validation';
+import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
 
 const DEFAULT_NIVEL = 'UG';
 const NRC_CHUNK_SIZE = 50;
@@ -64,6 +65,7 @@ export class ScraperService {
 		private readonly rawNotasRepository: RawNotasRepository,
 		private readonly departmentSourceRepository: DepartmentSourceRepository,
 		private readonly http: BannerHttpClient,
+		private readonly exportGenerationService: ScrapingExportGenerationService,
 	) {}
 
 	async run(
@@ -197,17 +199,61 @@ export class ScraperService {
 
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
-			await this.scrapeRunRepository.finish(runId, status, stats);
+			await this.finalizeRun(runId, periodo, status, stats);
 			this.logger.log(`Scrape ${runId} ${status}: ${JSON.stringify(stats.counts)}`);
 		} catch (error) {
 			const expired = error instanceof SessionExpiredError;
 			const status: ScrapeRunStatus = expired ? 'expired' : 'failed';
-			await this.scrapeRunRepository.finish(runId, status, {
+			await this.finalizeRun(runId, periodo, status, {
 				...stats,
 				fatal: (error as Error).message,
 			});
 			this.logger.error(`Scrape ${runId} ${status}: ${(error as Error).message}`);
 		}
+	}
+
+	/**
+	 * Persists the run's outcome, then reconciles retention for its periodo: a `completed` run
+	 * supersedes every other row for that periodo (mopping up whatever partial/failed leftovers a
+	 * previous, non-fatal run left behind for the same period in one step), while any other
+	 * outcome only removes its own row so a currently-completed run for the periodo is left
+	 * untouched. Retention cleanup is best-effort: a transient failure there is logged and
+	 * swallowed rather than propagated, so it never masks the run's own outcome that `finish()`
+	 * already persisted.
+	 */
+	private async finalizeRun(
+		runId: string,
+		periodo: string,
+		status: ScrapeRunStatus,
+		stats: object,
+	): Promise<void> {
+		await this.scrapeRunRepository.finish(runId, status, stats);
+		try {
+			if (status === 'completed') {
+				await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
+				this.triggerExportGeneration(periodo, runId);
+			} else {
+				await this.scrapeRunRepository.deleteRun(runId);
+			}
+		} catch (error) {
+			this.logger.error(
+				`Retention cleanup failed for scrape ${runId} (periodo ${periodo}): ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+	}
+
+	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
+	// this runs, so a failure generating exports must never surface as a scrape failure.
+	private triggerExportGeneration(periodo: string, bannerRunId: string): void {
+		void this.exportGenerationService.triggerForBannerRun(periodo, bannerRunId).catch((error) => {
+			this.logger.error(
+				`Failed to trigger export generation for periodo ${periodo}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		});
 	}
 
 	private async scrapeHorario(

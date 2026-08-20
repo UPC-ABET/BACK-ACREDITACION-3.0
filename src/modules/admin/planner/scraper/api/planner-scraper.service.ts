@@ -28,6 +28,7 @@ import {
 import { PlannerScrapeRunStatus } from '../../raw/model/planner-scrape-run.entity';
 import { RunPlannerScrapeDto } from '../model/planner-scraper.dtos';
 import { plannerScraperValidationStrings } from '../config/strings/planner-scraper.validation';
+import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
 
 /**
  * Aborts the whole run rather than being recorded against one course.
@@ -80,6 +81,7 @@ export class PlannerScraperService {
 		private readonly rawNotaRepository: RawPlannerNotaRepository,
 		private readonly sourceRepository: PlannerSourceRepository,
 		private readonly http: PlannerHttpClient,
+		private readonly exportGenerationService: ScrapingExportGenerationService,
 	) {}
 
 	async run(
@@ -181,17 +183,60 @@ export class PlannerScraperService {
 
 			const status: PlannerScrapeRunStatus =
 				stats.courses.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
-			await this.scrapeRunRepository.finish(runId, status, stats);
+			await this.finalizeRun(runId, periodo, status, stats);
 			this.logger.log(`Planner scrape ${runId} ${status}: ${JSON.stringify(stats.counts)}`);
 		} catch (error) {
 			const expired = error instanceof PlannerSessionExpiredError;
 			const status: PlannerScrapeRunStatus = expired ? 'expired' : 'failed';
-			await this.scrapeRunRepository.finish(runId, status, {
+			await this.finalizeRun(runId, periodo, status, {
 				...stats,
 				fatal: (error as Error).message,
 			});
 			this.logger.error(`Planner scrape ${runId} ${status}: ${(error as Error).message}`);
 		}
+	}
+
+	/**
+	 * Persists the run's outcome, then reconciles retention for its periodo: a `completed` run
+	 * supersedes every other row for that periodo (mopping up prior partial/failed leftovers in
+	 * the same statement via cascade), while any other outcome only removes its own row so a
+	 * currently-completed run for the periodo is left untouched. Retention cleanup is best-effort:
+	 * a transient failure there is logged and swallowed rather than propagated, so it never masks
+	 * the run's own outcome that `finish()` already persisted.
+	 */
+	private async finalizeRun(
+		runId: string,
+		periodo: string,
+		status: PlannerScrapeRunStatus,
+		stats: object,
+	): Promise<void> {
+		await this.scrapeRunRepository.finish(runId, status, stats);
+		try {
+			if (status === 'completed') {
+				await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
+				this.triggerExportGeneration(periodo, runId);
+			} else {
+				await this.scrapeRunRepository.deleteRun(runId);
+			}
+		} catch (error) {
+			this.logger.error(
+				`Retention cleanup failed for scrape ${runId} (periodo ${periodo}): ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+	}
+
+	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
+	// this runs, so a failure generating exports must never surface as a scrape failure.
+	private triggerExportGeneration(periodo: string, plannerRunId: string): void {
+		void this.exportGenerationService.triggerForPlannerRun(periodo, plannerRunId).catch((error) => {
+			this.logger.error(
+				`Failed to trigger export generation for periodo ${periodo}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		});
 	}
 
 	// Phase 0: resolve the Planner periodId. Planner's periodCode is `${nivel}-${periodo}`.

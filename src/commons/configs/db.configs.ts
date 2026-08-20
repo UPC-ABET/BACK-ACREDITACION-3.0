@@ -310,6 +310,23 @@ export function DateColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
+export function BinaryColumn(options?: BaseOptions): PropertyDecorator {
+	return (target, propertyKey) => {
+		// No `withDefault` — a bytea column has no sensible universal default, unlike the other
+		// column types above.
+		const { nullable = true, unique = false, ...rest } = options || {};
+		applyColumn(
+			target,
+			propertyKey,
+			{
+				type: 'bytea',
+				nullable,
+				unique: false,
+			},
+			rest,
+		);
+	};
+}
 export function JsonColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};

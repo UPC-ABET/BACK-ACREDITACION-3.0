@@ -3,10 +3,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
 import {
-	AlumnoMatriculadoExportRow,
-	AlumnoSeccionExportRow,
-	DocenteExportRow,
-	SeccionExportRow,
+	EnrolledStudentExportRow,
+	SectionExportRow,
+	StaffExportRow,
+	StudentSectionExportRow,
 } from '../model/scraping-exports.types';
 import {
 	DEFAULT_ENROLLMENT_STATUS,
@@ -35,12 +35,34 @@ export async function resolveAcademicPeriodCode(
 	return rows[0]?.code ?? null;
 }
 
-// Run to export from: the latest scrape_run for the given period code ($1). When $1 is NULL (no
-// active period) it falls back to the latest run overall. The period code decides the modality —
-// 202610/202620 are Regular, 202615/202625 are EPE — because Banner scrapes each into its own run.
+/**
+ * Reverse of `resolveAcademicPeriodCode`: `scrape_run.periodo` (e.g. "202610") back to
+ * `academic.academic_periods.id`. Used by the export generation orchestration, which only ever
+ * has a `periodo` string in hand (from a completed scrape run), not the request-derived
+ * `academicPeriodId` header — see docs/CONTEXT.md "scope must survive every asynchronous hop".
+ */
+export async function findAcademicPeriodIdByCode(
+	mainDataSource: DataSource,
+	periodoCode: string,
+): Promise<number | null> {
+	const rows: Array<{ id: number }> = await mainDataSource.query(
+		`SELECT id AS "id" FROM academic.academic_periods WHERE code = $1 LIMIT 1`,
+		[periodoCode],
+	);
+	return rows[0]?.id ?? null;
+}
+
+// Run to export from: the latest COMPLETED scrape_run for the given period code ($1). When $1 is
+// NULL (no active period) it falls back to the latest completed run overall. The period code
+// decides the modality — 202610/202620 are Regular, 202615/202625 are EPE — because Banner
+// scrapes each into its own run. The status filter matters once retention deletes a superseded
+// run's raw rows as soon as a new one completes (see design.md § AC-4/AC-5): without it, a
+// manual regenerate racing a new in-flight scrape for the same period could read partial,
+// still-being-inserted rows instead of falling back to the last good run.
 const RUN_FOR_PERIOD = `(
 	SELECT id FROM scrape_run
 	WHERE ($1::text IS NULL OR periodo = $1)
+	  AND status = 'completed'
 	ORDER BY started_at DESC
 	LIMIT 1
 )`;
@@ -51,7 +73,7 @@ const RUN_FOR_PERIOD = `(
  * of the selected period (every career of that period/modality) — it is NOT scoped per school; the
  * per-career/program filtering happens on the upload side (audit.fn_validate_program_modality /
  * audit.fn_upload_enrolled_students validate each row's programCode against academic.programs). The
- * only narrowing kept here is dropping non-engineering programs from matriculados
+ * only narrowing kept here is dropping non-engineering programs from enrolled students
  * (mapProgramToCareer returns null for them). Reads only — never writes.
  */
 @Injectable()
@@ -65,10 +87,22 @@ export class ScrapingExportsRepository {
 		return resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
 	}
 
+	async findAcademicPeriodIdByCode(periodoCode: string): Promise<number | null> {
+		return findAcademicPeriodIdByCode(this.mainDataSource, periodoCode);
+	}
+
+	// Forward lookup used by the generic status/download/regenerate endpoints: given the request's
+	// X-Academic-Period-Id header value, resolve the periodo code the export generation pipeline
+	// (and scrape_run itself) is keyed on. Public wrapper around the same resolution the per-export
+	// queries already use internally.
+	async resolvePeriodoCode(academicPeriodId: number): Promise<string | null> {
+		return this.periodCode(academicPeriodId);
+	}
+
 	// Distinct teachers from the selected period's Banner run, taken straight from raw_horario's
 	// docentes. professorCode = idBanner (the "N0…" user code the original system uses), and last
 	// name / first name / email come from the same record.
-	async getDocentes(academicPeriodId: number | null): Promise<DocenteExportRow[]> {
+	async getStaff(academicPeriodId: number | null): Promise<StaffExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{
 			professorCode: string;
@@ -104,7 +138,7 @@ export class ScrapingExportsRepository {
 	// original system uses. courseCode = materia.codigo + numeroCurso, sectionCode = nrc,
 	// professorCode = the principal teacher's idBanner, campus = mapped Banner campus, modality =
 	// Banner metodoEducativo (defaulting to "P" when missing).
-	async getSecciones(academicPeriodId: number | null): Promise<SeccionExportRow[]> {
+	async getSections(academicPeriodId: number | null): Promise<SectionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{
 			courseCode: string | null;
@@ -136,7 +170,7 @@ export class ScrapingExportsRepository {
 			  AND prof.idb IS NOT NULL
 			  -- Only the graded (calificable='Y') section of each course is exported — the accreditation
 			  -- model keeps a single loadable section per course (the theory), matching the one the
-			  -- alumno-seccion export enrolls students into.
+			  -- student-sections export enrolls students into.
 			  AND h.payload->>'calificable' = 'Y'
 			ORDER BY h.nrc
 		`,
@@ -156,9 +190,7 @@ export class ScrapingExportsRepository {
 	// academic career code (SW/CC/CIVAC/CIVFC…), the campus to the short code, and the enrollment
 	// column is hardcoded to "P" for now. Every engineering student is kept; non-engineering programs
 	// are dropped by mapProgramToCareer (the only filtering left — the rest happens on upload).
-	async getAlumnosMatriculados(
-		academicPeriodId: number | null,
-	): Promise<AlumnoMatriculadoExportRow[]> {
+	async getEnrolledStudents(academicPeriodId: number | null): Promise<EnrolledStudentExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 		const rows: Array<{
 			studentCode: string;
@@ -205,7 +237,7 @@ export class ScrapingExportsRepository {
 	// invariant ("un alumno una vez por curso") that the old load enforced.
 	//
 	// Scoped to the sections ALREADY UPLOADED to the app DB (academic.course_sections for the period):
-	// students are only exported for sections that were previously loaded, so the alumno-seccion upload
+	// students are only exported for sections that were previously loaded, so the student-sections upload
 	// never references a section that isn't in the DB. The raw tables live in a separate connection, so
 	// the uploaded section codes are fetched from the main DB and passed into the raw query.
 	//
@@ -218,7 +250,7 @@ export class ScrapingExportsRepository {
 	// is enrolled in a study plan for that period, and that plan contains the section's course — which
 	// also drops phantom sections and non-enrolled students for free. The bounded raw matrícula (one row
 	// per student-section, ~tens of thousands) is shipped to the main DB; no malla is materialized.
-	async getAlumnosSecciones(academicPeriodId: number | null): Promise<AlumnoSeccionExportRow[]> {
+	async getStudentSections(academicPeriodId: number | null): Promise<StudentSectionExportRow[]> {
 		const period = await this.periodCode(academicPeriodId);
 
 		const uploaded: Array<{ sectionCode: string }> = await this.mainDataSource.query(
@@ -256,7 +288,7 @@ export class ScrapingExportsRepository {
 		const studentCodes = candidates.map((row) => row.studentCode);
 		const gradedFlags = candidates.map((row) => row.isGraded);
 
-		const rows: AlumnoSeccionExportRow[] = await this.mainDataSource.query(
+		const rows: StudentSectionExportRow[] = await this.mainDataSource.query(
 			`
 			WITH cand AS (
 				SELECT section_code, student_code, is_graded

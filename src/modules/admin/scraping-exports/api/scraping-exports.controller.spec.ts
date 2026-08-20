@@ -1,55 +1,127 @@
-import { ScrapingExportsController } from './scraping-exports.controller';
-import { ScrapingExportsService } from './scraping-exports.service';
+import { BadRequestError, NotFoundError } from 'src/commons/domain-error';
 
-describe('ScrapingExportsController — grades RC job endpoints', () => {
-	const startGradesRcExport = jest.fn();
-	const getGradesRcStatus = jest.fn();
-	const getGradesRcFile = jest.fn();
+import { ScrapingExportsController } from './scraping-exports.controller';
+import { ScrapingExportGenerationService } from './scraping-export-generation.service';
+import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
+
+describe('ScrapingExportsController', () => {
+	const getStatus = jest.fn();
+	const download = jest.fn();
+	const regenerate = jest.fn();
+	const resolvePeriodo = jest.fn();
+
 	const controller = new ScrapingExportsController({
-		startGradesRcExport,
-		getGradesRcStatus,
-		getGradesRcFile,
-	} as unknown as ScrapingExportsService);
+		getStatus,
+		download,
+		regenerate,
+		resolvePeriodo,
+	} as unknown as ScrapingExportGenerationService);
 
 	const fakeResponse = () => ({ setHeader: jest.fn(), end: jest.fn() }) as never;
 	const user = { userId: 7 } as never;
 
-	beforeEach(() => jest.clearAllMocks());
-
-	it('starts a job for the current user and returns it wrapped as a success response', async () => {
-		startGradesRcExport.mockResolvedValue({ accepted: true, jobId: 'job-1' });
-
-		const response = await controller.gradesRcStart('es', 1, user);
-
-		expect(startGradesRcExport).toHaveBeenCalledWith(1, 'es', 7);
-		expect(response.data).toEqual({ accepted: true, jobId: 'job-1' });
+	beforeEach(() => {
+		jest.clearAllMocks();
+		resolvePeriodo.mockResolvedValue('202610');
 	});
 
-	it('polls status for the current user', async () => {
-		getGradesRcStatus.mockReturnValue({ status: 'running', done: false });
+	describe('status', () => {
+		it('resolves exportType and periodo, and returns the service result wrapped', async () => {
+			getStatus.mockResolvedValue({ status: 'completed' });
 
-		const response = await controller.gradesRcStatus('job-1', user);
+			const response = await controller.status('enrolled-students', 'es', 1);
 
-		expect(getGradesRcStatus).toHaveBeenCalledWith('job-1', 7);
-		expect(response.data).toEqual({ status: 'running', done: false });
-	});
-
-	it('streams the finished file with download headers', async () => {
-		getGradesRcFile.mockReturnValue({
-			buffer: Buffer.from('xlsx-bytes'),
-			fileName: 'NotasRC.xlsx',
+			expect(resolvePeriodo).toHaveBeenCalledWith(1);
+			expect(getStatus).toHaveBeenCalledWith('enrolledStudents', '202610', 'es');
+			expect(response.data).toEqual({ status: 'completed' });
 		});
-		const res = fakeResponse();
 
-		await controller.gradesRcDownload('job-1', user, res);
+		it('defaults lang to "es" when not provided', async () => {
+			getStatus.mockResolvedValue({ status: 'notGenerated' });
 
-		expect(getGradesRcFile).toHaveBeenCalledWith('job-1', 7);
-		expect((res as unknown as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith(
-			'Content-Disposition',
-			expect.stringContaining('NotasRC.xlsx'),
-		);
-		expect((res as unknown as { end: jest.Mock }).end).toHaveBeenCalledWith(
-			Buffer.from('xlsx-bytes'),
-		);
+			await controller.status('staff', undefined as unknown as string, 1);
+
+			expect(getStatus).toHaveBeenCalledWith('staff', '202610', 'es');
+		});
+
+		// resolveLang only defaults an empty/falsy lang to DEFAULT_TEMPLATE_LANGUAGE -- it never
+		// validates against the supported set (currently 'es'/'en'). An unsupported value is passed
+		// through unchanged as the lookup key; ScrapingExportsService.resolveLabels falls back to
+		// DEFAULT_TEMPLATE_LANGUAGE for actual file generation regardless of what key the row is
+		// stored under, so this never breaks generation -- but a row generated this way persists with
+		// a `lang` column that does not describe the language its content is actually in.
+		it('passes an unsupported lang through unchanged rather than defaulting it', async () => {
+			getStatus.mockResolvedValue({ status: 'notGenerated' });
+
+			await controller.status('staff', 'fr', 1);
+
+			expect(getStatus).toHaveBeenCalledWith('staff', '202610', 'fr');
+		});
+
+		it('rejects an exportType outside the fixed set', async () => {
+			await expect(controller.status('bogus', 'es', 1)).rejects.toThrow(BadRequestError);
+			expect(getStatus).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the academic period cannot be resolved to a periodo', async () => {
+			resolvePeriodo.mockResolvedValue(null);
+
+			await expect(controller.status('staff', 'es', 999)).rejects.toThrow(NotFoundError);
+			expect(getStatus).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('download', () => {
+		it('streams the file with download headers when a result exists', async () => {
+			download.mockResolvedValue({
+				fileName: 'Docentes.xlsx',
+				fileBytes: Buffer.from('xlsx-bytes'),
+			});
+			const res = fakeResponse();
+
+			await controller.download('staff', 'es', 1, res);
+
+			expect(download).toHaveBeenCalledWith('staff', '202610', 'es');
+			expect((res as unknown as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith(
+				'Content-Type',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			);
+			expect((res as unknown as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith(
+				'Content-Disposition',
+				expect.stringContaining('Docentes.xlsx'),
+			);
+			expect((res as unknown as { end: jest.Mock }).end).toHaveBeenCalledWith(
+				Buffer.from('xlsx-bytes'),
+			);
+		});
+
+		it('throws NotFoundError instead of streaming when nothing has ever been generated', async () => {
+			download.mockResolvedValue(null);
+			const res = fakeResponse();
+
+			await expect(controller.download('staff', 'es', 1, res)).rejects.toThrow(NotFoundError);
+			await expect(controller.download('staff', 'es', 1, res)).rejects.toMatchObject({
+				messageKey: scrapingExportsValidationStrings.error.notGenerated,
+			});
+			expect((res as unknown as { end: jest.Mock }).end).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('regenerate', () => {
+		it('triggers regeneration as the current user and returns the row wrapped', async () => {
+			regenerate.mockResolvedValue({ status: 'running' });
+
+			const response = await controller.regenerate('grades-rc', 'es', 1, user);
+
+			expect(regenerate).toHaveBeenCalledWith('gradesRc', '202610', 'es', 'user:7');
+			expect(response.data).toEqual({ status: 'running' });
+		});
+
+		it('propagates a ConflictError thrown by the service as-is', async () => {
+			const conflict = new Error('already generating');
+			regenerate.mockRejectedValue(conflict);
+
+			await expect(controller.regenerate('staff', 'es', 1, user)).rejects.toBe(conflict);
+		});
 	});
 });

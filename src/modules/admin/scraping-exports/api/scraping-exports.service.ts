@@ -1,8 +1,6 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { Writable } from 'stream';
-
-import { JobRegistry } from 'src/modules/survey/shared/core/job-registry';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import {
@@ -12,39 +10,18 @@ import {
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
-	alumnoMatriculadoExportLabels,
-	alumnoSeccionExportLabels,
-	docenteExportLabels,
+	enrolledStudentExportLabels,
 	gradesRcDescriptiveLabels,
 	gradesRcExportLabels,
-	seccionExportLabels,
+	sectionExportLabels,
+	staffExportLabels,
+	studentSectionExportLabels,
 } from '../model/scraping-exports.labels';
-import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 
 export interface GeneratedExcel {
 	buffer: Buffer;
 	fileName: string;
 }
-
-// maxConcurrent=1 is system-wide, not per-user: more than one merge at a time degrades the shared
-// Postgres for every other query, not just this export.
-const GRADES_RC_JOB_TTL_MS = 30 * 60 * 1000;
-const MAX_CONCURRENT_GRADES_RC_JOBS = 1;
-const MAX_CONCURRENT_GRADES_RC_JOBS_PER_USER = 1;
-const MAX_RETAINED_GRADES_RC_JOBS = 20;
-
-export type GradesRcExportJobResult = { fileName: string; file: Buffer };
-
-type GradesRcExportJobState = {
-	status: 'running' | 'completed' | 'failed';
-	result: GradesRcExportJobResult | null;
-	errorMessage: string | null;
-};
-
-export type GradesRcExportJobStatus = Omit<GradesRcExportJobState, 'result'> & {
-	done: boolean;
-	fileName: string | null;
-};
 
 // An export too large to hold in memory: the file is written into the caller's stream instead of
 // being handed over as a Buffer. `write` resolves once the workbook is fully committed, and the
@@ -61,28 +38,21 @@ export interface StreamedExcel {
 export class ScrapingExportsService {
 	private readonly logger = new Logger(ScrapingExportsService.name);
 
-	private readonly gradesRcJobs = new JobRegistry<GradesRcExportJobState>({
-		ttlMs: GRADES_RC_JOB_TTL_MS,
-		maxConcurrent: MAX_CONCURRENT_GRADES_RC_JOBS,
-		maxConcurrentPerOwner: MAX_CONCURRENT_GRADES_RC_JOBS_PER_USER,
-		maxRetained: MAX_RETAINED_GRADES_RC_JOBS,
-	});
-
 	constructor(
 		private readonly repository: ScrapingExportsRepository,
 		private readonly gradesRcRepository: GradesRcExportRepository,
 	) {}
 
-	async generateDocentes(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(docenteExportLabels, lang);
-		const rows = await this.repository.getDocentes(academicPeriodId);
+	async generateStaff(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+		const labels = this.resolveLabels(staffExportLabels, lang);
+		const rows = await this.repository.getStaff(academicPeriodId);
 		const data = rows.map((r) => [r.professorCode, r.lastName, r.firstName, r.email]);
 		return this.buildExcel(labels, data);
 	}
 
-	async generateSecciones(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(seccionExportLabels, lang);
-		const rows = await this.repository.getSecciones(academicPeriodId);
+	async generateSections(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+		const labels = this.resolveLabels(sectionExportLabels, lang);
+		const rows = await this.repository.getSections(academicPeriodId);
 		const data = rows.map((r) => [
 			r.courseCode,
 			r.sectionCode,
@@ -93,12 +63,12 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosMatriculados(
+	async generateEnrolledStudents(
 		academicPeriodId: number | null,
 		lang?: string,
 	): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(alumnoMatriculadoExportLabels, lang);
-		const rows = await this.repository.getAlumnosMatriculados(academicPeriodId);
+		const labels = this.resolveLabels(enrolledStudentExportLabels, lang);
+		const rows = await this.repository.getEnrolledStudents(academicPeriodId);
 		const data = rows.map((r) => [
 			r.studentCode,
 			r.lastName,
@@ -110,12 +80,12 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateAlumnosSecciones(
+	async generateStudentSections(
 		academicPeriodId: number | null,
 		lang?: string,
 	): Promise<GeneratedExcel> {
-		const labels = this.resolveLabels(alumnoSeccionExportLabels, lang);
-		const rows = await this.repository.getAlumnosSecciones(academicPeriodId);
+		const labels = this.resolveLabels(studentSectionExportLabels, lang);
+		const rows = await this.repository.getStudentSections(academicPeriodId);
 		const data = rows.map((r) => [r.sectionCode, r.studentCode]);
 		return this.buildExcel(labels, data);
 	}
@@ -140,91 +110,17 @@ export class ScrapingExportsService {
 		};
 	}
 
-	// The merge alone was measured well over ten minutes under real load, past any HTTP gateway's read
-	// timeout, so it cannot run inside the request that asks for it: a client that gives up does not
-	// cancel the query, and a synchronous handler ends up writing to an already-dead response socket,
-	// hanging forever and leaking the connection along with the single-flight guard.
-	async startGradesRcExport(
-		academicPeriodId: number,
-		lang: string | undefined,
-		userId: number,
-	): Promise<{ accepted: true; jobId: string }> {
-		if (!this.gradesRcJobs.hasCapacity(userId)) {
-			throw new ConflictException({
-				message: scrapingExportsValidationStrings.error.gradesRcInProgress,
-			});
-		}
-		const jobId = this.gradesRcJobs.register(userId, {
-			status: 'running',
-			result: null,
-			errorMessage: null,
-		});
-
-		void this.runGradesRcExport(jobId, academicPeriodId, lang);
-
-		return { accepted: true, jobId };
-	}
-
-	getGradesRcStatus(jobId: string, userId: number): GradesRcExportJobStatus {
-		const status = this.gradesRcJobs.get(jobId, userId);
-		if (!status) {
-			throw new NotFoundException({
-				message: scrapingExportsValidationStrings.error.gradesRcJobNotFound,
-			});
-		}
-		return {
-			status: status.status,
-			done: status.done,
-			fileName: status.result?.fileName ?? null,
-			errorMessage: status.errorMessage,
-		};
-	}
-
-	getGradesRcFile(jobId: string, userId: number): GeneratedExcel {
-		const status = this.gradesRcJobs.get(jobId, userId);
-		if (!status) {
-			throw new NotFoundException({
-				message: scrapingExportsValidationStrings.error.gradesRcJobNotFound,
-			});
-		}
-		if (!status.result) {
-			throw new NotFoundException({
-				message: scrapingExportsValidationStrings.error.gradesRcFileNotReady,
-			});
-		}
-		return { buffer: status.result.file, fileName: status.result.fileName };
-	}
-
 	// collectToBuffer only accumulates the serialized xlsx bytes, not the rows -- writeGradesRcSheets
 	// still pages the merge out a row at a time, so this does not reintroduce the OOM prepareGradesRc's
-	// streaming design avoids.
-	private async runGradesRcExport(
-		jobId: string,
-		academicPeriodId: number,
-		lang: string | undefined,
-	): Promise<void> {
+	// streaming design avoids. The caller (ScrapingExportGenerationService) owns status bookkeeping
+	// and the system-wide single-flight guard; this method just does the work and returns or throws.
+	async generateGradesRc(academicPeriodId: number, lang?: string): Promise<GeneratedExcel> {
+		const { fileName, write, close } = await this.prepareGradesRc(academicPeriodId, lang);
 		try {
-			const { fileName, write, close } = await this.prepareGradesRc(academicPeriodId, lang);
-			try {
-				const file = await this.collectToBuffer(write);
-				this.gradesRcJobs.finish(jobId, {
-					status: 'completed',
-					result: { fileName, file },
-					errorMessage: null,
-				});
-			} finally {
-				await close();
-			}
-		} catch (error) {
-			this.logger.error(
-				`Grades RC export job ${jobId} failed (period ${academicPeriodId})`,
-				error instanceof Error ? error.stack : String(error),
-			);
-			this.gradesRcJobs.finish(jobId, {
-				status: 'failed',
-				result: null,
-				errorMessage: error instanceof Error ? error.message : String(error),
-			});
+			const file = await this.collectToBuffer(write);
+			return { buffer: file, fileName };
+		} finally {
+			await close();
 		}
 	}
 
