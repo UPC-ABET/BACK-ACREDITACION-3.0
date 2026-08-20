@@ -771,6 +771,43 @@ gap is traceable, not silently dropped):
   The auditor's own assessment: "low risk today," "consider ... if more languages/export
   types are added" — deferred until that's actually true.
 
+---
+
+## Unplanned — rename Spanish export identifiers to English (2026-08-20)
+
+### Task U.2 — Rename `ScrapingExportType` values and the underlying service/repository/label identifiers ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+Requester noticed the new `ScrapingExportType` values (`docentes`/`secciones`/`alumnosMatriculados`/
+`alumnosSecciones`) — surfaced directly in the API's `:exportType` wire values — were in Spanish,
+inherited from this module's pre-existing method names (`generateDocentes` etc., which predate this
+change entirely) when the type union was designed in Milestone 3. `docs/POLICIES.md` § Language
+Rules requires English-only code; asked to fix it, and explicitly opted to extend the fix to the
+underlying pre-existing `ScrapingExportsService`/`ScrapingExportsRepository`/label-constant layer
+too, not just the new type/wire layer — but _not_ the raw Banner-mirror JSONB keys/columns
+(`hr->'docentes'`, `raw_alumno.codigo_alumno`, etc.), which are external data shapes exempt under
+the raw-mirror entity rule.
+
+> Renamed: `ScrapingExportType` values (`docentes`→`staff`, `secciones`→`sections`,
+> `alumnosMatriculados`→`enrolledStudents`, `alumnosSecciones`→`studentSections`; `gradesRc`
+> unchanged) and their kebab-case wire equivalents; `ScrapingExportsService.generateDocentes`→
+> `generateStaff` (and the three siblings); `ScrapingExportsRepository.getDocentes`→`getStaff`
+> (and siblings); the four `*ExportRow` interfaces (`DocenteExportRow`→`StaffExportRow`, etc.);
+> the four label constants (`docenteExportLabels`→`staffExportLabels`, etc. — only the constant
+> _names_, never the `es`/`en` label content itself, which is legitimate i18n display data).
+> Left untouched: every raw SQL/JSONB reference to Banner's actual scraped field names
+> (`hr->'docentes'`, `codigo_alumno`, `raw_alumno`/`raw_horario` table names) — external data
+> shapes, not ours to rename. Also cleaned up three prose comments (in `scraping-exports.module.ts`,
+> `scraping-exports.labels.ts`, `scraping-exports.transforms.ts`) that named these concepts in
+> Spanish without being literal identifier references.
+>
+> Verification: typecheck clean, full `admin/scraping-exports` suite green (6 suites/71 tests),
+> lint clean on every touched file, `pnpm openapi:export` diff confirmed exactly the expected
+> enum-value changes on the three new routes' `exportType` param and the response schema, nothing
+> else. Independently re-verified by the coordinator: whole-project typecheck clean, 130 suites /
+> 1262 passed / 2 pre-existing skipped, project-wide.
+
 <!--
 Append-only sections below. These record what actually happened, not what was planned,
 and they are the best input to the next design.
