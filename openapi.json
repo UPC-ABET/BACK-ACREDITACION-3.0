@@ -12051,6 +12051,129 @@
 				"tags": ["Banner Scrape"]
 			}
 		},
+		"/scraping/exports/{exportType}/status": {
+			"get": {
+				"operationId": "ScrapingExportsController_status",
+				"parameters": [
+					{
+						"name": "exportType",
+						"required": true,
+						"in": "path",
+						"schema": {
+							"enum": [
+								"docentes",
+								"secciones",
+								"alumnos-matriculados",
+								"alumnos-secciones",
+								"grades-rc"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": { "200": { "description": "" } },
+				"summary": "Poll the generation status of a scraping export",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/{exportType}/download": {
+			"get": {
+				"operationId": "ScrapingExportsController_download",
+				"parameters": [
+					{
+						"name": "exportType",
+						"required": true,
+						"in": "path",
+						"schema": {
+							"enum": [
+								"docentes",
+								"secciones",
+								"alumnos-matriculados",
+								"alumnos-secciones",
+								"grades-rc"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"200": { "description": "The last successfully generated export file" },
+					"404": {
+						"description": "No successful generation exists yet for this export/period/lang"
+					}
+				},
+				"summary": "Download the last successfully generated scraping export",
+				"tags": ["Scraping — Exports"]
+			}
+		},
+		"/scraping/exports/{exportType}/regenerate": {
+			"post": {
+				"operationId": "ScrapingExportsController_regenerate",
+				"parameters": [
+					{
+						"name": "exportType",
+						"required": true,
+						"in": "path",
+						"schema": {
+							"enum": [
+								"docentes",
+								"secciones",
+								"alumnos-matriculados",
+								"alumnos-secciones",
+								"grades-rc"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"name": "lang",
+						"required": false,
+						"in": "query",
+						"schema": { "example": "es", "type": "string" }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"409": {
+						"description": "This export is already being generated; try again once it has finished"
+					}
+				},
+				"summary": "Trigger a new background generation of a scraping export",
+				"tags": ["Scraping — Exports"]
+			}
+		},
 		"/banner/auth/sessions": {
 			"post": {
 				"operationId": "AuthSessionController_create",
@@ -12273,159 +12396,6 @@
 				},
 				"summary": "Get Planner scrape run status and stats",
 				"tags": ["Planner Scrape"]
-			}
-		},
-		"/scraping/exports/docentes": {
-			"get": {
-				"operationId": "ScrapingExportsController_docentes",
-				"parameters": [
-					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
-					},
-					{
-						"name": "X-Academic-Period-Id",
-						"in": "header",
-						"description": "Active academic period scope id",
-						"required": false,
-						"schema": { "type": "integer", "example": 1 }
-					}
-				],
-				"responses": { "200": { "description": "" } },
-				"summary": "Generate the docentes (staff) Excel from the latest Planner scrape",
-				"tags": ["Scraping — Exports"]
-			}
-		},
-		"/scraping/exports/secciones": {
-			"get": {
-				"operationId": "ScrapingExportsController_secciones",
-				"parameters": [
-					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
-					},
-					{
-						"name": "X-Academic-Period-Id",
-						"in": "header",
-						"description": "Active academic period scope id",
-						"required": false,
-						"schema": { "type": "integer", "example": 1 }
-					}
-				],
-				"responses": { "200": { "description": "" } },
-				"summary": "Generate the secciones (sections) Excel from the latest Planner scrape",
-				"tags": ["Scraping — Exports"]
-			}
-		},
-		"/scraping/exports/alumnos-matriculados": {
-			"get": {
-				"operationId": "ScrapingExportsController_alumnosMatriculados",
-				"parameters": [
-					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
-					},
-					{
-						"name": "X-Academic-Period-Id",
-						"in": "header",
-						"description": "Active academic period scope id",
-						"required": false,
-						"schema": { "type": "integer", "example": 1 }
-					}
-				],
-				"responses": { "200": { "description": "" } },
-				"summary": "Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape",
-				"tags": ["Scraping — Exports"]
-			}
-		},
-		"/scraping/exports/alumnos-secciones": {
-			"get": {
-				"operationId": "ScrapingExportsController_alumnosSecciones",
-				"parameters": [
-					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
-					},
-					{
-						"name": "X-Academic-Period-Id",
-						"in": "header",
-						"description": "Active academic period scope id",
-						"required": false,
-						"schema": { "type": "integer", "example": 1 }
-					}
-				],
-				"responses": { "200": { "description": "" } },
-				"summary": "Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape",
-				"tags": ["Scraping — Exports"]
-			}
-		},
-		"/scraping/exports/grades-rc/start": {
-			"post": {
-				"operationId": "ScrapingExportsController_gradesRcStart",
-				"parameters": [
-					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
-					},
-					{
-						"name": "X-Academic-Period-Id",
-						"in": "header",
-						"description": "Active academic period scope id",
-						"required": true,
-						"schema": { "type": "integer", "example": 1 }
-					}
-				],
-				"responses": {
-					"409": {
-						"description": "A grades RC export is already running; try again once it has finished"
-					}
-				},
-				"summary": "Start building the grades RC (course grades) Excel in the background, merging the latest Banner and Planner scrapes",
-				"tags": ["Scraping — Exports"]
-			}
-		},
-		"/scraping/exports/grades-rc/status/{jobId}": {
-			"get": {
-				"operationId": "ScrapingExportsController_gradesRcStatus",
-				"parameters": [
-					{
-						"name": "jobId",
-						"required": true,
-						"in": "path",
-						"description": "Grades RC export job id",
-						"schema": { "type": "string" }
-					}
-				],
-				"responses": { "200": { "description": "" } },
-				"summary": "Poll the progress of a grades RC export job",
-				"tags": ["Scraping — Exports"]
-			}
-		},
-		"/scraping/exports/grades-rc/download/{jobId}": {
-			"get": {
-				"operationId": "ScrapingExportsController_gradesRcDownload",
-				"parameters": [
-					{
-						"name": "jobId",
-						"required": true,
-						"in": "path",
-						"description": "Grades RC export job id",
-						"schema": { "type": "string" }
-					}
-				],
-				"responses": { "200": { "description": "The generated grades RC workbook" } },
-				"summary": "Download the finished grades RC Excel, ready to re-upload via the RC bulk grade upload",
-				"tags": ["Scraping — Exports"]
 			}
 		}
 	},
