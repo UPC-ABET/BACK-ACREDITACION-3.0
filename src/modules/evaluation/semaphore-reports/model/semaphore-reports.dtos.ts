@@ -19,13 +19,26 @@ export class SemaphoreFilterDto {
 	@ApiProperty({ example: 1, required: false, description: 'Outcome ID to filter by' })
 	outcomeId?: number;
 
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
+	@Transform(({ value }) => {
+		if (value === undefined || value === null || value === '') return undefined;
+		const list = Array.isArray(value) ? value : [value];
+		const parsed = list.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+		return parsed.length > 0 ? parsed : undefined;
+	})
 	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'Campus ID to filter by' })
-	campusId?: number;
+	@IsArray()
+	@IsNumber({}, { each: true })
+	@ApiProperty({
+		type: [Number],
+		example: [1, 2],
+		required: false,
+		description:
+			'Campus IDs to filter by. Omit, or select every campus, for one consolidated report. ' +
+			'Select a single campus for one report scoped to it. Select more than one (but not all) ' +
+			'to download a zip with one report per selected campus -- applies to the PDF/Excel ' +
+			'download endpoints only; the JSON screen endpoints always return one combined result.',
+	})
+	campusIds?: number[];
 
 	@IsOptional()
 	@IsIn(['es', 'en'])

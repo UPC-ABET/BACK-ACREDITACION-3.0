@@ -90,6 +90,7 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
@@ -109,8 +110,8 @@ course_outcome_results AS (
 	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
 	  AND ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int IS NULL OR camp.id = $3::int)
-	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
+	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
 )
 SELECT
 	course_code                                                  AS "courseCode",
@@ -121,6 +122,7 @@ SELECT
 	students_red                                                 AS "studentsRed",
 	students_yellow                                              AS "studentsYellow",
 	students_green                                                AS "studentsGreen",
+	campus_id                                                         AS "campusId",
 	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
@@ -141,6 +143,7 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
@@ -154,8 +157,8 @@ course_outcome_results AS (
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
 	WHERE ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int IS NULL OR camp.id = $3::int)
-	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
+	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
 )
 SELECT
 	course_code                                                  AS "courseCode",
@@ -166,6 +169,7 @@ SELECT
 	students_red                                                 AS "studentsRed",
 	students_yellow                                              AS "studentsYellow",
 	students_green                                                AS "studentsGreen",
+	campus_id                                                         AS "campusId",
 	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
@@ -225,6 +229,7 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
@@ -244,19 +249,19 @@ course_outcome_results AS (
 	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
 	  AND ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int IS NULL OR camp.id = $3::int)
-	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
+	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
 ),
 level_rows AS (
-	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, campus_id, academic_period_cycle,
 		1 AS level_rank, students_red AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, campus_id, academic_period_cycle,
 		2 AS level_rank, students_yellow AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, campus_id, academic_period_cycle,
 		3 AS level_rank, students_green AS quantity, total_students
 	FROM course_outcome_results
 ),
@@ -276,6 +281,10 @@ windowed AS (
 	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide -- a critical course somewhere else must not suppress the
 	-- dominant-course fallback for a Campus+Outcome that has no critical course of its own.
+	-- Partitioned by the campus NAME, not campus_id -- kept as-is (campus_id is 1:1 with the
+	-- name here) rather than touched, to avoid changing this report's numbers as a side effect
+	-- of an unrelated perf change; campus_id only rides along as an extra passthrough column so
+	-- the service can group rows per campus in memory instead of re-querying per campus.
 	SELECT
 		*,
 		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
@@ -298,6 +307,7 @@ SELECT
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
+	campus_id                                                         AS "campusId",
 	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM final_rows
@@ -357,6 +367,7 @@ course_outcome_results AS (
 		c.code                                                        AS course_code,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
@@ -374,15 +385,15 @@ course_outcome_results AS (
 	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
 	  AND ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int IS NULL OR camp.id = $3::int)
-	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.name
+	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.id, camp.name
 ),
 level_rows AS (
-	SELECT course_code, outcome_code, outcome_name, campus, 1 AS level_rank, students_red AS quantity, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, campus_id, 1 AS level_rank, students_red AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, campus, 2 AS level_rank, students_yellow AS quantity, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, campus_id, 2 AS level_rank, students_yellow AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, campus, 3 AS level_rank, students_green AS quantity, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, campus_id, 3 AS level_rank, students_green AS quantity, total_students FROM course_outcome_results
 ),
 weighted_levels AS (
 	SELECT
@@ -420,6 +431,7 @@ SELECT
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
+	campus_id                                                         AS "campusId",
 	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus"
 FROM final_rows
 -- Only critical outcomes: a (campus, outcome) group is critical when its lowest
@@ -442,6 +454,7 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		ap.code                                                       AS academic_period_cycle,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
@@ -455,19 +468,19 @@ course_outcome_results AS (
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
 	WHERE ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int IS NULL OR camp.id = $3::int)
-	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.name, ap.code
+	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
 ),
 level_rows AS (
-	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, campus_id, academic_period_cycle,
 		1 AS level_rank, students_red AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, campus_id, academic_period_cycle,
 		2 AS level_rank, students_yellow AS quantity, total_students
 	FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, course_name, outcome_code, outcome_name, campus, academic_period_cycle,
+	SELECT course_code, course_name, outcome_code, outcome_name, campus, campus_id, academic_period_cycle,
 		3 AS level_rank, students_green AS quantity, total_students
 	FROM course_outcome_results
 ),
@@ -509,6 +522,7 @@ SELECT
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
+	campus_id                                                         AS "campusId",
 	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM final_rows
@@ -529,6 +543,7 @@ course_outcome_results AS (
 		c.code                                                        AS course_code,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		COUNT(DISTINCT cg.enrollment_id)                              AS total_students,
 		COUNT(DISTINCT CASE WHEN cg.level_rank = 1 THEN cg.enrollment_id END) AS students_red,
@@ -540,15 +555,15 @@ course_outcome_results AS (
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
 	WHERE ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int IS NULL OR camp.id = $3::int)
-	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.name
+	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.id, camp.name
 ),
 level_rows AS (
-	SELECT course_code, outcome_code, outcome_name, campus, 1 AS level_rank, students_red AS quantity, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, campus_id, 1 AS level_rank, students_red AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, campus, 2 AS level_rank, students_yellow AS quantity, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, campus_id, 2 AS level_rank, students_yellow AS quantity, total_students FROM course_outcome_results
 	UNION ALL
-	SELECT course_code, outcome_code, outcome_name, campus, 3 AS level_rank, students_green AS quantity, total_students FROM course_outcome_results
+	SELECT course_code, outcome_code, outcome_name, campus, campus_id, 3 AS level_rank, students_green AS quantity, total_students FROM course_outcome_results
 ),
 weighted_levels AS (
 	SELECT
@@ -586,6 +601,7 @@ SELECT
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
+	campus_id                                                         AS "campusId",
 	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus"
 FROM final_rows
 -- Only critical outcomes: a (campus, outcome) group is critical when its lowest
@@ -634,4 +650,17 @@ FROM academic.academic_periods ap
 WHERE ap.id = $2::int
   AND NOT EXISTS (SELECT 1 FROM target_pc)
 LIMIT 1
+`;
+
+// Every active campus, for the download endpoints to decide whether a requested campus selection
+// is "all of them" (-> one consolidated report) or a proper subset (-> single report / zip -- see
+// SemaphoreReportsService.resolveCampusPlan).
+export const SEMAPHORE_CAMPUSES_SQL = `
+SELECT
+	id                                          AS "id",
+	code                                        AS "code",
+	COALESCE(name->>$1::text, name->>'es', '')  AS "name"
+FROM organization.campuses
+WHERE is_active = true
+ORDER BY id
 `;

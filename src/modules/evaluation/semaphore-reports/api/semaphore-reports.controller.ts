@@ -39,8 +39,11 @@ export class SemaphoreReportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { pdf, filename } = await this.service.generateRcPdf(dto, academicPeriodId);
-		writeBinary(res, pdf, filename, 'application/pdf');
+		const { buffer, filename, contentType } = await this.service.generateRcPdf(
+			dto,
+			academicPeriodId,
+		);
+		writeBinary(res, buffer, filename, contentType);
 	}
 
 	@SwaggerSemaphoreRcExcel()
@@ -51,13 +54,11 @@ export class SemaphoreReportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { xlsx, filename } = await this.service.generateRcExcel(dto, academicPeriodId);
-		writeBinary(
-			res,
-			xlsx,
-			filename,
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		const { buffer, filename, contentType } = await this.service.generateRcExcel(
+			dto,
+			academicPeriodId,
 		);
+		writeBinary(res, buffer, filename, contentType);
 	}
 
 	@SwaggerSemaphoreRv()
@@ -76,8 +77,11 @@ export class SemaphoreReportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { pdf, filename } = await this.service.generateRvPdf(dto, academicPeriodId);
-		writeBinary(res, pdf, filename, 'application/pdf');
+		const { buffer, filename, contentType } = await this.service.generateRvPdf(
+			dto,
+			academicPeriodId,
+		);
+		writeBinary(res, buffer, filename, contentType);
 	}
 
 	@SwaggerSemaphoreRvExcel()
@@ -88,13 +92,11 @@ export class SemaphoreReportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		const { xlsx, filename } = await this.service.generateRvExcel(dto, academicPeriodId);
-		writeBinary(
-			res,
-			xlsx,
-			filename,
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		const { buffer, filename, contentType } = await this.service.generateRvExcel(
+			dto,
+			academicPeriodId,
 		);
+		writeBinary(res, buffer, filename, contentType);
 	}
 }
 
