@@ -40,7 +40,26 @@ describe('PerceptionReportService', () => {
 			filename: 'reports.zip',
 			zip: Buffer.from('zip'),
 		});
-		repo.getAcceptanceLevels.mockResolvedValue([]);
+		repo.getAcceptanceLevels.mockResolvedValue([
+			{
+				name: { es: 'Necesita mejora', en: 'Needs improvement' },
+				uniqueValue: '1',
+				minScore: '0',
+				maxScore: '3.25',
+			},
+			{
+				name: { es: 'Esperado', en: 'Expected' },
+				uniqueValue: '2',
+				minScore: '3.25',
+				maxScore: '4.25',
+			},
+			{
+				name: { es: 'Sobresaliente', en: 'Outstanding' },
+				uniqueValue: '3',
+				minScore: '4.25',
+				maxScore: '5',
+			},
+		]);
 		repo.getPeriodCode.mockResolvedValue('20251');
 		repo.getProgramName.mockResolvedValue(null);
 		repo.getCommissionName.mockResolvedValue(null);
@@ -57,6 +76,17 @@ describe('PerceptionReportService', () => {
 		repo.getSurveyTypeId.mockResolvedValue(10);
 		repo.getScoreRows.mockResolvedValue([]);
 		await expect(service.generate(baseRequest)).resolves.toEqual({ reports: [], zip: null });
+		expect(generator.generateDocument).not.toHaveBeenCalled();
+	});
+
+	it('rejects when no acceptance levels are configured for the survey type/period', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([scoreRow(1, 'Lima', '4.5', 3)]);
+		repo.getAcceptanceLevels.mockResolvedValue([]);
+
+		await expect(service.generate(baseRequest)).rejects.toThrow(
+			'error.survey.perceptionReport.acceptanceLevelsMissing',
+		);
 		expect(generator.generateDocument).not.toHaveBeenCalled();
 	});
 
