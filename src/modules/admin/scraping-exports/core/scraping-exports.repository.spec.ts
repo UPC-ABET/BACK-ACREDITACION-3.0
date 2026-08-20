@@ -1,5 +1,55 @@
 import { ScrapingExportsRepository } from './scraping-exports.repository';
 
+describe('ScrapingExportsRepository.findAcademicPeriodIdByCode', () => {
+	const rawQuery = jest.fn();
+	const mainQuery = jest.fn();
+	const repo = new ScrapingExportsRepository(
+		{ query: rawQuery } as any,
+		{ query: mainQuery } as any,
+	);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('resolves an academic period id from its code', async () => {
+		mainQuery.mockResolvedValueOnce([{ id: 5 }]);
+
+		await expect(repo.findAcademicPeriodIdByCode('202610')).resolves.toBe(5);
+		expect(mainQuery).toHaveBeenCalledWith(expect.stringContaining('academic.academic_periods'), [
+			'202610',
+		]);
+	});
+
+	it('returns null when no period matches the code', async () => {
+		mainQuery.mockResolvedValueOnce([]);
+
+		await expect(repo.findAcademicPeriodIdByCode('unknown')).resolves.toBeNull();
+	});
+});
+
+describe('ScrapingExportsRepository RUN_FOR_PERIOD status filter', () => {
+	const rawQuery = jest.fn();
+	const mainQuery = jest.fn();
+	const repo = new ScrapingExportsRepository(
+		{ query: rawQuery } as any,
+		{ query: mainQuery } as any,
+	);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mainQuery.mockResolvedValueOnce([{ code: '202610' }]); // resolveAcademicPeriodCode
+		rawQuery.mockResolvedValueOnce([]);
+	});
+
+	it('only selects a completed run when resolving the run to export from', async () => {
+		await repo.getDocentes(1);
+
+		const [sql] = rawQuery.mock.calls[0];
+		expect(sql).toContain("status = 'completed'");
+	});
+});
+
 describe('ScrapingExportsRepository.getAlumnosSecciones', () => {
 	const rawQuery = jest.fn();
 	const mainQuery = jest.fn();

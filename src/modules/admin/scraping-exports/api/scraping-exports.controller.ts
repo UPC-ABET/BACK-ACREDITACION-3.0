@@ -11,112 +11,112 @@ import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-u
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { XLSX_CONTENT_TYPE } from 'src/shared/constants/mime-types';
+import { NotFoundError } from 'src/commons/domain-error';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 
-import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
+import { ScrapingExportGenerationService } from './scraping-export-generation.service';
+import type { GeneratedExcel } from './scraping-exports.service';
 import { scrapingExportsRoutes } from '../config/scraping-exports.routes';
+import { EXPORT_TYPE_PARAM_VALUES, parseExportTypeParam } from '../model/scraping-exports.dtos';
+import { DEFAULT_TEMPLATE_LANGUAGE } from '../model/scraping-exports.labels';
+import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 
 const routes = scrapingExportsRoutes.exports;
 
 @ApiTags(routes.tag)
 @Controller(routes.route)
 export class ScrapingExportsController {
-	constructor(private readonly service: ScrapingExportsService) {}
+	constructor(private readonly generationService: ScrapingExportGenerationService) {}
 
-	@Get(routes.operation.docentes.route)
-	@ApiOperation({ summary: routes.operation.docentes.summary })
+	@Get(routes.operation.status.route)
+	@ApiOperation({ summary: routes.operation.status.summary })
+	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@ApiAcademicPeriodHeader(false)
+	@ApiAcademicPeriodHeader()
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async docentes(
+	async status(
+		@Param('exportType') exportTypeParam: string,
 		@Query('lang') lang: string,
-		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
-		@Res({ passthrough: false }) res: Response,
+		@AcademicPeriodId() academicPeriodId: number,
 	) {
-		this.send(res, await this.service.generateDocentes(academicPeriodId, lang));
+		const exportType = parseExportTypeParam(exportTypeParam);
+		const periodo = await this.resolvePeriodo(academicPeriodId);
+		return parseSuccessResponse(
+			await this.generationService.getStatus(exportType, periodo, this.resolveLang(lang)),
+		);
 	}
 
-	@Get(routes.operation.secciones.route)
-	@ApiOperation({ summary: routes.operation.secciones.summary })
+	// The academic period is required here, unlike the module's previous synchronous export GETs:
+	// generation is keyed on a specific periodo, so a missing scope means there is nothing to look
+	// up rather than something to fall back on.
+	@Get(routes.operation.download.route)
+	@ApiOperation({ summary: routes.operation.download.summary })
+	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@ApiAcademicPeriodHeader(false)
+	@ApiAcademicPeriodHeader()
+	@ApiResponse({ status: 200, description: 'The last successfully generated export file' })
+	@ApiResponse({
+		status: 404,
+		description: 'No successful generation exists yet for this export/period/lang',
+	})
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async secciones(
+	async download(
+		@Param('exportType') exportTypeParam: string,
 		@Query('lang') lang: string,
-		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
+		@AcademicPeriodId() academicPeriodId: number,
 		@Res({ passthrough: false }) res: Response,
 	) {
-		this.send(res, await this.service.generateSecciones(academicPeriodId, lang));
+		const exportType = parseExportTypeParam(exportTypeParam);
+		const periodo = await this.resolvePeriodo(academicPeriodId);
+		const result = await this.generationService.download(
+			exportType,
+			periodo,
+			this.resolveLang(lang),
+		);
+		if (!result) {
+			throw new NotFoundError(scrapingExportsValidationStrings.error.notGenerated);
+		}
+		this.send(res, { buffer: result.fileBytes, fileName: result.fileName });
 	}
 
-	@Get(routes.operation.alumnosMatriculados.route)
-	@ApiOperation({ summary: routes.operation.alumnosMatriculados.summary })
-	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@ApiAcademicPeriodHeader(false)
-	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async alumnosMatriculados(
-		@Query('lang') lang: string,
-		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
-		@Res({ passthrough: false }) res: Response,
-	) {
-		this.send(res, await this.service.generateAlumnosMatriculados(academicPeriodId, lang));
-	}
-
-	@Get(routes.operation.alumnosSecciones.route)
-	@ApiOperation({ summary: routes.operation.alumnosSecciones.summary })
-	@ApiQuery({ name: 'lang', required: false, example: 'es' })
-	@ApiAcademicPeriodHeader(false)
-	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async alumnosSecciones(
-		@Query('lang') lang: string,
-		@AcademicPeriodId({ optional: true }) academicPeriodId: number | null,
-		@Res({ passthrough: false }) res: Response,
-	) {
-		this.send(res, await this.service.generateAlumnosSecciones(academicPeriodId, lang));
-	}
-
-	// The academic period is required here, unlike the other exports: the grades are scoped to the
-	// sections already loaded for that period, and a file carrying a section the app does not know
-	// makes audit.fn_upload_grades_rc reject the upload wholesale. Without the period there is
-	// nothing to scope against, so failing early beats handing back an unusable file.
-	@Post(routes.operation.gradesRcStart.route)
-	@ApiOperation({ summary: routes.operation.gradesRcStart.summary })
+	@Post(routes.operation.regenerate.route)
+	@ApiOperation({ summary: routes.operation.regenerate.summary })
+	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
 	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@ApiAcademicPeriodHeader()
 	@ApiResponse({
 		status: 409,
-		description: 'A grades RC export is already running; try again once it has finished',
+		description: 'This export is already being generated; try again once it has finished',
 	})
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.POST })
-	async gradesRcStart(
+	async regenerate(
+		@Param('exportType') exportTypeParam: string,
 		@Query('lang') lang: string,
 		@AcademicPeriodId() academicPeriodId: number,
 		@CurrentUser() user: RequestUser,
 	) {
+		const exportType = parseExportTypeParam(exportTypeParam);
+		const periodo = await this.resolvePeriodo(academicPeriodId);
 		return parseSuccessResponse(
-			await this.service.startGradesRcExport(academicPeriodId, lang, user.userId),
+			await this.generationService.regenerate(
+				exportType,
+				periodo,
+				this.resolveLang(lang),
+				`user:${user.userId}`,
+			),
 		);
 	}
 
-	@Get(routes.operation.gradesRcStatus.route)
-	@ApiOperation({ summary: routes.operation.gradesRcStatus.summary })
-	@ApiParam({ name: 'jobId', description: 'Grades RC export job id', type: String })
-	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async gradesRcStatus(@Param('jobId') jobId: string, @CurrentUser() user: RequestUser) {
-		return parseSuccessResponse(this.service.getGradesRcStatus(jobId, user.userId));
+	private resolveLang(lang: string): string {
+		return lang || DEFAULT_TEMPLATE_LANGUAGE;
 	}
 
-	@Get(routes.operation.gradesRcDownload.route)
-	@ApiOperation({ summary: routes.operation.gradesRcDownload.summary })
-	@ApiParam({ name: 'jobId', description: 'Grades RC export job id', type: String })
-	@ApiResponse({ status: 200, description: 'The generated grades RC workbook' })
-	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
-	async gradesRcDownload(
-		@Param('jobId') jobId: string,
-		@CurrentUser() user: RequestUser,
-		@Res({ passthrough: false }) res: Response,
-	) {
-		this.send(res, this.service.getGradesRcFile(jobId, user.userId));
+	private async resolvePeriodo(academicPeriodId: number): Promise<string> {
+		const periodo = await this.generationService.resolvePeriodo(academicPeriodId);
+		if (!periodo) {
+			throw new NotFoundError(scrapingExportsValidationStrings.error.periodNotFound);
+		}
+		return periodo;
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {

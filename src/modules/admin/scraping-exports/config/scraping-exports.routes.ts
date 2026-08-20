@@ -3,44 +3,20 @@ export const scrapingExportsRoutes = {
 		route: 'scraping/exports',
 		tag: 'Scraping — Exports',
 		operation: {
-			docentes: {
+			status: {
 				method: 'GET',
-				route: '/docentes',
-				summary: 'Generate the docentes (staff) Excel from the latest Planner scrape',
+				route: '/:exportType/status',
+				summary: 'Poll the generation status of a scraping export',
 			},
-			secciones: {
+			download: {
 				method: 'GET',
-				route: '/secciones',
-				summary: 'Generate the secciones (sections) Excel from the latest Planner scrape',
+				route: '/:exportType/download',
+				summary: 'Download the last successfully generated scraping export',
 			},
-			alumnosMatriculados: {
-				method: 'GET',
-				route: '/alumnos-matriculados',
-				summary:
-					'Generate the alumnos matriculados (enrolled students) Excel from the latest Banner scrape',
-			},
-			alumnosSecciones: {
-				method: 'GET',
-				route: '/alumnos-secciones',
-				summary:
-					'Generate the alumnos x sección (student-sections) Excel from the latest Banner scrape',
-			},
-			gradesRcStart: {
+			regenerate: {
 				method: 'POST',
-				route: '/grades-rc/start',
-				summary:
-					'Start building the grades RC (course grades) Excel in the background, merging the latest Banner and Planner scrapes',
-			},
-			gradesRcStatus: {
-				method: 'GET',
-				route: '/grades-rc/status/:jobId',
-				summary: 'Poll the progress of a grades RC export job',
-			},
-			gradesRcDownload: {
-				method: 'GET',
-				route: '/grades-rc/download/:jobId',
-				summary:
-					'Download the finished grades RC Excel, ready to re-upload via the RC bulk grade upload',
+				route: '/:exportType/regenerate',
+				summary: 'Trigger a new background generation of a scraping export',
 			},
 		},
 	},

@@ -35,12 +35,34 @@ export async function resolveAcademicPeriodCode(
 	return rows[0]?.code ?? null;
 }
 
-// Run to export from: the latest scrape_run for the given period code ($1). When $1 is NULL (no
-// active period) it falls back to the latest run overall. The period code decides the modality —
-// 202610/202620 are Regular, 202615/202625 are EPE — because Banner scrapes each into its own run.
+/**
+ * Reverse of `resolveAcademicPeriodCode`: `scrape_run.periodo` (e.g. "202610") back to
+ * `academic.academic_periods.id`. Used by the export generation orchestration, which only ever
+ * has a `periodo` string in hand (from a completed scrape run), not the request-derived
+ * `academicPeriodId` header — see docs/CONTEXT.md "scope must survive every asynchronous hop".
+ */
+export async function findAcademicPeriodIdByCode(
+	mainDataSource: DataSource,
+	periodoCode: string,
+): Promise<number | null> {
+	const rows: Array<{ id: number }> = await mainDataSource.query(
+		`SELECT id AS "id" FROM academic.academic_periods WHERE code = $1 LIMIT 1`,
+		[periodoCode],
+	);
+	return rows[0]?.id ?? null;
+}
+
+// Run to export from: the latest COMPLETED scrape_run for the given period code ($1). When $1 is
+// NULL (no active period) it falls back to the latest completed run overall. The period code
+// decides the modality — 202610/202620 are Regular, 202615/202625 are EPE — because Banner
+// scrapes each into its own run. The status filter matters once retention deletes a superseded
+// run's raw rows as soon as a new one completes (see design.md § AC-4/AC-5): without it, a
+// manual regenerate racing a new in-flight scrape for the same period could read partial,
+// still-being-inserted rows instead of falling back to the last good run.
 const RUN_FOR_PERIOD = `(
 	SELECT id FROM scrape_run
 	WHERE ($1::text IS NULL OR periodo = $1)
+	  AND status = 'completed'
 	ORDER BY started_at DESC
 	LIMIT 1
 )`;
@@ -63,6 +85,18 @@ export class ScrapingExportsRepository {
 
 	private periodCode(academicPeriodId: number | null): Promise<string | null> {
 		return resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
+	}
+
+	async findAcademicPeriodIdByCode(periodoCode: string): Promise<number | null> {
+		return findAcademicPeriodIdByCode(this.mainDataSource, periodoCode);
+	}
+
+	// Forward lookup used by the generic status/download/regenerate endpoints: given the request's
+	// X-Academic-Period-Id header value, resolve the periodo code the export generation pipeline
+	// (and scrape_run itself) is keyed on. Public wrapper around the same resolution the per-export
+	// queries already use internally.
+	async resolvePeriodoCode(academicPeriodId: number): Promise<string | null> {
+		return this.periodCode(academicPeriodId);
 	}
 
 	// Distinct teachers from the selected period's Banner run, taken straight from raw_horario's

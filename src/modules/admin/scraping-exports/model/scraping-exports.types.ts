@@ -1,6 +1,34 @@
 // Row shapes produced by the scraping-export queries. Each one is built to line up, column for
 // column, with the matching uploads/* Excel template so a generated file can be re-uploaded as-is.
 
+// The five generated exports. A plain string union mirroring `ScrapeRunEntity.status`'s own
+// precedent rather than a `core.types` row, since adding an export type already requires a new
+// generator method in code, not just seed data.
+export type ScrapingExportType =
+	| 'docentes'
+	| 'secciones'
+	| 'alumnosMatriculados'
+	| 'alumnosSecciones'
+	| 'gradesRc';
+
+// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, periodo, lang) key.
+export type ScrapingExportGenerationStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+// What `status`/`regenerate` hand back to a caller: the row's metadata, never `fileBytes` — that
+// column can hold a multi-megabyte workbook, and JSON-serializing a Buffer blows it up further
+// still (`{ type: 'Buffer', data: [...] }`). `download` is the only endpoint that ever streams the
+// actual bytes.
+export interface ScrapingExportStatusResponse {
+	exportType: ScrapingExportType;
+	periodo: string;
+	lang: string;
+	status: ScrapingExportGenerationStatus | 'notGenerated';
+	fileName: string | null;
+	errorMessage: string | null;
+	startedAt: Date | null;
+	finishedAt: Date | null;
+}
+
 // Codes emitted in the observations array of GradeRcExportRow, and the split between the two
 // worksheets: a row carrying any of them goes to the descriptive sheet instead of the upload one.
 // Declared in model so both the SQL and the labels depend downwards on the same constant.
