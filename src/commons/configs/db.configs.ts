@@ -310,6 +310,21 @@ export function DateColumn(options?: BaseOptions): PropertyDecorator {
 		);
 	};
 }
+export function BinaryColumn(options?: BaseOptions): PropertyDecorator {
+	return (target, propertyKey) => {
+		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
+		applyColumn(
+			target,
+			propertyKey,
+			{
+				type: 'bytea',
+				nullable,
+				unique: false,
+			},
+			rest,
+		);
+	};
+}
 export function JsonColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
 		const { withDefault = true, nullable = true, unique = false, ...rest } = options || {};
