@@ -25,6 +25,8 @@ export class PppService {
 	) {}
 
 	generatePerceptionReport(dto: PerceptionReportDto, academicPeriodId: number) {
+		// `dto.programId` set always implies `dto.commissionId` is also set — PerceptionReportDto
+		// rejects a career filter without a commission before this method ever runs.
 		return this.perceptionReport.generate({
 			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.PPP,
 			fileLabel: 'PPP',
