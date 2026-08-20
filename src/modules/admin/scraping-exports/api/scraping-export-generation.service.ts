@@ -33,6 +33,11 @@ export const GENERATION_STALE_TIMEOUT_MS = 20 * 60 * 1000;
 
 type DownloadResult = { fileName: string; fileBytes: Buffer };
 
+// Discriminates the gradesRc single-flight "slot taken" signal from any other generation
+// failure without comparing `error.message` against an i18n key string (AF-9). Module-private:
+// nothing outside this file needs to catch it.
+class GradesRcMergeBusyError extends Error {}
+
 /**
  * Orchestrates generation of the persisted scraping exports (`core.scraping_export_runs`).
  * Replaces rebuilding an export on every download: a completed scrape run triggers generation in
@@ -52,7 +57,13 @@ export class ScrapingExportGenerationService {
 	// DB for everyone else, not just this export. The other four export types have no such cost and
 	// are not guarded by this flag. Restores the old JobRegistry-based flow's maxConcurrent=1
 	// guarantee, which the per-key 'running' check alone does not provide.
-	private gradesRcMergeInFlight = false;
+	//
+	// Stores *when* the slot was taken, not a bare boolean (AF-2): a merge that genuinely hangs
+	// (never resolves or rejects) would otherwise leave the flag stuck `true` forever, permanently
+	// blocking every future Grades RC generation until a process restart. `isGradesRcMergeInFlight()`
+	// treats a slot held longer than `GENERATION_STALE_TIMEOUT_MS` as no longer in-flight, so it
+	// self-heals on the same timeline the DB-row staleness check already uses.
+	private gradesRcMergeStartedAt: number | null = null;
 
 	constructor(
 		private readonly runRepository: ScrapingExportRunRepository,
@@ -69,28 +80,44 @@ export class ScrapingExportGenerationService {
 		return this.exportsRepository.resolvePeriodoCode(academicPeriodId);
 	}
 
-	async triggerForBannerRun(periodo: string): Promise<void> {
+	async triggerForBannerRun(periodo: string, bannerRunId: string): Promise<void> {
 		for (const exportType of BANNER_EXPORT_TYPES) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate(exportType, periodo, lang);
+				this.fireAndForgetGenerate(exportType, periodo, lang, 'auto', bannerRunId);
 			}
 		}
 
 		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriodo(periodo);
-		if (plannerRuns.some((run) => run.status === 'completed')) {
+		const completedPlannerRun = plannerRuns.find((run) => run.status === 'completed');
+		if (completedPlannerRun) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate('gradesRc', periodo, lang);
+				this.fireAndForgetGenerate(
+					'gradesRc',
+					periodo,
+					lang,
+					'auto',
+					bannerRunId,
+					completedPlannerRun.id,
+				);
 			}
 		}
 	}
 
 	// No Planner-only sync export exists today: Planner data only ever feeds gradesRc, and only
 	// once a Banner run for the same periodo has also completed.
-	async triggerForPlannerRun(periodo: string): Promise<void> {
+	async triggerForPlannerRun(periodo: string, plannerRunId: string): Promise<void> {
 		const bannerRuns = await this.scrapeRunRepository.findByPeriodo(periodo);
-		if (bannerRuns.some((run) => run.status === 'completed')) {
+		const completedBannerRun = bannerRuns.find((run) => run.status === 'completed');
+		if (completedBannerRun) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate('gradesRc', periodo, lang);
+				this.fireAndForgetGenerate(
+					'gradesRc',
+					periodo,
+					lang,
+					'auto',
+					completedBannerRun.id,
+					plannerRunId,
+				);
 			}
 		}
 	}
@@ -101,31 +128,49 @@ export class ScrapingExportGenerationService {
 		lang: string,
 		triggeredBy: string,
 	): Promise<ScrapingExportStatusResponse> {
-		const existing = await this.runRepository.findByKey(exportType, periodo, lang);
-		const reconciled = existing ? await this.reconcileIfStale(existing) : null;
+		const { sourceBannerRunId, sourcePlannerRunId } = await this.resolveSourceRunIdsForRegenerate(
+			exportType,
+			periodo,
+		);
 
-		if (reconciled?.status === 'running') {
-			throw new ConflictError(scrapingExportsValidationStrings.error.alreadyGenerating);
-		}
-
-		// The per-key check above only catches a duplicate regenerate of this exact key. gradesRc
-		// additionally needs the system-wide check: the merge slot could be held by a different
-		// periodo/lang's generation right now. Same 409 semantic from the caller's point of view.
-		if (exportType === 'gradesRc' && this.gradesRcMergeInFlight) {
-			throw new ConflictError(scrapingExportsValidationStrings.error.alreadyGenerating);
-		}
-
-		const row = await this.runRepository.upsertByKey(exportType, periodo, lang, {
-			status: 'running',
+		const claimed = await this.claimForGeneration(
+			exportType,
+			periodo,
+			lang,
 			triggeredBy,
-			errorMessage: null,
-			startedAt: new Date(),
-			updatedAt: new Date(),
-		});
+			sourceBannerRunId,
+			sourcePlannerRunId,
+		);
 
-		this.fireAndForgetGenerate(exportType, periodo, lang, triggeredBy);
+		if (!claimed) {
+			throw new ConflictError(scrapingExportsValidationStrings.error.alreadyGenerating);
+		}
 
-		return this.toStatusResponse(row);
+		this.fireAndForgetRunGeneration(exportType, periodo, lang);
+
+		return this.toStatusResponse(claimed);
+	}
+
+	// Manual regenerate has no "just-completed run" context to draw a source id from (unlike the
+	// two auto-trigger paths), so it looks up whatever the latest completed run currently is. A
+	// missing completed run is not an error here — per design.md's "download-while-stale"
+	// philosophy, an export may still be regeneratable from stale-but-existing source data — so
+	// this simply omits the source id it could not resolve rather than blocking the regenerate.
+	private async resolveSourceRunIdsForRegenerate(
+		exportType: ScrapingExportType,
+		periodo: string,
+	): Promise<{ sourceBannerRunId?: string; sourcePlannerRunId?: string }> {
+		const bannerRuns = await this.scrapeRunRepository.findByPeriodo(periodo);
+		const sourceBannerRunId = bannerRuns.find((run) => run.status === 'completed')?.id;
+
+		if (exportType !== 'gradesRc') {
+			return { sourceBannerRunId };
+		}
+
+		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriodo(periodo);
+		const sourcePlannerRunId = plannerRuns.find((run) => run.status === 'completed')?.id;
+
+		return { sourceBannerRunId, sourcePlannerRunId };
 	}
 
 	async getStatus(
@@ -155,16 +200,36 @@ export class ScrapingExportGenerationService {
 		return { fileName: reconciled.fileName, fileBytes: reconciled.fileBytes };
 	}
 
-	// Wrapper around `generate()` for the two fire-and-forget call sites (auto-trigger and
-	// `regenerate`): `generate()` already never rejects internally, but this `.catch` is a
-	// defensive backstop so a rejection can never escape as an unhandled promise rejection.
+	// Used by the two auto-trigger paths (Banner/Planner run completion). Combines the claim and
+	// the actual generation work in one fire-and-forget call: if the claim is lost (this exact key
+	// is already running, or — for gradesRc — the system-wide merge slot is held elsewhere), that is
+	// an expected, benign occurrence for an auto-trigger (e.g. two scrapes completing close
+	// together), not an error, so it is logged and skipped rather than surfaced anywhere. The
+	// trailing `.catch` is a defensive backstop so a rejection can never escape as an unhandled
+	// promise rejection.
 	private fireAndForgetGenerate(
 		exportType: ScrapingExportType,
 		periodo: string,
 		lang: string,
 		triggeredBy: string = 'auto',
+		sourceBannerRunId?: string,
+		sourcePlannerRunId?: string,
 	): void {
-		void this.generate(exportType, periodo, lang, triggeredBy).catch((error) => {
+		void (async () => {
+			const claimed = await this.claimForGeneration(
+				exportType,
+				periodo,
+				lang,
+				triggeredBy,
+				sourceBannerRunId,
+				sourcePlannerRunId,
+			);
+			if (!claimed) {
+				this.logger.debug(`Skipped generating ${exportType}/${periodo}/${lang}: already in flight`);
+				return;
+			}
+			await this.runGeneration(exportType, periodo, lang);
+		})().catch((error) => {
 			this.logger.error(
 				`Unexpected error generating ${exportType}/${periodo}/${lang}: ${
 					error instanceof Error ? error.message : String(error)
@@ -174,20 +239,71 @@ export class ScrapingExportGenerationService {
 		});
 	}
 
-	private async generate(
+	// Fire-and-forget wrapper purely around `runGeneration`, for `regenerate()`: unlike
+	// `fireAndForgetGenerate`, the caller here has already claimed the row synchronously (so it can
+	// 409 immediately on a lost claim), so this does not claim again.
+	private fireAndForgetRunGeneration(
+		exportType: ScrapingExportType,
+		periodo: string,
+		lang: string,
+	): void {
+		void this.runGeneration(exportType, periodo, lang).catch((error) => {
+			this.logger.error(
+				`Unexpected error generating ${exportType}/${periodo}/${lang}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+		});
+	}
+
+	// Checks whether this (exportType, periodo, lang) key — and, for gradesRc, the system-wide merge
+	// slot — is free, and if so atomically (from this process's point of view — no `await` between
+	// the check and the upsert) transitions the row to `'running'`. Returns `null` when the key (or
+	// slot) is already claimed, leaving it to the caller to decide what that means: a 409 for
+	// `regenerate()`, a silent skip for an auto-trigger. This is the only place a row is ever
+	// upserted to `'running'` (AF-8) and the only gate a second concurrent claim for the same key
+	// has to pass (AF-6).
+	private async claimForGeneration(
 		exportType: ScrapingExportType,
 		periodo: string,
 		lang: string,
 		triggeredBy: string,
-	): Promise<void> {
-		await this.runRepository.upsertByKey(exportType, periodo, lang, {
+		sourceBannerRunId?: string,
+		sourcePlannerRunId?: string,
+	): Promise<ScrapingExportRunEntity | null> {
+		const existing = await this.runRepository.findByKey(exportType, periodo, lang);
+		const reconciled = existing ? await this.reconcileIfStale(existing) : null;
+
+		if (reconciled?.status === 'running') {
+			return null;
+		}
+
+		// The per-key check above only catches a duplicate claim of this exact key. gradesRc
+		// additionally needs the system-wide check: the merge slot could be held by a different
+		// periodo/lang's generation right now.
+		if (exportType === 'gradesRc' && this.isGradesRcMergeInFlight()) {
+			return null;
+		}
+
+		return this.runRepository.upsertByKey(exportType, periodo, lang, {
 			status: 'running',
 			triggeredBy,
 			errorMessage: null,
 			startedAt: new Date(),
 			updatedAt: new Date(),
+			...(sourceBannerRunId !== undefined ? { sourceBannerRunId } : {}),
+			...(sourcePlannerRunId !== undefined ? { sourcePlannerRunId } : {}),
 		});
+	}
 
+	// Assumes the row was already claimed (transitioned to `'running'`) by the caller — runs the
+	// actual generator and finalizes the row to `'completed'`/`'failed'`.
+	private async runGeneration(
+		exportType: ScrapingExportType,
+		periodo: string,
+		lang: string,
+	): Promise<void> {
 		try {
 			const { buffer, fileName } = await this.runGenerator(exportType, periodo, lang);
 
@@ -206,13 +322,12 @@ export class ScrapingExportGenerationService {
 				}`,
 				error instanceof Error ? error.stack : undefined,
 			);
-			// The gradesRc single-flight guard throws with a distinguishable message so this row's
+			// The gradesRc single-flight guard throws a distinguishable error type so this row's
 			// errorMessage tells the truth (another period's merge is holding the slot) instead of
 			// the generic "generation failed" — the row still ends up 'failed' either way, and the
 			// next scrape completion or manual regenerate retries it.
 			const errorMessage =
-				error instanceof Error &&
-				error.message === scrapingExportsValidationStrings.error.gradesRcBusy
+				error instanceof GradesRcMergeBusyError
 					? scrapingExportsValidationStrings.error.gradesRcBusy
 					: scrapingExportsValidationStrings.error.generationFailed;
 			await this.runRepository.upsertByKey(exportType, periodo, lang, {
@@ -234,6 +349,9 @@ export class ScrapingExportGenerationService {
 		}
 
 		const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(periodo);
+		if (academicPeriodId === null) {
+			throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
+		}
 
 		switch (exportType) {
 			case 'docentes':
@@ -247,19 +365,26 @@ export class ScrapingExportGenerationService {
 		}
 	}
 
+	private isGradesRcMergeInFlight(): boolean {
+		return (
+			this.gradesRcMergeStartedAt !== null &&
+			Date.now() - this.gradesRcMergeStartedAt < GENERATION_STALE_TIMEOUT_MS
+		);
+	}
+
 	// Only gradesRc pins a pooled connection for the minutes the merge takes (see design.md § AC-10),
 	// so this is the one export type that needs a system-wide single-flight guard, not just the
-	// per-key 'running' check `generate()` already does for every export type.
+	// per-key 'running' check every export type already gets from `claimForGeneration`.
 	private async runGradesRcMerge(periodo: string, lang: string): Promise<GeneratedExcel> {
-		if (this.gradesRcMergeInFlight) {
+		if (this.isGradesRcMergeInFlight()) {
 			// Reachable from the auto-trigger path, which has no caller to hand a 409 to — surfaced
-			// as an ordinary generation failure (caught by generate()'s try/catch) instead of
+			// as an ordinary generation failure (caught by runGeneration()'s try/catch) instead of
 			// starting a second concurrent merge. The next scrape completion or manual regenerate
 			// retries it naturally.
-			throw new Error(scrapingExportsValidationStrings.error.gradesRcBusy);
+			throw new GradesRcMergeBusyError(scrapingExportsValidationStrings.error.gradesRcBusy);
 		}
 
-		this.gradesRcMergeInFlight = true;
+		this.gradesRcMergeStartedAt = Date.now();
 		try {
 			const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(periodo);
 			if (academicPeriodId === null) {
@@ -267,7 +392,7 @@ export class ScrapingExportGenerationService {
 			}
 			return await this.exportsService.generateGradesRc(academicPeriodId, lang);
 		} finally {
-			this.gradesRcMergeInFlight = false;
+			this.gradesRcMergeStartedAt = null;
 		}
 	}
 

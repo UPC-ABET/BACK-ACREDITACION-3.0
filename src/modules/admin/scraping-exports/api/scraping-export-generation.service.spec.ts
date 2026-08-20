@@ -43,7 +43,7 @@ const buildService = () =>
 		mockExportsService as unknown as ScrapingExportsService,
 	);
 
-// Both trigger paths fire generate() without awaiting it, so tests have to let the microtask
+// Both trigger paths fire generation without awaiting it, so tests have to let the microtask
 // queue drain before asserting on what it did.
 const flush = async () => {
 	for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
@@ -52,10 +52,29 @@ const flush = async () => {
 const gradesRcCalls = () =>
 	mockRunRepository.upsertByKey.mock.calls.filter(([exportType]) => exportType === 'gradesRc');
 
+const upsertCallsFor = (exportType: string, periodo: string) =>
+	mockRunRepository.upsertByKey.mock.calls.filter(
+		([callExportType, callPeriodo]) => callExportType === exportType && callPeriodo === periodo,
+	);
+
+// Reaches the private fire-and-forget entry point the two auto-trigger call sites use, so a
+// single key's duplicate-trigger scenario can be exercised without going through the full
+// 8-way triggerForBannerRun fan-out.
+const callFireAndForgetGenerate = (
+	service: ScrapingExportGenerationService,
+	...args: unknown[]
+): void => {
+	(
+		service as unknown as { fireAndForgetGenerate: (...callArgs: unknown[]) => void }
+	).fireAndForgetGenerate(...args);
+};
+
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockRunRepository.upsertByKey.mockResolvedValue({});
 	mockExportsRepository.findAcademicPeriodIdByCode.mockResolvedValue(5);
+	mockScrapeRunRepository.findByPeriodo.mockResolvedValue([]);
+	mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([]);
 	mockExportsService.generateDocentes.mockResolvedValue({
 		buffer: Buffer.from('a'),
 		fileName: 'Docentes.xlsx',
@@ -80,10 +99,9 @@ beforeEach(() => {
 
 describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 	it('generates all four Banner exports for every supported lang', async () => {
-		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([]);
 		const service = buildService();
 
-		await service.triggerForBannerRun(PERIODO);
+		await service.triggerForBannerRun(PERIODO, 'banner-run-1');
 		await flush();
 
 		expect(mockExportsService.generateDocentes).toHaveBeenCalledWith(5, 'es');
@@ -97,17 +115,19 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([{ status: 'running' }]);
 		const service = buildService();
 
-		await service.triggerForBannerRun(PERIODO);
+		await service.triggerForBannerRun(PERIODO, 'banner-run-1');
 		await flush();
 
 		expect(gradesRcCalls().length).toBe(0);
 	});
 
 	it('triggers gradesRc when a completed Planner run exists for the periodo', async () => {
-		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([{ status: 'completed' }]);
+		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'planner-run-1' },
+		]);
 		const service = buildService();
 
-		await service.triggerForBannerRun(PERIODO);
+		await service.triggerForBannerRun(PERIODO, 'banner-run-1');
 		await flush();
 
 		expect(gradesRcCalls().length).toBeGreaterThan(0);
@@ -116,23 +136,159 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 
 describe('ScrapingExportGenerationService.triggerForPlannerRun', () => {
 	it('triggers gradesRc only when a completed Banner run exists for the periodo', async () => {
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([{ status: 'completed' }]);
+		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'banner-run-1' },
+		]);
 		const service = buildService();
 
-		await service.triggerForPlannerRun(PERIODO);
+		await service.triggerForPlannerRun(PERIODO, 'planner-run-1');
 		await flush();
 
 		expect(gradesRcCalls().length).toBeGreaterThan(0);
 	});
 
 	it('does nothing when no completed Banner run exists for the periodo', async () => {
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([]);
 		const service = buildService();
 
-		await service.triggerForPlannerRun(PERIODO);
+		await service.triggerForPlannerRun(PERIODO, 'planner-run-1');
 		await flush();
 
 		expect(mockRunRepository.upsertByKey).not.toHaveBeenCalled();
+	});
+});
+
+describe('ScrapingExportGenerationService AF-1 Banner period-not-found guard', () => {
+	it('fails loud instead of generating with a null academicPeriodId for a Banner export type', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockExportsRepository.findAcademicPeriodIdByCode.mockResolvedValue(null);
+		const service = buildService();
+
+		await service.regenerate('docentes', PERIODO, 'es', 'user-1');
+		await flush();
+
+		expect(mockExportsService.generateDocentes).not.toHaveBeenCalled();
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'docentes',
+			PERIODO,
+			'es',
+			expect.objectContaining({ status: 'failed', errorMessage: expect.any(String) }),
+		);
+	});
+});
+
+describe('ScrapingExportGenerationService AF-3 source run id wiring', () => {
+	it('writes sourceBannerRunId on the four Banner exports triggered from a Banner run', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const service = buildService();
+
+		await service.triggerForBannerRun(PERIODO, 'banner-run-1');
+		await flush();
+
+		for (const exportType of ['docentes', 'secciones', 'alumnosMatriculados', 'alumnosSecciones']) {
+			expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+				exportType,
+				PERIODO,
+				'es',
+				expect.objectContaining({ status: 'running', sourceBannerRunId: 'banner-run-1' }),
+			);
+		}
+	});
+
+	it('writes both source ids on gradesRc triggered from a Banner run when a completed Planner run exists', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'planner-run-1' },
+		]);
+		const service = buildService();
+
+		await service.triggerForBannerRun(PERIODO, 'banner-run-1');
+		await flush();
+
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'gradesRc',
+			PERIODO,
+			'es',
+			expect.objectContaining({
+				status: 'running',
+				sourceBannerRunId: 'banner-run-1',
+				sourcePlannerRunId: 'planner-run-1',
+			}),
+		);
+	});
+
+	it('writes both source ids on gradesRc triggered from a Planner run when a completed Banner run exists', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'banner-run-1' },
+		]);
+		const service = buildService();
+
+		await service.triggerForPlannerRun(PERIODO, 'planner-run-1');
+		await flush();
+
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'gradesRc',
+			PERIODO,
+			'es',
+			expect.objectContaining({
+				status: 'running',
+				sourceBannerRunId: 'banner-run-1',
+				sourcePlannerRunId: 'planner-run-1',
+			}),
+		);
+	});
+
+	it('regenerate resolves the currently completed source run ids it can find', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'banner-run-9' },
+		]);
+		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'planner-run-9' },
+		]);
+		const service = buildService();
+
+		await service.regenerate('gradesRc', PERIODO, 'es', 'user-1');
+
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'gradesRc',
+			PERIODO,
+			'es',
+			expect.objectContaining({
+				status: 'running',
+				sourceBannerRunId: 'banner-run-9',
+				sourcePlannerRunId: 'planner-run-9',
+			}),
+		);
+	});
+});
+
+describe('ScrapingExportGenerationService AF-6 same-key duplicate trigger guard', () => {
+	it('does not run a full generation pass twice when a second auto-trigger lands for the same key while the first is still running', async () => {
+		mockRunRepository.findByKey.mockResolvedValueOnce(null).mockResolvedValue({
+			exportType: 'docentes',
+			periodo: PERIODO,
+			lang: 'es',
+			status: 'running',
+			updatedAt: new Date(),
+		});
+		let releaseFirstGeneration!: () => void;
+		const gate = new Promise<void>((resolve) => (releaseFirstGeneration = resolve));
+		mockExportsService.generateDocentes.mockImplementationOnce(async () => {
+			await gate;
+			return { buffer: Buffer.from('a'), fileName: 'Docentes.xlsx' };
+		});
+		const service = buildService();
+
+		callFireAndForgetGenerate(service, 'docentes', PERIODO, 'es');
+		await flush();
+		callFireAndForgetGenerate(service, 'docentes', PERIODO, 'es');
+		await flush();
+
+		expect(mockExportsService.generateDocentes).toHaveBeenCalledTimes(1);
+
+		releaseFirstGeneration();
+		await flush();
 	});
 });
 
@@ -172,6 +328,18 @@ describe('ScrapingExportGenerationService.regenerate', () => {
 		);
 	});
 
+	it('calls upsertByKey to running exactly once per successful claim (AF-8)', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const service = buildService();
+
+		await service.regenerate('docentes', PERIODO, 'es', 'user-1');
+
+		const runningCalls = mockRunRepository.upsertByKey.mock.calls.filter(
+			([, , , patch]) => (patch as { status?: string }).status === 'running',
+		);
+		expect(runningCalls.length).toBe(1);
+	});
+
 	it('reconciles a stale running row first, so a stale generation never blocks a new one', async () => {
 		const staleDate = new Date(Date.now() - GENERATION_STALE_TIMEOUT_MS - 1000);
 		mockRunRepository.findByKey.mockResolvedValue({
@@ -182,7 +350,7 @@ describe('ScrapingExportGenerationService.regenerate', () => {
 			updatedAt: staleDate,
 		});
 		// First upsertByKey call is reconcileIfStale flipping the stale row to 'failed'; the second
-		// is regenerate's own transition to 'running' once it sees the row is no longer running.
+		// is the claim's own transition to 'running' once it sees the row is no longer running.
 		mockRunRepository.upsertByKey
 			.mockResolvedValueOnce({
 				exportType: 'docentes',
@@ -200,7 +368,21 @@ describe('ScrapingExportGenerationService.regenerate', () => {
 			});
 		const service = buildService();
 
-		await expect(service.regenerate('docentes', PERIODO, 'es', 'user-1')).resolves.toBeDefined();
+		// `toStatusResponse` never includes `triggeredBy` (see ScrapingExportStatusResponse's own
+		// comment on why fileBytes/internal-only fields never leak into it), so the response is
+		// checked for the transitioned status, and the claim's own upsert call is checked directly
+		// for triggeredBy plus the exact call count (once to reconcile-and-fail, once to claim).
+		await expect(service.regenerate('docentes', PERIODO, 'es', 'user-1')).resolves.toMatchObject({
+			status: 'running',
+		});
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledTimes(2);
+		expect(mockRunRepository.upsertByKey).toHaveBeenNthCalledWith(
+			2,
+			'docentes',
+			PERIODO,
+			'es',
+			expect.objectContaining({ status: 'running', triggeredBy: 'user-1' }),
+		);
 	});
 });
 
@@ -336,6 +518,62 @@ describe('ScrapingExportGenerationService reconcileIfStale (exercised through ge
 	});
 });
 
+describe('ScrapingExportGenerationService reconcileIfStale boundary (AF-13)', () => {
+	const FIXED_NOW = 1_700_000_000_000;
+
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
+	it('does not flip a running row exactly (GENERATION_STALE_TIMEOUT_MS - 1)ms old', async () => {
+		jest.useFakeTimers({ now: FIXED_NOW });
+		const updatedAt = new Date(FIXED_NOW - (GENERATION_STALE_TIMEOUT_MS - 1));
+		mockRunRepository.findByKey.mockResolvedValue({
+			exportType: 'docentes',
+			periodo: PERIODO,
+			lang: 'es',
+			status: 'running',
+			updatedAt,
+		});
+		const service = buildService();
+
+		const result = await service.getStatus('docentes', PERIODO, 'es');
+
+		expect(mockRunRepository.upsertByKey).not.toHaveBeenCalled();
+		expect((result as { status: string }).status).toBe('running');
+	});
+
+	it('flips a running row exactly GENERATION_STALE_TIMEOUT_MS old to failed', async () => {
+		jest.useFakeTimers({ now: FIXED_NOW });
+		const updatedAt = new Date(FIXED_NOW - GENERATION_STALE_TIMEOUT_MS);
+		mockRunRepository.findByKey.mockResolvedValue({
+			exportType: 'docentes',
+			periodo: PERIODO,
+			lang: 'es',
+			status: 'running',
+			updatedAt,
+		});
+		mockRunRepository.upsertByKey.mockResolvedValue({
+			exportType: 'docentes',
+			periodo: PERIODO,
+			lang: 'es',
+			status: 'failed',
+			errorMessage: scrapingExportsValidationStrings.error.staleGenerationDetected,
+		});
+		const service = buildService();
+
+		const result = await service.getStatus('docentes', PERIODO, 'es');
+
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'docentes',
+			PERIODO,
+			'es',
+			expect.objectContaining({ status: 'failed' }),
+		);
+		expect((result as { status: string }).status).toBe('failed');
+	});
+});
+
 describe('ScrapingExportGenerationService gradesRc generation (Milestone 6)', () => {
 	it('generates gradesRc via ScrapingExportsService.generateGradesRc and stores the result', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
@@ -375,12 +613,14 @@ describe('ScrapingExportGenerationService gradesRc generation (Milestone 6)', ()
 });
 
 describe('ScrapingExportGenerationService gradesRc system-wide single-flight guard', () => {
-	it('does not run two gradesRc merges concurrently for different periods; the second becomes a failed row', async () => {
+	it('does not run two gradesRc merges concurrently for different periods; the second is skipped, not written as failed (AF-6)', async () => {
 		// Goes through the auto-trigger path (triggerForPlannerRun), not regenerate(): regenerate()
-		// has its own pre-check that 409s a caller before ever reaching generate(); this internal
-		// guard exists specifically for the auto-trigger path, which has no caller to 409.
+		// has its own pre-check that 409s a caller before ever reaching generation; this guard
+		// exists specifically for the auto-trigger path, which has no caller to 409.
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([{ status: 'completed' }]);
+		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{ status: 'completed', id: 'banner-run-1' },
+		]);
 		let releaseFirstMerge!: () => void;
 		const firstMergeGate = new Promise<void>((resolve) => (releaseFirstMerge = resolve));
 		mockExportsService.generateGradesRc.mockImplementationOnce(async () => {
@@ -389,22 +629,19 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 		});
 		const service = buildService();
 
-		await service.triggerForPlannerRun('P1');
-		// Let the first triggered generate() reach runGradesRcMerge and flip the flag before the
+		await service.triggerForPlannerRun('P1', 'planner-run-1');
+		// Let the first triggered generation reach runGradesRcMerge and flip the flag before the
 		// second period is triggered, without letting the first merge finish.
 		await flush();
 
-		await service.triggerForPlannerRun('P2');
+		await service.triggerForPlannerRun('P2', 'planner-run-2');
 		await flush();
 
-		// The second period's merge must never have been attempted while the first was in flight.
+		// The second period's merge must never have been attempted while the first was in flight,
+		// and — unlike before the AF-6 fix — no row is written for it at all (it never gets past
+		// the claim, so there is nothing "failed" to mislead a reader into thinking it ran).
 		expect(mockExportsService.generateGradesRc).toHaveBeenCalledTimes(1);
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
-			'gradesRc',
-			'P2',
-			'es',
-			expect.objectContaining({ status: 'failed', errorMessage: expect.any(String) }),
-		);
+		expect(upsertCallsFor('gradesRc', 'P2')).toHaveLength(0);
 
 		releaseFirstMerge();
 		await flush();
@@ -419,8 +656,9 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 	it('regenerate throws ConflictError when the gradesRc merge slot is held, even for a different periodo/lang', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
 		const service = buildService();
-		// Simulates the flag being held by an in-flight merge for an unrelated periodo/lang.
-		(service as unknown as { gradesRcMergeInFlight: boolean }).gradesRcMergeInFlight = true;
+		// Simulates the slot being held by an in-flight merge for an unrelated periodo/lang.
+		(service as unknown as { gradesRcMergeStartedAt: number | null }).gradesRcMergeStartedAt =
+			Date.now();
 
 		await expect(
 			service.regenerate('gradesRc', 'SOME-OTHER-PERIOD', 'en', 'user-1'),
@@ -430,5 +668,35 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 		).rejects.toMatchObject({
 			messageKey: scrapingExportsValidationStrings.error.alreadyGenerating,
 		});
+	});
+});
+
+describe('ScrapingExportGenerationService gradesRc merge slot self-healing (AF-2)', () => {
+	it('treats a gradesRcMergeStartedAt older than GENERATION_STALE_TIMEOUT_MS as not in-flight, unblocking a fresh merge', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockRunRepository.upsertByKey.mockResolvedValue({
+			exportType: 'gradesRc',
+			periodo: PERIODO,
+			lang: 'es',
+			status: 'running',
+		});
+		const service = buildService();
+		(service as unknown as { gradesRcMergeStartedAt: number | null }).gradesRcMergeStartedAt =
+			Date.now() - GENERATION_STALE_TIMEOUT_MS - 1000;
+
+		await expect(service.regenerate('gradesRc', PERIODO, 'es', 'user-1')).resolves.toMatchObject({
+			status: 'running',
+		});
+	});
+
+	it('still blocks regenerate when the merge slot was set recently', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const service = buildService();
+		(service as unknown as { gradesRcMergeStartedAt: number | null }).gradesRcMergeStartedAt =
+			Date.now() - 1000;
+
+		await expect(service.regenerate('gradesRc', PERIODO, 'es', 'user-1')).rejects.toThrow(
+			ConflictError,
+		);
 	});
 });

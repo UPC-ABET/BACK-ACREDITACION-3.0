@@ -44,8 +44,10 @@ declared in `env.config.ts`. So the storage-location question could not be resol
 
 We will persist scraping export generation state and results in a new table on the **main**
 datasource — one row per `(exportType, periodo, lang)` — carrying a `status`
-(`pending`/`running`/`completed`/`failed`), timestamps, and the generated file as a `bytea`
-column. This table replaces both the per-request synchronous build for the four sync exports
+(`running`/`completed`/`failed`; no `pending` — "no row yet" is its own distinct
+`notGenerated` response shape rather than a status value, as decided during implementation),
+timestamps, and the generated file as a `bytea` column. This table replaces both the
+per-request synchronous build for the four sync exports
 and the ephemeral `JobRegistry` for Grades RC. Generation is triggered automatically when the
 relevant scrape run(s) reach `'completed'`, and can also be triggered manually per
 `(exportType, periodo, lang)`; a download request serves the stored bytes directly when a

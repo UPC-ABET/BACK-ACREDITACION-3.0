@@ -12,7 +12,9 @@ export type ScrapingExportType =
 	| 'gradesRc';
 
 // Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, periodo, lang) key.
-export type ScrapingExportGenerationStatus = 'pending' | 'running' | 'completed' | 'failed';
+// No 'pending' state: "no row yet" is represented separately as `{ status: 'notGenerated' }`
+// (see ScrapingExportStatusResponse below), not by a status value on a persisted row.
+export type ScrapingExportGenerationStatus = 'running' | 'completed' | 'failed';
 
 // What `status`/`regenerate` hand back to a caller: the row's metadata, never `fileBytes` — that
 // column can hold a multi-megabyte workbook, and JSON-serializing a Buffer blows it up further
