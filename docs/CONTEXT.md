@@ -183,18 +183,18 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 
 PostgreSQL, organised into schemas that mirror the module tree:
 
-| Schema          | Holds                                                                                                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `academic`      | periods, programmes, courses, sections, study plans, students, professors, grades                                                                                                                |
-| `core`          | types, type groups, parameters, email templates, notification logs, scraper credentials (password encrypted — see [ADR-001](./adr/ADR-001-external-system-credentials-encrypted-in-database.md)) |
-| `evaluation`    | projects, rubrics, questions, criteria, scores, evaluators                                                                                                                                       |
-| `evidence`      | IFCs, ARDs, evaluations, instruments, surveys, outcome grades                                                                                                                                    |
-| `organization`  | schools, faculties, campuses, charts, staff, users                                                                                                                                               |
-| `improvement`   | findings, actions, plans and their links                                                                                                                                                         |
-| `accreditation` | outcomes, commissions, accreditors, conversions                                                                                                                                                  |
-| `survey`        | notification messages                                                                                                                                                                            |
-| `ifc`           | IFC findings and statuses                                                                                                                                                                        |
-| `audit`         | upload/rollback undo stacks (`fn_upload_*`, `fn_rollback_*`)                                                                                                                                     |
+| Schema          | Holds                                                                                                                                                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `academic`      | periods, programmes, courses, sections, study plans, students, professors, grades                                                                                                                                                                                                                                                                     |
+| `core`          | types, type groups, parameters, email templates, notification logs, scraper credentials (password encrypted — see [ADR-001](./adr/ADR-001-external-system-credentials-encrypted-in-database.md)), persisted scraping export generation state (`scraping_export_runs` — see [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md)) |
+| `evaluation`    | projects, rubrics, questions, criteria, scores, evaluators                                                                                                                                                                                                                                                                                            |
+| `evidence`      | IFCs, ARDs, evaluations, instruments, surveys, outcome grades                                                                                                                                                                                                                                                                                         |
+| `organization`  | schools, faculties, campuses, charts, staff, users                                                                                                                                                                                                                                                                                                    |
+| `improvement`   | findings, actions, plans and their links                                                                                                                                                                                                                                                                                                              |
+| `accreditation` | outcomes, commissions, accreditors, conversions                                                                                                                                                                                                                                                                                                       |
+| `survey`        | notification messages                                                                                                                                                                                                                                                                                                                                 |
+| `ifc`           | IFC findings and statuses                                                                                                                                                                                                                                                                                                                             |
+| `audit`         | upload/rollback undo stacks (`fn_upload_*`, `fn_rollback_*`)                                                                                                                                                                                                                                                                                          |
 
 Configuration:
 
@@ -393,5 +393,17 @@ _why_ writes them down. Do not populate it by guessing from the code.
   exists: without it, a course could sit directly under a School with no career in between, and
   nothing would ever surface that as wrong. Enforced in `ChartValidation`
   (`hasProgramAncestor`) and in `audit.fn_upload_charts`.
+- **A completed Banner or Planner scrape run deletes every other raw-data run for the same
+  `periodo`; a run that itself finishes partial/failed/expired deletes only its own rows.**
+  Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno`/`raw_notas` on the `raw`
+  connection; `raw_planner_seccion`/`raw_planner_evaluacion`/`raw_planner_nota` on
+  `planner-raw`) is otherwise insert-only, tagged by a `runId` FK to `scrape_run` /
+  `planner_scrape_run` with `onDelete: 'CASCADE'` — nothing ever removed a superseded run
+  before this, so every re-scrape of the same period grew the raw datasource forever, even
+  though only the newest completed run per period is ever read. Retention is keyed on
+  `periodo` alone, not `departamentos`/`escuela` — Banner's own `findByPeriodo` ignores
+  `departamentos`, and Planner's `escuela` column is never actually populated. Enforced in
+  `ScraperService.execute()` / `PlannerScraperService.execute()`, right after each run's
+  `finish()` call. See [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md).
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->
