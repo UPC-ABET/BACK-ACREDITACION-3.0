@@ -10,11 +10,18 @@ import {
 	PlannerLoginUnreachableError,
 	PlannerSessionExpiredError,
 } from '../../planner-token/model/planner-session.errors';
+import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
 import { isFatalScrapeError, PlannerScraperService } from './planner-scraper.service';
 
 const PERIODO = '202510';
 
-const mockScrapeRunRepository = { createRun: jest.fn(), finish: jest.fn(), findById: jest.fn() };
+const mockScrapeRunRepository = {
+	createRun: jest.fn(),
+	finish: jest.fn(),
+	findById: jest.fn(),
+	deleteRun: jest.fn(),
+	deleteOtherRunsForPeriodo: jest.fn(),
+};
 const mockSeccionRepository = { bulkInsert: jest.fn() };
 const mockEvaluacionRepository = { bulkInsert: jest.fn() };
 const mockNotaRepository = { bulkInsert: jest.fn() };
@@ -23,6 +30,7 @@ const mockSourceRepository = {
 	findActiveCourseCodes: jest.fn(),
 };
 const mockHttp = { get: jest.fn() };
+const mockExportGenerationService = { triggerForPlannerRun: jest.fn() };
 
 const buildService = () =>
 	new PlannerScraperService(
@@ -32,7 +40,12 @@ const buildService = () =>
 		mockNotaRepository as unknown as RawPlannerNotaRepository,
 		mockSourceRepository as unknown as PlannerSourceRepository,
 		mockHttp as unknown as PlannerHttpClient,
+		mockExportGenerationService as unknown as ScrapingExportGenerationService,
 	);
+
+const flush = async () => {
+	for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+};
 
 // `run()` detaches `execute()` deliberately, so the assertions have to wait for the detached chain.
 const runAndSettle = async (service: PlannerScraperService) => {
@@ -49,6 +62,9 @@ describe('PlannerScraperService', () => {
 		mockSourceRepository.findActiveCourseCodes.mockResolvedValue(['CS101']);
 		mockScrapeRunRepository.createRun.mockResolvedValue(undefined);
 		mockScrapeRunRepository.finish.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteRun.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockResolvedValue(undefined);
+		mockExportGenerationService.triggerForPlannerRun.mockResolvedValue(undefined);
 		mockHttp.get.mockResolvedValue([]);
 	});
 
@@ -118,5 +134,108 @@ describe('PlannerScraperService', () => {
 
 			expect(finishedStatus()).toBe('failed');
 		});
+
+		/**
+		 * Retention cleanup rides along the same catch branch that already reaches `finish()` in
+		 * these tests. Phases past resolving the period id are unreachable under jest (see the
+		 * `p-limit dynamic import` note above), so the `completed`/`partial` branch is covered at
+		 * the `finalizeRun` unit level instead, below.
+		 */
+		it('deletes only its own leftovers when a run fails end-to-end', async () => {
+			mockHttp.get.mockRejectedValue(new PlannerLoginUnreachableError('ECONNREFUSED'));
+
+			await runAndSettle(buildService());
+
+			const runId = mockScrapeRunRepository.finish.mock.calls[0]?.[0] as string;
+			expect(finishedStatus()).toBe('failed');
+			expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith(runId);
+			expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+		});
+
+		it('deletes only its own leftovers when a run expires end-to-end', async () => {
+			mockHttp.get.mockRejectedValue(new PlannerLoginRejectedError('401'));
+
+			await runAndSettle(buildService());
+
+			const runId = mockScrapeRunRepository.finish.mock.calls[0]?.[0] as string;
+			expect(finishedStatus()).toBe('expired');
+			expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith(runId);
+			expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+		});
+	});
+
+	/**
+	 * `finalizeRun` is the private helper both the success and catch branches of `execute()` call
+	 * right after computing their status, so it carries the retention branch that `finish()` used
+	 * to be followed by directly. Exercised through reflection because the `completed`/`partial`
+	 * branch is only reachable by actually finishing all three scrape phases, which needs
+	 * `p-limit`'s dynamic import — unusable under jest here (see above).
+	 */
+	describe('finalizeRun', () => {
+		it('deletes every other run for the periodo when the run completed', async () => {
+			const service = buildService();
+
+			await (service as unknown as { finalizeRun: Function }).finalizeRun(
+				'run-1',
+				PERIODO,
+				'completed',
+				{},
+			);
+
+			expect(mockScrapeRunRepository.finish).toHaveBeenCalledWith('run-1', 'completed', {});
+			expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).toHaveBeenCalledWith(
+				PERIODO,
+				'run-1',
+			);
+			expect(mockScrapeRunRepository.deleteRun).not.toHaveBeenCalled();
+		});
+
+		it('triggers export generation for the periodo when the run completed', async () => {
+			const service = buildService();
+
+			await (service as unknown as { finalizeRun: Function }).finalizeRun(
+				'run-1',
+				PERIODO,
+				'completed',
+				{},
+			);
+			await flush();
+
+			expect(mockExportGenerationService.triggerForPlannerRun).toHaveBeenCalledWith(PERIODO);
+		});
+
+		it('does not let a rejected export-generation trigger propagate out of finalizeRun', async () => {
+			mockExportGenerationService.triggerForPlannerRun.mockRejectedValue(new Error('boom'));
+			const service = buildService();
+
+			await expect(
+				(service as unknown as { finalizeRun: Function }).finalizeRun(
+					'run-1',
+					PERIODO,
+					'completed',
+					{},
+				),
+			).resolves.toBeUndefined();
+			await flush();
+		});
+
+		it.each(['partial', 'failed', 'expired'])(
+			'deletes only its own row when the run is %s',
+			async (status) => {
+				const service = buildService();
+
+				await (service as unknown as { finalizeRun: Function }).finalizeRun(
+					'run-1',
+					PERIODO,
+					status,
+					{},
+				);
+				await flush();
+
+				expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith('run-1');
+				expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+				expect(mockExportGenerationService.triggerForPlannerRun).not.toHaveBeenCalled();
+			},
+		);
 	});
 });

@@ -14,6 +14,7 @@ import { SessionExpiredError } from '../../banner-token/model/session-expired.er
 import { ScrapeRunStatus } from '../../raw/model/scrape-run.entity';
 import { RunScrapeDto } from '../model/scraper.dtos';
 import { scraperValidationStrings } from '../config/strings/scraper.validation';
+import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
 
 const DEFAULT_NIVEL = 'UG';
 const NRC_CHUNK_SIZE = 50;
@@ -64,6 +65,7 @@ export class ScraperService {
 		private readonly rawNotasRepository: RawNotasRepository,
 		private readonly departmentSourceRepository: DepartmentSourceRepository,
 		private readonly http: BannerHttpClient,
+		private readonly exportGenerationService: ScrapingExportGenerationService,
 	) {}
 
 	async run(
@@ -198,6 +200,7 @@ export class ScraperService {
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
 			await this.scrapeRunRepository.finish(runId, status, stats);
+			await this.cleanupAfterFinish(status, periodo, runId);
 			this.logger.log(`Scrape ${runId} ${status}: ${JSON.stringify(stats.counts)}`);
 		} catch (error) {
 			const expired = error instanceof SessionExpiredError;
@@ -206,8 +209,38 @@ export class ScraperService {
 				...stats,
 				fatal: (error as Error).message,
 			});
+			await this.cleanupAfterFinish(status, periodo, runId);
 			this.logger.error(`Scrape ${runId} ${status}: ${(error as Error).message}`);
 		}
+	}
+
+	// A completed run supersedes every other run for its periodo, so this mops up whatever
+	// partial/failed leftovers a previous, non-fatal run left behind for the same period in one
+	// step. A run that itself finishes partial/failed/expired only ever deletes its own leftovers —
+	// it must never touch a completed run that already exists for the period.
+	private async cleanupAfterFinish(
+		status: ScrapeRunStatus,
+		periodo: string,
+		runId: string,
+	): Promise<void> {
+		if (status === 'completed') {
+			await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
+			this.triggerExportGeneration(periodo);
+		} else {
+			await this.scrapeRunRepository.deleteRun(runId);
+		}
+	}
+
+	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
+	// this runs, so a failure generating exports must never surface as a scrape failure.
+	private triggerExportGeneration(periodo: string): void {
+		void this.exportGenerationService.triggerForBannerRun(periodo).catch((error) => {
+			this.logger.error(
+				`Failed to trigger export generation for periodo ${periodo}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		});
 	}
 
 	private async scrapeHorario(
