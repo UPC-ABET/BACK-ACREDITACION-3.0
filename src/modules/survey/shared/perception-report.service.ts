@@ -4,6 +4,8 @@ import { ReportGeneratorService } from 'src/libs/reporting/report-generator.serv
 import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
 import type { I18nText } from 'src/shared/types/i18n';
+import { BadRequestError } from 'src/commons/domain-error';
+import { perceptionReportValidationStrings } from './config/strings/perception-report.validation';
 import {
 	PerceptionReportRepository,
 	type ConfiguredOutcomeRow,
@@ -51,18 +53,6 @@ interface AcceptanceBand {
 }
 
 const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
-
-const FALLBACK_BANDS: Array<{ order: number; name: I18nText; minScore: number; maxScore: number }> =
-	[
-		{
-			order: 1,
-			name: { es: 'Necesita mejora', en: 'Needs improvement' },
-			minScore: 0,
-			maxScore: 3.25,
-		},
-		{ order: 2, name: { es: 'Esperado', en: 'Expected' }, minScore: 3.25, maxScore: 4.25 },
-		{ order: 3, name: { es: 'Sobresaliente', en: 'Outstanding' }, minScore: 4.25, maxScore: 5 },
-	];
 
 const REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
@@ -172,6 +162,9 @@ export class PerceptionReportService {
 
 		// When a campus is selected but no commission AND the data spans multiple commissions:
 		// split by commission + general. Otherwise fall back to the regular campus split.
+		// Note: PerceptionReportDto requires commissionId whenever programId is set, so this
+		// split path is only reachable for campus-only requests (no career filter) — it can
+		// never combine with a programId.
 		const distinctCommissions = new Set(
 			rows.map((r) => r.commissionId).filter((id): id is number => id !== null && id !== undefined),
 		);
@@ -248,7 +241,11 @@ export class PerceptionReportService {
 	): Promise<AcceptanceBand[]> {
 		const levels = await this.repository.getAcceptanceLevels(surveyTypeId, academicPeriodId);
 
-		const bands: AcceptanceBand[] = (levels ?? [])
+		if (!levels || levels.length === 0) {
+			throw new BadRequestError(perceptionReportValidationStrings.error.acceptanceLevelsMissing);
+		}
+
+		return levels
 			.map((level, index) => ({
 				order: Number(level.uniqueValue) || index + 1,
 				name: this.localizeValue(level.name, lang),
@@ -257,16 +254,6 @@ export class PerceptionReportService {
 			}))
 			.sort((a, b) => a.minScore - b.minScore)
 			.map((band, index) => ({ ...band, color: BAND_COLORS[index % BAND_COLORS.length] }));
-
-		if (bands.length > 0) return bands;
-
-		return FALLBACK_BANDS.map((band, index) => ({
-			order: band.order,
-			name: this.localizeValue(band.name, lang),
-			minScore: band.minScore,
-			maxScore: band.maxScore,
-			color: BAND_COLORS[index % BAND_COLORS.length],
-		}));
 	}
 
 	private buildCommissionSections(

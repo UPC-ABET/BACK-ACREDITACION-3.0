@@ -1,4 +1,12 @@
-import { IsArray, IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+	IsArray,
+	IsIn,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	ValidateIf,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { ReportLanguage } from 'src/libs/reporting/report.types';
 
@@ -8,9 +16,14 @@ export class PerceptionReportDto {
 	@ApiProperty({ example: 1, description: 'Program / career ID', required: false })
 	programId?: number;
 
-	@IsOptional()
+	@ValidateIf((o) => o.programId !== undefined && o.programId !== null)
+	@IsNotEmpty({ message: 'commissionId is required when programId (career) is filtered' })
 	@IsNumber()
-	@ApiProperty({ example: 1, description: 'Filter by commission', required: false })
+	@ApiProperty({
+		example: 1,
+		description: 'Filter by commission. Required when programId is set.',
+		required: false,
+	})
 	commissionId?: number;
 
 	@IsOptional()

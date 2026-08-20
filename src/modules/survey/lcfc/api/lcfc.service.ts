@@ -48,6 +48,10 @@ export class LcfcService {
 	): Promise<PerceptionReportResult> {
 		// No program/commission/campus filter → simple per-program completion overview
 		// instead of the perception-by-outcome PDFs.
+		// Below this branch, `dto.programId` set always implies `dto.commissionId` is also
+		// set — PerceptionReportDto rejects a career filter without a commission before this
+		// method ever runs, so a "career only, split by every commission" request is no longer
+		// reachable here (deliberate: commission is required as soon as a career is filtered).
 		if (!dto.programId && !dto.commissionId && !dto.campusId) {
 			const { pdf, filename } = await this.reportService.generateProgramSummaryPdf(
 				academicPeriodId,

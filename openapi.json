@@ -16231,7 +16231,11 @@
 				"type": "object",
 				"properties": {
 					"programId": { "type": "number", "example": 1, "description": "Program / career ID" },
-					"commissionId": { "type": "number", "example": 1, "description": "Filter by commission" },
+					"commissionId": {
+						"type": "number",
+						"example": 1,
+						"description": "Filter by commission. Required when programId is set."
+					},
 					"campusId": {
 						"type": "number",
 						"example": 1,
