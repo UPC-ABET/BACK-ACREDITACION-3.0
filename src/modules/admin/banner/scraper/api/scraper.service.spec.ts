@@ -59,11 +59,11 @@ beforeEach(() => {
 	mockExportGenerationService.triggerForBannerRun.mockResolvedValue(undefined);
 });
 
-describe('ScraperService cleanupAfterFinish wiring', () => {
+describe('ScraperService finalizeRun wiring', () => {
 	/**
-	 * `cleanupAfterFinish` is exercised directly (as a private method, via `as any`, the same
-	 * pattern used elsewhere in this codebase e.g. `users.service.spec.ts`) rather than only
-	 * through `run()`/`execute()`. `execute()` unconditionally reaches `scrapeMatricula`'s
+	 * `finalizeRun` is exercised directly (as a private method, via `as any`, the same pattern
+	 * used elsewhere in this codebase e.g. `users.service.spec.ts`) rather than only through
+	 * `run()`/`execute()`. `execute()` unconditionally reaches `scrapeMatricula`'s
 	 * `await createLimiter(...)` — a real `await import('p-limit')` — for every outcome except an
 	 * immediate `SessionExpiredError` in the horario phase. Under this repo's `module: nodenext`
 	 * ts-jest setup that native dynamic import always throws ("invoked without
@@ -76,7 +76,7 @@ describe('ScraperService cleanupAfterFinish wiring', () => {
 	it('deletes every other run for the periodo when the run completed', async () => {
 		const service = buildService();
 
-		await (service as any).cleanupAfterFinish('completed', PERIODO, 'run-1');
+		await (service as any).finalizeRun('run-1', PERIODO, 'completed', {});
 
 		expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).toHaveBeenCalledWith(
 			PERIODO,
@@ -85,30 +85,30 @@ describe('ScraperService cleanupAfterFinish wiring', () => {
 		expect(mockScrapeRunRepository.deleteRun).not.toHaveBeenCalled();
 	});
 
-	it('triggers export generation for the periodo when the run completed', async () => {
+	it('triggers export generation for the periodo with the completed run id', async () => {
 		const service = buildService();
 
-		await (service as any).cleanupAfterFinish('completed', PERIODO, 'run-1');
+		await (service as any).finalizeRun('run-1', PERIODO, 'completed', {});
 		await flush();
 
-		expect(mockExportGenerationService.triggerForBannerRun).toHaveBeenCalledWith(PERIODO);
+		expect(mockExportGenerationService.triggerForBannerRun).toHaveBeenCalledWith(PERIODO, 'run-1');
 	});
 
 	it('does not trigger export generation when the run did not complete', async () => {
 		const service = buildService();
 
-		await (service as any).cleanupAfterFinish('partial', PERIODO, 'run-1');
+		await (service as any).finalizeRun('run-1', PERIODO, 'partial', {});
 		await flush();
 
 		expect(mockExportGenerationService.triggerForBannerRun).not.toHaveBeenCalled();
 	});
 
-	it('does not let a rejected export-generation trigger propagate out of cleanupAfterFinish', async () => {
+	it('does not let a rejected export-generation trigger propagate out of finalizeRun', async () => {
 		mockExportGenerationService.triggerForBannerRun.mockRejectedValue(new Error('boom'));
 		const service = buildService();
 
 		await expect(
-			(service as any).cleanupAfterFinish('completed', PERIODO, 'run-1'),
+			(service as any).finalizeRun('run-1', PERIODO, 'completed', {}),
 		).resolves.toBeUndefined();
 		await flush();
 	});
@@ -116,7 +116,7 @@ describe('ScraperService cleanupAfterFinish wiring', () => {
 	it('deletes only its own run when the run finished partial', async () => {
 		const service = buildService();
 
-		await (service as any).cleanupAfterFinish('partial', PERIODO, 'run-1');
+		await (service as any).finalizeRun('run-1', PERIODO, 'partial', {});
 
 		expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith('run-1');
 		expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe('ScraperService cleanupAfterFinish wiring', () => {
 	it('deletes only its own run when the run failed', async () => {
 		const service = buildService();
 
-		await (service as any).cleanupAfterFinish('failed', PERIODO, 'run-1');
+		await (service as any).finalizeRun('run-1', PERIODO, 'failed', {});
 
 		expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith('run-1');
 		expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
@@ -134,10 +134,23 @@ describe('ScraperService cleanupAfterFinish wiring', () => {
 	it('deletes only its own run when the run expired', async () => {
 		const service = buildService();
 
-		await (service as any).cleanupAfterFinish('expired', PERIODO, 'run-1');
+		await (service as any).finalizeRun('run-1', PERIODO, 'expired', {});
 
 		expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith('run-1');
 		expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+	});
+
+	// Regression test for AF-5: a transient retention-delete failure must not propagate out of
+	// finalizeRun (and, by extension, out of execute()), unlike finish()'s own failure which is
+	// deliberately left uncaught.
+	it('logs and swallows a retention-delete failure instead of propagating it', async () => {
+		mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockRejectedValue(new Error('db down'));
+		const service = buildService();
+
+		await expect(
+			(service as any).finalizeRun('run-1', PERIODO, 'completed', {}),
+		).resolves.toBeUndefined();
+		expect(mockScrapeRunRepository.finish).toHaveBeenCalledWith('run-1', 'completed', {});
 	});
 });
 

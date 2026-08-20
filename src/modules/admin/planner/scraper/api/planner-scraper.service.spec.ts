@@ -201,7 +201,10 @@ describe('PlannerScraperService', () => {
 			);
 			await flush();
 
-			expect(mockExportGenerationService.triggerForPlannerRun).toHaveBeenCalledWith(PERIODO);
+			expect(mockExportGenerationService.triggerForPlannerRun).toHaveBeenCalledWith(
+				PERIODO,
+				'run-1',
+			);
 		});
 
 		it('does not let a rejected export-generation trigger propagate out of finalizeRun', async () => {
@@ -237,5 +240,23 @@ describe('PlannerScraperService', () => {
 				expect(mockExportGenerationService.triggerForPlannerRun).not.toHaveBeenCalled();
 			},
 		);
+
+		// Regression test for AF-5: a transient retention-delete failure must not propagate out of
+		// finalizeRun (and, by extension, out of execute()), unlike finish()'s own failure which is
+		// deliberately left uncaught.
+		it('logs and swallows a retention-delete failure instead of propagating it', async () => {
+			mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockRejectedValue(new Error('db down'));
+			const service = buildService();
+
+			await expect(
+				(service as unknown as { finalizeRun: Function }).finalizeRun(
+					'run-1',
+					PERIODO,
+					'completed',
+					{},
+				),
+			).resolves.toBeUndefined();
+			expect(mockScrapeRunRepository.finish).toHaveBeenCalledWith('run-1', 'completed', {});
+		});
 	});
 });

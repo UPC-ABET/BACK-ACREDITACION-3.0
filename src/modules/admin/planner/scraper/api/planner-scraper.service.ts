@@ -200,7 +200,9 @@ export class PlannerScraperService {
 	 * Persists the run's outcome, then reconciles retention for its periodo: a `completed` run
 	 * supersedes every other row for that periodo (mopping up prior partial/failed leftovers in
 	 * the same statement via cascade), while any other outcome only removes its own row so a
-	 * currently-completed run for the periodo is left untouched.
+	 * currently-completed run for the periodo is left untouched. Retention cleanup is best-effort:
+	 * a transient failure there is logged and swallowed rather than propagated, so it never masks
+	 * the run's own outcome that `finish()` already persisted.
 	 */
 	private async finalizeRun(
 		runId: string,
@@ -209,18 +211,26 @@ export class PlannerScraperService {
 		stats: object,
 	): Promise<void> {
 		await this.scrapeRunRepository.finish(runId, status, stats);
-		if (status === 'completed') {
-			await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
-			this.triggerExportGeneration(periodo);
-		} else {
-			await this.scrapeRunRepository.deleteRun(runId);
+		try {
+			if (status === 'completed') {
+				await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
+				this.triggerExportGeneration(periodo, runId);
+			} else {
+				await this.scrapeRunRepository.deleteRun(runId);
+			}
+		} catch (error) {
+			this.logger.error(
+				`Retention cleanup failed for scrape ${runId} (periodo ${periodo}): ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
 		}
 	}
 
 	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
 	// this runs, so a failure generating exports must never surface as a scrape failure.
-	private triggerExportGeneration(periodo: string): void {
-		void this.exportGenerationService.triggerForPlannerRun(periodo).catch((error) => {
+	private triggerExportGeneration(periodo: string, plannerRunId: string): void {
+		void this.exportGenerationService.triggerForPlannerRun(periodo, plannerRunId).catch((error) => {
 			this.logger.error(
 				`Failed to trigger export generation for periodo ${periodo}: ${
 					error instanceof Error ? error.message : String(error)
