@@ -181,8 +181,12 @@ export class GraConfigService {
 		type GroupedCommission = {
 			commissionId: number;
 			commissionName: GraOutcomeRow['commissionName'];
+			commissionCode: string;
 			commissionTypeCode: string;
-			outcomes: Omit<GraOutcomeRow, 'commissionId' | 'commissionName' | 'commissionTypeCode'>[];
+			outcomes: Omit<
+				GraOutcomeRow,
+				'commissionId' | 'commissionName' | 'commissionCode' | 'commissionTypeCode'
+			>[];
 		};
 		const grouped: Record<number, GroupedCommission> = {};
 		for (const row of rows) {
@@ -191,6 +195,7 @@ export class GraConfigService {
 				grouped[cid] = {
 					commissionId: cid,
 					commissionName: row.commissionName,
+					commissionCode: row.commissionCode,
 					commissionTypeCode: row.commissionTypeCode,
 					outcomes: [],
 				};

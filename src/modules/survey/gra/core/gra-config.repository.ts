@@ -11,6 +11,7 @@ export interface GraOutcomeRow {
 	programCommissionId: number;
 	commissionId: number;
 	commissionName: I18nText;
+	commissionCode: string;
 	commissionTypeCode: string;
 	outcomeId: number;
 	outcomeCode: string;
@@ -153,6 +154,7 @@ export class GraConfigRepository extends BaseRepository<OutcomeConfigEntity> {
 				pc.id          AS "programCommissionId",
 				pc.commission_id AS "commissionId",
 				c.name         AS "commissionName",
+				c.code         AS "commissionCode",
 				ct.code        AS "commissionTypeCode",
 				o.id           AS "outcomeId",
 				o.outcome_code AS "outcomeCode",
