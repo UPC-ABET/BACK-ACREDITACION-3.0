@@ -312,7 +312,9 @@ export function DateColumn(options?: BaseOptions): PropertyDecorator {
 }
 export function BinaryColumn(options?: BaseOptions): PropertyDecorator {
 	return (target, propertyKey) => {
-		const { withDefault = false, nullable = true, unique = false, ...rest } = options || {};
+		// No `withDefault` — a bytea column has no sensible universal default, unlike the other
+		// column types above.
+		const { nullable = true, unique = false, ...rest } = options || {};
 		applyColumn(
 			target,
 			propertyKey,
