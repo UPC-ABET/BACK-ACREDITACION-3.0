@@ -162,6 +162,9 @@ export class PerceptionReportService {
 
 		// When a campus is selected but no commission AND the data spans multiple commissions:
 		// split by commission + general. Otherwise fall back to the regular campus split.
+		// Note: PerceptionReportDto requires commissionId whenever programId is set, so this
+		// split path is only reachable for campus-only requests (no career filter) — it can
+		// never combine with a programId.
 		const distinctCommissions = new Set(
 			rows.map((r) => r.commissionId).filter((id): id is number => id !== null && id !== undefined),
 		);
