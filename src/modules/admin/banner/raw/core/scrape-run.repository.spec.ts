@@ -27,12 +27,18 @@ describe('ScrapeRunRepository', () => {
 			});
 		});
 
-		it('does not touch rows for a different periodo', async () => {
-			await repo.deleteOtherRunsForPeriodo('202610', 'run-keep');
+		it('scopes each call to its own periodo and keepRunId, never mixing them', async () => {
+			await repo.deleteOtherRunsForPeriodo('202610', 'run-keep-1');
+			await repo.deleteOtherRunsForPeriodo('202620', 'run-keep-2');
 
-			const [criteria] = mockTypeormRepository.delete.mock.calls[0];
-			expect(criteria.periodo).toBe('202610');
-			expect(criteria.periodo).not.toBe('202620');
+			expect(mockTypeormRepository.delete).toHaveBeenNthCalledWith(1, {
+				periodo: '202610',
+				id: Not('run-keep-1'),
+			});
+			expect(mockTypeormRepository.delete).toHaveBeenNthCalledWith(2, {
+				periodo: '202620',
+				id: Not('run-keep-2'),
+			});
 		});
 	});
 });
