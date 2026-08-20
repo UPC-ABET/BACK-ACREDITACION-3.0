@@ -632,6 +632,145 @@ instead of the try/catch — same assertion, no `fail()`.
 > pass confirmed clean end to end: typecheck clean, 130 suites / 1248 passed / 2 pre-existing
 > skipped, project-wide.
 
+---
+
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1 (2026-08-20)
+
+Six parallel auditors (code quality, architecture/docs/API-contract, testing, antipatterns,
+security, runtime robustness) reviewed the diff against `origin/develop`. Full findings table
+was presented to the requester; verdict was NOT READY (2 majors). Requester asked to fix all
+majors, minors and suggestions. Three suggestions are explicitly deferred rather than
+implemented — see the note at the end of this section for why.
+
+- [x] AF-1 (major) — `runGenerator()`'s four Banner branches don't null-check `academicPeriodId`
+      before calling the generator, unlike the `gradesRc` branch — a `periodo` that fails to
+      resolve silently generates/persists the wrong period's data under the right period's key.
+- [x] AF-2 (major) — `gradesRcMergeInFlight` can get stuck `true` forever if the merge hangs
+      (no timeout anywhere), decoupled from the 20-minute DB-row stale reconciliation —
+      permanent, silent denial of all future Grades RC generation until a process restart.
+- [x] AF-3 (minor) — `sourceBannerRunId`/`sourcePlannerRunId` columns exist but are never
+      written anywhere (confirmed independently by two auditors) — provenance is unrecoverable.
+- [x] AF-4 (minor) — `status`/`regenerate` have no typed `@ApiResponse`; `openapi.json`
+      documents their 200 with no schema.
+- [x] AF-5 (minor) — the new retention call in `ScraperService`/`PlannerScraperService`'s
+      `execute()` has no try/catch, unlike the sibling trigger call right next to it — a
+      transient DB error becomes an unhandled promise rejection.
+- [x] AF-6 (minor) — read-then-write race lets a duplicate trigger for the same
+      `(exportType, periodo, lang)` run a second full generation pass; for `gradesRc`
+      specifically the "loser" overwrites the row to a misleading transient `'failed'` while
+      the real winner is still in progress.
+- [x] AF-7 (minor) — `error.scrapingExports.*` (plural) is the only plural module segment in
+      the entire codebase's i18n keys.
+- [x] AF-8 (minor) — `regenerate()` and `generate()` both upsert the identical `'running'`
+      state back-to-back — a redundant write on every manual regenerate.
+- [x] AF-9 (minor) — the gradesRc "busy" signal is discriminated by comparing `error.message`
+      to an i18n key string — fragile, no compiler support.
+- [x] AF-10 (minor) — `ScrapingExportGenerationStatus` includes `'pending'`, matching ADR-002's
+      prose, but no code path ever emits it.
+- [x] AF-11 (minor) — "does not touch rows for a different periodo" (both banner and planner
+      repository specs) re-asserts the same mock call already checked in the prior test —
+      tautological.
+- [x] AF-12 (minor) — "reconciles a stale running row" only asserts `.resolves.toBeDefined()` —
+      doesn't verify the row actually transitioned.
+- [x] AF-13 (minor) — `reconcileIfStale`'s tests don't cover the actual `<` comparison boundary
+      with a frozen clock, per design.md's own testing-strategy commitment.
+- [x] AF-14 (suggestion, partial) — `cleanupAfterFinish` (Banner) and `finalizeRun` (Planner)
+      diverged in shape/parameter-order/naming for the same responsibility; align them (the
+      base-class-extraction half of this finding is deferred, see note below).
+- [x] AF-15 (suggestion) — `docs/CONTEXT.md` still claims S3 is used for export storage;
+      ADR-002 (this same PR) proves that's aspirational.
+- [x] AF-19 (suggestion) — no test documents that an unsupported `lang` value's fallback-to-
+      default behavior is intentional.
+- [x] AF-20 (suggestion) — `BinaryColumn`'s destructured `withDefault` is unused, copy-pasted
+      from the other decorators.
+
+> **All 17 items done (2026-08-20).** Implemented across four parallel/sequential agent
+> dispatches plus two direct coordinator edits:
+>
+> - **`scraping-export-generation.service.ts` (AF-1, AF-2, AF-3, AF-6, AF-8, AF-9, AF-10, AF-12,
+>   AF-13)** — the two majors and every minor rooted in this one file, done together since they
+>   share a common fix (see below). AF-1: both the four Banner branches and the `gradesRc`
+>   branch now throw `error.scrapingExport.periodNotFound` on an unresolved `academicPeriodId`
+>   instead of silently falling back. AF-2: `gradesRcMergeInFlight` (boolean) →
+>   `gradesRcMergeStartedAt` (timestamp) + `isGradesRcMergeInFlight()`, which treats a slot held
+>   past `GENERATION_STALE_TIMEOUT_MS` as no longer in-flight — self-heals on the same 20-minute
+>   timeline the DB-row check already uses, no new magic number, no hard query-cancellation
+>   needed. AF-6+AF-8 (same root cause, fixed together): split the old `generate()` into
+>   `claimForGeneration()` (the _only_ place a row is ever upserted to `'running'`; returns
+>   `null` if already claimed) and `runGeneration()` (assumes already claimed, just runs the
+>   generator and finalizes) — closes the auto-trigger path's missing duplicate-generation
+>   guard and removes `regenerate()`'s redundant double-upsert in the same change. AF-9: new
+>   module-private `GradesRcMergeBusyError extends Error`, `instanceof` check instead of
+>   string comparison. AF-3: `triggerForBannerRun`/`triggerForPlannerRun` now take the
+>   triggering run's own id as a second parameter, thread `sourceBannerRunId`/
+>   `sourcePlannerRunId` into every `claimForGeneration` call (gradesRc resolves the _other_
+>   source's id from the same `findByPeriodo` lookup already used to decide whether to trigger
+>   it at all — no extra query); `regenerate()` resolves both via a new
+>   `resolveSourceRunIdsForRegenerate()`, tolerating a missing completed run rather than
+>   blocking. AF-10: `'pending'` dropped from `ScrapingExportGenerationStatus` (confirmed
+>   unused via repo-wide grep); ADR-002's Decision section updated with a one-line correction
+>   (still `Status: Proposed`, so editable). AF-12/AF-13: strengthened the weak assertion and
+>   added `jest.useFakeTimers()` boundary cases at exactly `GENERATION_STALE_TIMEOUT_MS - 1`
+>   and `GENERATION_STALE_TIMEOUT_MS`. TDD: full spec rewrite confirmed red against the old
+>   signatures/behavior, 30/30 green after.
+> - **`ScraperService`/`PlannerScraperService` (AF-5, AF-14, + wiring AF-3's caller side)** —
+>   dispatched after the above landed, since it depends on the new `triggerForBannerRun`/
+>   `triggerForPlannerRun` signatures. Banner's `cleanupAfterFinish` renamed to `finalizeRun`
+>   and restructured to own the `finish()` call internally, matching Planner's existing shape
+>   exactly (same name, same parameter order, same internal structure) — both files' retention
+>   delete + fire-and-forget trigger call are now wrapped in a try/catch that logs and swallows
+>   (`finish()` itself stays outside the try/catch — the run's own outcome record still fails
+>   loud). TDD: 10 failures confirmed red (missing `finalizeRun`, missing second arg, AF-5's
+>   regression test rejecting), 28/28 green after.
+> - **`scraping-exports.controller.ts` (AF-4, AF-19)** — ran in parallel with the generation
+>   service. New `ScrapingExportStatusResponseDto` (Swagger-only class, `model/
+scraping-exports.response.dtos.ts`) mirrors the real response shape field-for-field;
+>   `@ApiResponse({status:200, type:...})` added to `status`/`regenerate` — confirmed via a
+>   real `pnpm openapi:export` diff that both paths now carry a real schema, not an empty
+>   description. AF-19: traced `resolveLang`'s actual behavior (an unsupported value passes
+>   through unchanged as the storage key) and confirmed it's benign — `ScrapingExportsService.
+resolveLabels` already falls back to the default language for real file content regardless
+>   of what key the row is stored under, so this is a metadata-accuracy nit (a row's `lang`
+>   field wouldn't describe its actual content language), not a functional bug — documented via
+>   a new test rather than changed. 9/9 green.
+> - **Banner/Planner repository specs (AF-11)** — ran in parallel with the above two. Replaced
+>   the tautological single-call re-assertion with a real two-call scenario proving two
+>   different periods' criteria never cross-contaminate. 6/6 green.
+> - **Coordinator direct edits (AF-15, AF-20, AF-7)**: `docs/CONTEXT.md`'s Tech Stack and
+>   External Integrations lines corrected to state S3 is configured but unused, pointing at
+>   ADR-002. `BinaryColumn`'s unused `withDefault` destructure removed with a one-line comment
+>   explaining why (a `bytea` column has no sensible universal default). AF-7: every
+>   `error.scrapingExports.*` key literal renamed to `error.scrapingExport.*` (singular) in the
+>   one file that defines them (`config/strings/scraping-exports.validation.ts`) — every
+>   consumer references the constant, not a hardcoded literal (confirmed via grep), so the
+>   rename propagated with zero other file changes. The exported object itself keeps its name
+>   `scrapingExportsValidationStrings` (matches the module/file name, a code-identifier
+>   convention, not an i18n key).
+>
+> **Deliberately not implemented**: AF-16, AF-17, AF-18 — see the note below this list for why.
+>
+> **Final verification** (whole project, run by the coordinator after every agent's work
+> landed): typecheck clean; full suite **130 suites / 1262 passed / 2 pre-existing skipped**
+> (up from 1248 before this round — reflects the new/strengthened tests); lint clean across
+> every touched file. Two stray `git diff` scratch files (`diff1.txt`/`diff2.txt`, left behind
+> by an agent's own working process) removed before final verification.
+
+**Deliberately not implemented** (numbers preserved from the original findings table so the
+gap is traceable, not silently dropped):
+
+- AF-16 (suggestion) — pre-existing cross-school scoping gap on scraping exports. The
+  auditor's own words: "out of scope here; candidate for a follow-up." Not a regression this
+  diff introduced, and fixing it is a product/design decision (does this data need school
+  isolation at all?) beyond a PR-audit-fix's scope.
+- AF-17 (suggestion) — extract a `SingleFlightGuard` abstraction from `gradesRcMergeInFlight`.
+  No second use case exists yet; extracting it now is exactly the kind of premature
+  abstraction `docs/POLICIES.md`'s spirit (and this repo's own conventions) warns against.
+- AF-18 (suggestion) — add a concurrency limiter to `triggerForBannerRun`'s 8-way fan-out.
+  The auditor's own assessment: "low risk today," "consider ... if more languages/export
+  types are added" — deferred until that's actually true.
+
 <!--
 Append-only sections below. These record what actually happened, not what was planned,
 and they are the best input to the next design.
