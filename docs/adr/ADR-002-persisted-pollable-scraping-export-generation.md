@@ -22,7 +22,7 @@ the specific request that started it. The underlying cost — rebuilding unchang
 only postponed by the TTL window, not solved, and the "already computed" signal does not
 survive a user navigating away and returning later.
 
-Separately, `openspec/changes/scrape-retention-and-cached-exports/proposal.md` commits to
+Separately, `openspec/specs/scrape-retention-and-cached-exports/proposal.md` commits to
 deleting a scrape run's raw rows once the next run for the same period completes (latest-only
 retention). Once that lands, an export can no longer be regenerated on demand from raw data
 after the fact — whatever was computed at scrape-completion time is what has to be servable
@@ -133,8 +133,8 @@ integration to build on.
 
 ## References
 
-- `openspec/changes/scrape-retention-and-cached-exports/proposal.md`
-- `openspec/changes/scrape-retention-and-cached-exports/design.md`
+- `openspec/specs/scrape-retention-and-cached-exports/proposal.md`
+- `openspec/specs/scrape-retention-and-cached-exports/design.md`
 - `src/modules/admin/scraping-exports/` (current synchronous implementation)
 - `src/modules/survey/shared/core/job-registry.ts` (the pattern being replaced for Grades RC)
 - ADR-001 — external-system-credentials-encrypted-in-database (unrelated decision, no
