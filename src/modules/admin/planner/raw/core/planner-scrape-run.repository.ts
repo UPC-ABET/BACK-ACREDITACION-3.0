@@ -31,7 +31,7 @@ export class PlannerScrapeRunRepository {
 	}
 
 	async finish(id: string, status: PlannerScrapeRunStatus, stats: object): Promise<void> {
-		await this.repository.update(id, { status, stats, finishedAt: new Date() });
+		await this.repository.update(id, { status, stats, finishedAt: new Date(), phase: null });
 	}
 
 	async updatePhase(id: string, phase: PlannerScraperPhase): Promise<void> {

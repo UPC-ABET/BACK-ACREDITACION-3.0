@@ -182,3 +182,50 @@ None — scope was resolved with the requester before writing this proposal: pur
 proven `scrapeHorario` fix and the two riskier, staging-gated levers (`MATRICULA_CONCURRENCY`,
 Planner phase overlap), dropping either if staging measurement shows risk rather than forcing
 them through.
+
+---
+
+### Scope extension — production observations from the first live Banner run (2026-08-21)
+
+With no separate staging environment (only production actually runs — see Dependencies), the
+first real Banner scrape run on the deployed change surfaced two things worth fixing, both
+small and directly evidenced by that run's own data rather than speculation:
+
+1. **`phase` never resets on completion.** A finished run (`status: 'completed'`) still showed
+   `phase: 'alumnosYNotas'` indefinitely — the field was designed to mean "furthest phase
+   reached," which is accurate but reads as "still fetching students and grades" to anyone not
+   already reading `status` first. Confusing enough in practice to fix immediately rather than
+   leave for the frontend pairing to work around.
+2. **`SCRAPE_CONCURRENCY = 80`'s real headroom.** The completed run (16/16 departments, 0
+   errors, 27m51s, peak memory ~367.6MiB/640MB — comfortably under the cap) showed the
+   `alumnosYNotas` phase (shared by `scrapeAlumnos`/`scrapeNotas`) dominating wall-clock time
+   (~25 of ~28 minutes), while the observed Banner-side 5xx rate was negligible: 18 errors
+   across ~72k requests, all successfully retried, clustered in one one-second burst rather than
+   sustained. That specific pattern — synchronized retries on a shared fixed backoff — is a
+   known amplifier of exactly this kind of burst, and is worth fixing regardless of whether
+   concurrency changes.
+
+**AC-8** — Given a scrape run reaches a terminal status (`completed`/`partial`/`failed`/
+`expired`), when `finish()` persists that status, then `phase` is cleared to `null` in the same
+write — mirroring how `finishedAt` is only ever null while a run is in progress.
+
+**AC-9** — Given `BannerHttpClient`'s retry logic, when a request receives a 429 or 5xx
+response, then the retry backoff uses randomized ("full") jitter bounded by an exponential
+ceiling rather than a fixed exponential delay, a 429 with a `Retry-After` header is honored
+(clamped to the same backoff ceiling) in preference to the jittered guess, and
+`SCRAPE_CONCURRENCY` is raised from 80 to 120 — a moderate bump, not the full doubling
+originally discussed, pending a second production run's error-rate and memory measurement
+before considering a further increase.
+
+#### Traceability (scope extension)
+
+| AC  | Criterion                                                                   | Satisfied by                                                                                                     |
+| --- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 8   | `phase` clears to `null` on terminal status                                 | `ScrapeRunRepository.finish`, `PlannerScrapeRunRepository.finish`                                                |
+| 9   | Jittered/429-aware Banner retry backoff; `SCRAPE_CONCURRENCY` raised to 120 | `BannerHttpClient` (`jitteredBackoff`, `retryAfterMs`, `isRetryableStatus`), `ScraperService.SCRAPE_CONCURRENCY` |
+
+**Not yet measured**: AC-9's `SCRAPE_CONCURRENCY = 120` value itself is not staging-validated
+(same constraint as AC-5/AC-7 above) — it is a reasoned, moderate bump based on the first run's
+data, not a confirmed-safe value. A follow-up production run should confirm memory stays under
+the 640MB cap and the Banner-side error rate does not increase before considering raising it
+further.
