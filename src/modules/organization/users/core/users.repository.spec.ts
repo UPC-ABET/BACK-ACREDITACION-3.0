@@ -44,4 +44,17 @@ describe('UserRepository.findDisplayNamesByIds', () => {
 		expect(result.has(999)).toBe(false);
 		expect(result.size).toBe(1);
 	});
+
+	it('omits a matched user whose display name is blank', async () => {
+		const { repository, typeorm } = buildRepository();
+		typeorm.find.mockResolvedValue([
+			{ id: 1, firstName: 'Ada', lastName: 'Lovelace' },
+			{ id: 2, firstName: '', lastName: '' },
+		]);
+
+		const result = await repository.findDisplayNamesByIds([1, 2]);
+
+		expect(result.has(2)).toBe(false);
+		expect(result.size).toBe(1);
+	});
 });

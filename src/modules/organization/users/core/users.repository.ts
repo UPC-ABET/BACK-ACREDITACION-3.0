@@ -209,6 +209,10 @@ export class UserRepository extends BaseRepository<UserEntity> {
 			where: { id: In(userIds) },
 			select: ['id', 'firstName', 'lastName'],
 		});
-		return new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim()]));
+		return new Map(
+			users
+				.map((u): [number, string] => [u.id, `${u.firstName} ${u.lastName}`.trim()])
+				.filter(([, name]) => name.length > 0),
+		);
 	}
 }
