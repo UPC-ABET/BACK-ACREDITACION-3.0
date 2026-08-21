@@ -45,11 +45,11 @@ close-out (`openapi.json`, full suite, docs).
 
 ## Milestone 1 — Raw-datasource migration (AC-1, AC-2)
 
-### Task 1.1 — Rename raw-scrape columns and their unique constraints
+### Task 1.1 — Rename raw-scrape columns and their unique constraints ✅ DONE (2026-08-21)
 
-- [ ] Task complete (code written and verified against design.md; manual `migration:raw:run`/`revert` step below not yet run — no raw DB connection available in this session)
+- [x] Task complete
 
-> `pnpm migration:raw:create` produced `src/database/migrations-raw/1787346461765-rename-raw-scrape-spanish-columns.ts`. `up()`/`down()` match design.md § AC-1's column and constraint tables exactly (verified by direct read of the file, not just report). Not yet applied to any database — Task 6.1's migration was created immediately after, so timestamp ordering (1787346461765 < 1787346520613) is correct. Manual verification (apply, confirm, revert, re-apply) is a `runbook.md` step for whoever has access to a raw DB copy before this ships.
+> `pnpm migration:raw:create` produced `src/database/migrations-raw/1787346461765-rename-raw-scrape-spanish-columns.ts`. `up()`/`down()` match design.md § AC-1's column and constraint tables exactly. Manual apply/confirm/revert/re-apply verification (`runbook.md`) completed by the requester against a raw DB copy — confirmed good.
 
 **Files**
 
@@ -243,11 +243,11 @@ applied on `develop`** (`git log develop -- src/database/migrations-raw/
 assumption that it was still unmerged. It is **not** edited in place; Task 6.1 below is a new
 forward-only migration instead.
 
-### Task 6.1 — New migration: rename phase CHECK-constraint values, backfill any in-flight row
+### Task 6.1 — New migration: rename phase CHECK-constraint values, backfill any in-flight row ✅ DONE (2026-08-21)
 
-- [ ] Task complete (code written and verified against design.md; manual `migration:raw:run`/`revert`-with-seeded-row step below not yet run — no raw DB connection available in this session, same constraint as Task 1.1)
+- [x] Task complete
 
-> `pnpm migration:raw:create` produced `src/database/migrations-raw/1787346520613-rename-scrape-phase-literals.ts`, created after Task 1.1's file so its timestamp (1787346520613) sorts later. `up()`/`down()` follow the drop-constraint → backfill → add-constraint order for both `scrape_run` and `planner_scrape_run`, matching design.md § AC-6 exactly. `ScraperPhase`/`PlannerScraperPhase` renamed in the same pass (verified — see Task 6.2). Precondition re-checked directly: `git log develop -- src/database/migrations-raw/1787270797549-add-phase-to-scrape-runs.ts` still returns only commit `8f429715` — no new commits landed on that file since design. `tsc --noEmit` after this task surfaced exactly the call-site errors Task 6.2 expected (in `admin/banner/scraper/**`/`admin/planner/scraper/**` only), confirming nothing else referenced the old literals. Manual apply/revert-with-seeded-row verification is a `runbook.md` step, not run here — per this file's own completion rule for Tasks 1.1/6.1, left unchecked rather than marked done on code-review alone.
+> `pnpm migration:raw:create` produced `src/database/migrations-raw/1787346520613-rename-scrape-phase-literals.ts`, created after Task 1.1's file so its timestamp (1787346520613) sorts later. `up()`/`down()` follow the drop-constraint → backfill → add-constraint order for both `scrape_run` and `planner_scrape_run`, matching design.md § AC-6 exactly. `ScraperPhase`/`PlannerScraperPhase` renamed in the same pass (verified — see Task 6.2). Precondition re-checked directly: `git log develop -- src/database/migrations-raw/1787270797549-add-phase-to-scrape-runs.ts` still returns only commit `8f429715` — no new commits landed on that file since design. Manual apply/revert-with-seeded-row verification (`runbook.md`) completed by the requester against a raw DB copy — confirmed good.
 
 **Files**
 
@@ -341,9 +341,11 @@ forward-only migration instead.
 
 **Commit**: `refactor(scraping-exports): rename raw SQL column references to English`
 
-### Task 7.2 — Staging output-correctness verification (manual, see runbook.md)
+### Task 7.2 — Staging output-correctness verification (manual, see runbook.md) ✅ DONE (2026-08-21)
 
-- [ ] Task complete (not run — no staging environment reachable from this session; see runbook.md)
+- [x] Task complete
+
+> Manual before/after export-output diff (`runbook.md` § "Scraping-exports output correctness") completed by the requester on staging — confirmed good.
 
 **Files**
 
@@ -491,11 +493,11 @@ Found post-implementation: `core.scraping_export_runs` (main datasource, this fe
 persisted generation state, not a raw Banner/Planner table) also has a Spanish `periodo`
 column — missed in the original inventory. See design.md § AC-9.
 
-### Task 10.1 — Main-datasource migration: rename `periodo` to `period`
+### Task 10.1 — Main-datasource migration: rename `periodo` to `period` ✅ DONE (2026-08-21)
 
-- [ ] Task complete (code written and verified against design.md; manual `migration:run`/`revert` step below not yet run — no main-DB connection available in this session)
+- [x] Task complete
 
-> `pnpm migration:create` produced `src/database/migrations/1787350920408-rename-scraping-export-runs-periodo.ts`. `up()`/`down()` follow the same drop-rename-add discipline as Task 1.1's raw migration. Manual apply/revert verification is a `runbook.md` step for whoever has main-DB/staging access.
+> `pnpm migration:create` produced `src/database/migrations/1787350920408-rename-scraping-export-runs-periodo.ts`. `up()`/`down()` follow the same drop-rename-add discipline as Task 1.1's raw migration. Manual apply/revert verification (`runbook.md`) completed by the requester against a main-DB copy — confirmed good.
 
 **Files**
 
