@@ -5,6 +5,22 @@ import type {
 	PlannerScraperPhase,
 } from '../../raw/model/planner-scrape-run.entity';
 
+// Derived from the union types (via `satisfies`) so an added/renamed status or phase value
+// without a matching update here is a compile error, not a silently stale Swagger `enum`.
+const PLANNER_SCRAPE_RUN_STATUS_VALUES = [
+	'running',
+	'completed',
+	'partial',
+	'failed',
+	'expired',
+] as const satisfies readonly PlannerScrapeRunStatus[];
+
+const PLANNER_SCRAPER_PHASE_VALUES = [
+	'secciones',
+	'evaluaciones',
+	'notas',
+] as const satisfies readonly PlannerScraperPhase[];
+
 // Period comes from the X-Academic-Period-Id header, not the body. These are optional
 // overrides (defaults: nivel UG, and all active course codes for the sections search).
 export class RunPlannerScrapeDto {
@@ -27,13 +43,13 @@ export class RunPlannerScrapeDto {
 
 export class PlannerScrapeRunStatusResponseDto {
 	@ApiProperty({
-		enum: ['running', 'completed', 'partial', 'failed', 'expired'],
+		enum: PLANNER_SCRAPE_RUN_STATUS_VALUES,
 		description: 'Terminal status of the run.',
 	})
 	status: PlannerScrapeRunStatus;
 
 	@ApiPropertyOptional({
-		enum: ['secciones', 'evaluaciones', 'notas'],
+		enum: PLANNER_SCRAPER_PHASE_VALUES,
 		nullable: true,
 		description:
 			'The furthest phase that has started for this run. Null until the first phase begins.',
@@ -51,17 +67,17 @@ export class PlannerRunSummaryResponseDto {
 	@ApiProperty({ description: 'Banner/Planner periodo code.' })
 	periodo: string;
 
-	@ApiPropertyOptional({ nullable: true, description: 'Escuela code, if scoped.' })
+	@ApiPropertyOptional({ type: String, nullable: true, description: 'Escuela code, if scoped.' })
 	escuela: string | null;
 
 	@ApiProperty({
-		enum: ['running', 'completed', 'partial', 'failed', 'expired'],
+		enum: PLANNER_SCRAPE_RUN_STATUS_VALUES,
 		description: 'Terminal status of the run.',
 	})
 	status: PlannerScrapeRunStatus;
 
 	@ApiPropertyOptional({
-		enum: ['secciones', 'evaluaciones', 'notas'],
+		enum: PLANNER_SCRAPER_PHASE_VALUES,
 		nullable: true,
 		description:
 			'The furthest phase that has started for this run. Null until the first phase begins.',
@@ -71,7 +87,11 @@ export class PlannerRunSummaryResponseDto {
 	@ApiProperty({ description: 'ISO timestamp the run started.' })
 	startedAt: string;
 
-	@ApiPropertyOptional({ nullable: true, description: 'ISO timestamp the run finished.' })
+	@ApiPropertyOptional({
+		type: String,
+		nullable: true,
+		description: 'ISO timestamp the run finished.',
+	})
 	finishedAt: string | null;
 
 	@ApiPropertyOptional({
@@ -81,6 +101,6 @@ export class PlannerRunSummaryResponseDto {
 	})
 	counts: unknown;
 
-	@ApiPropertyOptional({ nullable: true, description: 'Who triggered the run.' })
+	@ApiPropertyOptional({ type: String, nullable: true, description: 'Who triggered the run.' })
 	triggeredBy: string | null;
 }

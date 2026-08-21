@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ArrayNotEmpty, IsArray, IsOptional, IsString } from 'class-validator';
+import type { ScrapeRunStatus, ScraperPhase } from '../../raw/model/scrape-run.entity';
 
 // Period comes from the X-Academic-Period-Id header, not the body. These are
 // optional overrides (defaults: UG, and all active programs' departments).
@@ -21,12 +22,22 @@ export class RunScrapeDto {
 	departamentos?: string[];
 }
 
-const SCRAPE_RUN_STATUS_VALUES = ['running', 'completed', 'partial', 'failed', 'expired'];
-const SCRAPER_PHASE_VALUES = ['horario', 'matricula', 'alumnosYNotas'];
+const SCRAPE_RUN_STATUS_VALUES = [
+	'running',
+	'completed',
+	'partial',
+	'failed',
+	'expired',
+] as const satisfies readonly ScrapeRunStatus[];
+const SCRAPER_PHASE_VALUES = [
+	'horario',
+	'matricula',
+	'alumnosYNotas',
+] as const satisfies readonly ScraperPhase[];
 
 export class ScrapeRunStatusResponseDto {
 	@ApiProperty({ example: 'running', enum: SCRAPE_RUN_STATUS_VALUES })
-	status: string;
+	status: ScrapeRunStatus;
 
 	@ApiPropertyOptional({
 		example: 'matricula',
@@ -34,10 +45,10 @@ export class ScrapeRunStatusResponseDto {
 		nullable: true,
 		description: 'The furthest scrape phase that has started for this run.',
 	})
-	phase: string | null;
+	phase: ScraperPhase | null;
 
 	@ApiPropertyOptional({ type: Object, nullable: true })
-	stats: object | null;
+	stats: unknown;
 }
 
 export class RunSummaryResponseDto {
@@ -54,7 +65,7 @@ export class RunSummaryResponseDto {
 	departamentos: string[];
 
 	@ApiProperty({ example: 'completed', enum: SCRAPE_RUN_STATUS_VALUES })
-	status: string;
+	status: ScrapeRunStatus;
 
 	@ApiPropertyOptional({
 		example: 'alumnosYNotas',
@@ -62,17 +73,17 @@ export class RunSummaryResponseDto {
 		nullable: true,
 		description: 'The furthest scrape phase that has started for this run.',
 	})
-	phase: string | null;
+	phase: ScraperPhase | null;
 
 	@ApiProperty({ example: '2026-08-20T10:00:00.000Z' })
 	startedAt: string;
 
-	@ApiPropertyOptional({ example: '2026-08-20T10:05:00.000Z', nullable: true })
+	@ApiPropertyOptional({ example: '2026-08-20T10:05:00.000Z', nullable: true, type: String })
 	finishedAt: string | null;
 
 	@ApiPropertyOptional({ type: Object, nullable: true })
-	counts: object | null;
+	counts: unknown;
 
-	@ApiPropertyOptional({ example: 'user:12', nullable: true })
+	@ApiPropertyOptional({ example: 'user:12', nullable: true, type: String })
 	triggeredBy: string | null;
 }

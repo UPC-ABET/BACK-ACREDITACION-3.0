@@ -17489,12 +17489,12 @@
 					},
 					"startedAt": { "type": "string", "example": "2026-08-20T10:00:00.000Z" },
 					"finishedAt": {
-						"type": "object",
+						"type": "string",
 						"example": "2026-08-20T10:05:00.000Z",
 						"nullable": true
 					},
 					"counts": { "type": "object", "nullable": true },
-					"triggeredBy": { "type": "object", "example": "user:12", "nullable": true }
+					"triggeredBy": { "type": "string", "example": "user:12", "nullable": true }
 				},
 				"required": ["runId", "nivel", "periodo", "departamentos", "status", "startedAt"]
 			},
@@ -17604,7 +17604,7 @@
 					"runId": { "type": "string", "description": "Scrape run id (uuid)." },
 					"periodo": { "type": "string", "description": "Banner/Planner periodo code." },
 					"escuela": {
-						"type": "object",
+						"type": "string",
 						"nullable": true,
 						"description": "Escuela code, if scoped."
 					},
@@ -17621,7 +17621,7 @@
 					},
 					"startedAt": { "type": "string", "description": "ISO timestamp the run started." },
 					"finishedAt": {
-						"type": "object",
+						"type": "string",
 						"nullable": true,
 						"description": "ISO timestamp the run finished."
 					},
@@ -17631,7 +17631,7 @@
 						"description": "Per-stage counts once the run has produced any."
 					},
 					"triggeredBy": {
-						"type": "object",
+						"type": "string",
 						"nullable": true,
 						"description": "Who triggered the run."
 					}
