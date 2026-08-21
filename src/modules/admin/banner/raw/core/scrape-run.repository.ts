@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
-import { ScrapeRunEntity, ScrapeRunStatus } from '../model/scrape-run.entity';
+import { ScraperPhase, ScrapeRunEntity, ScrapeRunStatus } from '../model/scrape-run.entity';
 
 export interface CreateScrapeRunData {
 	id: string;
@@ -29,6 +29,10 @@ export class ScrapeRunRepository {
 
 	async finish(id: string, status: ScrapeRunStatus, stats: object): Promise<void> {
 		await this.repository.update(id, { status, stats, finishedAt: new Date() });
+	}
+
+	async updatePhase(id: string, phase: ScraperPhase): Promise<void> {
+		await this.repository.update(id, { phase });
 	}
 
 	async findById(id: string): Promise<ScrapeRunEntity | null> {

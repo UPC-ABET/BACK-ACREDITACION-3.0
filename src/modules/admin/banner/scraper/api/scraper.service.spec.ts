@@ -23,6 +23,7 @@ const mockScrapeRunRepository = {
 	findByPeriodo: jest.fn(),
 	deleteRun: jest.fn(),
 	deleteOtherRunsForPeriodo: jest.fn(),
+	updatePhase: jest.fn(),
 };
 const mockRawHorarioRepository = { bulkInsert: jest.fn() };
 const mockRawMatriculaRepository = { bulkInsert: jest.fn() };
@@ -56,6 +57,7 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockScrapeRunRepository.deleteRun.mockResolvedValue(undefined);
 	mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockResolvedValue(undefined);
+	mockScrapeRunRepository.updatePhase.mockResolvedValue(undefined);
 	mockExportGenerationService.triggerForBannerRun.mockResolvedValue(undefined);
 });
 
@@ -171,9 +173,18 @@ describe('ScraperService.execute end-to-end wiring (reachable branch only)', () 
 
 	const finishedStatus = () => mockScrapeRunRepository.finish.mock.calls[0]?.[1] as string;
 
+	/**
+	 * `scrapeHorario` now also takes a `p-limit`-created limiter (see AC-4), so it is no longer
+	 * reachable end-to-end here without hitting the same `module: nodenext` dynamic-import
+	 * limitation this file already documents above (`await import('p-limit')` throws under jest
+	 * regardless of what's mocked). `SessionExpiredError` is injected by stubbing `scrapeHorario`
+	 * itself instead of via `mockHttp.get`, so `execute()`'s own try/catch classification is still
+	 * exercised for real, just without depending on `scrapeHorario`'s internals (including its
+	 * limiter) actually running.
+	 */
 	it('on an expired run (session expired during horario), cleans up only its own run', async () => {
-		mockHttp.get.mockRejectedValue(new SessionExpiredError());
 		const service = buildService();
+		jest.spyOn(service as any, 'scrapeHorario').mockRejectedValue(new SessionExpiredError());
 
 		await runAndSettle(service);
 
@@ -181,5 +192,148 @@ describe('ScraperService.execute end-to-end wiring (reachable branch only)', () 
 		const runId = mockScrapeRunRepository.createRun.mock.calls[0][0].id;
 		expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith(runId);
 		expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+	});
+
+	it('updates phase to horario before the horario stage runs', async () => {
+		const service = buildService();
+		jest.spyOn(service as any, 'scrapeHorario').mockRejectedValue(new SessionExpiredError());
+
+		await runAndSettle(service);
+
+		const runId = mockScrapeRunRepository.createRun.mock.calls[0][0].id;
+		expect(mockScrapeRunRepository.updatePhase).toHaveBeenCalledWith(runId, 'horario');
+	});
+});
+
+/**
+ * `scrapeHorario`/`scrapeMatricula`/`scrapeAlumnos`/`scrapeNotas` are stubbed via spies here so
+ * `execute()`'s phase-update call sites can be asserted in order without depending on
+ * `createLimiter()`'s real `await import('p-limit')`, which is unusable under this file's
+ * `module: nodenext` ts-jest setup (see the top-of-file comment). `execute()` itself still calls
+ * `createLimiter(SCRAPE_CONCURRENCY)` directly between the matricula and alumnos/notas stages, so
+ * even with every phase method stubbed, that call throws and is caught by `execute()`'s own
+ * try/catch (recorded as a 'failed' finish, not asserted on here — that outcome is an artifact of
+ * this jest limitation, not a phase-tracking behavior worth pinning to a test).
+ */
+describe('ScraperService.execute phase tracking', () => {
+	beforeEach(() => {
+		mockScrapeRunRepository.finish.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteRun.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockResolvedValue(undefined);
+	});
+
+	it('updates phase before each stage, in order', async () => {
+		const service = buildService();
+		jest
+			.spyOn(service as any, 'scrapeHorario')
+			.mockResolvedValue({ nrcs: [], courseByNrc: new Map() });
+		jest
+			.spyOn(service as any, 'scrapeMatricula')
+			.mockResolvedValue({ codigos: [], enrollments: [] });
+
+		await (service as any).execute('run-1', 'UG', PERIODO, ['DEPT1'], new Set(['CS101']));
+
+		expect(mockScrapeRunRepository.updatePhase).toHaveBeenNthCalledWith(1, 'run-1', 'horario');
+		expect(mockScrapeRunRepository.updatePhase).toHaveBeenNthCalledWith(2, 'run-1', 'matricula');
+		expect(mockScrapeRunRepository.updatePhase).toHaveBeenNthCalledWith(
+			3,
+			'run-1',
+			'alumnosYNotas',
+		);
+	});
+});
+
+describe('ScraperService.scrapeHorario concurrency', () => {
+	const STATS = () => ({
+		departments: { requested: ['DEPT_SLOW', 'DEPT_FAST', 'DEPT_BAD'], succeeded: [], failed: [] },
+		counts: { horario: 0, matricula: 0, alumno: 0, nota: 0 },
+		uniqueStudents: 0,
+		errors: [] as Array<{ step: string; key: string; message: string }>,
+	});
+
+	// A department is not blocked behind another still-in-flight department, and one department's
+	// plain (non-SessionExpiredError) failure does not abort the others. This is the regression test
+	// for AC-4: under the old sequential for-of loop, DEPT_FAST/DEPT_BAD could never settle while
+	// DEPT_SLOW's request was still pending, since the loop awaited each department in turn.
+	it('processes departments independently: out-of-order resolution and isolated per-department failure', async () => {
+		const service = buildService();
+		const stats = STATS();
+
+		let resolveSlow!: (value: { detalle: unknown[] }) => void;
+		const slowPromise = new Promise<{ detalle: unknown[] }>((resolve) => {
+			resolveSlow = resolve;
+		});
+
+		mockHttp.get.mockImplementation((_path: string, query: Record<string, string>) => {
+			if (query.codigoDepartamento === 'DEPT_SLOW') return slowPromise;
+			if (query.codigoDepartamento === 'DEPT_FAST') return Promise.resolve({ detalle: [] });
+			return Promise.reject(new Error('upstream 500'));
+		});
+
+		// Real `scrapeHorario` runs; only its limiter creation (a real `await import('p-limit')`,
+		// unusable under jest here) is stubbed with a synchronous passthrough.
+		jest
+			.spyOn(service as any, 'createHorarioLimit')
+			.mockResolvedValue((fn: () => Promise<unknown>) => fn());
+
+		const resultPromise = (service as any).scrapeHorario(
+			'run-1',
+			'UG',
+			PERIODO,
+			['DEPT_SLOW', 'DEPT_FAST', 'DEPT_BAD'],
+			new Set(['CS101']),
+			stats,
+		);
+
+		await flush();
+		expect(stats.departments.succeeded).toContain('DEPT_FAST');
+		expect(stats.departments.failed).toContain('DEPT_BAD');
+		expect(stats.departments.succeeded).not.toContain('DEPT_SLOW');
+
+		resolveSlow({ detalle: [] });
+		await resultPromise;
+
+		expect(stats.departments.succeeded).toEqual(expect.arrayContaining(['DEPT_FAST', 'DEPT_SLOW']));
+		expect(stats.departments.failed).toEqual(['DEPT_BAD']);
+	});
+});
+
+describe('ScraperService.getRun', () => {
+	it('includes phase in the returned run status', async () => {
+		mockScrapeRunRepository.findById.mockResolvedValue({
+			status: 'running',
+			phase: 'matricula',
+			stats: null,
+		});
+		const service = buildService();
+
+		const result = await service.getRun('run-1');
+
+		expect(result).toEqual({ status: 'running', phase: 'matricula', stats: null });
+	});
+});
+
+describe('ScraperService.listRuns', () => {
+	it('includes phase in each run summary', async () => {
+		mockDepartmentSourceRepository.findAcademicPeriodCode.mockResolvedValue(PERIODO);
+		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+			{
+				id: 'run-1',
+				nivel: 'UG',
+				periodo: PERIODO,
+				departamentos: ['DEPT1'],
+				status: 'running',
+				phase: 'horario',
+				startedAt: new Date('2026-08-20T10:00:00.000Z'),
+				finishedAt: null,
+				stats: null,
+				triggeredBy: 'user:1',
+			},
+		]);
+		const service = buildService();
+
+		const [summary] = await service.listRuns(1);
+
+		expect(summary.phase).toBe('horario');
 	});
 });

@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export type ScrapeRunStatus = 'running' | 'completed' | 'partial' | 'failed' | 'expired';
+export type ScraperPhase = 'horario' | 'matricula' | 'alumnosYNotas';
 
 @Entity({ name: 'scrape_run' })
 export class ScrapeRunEntity {
@@ -18,6 +19,9 @@ export class ScrapeRunEntity {
 
 	@Column({ type: 'text' })
 	status: ScrapeRunStatus;
+
+	@Column({ type: 'text', nullable: true })
+	phase: ScraperPhase | null;
 
 	@Column({ type: 'timestamptz', default: () => 'now()' })
 	startedAt: Date;
