@@ -19,6 +19,7 @@ const mockScrapeRunRepository = {
 	createRun: jest.fn(),
 	finish: jest.fn(),
 	findById: jest.fn(),
+	findByPeriodo: jest.fn(),
 	deleteRun: jest.fn(),
 	deleteOtherRunsForPeriodo: jest.fn(),
 	updatePhase: jest.fn(),
@@ -359,13 +360,50 @@ describe('PlannerScraperService', () => {
 			expect(finishedStatus()).toBe('completed');
 		});
 
-		it('still aborts the whole run on a fatal error raised mid-pipeline (evaluaciones phase)', async () => {
+		// Regression for AF-1: `scheduleNota`/`scheduleEvaluacion` fire `updatePhase` in the
+		// background (not awaited, since awaiting it would block the pipeline on a progress write).
+		// Before the fix, a rejection there had no `.catch()` — on this repo's Node version, an
+		// unhandled rejection crashes the whole process, not just this scrape run. This test proves
+		// the fix by listening for a real `unhandledRejection` event: with the bug present, this
+		// test fails because that event fires; with the fix, `updatePhaseInBackground` catches the
+		// rejection and logs it instead.
+		it('does not produce an unhandled rejection when a mid-pipeline phase update fails', async () => {
 			const service = buildService();
 			stubLimiters(service);
 			respondByPath({
 				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
 				'/api/core-api/sections': () => [{ sectionId: 'SEC-1' }],
+				'/api/class-api/evaluations/structure': () => [
+					{ structure: [{ evalComponentId: 'COMP-1' }] },
+				],
+				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
 			});
+			mockScrapeRunRepository.updatePhase.mockImplementation((_id: string, phase: string) =>
+				phase === 'evaluaciones'
+					? Promise.reject(new Error('transient db blip'))
+					: Promise.resolve(undefined),
+			);
+
+			const unhandled: unknown[] = [];
+			const onUnhandledRejection = (reason: unknown) => unhandled.push(reason);
+			process.on('unhandledRejection', onUnhandledRejection);
+
+			try {
+				await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+					'CS101',
+				]);
+				await flush();
+			} finally {
+				process.off('unhandledRejection', onUnhandledRejection);
+			}
+
+			expect(unhandled).toHaveLength(0);
+			expect(finishedStatus()).toBe('completed');
+		});
+
+		it('still aborts the whole run on a fatal error raised mid-pipeline (evaluaciones phase)', async () => {
+			const service = buildService();
+			stubLimiters(service);
 			mockHttp.get.mockImplementation(async (path: string) => {
 				if (path === '/api/core-api/academic-periods/list') return PERIODS_HANDLER({});
 				if (path === '/api/core-api/sections') return [{ sectionId: 'SEC-1' }];
@@ -380,6 +418,146 @@ describe('PlannerScraperService', () => {
 			]);
 
 			expect(finishedStatus()).toBe('expired');
+		});
+
+		// Regression for AF-7: pipelining means a course's `fetchSeccion` can still be in flight
+		// (awaiting its own HTTP response) when a fatal error from a *different* course has
+		// already aborted the run — before pipelining, the barrier model made this impossible,
+		// since no course's next phase could start until every course's current phase finished.
+		// CS102's `/api/core-api/sections` call is deliberately left pending so it resolves only
+		// after `execute()` has already settled via CS101's fatal error, simulating exactly that
+		// race. Without the `abortState` guard, CS102's late-arriving sections would still get
+		// scheduled into `scheduleEvaluacion` and fetch/insert against an already-finalized run.
+		it('stops scheduling new work for a course still in flight when a fatal error aborts the run elsewhere', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			let resolveCs102Sections: (value: unknown) => void = () => {};
+			const cs102SectionsPromise = new Promise((resolve) => {
+				resolveCs102Sections = resolve;
+			});
+			mockHttp.get.mockImplementation(async (path: string, query: Record<string, string>) => {
+				if (path === '/api/core-api/academic-periods/list') return PERIODS_HANDLER({});
+				if (path === '/api/core-api/sections') {
+					if (query.text === 'CS102') return cs102SectionsPromise;
+					return [{ sectionId: 'SEC-101' }];
+				}
+				if (path === '/api/class-api/evaluations/structure') {
+					throw new PlannerSessionExpiredError();
+				}
+				return [];
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+				'CS102',
+			]);
+			expect(finishedStatus()).toBe('expired');
+
+			// CS102's secciones call only resolves now, after the run has already been finalized.
+			resolveCs102Sections([{ sectionId: 'SEC-102' }]);
+			await flush();
+
+			const evaluacionCallsForCs102 = mockHttp.get.mock.calls.filter(
+				([path, query]) =>
+					path === '/api/class-api/evaluations/structure' && query.sectionId === 'SEC-102',
+			);
+			expect(evaluacionCallsForCs102).toHaveLength(0);
+			expect(mockEvaluacionRepository.bulkInsert).not.toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ sectionId: 'SEC-102' })]),
+			);
+		});
+
+		// Regression for AF-9: a non-fatal, per-course error must not abort sibling courses —
+		// the pipeline restructure changed *how* work is scheduled, not the per-item error
+		// contract `fetchSeccion`'s own try/catch already enforced.
+		it('records a non-fatal per-course error and still completes the other course', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			respondByPath({
+				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
+				'/api/core-api/sections': (q) =>
+					q.text === 'CS101'
+						? Promise.reject(new Error('502 from Planner'))
+						: [{ sectionId: 'SEC-102' }],
+				'/api/class-api/evaluations/structure': () => [
+					{ structure: [{ evalComponentId: 'COMP-102' }] },
+				],
+				'/api/class-api/grades': () => [
+					{ grades: [{ studentCode: 'S1' }], approvalCategories: [] },
+				],
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+				'CS102',
+			]);
+
+			expect(finishedStatus()).toBe('partial');
+			const stats = mockScrapeRunRepository.finish.mock.calls[0]?.[2];
+			expect(stats.courses.failed).toEqual(['CS101']);
+			expect(stats.courses.succeeded).toEqual(['CS102']);
+			expect(mockNotaRepository.bulkInsert).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ sectionId: 'SEC-102' })]),
+			);
+		});
+
+		// Regression for AF-14: a course with no matching sections must not advance `phase` past
+		// `'secciones'`, and the run must still complete cleanly rather than hang or error —
+		// `evaluacionesStarted`/`notasStarted` should simply never flip.
+		it('stays at the secciones phase and still completes when a course has no sections', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			respondByPath({
+				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
+				'/api/core-api/sections': () => [],
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+			]);
+
+			const phaseCalls = mockScrapeRunRepository.updatePhase.mock.calls.map(([, phase]) => phase);
+			expect(phaseCalls).toEqual(['secciones']);
+			expect(finishedStatus()).toBe('completed');
+		});
+	});
+
+	describe('getRun', () => {
+		it('includes phase in the returned run status', async () => {
+			mockScrapeRunRepository.findById.mockResolvedValue({
+				status: 'running',
+				phase: 'evaluaciones',
+				stats: null,
+			});
+			const service = buildService();
+
+			const result = await service.getRun('run-1');
+
+			expect(result).toEqual({ status: 'running', phase: 'evaluaciones', stats: null });
+		});
+	});
+
+	describe('listRuns', () => {
+		it('includes phase in each run summary', async () => {
+			mockSourceRepository.findAcademicPeriodCode.mockResolvedValue(PERIODO);
+			mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+				{
+					id: 'run-1',
+					periodo: PERIODO,
+					escuela: null,
+					status: 'running',
+					phase: 'secciones',
+					startedAt: new Date('2026-08-20T10:00:00.000Z'),
+					finishedAt: null,
+					stats: null,
+					triggeredBy: 'user:1',
+				},
+			]);
+			const service = buildService();
+
+			const [summary] = await service.listRuns(1);
+
+			expect(summary.phase).toBe('secciones');
 		});
 	});
 });

@@ -73,6 +73,15 @@ interface EvalPair {
 	sectionId: string;
 }
 
+// Mutable, shared across one `execute()` call's whole pipeline. Set the moment a fatal error is
+// classified so leaf tasks still in flight for other courses/sections stop scheduling further
+// downstream work once they next check it — closes (does not eliminate; no `AbortController`
+// cancels an in-flight `fetch`) the window where pipelining lets unrelated work outlive a fatal
+// error, versus the pre-pipeline barrier model confining that window to same-phase siblings.
+interface AbortState {
+	aborted: boolean;
+}
+
 @Injectable()
 export class PlannerScraperService {
 	private readonly logger = new Logger(PlannerScraperService.name);
@@ -210,27 +219,30 @@ export class PlannerScraperService {
 			const seenPairs = new Set<string>();
 			let evaluacionesStarted = false;
 			let notasStarted = false;
+			const abortState: AbortState = { aborted: false };
 
 			const scheduleNota = (pair: EvalPair): Promise<void> => {
+				if (abortState.aborted) return Promise.resolve();
 				const key = `${pair.sectionId}|${pair.evalComponentId}`;
 				if (seenPairs.has(key)) return Promise.resolve();
 				seenPairs.add(key);
 				if (!notasStarted) {
 					notasStarted = true;
-					void this.scrapeRunRepository.updatePhase(runId, 'notas');
+					this.updatePhaseInBackground(runId, 'notas');
 				}
-				return notaLimit(() => this.fetchNota(runId, pair, stats));
+				return notaLimit(() => this.fetchNota(runId, pair, stats, abortState));
 			};
 
 			const scheduleEvaluacion = (sectionId: string): Promise<void> => {
+				if (abortState.aborted) return Promise.resolve();
 				if (seenSections.has(sectionId)) return Promise.resolve();
 				seenSections.add(sectionId);
 				if (!evaluacionesStarted) {
 					evaluacionesStarted = true;
-					void this.scrapeRunRepository.updatePhase(runId, 'evaluaciones');
+					this.updatePhaseInBackground(runId, 'evaluaciones');
 				}
 				return evaluacionLimit(() =>
-					this.fetchEvaluacion(runId, sectionId, stats).then((pairs) =>
+					this.fetchEvaluacion(runId, sectionId, stats, abortState).then((pairs) =>
 						Promise.all(pairs.map(scheduleNota)).then(() => undefined),
 					),
 				);
@@ -238,11 +250,12 @@ export class PlannerScraperService {
 
 			await Promise.all(
 				cursos.map((curso) =>
-					seccionLimit(() =>
-						this.fetchSeccion(runId, periodo, periodId, curso, stats).then((sectionIds) =>
-							Promise.all(sectionIds.map(scheduleEvaluacion)).then(() => undefined),
-						),
-					),
+					seccionLimit(() => {
+						if (abortState.aborted) return Promise.resolve();
+						return this.fetchSeccion(runId, periodo, periodId, curso, stats, abortState).then(
+							(sectionIds) => Promise.all(sectionIds.map(scheduleEvaluacion)).then(() => undefined),
+						);
+					}),
 				),
 			);
 			stats.uniqueSections = seenSections.size;
@@ -310,6 +323,21 @@ export class PlannerScraperService {
 		}
 	}
 
+	// Fire-and-forget: a phase-progress write must never crash the process. Unlike `finish()`,
+	// which the caller awaits and lets a failure propagate to the run's own catch block, these
+	// mid-pipeline writes are best-effort progress reporting — losing one is a worse-looking
+	// progress bar, not a correctness problem, so it is logged and swallowed here rather than
+	// left as an unhandled rejection on this single-replica service.
+	private updatePhaseInBackground(runId: string, phase: PlannerScraperPhase): void {
+		void this.scrapeRunRepository.updatePhase(runId, phase).catch((error) => {
+			this.logger.error(
+				`Failed to update phase to '${phase}' for run ${runId}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		});
+	}
+
 	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
 	// this runs, so a failure generating exports must never surface as a scrape failure.
 	private triggerExportGeneration(periodo: string, plannerRunId: string): void {
@@ -349,7 +377,9 @@ export class PlannerScraperService {
 		periodId: string,
 		curso: string,
 		stats: ScrapeStats,
+		abortState: AbortState,
 	): Promise<string[]> {
+		if (abortState.aborted) return [];
 		try {
 			const sections = await this.http.get<Record<string, unknown>>('/api/core-api/sections', {
 				feature: 'grades',
@@ -378,7 +408,10 @@ export class PlannerScraperService {
 			stats.courses.succeeded.push(curso);
 			return sectionIds;
 		} catch (error) {
-			if (isFatalScrapeError(error)) throw error;
+			if (isFatalScrapeError(error)) {
+				abortState.aborted = true;
+				throw error;
+			}
 			stats.courses.failed.push(curso);
 			stats.errors.push({ step: 'seccion', key: curso, message: (error as Error).message });
 			return [];
@@ -392,7 +425,9 @@ export class PlannerScraperService {
 		runId: string,
 		sectionId: string,
 		stats: ScrapeStats,
+		abortState: AbortState,
 	): Promise<EvalPair[]> {
+		if (abortState.aborted) return [];
 		try {
 			const results = await this.http.get<Record<string, unknown>>(
 				'/api/class-api/evaluations/structure',
@@ -420,7 +455,10 @@ export class PlannerScraperService {
 			stats.counts.evaluacion += rows.length;
 			return pairs;
 		} catch (error) {
-			if (isFatalScrapeError(error)) throw error;
+			if (isFatalScrapeError(error)) {
+				abortState.aborted = true;
+				throw error;
+			}
 			stats.errors.push({ step: 'evaluacion', key: sectionId, message: (error as Error).message });
 			return [];
 		}
@@ -429,7 +467,13 @@ export class PlannerScraperService {
 	// Nota leaf: per (evalComponentId, sectionId), fetch the grades and explode into one raw row
 	// per student grade. The parent approvalCategories are kept on each row for downstream
 	// resolution.
-	private async fetchNota(runId: string, pair: EvalPair, stats: ScrapeStats): Promise<void> {
+	private async fetchNota(
+		runId: string,
+		pair: EvalPair,
+		stats: ScrapeStats,
+		abortState: AbortState,
+	): Promise<void> {
+		if (abortState.aborted) return;
 		try {
 			const results = await this.http.get<Record<string, unknown>>('/api/class-api/grades', {
 				evalComponentId: pair.evalComponentId,
@@ -454,7 +498,10 @@ export class PlannerScraperService {
 			await this.rawNotaRepository.bulkInsert(rows);
 			stats.counts.nota += rows.length;
 		} catch (error) {
-			if (isFatalScrapeError(error)) throw error;
+			if (isFatalScrapeError(error)) {
+				abortState.aborted = true;
+				throw error;
+			}
 			stats.errors.push({
 				step: 'nota',
 				key: `${pair.sectionId}/${pair.evalComponentId}`,
