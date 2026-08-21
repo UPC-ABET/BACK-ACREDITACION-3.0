@@ -518,8 +518,189 @@ Append-only sections below. These record what actually happened, not what was pl
 and they are the best input to the next design.
 
 ## Post-QA fixes
+-->
 
 ## Audit fixes (/abet-audit-pr)
 
 ### Review round 1
--->
+
+`/abet-audit-pr` ran six parallel auditors over `origin/develop...HEAD`. Verdict: **NOT
+READY** — one blocker (open tasks, see below) plus two testing majors. Full findings table
+in the audit transcript; this section tracks only what's actionable as a task.
+
+**Not fixable in this session, left open**: the blocker (Tasks 1.1/6.1/7.2's manual
+migration-apply/revert and staging export-diff verification) needs a real raw-DB/staging
+connection this session doesn't have — see `runbook.md`. Not addressed below.
+
+**Judged "no action needed" by the auditors themselves, not tasked below**: `parseUserId`
+duplication across the two scraper services (Auditor A + D, both concluded it matches this
+codebase's existing per-file-helper convention), the cross-module `UserRepository`
+injection bypassing `UserService` (Auditor B, a documented `design.md` tradeoff), the
+`UserModule` relative-vs-absolute import style (Auditor B, cosmetic, matches each file's
+own convention), and `findDisplayNamesByIds` having no explicit array-size cap (Auditor E,
+today's callers are already bounded). Re-litigating an auditor's own "acceptable as
+shipped" conclusion isn't this round's job.
+
+### Task R1.1 — Test: malformed `triggeredBy` falls back to `'-'` ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Both new cases passed on the first run — `parseUserId`'s regex already returned `null` for
+> a non-matching string, so this was a pure test-coverage gap, not a code bug.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (modify)
+
+**Steps (TDD)**
+
+1. Add a `listRuns` case per file with `triggeredBy: 'admin'` (doesn't match
+   `/^user:(\d+)$/`) → assert `triggeredByName === '-'` and `findDisplayNamesByIds` was
+   called with an empty array (or not called at all, whichever the current implementation
+   actually does — assert the real behavior, not an assumption).
+2. Run both spec files, confirm green.
+
+**Commit**: `test(scraping): cover malformed triggeredBy in listRuns`
+
+### Task R1.2 — Test: `triggeredByName` resolution batches, doesn't N+1 ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Also passed immediately — the existing `[...new Set(...)]` dedup already batched
+> correctly, this closes the coverage gap the audit flagged.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (modify)
+
+**Steps (TDD)**
+
+1. Add a `listRuns` case per file with two runs — one resolvable `triggeredBy`, one
+   unresolved id — asserting `findDisplayNamesByIds` is called **exactly once** with the
+   deduped id array, and each run's `triggeredByName` resolves independently (one gets the
+   mocked name, the other `'-'`).
+2. Run both spec files, confirm green.
+
+**Commit**: `test(scraping): cover triggeredByName batching across multiple runs`
+
+### Task R1.3 — Don't let a `triggeredByName` lookup failure break `listRuns` ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Genuine red→green: extracted `resolveTriggeredByNames(userIds)` as a private method in
+> both services, wrapping the lookup in try/catch with an empty-`Map` fallback and a
+> `this.logger.error(...)` call matching `finalizeRun`'s existing style in the same file.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (modify)
+
+**Steps (TDD)**
+
+1. Add a failing case: `userRepository.findDisplayNamesByIds` rejects → `listRuns` still
+   resolves, every `triggeredByName` in the result is `'-'`, error is logged (matching
+   `finalizeRun`'s existing catch-and-log style in the same file).
+2. Wrap the `findDisplayNamesByIds` call in try/catch, falling back to an empty `Map` on
+   failure and logging via `this.logger.error(...)`.
+3. Run both spec files, confirm green.
+
+**Commit**: `fix(scraping): don't let a triggeredByName lookup failure break listRuns`
+
+### Task R1.4 — Blank display name should fall back to `'-'`, not `''` ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Genuine red→green: `findDisplayNamesByIds` now filters out entries whose trimmed
+> `"firstName lastName"` is empty before building the returned map, so the caller's
+> `?? '-'` fallback applies as originally intended.
+
+**Files**
+
+- `src/modules/organization/users/core/users.repository.ts` (modify)
+- `src/modules/organization/users/core/users.repository.spec.ts` (modify)
+
+**Steps (TDD)**
+
+1. Add a failing case: a matched user with blank `firstName`/`lastName` is **excluded**
+   from `findDisplayNamesByIds`'s returned map (so the caller's `?? '-'` fallback applies),
+   rather than being present with an empty-string value.
+2. Filter out entries whose trimmed `` `${firstName} ${lastName}` `` is empty before
+   building the returned `Map`.
+3. Run the spec, confirm green.
+
+**Commit**: `fix(users): exclude blank display names from findDisplayNamesByIds`
+
+### Task R1.5 — Rename `periodo` locals in `scraping-export-generation.service.ts` ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Renamed 45 of 47 occurrences (every method parameter/local carrying the raw-datasource
+> period string, plus prose in comments) — deliberately left `toStatusResponse`'s
+> `periodo: row.periodo` and `reconcileIfStale`'s `row.periodo` untouched, since those read
+> the actual `ScrapingExportRunEntity.periodo`/`ScrapingExportStatusResponse.periodo`
+> (main-datasource, genuinely out of this change's scope). No spec changes needed — every
+> call site is positional, not property-keyed. 71/71 tests green.
+
+**Files**
+
+- `src/modules/admin/scraping-exports/api/scraping-export-generation.service.ts` (modify)
+- `src/modules/admin/scraping-exports/api/scraping-export-generation.service.spec.ts` (modify)
+
+**Steps**
+
+1. Rename every local variable/parameter named `periodo` to `period` throughout the file
+   (mechanical only — this does **not** touch `core.scraping_export_runs.periodo`, the
+   main-datasource column itself, which stays out of scope per proposal.md's Goals table;
+   only the in-file identifier that already reads oddly next to Task U.1's renamed
+   `findByPeriod(periodo)` call sites).
+2. Update the spec's mock/assertion identifiers to match.
+3. `npx jest --no-coverage
+src/modules/admin/scraping-exports/api/scraping-export-generation.service.spec.ts` →
+   expect green.
+
+**Commit**: `refactor(scraping-exports): rename periodo locals to period`
+
+### Task R1.6 — Docs cleanup: de-dup `design.md`'s Risks table, note the migration deploy window ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+**Files**
+
+- `openspec/changes/raw-scrape-data-english-naming/design.md` (modify)
+- `openspec/changes/raw-scrape-data-english-naming/runbook.md` (modify)
+
+**Steps**
+
+1. Remove the two duplicate rows in `design.md`'s Risks table.
+2. Add a `runbook.md` deploy-prerequisite note: confirm no `scrape_run`/`planner_scrape_run`
+   row is `status = 'running'` immediately before applying the phase-literal migration —
+   the brief window between `DROP CONSTRAINT` and `ADD CONSTRAINT` has no CHECK at all, so a
+   concurrent write from pre-migration code could abort the migration (loud failure, not
+   silent corruption, but avoidable).
+
+**Commit**: `docs(openspec): de-dup risks table, note phase-migration deploy window`
+
+### Task R1.7 — Explicit `Map<number, string>` generic on the empty fallback ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Folded into Task R1.3's `resolveTriggeredByNames` extraction — both its early-return and
+> its catch-block fallback now construct `new Map<number, string>()` explicitly.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+
+**Steps**
+
+1. `new Map()` → `new Map<number, string>()` on the empty-`userIds` fallback branch in both
+   files' `listRuns()`.
+2. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `refactor(scraping): annotate empty triggeredByName map fallback`
