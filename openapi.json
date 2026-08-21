@@ -12022,7 +12022,17 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/RunSummaryResponseDto" }
+								}
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -12043,7 +12053,14 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ScrapeRunStatusResponseDto" }
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -12368,7 +12385,17 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/PlannerRunSummaryResponseDto" }
+								}
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -12389,7 +12416,14 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "Successful operation" },
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PlannerScrapeRunStatusResponseDto" }
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -17430,6 +17464,59 @@
 					}
 				}
 			},
+			"RunSummaryResponseDto": {
+				"type": "object",
+				"properties": {
+					"runId": { "type": "string", "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" },
+					"nivel": { "type": "string", "example": "UG" },
+					"periodo": { "type": "string", "example": "202610" },
+					"departamentos": {
+						"example": ["IN", "SI"],
+						"type": "array",
+						"items": { "type": "string" }
+					},
+					"status": {
+						"type": "string",
+						"example": "completed",
+						"enum": ["running", "completed", "partial", "failed", "expired"]
+					},
+					"phase": {
+						"type": "string",
+						"example": "alumnosYNotas",
+						"enum": ["horario", "matricula", "alumnosYNotas"],
+						"nullable": true,
+						"description": "The furthest scrape phase that has started for this run."
+					},
+					"startedAt": { "type": "string", "example": "2026-08-20T10:00:00.000Z" },
+					"finishedAt": {
+						"type": "object",
+						"example": "2026-08-20T10:05:00.000Z",
+						"nullable": true
+					},
+					"counts": { "type": "object", "nullable": true },
+					"triggeredBy": { "type": "object", "example": "user:12", "nullable": true }
+				},
+				"required": ["runId", "nivel", "periodo", "departamentos", "status", "startedAt"]
+			},
+			"ScrapeRunStatusResponseDto": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "string",
+						"example": "running",
+						"enum": ["running", "completed", "partial", "failed", "expired"]
+					},
+					"phase": {
+						"type": "string",
+						"example": "matricula",
+						"enum": ["horario", "matricula", "alumnosYNotas"],
+						"nullable": true,
+						"description": "The furthest scrape phase that has started for this run."
+					},
+					"stats": { "type": "object", "nullable": true }
+				},
+				"required": ["status"]
+			},
 			"ScrapingExportStatusResponseDto": {
 				"type": "object",
 				"properties": {
@@ -17510,6 +17597,64 @@
 						"items": { "type": "string" }
 					}
 				}
+			},
+			"PlannerRunSummaryResponseDto": {
+				"type": "object",
+				"properties": {
+					"runId": { "type": "string", "description": "Scrape run id (uuid)." },
+					"periodo": { "type": "string", "description": "Banner/Planner periodo code." },
+					"escuela": {
+						"type": "object",
+						"nullable": true,
+						"description": "Escuela code, if scoped."
+					},
+					"status": {
+						"type": "string",
+						"enum": ["running", "completed", "partial", "failed", "expired"],
+						"description": "Terminal status of the run."
+					},
+					"phase": {
+						"type": "string",
+						"enum": ["secciones", "evaluaciones", "notas"],
+						"nullable": true,
+						"description": "The furthest phase that has started for this run. Null until the first phase begins."
+					},
+					"startedAt": { "type": "string", "description": "ISO timestamp the run started." },
+					"finishedAt": {
+						"type": "object",
+						"nullable": true,
+						"description": "ISO timestamp the run finished."
+					},
+					"counts": {
+						"type": "object",
+						"nullable": true,
+						"description": "Per-stage counts once the run has produced any."
+					},
+					"triggeredBy": {
+						"type": "object",
+						"nullable": true,
+						"description": "Who triggered the run."
+					}
+				},
+				"required": ["runId", "periodo", "status", "startedAt"]
+			},
+			"PlannerScrapeRunStatusResponseDto": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": ["running", "completed", "partial", "failed", "expired"],
+						"description": "Terminal status of the run."
+					},
+					"phase": {
+						"type": "string",
+						"enum": ["secciones", "evaluaciones", "notas"],
+						"nullable": true,
+						"description": "The furthest phase that has started for this run. Null until the first phase begins."
+					},
+					"stats": { "type": "object", "nullable": true, "description": "Per-run scrape stats." }
+				},
+				"required": ["status"]
 			}
 		}
 	},

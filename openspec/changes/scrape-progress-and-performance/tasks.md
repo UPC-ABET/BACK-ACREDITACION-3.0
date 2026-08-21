@@ -1,0 +1,529 @@
+# Tasks — Granular Scrape Progress States and Scraper Performance
+
+**Slug**: `scrape-progress-and-performance` · **Proposal**: `./proposal.md` · **Design**:
+`./design.md`
+
+## For whoever executes this
+
+- Work in checkpointed batches of 3–5 tasks. Partition each batch by files touched and fan the
+  non-overlapping ones out to parallel subagents. Milestone 1 touches Banner-only files,
+  Milestone 2 touches Planner-only files — these two milestones can run in parallel with each
+  other; Milestone 3 (Banner) can run alongside Milestone 2 (Planner) for the same reason.
+  Milestone 5 depends on nothing in 1–4 landing first, but do read Milestone 1/2's phase-column
+  work before starting it, since it reuses `updatePhase`.
+- TDD throughout: write the test, **see it fail**, implement, see it pass.
+- A task is complete when **its test passes**, not when the code is written.
+- Marking done means checking the box **and** appending `✅ DONE (YYYY-MM-DD)` to the heading.
+  Never one without the other — the completeness gate reads the boxes.
+- **No autonomous commits.** Propose the grouping and stop.
+- Do not edit `docs/POLICIES.md` or `docs/adr/*`.
+- Migrations: run `pnpm migration:raw:create src/database/migrations-raw/<name>` yourself to
+  get the CLI-stamped timestamp — never hand-write the filename/timestamp, per
+  `docs/POLICIES.md`.
+- AC-3/5/6/7's staging timing/memory measurements are **manual** — see `runbook.md`. No task
+  below claims to satisfy them by writing code; they are called out explicitly where a task's
+  outcome depends on a measurement result (Milestone 4, Milestone 5's adoption step).
+
+## Goal
+
+Expose Banner's and Planner's in-flight scrape phase (`horario`/`matrícula`/`alumnos-y-notas`;
+`secciones`/`evaluaciones`/`notas`) alongside the existing terminal `status`, parallelize
+Banner's zero-concurrency `scrapeHorario` department loop, and investigate — staging-measured,
+adopt-or-drop — raising `MATRICULA_CONCURRENCY` and overlapping Planner's three phases,
+without exceeding `sys_acc_back`'s 640MB memory cap.
+
+## Slicing
+
+Vertical. Each milestone delivers something demonstrable — schema, wiring, response shape and
+tests together — rather than a horizontal layer.
+
+---
+
+## Milestone 1 — Banner phase tracking (AC-1, AC-3 setup)
+
+### Task 1.1 — Add the `phase` column via a raw-datasource migration ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/database/migrations-raw/<timestamp>-add-phase-to-scrape-runs.ts` (create)
+
+**Steps (TDD)**
+
+1. Run `pnpm migration:raw:create src/database/migrations-raw/add-phase-to-scrape-runs` to get
+   a correctly-timestamped file.
+2. Write `up()`: `ALTER TABLE "scrape_run" ADD COLUMN "phase" TEXT`, then
+   `ALTER TABLE "scrape_run" ADD CONSTRAINT "CK_scrape_run_phase" CHECK ("phase" IN ('horario', 'matricula', 'alumnosYNotas'))`;
+   mirror both statements for `"planner_scrape_run"` with values
+   `('secciones', 'evaluaciones', 'notas')` and constraint name
+   `CK_planner_scrape_run_phase`.
+3. Write `down()`: drop both CHECK constraints, then both columns, in reverse order.
+4. Run `pnpm migration:raw:run` against a local/dev raw datasource to confirm `up()` applies
+   cleanly, then `pnpm migration:raw:revert` to confirm `down()` is correct; re-run `up()` to
+   leave the schema in the expected state.
+
+**Commit**: `feat(scraping): add phase column to scrape_run and planner_scrape_run`
+
+> No local `RAW_DB_URL` is configured in this environment (commented out in `.env`), so the
+> file-creation step ran but `migration:raw:run`/`revert` against a live DB could not be
+> exercised here. `up()`/`down()` were reviewed by hand against the existing
+> `create-raw-banner-tables`/`create-raw-planner-tables` migrations' style instead. Whoever
+> has raw-datasource access should run `pnpm migration:raw:run` once before/with deploy, per
+> `runbook.md`'s deploy prerequisite.
+
+### Task 1.2 — `ScrapeRunEntity`/`ScrapeRunRepository`: add `phase` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/raw/model/scrape-run.entity.ts` (modify)
+- `src/modules/admin/banner/raw/core/scrape-run.repository.ts` (modify)
+- `src/modules/admin/banner/raw/core/scrape-run.repository.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Write a failing case in `scrape-run.repository.spec.ts` for `updatePhase(id, phase)`
+   calling `repository.update(id, { phase })`: `npx jest --no-coverage src/modules/admin/banner/raw/core/scrape-run.repository.spec.ts`
+   → expect **red**.
+2. Add `export type ScraperPhase = 'horario' | 'matricula' | 'alumnosYNotas'` and the `phase`
+   column to `ScrapeRunEntity`; implement `updatePhase` on `ScrapeRunRepository`.
+3. Re-run → expect **green**.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(banner): add ScrapeRunRepository.updatePhase`
+
+> Straightforward mirror of `finish()`'s shape — no surprises.
+
+### Task 1.3 — Wire `updatePhase` into `ScraperService.execute` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify + test)
+
+**Steps (TDD)**
+
+1. Add a failing assertion group: `execute()` calls `updatePhase(runId, 'horario')` before
+   `scrapeHorario`, `updatePhase(runId, 'matricula')` before `scrapeMatricula`, and
+   `updatePhase(runId, 'alumnosYNotas')` before the alumnos/notas `Promise.all` — reachable
+   end-to-end today since none of these three call sites depend on `createLimiter()` being
+   real (mock `mockScrapeRunRepository.updatePhase = jest.fn()`, assert call order via
+   `mock.invocationCallOrder` against `mockHttp.get`'s calls, or simpler: assert the three
+   calls happened with the right args and the right run id).
+   `npx jest --no-coverage src/modules/admin/banner/scraper/api/scraper.service.spec.ts` →
+   expect **red**.
+2. Add the three `updatePhase` calls in `execute()`.
+3. Re-run → expect **green**.
+
+**Commit**: `feat(banner): track scrape phase through execute()`
+
+> `execute()`'s own `updatePhase` call sites are reachable end-to-end via `run()` only for the
+> `'horario'` write, since a mocked `SessionExpiredError` short-circuits there before
+> `createLimiter()` is ever reached (the `module: nodenext`/p-limit jest limitation this file's
+> top comment already documents). Covered `'matricula'`/`'alumnosYNotas'` ordering instead by
+> calling the private `execute()` directly with `scrapeHorario`/`scrapeMatricula` stubbed via
+> `jest.spyOn` — `execute()` itself still calls the real `createLimiter(SCRAPE_CONCURRENCY)`
+> between matricula and alumnos/notas, so that call throws and is caught by `execute()`'s own
+> try/catch after all three `updatePhase` calls have already fired; the test only asserts the
+> three calls, not the resulting (incidental) `'failed'` finish.
+
+### Task 1.4 — Expose `phase` on `getRun`/`listRuns`, typed response DTOs ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify — `getRun`/`listRuns`
+  return shapes)
+- `src/modules/admin/banner/scraper/model/scraper.dtos.ts` (modify — add
+  `ScrapeRunStatusResponseDto`, `RunSummaryResponseDto`)
+- `src/modules/admin/banner/scraper/api/docs/scraper.swagger.ts` (modify — pass `responseType`)
+
+**Steps (TDD)**
+
+1. Extend the existing `getRun`/`listRuns` tests in `scraper.service.spec.ts` (or add new
+   ones) asserting the returned object includes `phase`. → expect **red** where not already
+   covered by Task 1.3's assertions.
+2. Add `phase` to `getRun`'s return type and to `RunSummary`/`listRuns`'s mapping. Add the two
+   response DTOs and wire them into `SwaggerScraperGetRun`/`SwaggerScraperList` via
+   `responseType`.
+3. Re-run → expect **green**.
+4. `pnpm openapi:export` and confirm `openapi.json`'s diff shows `phase` on both operations.
+
+**Commit**: `feat(banner): expose scrape phase on getRun and listRuns`
+
+> `getRun`/`listRuns` had no existing tests to extend, so both were added fresh.
+> `SwaggerScraperGetRun`/`SwaggerScraperList` had no prior `responseType` at all (a
+> pre-existing gap `design.md` § AC-1 flags as in-scope to fix here) — `responseType: [Dto]`
+> for the list endpoint follows the same array convention already used elsewhere in this repo
+> (`IfcFindingRowDto`, `OutcomeConfigResponseDto`), confirmed via `HttpMethodWithSwagger`'s
+> `ApiResponse({ type: data.responseType })` pass-through, which Nest Swagger already expands
+> correctly for both a single DTO and an array-of-DTO. `pnpm openapi:export` confirms `phase`
+> on both `RunSummaryResponseDto`/`ScrapeRunStatusResponseDto` schemas.
+
+---
+
+## Milestone 2 — Planner phase tracking (AC-2, sequential shape)
+
+Mirrors Milestone 1 exactly, on the Planner side, using the existing sequential
+`scrapeSecciones` → `scrapeEvaluaciones` → `scrapeNotas` structure. **Do not** implement the
+Milestone 5 pipeline here — that is a separate, staging-gated change; this milestone only adds
+the column and the three sequential `updatePhase` call sites.
+
+### Task 2.1 — Add `PlannerScraperPhase`, `PlannerScrapeRunRepository.updatePhase` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/planner/raw/model/planner-scrape-run.entity.ts` (modify)
+- `src/modules/admin/planner/raw/core/planner-scrape-run.repository.ts` (modify)
+- `src/modules/admin/planner/raw/core/planner-scrape-run.repository.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Failing case for `updatePhase` in the repository spec, same shape as Task 1.2. → **red**.
+2. Implement the type, column, and method (column already exists on the DB from Task 1.1's
+   migration — this task only adds the TS/entity/repository side for Planner).
+3. → **green**. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(planner): add PlannerScrapeRunRepository.updatePhase`
+
+> Straightforward mirror of Banner's `ScrapeRunRepository.updatePhase` shape — no surprises.
+
+### Task 2.2 — Wire `updatePhase` into `PlannerScraperService.execute` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (modify + test)
+
+**Steps (TDD)**
+
+1. Failing test asserting the three `updatePhase` calls at the three existing phase
+   boundaries — same reachability caveat as Planner's existing spec (only phase-0-and-earlier
+   is exercisable end-to-end under Jest; assert the wiring the same way Task 1.3 did, not via
+   a full three-phase `run()`). → **red**.
+2. Add the three `updatePhase` calls.
+3. → **green**.
+
+**Commit**: `feat(planner): track scrape phase through execute()`
+
+> The full `run()` → `execute()` chain is still unreachable end-to-end under Jest (the
+> `p-limit`/`nodenext` constraint the file already documents), so the three `updatePhase` call
+> sites are verified by spying on `resolvePeriodId`/`scrapeSecciones`/`scrapeEvaluaciones`/
+> `scrapeNotas` directly (mocked resolved values) and invoking the real, private `execute()`
+> via reflection — this exercises `execute()`'s actual orchestration logic (the code this task
+> changes) without touching the real `createLimiter()` dynamic import, and asserts both the
+> call arguments and the call order (`invocationCallOrder`) relative to the four spies. Green
+> on the first implementation attempt.
+
+### Task 2.3 — Expose `phase` on Planner's `getRun`/`listRuns`, typed response DTOs ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/model/planner-scraper.dtos.ts` (modify)
+- `src/modules/admin/planner/scraper/api/docs/planner-scraper.swagger.ts` (modify)
+
+**Steps (TDD)**
+
+1. Extend/add tests asserting `phase` on both return shapes. → **red** where uncovered.
+2. Add the two response DTOs, wire `responseType` into the Planner swagger factories.
+3. → **green**. `pnpm openapi:export`, confirm the diff.
+
+**Commit**: `feat(planner): expose scrape phase on getRun and listRuns`
+
+> `PlannerScrapeRunStatus`/`PlannerScraperPhase` had to be imported with `import type` in
+> `planner-scraper.dtos.ts` — under this repo's `isolatedModules` + `emitDecoratorMetadata` tsconfig,
+> a plain `import` of a type-only union used as a decorated (`@ApiProperty`) property's type
+> fails `tsc` (TS1272), since decorator metadata would otherwise try to reference it as a
+> runtime value. `openapi.json` regenerated cleanly and shows `phase` on both
+> `PlannerScrapeRunStatusResponseDto`/`PlannerRunSummaryResponseDto` schemas.
+
+---
+
+## Milestone 3 — Parallelize `scrapeHorario` (AC-4)
+
+### Task 3.1 — Bound `scrapeHorario`'s department loop with `p-limit` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify + test)
+
+**Steps (TDD)**
+
+1. Add a failing test: with `HORARIO_CONCURRENCY` mocked/observable, two departments whose
+   `http.get` resolves out of call order still both end up in
+   `stats.departments.succeeded`/`raw_horario` inserts, and one department's `http.get`
+   rejection (a plain `Error`, not `SessionExpiredError`) lands in `stats.departments.failed`
+   without aborting the other department's task. → **red** against the current sequential
+   loop only in the sense that concurrency isn't exercised yet (the failure-isolation
+   assertion may already pass; the point is establishing the regression guard before the
+   rewrite).
+2. Replace the `for...of` loop with `const limit = await createLimiter(HORARIO_CONCURRENCY);
+await Promise.all(departamentos.map((departamento) => limit(async () => { ... })));`, moving
+   the existing loop body in unchanged.
+3. Re-run → expect **green**.
+4. **Required in this same task, not a follow-up**: fix the now-broken `'expired'`
+   end-to-end test (see `design.md` § AC-4 "Known test-suite consequence"). Replace the
+   `runAndSettle`-based assertion with a `finalizeRun`- or predicate-level test that verifies
+   `SessionExpiredError → 'expired'` classification without depending on a real
+   `createLimiter()` call succeeding. Confirm the full `execute()`-driven `run()` path no
+   longer needs `createLimiter()` to resolve for any status this file still asserts
+   end-to-end.
+5. `npx jest --no-coverage src/modules/admin/banner/scraper/api/scraper.service.spec.ts` full
+   file green.
+
+**Commit**: `feat(banner): parallelize scrapeHorario department fetches`
+
+> Deviated from the literal shape sketched in `design.md` § AC-4 in one respect: `createLimiter()`
+> stayed inside `scrapeHorario` (self-contained, matching `scrapeMatricula`) rather than being
+> hoisted to an injected `limit` parameter — but limiter _creation_ was split into its own
+> instance method, `createHorarioLimit()`, purely as a test seam. Reasoning: I verified
+> empirically (a throwaway spec calling `await import('p-limit')` directly) that **any** real
+> dynamic import unconditionally throws `"A dynamic import callback was invoked without
+--experimental-vm-modules"` under this repo's jest/`module: nodenext` setup, regardless of
+> `jest.mock`. That means whichever function contains the `await createLimiter(...)` call cannot
+> be exercised for real in any test — it must be either the thing being stubbed, or contain
+> nothing else worth testing directly. Keeping `scrapeHorario` self-contained means
+> `jest.spyOn(service, 'scrapeHorario').mockRejectedValue(...)` (used for the `'expired'`
+> end-to-end test) bypasses the whole method, limiter included — if I'd hoisted `createLimiter()`
+> up into `execute()` instead (my first attempt), `execute()` would call it unconditionally
+> _before_ ever reaching the mocked `scrapeHorario`, breaking that test in a new way. Extracting
+> just `createHorarioLimit()` gives the concurrency regression test (below) a seam to stub
+> (`jest.spyOn(service, 'createHorarioLimit').mockResolvedValue((fn) => fn())`) while the real
+> `scrapeHorario` body — the actual per-department fetch/insert/error-isolation logic — runs for
+> real. Also fixed the `'expired'` end-to-end test as anticipated: it now stubs `scrapeHorario`
+> directly instead of relying on `mockHttp.get` rejecting before a (now-added) limiter call is
+> reached. Full spec file: 14/14 green. `tsc --noEmit` clean. Full `banner`+`planner` suite:
+> 12 suites, 222 passed, 2 skipped (up from 218 before this task).
+
+### Task 3.2 — Staging correctness + timing check
+
+- [ ] Task complete
+
+> **Blocked on staging access — not attempted in this environment.** This environment has no
+> staging environment or production-scale Banner credentials to run a real comparison against.
+> Whoever has staging access must run this task's procedure (see `runbook.md`'s AC-4 rows)
+> before this milestone — and the overall change — can be considered fully verified. The
+> `HORARIO_CONCURRENCY = 5` starting value in `scraper.service.ts` is unvalidated against real
+> memory/timing until this runs.
+
+**Files**
+
+- `openspec/changes/scrape-progress-and-performance/runbook.md` (record the result — no code
+  file)
+
+**Steps**
+
+1. Follow `runbook.md`'s AC-4 procedure: run the same closed/historical period sequential
+   (pre-change build) then concurrent (this branch), compare `raw_horario` row counts and
+   `payload_hash` sets per department, record the wall-clock delta.
+2. If correctness diverges, stop and investigate before proceeding to Milestone 4/5 — this is
+   the "proven, zero-risk" win the proposal is least worried about, so a divergence here means
+   something about the shared-state assumption in `design.md` § AC-4 was wrong, not just an
+   unlucky measurement.
+
+**Commit**: none — this task's outcome is a runbook entry, not a code change. If
+`HORARIO_CONCURRENCY`'s starting value of 5 needs adjusting per the memory finding, fold that
+into Milestone 4's task instead (same staging session, same constant-tuning pattern).
+
+---
+
+## Milestone 4 — Investigate `MATRICULA_CONCURRENCY` (AC-5, staging-gated)
+
+### Task 4.1 — Staging measurement and constant adoption
+
+- [ ] Task complete
+
+> **Blocked on staging access — not attempted in this environment.** Same constraint as Task
+> 3.2/5.2: no staging environment or production-scale Banner credentials available here to
+> measure real memory/throttling behavior at a raised `MATRICULA_CONCURRENCY`. `scraper.service.ts`
+> still ships with `MATRICULA_CONCURRENCY = 3`, unchanged, per AC-5(b)'s "if not measured
+> safe, leave as-is" default — this is not a regression, it is simply an investigation that
+> has not run yet. Whoever has staging access should follow `runbook.md`'s AC-5 procedure and
+> either adopt a higher value (with a one-line comment noting the measured value and date) or
+> record "kept at 3" with the reasoning, per this task's original instructions below.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify — only if adopting a new
+  value)
+
+**Steps**
+
+1. Follow `runbook.md`'s AC-5 procedure: staging runs at `MATRICULA_CONCURRENCY = 3`
+   (baseline), then at higher value(s), watching `sys_acc_back` memory throughout and
+   `stats.errors` for new Banner-side throttling.
+2. **If a higher value is confirmed safe**: change the constant, note the measured value and
+   date in a one-line comment beside it, and record the finding in this task's retro
+   (append-only section at the bottom of this file) before marking done.
+3. **If not safe, or no improvement**: leave the constant at 3, and record the finding (what
+   was tried, what happened) in this task's retro — per the proposal, dropped, not forced.
+4. Either way, this task is "done" once the investigation is recorded — a "keep it at 3, here
+   is why" outcome is a completed task, not a blocked one.
+
+**Commit**: `perf(banner): raise MATRICULA_CONCURRENCY to <N> per staging measurement` (only if
+adopting a new value) — otherwise no commit, just the retro entry.
+
+---
+
+## Milestone 5 — Planner phase pipelining (AC-6, staging-gated)
+
+### Task 5.1 — Restructure `PlannerScraperService` into a per-item pipeline ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (modify + test)
+
+**Steps (TDD)**
+
+1. Add failing tests per `design.md` § AC-6: (a) a section reachable from two different
+   courses' search results is only fetched once by `scrapeEvaluaciones` (dedup via
+   `seenSections`); (b) an `(evalComponentId, sectionId)` pair reachable twice is only fetched
+   once by `scrapeNotas` (`seenPairs`); (c) `updatePhase` fires exactly once per phase even
+   when many courses/sections independently trigger the same phase's first entry
+   (`evaluacionesStarted`/`notasStarted` guards). → **red**.
+2. Implement the pipeline per `design.md` § AC-6's sketch: `scheduleEvaluacion`,
+   `scheduleNota`, and the top-level `cursos.map(...)` driving the whole chain via `.then`
+   composition so `Promise.all` over the course-level tasks alone is sufficient to await
+   completion.
+3. Re-run → expect **green**. Confirm the existing `isFatalScrapeError`/session-classification
+   tests in this file still pass unchanged — the pipeline must not alter how a fatal error
+   aborts the run versus a per-item error being recorded and continued.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(planner): pipeline secciones/evaluaciones/notas instead of sequential phases`
+
+> Implementation deviated from the literal steps above in two ways, both intentional:
+>
+> 1. **Test/implementation order**: the pipeline and its tests were written in the same pass
+>    rather than strict red-first, since the pipeline shape itself was the thing being
+>    designed. To compensate, the `seenSections` dedup guard was temporarily disabled after
+>    the fact and the corresponding test re-run to confirm it fails for the right reason
+>    (`Received length: 2` instead of `1`) before reverting — a post-hoc mutation check
+>    standing in for a missed red-green cycle.
+> 2. **Testing approach**: the task's literal steps assumed `scrapeSecciones`/
+>    `scrapeEvaluaciones`/`scrapeNotas` still exist as separately-callable methods to test
+>    against (mirroring how Milestone 2's now-superseded "execute phase tracking" test spied
+>    on them). Pipelining removes that call shape — there's no longer a moment where all
+>    secciones are done before any evaluaciones start. Instead, a new `createLimiters()`
+>    seam was extracted (returns `{ seccion, evaluacion, nota }` limiters) purely so tests can
+>    stub past `createLimiter()`'s real `await import('p-limit')` — unusable under this repo's
+>    `module: nodenext` jest setup, the same constraint Banner's and Planner's existing specs
+>    already document — while exercising the real scheduling/dedup/phase-guard logic through
+>    `execute()` with `mockHttp.get` responses varied by path. This tests actual behavior
+>    (dedup, phase-order, fatal-error propagation) rather than spying on internal call shape,
+>    and required deleting the old "execute phase tracking" test (its `scrapeSecciones` etc.
+>    spy targets no longer exist) in favor of a new "execute pipeline (Milestone 5)" describe
+>    block. The pre-existing `isFatalScrapeError`/`run classification`/`finalizeRun` blocks
+>    were left untouched and confirmed still green (23/23 passing).
+>
+> One flaky, unrelated failure was observed on one run of the broader
+> `src/modules/admin/banner src/modules/admin/planner` suite (a timer-based Planner
+> credential-throttle test elsewhere in the module) and did not reproduce on immediate re-run
+> — not caused by this change, not investigated further here.
+
+### Task 5.2 — Staging correctness, timing, and memory check; adopt or revert
+
+- [ ] Task complete — **blocked on staging access**, not attempted in this environment.
+
+> Task 5.1's pipeline is implemented and unit-correct (dedup, phase-guard, and fatal-error
+> propagation all verified — see Task 5.1's retro), but **not yet staging-validated** for the
+> peak-concurrency memory risk `design.md` § AC-6 calls out: pipelining can raise Planner's
+> peak concurrent in-flight requests from today's 20 (one phase active at a time) to up to 60
+> (all three limiters active simultaneously). Follow `runbook.md`'s AC-6 procedure (steps 6–8)
+> before shipping this to production: closed-period correctness diff against the
+> pre-Milestone-5 build, wall-clock comparison, and `sys_acc_back` memory watched throughout.
+> If that check fails, AC-6(b)'s revert-to-sequential fallback remains available — Task 5.1's
+> commit is a clean, isolated revert target since it only touches
+> `planner-scraper.service.ts`/`.spec.ts`.
+
+**Files**
+
+- Revert of Task 5.1's commit (only if AC-6(b) applies) — otherwise no code file, a runbook
+  entry.
+
+**Steps**
+
+1. Follow `runbook.md`'s AC-6 procedure: same closed/historical period, sequential
+   (pre-Milestone-5 build) vs. pipelined (this branch), comparing `raw_planner_seccion`/
+   `raw_planner_evaluacion`/`raw_planner_nota` row counts and `payload_hash` sets, wall-clock
+   delta, and `sys_acc_back` memory throughout (per `design.md`'s "up to 60 concurrent
+   in-flight requests" risk).
+2. **If safe and correct**: keep Task 5.1's implementation. Record the measured improvement in
+   this task's retro.
+3. **If memory pressure shows up but correctness holds**: try the outer-limiter fallback from
+   `design.md` § AC-6 (a fourth `p-limit` wrapping all three inner limiters), re-measure, then
+   decide.
+4. **If still unsafe, or correctness diverges**: revert Task 5.1's commit, leave
+   `PlannerScraperService` sequential, and record the finding — per AC-6(b), this is a
+   legitimate, complete outcome for this milestone, not a failure to fix.
+
+**Commit**: none if adopted as-is; `perf(planner): bound total in-flight requests when
+pipelining phases` if the outer-limiter fallback is needed; `revert: pipeline
+secciones/evaluaciones/notas` if AC-6(b) applies.
+
+---
+
+## Milestone 6 — Docs
+
+### Task 6.1 — `docs/CONTEXT.md` updates ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Files**
+
+- `docs/CONTEXT.md` (modify)
+
+**Steps**
+
+1. Add the `sys_acc_back` 640MB memory-ceiling entry to § Database (or § Business Rules,
+   whichever reads more naturally once the surrounding text is in front of you) per
+   `design.md`'s Docs section.
+2. Add the "scrape runs expose an in-flight `phase`, monotonic and single-valued" entry to
+   § Business Rules, reflecting whatever Milestone 5 actually landed as (pipelined or
+   sequential).
+
+**Commit**: `docs(context): document scrape phase tracking and the sys_acc_back memory ceiling`
+
+> Added the memory-ceiling paragraph to § Database right after the existing "Two datasources"
+> paragraph (also used the opportunity to note there that `raw`/`planner-raw` are two
+> connection names on the same physical Postgres, since that was relevant context already
+> established during design but not previously written down in CONTEXT.md). Added the `phase`
+> entry to § Business Rules reflecting Milestone 5's actual outcome: Planner is pipelined
+> (`updatePhase` fires on first entry into each phase, which can happen while an earlier phase
+> is still processing other items), not sequential — the entry describes the monotonic
+> single-value design decision explicitly so a future reader doesn't need to re-derive it from
+> `design.md`.
+
+<!--
+Append-only sections below. These record what actually happened, not what was planned, and
+they are the best input to the next design.
+
+## Unplanned — <what and why>
+
+### Task U.1 — <title>
+- [ ] Task complete
+
+## Post-QA fixes
+
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1
+-->
