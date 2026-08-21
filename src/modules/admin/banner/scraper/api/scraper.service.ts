@@ -24,13 +24,11 @@ const NRC_CHUNK_SIZE = 50;
 // default is safe without measurement.
 const HORARIO_CONCURRENCY = 5;
 const MATRICULA_CONCURRENCY = 3;
-// Raised from 80 → 120 (2026-08-21) after a full production run at 80 showed the
-// alumnos+notas phase dominating wall-clock time (~25 of ~28 minutes) while memory stayed
-// well under the 640MB cap (peaked ~57%) and the Banner-side 5xx rate was negligible
-// (18 errors across ~72k requests, all retried successfully, clustered in one brief burst,
-// not sustained). A moderate bump, not a large one — re-measure error rate and memory before
-// going further; see BannerHttpClient's jittered/429-aware retry, added alongside this.
-const SCRAPE_CONCURRENCY = 120;
+// Lowered from 120 → 80 (2026-08-21) after benchmarking the notas endpoint directly against
+// Banner at concurrency 20–200: real throughput plateaus at ~35 req/s by concurrency ~80 (zero
+// 429s even at 200, so this is backend capacity, not a policy throttle) — 120 bought +3%
+// throughput over 80 for +44% p50 latency, pure queueing cost with no wall-clock benefit.
+const SCRAPE_CONCURRENCY = 80;
 const INSERT_BATCH_SIZE = 500;
 
 interface ScrapeStats {
@@ -40,7 +38,6 @@ interface ScrapeStats {
 	errors: Array<{ step: string; key: string; message: string }>;
 }
 
-// A student enrolled in a section (from matricula); joined to a course code by NRC.
 interface Enrollment {
 	codigoAlumno: string;
 	nrc: string;
@@ -290,8 +287,6 @@ export class ScraperService {
 		stats: ScrapeStats,
 	): Promise<{ nrcs: string[]; courseByNrc: Map<string, string> }> {
 		const nrcs = new Set<string>();
-		// NRC -> course code, used later to turn (alumno, nrc) enrollments into the
-		// (alumno, curso) pairs the notas endpoint needs.
 		const courseByNrc = new Map<string, string>();
 		const limit = await this.createHorarioLimit();
 
@@ -516,7 +511,6 @@ function courseCodeOf(section: Record<string, unknown>): string {
 	return `${codigo}${numero}`;
 }
 
-// Join enrollments -> course code by NRC, deduped to unique (alumno, curso) pairs.
 function buildNotaPairs(enrollments: Enrollment[], courseByNrc: Map<string, string>): NotaPair[] {
 	const pairs: NotaPair[] = [];
 	const seen = new Set<string>();

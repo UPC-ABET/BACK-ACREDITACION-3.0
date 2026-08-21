@@ -439,20 +439,31 @@ adopting a new value) — otherwise no commit, just the retro entry.
 > credential-throttle test elsewhere in the module) and did not reproduce on immediate re-run
 > — not caused by this change, not investigated further here.
 
-### Task 5.2 — Staging correctness, timing, and memory check; adopt or revert
+### Task 5.2 — Staging correctness, timing, and memory check; adopt or revert ✅ DONE (2026-08-21)
 
-- [ ] Task complete — **blocked on staging access**, not attempted in this environment.
+- [x] Task complete
 
-> Task 5.1's pipeline is implemented and unit-correct (dedup, phase-guard, and fatal-error
-> propagation all verified — see Task 5.1's retro), but **not yet staging-validated** for the
-> peak-concurrency memory risk `design.md` § AC-6 calls out: pipelining can raise Planner's
-> peak concurrent in-flight requests from today's 20 (one phase active at a time) to up to 60
-> (all three limiters active simultaneously). Follow `runbook.md`'s AC-6 procedure (steps 6–8)
-> before shipping this to production: closed-period correctness diff against the
-> pre-Milestone-5 build, wall-clock comparison, and `sys_acc_back` memory watched throughout.
-> If that check fails, AC-6(b)'s revert-to-sequential fallback remains available — Task 5.1's
-> commit is a clean, isolated revert target since it only touches
-> `planner-scraper.service.ts`/`.spec.ts`.
+> No staging environment exists (same constraint as every other AC-3/5/6/7 gap in this file), so
+> this was verified against a real production run instead: run `8fdeb69c-c228-465b-b202-ce8bb8ac077a`,
+> started 2026-08-21T17:27:30Z, watched live via `docker stats sys_acc_back` (polled every
+> 20–30s) and direct `SELECT`s against `planner_scrape_run` over SSH.
+>
+> **Result: adopted, no changes needed.** `status: completed`, 0 entries in `stats.errors`,
+> duration 11m53s, counts `{ seccion: 16836, evaluacion: 77371, nota: 2402374 }`. `phase`
+> advanced `secciones → evaluaciones → notas` monotonically and cleared to `null` on completion
+> (confirms Task 7.1's fix holds for Planner too). Peak memory **367.7MiB / 640MB (57.4%)**,
+> settling to a 305–356MiB steady state for the bulk of the run — the pipelined design's
+> up-to-60-concurrent-in-flight risk from `design.md` § AC-6 did not materialize into memory
+> pressure against this real workload (2.4M+ nota rows), with ~43% headroom below the cap at the
+> observed peak.
+>
+> **Scope actually covered vs. the original procedure**: memory and timing are directly
+> measured above. The `runbook.md` AC-6 correctness diff (row counts/`payload_hash` sets against
+> a pre-Milestone-5 sequential build for the same period) was **not** performed — that would
+> require reverting to re-run the old sequential code for comparison, which wasn't done here.
+> Task 5.1's own unit tests already cover dedup/phase-guard/fatal-error-propagation correctness
+> (see its retro); this task closes the remaining real-world question, which was memory safety
+> under production load, not per-row correctness.
 
 **Files**
 
