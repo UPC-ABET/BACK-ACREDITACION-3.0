@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique }
 import { ScrapeRunEntity } from './scrape-run.entity';
 
 @Entity({ name: 'raw_notas' })
-@Unique('UQ_raw_notas_run_id_codigo_alumno_curso_codigo', ['runId', 'codigoAlumno', 'cursoCodigo'])
+@Unique('UQ_raw_notas_run_id_student_code_course_code', ['runId', 'studentCode', 'courseCode'])
 export class RawNotasEntity {
 	@PrimaryGeneratedColumn({ type: 'bigint', primaryKeyConstraintName: 'PK_raw_notas' })
 	id: string;
@@ -15,16 +15,16 @@ export class RawNotasEntity {
 	run: ScrapeRunEntity;
 
 	@Column({ type: 'text' })
-	nivel: string;
+	level: string;
 
 	@Column({ type: 'text' })
-	periodo: string;
+	period: string;
 
 	@Column({ type: 'text' })
-	codigoAlumno: string;
+	studentCode: string;
 
 	@Column({ type: 'text' })
-	cursoCodigo: string;
+	courseCode: string;
 
 	@Column({ type: 'jsonb' })
 	payload: any;

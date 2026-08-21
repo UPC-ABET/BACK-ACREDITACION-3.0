@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export type ScrapeRunStatus = 'running' | 'completed' | 'partial' | 'failed' | 'expired';
-export type ScraperPhase = 'horario' | 'matricula' | 'alumnosYNotas';
+export type ScraperPhase = 'schedule' | 'enrollment' | 'studentsAndGrades';
 
 @Entity({ name: 'scrape_run' })
 export class ScrapeRunEntity {
@@ -9,13 +9,13 @@ export class ScrapeRunEntity {
 	id: string;
 
 	@Column({ type: 'text' })
-	nivel: string;
+	level: string;
 
 	@Column({ type: 'text' })
-	periodo: string;
+	period: string;
 
 	@Column({ type: 'text', array: true })
-	departamentos: string[];
+	departments: string[];
 
 	@Column({ type: 'text' })
 	status: ScrapeRunStatus;
