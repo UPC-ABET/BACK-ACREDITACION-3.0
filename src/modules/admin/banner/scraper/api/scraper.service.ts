@@ -11,13 +11,18 @@ import { RawNotasInsert, RawNotasRepository } from '../../raw/core/raw-notas.rep
 import { DepartmentSourceRepository } from '../core/department-source.repository';
 import { BannerHttpClient } from '../core/banner-http.client';
 import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
-import { ScrapeRunStatus } from '../../raw/model/scrape-run.entity';
+import { ScraperPhase, ScrapeRunStatus } from '../../raw/model/scrape-run.entity';
 import { RunScrapeDto } from '../model/scraper.dtos';
 import { scraperValidationStrings } from '../config/strings/scraper.validation';
 import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
 
 const DEFAULT_NIVEL = 'UG';
 const NRC_CHUNK_SIZE = 50;
+// Starting value pending the staging measurement in tasks.md Task 3.2 / design.md AC-7 — a
+// department's horario response is plausibly larger than one matricula chunk (NRC_CHUNK_SIZE),
+// so this starts conservative relative to MATRICULA_CONCURRENCY rather than assuming a higher
+// default is safe without measurement.
+const HORARIO_CONCURRENCY = 5;
 const MATRICULA_CONCURRENCY = 3;
 const SCRAPE_CONCURRENCY = 80;
 const INSERT_BATCH_SIZE = 500;
@@ -46,6 +51,7 @@ export interface RunSummary {
 	periodo: string;
 	departamentos: string[];
 	status: ScrapeRunStatus;
+	phase: ScraperPhase | null;
 	startedAt: string;
 	finishedAt: string | null;
 	counts: ScrapeStats['counts'] | null;
@@ -121,12 +127,14 @@ export class ScraperService {
 		return { runId };
 	}
 
-	async getRun(runId: string): Promise<{ status: ScrapeRunStatus; stats: ScrapeStats | null }> {
+	async getRun(
+		runId: string,
+	): Promise<{ status: ScrapeRunStatus; phase: ScraperPhase | null; stats: ScrapeStats | null }> {
 		const run = await this.scrapeRunRepository.findById(runId);
 		if (!run) {
 			throw new HttpException(scraperValidationStrings.error.runNotFound, HttpStatus.NOT_FOUND);
 		}
-		return { status: run.status, stats: run.stats as ScrapeStats | null };
+		return { status: run.status, phase: run.phase, stats: run.stats as ScrapeStats | null };
 	}
 
 	async listRuns(academicPeriodId: number): Promise<RunSummary[]> {
@@ -144,6 +152,7 @@ export class ScraperService {
 			periodo: run.periodo,
 			departamentos: run.departamentos,
 			status: run.status,
+			phase: run.phase,
 			startedAt: run.startedAt.toISOString(),
 			finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
 			counts: (run.stats as ScrapeStats | null)?.counts ?? null,
@@ -166,6 +175,7 @@ export class ScraperService {
 		};
 
 		try {
+			await this.scrapeRunRepository.updatePhase(runId, 'horario');
 			const { nrcs, courseByNrc } = await this.scrapeHorario(
 				runId,
 				nivel,
@@ -174,6 +184,7 @@ export class ScraperService {
 				courseCodes,
 				stats,
 			);
+			await this.scrapeRunRepository.updatePhase(runId, 'matricula');
 			const { codigos, enrollments } = await this.scrapeMatricula(
 				runId,
 				nivel,
@@ -182,6 +193,7 @@ export class ScraperService {
 				stats,
 			);
 			stats.uniqueStudents = codigos.length;
+			await this.scrapeRunRepository.updatePhase(runId, 'alumnosYNotas');
 			// Alumnos and Notas only depend on matricula output, not on each other.
 			// Run them concurrently through one shared limiter (see SCRAPE_CONCURRENCY).
 			const limit = await createLimiter(SCRAPE_CONCURRENCY);
@@ -256,6 +268,13 @@ export class ScraperService {
 		});
 	}
 
+	// Split out so tests can stub the limiter without going through a real `await
+	// import('p-limit')` — that dynamic import is unusable under this repo's `module: nodenext`
+	// ts-jest setup regardless of mocking (see this file's `.spec.ts` for the full explanation).
+	private async createHorarioLimit(): Promise<Limiter> {
+		return await createLimiter(HORARIO_CONCURRENCY);
+	}
+
 	private async scrapeHorario(
 		runId: string,
 		nivel: string,
@@ -268,50 +287,58 @@ export class ScraperService {
 		// NRC -> course code, used later to turn (alumno, nrc) enrollments into the
 		// (alumno, curso) pairs the notas endpoint needs.
 		const courseByNrc = new Map<string, string>();
+		const limit = await this.createHorarioLimit();
 
-		for (const departamento of departamentos) {
-			try {
-				const json = await this.http.get<{ detalle?: unknown }>('/horario/HorarioClasesPracticas', {
-					codigoNivel: nivel,
-					codigoPeriodo: periodo,
-					codigoDepartamento: departamento,
-				});
-				const sections = asArray<Record<string, unknown>>(json.detalle);
-				const rows: RawHorarioInsert[] = [];
-				for (const section of sections) {
-					// Scope the scrape to courses tracked in the period's study plans. Sections whose
-					// derived code (materia.codigo + numeroCurso) isn't one of ours are dropped here, so
-					// they never reach raw_horario nor the downstream matricula/alumnos/notas steps.
-					const cursoCodigo = courseCodeOf(section);
-					if (!courseCodes.has(cursoCodigo)) continue;
-					const nrc = toStringOrNull(section.nrc);
-					if (nrc) {
-						nrcs.add(nrc);
-						courseByNrc.set(nrc, cursoCodigo);
+		await Promise.all(
+			departamentos.map((departamento) =>
+				limit(async () => {
+					try {
+						const json = await this.http.get<{ detalle?: unknown }>(
+							'/horario/HorarioClasesPracticas',
+							{
+								codigoNivel: nivel,
+								codigoPeriodo: periodo,
+								codigoDepartamento: departamento,
+							},
+						);
+						const sections = asArray<Record<string, unknown>>(json.detalle);
+						const rows: RawHorarioInsert[] = [];
+						for (const section of sections) {
+							// Scope the scrape to courses tracked in the period's study plans. Sections whose
+							// derived code (materia.codigo + numeroCurso) isn't one of ours are dropped here, so
+							// they never reach raw_horario nor the downstream matricula/alumnos/notas steps.
+							const cursoCodigo = courseCodeOf(section);
+							if (!courseCodes.has(cursoCodigo)) continue;
+							const nrc = toStringOrNull(section.nrc);
+							if (nrc) {
+								nrcs.add(nrc);
+								courseByNrc.set(nrc, cursoCodigo);
+							}
+							rows.push({
+								runId,
+								nivel,
+								periodo,
+								departamento,
+								nrc,
+								payload: section,
+								payloadHash: hashPayload(section),
+							});
+						}
+						await this.rawHorarioRepository.bulkInsert(rows);
+						stats.counts.horario += rows.length;
+						stats.departments.succeeded.push(departamento);
+					} catch (error) {
+						if (error instanceof SessionExpiredError) throw error;
+						stats.departments.failed.push(departamento);
+						stats.errors.push({
+							step: 'horario',
+							key: departamento,
+							message: (error as Error).message,
+						});
 					}
-					rows.push({
-						runId,
-						nivel,
-						periodo,
-						departamento,
-						nrc,
-						payload: section,
-						payloadHash: hashPayload(section),
-					});
-				}
-				await this.rawHorarioRepository.bulkInsert(rows);
-				stats.counts.horario += rows.length;
-				stats.departments.succeeded.push(departamento);
-			} catch (error) {
-				if (error instanceof SessionExpiredError) throw error;
-				stats.departments.failed.push(departamento);
-				stats.errors.push({
-					step: 'horario',
-					key: departamento,
-					message: (error as Error).message,
-				});
-			}
-		}
+				}),
+			),
+		);
 
 		return { nrcs: [...nrcs], courseByNrc };
 	}
@@ -326,6 +353,10 @@ export class ScraperService {
 		const codigos = new Set<string>();
 		const enrollments: Enrollment[] = [];
 		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
+		// No stubbable seam here, unlike `scrapeHorario`'s `createHorarioLimit()` — no end-to-end
+		// test path reaches this call today (the 'expired' test now stops at `scrapeHorario`), so
+		// this real `await import('p-limit')` (unusable under this repo's jest/`module: nodenext`
+		// setup) has never needed a seam to work around it.
 		const limit = await createLimiter(MATRICULA_CONCURRENCY);
 
 		await Promise.all(

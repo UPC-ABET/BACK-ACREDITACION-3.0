@@ -2,7 +2,7 @@ import { Not } from 'typeorm';
 import { ScrapeRunRepository } from './scrape-run.repository';
 
 describe('ScrapeRunRepository', () => {
-	const mockTypeormRepository = { delete: jest.fn() };
+	const mockTypeormRepository = { delete: jest.fn(), update: jest.fn() };
 	const repo = new ScrapeRunRepository(mockTypeormRepository as any);
 
 	beforeEach(() => {
@@ -39,6 +39,14 @@ describe('ScrapeRunRepository', () => {
 				periodo: '202620',
 				id: Not('run-keep-2'),
 			});
+		});
+	});
+
+	describe('updatePhase', () => {
+		it('updates the run phase by id', async () => {
+			await repo.updatePhase('run-1', 'matricula');
+
+			expect(mockTypeormRepository.update).toHaveBeenCalledWith('run-1', { phase: 'matricula' });
 		});
 	});
 });

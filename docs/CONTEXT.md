@@ -207,7 +207,18 @@ Configuration:
 **Two datasources.** The main one holds the application domain above. A second, _raw_
 datasource (`src/database/typeorm.raw.config.ts`, with its own `migration:raw:*` scripts)
 mirrors the external Banner / uPlanner scraping database. Entities under `admin/*/raw/`
-belong to it and map external shapes verbatim.
+belong to it and map external shapes verbatim. The `raw` and `planner-raw` TypeORM connection
+names are two registrations of this **same** physical Postgres instance, not two databases —
+which is why `src/database/migrations-raw/` holds a single migration history covering both
+Banner's and Planner's raw tables.
+
+**The production `sys_acc_back` container is capped at 640MB (`mem_limit: 640m`), and this is
+the binding constraint on scraper concurrency, not CPU.** The box is a small 2 vCPU / 1.9GB
+EC2 instance; raising any scraper's in-flight request concurrency increases the HTTP response
+buffers and JSON parsing held in memory at once inside that ceiling. Any change to Banner's or
+Planner's `p-limit` concurrency constants must be validated against this cap on staging before
+being adopted — see `openspec/changes/scrape-progress-and-performance/design.md` and
+`runbook.md` for the measurement procedure this was first documented against.
 
 **`RAW_DB_URL` gates whole modules, not just that connection.** `app.module.ts` registers
 `BannerModule`, `PlannerModule` and `ScrapingExportsModule` only when it is set, so a deployment
@@ -407,5 +418,20 @@ _why_ writes them down. Do not populate it by guessing from the code.
   `departamentos`, and Planner's `escuela` column is never actually populated. Enforced in
   `ScraperService.execute()` / `PlannerScraperService.execute()`, right after each run's
   `finish()` call. See [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md).
+- **A scrape run exposes its in-flight `phase` alongside the terminal `status`, and `phase` is
+  single-valued and monotonic even when the underlying work is pipelined.** Banner writes
+  `phase` (`horario` → `matricula` → `alumnosYNotas`) at each of its three strictly sequential
+  stage boundaries. Planner writes `phase` (`secciones` → `evaluaciones` → `notas`) the first
+  time each phase's work begins — which, because `PlannerScraperService.execute()` pipelines
+  the three stages (each section's `evaluaciones` fetch starts as soon as that section is
+  known, not after every course's `secciones` call finishes; each pair's `notas` fetch starts
+  as soon as that pair is known), can happen while an earlier phase is still processing other
+  items. `phase` always reports the furthest phase reached, not a set of concurrently-active
+  phases — a deliberate simplification so the field stays a single label a frontend can render,
+  regardless of whether the underlying scraper happens to be sequential or pipelined. Planner's
+  pipelined concurrency profile (up to three phase limiters simultaneously active instead of
+  strictly one-at-a-time) is not yet staging-validated against the memory ceiling above — see
+  `openspec/changes/scrape-progress-and-performance/runbook.md`. See also
+  `openspec/changes/scrape-progress-and-performance/design.md` § AC-1/AC-2/AC-6.
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->

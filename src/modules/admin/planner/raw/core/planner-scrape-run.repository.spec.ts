@@ -2,7 +2,7 @@ import { Not } from 'typeorm';
 import { PlannerScrapeRunRepository } from './planner-scrape-run.repository';
 
 describe('PlannerScrapeRunRepository', () => {
-	const mockTypeormRepository = { delete: jest.fn() };
+	const mockTypeormRepository = { delete: jest.fn(), update: jest.fn() };
 	const repo = new PlannerScrapeRunRepository(mockTypeormRepository as any);
 
 	beforeEach(() => {
@@ -38,6 +38,16 @@ describe('PlannerScrapeRunRepository', () => {
 			expect(mockTypeormRepository.delete).toHaveBeenNthCalledWith(2, {
 				periodo: '202620',
 				id: Not('run-keep-2'),
+			});
+		});
+	});
+
+	describe('updatePhase', () => {
+		it('updates the run phase by id', async () => {
+			await repo.updatePhase('run-1', 'evaluaciones');
+
+			expect(mockTypeormRepository.update).toHaveBeenCalledWith('run-1', {
+				phase: 'evaluaciones',
 			});
 		});
 	});

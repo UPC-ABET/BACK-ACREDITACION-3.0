@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export type PlannerScrapeRunStatus = 'running' | 'completed' | 'partial' | 'failed' | 'expired';
+export type PlannerScraperPhase = 'secciones' | 'evaluaciones' | 'notas';
 
 // Planner analogue of ScrapeRunEntity. Planner runs scope by period (and optionally school);
 // the per-phase counts (secciones/evaluaciones/notas) live in `stats`.
@@ -17,6 +18,9 @@ export class PlannerScrapeRunEntity {
 
 	@Column({ type: 'text' })
 	status: PlannerScrapeRunStatus;
+
+	@Column({ type: 'text', nullable: true })
+	phase: PlannerScraperPhase | null;
 
 	@Column({ type: 'timestamptz', default: () => 'now()' })
 	startedAt: Date;
