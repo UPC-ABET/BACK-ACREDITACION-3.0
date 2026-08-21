@@ -522,8 +522,295 @@ they are the best input to the next design.
 - [ ] Task complete
 
 ## Post-QA fixes
+-->
 
 ## Audit fixes (/abet-audit-pr)
 
-### Review round 1
--->
+### Review round 1 — 2026-08-20
+
+Six-auditor parallel review of `origin/develop...HEAD`. Verdict: NOT READY (1 blocker + task
+completeness gate). Findings below, grouped for implementation; each carries its own checkbox
+per the task-checkbox rule.
+
+#### AF-1 — Unguarded fire-and-forget `updatePhase` can crash the process ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Severity**: Blocker (confirmed independently by 3 of 6 auditors: code quality, antipatterns,
+runtime robustness)
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify, lines ~220, ~230)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (test)
+
+**Finding**: `scheduleNota`/`scheduleEvaluacion` fire `void this.scrapeRunRepository.updatePhase(...)`
+with no `.catch()`. No global `unhandledRejection` handler exists; Node 24 terminates the
+process by default on one. On this single-replica service, a transient DB rejection here would
+crash the entire backend, not just the scrape run — inconsistent with the same file's own
+`triggerExportGeneration`, which correctly `.catch()`s.
+
+**Fix**: wrap both calls the same way `triggerExportGeneration` does, logging and swallowing
+the error.
+
+#### AF-2 — Missing `phase` coverage on `PlannerScraperService.getRun`/`listRuns` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Severity**: Major (testing)
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (test)
+
+**Finding**: Task 2.3 required tests asserting `phase` on both return shapes (mirroring
+Banner's). Source is correct; the regression guard was never added.
+
+**Fix**: add `getRun`/`listRuns` phase-inclusion tests mirroring Banner's equivalent describe
+blocks.
+
+> Added `describe('getRun', ...)`/`describe('listRuns', ...)` mirroring Banner's exact pattern.
+> Discovered along the way: `mockScrapeRunRepository` in this spec file was missing
+> `findByPeriodo: jest.fn()` entirely (Banner's had it) — `listRuns()` calls it, so the test
+> would have thrown `TypeError: ... is not a function` without adding it. Added it to the mock
+> object alongside the new tests.
+
+#### AF-3 — Refactor silently dropped real `SessionExpiredError` coverage through `scrapeHorario` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Added a test exercising the real `scrapeHorario`/limiter/scheduling logic (only
+> `createHorarioLimit()` stubbed past the unusable `p-limit` dynamic import), asserting a real
+> `SessionExpiredError` from one department both propagates out of `scrapeHorario` (the
+> returned promise rejects) and is not recorded into `stats.departments.failed`. Passed
+> immediately — the parallelization's `if (error instanceof SessionExpiredError) throw error;`
+> was already correct, this was a coverage gap, not a live bug.
+
+**Severity**: Major (testing)
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (test)
+
+**Finding**: The only remaining `'expired'` test stubs `scrapeHorario` entirely (bypassing the
+new limiter), where the pre-`scrape-progress-and-performance` test on `develop` exercised a
+real, unstubbed `SessionExpiredError`. Nothing currently proves a fatal error propagates out of
+the new `Promise.all` instead of being swallowed like a per-item failure.
+
+**Fix**: add a case where one department's `http.get` rejects with a real `SessionExpiredError`
+inside the concurrent `scrapeHorario`, asserting it propagates and does not get recorded as a
+per-department failure.
+
+#### AF-4 — `openapi.json` mistypes nullable string fields as `object` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Both portions done: Banner's `RunSummaryResponseDto.finishedAt`/`.triggeredBy` and Planner's
+> `PlannerRunSummaryResponseDto.escuela`/`.finishedAt`/`.triggeredBy` now all pass `type: String`.
+> `openapi.json` regenerated once, at the end, after both portions landed — `git diff
+openapi.json` confirms all five fields flipped from `"type": "object"` to `"type": "string"`.
+
+**Severity**: Major (API contract)
+
+**Files**
+
+- `src/modules/admin/banner/scraper/model/scraper.dtos.ts` (modify, `finishedAt`/`triggeredBy`)
+- `src/modules/admin/planner/scraper/model/planner-scraper.dtos.ts` (modify, `escuela`/
+  `finishedAt`/`triggeredBy`)
+- `openapi.json` (regenerate)
+
+**Finding**: five `@ApiPropertyOptional({...})` calls omit `type:`, so Nest's Swagger
+reflection falls back to `Object` for a nullable-union TS type. Confirmed in the committed
+spec (`"type": "object"` where it should be `"type": "string"`). A correct sibling pattern
+already exists in `scraping-exports.response.dtos.ts` (`type: String`/`type: Date`).
+
+**Fix**: add `type: String` to all five decorators; regenerate `openapi.json` and confirm the
+diff shows `"type": "string"`.
+
+#### AF-5 — Banner's response DTOs use untyped `string` instead of the entity's union types ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Imported `ScrapeRunStatus`/`ScraperPhase` from `scrape-run.entity.ts` and typed both DTOs'
+> `status`/`phase` fields with them, mirroring Planner's DTO exactly.
+
+**Severity**: Major (confirmed by 3 of 6 auditors, one calling it major, two minor — kept at
+the strongest reported severity per synthesis convention)
+
+**Files**
+
+- `src/modules/admin/banner/scraper/model/scraper.dtos.ts` (modify)
+
+**Finding**: `ScrapeRunStatusResponseDto`/`RunSummaryResponseDto` type `status`/`phase` as bare
+`string`/`string | null` with a disconnected literal `enum:` array, unlike the sibling Planner
+DTO (same PR) which imports and uses `PlannerScrapeRunStatus`/`PlannerScraperPhase`. No
+compile-time link to the entity's real value set.
+
+**Fix**: `import type { ScrapeRunStatus, ScraperPhase } from '../../raw/model/scrape-run.entity'`
+and type the fields accordingly, mirroring Planner's DTO.
+
+#### AF-6 — `stats`/`counts` typed inconsistently between the two DTO pairs ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Changed `ScrapeRunStatusResponseDto.stats`/`RunSummaryResponseDto.counts` from
+> `object | null` to `unknown`, matching Planner's existing convention. No `openapi.json` change
+> either way — both produce `type: Object` in Swagger; this was purely a TS-side consistency fix.
+
+**Severity**: Minor
+
+**Files**
+
+- `src/modules/admin/banner/scraper/model/scraper.dtos.ts` (modify — `object | null` → `unknown`)
+- `src/modules/admin/planner/scraper/model/planner-scraper.dtos.ts` (already `unknown` — no change)
+
+**Fix**: align Banner's `stats`/`counts` typing to `unknown`, matching Planner's, since both
+are opaque JSONB blobs.
+
+#### AF-7 — Orphaned background writes can race a fatal-error `deleteRun` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Added a shared `AbortState { aborted: boolean }` object, passed into `fetchSeccion`/
+> `fetchEvaluacion`/`fetchNota` and checked at the top of each plus at the top of
+> `scheduleEvaluacion`/`scheduleNota` and the per-course task. Set `true` synchronously the
+> moment `isFatalScrapeError(error)` is true, right before the existing rethrow. Verified via
+> mutation testing (removed the checks, confirmed the new regression test goes red with the
+> exact wasted call it's meant to prevent, restored, confirmed green) — the guards turned out to
+> be redundant with each other for the specific scenario tested (removing only one didn't turn
+> the test red, since a sibling check downstream still caught it), which is intentional defense
+> in depth per the fix's own instruction to check at multiple points, not a sign one check is
+> unnecessary.
+
+**Severity**: Minor (mitigated today by each leaf's own try/catch — this closes the window
+rather than fixing a crash)
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (test)
+
+**Finding**: pipelining means dozens of `evaluacion`/`nota` leaf tasks for already-completed
+sections can still be in flight when a fatal error triggers `finalizeRun`'s `deleteRun` —
+before pipelining, the barrier model confined this window to same-phase siblings only.
+
+**Fix**: add a local `aborted` flag set synchronously the moment a fatal error is classified;
+check it at the start of each leaf fetch (`scrapeSecciones`'s per-course task,
+`scheduleEvaluacion`, `scheduleNota`) and skip scheduling/fetching if already set — closes the
+window without needing a full `AbortController`.
+
+#### AF-8 — `docs/CONTEXT.md`'s phase bullet doesn't cross-reference the unvalidated-memory caveat ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Added one clause pointing back to `runbook.md`, noting Planner's pipelined concurrency
+> profile (up to 3 limiters simultaneously active) is not yet staging-validated against the
+> 640MB ceiling documented two sections up.
+
+**Severity**: Minor
+
+**Files**
+
+- `docs/CONTEXT.md` (modify, § Business Rules)
+
+**Fix**: add one clause to the phase bullet pointing back to § Database's memory-ceiling
+paragraph, noting Planner's pipelined concurrency profile is not yet staging-validated.
+
+#### AF-9 — No Planner pipeline test for "one course fails, siblings still complete" ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Added a test where `CS101`'s `/api/core-api/sections` call rejects with a plain `Error` while
+> `CS102` succeeds — asserts `stats.courses.failed`/`.succeeded` split correctly and
+> `mockNotaRepository.bulkInsert` was still called for `CS102`'s downstream data,
+> `finishedStatus()` is `'partial'`.
+
+**Severity**: Minor (testing)
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (test)
+
+**Fix**: add a test where one course's `/api/core-api/sections` call rejects with a plain
+`Error` while another course succeeds; assert the failing course lands in
+`stats.courses.failed` and the other course's downstream evaluaciones/notas still ran.
+
+#### AF-10 — Dead superseded mock setup in a Planner test ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Fixed alongside AF-1 (same file, adjacent tests): deleted the dead `respondByPath(...)` call
+> in "still aborts the whole run on a fatal error raised mid-pipeline" — it was immediately
+> overwritten by the following `mockHttp.get.mockImplementation(...)`.
+
+**Severity**: Minor
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (modify, ~lines 365-368)
+
+**Fix**: delete the dead `respondByPath(...)` call immediately overwritten by the following
+`mockHttp.get.mockImplementation(...)`.
+
+#### AF-11 — Swagger `enum:` arrays can drift from their source union types ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Both portions done. Banner's `SCRAPE_RUN_STATUS_VALUES`/`SCRAPER_PHASE_VALUES` in
+> `scraper.dtos.ts` and Planner's `PLANNER_SCRAPE_RUN_STATUS_VALUES`/`PLANNER_SCRAPER_PHASE_VALUES`
+> in `planner-scraper.dtos.ts` are both now `as const satisfies readonly <Union>[]` — an added
+> union member without a matching array update is now a compile error on either side.
+
+**Severity**: Suggestion
+
+**Files**
+
+- `src/modules/admin/banner/scraper/model/scraper.dtos.ts` (modify)
+- `src/modules/admin/planner/scraper/model/planner-scraper.dtos.ts` (modify)
+
+**Fix**: derive each `enum:` array from its union type via `as const satisfies`, so an added
+union member without a matching array update is a compile error.
+
+#### AF-12 — Undocumented asymmetry: `scrapeHorario` has a test seam, `scrapeMatricula` doesn't ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> One-line comment added above `scrapeMatricula`'s `createLimiter(MATRICULA_CONCURRENCY)` call.
+> No behavior change.
+
+**Severity**: Suggestion
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify — comment only)
+
+**Fix**: one-line comment on `scrapeMatricula` noting it doesn't need a stubbed limiter seam
+because no end-to-end test path currently reaches it (unlike `scrapeHorario`'s `'expired'`
+test).
+
+#### AF-13 — Hardcoded concurrency constants require a deploy to retune
+
+**Not implemented — deliberately deferred, not silently dropped.** Auditor F raised this as a
+suggestion but explicitly recommended against doing it now ("Not required for this PR;
+consider... in a later change") — `ConfigService`-backing six concurrency constants is a real
+scope-growing feature (new env vars, validation, defaults), not a fix, and doing it inside an
+audit-fixes round would contradict the auditor's own scoping call. Left as a candidate for a
+future change if AC-5/AC-7's still-pending staging work ends up needing iterative tuning.
+
+#### AF-14 — No test for the zero-section/zero-pair edge case ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+> Added a test where `/api/core-api/sections` returns `[]` for the only course — asserts
+> `updatePhase` was only ever called with `'secciones'` (never `'evaluaciones'`/`'notas'`) and
+> the run still completes cleanly.
+
+**Severity**: Suggestion
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (test)
+
+**Fix**: add a test where a course search returns no sections (or a section's evaluation
+structure yields no components); assert `phase` stops advancing at the corresponding stage and
+the run still completes cleanly.
