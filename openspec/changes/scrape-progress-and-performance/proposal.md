@@ -141,15 +141,15 @@ the terminal `status` enum.
 
 ### Traceability
 
-| AC  | Criterion                                                             | Satisfied by |
-| --- | --------------------------------------------------------------------- | ------------ |
-| 1   | Banner phase exposed alongside status                                 | TBD          |
-| 2   | Planner phase exposed alongside status                                | TBD          |
-| 3   | Phase-tracking adds no measurable overhead                            | TBD          |
-| 4   | scrapeHorario parallelized, verified correct                          | TBD          |
-| 5   | MATRICULA_CONCURRENCY raised or confirmed-kept, measured              | TBD          |
-| 6   | Planner phase dependency confirmed, pipelined or confirmed-sequential | TBD          |
-| 7   | Memory stays within sys_acc_back's 640MB cap                          | TBD          |
+| AC  | Criterion                                                             | Satisfied by                                                                                                                                                                                                      |
+| --- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Banner phase exposed alongside status                                 | `ScrapeRunEntity.phase`, `ScraperService.execute`/`getRun`/`listRuns`, `ScrapeRunStatusResponseDto`/`RunSummaryResponseDto`                                                                                       |
+| 2   | Planner phase exposed alongside status                                | `PlannerScrapeRunEntity.phase`, `PlannerScraperService.execute`/`getRun`/`listRuns`, `PlannerScrapeRunStatusResponseDto`/`PlannerRunSummaryResponseDto`                                                           |
+| 3   | Phase-tracking adds no measurable overhead                            | By construction (3 writes/run); staging timing still open — Task 3.2/`runbook.md`                                                                                                                                 |
+| 4   | scrapeHorario parallelized, verified correct                          | `ScraperService.scrapeHorario` (`HORARIO_CONCURRENCY`), regression test in `scraper.service.spec.ts`; staging correctness diff still open — Task 3.2                                                              |
+| 5   | MATRICULA_CONCURRENCY raised or confirmed-kept, measured              | Not yet measured — staging-blocked, Task 4.1/`runbook.md`                                                                                                                                                         |
+| 6   | Planner phase dependency confirmed, pipelined or confirmed-sequential | Confirmed per-item (not per-phase) in `design.md` § AC-6; pipelined in `PlannerScraperService.execute` (`scheduleEvaluacion`/`scheduleNota`, `AbortState`); staging correctness/memory diff still open — Task 5.2 |
+| 7   | Memory stays within sys_acc_back's 640MB cap                          | Not yet measured — staging-blocked, Tasks 3.2/4.1/5.2/`runbook.md`                                                                                                                                                |
 
 ## Dependencies
 
