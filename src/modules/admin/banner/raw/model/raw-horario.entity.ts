@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique }
 import { ScrapeRunEntity } from './scrape-run.entity';
 
 @Entity({ name: 'raw_horario' })
-@Unique('UQ_raw_horario_run_id_departamento_nrc', ['runId', 'departamento', 'nrc'])
+@Unique('UQ_raw_horario_run_id_department_nrc', ['runId', 'department', 'nrc'])
 export class RawHorarioEntity {
 	@PrimaryGeneratedColumn({ type: 'bigint', primaryKeyConstraintName: 'PK_raw_horario' })
 	id: string;
@@ -15,13 +15,13 @@ export class RawHorarioEntity {
 	run: ScrapeRunEntity;
 
 	@Column({ type: 'text' })
-	nivel: string;
+	level: string;
 
 	@Column({ type: 'text' })
-	periodo: string;
+	period: string;
 
 	@Column({ type: 'text' })
-	departamento: string;
+	department: string;
 
 	@Column({ type: 'text', nullable: true })
 	nrc: string | null;

@@ -32,6 +32,7 @@ import {
 import { RunPlannerScrapeDto } from '../model/planner-scraper.dtos';
 import { plannerScraperValidationStrings } from '../config/strings/planner-scraper.validation';
 import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
+import { UserRepository } from 'src/modules/organization/users/core/users.repository';
 
 /**
  * Aborts the whole run rather than being recorded against one course.
@@ -44,10 +45,10 @@ import { ScrapingExportGenerationService } from '../../../scraping-exports/api/s
 export const isFatalScrapeError = (error: unknown): boolean =>
 	isPlannerSessionFailure(error) || error instanceof ServiceUnavailableException;
 
-const DEFAULT_NIVEL = 'UG';
-const SECCION_CONCURRENCY = 20;
-const EVALUACION_CONCURRENCY = 20;
-const NOTA_CONCURRENCY = 20;
+const DEFAULT_LEVEL = 'UG';
+const SECTION_CONCURRENCY = 20;
+const EVALUATION_CONCURRENCY = 20;
+const GRADE_CONCURRENCY = 20;
 
 interface ScrapeStats {
 	courses: { requested: string[]; succeeded: string[]; failed: string[] };
@@ -58,14 +59,21 @@ interface ScrapeStats {
 
 export interface PlannerRunSummary {
 	runId: string;
-	periodo: string;
-	escuela: string | null;
+	period: string;
+	school: string | null;
 	status: PlannerScrapeRunStatus;
 	phase: PlannerScraperPhase | null;
 	startedAt: string;
 	finishedAt: string | null;
 	counts: ScrapeStats['counts'] | null;
 	triggeredBy: string | null;
+	triggeredByName: string;
+}
+
+function parseUserId(triggeredBy: string | null): number | null {
+	if (!triggeredBy) return null;
+	const match = /^user:(\d+)$/.exec(triggeredBy);
+	return match ? Number(match[1]) : null;
 }
 
 interface EvalPair {
@@ -95,6 +103,7 @@ export class PlannerScraperService {
 		private readonly sourceRepository: PlannerSourceRepository,
 		private readonly http: PlannerHttpClient,
 		private readonly exportGenerationService: ScrapingExportGenerationService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async run(
@@ -109,20 +118,20 @@ export class PlannerScraperService {
 			);
 		}
 
-		const periodo = await this.sourceRepository.findAcademicPeriodCode(academicPeriodId);
-		if (!periodo) {
+		const period = await this.sourceRepository.findAcademicPeriodCode(academicPeriodId);
+		if (!period) {
 			throw new HttpException(
 				plannerScraperValidationStrings.error.periodNotFound,
 				HttpStatus.BAD_REQUEST,
 			);
 		}
 
-		const nivel = dto.nivel?.trim() || DEFAULT_NIVEL;
-		const cursos = dto.cursos?.length
-			? [...new Set(dto.cursos)]
+		const level = dto.level?.trim() || DEFAULT_LEVEL;
+		const courses = dto.courses?.length
+			? [...new Set(dto.courses)]
 			: await this.sourceRepository.findActiveCourseCodes();
 
-		if (cursos.length === 0) {
+		if (courses.length === 0) {
 			throw new HttpException(
 				plannerScraperValidationStrings.error.noCourses,
 				HttpStatus.BAD_REQUEST,
@@ -130,10 +139,10 @@ export class PlannerScraperService {
 		}
 
 		const runId = randomUUID();
-		await this.scrapeRunRepository.createRun({ id: runId, periodo, escuela: null, triggeredBy });
+		await this.scrapeRunRepository.createRun({ id: runId, period, school: null, triggeredBy });
 
 		this.running = true;
-		void this.execute(runId, nivel, periodo, cursos).finally(() => {
+		void this.execute(runId, level, period, courses).finally(() => {
 			this.running = false;
 		});
 
@@ -156,25 +165,52 @@ export class PlannerScraperService {
 	}
 
 	async listRuns(academicPeriodId: number): Promise<PlannerRunSummary[]> {
-		const periodo = await this.sourceRepository.findAcademicPeriodCode(academicPeriodId);
-		if (!periodo) {
+		const period = await this.sourceRepository.findAcademicPeriodCode(academicPeriodId);
+		if (!period) {
 			throw new HttpException(
 				plannerScraperValidationStrings.error.periodNotFound,
 				HttpStatus.BAD_REQUEST,
 			);
 		}
-		const runs = await this.scrapeRunRepository.findByPeriodo(periodo);
-		return runs.map((run) => ({
-			runId: run.id,
-			periodo: run.periodo,
-			escuela: run.escuela,
-			status: run.status,
-			phase: run.phase,
-			startedAt: run.startedAt.toISOString(),
-			finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
-			counts: (run.stats as ScrapeStats | null)?.counts ?? null,
-			triggeredBy: run.triggeredBy,
-		}));
+		const runs = await this.scrapeRunRepository.findByPeriod(period);
+		const userIds = [
+			...new Set(
+				runs.map((run) => parseUserId(run.triggeredBy)).filter((id): id is number => id !== null),
+			),
+		];
+		const namesById = await this.resolveTriggeredByNames(userIds);
+		return runs.map((run) => {
+			const userId = parseUserId(run.triggeredBy);
+			return {
+				runId: run.id,
+				period: run.period,
+				school: run.school,
+				status: run.status,
+				phase: run.phase,
+				startedAt: run.startedAt.toISOString(),
+				finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
+				counts: (run.stats as ScrapeStats | null)?.counts ?? null,
+				triggeredBy: run.triggeredBy,
+				triggeredByName: userId !== null ? (namesById.get(userId) ?? '-') : '-',
+			};
+		});
+	}
+
+	// triggeredByName is cosmetic enrichment on top of the run list, not the reason listRuns
+	// exists — a transient failure resolving it must not take down the whole call. Falls back
+	// to every name reading '-', matching what an unresolvable triggeredBy already renders as.
+	private async resolveTriggeredByNames(userIds: number[]): Promise<Map<number, string>> {
+		if (userIds.length === 0) return new Map<number, string>();
+		try {
+			return await this.userRepository.findDisplayNamesByIds(userIds);
+		} catch (error) {
+			this.logger.error(
+				`Failed to resolve triggeredBy names: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+			return new Map<number, string>();
+		}
 	}
 
 	/**
@@ -188,37 +224,37 @@ export class PlannerScraperService {
 	 *
 	 * Each `scheduleX` function both dedupes (a section/pair reachable from more than one course
 	 * search must only be fetched once) and chains its own downstream work via `.then`, so
-	 * awaiting only the top-level `cursos.map(...)` tasks is sufficient — each task's promise
+	 * awaiting only the top-level `courses.map(...)` tasks is sufficient — each task's promise
 	 * transitively resolves only once everything it spawned has too. The dedup checks are
 	 * synchronous (check-then-add with no `await` between), which is race-free under Node's
 	 * single-threaded event loop even though many of these closures run concurrently.
 	 */
 	private async execute(
 		runId: string,
-		nivel: string,
-		periodo: string,
-		cursos: string[],
+		level: string,
+		period: string,
+		courses: string[],
 	): Promise<void> {
 		const stats: ScrapeStats = {
-			courses: { requested: cursos, succeeded: [], failed: [] },
+			courses: { requested: courses, succeeded: [], failed: [] },
 			counts: { seccion: 0, evaluacion: 0, nota: 0 },
 			uniqueSections: 0,
 			errors: [],
 		};
 
 		try {
-			const periodId = await this.resolvePeriodId(nivel, periodo);
-			await this.scrapeRunRepository.updatePhase(runId, 'secciones');
+			const periodId = await this.resolvePeriodId(level, period);
+			await this.scrapeRunRepository.updatePhase(runId, 'sections');
 
 			const {
-				seccion: seccionLimit,
-				evaluacion: evaluacionLimit,
-				nota: notaLimit,
+				section: sectionLimit,
+				evaluation: evaluationLimit,
+				grade: gradeLimit,
 			} = await this.createLimiters();
 			const seenSections = new Set<string>();
 			const seenPairs = new Set<string>();
-			let evaluacionesStarted = false;
-			let notasStarted = false;
+			let evaluationsStarted = false;
+			let gradesStarted = false;
 			const abortState: AbortState = { aborted: false };
 
 			const scheduleNota = (pair: EvalPair): Promise<void> => {
@@ -233,11 +269,11 @@ export class PlannerScraperService {
 				const key = `${pair.sectionId}|${pair.evalComponentId}`;
 				if (seenPairs.has(key)) return Promise.resolve();
 				seenPairs.add(key);
-				if (!notasStarted) {
-					notasStarted = true;
-					this.updatePhaseInBackground(runId, 'notas');
+				if (!gradesStarted) {
+					gradesStarted = true;
+					this.updatePhaseInBackground(runId, 'grades');
 				}
-				return notaLimit(() => this.fetchNota(runId, pair, stats, abortState));
+				return gradeLimit(() => this.fetchNota(runId, pair, stats, abortState));
 			};
 
 			const scheduleEvaluacion = (sectionId: string): Promise<void> => {
@@ -251,11 +287,11 @@ export class PlannerScraperService {
 				}
 				if (seenSections.has(sectionId)) return Promise.resolve();
 				seenSections.add(sectionId);
-				if (!evaluacionesStarted) {
-					evaluacionesStarted = true;
-					this.updatePhaseInBackground(runId, 'evaluaciones');
+				if (!evaluationsStarted) {
+					evaluationsStarted = true;
+					this.updatePhaseInBackground(runId, 'evaluations');
 				}
-				return evaluacionLimit(() =>
+				return evaluationLimit(() =>
 					this.fetchEvaluacion(runId, sectionId, stats, abortState).then((pairs) =>
 						Promise.all(pairs.map(scheduleNota)).then(() => undefined),
 					),
@@ -263,13 +299,13 @@ export class PlannerScraperService {
 			};
 
 			await Promise.all(
-				cursos.map((curso) =>
-					seccionLimit(() => {
+				courses.map((course) =>
+					sectionLimit(() => {
 						if (abortState.aborted) {
-							stats.errors.push({ step: 'seccion', key: curso, message: 'skipped: run aborted' });
+							stats.errors.push({ step: 'seccion', key: course, message: 'skipped: run aborted' });
 							return Promise.resolve();
 						}
-						return this.fetchSeccion(runId, periodo, periodId, curso, stats, abortState).then(
+						return this.fetchSeccion(runId, period, periodId, course, stats, abortState).then(
 							(sectionIds) => Promise.all(sectionIds.map(scheduleEvaluacion)).then(() => undefined),
 						);
 					}),
@@ -279,12 +315,12 @@ export class PlannerScraperService {
 
 			const status: PlannerScrapeRunStatus =
 				stats.courses.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
-			await this.finalizeRun(runId, periodo, status, stats);
+			await this.finalizeRun(runId, period, status, stats);
 			this.logger.log(`Planner scrape ${runId} ${status}: ${JSON.stringify(stats.counts)}`);
 		} catch (error) {
 			const expired = error instanceof PlannerSessionExpiredError;
 			const status: PlannerScrapeRunStatus = expired ? 'expired' : 'failed';
-			await this.finalizeRun(runId, periodo, status, {
+			await this.finalizeRun(runId, period, status, {
 				...stats,
 				fatal: (error as Error).message,
 			});
@@ -297,43 +333,43 @@ export class PlannerScraperService {
 	// and the existing `run classification` describe block below) while exercising the real
 	// scheduling/dedup logic above.
 	private async createLimiters(): Promise<{
-		seccion: Limiter;
-		evaluacion: Limiter;
-		nota: Limiter;
+		section: Limiter;
+		evaluation: Limiter;
+		grade: Limiter;
 	}> {
-		const [seccion, evaluacion, nota] = await Promise.all([
-			createLimiter(SECCION_CONCURRENCY),
-			createLimiter(EVALUACION_CONCURRENCY),
-			createLimiter(NOTA_CONCURRENCY),
+		const [section, evaluation, grade] = await Promise.all([
+			createLimiter(SECTION_CONCURRENCY),
+			createLimiter(EVALUATION_CONCURRENCY),
+			createLimiter(GRADE_CONCURRENCY),
 		]);
-		return { seccion, evaluacion, nota };
+		return { section, evaluation, grade };
 	}
 
 	/**
-	 * Persists the run's outcome, then reconciles retention for its periodo: a `completed` run
-	 * supersedes every other row for that periodo (mopping up prior partial/failed leftovers in
+	 * Persists the run's outcome, then reconciles retention for its period: a `completed` run
+	 * supersedes every other row for that period (mopping up prior partial/failed leftovers in
 	 * the same statement via cascade), while any other outcome only removes its own row so a
-	 * currently-completed run for the periodo is left untouched. Retention cleanup is best-effort:
+	 * currently-completed run for the period is left untouched. Retention cleanup is best-effort:
 	 * a transient failure there is logged and swallowed rather than propagated, so it never masks
 	 * the run's own outcome that `finish()` already persisted.
 	 */
 	private async finalizeRun(
 		runId: string,
-		periodo: string,
+		period: string,
 		status: PlannerScrapeRunStatus,
 		stats: object,
 	): Promise<void> {
 		await this.scrapeRunRepository.finish(runId, status, stats);
 		try {
 			if (status === 'completed') {
-				await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
-				this.triggerExportGeneration(periodo, runId);
+				await this.scrapeRunRepository.deleteOtherRunsForPeriod(period, runId);
+				this.triggerExportGeneration(period, runId);
 			} else {
 				await this.scrapeRunRepository.deleteRun(runId);
 			}
 		} catch (error) {
 			this.logger.error(
-				`Retention cleanup failed for scrape ${runId} (periodo ${periodo}): ${
+				`Retention cleanup failed for scrape ${runId} (period ${period}): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
@@ -357,23 +393,23 @@ export class PlannerScraperService {
 
 	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
 	// this runs, so a failure generating exports must never surface as a scrape failure.
-	private triggerExportGeneration(periodo: string, plannerRunId: string): void {
-		void this.exportGenerationService.triggerForPlannerRun(periodo, plannerRunId).catch((error) => {
+	private triggerExportGeneration(period: string, plannerRunId: string): void {
+		void this.exportGenerationService.triggerForPlannerRun(period, plannerRunId).catch((error) => {
 			this.logger.error(
-				`Failed to trigger export generation for periodo ${periodo}: ${
+				`Failed to trigger export generation for period ${period}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
 		});
 	}
 
-	// Phase 0: resolve the Planner periodId. Planner's periodCode is `${nivel}-${periodo}`.
-	private async resolvePeriodId(nivel: string, periodo: string): Promise<string> {
+	// Phase 0: resolve the Planner periodId. Planner's periodCode is `${level}-${period}`.
+	private async resolvePeriodId(level: string, period: string): Promise<string> {
 		const periods = await this.http.get<Record<string, unknown>>(
 			'/api/core-api/academic-periods/list',
 			{ isCurrent: '', isProgrammable: '' },
 		);
-		const target = `${nivel}-${periodo}`;
+		const target = `${level}-${period}`;
 		const match = periods.find((p) => toStringOrNull(p.periodCode) === target);
 		const periodId = match ? toStringOrNull(match.periodId) : null;
 		if (!periodId) {
@@ -390,14 +426,14 @@ export class PlannerScraperService {
 	// evaluaciones fetches — see `execute()`).
 	private async fetchSeccion(
 		runId: string,
-		periodo: string,
+		period: string,
 		periodId: string,
-		curso: string,
+		course: string,
 		stats: ScrapeStats,
 		abortState: AbortState,
 	): Promise<string[]> {
 		if (abortState.aborted) {
-			stats.errors.push({ step: 'seccion', key: curso, message: 'skipped: run aborted' });
+			stats.errors.push({ step: 'seccion', key: course, message: 'skipped: run aborted' });
 			return [];
 		}
 		try {
@@ -409,7 +445,7 @@ export class PlannerScraperService {
 				page: '1',
 				periodIds: periodId,
 				total: '0',
-				text: curso,
+				text: course,
 			});
 			const sectionIds: string[] = [];
 			const rows: RawPlannerSeccionInsert[] = sections.map((section) => {
@@ -417,7 +453,7 @@ export class PlannerScraperService {
 				if (sectionId) sectionIds.push(sectionId);
 				return {
 					runId,
-					periodo,
+					period,
 					sectionId,
 					payload: section,
 					payloadHash: hashPayload(section),
@@ -425,15 +461,15 @@ export class PlannerScraperService {
 			});
 			await this.rawSeccionRepository.bulkInsert(rows);
 			stats.counts.seccion += rows.length;
-			stats.courses.succeeded.push(curso);
+			stats.courses.succeeded.push(course);
 			return sectionIds;
 		} catch (error) {
 			if (isFatalScrapeError(error)) {
 				abortState.aborted = true;
 				throw error;
 			}
-			stats.courses.failed.push(curso);
-			stats.errors.push({ step: 'seccion', key: curso, message: (error as Error).message });
+			stats.courses.failed.push(course);
+			stats.errors.push({ step: 'seccion', key: course, message: (error as Error).message });
 			return [];
 		}
 	}

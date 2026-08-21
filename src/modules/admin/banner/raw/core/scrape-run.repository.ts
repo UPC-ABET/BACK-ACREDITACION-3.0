@@ -5,9 +5,9 @@ import { ScraperPhase, ScrapeRunEntity, ScrapeRunStatus } from '../model/scrape-
 
 export interface CreateScrapeRunData {
 	id: string;
-	nivel: string;
-	periodo: string;
-	departamentos: string[];
+	level: string;
+	period: string;
+	departments: string[];
 	triggeredBy: string | null;
 }
 
@@ -39,9 +39,9 @@ export class ScrapeRunRepository {
 		return await this.repository.findOne({ where: { id } });
 	}
 
-	async findByPeriodo(periodo: string): Promise<ScrapeRunEntity[]> {
+	async findByPeriod(period: string): Promise<ScrapeRunEntity[]> {
 		return await this.repository.find({
-			where: { periodo },
+			where: { period },
 			order: { startedAt: 'DESC' },
 		});
 	}
@@ -50,7 +50,7 @@ export class ScrapeRunRepository {
 		await this.repository.delete(id);
 	}
 
-	async deleteOtherRunsForPeriodo(periodo: string, keepRunId: string): Promise<void> {
-		await this.repository.delete({ periodo, id: Not(keepRunId) });
+	async deleteOtherRunsForPeriod(period: string, keepRunId: string): Promise<void> {
+		await this.repository.delete({ period, id: Not(keepRunId) });
 	}
 }

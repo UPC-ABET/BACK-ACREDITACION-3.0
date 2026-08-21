@@ -16,18 +16,18 @@ const PLANNER_SCRAPE_RUN_STATUS_VALUES = [
 ] as const satisfies readonly PlannerScrapeRunStatus[];
 
 const PLANNER_SCRAPER_PHASE_VALUES = [
-	'secciones',
-	'evaluaciones',
-	'notas',
+	'sections',
+	'evaluations',
+	'grades',
 ] as const satisfies readonly PlannerScraperPhase[];
 
 // Period comes from the X-Academic-Period-Id header, not the body. These are optional
-// overrides (defaults: nivel UG, and all active course codes for the sections search).
+// overrides (defaults: level UG, and all active course codes for the sections search).
 export class RunPlannerScrapeDto {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({ example: 'UG', description: 'Academic level. Defaults to UG.' })
-	nivel?: string;
+	level?: string;
 
 	@IsOptional()
 	@IsArray()
@@ -38,7 +38,7 @@ export class RunPlannerScrapeDto {
 		example: ['CS101', 'CS102'],
 		description: 'Course codes to scrape. Defaults to every active course code.',
 	})
-	cursos?: string[];
+	courses?: string[];
 }
 
 export class PlannerScrapeRunStatusResponseDto {
@@ -64,11 +64,11 @@ export class PlannerRunSummaryResponseDto {
 	@ApiProperty({ description: 'Scrape run id (uuid).' })
 	runId: string;
 
-	@ApiProperty({ description: 'Banner/Planner periodo code.' })
-	periodo: string;
+	@ApiProperty({ description: 'Banner/Planner period code.' })
+	period: string;
 
-	@ApiPropertyOptional({ type: String, nullable: true, description: 'Escuela code, if scoped.' })
-	escuela: string | null;
+	@ApiPropertyOptional({ type: String, nullable: true, description: 'School code, if scoped.' })
+	school: string | null;
 
 	@ApiProperty({
 		enum: PLANNER_SCRAPE_RUN_STATUS_VALUES,
@@ -103,4 +103,10 @@ export class PlannerRunSummaryResponseDto {
 
 	@ApiPropertyOptional({ type: String, nullable: true, description: 'Who triggered the run.' })
 	triggeredBy: string | null;
+
+	@ApiProperty({
+		description: "Resolved from triggeredBy; '-' when unresolvable.",
+		example: 'Jane Doe',
+	})
+	triggeredByName: string;
 }

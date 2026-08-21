@@ -5,10 +5,10 @@ import { RawNotasEntity } from '../model/raw-notas.entity';
 
 export interface RawNotasInsert {
 	runId: string;
-	nivel: string;
-	periodo: string;
-	codigoAlumno: string;
-	cursoCodigo: string;
+	level: string;
+	period: string;
+	studentCode: string;
+	courseCode: string;
 	payload: any;
 	payloadHash: string;
 }

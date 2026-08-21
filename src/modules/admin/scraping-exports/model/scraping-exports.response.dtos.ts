@@ -24,7 +24,7 @@ export class ScrapingExportStatusResponseDto {
 	exportType?: string;
 
 	@ApiPropertyOptional()
-	periodo?: string;
+	period?: string;
 
 	@ApiPropertyOptional()
 	lang?: string;

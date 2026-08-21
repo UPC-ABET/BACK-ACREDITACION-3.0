@@ -19,7 +19,7 @@ export const EXPORTS_RAW_CONNECTION = 'exports-raw';
 
 /**
  * Resolve the active academic period id (X-Academic-Period-Id → academic_periods.id) to its code
- * (e.g. 1 → "202610", 2 → "202615"), which is exactly what scrape_run.periodo stores. Returns null
+ * (e.g. 1 → "202610", 2 → "202615"), which is exactly what scrape_run.period stores. Returns null
  * when no period is given or it doesn't resolve, in which case the exports fall back to the latest
  * run overall. Shared with the grades-rc export repository.
  */
@@ -36,18 +36,18 @@ export async function resolveAcademicPeriodCode(
 }
 
 /**
- * Reverse of `resolveAcademicPeriodCode`: `scrape_run.periodo` (e.g. "202610") back to
+ * Reverse of `resolveAcademicPeriodCode`: `scrape_run.period` (e.g. "202610") back to
  * `academic.academic_periods.id`. Used by the export generation orchestration, which only ever
- * has a `periodo` string in hand (from a completed scrape run), not the request-derived
+ * has a `period` string in hand (from a completed scrape run), not the request-derived
  * `academicPeriodId` header — see docs/CONTEXT.md "scope must survive every asynchronous hop".
  */
 export async function findAcademicPeriodIdByCode(
 	mainDataSource: DataSource,
-	periodoCode: string,
+	periodCode: string,
 ): Promise<number | null> {
 	const rows: Array<{ id: number }> = await mainDataSource.query(
 		`SELECT id AS "id" FROM academic.academic_periods WHERE code = $1 LIMIT 1`,
-		[periodoCode],
+		[periodCode],
 	);
 	return rows[0]?.id ?? null;
 }
@@ -61,7 +61,7 @@ export async function findAcademicPeriodIdByCode(
 // still-being-inserted rows instead of falling back to the last good run.
 const RUN_FOR_PERIOD = `(
 	SELECT id FROM scrape_run
-	WHERE ($1::text IS NULL OR periodo = $1)
+	WHERE ($1::text IS NULL OR period = $1)
 	  AND status = 'completed'
 	ORDER BY started_at DESC
 	LIMIT 1
@@ -87,15 +87,15 @@ export class ScrapingExportsRepository {
 		return resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
 	}
 
-	async findAcademicPeriodIdByCode(periodoCode: string): Promise<number | null> {
-		return findAcademicPeriodIdByCode(this.mainDataSource, periodoCode);
+	async findAcademicPeriodIdByCode(periodCode: string): Promise<number | null> {
+		return findAcademicPeriodIdByCode(this.mainDataSource, periodCode);
 	}
 
 	// Forward lookup used by the generic status/download/regenerate endpoints: given the request's
-	// X-Academic-Period-Id header value, resolve the periodo code the export generation pipeline
+	// X-Academic-Period-Id header value, resolve the period code the export generation pipeline
 	// (and scrape_run itself) is keyed on. Public wrapper around the same resolution the per-export
 	// queries already use internally.
-	async resolvePeriodoCode(academicPeriodId: number): Promise<string | null> {
+	async resolvePeriodCode(academicPeriodId: number): Promise<string | null> {
 		return this.periodCode(academicPeriodId);
 	}
 
@@ -200,16 +200,16 @@ export class ScrapingExportsRepository {
 			campusCode: string | null;
 		}> = await this.dataSource.query(
 			`
-			SELECT DISTINCT ON (a.codigo_alumno)
-				a.codigo_alumno                   AS "studentCode",
+			SELECT DISTINCT ON (a.student_code)
+				a.student_code                    AS "studentCode",
 				a.payload->>'apellidos'           AS "lastName",
 				a.payload->>'nombres'             AS "firstName",
 				a.payload->'programa'->>'codigo'  AS "programCode",
 				a.payload->'campus'->>'codigo'    AS "campusCode"
 			FROM raw_alumno a
 			WHERE a.run_id = ${RUN_FOR_PERIOD}
-			  AND NULLIF(trim(a.codigo_alumno), '') IS NOT NULL
-			ORDER BY a.codigo_alumno
+			  AND NULLIF(trim(a.student_code), '') IS NOT NULL
+			ORDER BY a.student_code
 		`,
 			[period],
 		);
@@ -268,13 +268,13 @@ export class ScrapingExportsRepository {
 				`
 				SELECT DISTINCT
 					m.nrc                             AS "sectionCode",
-					m.codigo_alumno                   AS "studentCode",
+					m.student_code                    AS "studentCode",
 					(h.payload->>'calificable' = 'Y') AS "isGraded"
 				FROM raw_matricula m
 				JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
 				WHERE m.run_id = ${RUN_FOR_PERIOD}
 				  AND NULLIF(trim(m.nrc), '') IS NOT NULL
-				  AND NULLIF(trim(m.codigo_alumno), '') IS NOT NULL
+				  AND NULLIF(trim(m.student_code), '') IS NOT NULL
 				  AND m.nrc = ANY($2::text[])
 			`,
 				[period, uploadedSectionCodes],

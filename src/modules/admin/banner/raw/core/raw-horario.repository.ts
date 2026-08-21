@@ -5,9 +5,9 @@ import { RawHorarioEntity } from '../model/raw-horario.entity';
 
 export interface RawHorarioInsert {
 	runId: string;
-	nivel: string;
-	periodo: string;
-	departamento: string;
+	level: string;
+	period: string;
+	department: string;
 	nrc: string | null;
 	payload: any;
 	payloadHash: string;

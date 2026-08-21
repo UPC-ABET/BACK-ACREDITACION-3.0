@@ -5,8 +5,8 @@ import { RawAlumnoEntity } from '../model/raw-alumno.entity';
 
 export interface RawAlumnoInsert {
 	runId: string;
-	nivel: string;
-	codigoAlumno: string;
+	level: string;
+	studentCode: string;
 	payload: any;
 	payloadHash: string;
 }

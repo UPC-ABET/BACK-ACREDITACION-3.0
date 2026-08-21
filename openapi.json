@@ -17451,12 +17451,12 @@
 			"RunScrapeDto": {
 				"type": "object",
 				"properties": {
-					"nivel": {
+					"level": {
 						"type": "string",
 						"example": "UG",
 						"description": "Academic level. Defaults to UG."
 					},
-					"departamentos": {
+					"departments": {
 						"example": ["IN", "SI"],
 						"description": "Department codes to scrape. Defaults to every active program's departments.",
 						"type": "array",
@@ -17468,9 +17468,9 @@
 				"type": "object",
 				"properties": {
 					"runId": { "type": "string", "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" },
-					"nivel": { "type": "string", "example": "UG" },
-					"periodo": { "type": "string", "example": "202610" },
-					"departamentos": {
+					"level": { "type": "string", "example": "UG" },
+					"period": { "type": "string", "example": "202610" },
+					"departments": {
 						"example": ["IN", "SI"],
 						"type": "array",
 						"items": { "type": "string" }
@@ -17482,8 +17482,8 @@
 					},
 					"phase": {
 						"type": "string",
-						"example": "alumnosYNotas",
-						"enum": ["horario", "matricula", "alumnosYNotas"],
+						"example": "studentsAndGrades",
+						"enum": ["schedule", "enrollment", "studentsAndGrades"],
 						"nullable": true,
 						"description": "The furthest scrape phase that has started for this run."
 					},
@@ -17494,9 +17494,22 @@
 						"nullable": true
 					},
 					"counts": { "type": "object", "nullable": true },
-					"triggeredBy": { "type": "string", "example": "user:12", "nullable": true }
+					"triggeredBy": { "type": "string", "example": "user:12", "nullable": true },
+					"triggeredByName": {
+						"type": "string",
+						"example": "Jane Doe",
+						"description": "Resolved from triggeredBy; '-' when unresolvable."
+					}
 				},
-				"required": ["runId", "nivel", "periodo", "departamentos", "status", "startedAt"]
+				"required": [
+					"runId",
+					"level",
+					"period",
+					"departments",
+					"status",
+					"startedAt",
+					"triggeredByName"
+				]
 			},
 			"ScrapeRunStatusResponseDto": {
 				"type": "object",
@@ -17508,8 +17521,8 @@
 					},
 					"phase": {
 						"type": "string",
-						"example": "matricula",
-						"enum": ["horario", "matricula", "alumnosYNotas"],
+						"example": "enrollment",
+						"enum": ["schedule", "enrollment", "studentsAndGrades"],
 						"nullable": true,
 						"description": "The furthest scrape phase that has started for this run."
 					},
@@ -17524,7 +17537,7 @@
 						"type": "string",
 						"enum": ["staff", "sections", "enrolledStudents", "studentSections", "gradesRc"]
 					},
-					"periodo": { "type": "string" },
+					"period": { "type": "string" },
 					"lang": { "type": "string" },
 					"status": {
 						"type": "string",
@@ -17585,12 +17598,12 @@
 			"RunPlannerScrapeDto": {
 				"type": "object",
 				"properties": {
-					"nivel": {
+					"level": {
 						"type": "string",
 						"example": "UG",
 						"description": "Academic level. Defaults to UG."
 					},
-					"cursos": {
+					"courses": {
 						"example": ["CS101", "CS102"],
 						"description": "Course codes to scrape. Defaults to every active course code.",
 						"type": "array",
@@ -17602,11 +17615,11 @@
 				"type": "object",
 				"properties": {
 					"runId": { "type": "string", "description": "Scrape run id (uuid)." },
-					"periodo": { "type": "string", "description": "Banner/Planner periodo code." },
-					"escuela": {
+					"period": { "type": "string", "description": "Banner/Planner period code." },
+					"school": {
 						"type": "string",
 						"nullable": true,
-						"description": "Escuela code, if scoped."
+						"description": "School code, if scoped."
 					},
 					"status": {
 						"type": "string",
@@ -17615,7 +17628,7 @@
 					},
 					"phase": {
 						"type": "string",
-						"enum": ["secciones", "evaluaciones", "notas"],
+						"enum": ["sections", "evaluations", "grades"],
 						"nullable": true,
 						"description": "The furthest phase that has started for this run. Null until the first phase begins."
 					},
@@ -17634,9 +17647,14 @@
 						"type": "string",
 						"nullable": true,
 						"description": "Who triggered the run."
+					},
+					"triggeredByName": {
+						"type": "string",
+						"description": "Resolved from triggeredBy; '-' when unresolvable.",
+						"example": "Jane Doe"
 					}
 				},
-				"required": ["runId", "periodo", "status", "startedAt"]
+				"required": ["runId", "period", "status", "startedAt", "triggeredByName"]
 			},
 			"PlannerScrapeRunStatusResponseDto": {
 				"type": "object",
@@ -17648,7 +17666,7 @@
 					},
 					"phase": {
 						"type": "string",
-						"enum": ["secciones", "evaluaciones", "notas"],
+						"enum": ["sections", "evaluations", "grades"],
 						"nullable": true,
 						"description": "The furthest phase that has started for this run. Null until the first phase begins."
 					},

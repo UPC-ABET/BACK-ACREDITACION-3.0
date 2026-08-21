@@ -17,26 +17,26 @@ describe('ScrapeRunRepository', () => {
 		});
 	});
 
-	describe('deleteOtherRunsForPeriodo', () => {
-		it('deletes every run for the periodo except the one to keep', async () => {
-			await repo.deleteOtherRunsForPeriodo('202610', 'run-keep');
+	describe('deleteOtherRunsForPeriod', () => {
+		it('deletes every run for the period except the one to keep', async () => {
+			await repo.deleteOtherRunsForPeriod('202610', 'run-keep');
 
 			expect(mockTypeormRepository.delete).toHaveBeenCalledWith({
-				periodo: '202610',
+				period: '202610',
 				id: Not('run-keep'),
 			});
 		});
 
-		it('scopes each call to its own periodo and keepRunId, never mixing them', async () => {
-			await repo.deleteOtherRunsForPeriodo('202610', 'run-keep-1');
-			await repo.deleteOtherRunsForPeriodo('202620', 'run-keep-2');
+		it('scopes each call to its own period and keepRunId, never mixing them', async () => {
+			await repo.deleteOtherRunsForPeriod('202610', 'run-keep-1');
+			await repo.deleteOtherRunsForPeriod('202620', 'run-keep-2');
 
 			expect(mockTypeormRepository.delete).toHaveBeenNthCalledWith(1, {
-				periodo: '202610',
+				period: '202610',
 				id: Not('run-keep-1'),
 			});
 			expect(mockTypeormRepository.delete).toHaveBeenNthCalledWith(2, {
-				periodo: '202620',
+				period: '202620',
 				id: Not('run-keep-2'),
 			});
 		});
@@ -44,9 +44,9 @@ describe('ScrapeRunRepository', () => {
 
 	describe('updatePhase', () => {
 		it('updates the run phase by id', async () => {
-			await repo.updatePhase('run-1', 'matricula');
+			await repo.updatePhase('run-1', 'enrollment');
 
-			expect(mockTypeormRepository.update).toHaveBeenCalledWith('run-1', { phase: 'matricula' });
+			expect(mockTypeormRepository.update).toHaveBeenCalledWith('run-1', { phase: 'enrollment' });
 		});
 	});
 

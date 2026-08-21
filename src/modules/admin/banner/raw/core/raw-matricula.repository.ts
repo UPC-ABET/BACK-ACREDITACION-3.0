@@ -5,10 +5,10 @@ import { RawMatriculaEntity } from '../model/raw-matricula.entity';
 
 export interface RawMatriculaInsert {
 	runId: string;
-	nivel: string;
-	periodo: string;
+	level: string;
+	period: string;
 	nrc: string;
-	codigoAlumno: string | null;
+	studentCode: string | null;
 	payload: any;
 	payloadHash: string;
 }

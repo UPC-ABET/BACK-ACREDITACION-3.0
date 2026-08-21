@@ -21,6 +21,6 @@ import { EmailTemplateModule } from 'src/modules/core/email-templates/email-temp
 	],
 	controllers: [UserController],
 	providers: [UserService, UserRepository, PasswordResetTokenRepository, UserAuthorizationService],
-	exports: [UserService, UserAuthorizationService],
+	exports: [UserService, UserRepository, UserAuthorizationService],
 })
 export class UserModule {}

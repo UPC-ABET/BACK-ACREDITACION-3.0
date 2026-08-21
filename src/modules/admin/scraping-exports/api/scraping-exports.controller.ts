@@ -42,14 +42,14 @@ export class ScrapingExportsController {
 		@AcademicPeriodId() academicPeriodId: number,
 	) {
 		const exportType = parseExportTypeParam(exportTypeParam);
-		const periodo = await this.resolvePeriodo(academicPeriodId);
+		const period = await this.resolvePeriod(academicPeriodId);
 		return parseSuccessResponse(
-			await this.generationService.getStatus(exportType, periodo, this.resolveLang(lang)),
+			await this.generationService.getStatus(exportType, period, this.resolveLang(lang)),
 		);
 	}
 
 	// The academic period is required here, unlike the module's previous synchronous export GETs:
-	// generation is keyed on a specific periodo, so a missing scope means there is nothing to look
+	// generation is keyed on a specific period, so a missing scope means there is nothing to look
 	// up rather than something to fall back on.
 	@Get(routes.operation.download.route)
 	@ApiOperation({ summary: routes.operation.download.summary })
@@ -69,10 +69,10 @@ export class ScrapingExportsController {
 		@Res({ passthrough: false }) res: Response,
 	) {
 		const exportType = parseExportTypeParam(exportTypeParam);
-		const periodo = await this.resolvePeriodo(academicPeriodId);
+		const period = await this.resolvePeriod(academicPeriodId);
 		const result = await this.generationService.download(
 			exportType,
-			periodo,
+			period,
 			this.resolveLang(lang),
 		);
 		if (!result) {
@@ -99,11 +99,11 @@ export class ScrapingExportsController {
 		@CurrentUser() user: RequestUser,
 	) {
 		const exportType = parseExportTypeParam(exportTypeParam);
-		const periodo = await this.resolvePeriodo(academicPeriodId);
+		const period = await this.resolvePeriod(academicPeriodId);
 		return parseSuccessResponse(
 			await this.generationService.regenerate(
 				exportType,
-				periodo,
+				period,
 				this.resolveLang(lang),
 				`user:${user.userId}`,
 			),
@@ -114,12 +114,12 @@ export class ScrapingExportsController {
 		return lang || DEFAULT_TEMPLATE_LANGUAGE;
 	}
 
-	private async resolvePeriodo(academicPeriodId: number): Promise<string> {
-		const periodo = await this.generationService.resolvePeriodo(academicPeriodId);
-		if (!periodo) {
+	private async resolvePeriod(academicPeriodId: number): Promise<string> {
+		const period = await this.generationService.resolvePeriod(academicPeriodId);
+		if (!period) {
 			throw new NotFoundError(scrapingExportsValidationStrings.error.periodNotFound);
 		}
-		return periodo;
+		return period;
 	}
 
 	private send(res: Response, { buffer, fileName }: GeneratedExcel): void {

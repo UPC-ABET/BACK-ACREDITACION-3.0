@@ -44,7 +44,7 @@ class GradesRcMergeBusyError extends Error {}
  * the background, the result is persisted, and status/download/regenerate serve from storage
  * instead of always running the underlying export query synchronously. See ADR-002.
  *
- * `periodo` is passed explicitly end-to-end rather than read from a request header, because
+ * `period` is passed explicitly end-to-end rather than read from a request header, because
  * generation runs outside any HTTP request (triggered from the scraper services, or fire-and-
  * forget from `regenerate`) — see docs/CONTEXT.md "scope must survive every asynchronous hop".
  */
@@ -53,7 +53,7 @@ export class ScrapingExportGenerationService {
 	private readonly logger = new Logger(ScrapingExportGenerationService.name);
 
 	// System-wide, not per-key: only gradesRc pins a pooled Postgres connection for the minutes the
-	// merge takes, so a second concurrent merge (for a *different* periodo/lang) degrades the shared
+	// merge takes, so a second concurrent merge (for a *different* period/lang) degrades the shared
 	// DB for everyone else, not just this export. The other four export types have no such cost and
 	// are not guarded by this flag. Restores the old JobRegistry-based flow's maxConcurrent=1
 	// guarantee, which the per-key 'running' check alone does not provide.
@@ -74,26 +74,26 @@ export class ScrapingExportGenerationService {
 	) {}
 
 	// Forward lookup for the controller: it only has the request-derived academicPeriodId header,
-	// not the periodo code every method here is keyed on. Delegates straight to the repository —
+	// not the period code every method here is keyed on. Delegates straight to the repository —
 	// this service does not touch the DB itself.
-	async resolvePeriodo(academicPeriodId: number): Promise<string | null> {
-		return this.exportsRepository.resolvePeriodoCode(academicPeriodId);
+	async resolvePeriod(academicPeriodId: number): Promise<string | null> {
+		return this.exportsRepository.resolvePeriodCode(academicPeriodId);
 	}
 
-	async triggerForBannerRun(periodo: string, bannerRunId: string): Promise<void> {
+	async triggerForBannerRun(period: string, bannerRunId: string): Promise<void> {
 		for (const exportType of BANNER_EXPORT_TYPES) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate(exportType, periodo, lang, 'auto', bannerRunId);
+				this.fireAndForgetGenerate(exportType, period, lang, 'auto', bannerRunId);
 			}
 		}
 
-		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriodo(periodo);
+		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriod(period);
 		const completedPlannerRun = plannerRuns.find((run) => run.status === 'completed');
 		if (completedPlannerRun) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
 				this.fireAndForgetGenerate(
 					'gradesRc',
-					periodo,
+					period,
 					lang,
 					'auto',
 					bannerRunId,
@@ -104,15 +104,15 @@ export class ScrapingExportGenerationService {
 	}
 
 	// No Planner-only sync export exists today: Planner data only ever feeds gradesRc, and only
-	// once a Banner run for the same periodo has also completed.
-	async triggerForPlannerRun(periodo: string, plannerRunId: string): Promise<void> {
-		const bannerRuns = await this.scrapeRunRepository.findByPeriodo(periodo);
+	// once a Banner run for the same period has also completed.
+	async triggerForPlannerRun(period: string, plannerRunId: string): Promise<void> {
+		const bannerRuns = await this.scrapeRunRepository.findByPeriod(period);
 		const completedBannerRun = bannerRuns.find((run) => run.status === 'completed');
 		if (completedBannerRun) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
 				this.fireAndForgetGenerate(
 					'gradesRc',
-					periodo,
+					period,
 					lang,
 					'auto',
 					completedBannerRun.id,
@@ -124,18 +124,18 @@ export class ScrapingExportGenerationService {
 
 	async regenerate(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 		triggeredBy: string,
 	): Promise<ScrapingExportStatusResponse> {
 		const { sourceBannerRunId, sourcePlannerRunId } = await this.resolveSourceRunIdsForRegenerate(
 			exportType,
-			periodo,
+			period,
 		);
 
 		const claimed = await this.claimForGeneration(
 			exportType,
-			periodo,
+			period,
 			lang,
 			triggeredBy,
 			sourceBannerRunId,
@@ -146,7 +146,7 @@ export class ScrapingExportGenerationService {
 			throw new ConflictError(scrapingExportsValidationStrings.error.alreadyGenerating);
 		}
 
-		this.fireAndForgetRunGeneration(exportType, periodo, lang, triggeredBy);
+		this.fireAndForgetRunGeneration(exportType, period, lang, triggeredBy);
 
 		return this.toStatusResponse(claimed);
 	}
@@ -158,16 +158,16 @@ export class ScrapingExportGenerationService {
 	// this simply omits the source id it could not resolve rather than blocking the regenerate.
 	private async resolveSourceRunIdsForRegenerate(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 	): Promise<{ sourceBannerRunId?: string; sourcePlannerRunId?: string }> {
-		const bannerRuns = await this.scrapeRunRepository.findByPeriodo(periodo);
+		const bannerRuns = await this.scrapeRunRepository.findByPeriod(period);
 		const sourceBannerRunId = bannerRuns.find((run) => run.status === 'completed')?.id;
 
 		if (exportType !== 'gradesRc') {
 			return { sourceBannerRunId };
 		}
 
-		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriodo(periodo);
+		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriod(period);
 		const sourcePlannerRunId = plannerRuns.find((run) => run.status === 'completed')?.id;
 
 		return { sourceBannerRunId, sourcePlannerRunId };
@@ -175,10 +175,10 @@ export class ScrapingExportGenerationService {
 
 	async getStatus(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 	): Promise<ScrapingExportStatusResponse | { status: 'notGenerated' }> {
-		const row = await this.runRepository.findByKey(exportType, periodo, lang);
+		const row = await this.runRepository.findByKey(exportType, period, lang);
 		if (!row) return { status: 'notGenerated' };
 		return this.toStatusResponse(await this.reconcileIfStale(row));
 	}
@@ -188,10 +188,10 @@ export class ScrapingExportGenerationService {
 	// been a successful generation for this key.
 	async download(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 	): Promise<DownloadResult | null> {
-		const row = await this.runRepository.findByKey(exportType, periodo, lang);
+		const row = await this.runRepository.findByKey(exportType, period, lang);
 		if (!row) return null;
 
 		const reconciled = await this.reconcileIfStale(row);
@@ -209,7 +209,7 @@ export class ScrapingExportGenerationService {
 	// promise rejection.
 	private fireAndForgetGenerate(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 		triggeredBy: string = 'auto',
 		sourceBannerRunId?: string,
@@ -218,20 +218,20 @@ export class ScrapingExportGenerationService {
 		void (async () => {
 			const claimed = await this.claimForGeneration(
 				exportType,
-				periodo,
+				period,
 				lang,
 				triggeredBy,
 				sourceBannerRunId,
 				sourcePlannerRunId,
 			);
 			if (!claimed) {
-				this.logger.debug(`Skipped generating ${exportType}/${periodo}/${lang}: already in flight`);
+				this.logger.debug(`Skipped generating ${exportType}/${period}/${lang}: already in flight`);
 				return;
 			}
-			await this.runGeneration(exportType, periodo, lang, triggeredBy);
+			await this.runGeneration(exportType, period, lang, triggeredBy);
 		})().catch((error) => {
 			this.logger.error(
-				`Unexpected error generating ${exportType}/${periodo}/${lang}: ${
+				`Unexpected error generating ${exportType}/${period}/${lang}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 				error instanceof Error ? error.stack : undefined,
@@ -244,13 +244,13 @@ export class ScrapingExportGenerationService {
 	// 409 immediately on a lost claim), so this does not claim again.
 	private fireAndForgetRunGeneration(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 		triggeredBy: string,
 	): void {
-		void this.runGeneration(exportType, periodo, lang, triggeredBy).catch((error) => {
+		void this.runGeneration(exportType, period, lang, triggeredBy).catch((error) => {
 			this.logger.error(
-				`Unexpected error generating ${exportType}/${periodo}/${lang}: ${
+				`Unexpected error generating ${exportType}/${period}/${lang}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 				error instanceof Error ? error.stack : undefined,
@@ -258,7 +258,7 @@ export class ScrapingExportGenerationService {
 		});
 	}
 
-	// Checks whether this (exportType, periodo, lang) key — and, for gradesRc, the system-wide merge
+	// Checks whether this (exportType, period, lang) key — and, for gradesRc, the system-wide merge
 	// slot — is free, and if so atomically (from this process's point of view — no `await` between
 	// the check and the upsert) transitions the row to `'running'`. Returns `null` when the key (or
 	// slot) is already claimed, leaving it to the caller to decide what that means: a 409 for
@@ -267,13 +267,13 @@ export class ScrapingExportGenerationService {
 	// has to pass (AF-6).
 	private async claimForGeneration(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 		triggeredBy: string,
 		sourceBannerRunId?: string,
 		sourcePlannerRunId?: string,
 	): Promise<ScrapingExportRunEntity | null> {
-		const existing = await this.runRepository.findByKey(exportType, periodo, lang);
+		const existing = await this.runRepository.findByKey(exportType, period, lang);
 		const reconciled = existing ? await this.reconcileIfStale(existing) : null;
 
 		if (reconciled?.status === 'running') {
@@ -282,12 +282,12 @@ export class ScrapingExportGenerationService {
 
 		// The per-key check above only catches a duplicate claim of this exact key. gradesRc
 		// additionally needs the system-wide check: the merge slot could be held by a different
-		// periodo/lang's generation right now.
+		// period/lang's generation right now.
 		if (exportType === 'gradesRc' && this.isGradesRcMergeInFlight()) {
 			return null;
 		}
 
-		return this.runRepository.upsertByKey(exportType, periodo, lang, {
+		return this.runRepository.upsertByKey(exportType, period, lang, {
 			status: 'running',
 			triggeredBy,
 			errorMessage: null,
@@ -302,14 +302,14 @@ export class ScrapingExportGenerationService {
 	// actual generator and finalizes the row to `'completed'`/`'failed'`.
 	private async runGeneration(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 		triggeredBy: string,
 	): Promise<void> {
 		try {
-			const { buffer, fileName } = await this.runGenerator(exportType, periodo, lang);
+			const { buffer, fileName } = await this.runGenerator(exportType, period, lang);
 
-			await this.runRepository.upsertByKey(exportType, periodo, lang, {
+			await this.runRepository.upsertByKey(exportType, period, lang, {
 				status: 'completed',
 				triggeredBy,
 				fileName,
@@ -320,7 +320,7 @@ export class ScrapingExportGenerationService {
 			});
 		} catch (error) {
 			this.logger.error(
-				`Export generation failed (${exportType}/${periodo}/${lang}): ${
+				`Export generation failed (${exportType}/${period}/${lang}): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 				error instanceof Error ? error.stack : undefined,
@@ -333,7 +333,7 @@ export class ScrapingExportGenerationService {
 				error instanceof GradesRcMergeBusyError
 					? scrapingExportsValidationStrings.error.gradesRcBusy
 					: scrapingExportsValidationStrings.error.generationFailed;
-			await this.runRepository.upsertByKey(exportType, periodo, lang, {
+			await this.runRepository.upsertByKey(exportType, period, lang, {
 				status: 'failed',
 				triggeredBy,
 				errorMessage,
@@ -345,14 +345,14 @@ export class ScrapingExportGenerationService {
 
 	private async runGenerator(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 	): Promise<GeneratedExcel> {
 		if (exportType === 'gradesRc') {
-			return this.runGradesRcMerge(periodo, lang);
+			return this.runGradesRcMerge(period, lang);
 		}
 
-		const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(periodo);
+		const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(period);
 		if (academicPeriodId === null) {
 			throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
 		}
@@ -379,7 +379,7 @@ export class ScrapingExportGenerationService {
 	// Only gradesRc pins a pooled connection for the minutes the merge takes (see design.md § AC-10),
 	// so this is the one export type that needs a system-wide single-flight guard, not just the
 	// per-key 'running' check every export type already gets from `claimForGeneration`.
-	private async runGradesRcMerge(periodo: string, lang: string): Promise<GeneratedExcel> {
+	private async runGradesRcMerge(period: string, lang: string): Promise<GeneratedExcel> {
 		if (this.isGradesRcMergeInFlight()) {
 			// Reachable from the auto-trigger path, which has no caller to hand a 409 to — surfaced
 			// as an ordinary generation failure (caught by runGeneration()'s try/catch) instead of
@@ -390,7 +390,7 @@ export class ScrapingExportGenerationService {
 
 		this.gradesRcMergeStartedAt = Date.now();
 		try {
-			const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(periodo);
+			const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(period);
 			if (academicPeriodId === null) {
 				throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
 			}
@@ -405,7 +405,7 @@ export class ScrapingExportGenerationService {
 	private toStatusResponse(row: ScrapingExportRunEntity): ScrapingExportStatusResponse {
 		return {
 			exportType: row.exportType,
-			periodo: row.periodo,
+			period: row.period,
 			lang: row.lang,
 			status: row.status,
 			fileName: row.fileName,
@@ -425,7 +425,7 @@ export class ScrapingExportGenerationService {
 		const updatedAtMs = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
 		if (Date.now() - updatedAtMs < GENERATION_STALE_TIMEOUT_MS) return row;
 
-		return this.runRepository.upsertByKey(row.exportType, row.periodo, row.lang, {
+		return this.runRepository.upsertByKey(row.exportType, row.period, row.lang, {
 			status: 'failed',
 			triggeredBy: row.triggeredBy,
 			errorMessage: scrapingExportsValidationStrings.error.staleGenerationDetected,

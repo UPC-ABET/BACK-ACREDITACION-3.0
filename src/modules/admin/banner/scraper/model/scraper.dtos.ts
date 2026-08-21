@@ -8,7 +8,7 @@ export class RunScrapeDto {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({ example: 'UG', description: 'Academic level. Defaults to UG.' })
-	nivel?: string;
+	level?: string;
 
 	@IsOptional()
 	@IsArray()
@@ -19,7 +19,7 @@ export class RunScrapeDto {
 		example: ['IN', 'SI'],
 		description: "Department codes to scrape. Defaults to every active program's departments.",
 	})
-	departamentos?: string[];
+	departments?: string[];
 }
 
 const SCRAPE_RUN_STATUS_VALUES = [
@@ -30,9 +30,9 @@ const SCRAPE_RUN_STATUS_VALUES = [
 	'expired',
 ] as const satisfies readonly ScrapeRunStatus[];
 const SCRAPER_PHASE_VALUES = [
-	'horario',
-	'matricula',
-	'alumnosYNotas',
+	'schedule',
+	'enrollment',
+	'studentsAndGrades',
 ] as const satisfies readonly ScraperPhase[];
 
 export class ScrapeRunStatusResponseDto {
@@ -40,7 +40,7 @@ export class ScrapeRunStatusResponseDto {
 	status: ScrapeRunStatus;
 
 	@ApiPropertyOptional({
-		example: 'matricula',
+		example: 'enrollment',
 		enum: SCRAPER_PHASE_VALUES,
 		nullable: true,
 		description: 'The furthest scrape phase that has started for this run.',
@@ -56,19 +56,19 @@ export class RunSummaryResponseDto {
 	runId: string;
 
 	@ApiProperty({ example: 'UG' })
-	nivel: string;
+	level: string;
 
 	@ApiProperty({ example: '202610' })
-	periodo: string;
+	period: string;
 
 	@ApiProperty({ type: [String], example: ['IN', 'SI'] })
-	departamentos: string[];
+	departments: string[];
 
 	@ApiProperty({ example: 'completed', enum: SCRAPE_RUN_STATUS_VALUES })
 	status: ScrapeRunStatus;
 
 	@ApiPropertyOptional({
-		example: 'alumnosYNotas',
+		example: 'studentsAndGrades',
 		enum: SCRAPER_PHASE_VALUES,
 		nullable: true,
 		description: 'The furthest scrape phase that has started for this run.',
@@ -86,4 +86,10 @@ export class RunSummaryResponseDto {
 
 	@ApiPropertyOptional({ example: 'user:12', nullable: true, type: String })
 	triggeredBy: string | null;
+
+	@ApiProperty({
+		example: 'Jane Doe',
+		description: "Resolved from triggeredBy; '-' when unresolvable.",
+	})
+	triggeredByName: string;
 }
