@@ -1,5 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { UserEntity } from '../model/users.entity';
 
@@ -201,5 +201,14 @@ export class UserRepository extends BaseRepository<UserEntity> {
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async findDisplayNamesByIds(userIds: number[]): Promise<Map<number, string>> {
+		if (userIds.length === 0) return new Map();
+		const users = await this.findByCondition({
+			where: { id: In(userIds) },
+			select: ['id', 'firstName', 'lastName'],
+		});
+		return new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim()]));
 	}
 }
