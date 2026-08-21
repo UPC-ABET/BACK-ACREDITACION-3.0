@@ -8,13 +8,13 @@ describe('ScrapingExportsController', () => {
 	const getStatus = jest.fn();
 	const download = jest.fn();
 	const regenerate = jest.fn();
-	const resolvePeriodo = jest.fn();
+	const resolvePeriod = jest.fn();
 
 	const controller = new ScrapingExportsController({
 		getStatus,
 		download,
 		regenerate,
-		resolvePeriodo,
+		resolvePeriod,
 	} as unknown as ScrapingExportGenerationService);
 
 	const fakeResponse = () => ({ setHeader: jest.fn(), end: jest.fn() }) as never;
@@ -22,16 +22,16 @@ describe('ScrapingExportsController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		resolvePeriodo.mockResolvedValue('202610');
+		resolvePeriod.mockResolvedValue('202610');
 	});
 
 	describe('status', () => {
-		it('resolves exportType and periodo, and returns the service result wrapped', async () => {
+		it('resolves exportType and period, and returns the service result wrapped', async () => {
 			getStatus.mockResolvedValue({ status: 'completed' });
 
 			const response = await controller.status('enrolled-students', 'es', 1);
 
-			expect(resolvePeriodo).toHaveBeenCalledWith(1);
+			expect(resolvePeriod).toHaveBeenCalledWith(1);
 			expect(getStatus).toHaveBeenCalledWith('enrolledStudents', '202610', 'es');
 			expect(response.data).toEqual({ status: 'completed' });
 		});
@@ -63,8 +63,8 @@ describe('ScrapingExportsController', () => {
 			expect(getStatus).not.toHaveBeenCalled();
 		});
 
-		it('throws NotFoundError when the academic period cannot be resolved to a periodo', async () => {
-			resolvePeriodo.mockResolvedValue(null);
+		it('throws NotFoundError when the academic period cannot be resolved to a period', async () => {
+			resolvePeriod.mockResolvedValue(null);
 
 			await expect(controller.status('staff', 'es', 999)).rejects.toThrow(NotFoundError);
 			expect(getStatus).not.toHaveBeenCalled();

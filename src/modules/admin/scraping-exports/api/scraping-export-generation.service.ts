@@ -76,8 +76,8 @@ export class ScrapingExportGenerationService {
 	// Forward lookup for the controller: it only has the request-derived academicPeriodId header,
 	// not the period code every method here is keyed on. Delegates straight to the repository —
 	// this service does not touch the DB itself.
-	async resolvePeriodo(academicPeriodId: number): Promise<string | null> {
-		return this.exportsRepository.resolvePeriodoCode(academicPeriodId);
+	async resolvePeriod(academicPeriodId: number): Promise<string | null> {
+		return this.exportsRepository.resolvePeriodCode(academicPeriodId);
 	}
 
 	async triggerForBannerRun(period: string, bannerRunId: string): Promise<void> {
@@ -405,7 +405,7 @@ export class ScrapingExportGenerationService {
 	private toStatusResponse(row: ScrapingExportRunEntity): ScrapingExportStatusResponse {
 		return {
 			exportType: row.exportType,
-			periodo: row.periodo,
+			period: row.period,
 			lang: row.lang,
 			status: row.status,
 			fileName: row.fileName,
@@ -425,7 +425,7 @@ export class ScrapingExportGenerationService {
 		const updatedAtMs = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
 		if (Date.now() - updatedAtMs < GENERATION_STALE_TIMEOUT_MS) return row;
 
-		return this.runRepository.upsertByKey(row.exportType, row.periodo, row.lang, {
+		return this.runRepository.upsertByKey(row.exportType, row.period, row.lang, {
 			status: 'failed',
 			triggeredBy: row.triggeredBy,
 			errorMessage: scrapingExportsValidationStrings.error.staleGenerationDetected,

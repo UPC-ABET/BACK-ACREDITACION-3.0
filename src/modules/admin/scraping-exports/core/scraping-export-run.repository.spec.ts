@@ -20,12 +20,12 @@ describe('ScrapingExportRunRepository', () => {
 
 			expect(result).toBeNull();
 			expect(mockTypeormRepository.findOne).toHaveBeenCalledWith({
-				where: { exportType: 'staff', periodo: '202610', lang: 'es' },
+				where: { exportType: 'staff', period: '202610', lang: 'es' },
 			});
 		});
 
 		it('returns the row when one exists for the key', async () => {
-			const row = { id: 1, exportType: 'staff', periodo: '202610', lang: 'es' };
+			const row = { id: 1, exportType: 'staff', period: '202610', lang: 'es' };
 			mockTypeormRepository.findOne.mockResolvedValue(row);
 
 			await expect(repo.findByKey('staff', '202610', 'es')).resolves.toEqual(row);
@@ -38,7 +38,7 @@ describe('ScrapingExportRunRepository', () => {
 			const created: Partial<ScrapingExportRunEntity> = {
 				id: 1,
 				exportType: 'staff',
-				periodo: '202610',
+				period: '202610',
 				lang: 'es',
 				status: 'running',
 			};
@@ -49,11 +49,11 @@ describe('ScrapingExportRunRepository', () => {
 			expect(mockTypeormRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					exportType: 'staff',
-					periodo: '202610',
+					period: '202610',
 					lang: 'es',
 					status: 'running',
 				}),
-				{ conflictPaths: ['exportType', 'periodo', 'lang'] },
+				{ conflictPaths: ['exportType', 'period', 'lang'] },
 			);
 			expect(result).toEqual(created);
 		});
@@ -63,7 +63,7 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.findOne.mockResolvedValue({
 				id: 1,
 				exportType: 'staff',
-				periodo: '202610',
+				period: '202610',
 				lang: 'es',
 				status: 'completed',
 				fileName: 'docentes.xlsx',

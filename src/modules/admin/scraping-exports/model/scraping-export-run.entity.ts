@@ -9,7 +9,7 @@ import {
 import type { ScrapingExportGenerationStatus, ScrapingExportType } from './scraping-exports.types';
 
 /**
- * Persisted generation state for one (exportType, periodo, lang) scraping export. Replaces
+ * Persisted generation state for one (exportType, period, lang) scraping export. Replaces
  * rebuilding the export on every download: a row here holds the last generated file plus its
  * status, so `status`/`download`/`regenerate` can serve from storage instead of always running
  * the underlying export query synchronously. See ADR-002.
@@ -19,7 +19,7 @@ import type { ScrapingExportGenerationStatus, ScrapingExportType } from './scrap
  * enforce a foreign key across two different database connections.
  */
 @Entity({ name: 'scraping_export_runs', schema: 'core' })
-@Unique('UQ_scraping_export_runs_export_type_periodo_lang', ['exportType', 'periodo', 'lang'])
+@Unique('UQ_scraping_export_runs_export_type_period_lang', ['exportType', 'period', 'lang'])
 export class ScrapingExportRunEntity extends BaseEntity {
 	@PrimaryGeneratedColumn({ primaryKeyConstraintName: 'PK_scraping_export_runs' })
 	declare id: number;
@@ -30,7 +30,7 @@ export class ScrapingExportRunEntity extends BaseEntity {
 	exportType: ScrapingExportType;
 
 	@TextShortColumn({ nullable: false })
-	periodo: string;
+	period: string;
 
 	@TextShortColumn({ nullable: false })
 	lang: string;

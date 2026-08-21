@@ -17,30 +17,30 @@ export class ScrapingExportRunRepository extends BaseRepository<ScrapingExportRu
 
 	async findByKey(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 	): Promise<ScrapingExportRunEntity | null> {
-		return await this.repository.findOne({ where: { exportType, periodo, lang } });
+		return await this.repository.findOne({ where: { exportType, period, lang } });
 	}
 
 	/**
 	 * A single `upsert` rather than find-then-write: two concurrent triggers for the same key
 	 * (e.g. a completed scrape racing a manual regenerate) would both see no row and race into a
-	 * 23505 on `UQ_scraping_export_runs_export_type_periodo_lang`. Mirrors
+	 * 23505 on `UQ_scraping_export_runs_export_type_period_lang`. Mirrors
 	 * `ScraperCredentialRepository.upsertForProvider`'s use of `repository.upsert`.
 	 */
 	async upsertByKey(
 		exportType: ScrapingExportType,
-		periodo: string,
+		period: string,
 		lang: string,
 		patch: DeepPartial<ScrapingExportRunEntity>,
 	): Promise<ScrapingExportRunEntity> {
 		await this.repository.upsert(
-			{ exportType, periodo, lang, ...patch },
-			{ conflictPaths: ['exportType', 'periodo', 'lang'] },
+			{ exportType, period, lang, ...patch },
+			{ conflictPaths: ['exportType', 'period', 'lang'] },
 		);
 
-		const entity = await this.findByKey(exportType, periodo, lang);
+		const entity = await this.findByKey(exportType, period, lang);
 		if (!entity) {
 			throw new NotFoundException(sharedStrings.error.notFound);
 		}

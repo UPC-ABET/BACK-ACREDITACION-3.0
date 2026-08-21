@@ -43,11 +43,11 @@ export async function resolveAcademicPeriodCode(
  */
 export async function findAcademicPeriodIdByCode(
 	mainDataSource: DataSource,
-	periodoCode: string,
+	periodCode: string,
 ): Promise<number | null> {
 	const rows: Array<{ id: number }> = await mainDataSource.query(
 		`SELECT id AS "id" FROM academic.academic_periods WHERE code = $1 LIMIT 1`,
-		[periodoCode],
+		[periodCode],
 	);
 	return rows[0]?.id ?? null;
 }
@@ -87,15 +87,15 @@ export class ScrapingExportsRepository {
 		return resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId);
 	}
 
-	async findAcademicPeriodIdByCode(periodoCode: string): Promise<number | null> {
-		return findAcademicPeriodIdByCode(this.mainDataSource, periodoCode);
+	async findAcademicPeriodIdByCode(periodCode: string): Promise<number | null> {
+		return findAcademicPeriodIdByCode(this.mainDataSource, periodCode);
 	}
 
 	// Forward lookup used by the generic status/download/regenerate endpoints: given the request's
-	// X-Academic-Period-Id header value, resolve the periodo code the export generation pipeline
+	// X-Academic-Period-Id header value, resolve the period code the export generation pipeline
 	// (and scrape_run itself) is keyed on. Public wrapper around the same resolution the per-export
 	// queries already use internally.
-	async resolvePeriodoCode(academicPeriodId: number): Promise<string | null> {
+	async resolvePeriodCode(academicPeriodId: number): Promise<string | null> {
 		return this.periodCode(academicPeriodId);
 	}
 

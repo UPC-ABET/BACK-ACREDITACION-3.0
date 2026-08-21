@@ -11,7 +11,7 @@ export type ScrapingExportType =
 	| 'studentSections'
 	| 'gradesRc';
 
-// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, periodo, lang) key.
+// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, period, lang) key.
 // No 'pending' state: "no row yet" is represented separately as `{ status: 'notGenerated' }`
 // (see ScrapingExportStatusResponse below), not by a status value on a persisted row.
 export type ScrapingExportGenerationStatus = 'running' | 'completed' | 'failed';
@@ -22,7 +22,7 @@ export type ScrapingExportGenerationStatus = 'running' | 'completed' | 'failed';
 // actual bytes.
 export interface ScrapingExportStatusResponse {
 	exportType: ScrapingExportType;
-	periodo: string;
+	period: string;
 	lang: string;
 	status: ScrapingExportGenerationStatus | 'notGenerated';
 	fileName: string | null;
