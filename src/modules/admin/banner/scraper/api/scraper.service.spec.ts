@@ -407,4 +407,40 @@ describe('ScraperService.listRuns', () => {
 		expect(summary.triggeredByName).toBe('-');
 		expect(mockUserRepository.findDisplayNamesByIds).not.toHaveBeenCalled();
 	});
+
+	it('falls back to "-" when triggeredBy is malformed, without calling the user lookup', async () => {
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([buildRun({ triggeredBy: 'admin' })]);
+		const service = buildService();
+
+		const [summary] = await service.listRuns(1);
+
+		expect(summary.triggeredByName).toBe('-');
+		expect(mockUserRepository.findDisplayNamesByIds).not.toHaveBeenCalled();
+	});
+
+	it('resolves multiple runs with one deduped batched lookup call', async () => {
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([
+			buildRun({ id: 'run-1', triggeredBy: 'user:12' }),
+			buildRun({ id: 'run-2', triggeredBy: 'user:999999' }),
+			buildRun({ id: 'run-3', triggeredBy: 'user:12' }),
+		]);
+		mockUserRepository.findDisplayNamesByIds.mockResolvedValue(new Map([[12, 'Jane Doe']]));
+		const service = buildService();
+
+		const summaries = await service.listRuns(1);
+
+		expect(mockUserRepository.findDisplayNamesByIds).toHaveBeenCalledTimes(1);
+		expect(mockUserRepository.findDisplayNamesByIds).toHaveBeenCalledWith([12, 999999]);
+		expect(summaries.map((s) => s.triggeredByName)).toEqual(['Jane Doe', '-', 'Jane Doe']);
+	});
+
+	it('falls back to "-" for every run when the user lookup fails, without throwing', async () => {
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([buildRun({ triggeredBy: 'user:12' })]);
+		mockUserRepository.findDisplayNamesByIds.mockRejectedValue(new Error('db down'));
+		const service = buildService();
+
+		const [summary] = await service.listRuns(1);
+
+		expect(summary.triggeredByName).toBe('-');
+	});
 });

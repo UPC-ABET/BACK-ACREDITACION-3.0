@@ -163,8 +163,7 @@ export class ScraperService {
 				runs.map((run) => parseUserId(run.triggeredBy)).filter((id): id is number => id !== null),
 			),
 		];
-		const namesById =
-			userIds.length > 0 ? await this.userRepository.findDisplayNamesByIds(userIds) : new Map();
+		const namesById = await this.resolveTriggeredByNames(userIds);
 		return runs.map((run) => {
 			const userId = parseUserId(run.triggeredBy);
 			return {
@@ -181,6 +180,23 @@ export class ScraperService {
 				triggeredByName: userId !== null ? (namesById.get(userId) ?? '-') : '-',
 			};
 		});
+	}
+
+	// triggeredByName is cosmetic enrichment on top of the run list, not the reason listRuns
+	// exists — a transient failure resolving it must not take down the whole call. Falls back
+	// to every name reading '-', matching what an unresolvable triggeredBy already renders as.
+	private async resolveTriggeredByNames(userIds: number[]): Promise<Map<number, string>> {
+		if (userIds.length === 0) return new Map<number, string>();
+		try {
+			return await this.userRepository.findDisplayNamesByIds(userIds);
+		} catch (error) {
+			this.logger.error(
+				`Failed to resolve triggeredBy names: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+			return new Map<number, string>();
+		}
 	}
 
 	private async execute(
