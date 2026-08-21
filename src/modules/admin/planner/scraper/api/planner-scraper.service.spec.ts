@@ -11,17 +11,18 @@ import {
 	PlannerSessionExpiredError,
 } from '../../planner-token/model/planner-session.errors';
 import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
+import { UserRepository } from 'src/modules/organization/users/core/users.repository';
 import { isFatalScrapeError, PlannerScraperService } from './planner-scraper.service';
 
-const PERIODO = '202510';
+const PERIOD = '202510';
 
 const mockScrapeRunRepository = {
 	createRun: jest.fn(),
 	finish: jest.fn(),
 	findById: jest.fn(),
-	findByPeriodo: jest.fn(),
+	findByPeriod: jest.fn(),
 	deleteRun: jest.fn(),
-	deleteOtherRunsForPeriodo: jest.fn(),
+	deleteOtherRunsForPeriod: jest.fn(),
 	updatePhase: jest.fn(),
 };
 const mockSeccionRepository = { bulkInsert: jest.fn() };
@@ -33,6 +34,7 @@ const mockSourceRepository = {
 };
 const mockHttp = { get: jest.fn() };
 const mockExportGenerationService = { triggerForPlannerRun: jest.fn() };
+const mockUserRepository = { findDisplayNamesByIds: jest.fn() };
 
 const buildService = () =>
 	new PlannerScraperService(
@@ -43,6 +45,7 @@ const buildService = () =>
 		mockSourceRepository as unknown as PlannerSourceRepository,
 		mockHttp as unknown as PlannerHttpClient,
 		mockExportGenerationService as unknown as ScrapingExportGenerationService,
+		mockUserRepository as unknown as UserRepository,
 	);
 
 const flush = async () => {
@@ -60,14 +63,15 @@ const finishedStatus = () => mockScrapeRunRepository.finish.mock.calls[0]?.[1] a
 describe('PlannerScraperService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockSourceRepository.findAcademicPeriodCode.mockResolvedValue(PERIODO);
+		mockSourceRepository.findAcademicPeriodCode.mockResolvedValue(PERIOD);
 		mockSourceRepository.findActiveCourseCodes.mockResolvedValue(['CS101']);
 		mockScrapeRunRepository.createRun.mockResolvedValue(undefined);
 		mockScrapeRunRepository.finish.mockResolvedValue(undefined);
 		mockScrapeRunRepository.deleteRun.mockResolvedValue(undefined);
-		mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteOtherRunsForPeriod.mockResolvedValue(undefined);
 		mockScrapeRunRepository.updatePhase.mockResolvedValue(undefined);
 		mockExportGenerationService.triggerForPlannerRun.mockResolvedValue(undefined);
+		mockUserRepository.findDisplayNamesByIds.mockResolvedValue(new Map());
 		mockHttp.get.mockResolvedValue([]);
 	});
 
@@ -152,7 +156,7 @@ describe('PlannerScraperService', () => {
 			const runId = mockScrapeRunRepository.finish.mock.calls[0]?.[0] as string;
 			expect(finishedStatus()).toBe('failed');
 			expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith(runId);
-			expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+			expect(mockScrapeRunRepository.deleteOtherRunsForPeriod).not.toHaveBeenCalled();
 		});
 
 		it('deletes only its own leftovers when a run expires end-to-end', async () => {
@@ -163,7 +167,7 @@ describe('PlannerScraperService', () => {
 			const runId = mockScrapeRunRepository.finish.mock.calls[0]?.[0] as string;
 			expect(finishedStatus()).toBe('expired');
 			expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith(runId);
-			expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+			expect(mockScrapeRunRepository.deleteOtherRunsForPeriod).not.toHaveBeenCalled();
 		});
 	});
 
@@ -180,14 +184,14 @@ describe('PlannerScraperService', () => {
 
 			await (service as unknown as { finalizeRun: Function }).finalizeRun(
 				'run-1',
-				PERIODO,
+				PERIOD,
 				'completed',
 				{},
 			);
 
 			expect(mockScrapeRunRepository.finish).toHaveBeenCalledWith('run-1', 'completed', {});
-			expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).toHaveBeenCalledWith(
-				PERIODO,
+			expect(mockScrapeRunRepository.deleteOtherRunsForPeriod).toHaveBeenCalledWith(
+				PERIOD,
 				'run-1',
 			);
 			expect(mockScrapeRunRepository.deleteRun).not.toHaveBeenCalled();
@@ -198,14 +202,14 @@ describe('PlannerScraperService', () => {
 
 			await (service as unknown as { finalizeRun: Function }).finalizeRun(
 				'run-1',
-				PERIODO,
+				PERIOD,
 				'completed',
 				{},
 			);
 			await flush();
 
 			expect(mockExportGenerationService.triggerForPlannerRun).toHaveBeenCalledWith(
-				PERIODO,
+				PERIOD,
 				'run-1',
 			);
 		});
@@ -217,7 +221,7 @@ describe('PlannerScraperService', () => {
 			await expect(
 				(service as unknown as { finalizeRun: Function }).finalizeRun(
 					'run-1',
-					PERIODO,
+					PERIOD,
 					'completed',
 					{},
 				),
@@ -232,14 +236,14 @@ describe('PlannerScraperService', () => {
 
 				await (service as unknown as { finalizeRun: Function }).finalizeRun(
 					'run-1',
-					PERIODO,
+					PERIOD,
 					status,
 					{},
 				);
 				await flush();
 
 				expect(mockScrapeRunRepository.deleteRun).toHaveBeenCalledWith('run-1');
-				expect(mockScrapeRunRepository.deleteOtherRunsForPeriodo).not.toHaveBeenCalled();
+				expect(mockScrapeRunRepository.deleteOtherRunsForPeriod).not.toHaveBeenCalled();
 				expect(mockExportGenerationService.triggerForPlannerRun).not.toHaveBeenCalled();
 			},
 		);
@@ -248,13 +252,13 @@ describe('PlannerScraperService', () => {
 		// finalizeRun (and, by extension, out of execute()), unlike finish()'s own failure which is
 		// deliberately left uncaught.
 		it('logs and swallows a retention-delete failure instead of propagating it', async () => {
-			mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockRejectedValue(new Error('db down'));
+			mockScrapeRunRepository.deleteOtherRunsForPeriod.mockRejectedValue(new Error('db down'));
 			const service = buildService();
 
 			await expect(
 				(service as unknown as { finalizeRun: Function }).finalizeRun(
 					'run-1',
-					PERIODO,
+					PERIOD,
 					'completed',
 					{},
 				),
@@ -278,7 +282,7 @@ describe('PlannerScraperService', () => {
 		const stubLimiters = (service: PlannerScraperService) =>
 			jest
 				.spyOn(service as unknown as { createLimiters: Function }, 'createLimiters')
-				.mockResolvedValue({ seccion: passthrough, evaluacion: passthrough, nota: passthrough });
+				.mockResolvedValue({ section: passthrough, evaluation: passthrough, grade: passthrough });
 
 		const respondByPath = (
 			handlers: Record<string, (query: Record<string, string>) => unknown>,
@@ -289,7 +293,7 @@ describe('PlannerScraperService', () => {
 			});
 		};
 
-		const PERIODS_HANDLER = () => [{ periodCode: `UG-${PERIODO}`, periodId: 'period-1' }];
+		const PERIODS_HANDLER = () => [{ periodCode: `UG-${PERIOD}`, periodId: 'period-1' }];
 
 		it('fetches a section reachable from two courses only once (seenSections dedup)', async () => {
 			const service = buildService();
@@ -303,7 +307,7 @@ describe('PlannerScraperService', () => {
 				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, [
 				'CS101',
 				'CS102',
 			]);
@@ -327,9 +331,7 @@ describe('PlannerScraperService', () => {
 				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
-				'CS101',
-			]);
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, ['CS101']);
 
 			const notaCalls = mockHttp.get.mock.calls.filter(
 				([path]) => path === '/api/class-api/grades',
@@ -350,13 +352,13 @@ describe('PlannerScraperService', () => {
 				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, [
 				'CS101',
 				'CS102',
 			]);
 
 			const phaseCalls = mockScrapeRunRepository.updatePhase.mock.calls.map(([, phase]) => phase);
-			expect(phaseCalls).toEqual(['secciones', 'evaluaciones', 'notas']);
+			expect(phaseCalls).toEqual(['sections', 'evaluations', 'grades']);
 			expect(finishedStatus()).toBe('completed');
 		});
 
@@ -379,7 +381,7 @@ describe('PlannerScraperService', () => {
 				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
 			});
 			mockScrapeRunRepository.updatePhase.mockImplementation((_id: string, phase: string) =>
-				phase === 'evaluaciones'
+				phase === 'evaluations'
 					? Promise.reject(new Error('transient db blip'))
 					: Promise.resolve(undefined),
 			);
@@ -389,7 +391,7 @@ describe('PlannerScraperService', () => {
 			process.on('unhandledRejection', onUnhandledRejection);
 
 			try {
-				await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, [
 					'CS101',
 				]);
 				await flush();
@@ -413,9 +415,7 @@ describe('PlannerScraperService', () => {
 				return [];
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
-				'CS101',
-			]);
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, ['CS101']);
 
 			expect(finishedStatus()).toBe('expired');
 		});
@@ -447,7 +447,7 @@ describe('PlannerScraperService', () => {
 				return [];
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, [
 				'CS101',
 				'CS102',
 			]);
@@ -500,7 +500,7 @@ describe('PlannerScraperService', () => {
 				],
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, [
 				'CS101',
 				'CS102',
 			]);
@@ -525,12 +525,10 @@ describe('PlannerScraperService', () => {
 				'/api/core-api/sections': () => [],
 			});
 
-			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
-				'CS101',
-			]);
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, ['CS101']);
 
 			const phaseCalls = mockScrapeRunRepository.updatePhase.mock.calls.map(([, phase]) => phase);
-			expect(phaseCalls).toEqual(['secciones']);
+			expect(phaseCalls).toEqual(['sections']);
 			expect(finishedStatus()).toBe('completed');
 		});
 	});
@@ -539,38 +537,77 @@ describe('PlannerScraperService', () => {
 		it('includes phase in the returned run status', async () => {
 			mockScrapeRunRepository.findById.mockResolvedValue({
 				status: 'running',
-				phase: 'evaluaciones',
+				phase: 'evaluations',
 				stats: null,
 			});
 			const service = buildService();
 
 			const result = await service.getRun('run-1');
 
-			expect(result).toEqual({ status: 'running', phase: 'evaluaciones', stats: null });
+			expect(result).toEqual({ status: 'running', phase: 'evaluations', stats: null });
 		});
 	});
 
 	describe('listRuns', () => {
+		const buildRun = (overrides: Partial<Record<string, unknown>> = {}) => ({
+			id: 'run-1',
+			period: PERIOD,
+			school: null,
+			status: 'running',
+			phase: 'sections',
+			startedAt: new Date('2026-08-20T10:00:00.000Z'),
+			finishedAt: null,
+			stats: null,
+			triggeredBy: 'user:1',
+			...overrides,
+		});
+
+		beforeEach(() => {
+			mockSourceRepository.findAcademicPeriodCode.mockResolvedValue(PERIOD);
+		});
+
 		it('includes phase in each run summary', async () => {
-			mockSourceRepository.findAcademicPeriodCode.mockResolvedValue(PERIODO);
-			mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
-				{
-					id: 'run-1',
-					periodo: PERIODO,
-					escuela: null,
-					status: 'running',
-					phase: 'secciones',
-					startedAt: new Date('2026-08-20T10:00:00.000Z'),
-					finishedAt: null,
-					stats: null,
-					triggeredBy: 'user:1',
-				},
-			]);
+			mockScrapeRunRepository.findByPeriod.mockResolvedValue([buildRun()]);
 			const service = buildService();
 
 			const [summary] = await service.listRuns(1);
 
-			expect(summary.phase).toBe('secciones');
+			expect(summary.phase).toBe('sections');
+		});
+
+		it('resolves triggeredBy to the display name looked up by id', async () => {
+			mockScrapeRunRepository.findByPeriod.mockResolvedValue([
+				buildRun({ triggeredBy: 'user:12' }),
+			]);
+			mockUserRepository.findDisplayNamesByIds.mockResolvedValue(new Map([[12, 'Jane Doe']]));
+			const service = buildService();
+
+			const [summary] = await service.listRuns(1);
+
+			expect(mockUserRepository.findDisplayNamesByIds).toHaveBeenCalledWith([12]);
+			expect(summary.triggeredByName).toBe('Jane Doe');
+		});
+
+		it('falls back to "-" when the triggering user no longer exists', async () => {
+			mockScrapeRunRepository.findByPeriod.mockResolvedValue([
+				buildRun({ triggeredBy: 'user:999999' }),
+			]);
+			mockUserRepository.findDisplayNamesByIds.mockResolvedValue(new Map());
+			const service = buildService();
+
+			const [summary] = await service.listRuns(1);
+
+			expect(summary.triggeredByName).toBe('-');
+		});
+
+		it('falls back to "-" when triggeredBy is null, without calling the user lookup', async () => {
+			mockScrapeRunRepository.findByPeriod.mockResolvedValue([buildRun({ triggeredBy: null })]);
+			const service = buildService();
+
+			const [summary] = await service.listRuns(1);
+
+			expect(summary.triggeredByName).toBe('-');
+			expect(mockUserRepository.findDisplayNamesByIds).not.toHaveBeenCalled();
 		});
 	});
 });
