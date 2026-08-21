@@ -83,6 +83,19 @@ column is cleared to `null` on every terminal run by `finish()`, per
 non-null value — but the migration must handle that case correctly, not assume it's always
 empty). See design.md § AC-6 for the corrected approach.
 
+**Correction, found after the rename's first pass shipped**: `core.scraping_export_runs`
+(main datasource, `admin/scraping-exports/model/scraping-export-run.entity.ts`) also has a
+Spanish column, `periodo` — missed in the original inventory above because it isn't a raw
+Banner/Planner table, it's this feature's own persisted generation state (see ADR-002). This
+is squarely the same violation the rest of this proposal targets (our own column, not
+external payload), not the "~40 unrelated files" class of gap in Non-goals below — it was
+simply not found until an audit of the first implementation pass flagged it. In scope: the
+column itself, `ScrapingExportRunEntity.periodo`, its `@Unique(...)` constraint,
+`ScrapingExportStatusResponse`/`ScrapingExportStatusResponseDto.periodo` (a wire-facing
+field the frontend's export-download screen already consumes), `ScrapingExportRunRepository`'s
+`periodo` parameters and `conflictPaths`, and `ScrapingExportsRepository.resolvePeriodoCode`/
+`ScrapingExportGenerationService.resolvePeriodo`'s naming. See AC-9.
+
 **Confirmed out of scope, correctly untouched today**: the `nrc` field (Banner's own domain
 term, not a translation gap), JSONB `payload` column contents (`section.materia.codigo`,
 `section.numeroCurso`, `alumno.apellidos`, etc. — verbatim external data), and the query
@@ -147,6 +160,13 @@ shortly after this one ships.
 - Every existing test in the affected modules passes after the rename with only mechanical
   identifier updates — this is a naming change, not a behavior change, and the ACs below treat
   any test needing more than a rename to stay green as a signal something was misunderstood.
+- `core.scraping_export_runs.periodo` (main datasource) is renamed to `period`, via its own
+  new migration — column, entity property, `@Unique(...)` constraint,
+  `ScrapingExportStatusResponse`/`ScrapingExportStatusResponseDto.periodo`,
+  `ScrapingExportRunRepository`'s `periodo` params/`conflictPaths`, and the
+  `resolvePeriodoCode`/`resolvePeriodo` method names across `ScrapingExportsRepository`/
+  `ScrapingExportGenerationService`/`ScrapingExportsController`. Same no-compatibility-shim
+  rule as the rest of this proposal; `openapi.json` regenerated in the same PR.
 
 ## Non-goals
 
@@ -206,6 +226,14 @@ shortly after this one ships.
    `` `${firstName} ${lastName}` ``; when `triggeredBy` is `null`, does not match that
    pattern, or names a user id that no longer exists in `organization.users`, then
    `triggeredByName` is the literal string `'-'`. `triggeredBy` itself is unchanged.
+9. **AC-9** — Given `core.scraping_export_runs`, when its migration completes, then the
+   `periodo` column is renamed to `period` (`ALTER TABLE ... RENAME COLUMN`, data preserved,
+   `down()` reverses cleanly) and every TypeScript reference — `ScrapingExportRunEntity`,
+   `ScrapingExportStatusResponse`, `ScrapingExportStatusResponseDto`,
+   `ScrapingExportRunRepository`, `ScrapingExportsRepository.resolvePeriodoCode`,
+   `ScrapingExportGenerationService.resolvePeriodo`, `ScrapingExportsController` — is renamed
+   to match, with `openapi.json` regenerated showing only `period` on
+   `ScrapingExportStatusResponseDto`.
 
 ### Traceability
 
@@ -219,6 +247,7 @@ shortly after this one ships.
 | 6   | `ScraperPhase`/`PlannerScraperPhase` values are English                    | TBD          |
 | 7   | Full affected-module test suite green after rename                         | TBD          |
 | 8   | `triggeredBy` resolved to a display name, `'-'` fallback when unresolvable | TBD          |
+| 9   | `core.scraping_export_runs.periodo` renamed, `openapi.json` regenerated    | TBD          |
 
 ## Dependencies
 
@@ -240,21 +269,25 @@ CASE ...` and its CHECK constraints reference `scrape_run`/`planner_scrape_run`,
   pattern as `scrape-progress-and-performance` and `scrape-retention-and-cached-exports`: this
   backend PR reaches `staging` before the frontend PR merges. This now also covers the
   `phase` field's renamed values (AC-6), which the frontend already consumes in production
-  since `scrape-progress-and-performance` shipped — not just the four DTOs' field names.
+  since `scrape-progress-and-performance` shipped — not just the four DTOs' field names — and
+  AC-9's `ScrapingExportStatusResponseDto.periodo`→`.period`, which the export-download screen
+  already consumes today.
 - Every export type in `admin/scraping-exports` needs a real or fixture-backed way to verify
   output correctness post-rename (AC-4) — confirm what test/fixture infrastructure already
   exists there before design commits to a specific verification method.
 
 ## Risks
 
-| Risk                                                                                                                                                                                                                                                                                                                                                                       | Impact | Mitigation                                                                                                                                                                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `grades-rc-export.sql.ts`'s raw SQL (~580 lines, dozens of column references across ~15 CTEs) is not type-checked — a missed rename fails silently until the query runs.                                                                                                                                                                                                   | High   | AC-4 requires verifying every export type's actual output post-rename, not just a successful build; design should specify exactly how (real staging data vs. a fixture dataset).                                           |
-| This is a genuine breaking wire-format change to four DTOs the frontend already consumes.                                                                                                                                                                                                                                                                                  | High   | Sequential cross-repo mode (same as prior changes here) — backend ships and reaches `staging` before the frontend PR merges; no dual-support window is attempted, per the Non-goals decision against a compatibility shim. |
-| Renaming columns but not tables (Non-goals) leaves `raw_horario`/`raw_matricula`/etc. as Spanish-named tables holding English-named columns — a visible inconsistency for as long as the table-rename follow-up doesn't happen.                                                                                                                                            | Medium | Documented explicitly here rather than silently decided; see Open questions.                                                                                                                                               |
-| AC-6's phase-literal rename now needs a data migration (`UPDATE` on any in-flight run's `phase`), not a plain edit — because `scrape-progress-and-performance` already merged and its migration already ran, unlike this proposal's original assumption. Missing that and editing the applied migration in place would silently no-op on any database that already ran it. | Medium | Corrected in Dependencies and design.md § AC-6 before implementation started; Task 1.1/AC-6 in tasks.md are two separate, correctly-ordered migrations.                                                                    |
-| A missed rename site in `scraping-exports` (the largest, previously-underestimated consumer) silently breaks an export in a way only visible in the generated file's content, not in logs or a thrown error.                                                                                                                                                               | Medium | Same as the first risk — AC-4's output-correctness check is the actual test for this, not the build passing.                                                                                                               |
-| `triggeredByName` (AC-8) resolves `organization.users` (main datasource) against a `triggeredBy` value read from `scrape_run`/`planner_scrape_run` (raw datasource) — the two are separate physical Postgres instances, so this is new cross-connection application code, not a SQL join, and has no existing test coverage to extend.                                     | Low    | Design specifies the exact lookup (batched by-id, in `listRuns` only) and its unit tests explicitly, including the not-found/malformed/null fallback paths.                                                                |
+| Risk                                                                                                                                                                                                                                                                                                                                                                                                         | Impact | Mitigation                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grades-rc-export.sql.ts`'s raw SQL (~580 lines, dozens of column references across ~15 CTEs) is not type-checked — a missed rename fails silently until the query runs.                                                                                                                                                                                                                                     | High   | AC-4 requires verifying every export type's actual output post-rename, not just a successful build; design should specify exactly how (real staging data vs. a fixture dataset).                                                                                                                         |
+| This is a genuine breaking wire-format change to four DTOs the frontend already consumes.                                                                                                                                                                                                                                                                                                                    | High   | Sequential cross-repo mode (same as prior changes here) — backend ships and reaches `staging` before the frontend PR merges; no dual-support window is attempted, per the Non-goals decision against a compatibility shim.                                                                               |
+| Renaming columns but not tables (Non-goals) leaves `raw_horario`/`raw_matricula`/etc. as Spanish-named tables holding English-named columns — a visible inconsistency for as long as the table-rename follow-up doesn't happen.                                                                                                                                                                              | Medium | Documented explicitly here rather than silently decided; see Open questions.                                                                                                                                                                                                                             |
+| AC-6's phase-literal rename now needs a data migration (`UPDATE` on any in-flight run's `phase`), not a plain edit — because `scrape-progress-and-performance` already merged and its migration already ran, unlike this proposal's original assumption. Missing that and editing the applied migration in place would silently no-op on any database that already ran it.                                   | Medium | Corrected in Dependencies and design.md § AC-6 before implementation started; Task 1.1/AC-6 in tasks.md are two separate, correctly-ordered migrations.                                                                                                                                                  |
+| A missed rename site in `scraping-exports` (the largest, previously-underestimated consumer) silently breaks an export in a way only visible in the generated file's content, not in logs or a thrown error.                                                                                                                                                                                                 | Medium | Same as the first risk — AC-4's output-correctness check is the actual test for this, not the build passing.                                                                                                                                                                                             |
+| `triggeredByName` (AC-8) resolves `organization.users` (main datasource) against a `triggeredBy` value read from `scrape_run`/`planner_scrape_run` (raw datasource) — the two are separate physical Postgres instances, so this is new cross-connection application code, not a SQL join, and has no existing test coverage to extend.                                                                       | Low    | Design specifies the exact lookup (batched by-id, in `listRuns` only) and its unit tests explicitly, including the not-found/malformed/null fallback paths.                                                                                                                                              |
+| AC-9's `ScrapingExportRunRepository.upsertByKey`'s `conflictPaths: ['exportType', 'periodo', 'lang']` must be renamed in lockstep with the entity property — TypeORM resolves `conflictPaths` by property name, so a mismatch between the renamed entity and a stale `conflictPaths` array would silently break the upsert's `ON CONFLICT` clause (wrong/no-op conflict target) rather than fail to compile. | Medium | Single-commit rename covering entity, `@Unique(...)`, and `conflictPaths` together; existing repository tests re-run to confirm the upsert path is still exercised.                                                                                                                                      |
+| AC-9 was missed in this proposal's original inventory — found only after the first implementation pass shipped and was audited, meaning this proposal's own completeness (per AC-3's spirit: "no Spanish identifier remains") was itself incomplete once.                                                                                                                                                    | Low    | Corrected in the same PR rather than deferred; no evidence of a similar miss elsewhere in `admin/scraping-exports` beyond what AC-9 now covers (checked via a fresh grep across the whole module for `\bperiodo\b`, `\bnivel\b`, `\bdepartamentos?\b`, `\bescuela\b`, `\bcursos\b` before writing AC-9). |
 
 ## Open questions
 

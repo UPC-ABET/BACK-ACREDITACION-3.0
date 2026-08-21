@@ -485,6 +485,101 @@ src/modules/admin/scraping-exports src/modules/organization/users` → expect **
 
 ---
 
+## Milestone 10 — `core.scraping_export_runs.periodo` (AC-9)
+
+Found post-implementation: `core.scraping_export_runs` (main datasource, this feature's own
+persisted generation state, not a raw Banner/Planner table) also has a Spanish `periodo`
+column — missed in the original inventory. See design.md § AC-9.
+
+### Task 10.1 — Main-datasource migration: rename `periodo` to `period`
+
+- [ ] Task complete (code written and verified against design.md; manual `migration:run`/`revert` step below not yet run — no main-DB connection available in this session)
+
+> `pnpm migration:create` produced `src/database/migrations/1787350920408-rename-scraping-export-runs-periodo.ts`. `up()`/`down()` follow the same drop-rename-add discipline as Task 1.1's raw migration. Manual apply/revert verification is a `runbook.md` step for whoever has main-DB/staging access.
+
+**Files**
+
+- `src/database/migrations/<timestamp>-rename-scraping-export-runs-periodo.ts` (create, via CLI)
+
+**Steps**
+
+1. `pnpm migration:create src/database/migrations/rename-scraping-export-runs-periodo` (main
+   datasource CLI — note this is `migration:create`, not `migration:raw:create`;
+   `core.scraping_export_runs` lives on the main connection).
+2. `up()`: `ALTER TABLE core.scraping_export_runs RENAME COLUMN periodo TO period`, then drop
+   - re-add `UQ_scraping_export_runs_export_type_periodo_lang` →
+     `UQ_scraping_export_runs_export_type_period_lang` (`RENAME COLUMN` doesn't rename a
+     constraint that references it).
+3. `down()`: exact inverse.
+4. Manual verification (see `runbook.md`): apply/revert against a local/staging copy of the
+   main DB, confirm row counts and constraint name both ways.
+
+**Commit**: `feat(scraping-exports): rename periodo column to period`
+
+### Task 10.2 — Rename `periodo` across the entity, DTOs, repository, service, and controller ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> Renamed all 10 files. Confirmed via `tsc` alone that mocks are loosely typed (no compile
+> error from stale spec fixtures), so this only surfaces at test _runtime_ — ran the actual
+> suite before declaring done: 14 failures on the first pass (`resolvePeriod is not a
+function`, stale `periodo:` mock keys), fixed by renaming the three spec files' fixtures/
+> mock method names/constant (`PERIODO`→`PERIOD`) to match. 71/71 green after.
+
+**Files**
+
+- `src/modules/admin/scraping-exports/model/scraping-export-run.entity.ts` (modify)
+- `src/modules/admin/scraping-exports/model/scraping-exports.types.ts` (modify)
+- `src/modules/admin/scraping-exports/model/scraping-exports.response.dtos.ts` (modify)
+- `src/modules/admin/scraping-exports/core/scraping-export-run.repository.ts` (modify)
+- `src/modules/admin/scraping-exports/core/scraping-export-run.repository.spec.ts` (modify)
+- `src/modules/admin/scraping-exports/core/scraping-exports.repository.ts` (modify —
+  `resolvePeriodoCode`→`resolvePeriodCode`, `periodoCode`→`periodCode`)
+- `src/modules/admin/scraping-exports/api/scraping-export-generation.service.ts` (modify —
+  `resolvePeriodo`→`resolvePeriod`, `toStatusResponse`/`reconcileIfStale`'s `row.periodo`)
+- `src/modules/admin/scraping-exports/api/scraping-export-generation.service.spec.ts` (modify)
+- `src/modules/admin/scraping-exports/api/scraping-exports.controller.ts` (modify —
+  `resolvePeriodo`→`resolvePeriod`, 4 local `periodo` call sites)
+- `src/modules/admin/scraping-exports/api/scraping-exports.controller.spec.ts` (modify)
+
+**Steps (TDD)**
+
+1. `npx jest --no-coverage src/modules/admin/scraping-exports` → expect **green** (baseline).
+2. Rename per design.md § AC-9: entity property + `@Unique(...)` array; the two interface/DTO
+   `periodo` fields; both repository methods' `periodo` params **and** `upsertByKey`'s
+   `conflictPaths` array (same commit as the entity property — a mismatch here breaks the
+   `ON CONFLICT` target silently, not at compile time); `resolvePeriodoCode`/`periodoCode` in
+   `ScrapingExportsRepository`; `resolvePeriodo` in both the service and the controller, plus
+   the service's two `row.periodo` reads.
+3. Update the three spec files' fixtures/assertions to match.
+4. `npx jest --no-coverage src/modules/admin/scraping-exports` → expect **green**.
+5. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `refactor(scraping-exports): rename periodo identifiers to period`
+
+### Task 10.3 — Regenerate `openapi.json`, full-suite check ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+> `pnpm openapi:export` regenerated `openapi.json` — `ScrapingExportStatusResponseDto` now
+> shows `period`, verified by reading the generated schema directly. Full repo suite: 133
+> suites, 1315 passed, 2 pre-existing skips, 0 failures. `tsc --noEmit` clean.
+
+**Files**
+
+- `openapi.json` (modify — generated)
+
+**Steps**
+
+1. `pnpm openapi:export` and review the diff: confirm `ScrapingExportStatusResponseDto` shows
+   `period`, not `periodo`.
+2. `npx jest --no-coverage` (full repo suite) and `pnpm exec tsc --noEmit -p
+tsconfig.build.json` → both green, no collateral damage.
+
+**Commit**: `chore(scraping-exports): regenerate openapi.json for renamed period field`
+
+---
+
 ## Unplanned — `scraping-export-generation.service.ts` also called the renamed repository methods
 
 Neither `design.md` nor this file's own task list listed

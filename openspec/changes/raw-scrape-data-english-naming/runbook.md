@@ -4,7 +4,10 @@
 
 ## Deploy prerequisite
 
-Two raw-datasource migrations, **in this order**:
+Three migrations across two physical databases. The two raw-datasource migrations have a
+fixed order between themselves; the main-datasource one (Task 10.1) is independent of both
+(different Postgres instance) but still must run before the new application code, same as
+the other two:
 
 1. **Task 1.1** — renames `nivel`/`periodo`/`departamentos`/`departamento`/`codigo_alumno`/
    `curso_codigo`/`escuela` and the four dependent `UNIQUE` constraints. Must run before the
@@ -20,9 +23,12 @@ Two raw-datasource migrations, **in this order**:
    to the already-applied `1787270797549-add-phase-to-scrape-runs.ts` (that one shipped with
    `scrape-progress-and-performance`, PR #121, and is already on `develop` — the original
    proposal assumed it was still unmerged; corrected during design, see design.md § AC-6).
+3. **Task 10.1** (main datasource, `pnpm migration:run` — not `migration:raw:run`) — renames
+   `core.scraping_export_runs.periodo` to `period` and its dependent `UNIQUE` constraint.
+   Found post-implementation, during audit; see design.md § AC-9.
 
-Both run as normal deploy-time steps ahead of the new application version, exactly like every
-other migration here.
+All three run as normal deploy-time steps ahead of the new application version, exactly like
+every other migration here.
 
 No backfill needed for Task 1.1: `ALTER TABLE ... RENAME COLUMN` preserves every row exactly,
 under a new name. Task 6.1 **does** need a backfill (the `UPDATE ... SET phase = ...` step) —
@@ -105,6 +111,21 @@ real cross-connection wiring:
 4. Repeat steps 1–3 for `POST /planner/scrape` / `GET /planner/scrape` against
    `planner_scrape_run`.
 
+### Main-datasource migration apply/revert (AC-9 — Task 10.1)
+
+1. Snapshot the `core.scraping_export_runs` row count on a staging (or local) copy of the
+   main DB.
+2. `pnpm migration:run`. Confirm via `\d core.scraping_export_runs` that the column is now
+   `period` and the constraint is `UQ_scraping_export_runs_export_type_period_lang`, and the
+   row count is unchanged.
+3. `pnpm migration:revert`. Confirm both are back to `periodo`/
+   `UQ_scraping_export_runs_export_type_periodo_lang`, row count still unchanged.
+4. Re-run `pnpm migration:run` to leave the DB in the post-rename state.
+5. Exercise `GET /scraping/exports/staff/status` (or any export type) and confirm the
+   response's `period` field is populated — this is the first real check that
+   `ScrapingExportRunRepository`'s renamed `conflictPaths` still resolves to the right column
+   at runtime, not just at compile time (see design.md § AC-9's risk note).
+
 ## Revert plan
 
 - **Code**: a normal PR revert restores the Spanish identifiers, DTOs without
@@ -118,3 +139,8 @@ real cross-connection wiring:
   Task 6.1 depends on Task 1.1's renamed columns existing) — and, matching the forward
   deploy's ordering rule, application code reverts before migrations revert.
 - **`triggeredByName`**: purely computed at read time — no persisted data to revert.
+- **`core.scraping_export_runs.periodo` migration (Task 10.1)**: `down()` renames the column
+  and constraint back to Spanish — safe, reversible, no data loss (verified in the apply/
+  revert check above). Independent of the two raw-datasource migrations (separate physical
+  Postgres instance), so no ordering dependency with them — but still application-code-reverts
+  -before-migration-reverts, same as the others.

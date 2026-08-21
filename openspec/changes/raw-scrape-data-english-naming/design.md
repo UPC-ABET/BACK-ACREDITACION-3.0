@@ -334,23 +334,69 @@ or a future non-interactive trigger), `triggeredBy` doesn't match `user:<digits>
 — nothing writes any other shape today), and `triggeredBy` names a `userId` no longer in
 `organization.users` (deleted account).
 
+### AC-9 — `core.scraping_export_runs.periodo` renamed, `openapi.json` regenerated
+
+Found post-implementation, during the audit: `core.scraping_export_runs` — this feature's
+own persisted generation state (see ADR-002), main datasource, not a raw Banner/Planner
+table — has a Spanish `periodo` column that the original inventory missed. Same violation
+class as everything else in this proposal (our own identifier, not external payload), so it
+gets the same treatment: a new main-datasource migration
+(`pnpm migration:create src/database/migrations/rename-scraping-export-runs-periodo`),
+`ALTER TABLE core.scraping_export_runs RENAME COLUMN periodo TO period`, drop+re-add
+`UQ_scraping_export_runs_export_type_periodo_lang` → `UQ_scraping_export_runs_export_type_period_lang`
+(same reason as AC-1: `RENAME COLUMN` doesn't rename a constraint that references it),
+`down()` the exact inverse.
+
+TypeScript identifiers renamed to match, confirmed by a full-module grep (`\bperiodo\b`,
+case-insensitive, across `admin/scraping-exports/**`, excluding `.spec.ts`) before writing
+this section — nothing found beyond what's listed here, plus one legitimate JSONB display
+string in `scraping-exports.labels.ts` ("Periodo académico", an Excel column header,
+Non-goals-exempt same as every other display string in this proposal):
+
+- `ScrapingExportRunEntity.periodo` → `.period`; its `@Unique(...)` array
+  `['exportType', 'periodo', 'lang']` → `['exportType', 'period', 'lang']`.
+- `ScrapingExportStatusResponse.periodo` (`scraping-exports.types.ts`, plain interface) and
+  `ScrapingExportStatusResponseDto.periodo` (`scraping-exports.response.dtos.ts`, the Swagger
+  mirror of it) → `.period`. The DTO is wire-facing and already consumed by the frontend's
+  export-download screen — this is a real breaking change, folded into the same sequential
+  cross-repo delivery as AC-5/AC-6 rather than treated as a separate coordination event.
+- `ScrapingExportRunRepository.findByKey`/`.upsertByKey`'s `periodo: string` params → `period`,
+  and — critically — `upsertByKey`'s `conflictPaths: ['exportType', 'periodo', 'lang']` →
+  `['exportType', 'period', 'lang']` in the same change as the entity property rename.
+  TypeORM resolves `conflictPaths` by property name, not column name; a mismatch here would
+  compile fine and break the `ON CONFLICT` target silently (see design.md's own precedent for
+  this class of risk at AC-1's constraint renames). No raw SQL here, so nothing else to check.
+- `ScrapingExportsRepository.resolvePeriodoCode` → `.resolvePeriodCode`; its own
+  `findAcademicPeriodIdByCode(periodoCode: string)` parameter (a wrapper around the
+  already-English free function of the same name in the same file) → `periodCode`.
+- `ScrapingExportGenerationService.resolvePeriodo` → `.resolvePeriod`; its `toStatusResponse`
+  and `reconcileIfStale` methods' `row.periodo` reads → `row.period` (these two were
+  deliberately left untouched by Task R1.5's `periodo`-locals rename in the same file,
+  specifically because they read this now-renamed entity field — AC-9 is what closes that).
+- `ScrapingExportsController`'s private `resolvePeriodo` method and its local `periodo`
+  variables (4 call sites across `status`/`download`/`regenerate`) → `resolvePeriod`/`period`.
+
 ## Backend
 
 - **Modules touched**: `admin/banner/raw`, `admin/banner/scraper`, `admin/planner/raw`,
-  `admin/planner/scraper`, `admin/scraping-exports` (SQL only, no module wiring change),
-  `organization/users` (export `UserRepository`; add `findDisplayNamesByIds`).
-- **Entities**: property renames only (AC-1/AC-3) — no new entities, no new columns; the
-  already-shipped `phase` column is untouched by this change beyond its CHECK-constraint
+  `admin/planner/scraper`, `admin/scraping-exports` (SQL, entity/DTO field, and repository/
+  service/controller identifiers — no module wiring change), `organization/users` (export
+  `UserRepository`; add `findDisplayNamesByIds`).
+- **Entities**: property renames only (AC-1/AC-3, AC-9) — no new entities, no new columns;
+  the already-shipped `phase` column is untouched by this change beyond its CHECK-constraint
   values (AC-6).
-- **Migrations**: two new raw-datasource migrations, in order (AC-1/AC-2's column rename,
-  then AC-6's phase-literal rename — both `migration:raw:create`; see AC-6 for why the
-  latter is a new migration, not an in-place edit to the already-applied
-  `1787270797549-add-phase-to-scrape-runs.ts`). No main-datasource migration —
-  `triggeredByName` is computed at read time, never persisted.
+- **Migrations**: three new migrations, in order — two raw-datasource (AC-1/AC-2's column
+  rename, then AC-6's phase-literal rename, both `migration:raw:create`; see AC-6 for why
+  the latter is a new migration, not an in-place edit to the already-applied
+  `1787270797549-add-phase-to-scrape-runs.ts`) and one main-datasource (AC-9's
+  `core.scraping_export_runs.periodo` rename, `migration:create`). `triggeredByName` itself
+  needs no migration — it's computed at read time, never persisted.
 - **Endpoints**: no route or method changes. `POST /banner/scrape`, `GET /banner/scrape`,
-  `GET /banner/scrape/:runId` and their Planner equivalents keep their shape; only the field
-  names inside `RunScrapeDto`/`RunSummaryResponseDto`/`RunPlannerScrapeDto`/
-  `PlannerRunSummaryResponseDto` change (renames) or add (`triggeredByName`).
+  `GET /banner/scrape/:runId`, their Planner equivalents, and `GET .../status`/
+  `GET .../download`/`POST .../regenerate` under `admin/scraping-exports` all keep their
+  shape; only field names change (renames on `RunScrapeDto`/`RunSummaryResponseDto`/
+  `RunPlannerScrapeDto`/`PlannerRunSummaryResponseDto`/`ScrapingExportStatusResponseDto`) or
+  add (`triggeredByName`).
 - **Guards / scope**: unchanged — both `run`/`list` endpoints keep `@RequirePermission`
   (`PERMISSION_MODULES.SCRAPPING`) and `@ApiAcademicPeriodHeader()`.
 - **i18n keys**: none added or changed — this is identifier renaming and a new response
@@ -377,28 +423,31 @@ or a future non-interactive trigger), `triggeredBy` doesn't match `user:<digits>
 
 ## Testing strategy
 
-| AC  | Covered by                                                                                                                                                                                                                                                                                                                                                               | Kind                    |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| 1   | New migration's `up()` runs cleanly against a copy of the raw DB; row counts compared before/after                                                                                                                                                                                                                                                                       | manual (runbook)        |
-| 2   | Same migration's `down()` run immediately after `up()`, row counts compared                                                                                                                                                                                                                                                                                              | manual (runbook)        |
-| 3   | Existing entity/repository/service `.spec.ts` files, mechanically renamed                                                                                                                                                                                                                                                                                                | unit                    |
-| 4   | Renamed SQL-string assertions in `scraping-exports.repository.spec.ts`/`grades-rc-export.repository.spec.ts` (structure only) **plus** before/after export diff on staging                                                                                                                                                                                               | unit + manual (runbook) |
-| 5   | `pnpm openapi:export` diff reviewed in the PR; DTO `.spec.ts` (validation pipe tests, if any) renamed                                                                                                                                                                                                                                                                    | build-time check + unit |
-| 6   | New `rename-scrape-phase-literals` migration's `up()`/`down()` run against a copy of the raw DB with a manually-seeded non-null `phase` row, confirming the backfill and constraint swap both ways; `ScraperService`/`PlannerScraperService` phase-tracking tests (already assert exact phase values, e.g. "includes phase in each run summary") renamed to new literals | unit + manual (runbook) |
-| 7   | Full `admin/banner/**`, `admin/planner/**`, `admin/scraping-exports/**` suite                                                                                                                                                                                                                                                                                            | unit                    |
-| 8   | New `UserRepository.findDisplayNamesByIds` unit test (found / not-found / empty-input); new `listRuns()` cases for null / malformed / not-found `triggeredBy` in both `scraper.service.spec.ts` and `planner-scraper.service.spec.ts`                                                                                                                                    | unit                    |
+| AC  | Covered by                                                                                                                                                                                                                                                                                                                                                                        | Kind                    |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 1   | New migration's `up()` runs cleanly against a copy of the raw DB; row counts compared before/after                                                                                                                                                                                                                                                                                | manual (runbook)        |
+| 2   | Same migration's `down()` run immediately after `up()`, row counts compared                                                                                                                                                                                                                                                                                                       | manual (runbook)        |
+| 3   | Existing entity/repository/service `.spec.ts` files, mechanically renamed                                                                                                                                                                                                                                                                                                         | unit                    |
+| 4   | Renamed SQL-string assertions in `scraping-exports.repository.spec.ts`/`grades-rc-export.repository.spec.ts` (structure only) **plus** before/after export diff on staging                                                                                                                                                                                                        | unit + manual (runbook) |
+| 5   | `pnpm openapi:export` diff reviewed in the PR; DTO `.spec.ts` (validation pipe tests, if any) renamed                                                                                                                                                                                                                                                                             | build-time check + unit |
+| 6   | New `rename-scrape-phase-literals` migration's `up()`/`down()` run against a copy of the raw DB with a manually-seeded non-null `phase` row, confirming the backfill and constraint swap both ways; `ScraperService`/`PlannerScraperService` phase-tracking tests (already assert exact phase values, e.g. "includes phase in each run summary") renamed to new literals          | unit + manual (runbook) |
+| 7   | Full `admin/banner/**`, `admin/planner/**`, `admin/scraping-exports/**` suite                                                                                                                                                                                                                                                                                                     | unit                    |
+| 8   | New `UserRepository.findDisplayNamesByIds` unit test (found / not-found / empty-input); new `listRuns()` cases for null / malformed / not-found `triggeredBy` in both `scraper.service.spec.ts` and `planner-scraper.service.spec.ts`                                                                                                                                             | unit                    |
+| 9   | New migration's `up()`/`down()` run against a copy of the main DB, row count and constraint name compared before/after; existing `scraping-export-run.repository.spec.ts`/`scraping-export-generation.service.spec.ts`/`scraping-exports.controller.spec.ts` mechanically renamed, re-run to confirm the upsert/`conflictPaths` change didn't silently break the ON CONFLICT path | unit + manual (runbook) |
 
 Anything marked manual appears in `runbook.md`.
 
 ## Risks
 
-| Risk                                                                                                                                                                                                                         | Mitigation                                                                                                                                                                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `grades-rc-export.sql.ts`'s raw SQL (~580 lines) is not type-checked — a missed rename fails only at query time.                                                                                                             | AC-4's staging before/after diff (runbook), not just the build/test suite passing.                                                                                                                                                                             |
-| Breaking wire-format change to four DTOs _and_ the already-live `phase` field values the frontend consumes today.                                                                                                            | Sequential cross-repo mode; backend reaches `staging` first; no compatibility shim (per Non-goals). AC-6's rename is a real forward-only migration with a data backfill (see AC-6), not a pre-merge edit, precisely because `phase` is already live.           |
-| AC-6's migration touches production data (`UPDATE` on any in-flight run's `phase`) — a wrong `CASE` mapping or a constraint added before the data backfill completes would leave rows that violate the new CHECK constraint. | `up()` order is fixed: drop old constraint → backfill data → add new constraint (never add-then-backfill); `down()` mirrors it. Manually verified on staging with a seeded non-null `phase` row (Testing strategy, runbook.md) before this reaches production. |
-| `raw_horario`/`raw_matricula`/etc. keep Spanish table names while gaining English columns (Non-goals) — a visible, deliberately-left inconsistency.                                                                          | Documented in proposal.md § Non-goals/Risks; not this change's problem to solve.                                                                                                                                                                               |
-| AC-8's `findDisplayNamesByIds` is a new cross-connection code path with no prior test coverage in this codebase to extend.                                                                                                   | Explicit unit tests for all three fallback branches (null / malformed / not-found), listed in Testing strategy.                                                                                                                                                |
+| Risk                                                                                                                                                                                                                                         | Mitigation                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grades-rc-export.sql.ts`'s raw SQL (~580 lines) is not type-checked — a missed rename fails only at query time.                                                                                                                             | AC-4's staging before/after diff (runbook), not just the build/test suite passing.                                                                                                                                                                             |
+| Breaking wire-format change to four DTOs _and_ the already-live `phase` field values the frontend consumes today.                                                                                                                            | Sequential cross-repo mode; backend reaches `staging` first; no compatibility shim (per Non-goals). AC-6's rename is a real forward-only migration with a data backfill (see AC-6), not a pre-merge edit, precisely because `phase` is already live.           |
+| AC-6's migration touches production data (`UPDATE` on any in-flight run's `phase`) — a wrong `CASE` mapping or a constraint added before the data backfill completes would leave rows that violate the new CHECK constraint.                 | `up()` order is fixed: drop old constraint → backfill data → add new constraint (never add-then-backfill); `down()` mirrors it. Manually verified on staging with a seeded non-null `phase` row (Testing strategy, runbook.md) before this reaches production. |
+| `raw_horario`/`raw_matricula`/etc. keep Spanish table names while gaining English columns (Non-goals) — a visible, deliberately-left inconsistency.                                                                                          | Documented in proposal.md § Non-goals/Risks; not this change's problem to solve.                                                                                                                                                                               |
+| AC-8's `findDisplayNamesByIds` is a new cross-connection code path with no prior test coverage in this codebase to extend.                                                                                                                   | Explicit unit tests for all three fallback branches (null / malformed / not-found), listed in Testing strategy.                                                                                                                                                |
+| AC-9's `conflictPaths: ['exportType', 'periodo', 'lang']` must be renamed together with the entity property — a mismatch breaks `upsertByKey`'s `ON CONFLICT` target silently (compiles fine, wrong runtime behavior), not a compiler error. | Single commit covering entity, `@Unique(...)`, and `conflictPaths` together; existing repository/service tests re-run to confirm the upsert path still exercises correctly.                                                                                    |
+| AC-9 was missed in this proposal's original inventory, found only post-implementation during audit — a reminder that "no Spanish identifier remains" (AC-3's spirit) is only as good as the inventory it was checked against.                | Corrected in the same PR; a full-module grep across `admin/scraping-exports/**` before writing AC-9 found nothing else missed beyond what AC-9 now covers.                                                                                                     |
 
 ## Docs to update in this PR
 
