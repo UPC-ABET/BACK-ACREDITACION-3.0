@@ -146,7 +146,7 @@ export class ScrapingExportGenerationService {
 			throw new ConflictError(scrapingExportsValidationStrings.error.alreadyGenerating);
 		}
 
-		this.fireAndForgetRunGeneration(exportType, periodo, lang);
+		this.fireAndForgetRunGeneration(exportType, periodo, lang, triggeredBy);
 
 		return this.toStatusResponse(claimed);
 	}
@@ -228,7 +228,7 @@ export class ScrapingExportGenerationService {
 				this.logger.debug(`Skipped generating ${exportType}/${periodo}/${lang}: already in flight`);
 				return;
 			}
-			await this.runGeneration(exportType, periodo, lang);
+			await this.runGeneration(exportType, periodo, lang, triggeredBy);
 		})().catch((error) => {
 			this.logger.error(
 				`Unexpected error generating ${exportType}/${periodo}/${lang}: ${
@@ -246,8 +246,9 @@ export class ScrapingExportGenerationService {
 		exportType: ScrapingExportType,
 		periodo: string,
 		lang: string,
+		triggeredBy: string,
 	): void {
-		void this.runGeneration(exportType, periodo, lang).catch((error) => {
+		void this.runGeneration(exportType, periodo, lang, triggeredBy).catch((error) => {
 			this.logger.error(
 				`Unexpected error generating ${exportType}/${periodo}/${lang}: ${
 					error instanceof Error ? error.message : String(error)
@@ -303,12 +304,14 @@ export class ScrapingExportGenerationService {
 		exportType: ScrapingExportType,
 		periodo: string,
 		lang: string,
+		triggeredBy: string,
 	): Promise<void> {
 		try {
 			const { buffer, fileName } = await this.runGenerator(exportType, periodo, lang);
 
 			await this.runRepository.upsertByKey(exportType, periodo, lang, {
 				status: 'completed',
+				triggeredBy,
 				fileName,
 				fileBytes: buffer,
 				errorMessage: null,
@@ -332,6 +335,7 @@ export class ScrapingExportGenerationService {
 					: scrapingExportsValidationStrings.error.generationFailed;
 			await this.runRepository.upsertByKey(exportType, periodo, lang, {
 				status: 'failed',
+				triggeredBy,
 				errorMessage,
 				finishedAt: new Date(),
 				updatedAt: new Date(),
@@ -423,6 +427,7 @@ export class ScrapingExportGenerationService {
 
 		return this.runRepository.upsertByKey(row.exportType, row.periodo, row.lang, {
 			status: 'failed',
+			triggeredBy: row.triggeredBy,
 			errorMessage: scrapingExportsValidationStrings.error.staleGenerationDetected,
 			finishedAt: new Date(),
 			updatedAt: new Date(),

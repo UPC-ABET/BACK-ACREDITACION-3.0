@@ -53,7 +53,7 @@ export class ScrapingExportRunEntity extends BaseEntity {
 	@TextShortColumn({ withDefault: false })
 	sourcePlannerRunId: string | null;
 
-	@TextShortColumn({ nullable: false, withDefault: true })
+	@TextShortColumn({ nullable: false })
 	triggeredBy: string;
 
 	@DateColumn({ withDefault: false })
