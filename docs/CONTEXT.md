@@ -428,7 +428,11 @@ _why_ writes them down. Do not populate it by guessing from the code.
   as soon as that pair is known), can happen while an earlier phase is still processing other
   items. `phase` always reports the furthest phase reached, not a set of concurrently-active
   phases — a deliberate simplification so the field stays a single label a frontend can render,
-  regardless of whether the underlying scraper happens to be sequential or pipelined. Planner's
+  regardless of whether the underlying scraper happens to be sequential or pipelined. Once a
+  run reaches a terminal `status` (`completed`/`partial`/`failed`/`expired`), `finish()` clears
+  `phase` back to `null` — `phase` only ever means "currently in flight"; a terminal run is read
+  from `status` alone, the same way `finishedAt` is null only while a run is still running.
+  Planner's
   pipelined concurrency profile (up to three phase limiters simultaneously active instead of
   strictly one-at-a-time) is not yet staging-validated against the memory ceiling above — see
   `openspec/changes/scrape-progress-and-performance/runbook.md`. See also

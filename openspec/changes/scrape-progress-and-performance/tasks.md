@@ -867,3 +867,76 @@ and `eslint` clean.
 
 **Verdict for round 2: READY.** No blockers, no majors. AF-15 was the only actionable item and
 is fixed above.
+
+---
+
+## Milestone 7 — Production observations from the first live Banner run (AC-8, AC-9)
+
+Scope extension per `proposal.md`'s dated addendum (2026-08-21). With no separate staging
+environment, the first live Banner run on the deployed change surfaced two small, directly
+evidenced fixes.
+
+### Task 7.1 — Clear `phase` to `null` on terminal status ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/raw/core/scrape-run.repository.ts` (modify)
+- `src/modules/admin/banner/raw/core/scrape-run.repository.spec.ts` (test)
+- `src/modules/admin/planner/raw/core/planner-scrape-run.repository.ts` (modify)
+- `src/modules/admin/planner/raw/core/planner-scrape-run.repository.spec.ts` (test)
+- `docs/CONTEXT.md` (modify — phase business-rule bullet)
+
+**Steps (TDD)**
+
+1. Add a failing test on both repositories' `finish()` asserting the `update()` call includes
+   `phase: null` → **red**.
+2. Add `phase: null` to both `finish()` methods' update payload.
+3. Re-run → **green**.
+
+**Commit**: `fix(scraping): clear phase to null once a run reaches a terminal status`
+
+> No migration needed — the existing `CK_scrape_run_phase`/`CK_planner_scrape_run_phase` CHECK
+> constraints already permit `NULL` (a `CHECK` only rejects rows where the expression evaluates
+> to `FALSE`; `phase = ANY(...)` on a `NULL` phase evaluates to `NULL`/unknown, which Postgres
+> treats as satisfied). Full `banner`+`planner` suite green after the change (12 suites, 231
+> passed); no other spec asserted the old shape.
+
+### Task 7.2 — Jittered/429-aware Banner retry backoff; raise `SCRAPE_CONCURRENCY` ✅ DONE (2026-08-21)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/scraper/core/banner-http.client.ts` (modify)
+- `src/modules/admin/banner/scraper/core/banner-http.client.spec.ts` (create — no prior spec existed)
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify — `SCRAPE_CONCURRENCY`)
+
+**Steps (TDD)**
+
+1. Wrote the full spec file from scratch (none existed): happy path, 401 re-auth, non-retryable
+   status (no wait), retryable statuses (500/502/503/429) retried to the limit then succeed,
+   retry budget exhaustion throws, jittered-backoff formula (mocked `Math.random`, asserted the
+   exact `setTimeout` delay), `Retry-After` honored (numeric seconds), `Retry-After` clamped to
+   the backoff ceiling, `Retry-After` fallback to jitter when absent/unparseable. Used
+   `jest.useFakeTimers()` + `jest.advanceTimersByTimeAsync` to avoid real waiting.
+2. Implemented `jitteredBackoff` ("full jitter": `random(0, min(ceiling, base * 2^attempt))`),
+   `retryAfterMs` (parses seconds or an HTTP date, clamps to `MAX_BACKOFF_MS`), extended
+   `isRetryableStatus` to cover `429` alongside `5xx`, renamed `MAX_5XX_RETRIES` →
+   `MAX_TRANSIENT_RETRIES` since it now covers both. Raised `SCRAPE_CONCURRENCY` 80 → 120.
+3. All 12 new tests green on the first run — the exact expected backoff values (250ms for
+   jitter 0.5 at attempt 0, 2000ms for a 2-second `Retry-After`, 8000ms for a clamped
+   3600-second one, 0ms for jitter 0) matched the formula precisely, which is strong evidence
+   against a coincidental pass.
+
+**Commit**: `perf(banner): jittered/429-aware retry backoff, raise SCRAPE_CONCURRENCY to 120`
+
+> Reasoning for the moderate (not full-doubling) bump and the specific techniques chosen is
+> recorded in `proposal.md`'s scope-extension section — grounded in the first live run's actual
+> data (18 errors / ~72k requests, one-second burst, not sustained strain) rather than guessing.
+> `SCRAPE_CONCURRENCY = 120` is **not yet staging/production-validated** — same caveat as
+> `MATRICULA_CONCURRENCY` (Task 4.1) and the Planner pipeline (Task 5.2): a follow-up production
+> run needs to confirm memory and error rate before considering a further increase. Full repo
+> suite green (132 suites, 1299 passed), `tsc`/`eslint` clean. No `openapi.json` change — this
+> milestone touches no route, DTO, or response shape.

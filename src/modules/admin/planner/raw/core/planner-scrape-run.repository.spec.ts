@@ -51,4 +51,15 @@ describe('PlannerScrapeRunRepository', () => {
 			});
 		});
 	});
+
+	describe('finish', () => {
+		it('clears phase to null once the run reaches a terminal status', async () => {
+			await repo.finish('run-1', 'completed', { counts: { seccion: 1 } });
+
+			expect(mockTypeormRepository.update).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ phase: null }),
+			);
+		});
+	});
 });
