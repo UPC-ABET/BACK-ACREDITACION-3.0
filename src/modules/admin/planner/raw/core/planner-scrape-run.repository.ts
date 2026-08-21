@@ -9,8 +9,8 @@ import {
 
 export interface CreatePlannerScrapeRunData {
 	id: string;
-	periodo: string;
-	escuela: string | null;
+	period: string;
+	school: string | null;
 	triggeredBy: string | null;
 }
 
@@ -42,9 +42,9 @@ export class PlannerScrapeRunRepository {
 		return await this.repository.findOne({ where: { id } });
 	}
 
-	async findByPeriodo(periodo: string): Promise<PlannerScrapeRunEntity[]> {
+	async findByPeriod(period: string): Promise<PlannerScrapeRunEntity[]> {
 		return await this.repository.find({
-			where: { periodo },
+			where: { period },
 			order: { startedAt: 'DESC' },
 		});
 	}
@@ -53,7 +53,7 @@ export class PlannerScrapeRunRepository {
 		await this.repository.delete(id);
 	}
 
-	async deleteOtherRunsForPeriodo(periodo: string, keepRunId: string): Promise<void> {
-		await this.repository.delete({ periodo, id: Not(keepRunId) });
+	async deleteOtherRunsForPeriod(period: string, keepRunId: string): Promise<void> {
+		await this.repository.delete({ period, id: Not(keepRunId) });
 	}
 }

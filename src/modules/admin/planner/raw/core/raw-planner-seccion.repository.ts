@@ -5,7 +5,7 @@ import { RawPlannerSeccionEntity } from '../model/raw-planner-seccion.entity';
 
 export interface RawPlannerSeccionInsert {
 	runId: string;
-	periodo: string;
+	period: string;
 	sectionId: string | null;
 	payload: any;
 	payloadHash: string;

@@ -17,7 +17,7 @@ export class RawPlannerSeccionEntity {
 	run: PlannerScrapeRunEntity;
 
 	@Column({ type: 'text' })
-	periodo: string;
+	period: string;
 
 	@Column({ type: 'text', nullable: true })
 	sectionId: string | null;
