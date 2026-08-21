@@ -43,22 +43,22 @@ careers AS (SELECT * FROM unnest($14::text[], $15::text[]) AS t(program_code, ca
 qual_status AS (SELECT * FROM unnest($4::text[], $5::text[]) AS t(name, code)),
 banner_run AS (
 	SELECT id FROM scrape_run
-	WHERE ($1::text IS NULL OR periodo = $1)
+	WHERE ($1::text IS NULL OR period = $1)
 	  AND status IN ${EXPORTABLE_RUN_STATUSES}
 	ORDER BY started_at DESC
 	LIMIT 1
 ),
 planner_run AS (
 	SELECT id FROM planner_scrape_run
-	WHERE ($1::text IS NULL OR periodo = $1)
+	WHERE ($1::text IS NULL OR period = $1)
 	  AND status IN ${EXPORTABLE_RUN_STATUSES}
 	ORDER BY started_at DESC
 	LIMIT 1
 ),
 banner_grades AS (
 	SELECT
-		rn.codigo_alumno        AS student_code,
-		rn.curso_codigo         AS course_code,
+		rn.student_code         AS student_code,
+		rn.course_code          AS course_code,
 		UPPER(TRIM(n->>'tipo')) AS raw_type,
 		n->>'peso'              AS weight,
 		TRIM(n->>'nota')        AS grade_raw,
@@ -87,7 +87,7 @@ banner_grades AS (
 -- section the app deliberately loaded.
 banner_sections AS (
 	SELECT DISTINCT
-		m.codigo_alumno,
+		m.student_code,
 		h.nrc,
 		(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS course_code,
 		-- materia is the SUBJECT AREA ("1ASI" -> "COMPUTACIÓN"), not the course. nombreCurso is
@@ -96,7 +96,7 @@ banner_sections AS (
 	FROM raw_matricula m
 	JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
 	WHERE m.run_id = (SELECT id FROM banner_run)
-	  AND NULLIF(TRIM(m.codigo_alumno), '') IS NOT NULL
+	  AND NULLIF(TRIM(m.student_code), '') IS NOT NULL
 	  AND NULLIF(TRIM(m.nrc), '') IS NOT NULL
 	  AND h.nrc = ANY($10::text[])
 ),
@@ -122,11 +122,11 @@ banner_legs AS (
 		'Banner'::text AS source
 	FROM banner_grades bg
 	JOIN banner_sections bs
-	  ON bs.codigo_alumno = bg.student_code
+	  ON bs.student_code = bg.student_code
 	 AND bs.course_code   = bg.course_code
 	LEFT JOIN raw_alumno a
 	  ON a.run_id = (SELECT id FROM banner_run)
-	 AND a.codigo_alumno = bg.student_code
+	 AND a.student_code = bg.student_code
 ),
 -- nota -> evaluación matched by eval_component_id, falling back to evaluation name within the
 -- section: the id correspondence is unconfirmed against a real run.
