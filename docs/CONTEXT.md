@@ -407,24 +407,24 @@ _why_ writes them down. Do not populate it by guessing from the code.
   nothing would ever surface that as wrong. Enforced in `ChartValidation`
   (`hasProgramAncestor`) and in `audit.fn_upload_charts`.
 - **A completed Banner or Planner scrape run deletes every other raw-data run for the same
-  `periodo`; a run that itself finishes partial/failed/expired deletes only its own rows.**
+  `period`; a run that itself finishes partial/failed/expired deletes only its own rows.**
   Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno`/`raw_notas` on the `raw`
   connection; `raw_planner_seccion`/`raw_planner_evaluacion`/`raw_planner_nota` on
   `planner-raw`) is otherwise insert-only, tagged by a `runId` FK to `scrape_run` /
   `planner_scrape_run` with `onDelete: 'CASCADE'` — nothing ever removed a superseded run
   before this, so every re-scrape of the same period grew the raw datasource forever, even
   though only the newest completed run per period is ever read. Retention is keyed on
-  `periodo` alone, not `departamentos`/`escuela` — Banner's own `findByPeriodo` ignores
-  `departamentos`, and Planner's `escuela` column is never actually populated. Enforced in
+  `period` alone, not `departments`/`school` — Banner's own `findByPeriod` ignores
+  `departments`, and Planner's `school` column is never actually populated. Enforced in
   `ScraperService.execute()` / `PlannerScraperService.execute()`, right after each run's
   `finish()` call. See [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md).
 - **A scrape run exposes its in-flight `phase` alongside the terminal `status`, and `phase` is
   single-valued and monotonic even when the underlying work is pipelined.** Banner writes
-  `phase` (`horario` → `matricula` → `alumnosYNotas`) at each of its three strictly sequential
-  stage boundaries. Planner writes `phase` (`secciones` → `evaluaciones` → `notas`) the first
-  time each phase's work begins — which, because `PlannerScraperService.execute()` pipelines
-  the three stages (each section's `evaluaciones` fetch starts as soon as that section is
-  known, not after every course's `secciones` call finishes; each pair's `notas` fetch starts
+  `phase` (`schedule` → `enrollment` → `studentsAndGrades`) at each of its three strictly
+  sequential stage boundaries. Planner writes `phase` (`sections` → `evaluations` → `grades`)
+  the first time each phase's work begins — which, because `PlannerScraperService.execute()`
+  pipelines the three stages (each section's `evaluations` fetch starts as soon as that section
+  is known, not after every course's `sections` call finishes; each pair's `grades` fetch starts
   as soon as that pair is known), can happen while an earlier phase is still processing other
   items. `phase` always reports the furthest phase reached, not a set of concurrently-active
   phases — a deliberate simplification so the field stays a single label a frontend can render,
