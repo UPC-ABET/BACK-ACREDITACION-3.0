@@ -17537,7 +17537,7 @@
 						"type": "string",
 						"enum": ["staff", "sections", "enrolledStudents", "studentSections", "gradesRc"]
 					},
-					"periodo": { "type": "string" },
+					"period": { "type": "string" },
 					"lang": { "type": "string" },
 					"status": {
 						"type": "string",
