@@ -512,18 +512,6 @@ secciones/evaluaciones/notas` if AC-6(b) applies.
 > single-value design decision explicitly so a future reader doesn't need to re-derive it from
 > `design.md`.
 
-<!--
-Append-only sections below. These record what actually happened, not what was planned, and
-they are the best input to the next design.
-
-## Unplanned — <what and why>
-
-### Task U.1 — <title>
-- [ ] Task complete
-
-## Post-QA fixes
--->
-
 ## Audit fixes (/abet-audit-pr)
 
 ### Review round 1 — 2026-08-20
@@ -788,9 +776,12 @@ union member without a matching array update is a compile error.
 because no end-to-end test path currently reaches it (unlike `scrapeHorario`'s `'expired'`
 test).
 
-#### AF-13 — Hardcoded concurrency constants require a deploy to retune
+#### AF-13 — Hardcoded concurrency constants require a deploy to retune ✅ DONE (2026-08-20)
 
-- [ ] Task complete (intentionally left open — see below, not an oversight)
+- [x] Task complete
+
+> The task here is the _decision_, not a code change — same pattern as Task 4.1's "kept at 3,
+> here is why" outcome. Deliberately not implemented; see below for the reasoning.
 
 **Not implemented — deliberately deferred, not silently dropped.** Auditor F raised this as a
 suggestion but explicitly recommended against doing it now ("Not required for this PR;
