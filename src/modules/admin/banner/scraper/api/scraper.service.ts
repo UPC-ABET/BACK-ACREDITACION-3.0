@@ -15,8 +15,9 @@ import { ScraperPhase, ScrapeRunStatus } from '../../raw/model/scrape-run.entity
 import { RunScrapeDto } from '../model/scraper.dtos';
 import { scraperValidationStrings } from '../config/strings/scraper.validation';
 import { ScrapingExportGenerationService } from '../../../scraping-exports/api/scraping-export-generation.service';
+import { UserRepository } from 'src/modules/organization/users/core/users.repository';
 
-const DEFAULT_NIVEL = 'UG';
+const DEFAULT_LEVEL = 'UG';
 const NRC_CHUNK_SIZE = 50;
 // Starting value pending the staging measurement in tasks.md Task 3.2 / design.md AC-7 — a
 // department's horario response is plausibly larger than one matricula chunk (NRC_CHUNK_SIZE),
@@ -39,26 +40,33 @@ interface ScrapeStats {
 }
 
 interface Enrollment {
-	codigoAlumno: string;
+	studentCode: string;
 	nrc: string;
 }
-// A unique (alumno, curso) target for the notas endpoint (NRC is not part of its key).
+// A unique (student, course) target for the notas endpoint (NRC is not part of its key).
 interface NotaPair {
-	codigoAlumno: string;
-	cursoCodigo: string;
+	studentCode: string;
+	courseCode: string;
 }
 
 export interface RunSummary {
 	runId: string;
-	nivel: string;
-	periodo: string;
-	departamentos: string[];
+	level: string;
+	period: string;
+	departments: string[];
 	status: ScrapeRunStatus;
 	phase: ScraperPhase | null;
 	startedAt: string;
 	finishedAt: string | null;
 	counts: ScrapeStats['counts'] | null;
 	triggeredBy: string | null;
+	triggeredByName: string;
+}
+
+function parseUserId(triggeredBy: string | null): number | null {
+	if (!triggeredBy) return null;
+	const match = /^user:(\d+)$/.exec(triggeredBy);
+	return match ? Number(match[1]) : null;
 }
 
 @Injectable()
@@ -75,6 +83,7 @@ export class ScraperService {
 		private readonly departmentSourceRepository: DepartmentSourceRepository,
 		private readonly http: BannerHttpClient,
 		private readonly exportGenerationService: ScrapingExportGenerationService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async run(
@@ -86,20 +95,20 @@ export class ScraperService {
 			throw new HttpException(scraperValidationStrings.error.scrapeInProgress, HttpStatus.CONFLICT);
 		}
 
-		const periodo = await this.departmentSourceRepository.findAcademicPeriodCode(academicPeriodId);
-		if (!periodo) {
+		const period = await this.departmentSourceRepository.findAcademicPeriodCode(academicPeriodId);
+		if (!period) {
 			throw new HttpException(
 				scraperValidationStrings.error.periodNotFound,
 				HttpStatus.BAD_REQUEST,
 			);
 		}
 
-		const nivel = dto.nivel?.trim() || DEFAULT_NIVEL;
-		const departamentos = dto.departamentos?.length
-			? [...new Set(dto.departamentos)]
+		const level = dto.level?.trim() || DEFAULT_LEVEL;
+		const departments = dto.departments?.length
+			? [...new Set(dto.departments)]
 			: await this.departmentSourceRepository.findActiveDepartmentCodes();
 
-		if (departamentos.length === 0) {
+		if (departments.length === 0) {
 			throw new HttpException(scraperValidationStrings.error.noDepartments, HttpStatus.BAD_REQUEST);
 		}
 
@@ -116,14 +125,14 @@ export class ScraperService {
 		const runId = randomUUID();
 		await this.scrapeRunRepository.createRun({
 			id: runId,
-			nivel,
-			periodo,
-			departamentos,
+			level,
+			period,
+			departments,
 			triggeredBy,
 		});
 
 		this.running = true;
-		void this.execute(runId, nivel, periodo, departamentos, courseCodes).finally(() => {
+		void this.execute(runId, level, period, departments, courseCodes).finally(() => {
 			this.running = false;
 		});
 
@@ -141,71 +150,82 @@ export class ScraperService {
 	}
 
 	async listRuns(academicPeriodId: number): Promise<RunSummary[]> {
-		const periodo = await this.departmentSourceRepository.findAcademicPeriodCode(academicPeriodId);
-		if (!periodo) {
+		const period = await this.departmentSourceRepository.findAcademicPeriodCode(academicPeriodId);
+		if (!period) {
 			throw new HttpException(
 				scraperValidationStrings.error.periodNotFound,
 				HttpStatus.BAD_REQUEST,
 			);
 		}
-		const runs = await this.scrapeRunRepository.findByPeriodo(periodo);
-		return runs.map((run) => ({
-			runId: run.id,
-			nivel: run.nivel,
-			periodo: run.periodo,
-			departamentos: run.departamentos,
-			status: run.status,
-			phase: run.phase,
-			startedAt: run.startedAt.toISOString(),
-			finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
-			counts: (run.stats as ScrapeStats | null)?.counts ?? null,
-			triggeredBy: run.triggeredBy,
-		}));
+		const runs = await this.scrapeRunRepository.findByPeriod(period);
+		const userIds = [
+			...new Set(
+				runs.map((run) => parseUserId(run.triggeredBy)).filter((id): id is number => id !== null),
+			),
+		];
+		const namesById =
+			userIds.length > 0 ? await this.userRepository.findDisplayNamesByIds(userIds) : new Map();
+		return runs.map((run) => {
+			const userId = parseUserId(run.triggeredBy);
+			return {
+				runId: run.id,
+				level: run.level,
+				period: run.period,
+				departments: run.departments,
+				status: run.status,
+				phase: run.phase,
+				startedAt: run.startedAt.toISOString(),
+				finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
+				counts: (run.stats as ScrapeStats | null)?.counts ?? null,
+				triggeredBy: run.triggeredBy,
+				triggeredByName: userId !== null ? (namesById.get(userId) ?? '-') : '-',
+			};
+		});
 	}
 
 	private async execute(
 		runId: string,
-		nivel: string,
-		periodo: string,
-		departamentos: string[],
+		level: string,
+		period: string,
+		departments: string[],
 		courseCodes: Set<string>,
 	): Promise<void> {
 		const stats: ScrapeStats = {
-			departments: { requested: departamentos, succeeded: [], failed: [] },
+			departments: { requested: departments, succeeded: [], failed: [] },
 			counts: { horario: 0, matricula: 0, alumno: 0, nota: 0 },
 			uniqueStudents: 0,
 			errors: [],
 		};
 
 		try {
-			await this.scrapeRunRepository.updatePhase(runId, 'horario');
+			await this.scrapeRunRepository.updatePhase(runId, 'schedule');
 			const { nrcs, courseByNrc } = await this.scrapeHorario(
 				runId,
-				nivel,
-				periodo,
-				departamentos,
+				level,
+				period,
+				departments,
 				courseCodes,
 				stats,
 			);
-			await this.scrapeRunRepository.updatePhase(runId, 'matricula');
-			const { codigos, enrollments } = await this.scrapeMatricula(
+			await this.scrapeRunRepository.updatePhase(runId, 'enrollment');
+			const { studentCodes, enrollments } = await this.scrapeMatricula(
 				runId,
-				nivel,
-				periodo,
+				level,
+				period,
 				nrcs,
 				stats,
 			);
-			stats.uniqueStudents = codigos.length;
-			await this.scrapeRunRepository.updatePhase(runId, 'alumnosYNotas');
+			stats.uniqueStudents = studentCodes.length;
+			await this.scrapeRunRepository.updatePhase(runId, 'studentsAndGrades');
 			// Alumnos and Notas only depend on matricula output, not on each other.
 			// Run them concurrently through one shared limiter (see SCRAPE_CONCURRENCY).
 			const limit = await createLimiter(SCRAPE_CONCURRENCY);
 			await Promise.all([
-				this.scrapeAlumnos(runId, nivel, codigos, stats, limit),
+				this.scrapeAlumnos(runId, level, studentCodes, stats, limit),
 				this.scrapeNotas(
 					runId,
-					nivel,
-					periodo,
+					level,
+					period,
 					buildNotaPairs(enrollments, courseByNrc),
 					stats,
 					limit,
@@ -214,12 +234,12 @@ export class ScraperService {
 
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
-			await this.finalizeRun(runId, periodo, status, stats);
+			await this.finalizeRun(runId, period, status, stats);
 			this.logger.log(`Scrape ${runId} ${status}: ${JSON.stringify(stats.counts)}`);
 		} catch (error) {
 			const expired = error instanceof SessionExpiredError;
 			const status: ScrapeRunStatus = expired ? 'expired' : 'failed';
-			await this.finalizeRun(runId, periodo, status, {
+			await this.finalizeRun(runId, period, status, {
 				...stats,
 				fatal: (error as Error).message,
 			});
@@ -228,31 +248,31 @@ export class ScraperService {
 	}
 
 	/**
-	 * Persists the run's outcome, then reconciles retention for its periodo: a `completed` run
-	 * supersedes every other row for that periodo (mopping up whatever partial/failed leftovers a
+	 * Persists the run's outcome, then reconciles retention for its period: a `completed` run
+	 * supersedes every other row for that period (mopping up whatever partial/failed leftovers a
 	 * previous, non-fatal run left behind for the same period in one step), while any other
-	 * outcome only removes its own row so a currently-completed run for the periodo is left
+	 * outcome only removes its own row so a currently-completed run for the period is left
 	 * untouched. Retention cleanup is best-effort: a transient failure there is logged and
 	 * swallowed rather than propagated, so it never masks the run's own outcome that `finish()`
 	 * already persisted.
 	 */
 	private async finalizeRun(
 		runId: string,
-		periodo: string,
+		period: string,
 		status: ScrapeRunStatus,
 		stats: object,
 	): Promise<void> {
 		await this.scrapeRunRepository.finish(runId, status, stats);
 		try {
 			if (status === 'completed') {
-				await this.scrapeRunRepository.deleteOtherRunsForPeriodo(periodo, runId);
-				this.triggerExportGeneration(periodo, runId);
+				await this.scrapeRunRepository.deleteOtherRunsForPeriod(period, runId);
+				this.triggerExportGeneration(period, runId);
 			} else {
 				await this.scrapeRunRepository.deleteRun(runId);
 			}
 		} catch (error) {
 			this.logger.error(
-				`Retention cleanup failed for scrape ${runId} (periodo ${periodo}): ${
+				`Retention cleanup failed for scrape ${runId} (period ${period}): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
@@ -261,10 +281,10 @@ export class ScraperService {
 
 	// Fire-and-forget: the scrape itself already succeeded and is already persisted by the time
 	// this runs, so a failure generating exports must never surface as a scrape failure.
-	private triggerExportGeneration(periodo: string, bannerRunId: string): void {
-		void this.exportGenerationService.triggerForBannerRun(periodo, bannerRunId).catch((error) => {
+	private triggerExportGeneration(period: string, bannerRunId: string): void {
+		void this.exportGenerationService.triggerForBannerRun(period, bannerRunId).catch((error) => {
 			this.logger.error(
-				`Failed to trigger export generation for periodo ${periodo}: ${
+				`Failed to trigger export generation for period ${period}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
@@ -280,9 +300,9 @@ export class ScraperService {
 
 	private async scrapeHorario(
 		runId: string,
-		nivel: string,
-		periodo: string,
-		departamentos: string[],
+		level: string,
+		period: string,
+		departments: string[],
 		courseCodes: Set<string>,
 		stats: ScrapeStats,
 	): Promise<{ nrcs: string[]; courseByNrc: Map<string, string> }> {
@@ -291,15 +311,15 @@ export class ScraperService {
 		const limit = await this.createHorarioLimit();
 
 		await Promise.all(
-			departamentos.map((departamento) =>
+			departments.map((department) =>
 				limit(async () => {
 					try {
 						const json = await this.http.get<{ detalle?: unknown }>(
 							'/horario/HorarioClasesPracticas',
 							{
-								codigoNivel: nivel,
-								codigoPeriodo: periodo,
-								codigoDepartamento: departamento,
+								codigoNivel: level,
+								codigoPeriodo: period,
+								codigoDepartamento: department,
 							},
 						);
 						const sections = asArray<Record<string, unknown>>(json.detalle);
@@ -308,18 +328,18 @@ export class ScraperService {
 							// Scope the scrape to courses tracked in the period's study plans. Sections whose
 							// derived code (materia.codigo + numeroCurso) isn't one of ours are dropped here, so
 							// they never reach raw_horario nor the downstream matricula/alumnos/notas steps.
-							const cursoCodigo = courseCodeOf(section);
-							if (!courseCodes.has(cursoCodigo)) continue;
+							const courseCode = courseCodeOf(section);
+							if (!courseCodes.has(courseCode)) continue;
 							const nrc = toStringOrNull(section.nrc);
 							if (nrc) {
 								nrcs.add(nrc);
-								courseByNrc.set(nrc, cursoCodigo);
+								courseByNrc.set(nrc, courseCode);
 							}
 							rows.push({
 								runId,
-								nivel,
-								periodo,
-								departamento,
+								level,
+								period,
+								department,
 								nrc,
 								payload: section,
 								payloadHash: hashPayload(section),
@@ -327,13 +347,13 @@ export class ScraperService {
 						}
 						await this.rawHorarioRepository.bulkInsert(rows);
 						stats.counts.horario += rows.length;
-						stats.departments.succeeded.push(departamento);
+						stats.departments.succeeded.push(department);
 					} catch (error) {
 						if (error instanceof SessionExpiredError) throw error;
-						stats.departments.failed.push(departamento);
+						stats.departments.failed.push(department);
 						stats.errors.push({
 							step: 'horario',
-							key: departamento,
+							key: department,
 							message: (error as Error).message,
 						});
 					}
@@ -346,12 +366,12 @@ export class ScraperService {
 
 	private async scrapeMatricula(
 		runId: string,
-		nivel: string,
-		periodo: string,
+		level: string,
+		period: string,
 		nrcs: string[],
 		stats: ScrapeStats,
-	): Promise<{ codigos: string[]; enrollments: Enrollment[] }> {
-		const codigos = new Set<string>();
+	): Promise<{ studentCodes: string[]; enrollments: Enrollment[] }> {
+		const studentCodes = new Set<string>();
 		const enrollments: Enrollment[] = [];
 		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
 		// No stubbable seam here, unlike `scrapeHorario`'s `createHorarioLimit()` — no end-to-end
@@ -366,7 +386,7 @@ export class ScraperService {
 					try {
 						const json = await this.http.get<{ detalle?: unknown }>(
 							'/detallematricula/detallematricula/listado',
-							{ codigoNivel: nivel, codigoPeriodo: periodo, nrcs: nrcChunk.join(',') },
+							{ codigoNivel: level, codigoPeriodo: period, nrcs: nrcChunk.join(',') },
 						);
 						const items = asArray<Record<string, unknown>>(json.detalle);
 						const rows: RawMatriculaInsert[] = [];
@@ -374,17 +394,17 @@ export class ScraperService {
 							const nrc = toStringOrNull(item.nrc) ?? '';
 							const alumnos = asArray<Record<string, unknown>>(item.listaAlumnos);
 							for (const alumno of alumnos) {
-								const codigoAlumno = toStringOrNull(alumno.codigoAlumno);
-								if (codigoAlumno) {
-									codigos.add(codigoAlumno);
-									if (nrc) enrollments.push({ codigoAlumno, nrc });
+								const studentCode = toStringOrNull(alumno.codigoAlumno);
+								if (studentCode) {
+									studentCodes.add(studentCode);
+									if (nrc) enrollments.push({ studentCode, nrc });
 								}
 								rows.push({
 									runId,
-									nivel,
-									periodo,
+									level,
+									period,
 									nrc,
-									codigoAlumno,
+									studentCode,
 									payload: alumno,
 									payloadHash: hashPayload(alumno),
 								});
@@ -404,13 +424,13 @@ export class ScraperService {
 			),
 		);
 
-		return { codigos: [...codigos], enrollments };
+		return { studentCodes: [...studentCodes], enrollments };
 	}
 
 	private async scrapeAlumnos(
 		runId: string,
-		nivel: string,
-		codigos: string[],
+		level: string,
+		studentCodes: string[],
 		stats: ScrapeStats,
 		limit: Limiter,
 	): Promise<void> {
@@ -419,19 +439,19 @@ export class ScraperService {
 		);
 
 		await Promise.all(
-			codigos.map((codigoAlumno) =>
+			studentCodes.map((studentCode) =>
 				limit(async () => {
 					try {
 						const json = await this.http.get<{ detalle?: { listaAlumnos?: unknown } }>(
 							'/Alumno/Listado',
-							{ nivel, codigoAlumno, pagina: '1' },
+							{ nivel: level, codigoAlumno: studentCode, pagina: '1' },
 						);
 						const alumno = asArray<Record<string, unknown>>(json.detalle?.listaAlumnos)[0];
 						if (!alumno) return;
 						await buffer.add({
 							runId,
-							nivel,
-							codigoAlumno,
+							level,
+							studentCode,
 							payload: alumno,
 							payloadHash: hashPayload(alumno),
 						});
@@ -440,7 +460,7 @@ export class ScraperService {
 						if (error instanceof SessionExpiredError) throw error;
 						stats.errors.push({
 							step: 'alumno',
-							key: codigoAlumno,
+							key: studentCode,
 							message: (error as Error).message,
 						});
 					}
@@ -453,8 +473,8 @@ export class ScraperService {
 
 	private async scrapeNotas(
 		runId: string,
-		nivel: string,
-		periodo: string,
+		level: string,
+		period: string,
 		pairs: NotaPair[],
 		stats: ScrapeStats,
 		limit: Limiter,
@@ -468,8 +488,8 @@ export class ScraperService {
 				limit(async () => {
 					try {
 						const path =
-							`/alumno/notaactual/notas/${encodeURIComponent(pair.codigoAlumno)}` +
-							`/${encodeURIComponent(`${nivel}-${periodo}`)}/${encodeURIComponent(pair.cursoCodigo)}`;
+							`/alumno/notaactual/notas/${encodeURIComponent(pair.studentCode)}` +
+							`/${encodeURIComponent(`${level}-${period}`)}/${encodeURIComponent(pair.courseCode)}`;
 						const json = await this.http.get<{
 							detalle?: { notaFinal?: unknown; notas?: unknown };
 						}>(path, {});
@@ -479,10 +499,10 @@ export class ScraperService {
 
 						await buffer.add({
 							runId,
-							nivel,
-							periodo,
-							codigoAlumno: pair.codigoAlumno,
-							cursoCodigo: pair.cursoCodigo,
+							level,
+							period,
+							studentCode: pair.studentCode,
+							courseCode: pair.courseCode,
 							payload: json,
 							payloadHash: hashPayload(json),
 						});
@@ -491,7 +511,7 @@ export class ScraperService {
 						if (error instanceof SessionExpiredError) throw error;
 						stats.errors.push({
 							step: 'nota',
-							key: `${pair.codigoAlumno}/${pair.cursoCodigo}`,
+							key: `${pair.studentCode}/${pair.courseCode}`,
 							message: (error as Error).message,
 						});
 					}
@@ -515,12 +535,12 @@ function buildNotaPairs(enrollments: Enrollment[], courseByNrc: Map<string, stri
 	const pairs: NotaPair[] = [];
 	const seen = new Set<string>();
 	for (const enrollment of enrollments) {
-		const cursoCodigo = courseByNrc.get(enrollment.nrc);
-		if (!cursoCodigo) continue;
-		const key = `${enrollment.codigoAlumno}|${cursoCodigo}`;
+		const courseCode = courseByNrc.get(enrollment.nrc);
+		if (!courseCode) continue;
+		const key = `${enrollment.studentCode}|${courseCode}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
-		pairs.push({ codigoAlumno: enrollment.codigoAlumno, cursoCodigo });
+		pairs.push({ studentCode: enrollment.studentCode, courseCode });
 	}
 	return pairs;
 }
