@@ -21,6 +21,7 @@ const mockScrapeRunRepository = {
 	findById: jest.fn(),
 	deleteRun: jest.fn(),
 	deleteOtherRunsForPeriodo: jest.fn(),
+	updatePhase: jest.fn(),
 };
 const mockSeccionRepository = { bulkInsert: jest.fn() };
 const mockEvaluacionRepository = { bulkInsert: jest.fn() };
@@ -64,6 +65,7 @@ describe('PlannerScraperService', () => {
 		mockScrapeRunRepository.finish.mockResolvedValue(undefined);
 		mockScrapeRunRepository.deleteRun.mockResolvedValue(undefined);
 		mockScrapeRunRepository.deleteOtherRunsForPeriodo.mockResolvedValue(undefined);
+		mockScrapeRunRepository.updatePhase.mockResolvedValue(undefined);
 		mockExportGenerationService.triggerForPlannerRun.mockResolvedValue(undefined);
 		mockHttp.get.mockResolvedValue([]);
 	});
@@ -257,6 +259,127 @@ describe('PlannerScraperService', () => {
 				),
 			).resolves.toBeUndefined();
 			expect(mockScrapeRunRepository.finish).toHaveBeenCalledWith('run-1', 'completed', {});
+		});
+	});
+
+	/**
+	 * Milestone 5: `execute()` no longer calls three separate sequential phase methods — it runs
+	 * one pipeline where a section's evaluaciones fetch is scheduled the moment that section is
+	 * discovered, not after every course's secciones search has finished (see design.md § AC-6).
+	 * `createLimiters()` is stubbed with pass-through limiters so these tests exercise the real
+	 * scheduling/dedup logic without touching `createLimiter()`'s real `await import('p-limit')`,
+	 * which is unusable under this repo's `module: nodenext` jest setup (same constraint as the
+	 * `run classification` describe block above, and as Banner's `scraper.service.spec.ts`).
+	 */
+	describe('execute pipeline (Milestone 5)', () => {
+		const passthrough = (fn: () => Promise<unknown>) => fn();
+
+		const stubLimiters = (service: PlannerScraperService) =>
+			jest
+				.spyOn(service as unknown as { createLimiters: Function }, 'createLimiters')
+				.mockResolvedValue({ seccion: passthrough, evaluacion: passthrough, nota: passthrough });
+
+		const respondByPath = (
+			handlers: Record<string, (query: Record<string, string>) => unknown>,
+		) => {
+			mockHttp.get.mockImplementation(async (path: string, query: Record<string, string>) => {
+				const handler = handlers[path];
+				return handler ? handler(query) : [];
+			});
+		};
+
+		const PERIODS_HANDLER = () => [{ periodCode: `UG-${PERIODO}`, periodId: 'period-1' }];
+
+		it('fetches a section reachable from two courses only once (seenSections dedup)', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			respondByPath({
+				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
+				'/api/core-api/sections': () => [{ sectionId: 'SEC-SHARED' }],
+				'/api/class-api/evaluations/structure': () => [
+					{ structure: [{ evalComponentId: 'COMP-1' }] },
+				],
+				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+				'CS102',
+			]);
+
+			const evaluacionCalls = mockHttp.get.mock.calls.filter(
+				([path]) => path === '/api/class-api/evaluations/structure',
+			);
+			expect(evaluacionCalls).toHaveLength(1);
+			expect(evaluacionCalls[0][1]).toEqual({ sectionId: 'SEC-SHARED' });
+		});
+
+		it('fetches a duplicate (evalComponentId, sectionId) pair only once (seenPairs dedup)', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			respondByPath({
+				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
+				'/api/core-api/sections': () => [{ sectionId: 'SEC-1' }],
+				'/api/class-api/evaluations/structure': () => [
+					{ structure: [{ evalComponentId: 'COMP-1' }, { evalComponentId: 'COMP-1' }] },
+				],
+				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+			]);
+
+			const notaCalls = mockHttp.get.mock.calls.filter(
+				([path]) => path === '/api/class-api/grades',
+			);
+			expect(notaCalls).toHaveLength(1);
+			expect(notaCalls[0][1]).toEqual({ evalComponentId: 'COMP-1', sectionId: 'SEC-1' });
+		});
+
+		it('fires secciones, evaluaciones and notas exactly once each, in order, even when multiple sections enter concurrently', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			respondByPath({
+				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
+				'/api/core-api/sections': (q) => [{ sectionId: `SEC-${q.text}` }],
+				'/api/class-api/evaluations/structure': (q) => [
+					{ structure: [{ evalComponentId: `COMP-${q.sectionId}` }] },
+				],
+				'/api/class-api/grades': () => [{ grades: [], approvalCategories: [] }],
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+				'CS102',
+			]);
+
+			const phaseCalls = mockScrapeRunRepository.updatePhase.mock.calls.map(([, phase]) => phase);
+			expect(phaseCalls).toEqual(['secciones', 'evaluaciones', 'notas']);
+			expect(finishedStatus()).toBe('completed');
+		});
+
+		it('still aborts the whole run on a fatal error raised mid-pipeline (evaluaciones phase)', async () => {
+			const service = buildService();
+			stubLimiters(service);
+			respondByPath({
+				'/api/core-api/academic-periods/list': PERIODS_HANDLER,
+				'/api/core-api/sections': () => [{ sectionId: 'SEC-1' }],
+			});
+			mockHttp.get.mockImplementation(async (path: string) => {
+				if (path === '/api/core-api/academic-periods/list') return PERIODS_HANDLER({});
+				if (path === '/api/core-api/sections') return [{ sectionId: 'SEC-1' }];
+				if (path === '/api/class-api/evaluations/structure') {
+					throw new PlannerSessionExpiredError();
+				}
+				return [];
+			});
+
+			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIODO, [
+				'CS101',
+			]);
+
+			expect(finishedStatus()).toBe('expired');
 		});
 	});
 });

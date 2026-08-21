@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
-import { PlannerScrapeRunEntity, PlannerScrapeRunStatus } from '../model/planner-scrape-run.entity';
+import {
+	PlannerScrapeRunEntity,
+	PlannerScrapeRunStatus,
+	PlannerScraperPhase,
+} from '../model/planner-scrape-run.entity';
 
 export interface CreatePlannerScrapeRunData {
 	id: string;
@@ -28,6 +32,10 @@ export class PlannerScrapeRunRepository {
 
 	async finish(id: string, status: PlannerScrapeRunStatus, stats: object): Promise<void> {
 		await this.repository.update(id, { status, stats, finishedAt: new Date() });
+	}
+
+	async updatePhase(id: string, phase: PlannerScraperPhase): Promise<void> {
+		await this.repository.update(id, { phase });
 	}
 
 	async findById(id: string): Promise<PlannerScrapeRunEntity | null> {
