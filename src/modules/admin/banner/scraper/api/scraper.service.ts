@@ -353,6 +353,10 @@ export class ScraperService {
 		const codigos = new Set<string>();
 		const enrollments: Enrollment[] = [];
 		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
+		// No stubbable seam here, unlike `scrapeHorario`'s `createHorarioLimit()` — no end-to-end
+		// test path reaches this call today (the 'expired' test now stops at `scrapeHorario`), so
+		// this real `await import('p-limit')` (unusable under this repo's jest/`module: nodenext`
+		// setup) has never needed a seam to work around it.
 		const limit = await createLimiter(MATRICULA_CONCURRENCY);
 
 		await Promise.all(

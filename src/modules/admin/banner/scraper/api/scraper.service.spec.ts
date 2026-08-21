@@ -296,6 +296,39 @@ describe('ScraperService.scrapeHorario concurrency', () => {
 		expect(stats.departments.succeeded).toEqual(expect.arrayContaining(['DEPT_FAST', 'DEPT_SLOW']));
 		expect(stats.departments.failed).toEqual(['DEPT_BAD']);
 	});
+
+	// Regression for AF-3: the pre-parallelization sequential `scrapeHorario` let a real
+	// `SessionExpiredError` propagate straight out (the department loop's own `throw error`).
+	// Parallelizing it must preserve that — a fatal session error is not a per-department fault
+	// and must not be swallowed into `stats.departments.failed` like `DEPT_BAD`'s ordinary error
+	// above. This exercises the real `scrapeHorario`/limiter/scheduling logic, only stubbing
+	// `createHorarioLimit()` past the `p-limit` dynamic import that's unusable under jest here.
+	it('propagates a real SessionExpiredError out of the parallelized department loop', async () => {
+		const service = buildService();
+		const stats = STATS();
+
+		mockHttp.get.mockImplementation((_path: string, query: Record<string, string>) => {
+			if (query.codigoDepartamento === 'DEPT_BAD') return Promise.reject(new SessionExpiredError());
+			return Promise.resolve({ detalle: [] });
+		});
+
+		jest
+			.spyOn(service as any, 'createHorarioLimit')
+			.mockResolvedValue((fn: () => Promise<unknown>) => fn());
+
+		await expect(
+			(service as any).scrapeHorario(
+				'run-1',
+				'UG',
+				PERIODO,
+				['DEPT_SLOW', 'DEPT_FAST', 'DEPT_BAD'],
+				new Set(['CS101']),
+				stats,
+			),
+		).rejects.toBeInstanceOf(SessionExpiredError);
+
+		expect(stats.departments.failed).not.toContain('DEPT_BAD');
+	});
 });
 
 describe('ScraperService.getRun', () => {
