@@ -21,10 +21,10 @@ const mockExportsRepository = {
 	findAcademicPeriodIdByCode: jest.fn(),
 };
 const mockScrapeRunRepository = {
-	findByPeriodo: jest.fn(),
+	findByPeriod: jest.fn(),
 };
 const mockPlannerScrapeRunRepository = {
-	findByPeriodo: jest.fn(),
+	findByPeriod: jest.fn(),
 };
 const mockExportsService = {
 	generateStaff: jest.fn(),
@@ -73,8 +73,8 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockRunRepository.upsertByKey.mockResolvedValue({});
 	mockExportsRepository.findAcademicPeriodIdByCode.mockResolvedValue(5);
-	mockScrapeRunRepository.findByPeriodo.mockResolvedValue([]);
-	mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([]);
+	mockScrapeRunRepository.findByPeriod.mockResolvedValue([]);
+	mockPlannerScrapeRunRepository.findByPeriod.mockResolvedValue([]);
 	mockExportsService.generateStaff.mockResolvedValue({
 		buffer: Buffer.from('a'),
 		fileName: 'Docentes.xlsx',
@@ -112,7 +112,7 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 	});
 
 	it('does not trigger gradesRc when no completed Planner run exists for the periodo', async () => {
-		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([{ status: 'running' }]);
+		mockPlannerScrapeRunRepository.findByPeriod.mockResolvedValue([{ status: 'running' }]);
 		const service = buildService();
 
 		await service.triggerForBannerRun(PERIODO, 'banner-run-1');
@@ -122,7 +122,7 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 	});
 
 	it('triggers gradesRc when a completed Planner run exists for the periodo', async () => {
-		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockPlannerScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'planner-run-1' },
 		]);
 		const service = buildService();
@@ -136,7 +136,7 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 
 describe('ScrapingExportGenerationService.triggerForPlannerRun', () => {
 	it('triggers gradesRc only when a completed Banner run exists for the periodo', async () => {
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'banner-run-1' },
 		]);
 		const service = buildService();
@@ -196,7 +196,7 @@ describe('ScrapingExportGenerationService AF-3 source run id wiring', () => {
 
 	it('writes both source ids on gradesRc triggered from a Banner run when a completed Planner run exists', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockPlannerScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'planner-run-1' },
 		]);
 		const service = buildService();
@@ -218,7 +218,7 @@ describe('ScrapingExportGenerationService AF-3 source run id wiring', () => {
 
 	it('writes both source ids on gradesRc triggered from a Planner run when a completed Banner run exists', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'banner-run-1' },
 		]);
 		const service = buildService();
@@ -240,10 +240,10 @@ describe('ScrapingExportGenerationService AF-3 source run id wiring', () => {
 
 	it('regenerate resolves the currently completed source run ids it can find', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'banner-run-9' },
 		]);
-		mockPlannerScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockPlannerScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'planner-run-9' },
 		]);
 		const service = buildService();
@@ -618,7 +618,7 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 		// has its own pre-check that 409s a caller before ever reaching generation; this guard
 		// exists specifically for the auto-trigger path, which has no caller to 409.
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockScrapeRunRepository.findByPeriodo.mockResolvedValue([
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([
 			{ status: 'completed', id: 'banner-run-1' },
 		]);
 		let releaseFirstMerge!: () => void;

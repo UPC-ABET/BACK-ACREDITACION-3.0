@@ -87,7 +87,7 @@ export class ScrapingExportGenerationService {
 			}
 		}
 
-		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriodo(periodo);
+		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriod(periodo);
 		const completedPlannerRun = plannerRuns.find((run) => run.status === 'completed');
 		if (completedPlannerRun) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
@@ -106,7 +106,7 @@ export class ScrapingExportGenerationService {
 	// No Planner-only sync export exists today: Planner data only ever feeds gradesRc, and only
 	// once a Banner run for the same periodo has also completed.
 	async triggerForPlannerRun(periodo: string, plannerRunId: string): Promise<void> {
-		const bannerRuns = await this.scrapeRunRepository.findByPeriodo(periodo);
+		const bannerRuns = await this.scrapeRunRepository.findByPeriod(periodo);
 		const completedBannerRun = bannerRuns.find((run) => run.status === 'completed');
 		if (completedBannerRun) {
 			for (const lang of SUPPORTED_EXPORT_LANGS) {
@@ -160,14 +160,14 @@ export class ScrapingExportGenerationService {
 		exportType: ScrapingExportType,
 		periodo: string,
 	): Promise<{ sourceBannerRunId?: string; sourcePlannerRunId?: string }> {
-		const bannerRuns = await this.scrapeRunRepository.findByPeriodo(periodo);
+		const bannerRuns = await this.scrapeRunRepository.findByPeriod(periodo);
 		const sourceBannerRunId = bannerRuns.find((run) => run.status === 'completed')?.id;
 
 		if (exportType !== 'gradesRc') {
 			return { sourceBannerRunId };
 		}
 
-		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriodo(periodo);
+		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriod(periodo);
 		const sourcePlannerRunId = plannerRuns.find((run) => run.status === 'completed')?.id;
 
 		return { sourceBannerRunId, sourcePlannerRunId };
