@@ -28,6 +28,16 @@ No backfill needed for Task 1.1: `ALTER TABLE ... RENAME COLUMN` preserves every
 under a new name. Task 6.1 **does** need a backfill (the `UPDATE ... SET phase = ...` step) —
 covered below.
 
+**Before applying Task 6.1's migration**, confirm no `scrape_run`/`planner_scrape_run` row is
+currently `status = 'running'`. Its `up()` briefly leaves `phase` with no CHECK constraint at
+all between `DROP CONSTRAINT` and `ADD CONSTRAINT` (the backfill runs in between, per AC-6's
+required ordering) — a pre-migration app instance writing a Spanish `phase` literal via
+`updatePhase()` during that exact window would succeed unconstrained, and the subsequent
+`ADD CONSTRAINT` would then fail (Postgres validates existing rows on add) once it reaches
+that row, aborting the migration. This fails loud — the migration errors out, not a silent
+data problem — so the fix is simply: don't deploy while a scrape is in flight, and retry if it
+happens anyway.
+
 ## Manual verification (staging)
 
 ### Migration apply/revert (AC-1, AC-2 — Task 1.1)
