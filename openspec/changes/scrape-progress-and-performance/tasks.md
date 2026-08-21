@@ -790,6 +790,8 @@ test).
 
 #### AF-13 — Hardcoded concurrency constants require a deploy to retune
 
+- [ ] Task complete (intentionally left open — see below, not an oversight)
+
 **Not implemented — deliberately deferred, not silently dropped.** Auditor F raised this as a
 suggestion but explicitly recommended against doing it now ("Not required for this PR;
 consider... in a later change") — `ConfigService`-backing six concurrency constants is a real
@@ -814,3 +816,63 @@ future change if AC-5/AC-7's still-pending staging work ends up needing iterativ
 **Fix**: add a test where a course search returns no sections (or a section's evaluation
 structure yields no components); assert `phase` stops advancing at the corresponding stage and
 the run still completes cleanly.
+
+### Review round 2 — 2026-08-20
+
+Full 6-auditor re-audit on the HEAD produced by round 1's fixes (commits `1610b1d0`, `c1d328f0`,
+`c0de2f60`, `1a82814a`). Purpose: verify AF-1 through AF-12 are genuinely fixed (not just
+claimed), and catch anything the fix commits themselves introduced.
+
+**AF-1 (the blocker) confirmed genuinely resolved** — independently verified by 2 auditors
+(runtime robustness traced every call site and ran the regression test live; testing
+independently corroborated via source tracing + a 59-test full run). All other round-1 AF
+entries (AF-2 through AF-12) were independently re-checked against their retro claims by at
+least one auditor each and matched exactly — no re-opened findings.
+
+One flagged concern was investigated and resolved as a false positive, not a defect: one
+auditor observed the AF-1 regression test fail intermittently (~1 in 27 runs) with a genuine
+raw unhandled-rejection error, which — given this is literally the test proving the blocker is
+fixed — warranted direct investigation rather than trusting either auditor's read. A separate
+auditor had independently diagnosed a stale ts-jest transform cache causing a similar one-off
+failure that disappeared after `pnpm exec jest --clearCache`. Directly reproducing this
+(20 fresh-cache runs of the four touched spec files together, plus one full 131-suite run, all
+green) confirmed the stale-cache diagnosis and ruled out a real race — no code fix warranted,
+no severity assigned.
+
+#### AF-15 — Skipped Planner pipeline tasks weren't recorded in `stats.errors` ✅ DONE (2026-08-20)
+
+- [x] Task complete
+
+**Severity**: Minor (code-quality auditor)
+
+**Files**
+
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.ts` (modify)
+- `src/modules/admin/planner/scraper/api/planner-scraper.service.spec.ts` (test)
+
+**Finding**: AF-7's `AbortState` guard makes queued-but-not-yet-run courses/sections/pairs skip
+silently once a fatal error aborts the run — before AF-7, the same still-queued task ran to
+completion and updated `stats` normally, so this is new behavior the fix introduced as a side
+effect of closing the AF-7 window. In the narrow window where `finalizeRun`'s `finish()` call
+persists `stats` before every in-flight leaf task has settled (or if the later `deleteRun` call
+fails), the persisted `stats` blob could show `requested.length` exceeding
+`succeeded + failed + errors`, with the skipped work unaccounted for anywhere.
+
+**Fix**: at all 6 abort-check sites (the 3 scheduling closures — `scheduleNota`,
+`scheduleEvaluacion`, the per-course task inside the `cursos.map` limiter callback — and the 3
+leaf functions' own entry checks — `fetchSeccion`, `fetchEvaluacion`, `fetchNota`), push a
+`{ step, key, message: 'skipped: run aborted' }` entry into `stats.errors` before returning
+early. Since this doesn't fully close the inherent timing race (a task's own abort-check firing
+strictly after `finalizeRun` has already persisted a snapshot is still possible — closing that
+completely would require awaiting every in-flight leaf before finalizing, which would defeat
+the point of aborting quickly), this is a best-effort accounting improvement, not a guarantee —
+consistent with AF-7's own "closes the window, does not eliminate it" framing.
+
+Extended the existing AF-7 regression test ("stops scheduling new work for a course still in
+flight...") with an assertion that `mockScrapeRunRepository.finish`'s captured `stats.errors`
+contains the `SEC-102` skip entry — confirmed **red** with the fix reverted (`Received array:
+[]`), **green** with it restored. Full repo suite: 131 suites, 1285 passed, 2 skipped. `tsc`
+and `eslint` clean.
+
+**Verdict for round 2: READY.** No blockers, no majors. AF-15 was the only actionable item and
+is fixed above.

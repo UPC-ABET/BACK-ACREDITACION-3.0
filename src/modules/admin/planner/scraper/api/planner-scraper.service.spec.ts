@@ -465,6 +465,19 @@ describe('PlannerScraperService', () => {
 			expect(mockEvaluacionRepository.bulkInsert).not.toHaveBeenCalledWith(
 				expect.arrayContaining([expect.objectContaining({ sectionId: 'SEC-102' })]),
 			);
+
+			// Regression for the skipped-work-is-unaccounted gap the AF-7 fix itself introduced:
+			// the persisted `stats` object (captured by reference via the `finish` mock) must record
+			// CS102's late skip, not silently drop it — otherwise a reader of the persisted row sees
+			// `requested.length` exceed `succeeded + failed + errors`, with no trace of why.
+			const persistedStats = mockScrapeRunRepository.finish.mock.calls[0]?.[2] as {
+				errors: Array<{ step: string; key: string; message: string }>;
+			};
+			expect(persistedStats.errors).toContainEqual({
+				step: 'evaluacion',
+				key: 'SEC-102',
+				message: 'skipped: run aborted',
+			});
 		});
 
 		// Regression for AF-9: a non-fatal, per-course error must not abort sibling courses —

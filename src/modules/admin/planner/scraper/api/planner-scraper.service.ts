@@ -222,7 +222,14 @@ export class PlannerScraperService {
 			const abortState: AbortState = { aborted: false };
 
 			const scheduleNota = (pair: EvalPair): Promise<void> => {
-				if (abortState.aborted) return Promise.resolve();
+				if (abortState.aborted) {
+					stats.errors.push({
+						step: 'nota',
+						key: `${pair.sectionId}/${pair.evalComponentId}`,
+						message: 'skipped: run aborted',
+					});
+					return Promise.resolve();
+				}
 				const key = `${pair.sectionId}|${pair.evalComponentId}`;
 				if (seenPairs.has(key)) return Promise.resolve();
 				seenPairs.add(key);
@@ -234,7 +241,14 @@ export class PlannerScraperService {
 			};
 
 			const scheduleEvaluacion = (sectionId: string): Promise<void> => {
-				if (abortState.aborted) return Promise.resolve();
+				if (abortState.aborted) {
+					stats.errors.push({
+						step: 'evaluacion',
+						key: sectionId,
+						message: 'skipped: run aborted',
+					});
+					return Promise.resolve();
+				}
 				if (seenSections.has(sectionId)) return Promise.resolve();
 				seenSections.add(sectionId);
 				if (!evaluacionesStarted) {
@@ -251,7 +265,10 @@ export class PlannerScraperService {
 			await Promise.all(
 				cursos.map((curso) =>
 					seccionLimit(() => {
-						if (abortState.aborted) return Promise.resolve();
+						if (abortState.aborted) {
+							stats.errors.push({ step: 'seccion', key: curso, message: 'skipped: run aborted' });
+							return Promise.resolve();
+						}
 						return this.fetchSeccion(runId, periodo, periodId, curso, stats, abortState).then(
 							(sectionIds) => Promise.all(sectionIds.map(scheduleEvaluacion)).then(() => undefined),
 						);
@@ -379,7 +396,10 @@ export class PlannerScraperService {
 		stats: ScrapeStats,
 		abortState: AbortState,
 	): Promise<string[]> {
-		if (abortState.aborted) return [];
+		if (abortState.aborted) {
+			stats.errors.push({ step: 'seccion', key: curso, message: 'skipped: run aborted' });
+			return [];
+		}
 		try {
 			const sections = await this.http.get<Record<string, unknown>>('/api/core-api/sections', {
 				feature: 'grades',
@@ -427,7 +447,10 @@ export class PlannerScraperService {
 		stats: ScrapeStats,
 		abortState: AbortState,
 	): Promise<EvalPair[]> {
-		if (abortState.aborted) return [];
+		if (abortState.aborted) {
+			stats.errors.push({ step: 'evaluacion', key: sectionId, message: 'skipped: run aborted' });
+			return [];
+		}
 		try {
 			const results = await this.http.get<Record<string, unknown>>(
 				'/api/class-api/evaluations/structure',
@@ -473,7 +496,14 @@ export class PlannerScraperService {
 		stats: ScrapeStats,
 		abortState: AbortState,
 	): Promise<void> {
-		if (abortState.aborted) return;
+		if (abortState.aborted) {
+			stats.errors.push({
+				step: 'nota',
+				key: `${pair.sectionId}/${pair.evalComponentId}`,
+				message: 'skipped: run aborted',
+			});
+			return;
+		}
 		try {
 			const results = await this.http.get<Record<string, unknown>>('/api/class-api/grades', {
 				evalComponentId: pair.evalComponentId,
