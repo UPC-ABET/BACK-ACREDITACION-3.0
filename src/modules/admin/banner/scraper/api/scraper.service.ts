@@ -24,7 +24,13 @@ const NRC_CHUNK_SIZE = 50;
 // default is safe without measurement.
 const HORARIO_CONCURRENCY = 5;
 const MATRICULA_CONCURRENCY = 3;
-const SCRAPE_CONCURRENCY = 80;
+// Raised from 80 → 120 (2026-08-21) after a full production run at 80 showed the
+// alumnos+notas phase dominating wall-clock time (~25 of ~28 minutes) while memory stayed
+// well under the 640MB cap (peaked ~57%) and the Banner-side 5xx rate was negligible
+// (18 errors across ~72k requests, all retried successfully, clustered in one brief burst,
+// not sustained). A moderate bump, not a large one — re-measure error rate and memory before
+// going further; see BannerHttpClient's jittered/429-aware retry, added alongside this.
+const SCRAPE_CONCURRENCY = 120;
 const INSERT_BATCH_SIZE = 500;
 
 interface ScrapeStats {
