@@ -49,7 +49,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * autovacuum keeps up) after any large bulk load (e.g. the Banner/Planner scrape import), especially
  * in an environment where autovacuum's default thresholds may not have triggered yet.
  */
-export class AddSemaphoreReportIndexes1787199728540 implements MigrationInterface {
+export class AddSemaphoreReportIndexes1787285781432 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`
 			CREATE INDEX IF NOT EXISTS "IDX_course_sections_academic_period_campus"

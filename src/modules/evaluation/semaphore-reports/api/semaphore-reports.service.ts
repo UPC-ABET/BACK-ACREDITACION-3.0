@@ -232,8 +232,8 @@ export class SemaphoreReportsService {
 		const requestedSet = new Set(requested);
 		const selected = allCampuses.filter((campus) => requestedSet.has(campus.id));
 
-		if (selected.length === allCampuses.length) return { mode: 'all' };
 		if (selected.length === 0) this.throwNoData();
+		if (selected.length === allCampuses.length) return { mode: 'all' };
 		return { mode: selected.length === 1 ? 'single' : 'zip', campuses: selected };
 	}
 

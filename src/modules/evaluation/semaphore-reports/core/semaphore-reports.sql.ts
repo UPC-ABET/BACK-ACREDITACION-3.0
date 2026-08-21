@@ -281,14 +281,12 @@ windowed AS (
 	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide -- a critical course somewhere else must not suppress the
 	-- dominant-course fallback for a Campus+Outcome that has no critical course of its own.
-	-- Partitioned by the campus NAME, not campus_id -- kept as-is (campus_id is 1:1 with the
-	-- name here) rather than touched, to avoid changing this report's numbers as a side effect
-	-- of an unrelated perf change; campus_id only rides along as an extra passthrough column so
-	-- the service can group rows per campus in memory instead of re-querying per campus.
+	-- Partitioned by campus_id, not the display name -- names have no unique constraint, so
+	-- two campuses sharing a name would otherwise be computed together.
 	SELECT
 		*,
-		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
-		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
+		MAX(weight) OVER (PARTITION BY campus_id, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus_id, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
@@ -409,11 +407,11 @@ scored AS (
 ),
 windowed AS (
 	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
-	-- not report-wide.
+	-- not report-wide. Partitioned by campus_id, not the display name -- see SEMAPHORE_RC_DETAIL_SQL.
 	SELECT
 		*,
-		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
-		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
+		MAX(weight) OVER (PARTITION BY campus_id, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus_id, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
@@ -421,7 +419,7 @@ final_rows AS (
 		*,
 		CASE WHEN group_max_weight = 1 THEN weight ELSE quantity END     AS effective_weight,
 		CASE WHEN group_max_weight = 1 THEN group_max_weight ELSE group_max_quantity END AS effective_group_max,
-		ROW_NUMBER() OVER (PARTITION BY campus, outcome_code ORDER BY level_rank ASC) AS row_rank
+		ROW_NUMBER() OVER (PARTITION BY campus_id, outcome_code ORDER BY level_rank ASC) AS row_rank
 	FROM windowed
 )
 SELECT
@@ -500,10 +498,11 @@ windowed AS (
 	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
 	-- not report-wide -- a critical course somewhere else must not suppress the
 	-- dominant-course fallback for a Campus+Outcome that has no critical course of its own.
+	-- Partitioned by campus_id, not the display name -- see SEMAPHORE_RC_DETAIL_SQL.
 	SELECT
 		*,
-		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
-		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
+		MAX(weight) OVER (PARTITION BY campus_id, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus_id, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
@@ -579,11 +578,11 @@ scored AS (
 ),
 windowed AS (
 	-- "Is there a critical course?" must be decided per Campus+Outcome (group_max_weight),
-	-- not report-wide.
+	-- not report-wide. Partitioned by campus_id, not the display name -- see SEMAPHORE_RC_DETAIL_SQL.
 	SELECT
 		*,
-		MAX(weight) OVER (PARTITION BY campus, outcome_code)        AS group_max_weight,
-		MAX(quantity) OVER (PARTITION BY campus, outcome_code)    AS group_max_quantity
+		MAX(weight) OVER (PARTITION BY campus_id, outcome_code)        AS group_max_weight,
+		MAX(quantity) OVER (PARTITION BY campus_id, outcome_code)    AS group_max_quantity
 	FROM scored
 ),
 final_rows AS (
@@ -591,7 +590,7 @@ final_rows AS (
 		*,
 		CASE WHEN group_max_weight = 1 THEN weight ELSE quantity END     AS effective_weight,
 		CASE WHEN group_max_weight = 1 THEN group_max_weight ELSE group_max_quantity END AS effective_group_max,
-		ROW_NUMBER() OVER (PARTITION BY campus, outcome_code ORDER BY level_rank ASC) AS row_rank
+		ROW_NUMBER() OVER (PARTITION BY campus_id, outcome_code ORDER BY level_rank ASC) AS row_rank
 	FROM windowed
 )
 SELECT

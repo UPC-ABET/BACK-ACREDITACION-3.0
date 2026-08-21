@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsIn, IsArray } from 'class-validator';
+import { IsOptional, IsNumber, IsIn, IsArray, ArrayMaxSize } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -27,6 +27,7 @@ export class SemaphoreFilterDto {
 	})
 	@IsOptional()
 	@IsArray()
+	@ArrayMaxSize(50)
 	@IsNumber({}, { each: true })
 	@ApiProperty({
 		type: [Number],
