@@ -41,7 +41,7 @@ This surfaced directly: a user's `gradesRc` generation went stale
 .reconcileIfStale`), and even after their own row flipped to `failed`, retrying via `regenerate`
 kept returning 409 `error.scrapingExport.alreadyGenerating` — the system-wide guard was still held
 by a _different_ language's generation for the same or a different period. See
-`openspec/changes/defer-export-language-to-download/proposal.md` for the full problem statement
+`openspec/specs/defer-export-language-to-download/proposal.md` for the full problem statement
 and acceptance criteria this ADR exists to satisfy.
 
 ## Decision
@@ -185,9 +185,9 @@ period)` shows `notGenerated` until the next scrape completion or a manual `rege
 
 ## References
 
-- `openspec/changes/defer-export-language-to-download/proposal.md` — the proposal this ADR
+- `openspec/specs/defer-export-language-to-download/proposal.md` — the proposal this ADR
   supports.
-- `openspec/changes/defer-export-language-to-download/design.md` — the design this decision is
+- `openspec/specs/defer-export-language-to-download/design.md` — the design this decision is
   implemented by.
 - ADR-002 — Persisted pollable scraping export generation (superseded by this ADR's storage model;
   ADR-002's own decision to use Postgres over S3, and to persist generation state at all instead of
