@@ -72,7 +72,7 @@ responsible for a 43.5-million-row intermediate join result.
 | 2   | `resolveCampusPlan` (`mode: 'single'`), `buildFilename`/`buildExcelFilename` campus-code suffix |
 | 3   | `fetchPerCampusRenderData`, `generatePdfDownload`/`generateExcelDownload` zip branches          |
 | 4   | `semaphore-reports.sql.ts` `windowed` CTEs partition by `campus_id` (RC/RV detail and summary)  |
-| 5   | `1787285781432-add-semaphore-report-indexes.ts`                                                 |
+| 5   | `1787366374901-add-semaphore-report-indexes.ts`                                                 |
 
 ## Dependencies
 
