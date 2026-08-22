@@ -52,7 +52,7 @@ const GRADE_CONCURRENCY = 20;
 
 interface ScrapeStats {
 	courses: { requested: string[]; succeeded: string[]; failed: string[] };
-	counts: { seccion: number; evaluacion: number; nota: number };
+	counts: { sections: number; evaluations: number; grades: number };
 	uniqueSections: number;
 	errors: Array<{ step: string; key: string; message: string }>;
 }
@@ -214,12 +214,12 @@ export class PlannerScraperService {
 	}
 
 	/**
-	 * Pipelines secciones -> evaluaciones -> notas instead of gating each phase behind a full
+	 * Pipelines sections -> evaluations -> grades instead of gating each phase behind a full
 	 * `Promise.all` barrier over the previous one. The real dependency is per-item, not per-phase
-	 * (`evaluaciones` needs only the one `sectionId` it was scheduled for, `notas` needs only the
+	 * (`evaluations` needs only the one `sectionId` it was scheduled for, `grades` needs only the
 	 * one `(evalComponentId, sectionId)` pair it was scheduled for — neither needs anything from a
 	 * sibling course/section), so a section discovered by an early-finishing course can start its
-	 * evaluaciones fetch while other courses' `scrapeSecciones` calls are still in flight, instead
+	 * evaluations fetch while other courses' `fetchSection` calls are still in flight, instead
 	 * of waiting for every course to finish first. See design.md § AC-6.
 	 *
 	 * Each `scheduleX` function both dedupes (a section/pair reachable from more than one course
@@ -237,7 +237,7 @@ export class PlannerScraperService {
 	): Promise<void> {
 		const stats: ScrapeStats = {
 			courses: { requested: courses, succeeded: [], failed: [] },
-			counts: { seccion: 0, evaluacion: 0, nota: 0 },
+			counts: { sections: 0, evaluations: 0, grades: 0 },
 			uniqueSections: 0,
 			errors: [],
 		};
@@ -257,10 +257,10 @@ export class PlannerScraperService {
 			let gradesStarted = false;
 			const abortState: AbortState = { aborted: false };
 
-			const scheduleNota = (pair: EvalPair): Promise<void> => {
+			const scheduleGrade = (pair: EvalPair): Promise<void> => {
 				if (abortState.aborted) {
 					stats.errors.push({
-						step: 'nota',
+						step: 'grade',
 						key: `${pair.sectionId}/${pair.evalComponentId}`,
 						message: 'skipped: run aborted',
 					});
@@ -273,13 +273,13 @@ export class PlannerScraperService {
 					gradesStarted = true;
 					this.updatePhaseInBackground(runId, 'grades');
 				}
-				return gradeLimit(() => this.fetchNota(runId, pair, stats, abortState));
+				return gradeLimit(() => this.fetchGrade(runId, pair, stats, abortState));
 			};
 
-			const scheduleEvaluacion = (sectionId: string): Promise<void> => {
+			const scheduleEvaluation = (sectionId: string): Promise<void> => {
 				if (abortState.aborted) {
 					stats.errors.push({
-						step: 'evaluacion',
+						step: 'evaluation',
 						key: sectionId,
 						message: 'skipped: run aborted',
 					});
@@ -292,8 +292,8 @@ export class PlannerScraperService {
 					this.updatePhaseInBackground(runId, 'evaluations');
 				}
 				return evaluationLimit(() =>
-					this.fetchEvaluacion(runId, sectionId, stats, abortState).then((pairs) =>
-						Promise.all(pairs.map(scheduleNota)).then(() => undefined),
+					this.fetchEvaluation(runId, sectionId, stats, abortState).then((pairs) =>
+						Promise.all(pairs.map(scheduleGrade)).then(() => undefined),
 					),
 				);
 			};
@@ -302,11 +302,11 @@ export class PlannerScraperService {
 				courses.map((course) =>
 					sectionLimit(() => {
 						if (abortState.aborted) {
-							stats.errors.push({ step: 'seccion', key: course, message: 'skipped: run aborted' });
+							stats.errors.push({ step: 'section', key: course, message: 'skipped: run aborted' });
 							return Promise.resolve();
 						}
-						return this.fetchSeccion(runId, period, periodId, course, stats, abortState).then(
-							(sectionIds) => Promise.all(sectionIds.map(scheduleEvaluacion)).then(() => undefined),
+						return this.fetchSection(runId, period, periodId, course, stats, abortState).then(
+							(sectionIds) => Promise.all(sectionIds.map(scheduleEvaluation)).then(() => undefined),
 						);
 					}),
 				),
@@ -421,10 +421,10 @@ export class PlannerScraperService {
 		return periodId;
 	}
 
-	// Seccion leaf: search one course's Planner sections, insert one raw row per section, and
+	// Section leaf: search one course's Planner sections, insert one raw row per section, and
 	// return the section ids this course's search surfaced (the pipeline schedules their
-	// evaluaciones fetches — see `execute()`).
-	private async fetchSeccion(
+	// evaluations fetches — see `execute()`).
+	private async fetchSection(
 		runId: string,
 		period: string,
 		periodId: string,
@@ -433,7 +433,7 @@ export class PlannerScraperService {
 		abortState: AbortState,
 	): Promise<string[]> {
 		if (abortState.aborted) {
-			stats.errors.push({ step: 'seccion', key: course, message: 'skipped: run aborted' });
+			stats.errors.push({ step: 'section', key: course, message: 'skipped: run aborted' });
 			return [];
 		}
 		try {
@@ -460,7 +460,7 @@ export class PlannerScraperService {
 				};
 			});
 			await this.rawSeccionRepository.bulkInsert(rows);
-			stats.counts.seccion += rows.length;
+			stats.counts.sections += rows.length;
 			stats.courses.succeeded.push(course);
 			return sectionIds;
 		} catch (error) {
@@ -469,22 +469,22 @@ export class PlannerScraperService {
 				throw error;
 			}
 			stats.courses.failed.push(course);
-			stats.errors.push({ step: 'seccion', key: course, message: (error as Error).message });
+			stats.errors.push({ step: 'section', key: course, message: (error as Error).message });
 			return [];
 		}
 	}
 
-	// Evaluacion leaf: fetch one section's evaluation structure, flatten the component tree into
+	// Evaluation leaf: fetch one section's evaluation structure, flatten the component tree into
 	// one raw row per component, and return the (evalComponentId, sectionId) pairs this section
-	// surfaced (the pipeline schedules their notas fetches — see `execute()`).
-	private async fetchEvaluacion(
+	// surfaced (the pipeline schedules their grades fetches — see `execute()`).
+	private async fetchEvaluation(
 		runId: string,
 		sectionId: string,
 		stats: ScrapeStats,
 		abortState: AbortState,
 	): Promise<EvalPair[]> {
 		if (abortState.aborted) {
-			stats.errors.push({ step: 'evaluacion', key: sectionId, message: 'skipped: run aborted' });
+			stats.errors.push({ step: 'evaluation', key: sectionId, message: 'skipped: run aborted' });
 			return [];
 		}
 		try {
@@ -511,22 +511,22 @@ export class PlannerScraperService {
 				});
 			}
 			await this.rawEvaluacionRepository.bulkInsert(rows);
-			stats.counts.evaluacion += rows.length;
+			stats.counts.evaluations += rows.length;
 			return pairs;
 		} catch (error) {
 			if (isFatalScrapeError(error)) {
 				abortState.aborted = true;
 				throw error;
 			}
-			stats.errors.push({ step: 'evaluacion', key: sectionId, message: (error as Error).message });
+			stats.errors.push({ step: 'evaluation', key: sectionId, message: (error as Error).message });
 			return [];
 		}
 	}
 
-	// Nota leaf: per (evalComponentId, sectionId), fetch the grades and explode into one raw row
+	// Grade leaf: per (evalComponentId, sectionId), fetch the grades and explode into one raw row
 	// per student grade. The parent approvalCategories are kept on each row for downstream
 	// resolution.
-	private async fetchNota(
+	private async fetchGrade(
 		runId: string,
 		pair: EvalPair,
 		stats: ScrapeStats,
@@ -534,7 +534,7 @@ export class PlannerScraperService {
 	): Promise<void> {
 		if (abortState.aborted) {
 			stats.errors.push({
-				step: 'nota',
+				step: 'grade',
 				key: `${pair.sectionId}/${pair.evalComponentId}`,
 				message: 'skipped: run aborted',
 			});
@@ -562,14 +562,14 @@ export class PlannerScraperService {
 				};
 			});
 			await this.rawNotaRepository.bulkInsert(rows);
-			stats.counts.nota += rows.length;
+			stats.counts.grades += rows.length;
 		} catch (error) {
 			if (isFatalScrapeError(error)) {
 				abortState.aborted = true;
 				throw error;
 			}
 			stats.errors.push({
-				step: 'nota',
+				step: 'grade',
 				key: `${pair.sectionId}/${pair.evalComponentId}`,
 				message: (error as Error).message,
 			});

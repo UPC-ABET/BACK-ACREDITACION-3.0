@@ -52,7 +52,7 @@ describe('ScrapeRunRepository', () => {
 
 	describe('finish', () => {
 		it('clears phase to null once the run reaches a terminal status', async () => {
-			await repo.finish('run-1', 'completed', { counts: { horario: 1 } });
+			await repo.finish('run-1', 'completed', { counts: { schedule: 1 } });
 
 			expect(mockTypeormRepository.update).toHaveBeenCalledWith(
 				'run-1',

@@ -25,9 +25,9 @@ const mockScrapeRunRepository = {
 	deleteOtherRunsForPeriod: jest.fn(),
 	updatePhase: jest.fn(),
 };
-const mockSeccionRepository = { bulkInsert: jest.fn() };
-const mockEvaluacionRepository = { bulkInsert: jest.fn() };
-const mockNotaRepository = { bulkInsert: jest.fn() };
+const mockSectionRepository = { bulkInsert: jest.fn() };
+const mockEvaluationRepository = { bulkInsert: jest.fn() };
+const mockGradeRepository = { bulkInsert: jest.fn() };
 const mockSourceRepository = {
 	findAcademicPeriodCode: jest.fn(),
 	findActiveCourseCodes: jest.fn(),
@@ -39,9 +39,9 @@ const mockUserRepository = { findDisplayNamesByIds: jest.fn() };
 const buildService = () =>
 	new PlannerScraperService(
 		mockScrapeRunRepository as unknown as PlannerScrapeRunRepository,
-		mockSeccionRepository as unknown as RawPlannerSeccionRepository,
-		mockEvaluacionRepository as unknown as RawPlannerEvaluacionRepository,
-		mockNotaRepository as unknown as RawPlannerNotaRepository,
+		mockSectionRepository as unknown as RawPlannerSeccionRepository,
+		mockEvaluationRepository as unknown as RawPlannerEvaluacionRepository,
+		mockGradeRepository as unknown as RawPlannerNotaRepository,
 		mockSourceRepository as unknown as PlannerSourceRepository,
 		mockHttp as unknown as PlannerHttpClient,
 		mockExportGenerationService as unknown as ScrapingExportGenerationService,
@@ -269,8 +269,8 @@ describe('PlannerScraperService', () => {
 
 	/**
 	 * Milestone 5: `execute()` no longer calls three separate sequential phase methods — it runs
-	 * one pipeline where a section's evaluaciones fetch is scheduled the moment that section is
-	 * discovered, not after every course's secciones search has finished (see design.md § AC-6).
+	 * one pipeline where a section's evaluations fetch is scheduled the moment that section is
+	 * discovered, not after every course's sections search has finished (see design.md § AC-6).
 	 * `createLimiters()` is stubbed with pass-through limiters so these tests exercise the real
 	 * scheduling/dedup logic without touching `createLimiter()`'s real `await import('p-limit')`,
 	 * which is unusable under this repo's `module: nodenext` jest setup (same constraint as the
@@ -312,11 +312,11 @@ describe('PlannerScraperService', () => {
 				'CS102',
 			]);
 
-			const evaluacionCalls = mockHttp.get.mock.calls.filter(
+			const evaluationCalls = mockHttp.get.mock.calls.filter(
 				([path]) => path === '/api/class-api/evaluations/structure',
 			);
-			expect(evaluacionCalls).toHaveLength(1);
-			expect(evaluacionCalls[0][1]).toEqual({ sectionId: 'SEC-SHARED' });
+			expect(evaluationCalls).toHaveLength(1);
+			expect(evaluationCalls[0][1]).toEqual({ sectionId: 'SEC-SHARED' });
 		});
 
 		it('fetches a duplicate (evalComponentId, sectionId) pair only once (seenPairs dedup)', async () => {
@@ -333,14 +333,14 @@ describe('PlannerScraperService', () => {
 
 			await (service as unknown as { execute: Function }).execute('run-1', 'UG', PERIOD, ['CS101']);
 
-			const notaCalls = mockHttp.get.mock.calls.filter(
+			const gradeCalls = mockHttp.get.mock.calls.filter(
 				([path]) => path === '/api/class-api/grades',
 			);
-			expect(notaCalls).toHaveLength(1);
-			expect(notaCalls[0][1]).toEqual({ evalComponentId: 'COMP-1', sectionId: 'SEC-1' });
+			expect(gradeCalls).toHaveLength(1);
+			expect(gradeCalls[0][1]).toEqual({ evalComponentId: 'COMP-1', sectionId: 'SEC-1' });
 		});
 
-		it('fires secciones, evaluaciones and notas exactly once each, in order, even when multiple sections enter concurrently', async () => {
+		it('fires sections, evaluations and grades exactly once each, in order, even when multiple sections enter concurrently', async () => {
 			const service = buildService();
 			stubLimiters(service);
 			respondByPath({
@@ -362,7 +362,7 @@ describe('PlannerScraperService', () => {
 			expect(finishedStatus()).toBe('completed');
 		});
 
-		// Regression for AF-1: `scheduleNota`/`scheduleEvaluacion` fire `updatePhase` in the
+		// Regression for AF-1: `scheduleGrade`/`scheduleEvaluation` fire `updatePhase` in the
 		// background (not awaited, since awaiting it would block the pipeline on a progress write).
 		// Before the fix, a rejection there had no `.catch()` — on this repo's Node version, an
 		// unhandled rejection crashes the whole process, not just this scrape run. This test proves
@@ -403,7 +403,7 @@ describe('PlannerScraperService', () => {
 			expect(finishedStatus()).toBe('completed');
 		});
 
-		it('still aborts the whole run on a fatal error raised mid-pipeline (evaluaciones phase)', async () => {
+		it('still aborts the whole run on a fatal error raised mid-pipeline (evaluations phase)', async () => {
 			const service = buildService();
 			stubLimiters(service);
 			mockHttp.get.mockImplementation(async (path: string) => {
@@ -420,14 +420,14 @@ describe('PlannerScraperService', () => {
 			expect(finishedStatus()).toBe('expired');
 		});
 
-		// Regression for AF-7: pipelining means a course's `fetchSeccion` can still be in flight
+		// Regression for AF-7: pipelining means a course's `fetchSection` can still be in flight
 		// (awaiting its own HTTP response) when a fatal error from a *different* course has
 		// already aborted the run — before pipelining, the barrier model made this impossible,
 		// since no course's next phase could start until every course's current phase finished.
 		// CS102's `/api/core-api/sections` call is deliberately left pending so it resolves only
 		// after `execute()` has already settled via CS101's fatal error, simulating exactly that
 		// race. Without the `abortState` guard, CS102's late-arriving sections would still get
-		// scheduled into `scheduleEvaluacion` and fetch/insert against an already-finalized run.
+		// scheduled into `scheduleEvaluation` and fetch/insert against an already-finalized run.
 		it('stops scheduling new work for a course still in flight when a fatal error aborts the run elsewhere', async () => {
 			const service = buildService();
 			stubLimiters(service);
@@ -453,16 +453,16 @@ describe('PlannerScraperService', () => {
 			]);
 			expect(finishedStatus()).toBe('expired');
 
-			// CS102's secciones call only resolves now, after the run has already been finalized.
+			// CS102's sections call only resolves now, after the run has already been finalized.
 			resolveCs102Sections([{ sectionId: 'SEC-102' }]);
 			await flush();
 
-			const evaluacionCallsForCs102 = mockHttp.get.mock.calls.filter(
+			const evaluationCallsForCs102 = mockHttp.get.mock.calls.filter(
 				([path, query]) =>
 					path === '/api/class-api/evaluations/structure' && query.sectionId === 'SEC-102',
 			);
-			expect(evaluacionCallsForCs102).toHaveLength(0);
-			expect(mockEvaluacionRepository.bulkInsert).not.toHaveBeenCalledWith(
+			expect(evaluationCallsForCs102).toHaveLength(0);
+			expect(mockEvaluationRepository.bulkInsert).not.toHaveBeenCalledWith(
 				expect.arrayContaining([expect.objectContaining({ sectionId: 'SEC-102' })]),
 			);
 
@@ -474,7 +474,7 @@ describe('PlannerScraperService', () => {
 				errors: Array<{ step: string; key: string; message: string }>;
 			};
 			expect(persistedStats.errors).toContainEqual({
-				step: 'evaluacion',
+				step: 'evaluation',
 				key: 'SEC-102',
 				message: 'skipped: run aborted',
 			});
@@ -482,7 +482,7 @@ describe('PlannerScraperService', () => {
 
 		// Regression for AF-9: a non-fatal, per-course error must not abort sibling courses —
 		// the pipeline restructure changed *how* work is scheduled, not the per-item error
-		// contract `fetchSeccion`'s own try/catch already enforced.
+		// contract `fetchSection`'s own try/catch already enforced.
 		it('records a non-fatal per-course error and still completes the other course', async () => {
 			const service = buildService();
 			stubLimiters(service);
@@ -509,15 +509,15 @@ describe('PlannerScraperService', () => {
 			const stats = mockScrapeRunRepository.finish.mock.calls[0]?.[2];
 			expect(stats.courses.failed).toEqual(['CS101']);
 			expect(stats.courses.succeeded).toEqual(['CS102']);
-			expect(mockNotaRepository.bulkInsert).toHaveBeenCalledWith(
+			expect(mockGradeRepository.bulkInsert).toHaveBeenCalledWith(
 				expect.arrayContaining([expect.objectContaining({ sectionId: 'SEC-102' })]),
 			);
 		});
 
 		// Regression for AF-14: a course with no matching sections must not advance `phase` past
-		// `'secciones'`, and the run must still complete cleanly rather than hang or error —
-		// `evaluacionesStarted`/`notasStarted` should simply never flip.
-		it('stays at the secciones phase and still completes when a course has no sections', async () => {
+		// `'sections'`, and the run must still complete cleanly rather than hang or error —
+		// `evaluationsStarted`/`gradesStarted` should simply never flip.
+		it('stays at the sections phase and still completes when a course has no sections', async () => {
 			const service = buildService();
 			stubLimiters(service);
 			respondByPath({

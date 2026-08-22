@@ -69,15 +69,15 @@ describe('ScraperService finalizeRun wiring', () => {
 	/**
 	 * `finalizeRun` is exercised directly (as a private method, via `as any`, the same pattern
 	 * used elsewhere in this codebase e.g. `users.service.spec.ts`) rather than only through
-	 * `run()`/`execute()`. `execute()` unconditionally reaches `scrapeMatricula`'s
+	 * `run()`/`execute()`. `execute()` unconditionally reaches `scrapeEnrollment`'s
 	 * `await createLimiter(...)` — a real `await import('p-limit')` — for every outcome except an
-	 * immediate `SessionExpiredError` in the horario phase. Under this repo's `module: nodenext`
+	 * immediate `SessionExpiredError` in the schedule phase. Under this repo's `module: nodenext`
 	 * ts-jest setup that native dynamic import always throws ("invoked without
 	 * --experimental-vm-modules"), the same limitation already documented in
 	 * `planner-scraper.service.spec.ts`. That makes 'completed' and 'partial' unreachable via a
 	 * genuine end-to-end `run()` call in this environment, so those two branches are covered here
 	 * directly; 'expired' is additionally covered end-to-end below, since it is reachable (it
-	 * short-circuits before `scrapeMatricula` is ever called).
+	 * short-circuits before `scrapeEnrollment` is ever called).
 	 */
 	it('deletes every other run for the periodo when the run completed', async () => {
 		const service = buildService();
@@ -175,17 +175,17 @@ describe('ScraperService.execute end-to-end wiring (reachable branch only)', () 
 	const finishedStatus = () => mockScrapeRunRepository.finish.mock.calls[0]?.[1] as string;
 
 	/**
-	 * `scrapeHorario` now also takes a `p-limit`-created limiter (see AC-4), so it is no longer
+	 * `scrapeSchedule` now also takes a `p-limit`-created limiter (see AC-4), so it is no longer
 	 * reachable end-to-end here without hitting the same `module: nodenext` dynamic-import
 	 * limitation this file already documents above (`await import('p-limit')` throws under jest
-	 * regardless of what's mocked). `SessionExpiredError` is injected by stubbing `scrapeHorario`
+	 * regardless of what's mocked). `SessionExpiredError` is injected by stubbing `scrapeSchedule`
 	 * itself instead of via `mockHttp.get`, so `execute()`'s own try/catch classification is still
-	 * exercised for real, just without depending on `scrapeHorario`'s internals (including its
+	 * exercised for real, just without depending on `scrapeSchedule`'s internals (including its
 	 * limiter) actually running.
 	 */
-	it('on an expired run (session expired during horario), cleans up only its own run', async () => {
+	it('on an expired run (session expired during schedule), cleans up only its own run', async () => {
 		const service = buildService();
-		jest.spyOn(service as any, 'scrapeHorario').mockRejectedValue(new SessionExpiredError());
+		jest.spyOn(service as any, 'scrapeSchedule').mockRejectedValue(new SessionExpiredError());
 
 		await runAndSettle(service);
 
@@ -195,9 +195,9 @@ describe('ScraperService.execute end-to-end wiring (reachable branch only)', () 
 		expect(mockScrapeRunRepository.deleteOtherRunsForPeriod).not.toHaveBeenCalled();
 	});
 
-	it('updates phase to schedule before the horario stage runs', async () => {
+	it('updates phase to schedule before the schedule stage runs', async () => {
 		const service = buildService();
-		jest.spyOn(service as any, 'scrapeHorario').mockRejectedValue(new SessionExpiredError());
+		jest.spyOn(service as any, 'scrapeSchedule').mockRejectedValue(new SessionExpiredError());
 
 		await runAndSettle(service);
 
@@ -207,11 +207,11 @@ describe('ScraperService.execute end-to-end wiring (reachable branch only)', () 
 });
 
 /**
- * `scrapeHorario`/`scrapeMatricula`/`scrapeAlumnos`/`scrapeNotas` are stubbed via spies here so
+ * `scrapeSchedule`/`scrapeEnrollment`/`scrapeStudents`/`scrapeGrades` are stubbed via spies here so
  * `execute()`'s phase-update call sites can be asserted in order without depending on
  * `createLimiter()`'s real `await import('p-limit')`, which is unusable under this file's
  * `module: nodenext` ts-jest setup (see the top-of-file comment). `execute()` itself still calls
- * `createLimiter(SCRAPE_CONCURRENCY)` directly between the matricula and alumnos/notas stages, so
+ * `createLimiter(SCRAPE_CONCURRENCY)` directly between the enrollment and students/grades stages, so
  * even with every phase method stubbed, that call throws and is caught by `execute()`'s own
  * try/catch (recorded as a 'failed' finish, not asserted on here — that outcome is an artifact of
  * this jest limitation, not a phase-tracking behavior worth pinning to a test).
@@ -226,10 +226,10 @@ describe('ScraperService.execute phase tracking', () => {
 	it('updates phase before each stage, in order', async () => {
 		const service = buildService();
 		jest
-			.spyOn(service as any, 'scrapeHorario')
+			.spyOn(service as any, 'scrapeSchedule')
 			.mockResolvedValue({ nrcs: [], courseByNrc: new Map() });
 		jest
-			.spyOn(service as any, 'scrapeMatricula')
+			.spyOn(service as any, 'scrapeEnrollment')
 			.mockResolvedValue({ studentCodes: [], enrollments: [] });
 
 		await (service as any).execute('run-1', 'UG', PERIOD, ['DEPT1'], new Set(['CS101']));
@@ -244,10 +244,10 @@ describe('ScraperService.execute phase tracking', () => {
 	});
 });
 
-describe('ScraperService.scrapeHorario concurrency', () => {
+describe('ScraperService.scrapeSchedule concurrency', () => {
 	const STATS = () => ({
 		departments: { requested: ['DEPT_SLOW', 'DEPT_FAST', 'DEPT_BAD'], succeeded: [], failed: [] },
-		counts: { horario: 0, matricula: 0, alumno: 0, nota: 0 },
+		counts: { schedule: 0, enrollment: 0, students: 0, grades: 0 },
 		uniqueStudents: 0,
 		errors: [] as Array<{ step: string; key: string; message: string }>,
 	});
@@ -271,13 +271,13 @@ describe('ScraperService.scrapeHorario concurrency', () => {
 			return Promise.reject(new Error('upstream 500'));
 		});
 
-		// Real `scrapeHorario` runs; only its limiter creation (a real `await import('p-limit')`,
+		// Real `scrapeSchedule` runs; only its limiter creation (a real `await import('p-limit')`,
 		// unusable under jest here) is stubbed with a synchronous passthrough.
 		jest
-			.spyOn(service as any, 'createHorarioLimit')
+			.spyOn(service as any, 'createScheduleLimit')
 			.mockResolvedValue((fn: () => Promise<unknown>) => fn());
 
-		const resultPromise = (service as any).scrapeHorario(
+		const resultPromise = (service as any).scrapeSchedule(
 			'run-1',
 			'UG',
 			PERIOD,
@@ -298,12 +298,12 @@ describe('ScraperService.scrapeHorario concurrency', () => {
 		expect(stats.departments.failed).toEqual(['DEPT_BAD']);
 	});
 
-	// Regression for AF-3: the pre-parallelization sequential `scrapeHorario` let a real
+	// Regression for AF-3: the pre-parallelization sequential `scrapeSchedule` let a real
 	// `SessionExpiredError` propagate straight out (the department loop's own `throw error`).
 	// Parallelizing it must preserve that — a fatal session error is not a per-department fault
 	// and must not be swallowed into `stats.departments.failed` like `DEPT_BAD`'s ordinary error
-	// above. This exercises the real `scrapeHorario`/limiter/scheduling logic, only stubbing
-	// `createHorarioLimit()` past the `p-limit` dynamic import that's unusable under jest here.
+	// above. This exercises the real `scrapeSchedule`/limiter/scheduling logic, only stubbing
+	// `createScheduleLimit()` past the `p-limit` dynamic import that's unusable under jest here.
 	it('propagates a real SessionExpiredError out of the parallelized department loop', async () => {
 		const service = buildService();
 		const stats = STATS();
@@ -314,11 +314,11 @@ describe('ScraperService.scrapeHorario concurrency', () => {
 		});
 
 		jest
-			.spyOn(service as any, 'createHorarioLimit')
+			.spyOn(service as any, 'createScheduleLimit')
 			.mockResolvedValue((fn: () => Promise<unknown>) => fn());
 
 		await expect(
-			(service as any).scrapeHorario(
+			(service as any).scrapeSchedule(
 				'run-1',
 				'UG',
 				PERIOD,
