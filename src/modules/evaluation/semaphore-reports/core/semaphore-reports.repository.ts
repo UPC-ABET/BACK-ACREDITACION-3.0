@@ -9,6 +9,7 @@ import {
 	SEMAPHORE_RV_SUMMARY_SQL,
 	SEMAPHORE_LEVELS_LEGEND_SQL,
 	SEMAPHORE_METADATA_SQL,
+	SEMAPHORE_CAMPUSES_SQL,
 } from './semaphore-reports.sql';
 
 export interface SemaphoreCourseOutcomeRow {
@@ -20,6 +21,7 @@ export interface SemaphoreCourseOutcomeRow {
 	studentsRed: number;
 	studentsYellow: number;
 	studentsGreen: number;
+	campusId: number;
 	campus: string;
 	academicPeriodCycle: string;
 }
@@ -33,6 +35,7 @@ export interface SemaphoreDetailRow {
 	quantity: number;
 	totalStudents: number;
 	percentage: number;
+	campusId: number;
 	campus: string;
 	academicPeriodCycle: string;
 }
@@ -44,6 +47,7 @@ export interface SemaphoreSummaryRow {
 	quantity: number;
 	totalStudents: number;
 	percentage: number;
+	campusId: number;
 	campus: string;
 }
 
@@ -59,6 +63,12 @@ export interface MetadataRow {
 	commissionName: string;
 	academicPeriodCode: string;
 	accreditorCode: string;
+}
+
+export interface SemaphoreCampusRow {
+	id: number;
+	code: string;
+	name: string;
 }
 
 const RC_INSTRUMENT_TYPE_CODE = 'TG206-T003';
@@ -100,13 +110,13 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
-		campusId: number | null,
+		campusIds: number[] | null,
 		language: string,
 	): Promise<SemaphoreCourseOutcomeRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_SCREEN_SQL, [
 			academicPeriodId,
 			outcomeId,
-			campusId,
+			campusIds,
 			language,
 			programCommissionId,
 		]);
@@ -116,7 +126,7 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
-		campusId: number | null,
+		campusIds: number[] | null,
 		language: string,
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
@@ -124,7 +134,7 @@ export class SemaphoreReportsRepository {
 		return this.runReportQuery(SEMAPHORE_RV_SCREEN_SQL, [
 			academicPeriodId,
 			outcomeId,
-			campusId,
+			campusIds,
 			language,
 			programCommissionId,
 			rubricIds,
@@ -136,13 +146,13 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
-		campusId: number | null,
+		campusIds: number[] | null,
 		language: string,
 	): Promise<SemaphoreDetailRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_DETAIL_SQL, [
 			academicPeriodId,
 			outcomeId,
-			campusId,
+			campusIds,
 			language,
 			programCommissionId,
 		]);
@@ -152,13 +162,13 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
-		campusId: number | null,
+		campusIds: number[] | null,
 		language: string,
 	): Promise<SemaphoreSummaryRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_SUMMARY_SQL, [
 			academicPeriodId,
 			outcomeId,
-			campusId,
+			campusIds,
 			language,
 			programCommissionId,
 		]);
@@ -168,7 +178,7 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
-		campusId: number | null,
+		campusIds: number[] | null,
 		language: string,
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
@@ -176,7 +186,7 @@ export class SemaphoreReportsRepository {
 		return this.runReportQuery(SEMAPHORE_RV_DETAIL_SQL, [
 			academicPeriodId,
 			outcomeId,
-			campusId,
+			campusIds,
 			language,
 			programCommissionId,
 			rubricIds,
@@ -188,7 +198,7 @@ export class SemaphoreReportsRepository {
 		academicPeriodId: number,
 		programCommissionId: number | null,
 		outcomeId: number | null,
-		campusId: number | null,
+		campusIds: number[] | null,
 		language: string,
 		rubricIds: number[] | null = null,
 		gradeTypeIds: number[] | null = null,
@@ -196,7 +206,7 @@ export class SemaphoreReportsRepository {
 		return this.runReportQuery(SEMAPHORE_RV_SUMMARY_SQL, [
 			academicPeriodId,
 			outcomeId,
-			campusId,
+			campusIds,
 			language,
 			programCommissionId,
 			rubricIds,
@@ -229,5 +239,12 @@ export class SemaphoreReportsRepository {
 			language,
 		]);
 		return row ?? null;
+	}
+
+	// Every active campus -- lets the service tell "all campuses selected" apart from a proper
+	// subset without trusting the client's notion of "all". See
+	// SemaphoreReportsService.resolveCampusPlan.
+	async getCampuses(language: string): Promise<SemaphoreCampusRow[]> {
+		return this.runReportQuery(SEMAPHORE_CAMPUSES_SQL, [language]);
 	}
 }

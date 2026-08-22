@@ -10,6 +10,7 @@ import {
 	SemaphoreSummaryRow,
 	SemaphoreLevelLegendRow,
 	MetadataRow,
+	SemaphoreCampusRow,
 } from '../core/semaphore-reports.repository';
 import { SEMAPHORE_PDF_LABELS, SEMAPHORE_REPORT_STYLES } from './semaphore-pdf.theme';
 import { semaphoreReportsValidationStrings } from '../config/strings/semaphore-reports.validation';
@@ -25,6 +26,7 @@ import * as ExcelJS from 'exceljs';
 
 const XLSX_HEADER_BG = 'FFE30613';
 const XLSX_HEADER_TEXT = 'FFFFFFFF';
+const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const CRITICAL_RED_THRESHOLD = 23;
 const PG_QUERY_CANCELED = '57014';
 
@@ -41,6 +43,37 @@ interface SemaphoreRenderReportDto {
 	yellowDetail: SemaphoreCourseDetailRowDto[];
 	greenDetail: SemaphoreCourseDetailRowDto[];
 	metadata: SemaphoreReportDto['metadata'];
+}
+
+/** What the download endpoints hand the controller -- content type varies with the campus plan. */
+interface SemaphoreDownload {
+	buffer: Buffer;
+	filename: string;
+	contentType: string;
+}
+
+/**
+ * How a campus selection resolves for a download (see docs/CONTEXT.md's report business rules):
+ *  - 'all': no campus filter, or the selection covers every active campus -- one consolidated
+ *    report with every campus's data.
+ *  - 'single': exactly one campus selected -- one report scoped to it.
+ *  - 'zip': more than one campus selected, short of all of them -- one report per selected
+ *    campus, bundled into a zip.
+ */
+type SemaphoreCampusPlan =
+	| { mode: 'all' }
+	| { mode: 'single' | 'zip'; campuses: SemaphoreCampusRow[] };
+
+/** Buckets rows carrying a `campusId` by that id -- used to split one shared, multi-campus query
+ *  result into each campus's own slice without a separate query per campus. */
+function groupByCampusId<T extends { campusId: number }>(rows: T[]): Map<number, T[]> {
+	const grouped = new Map<number, T[]>();
+	for (const row of rows) {
+		const bucket = grouped.get(row.campusId);
+		if (bucket) bucket.push(row);
+		else grouped.set(row.campusId, [row]);
+	}
+	return grouped;
 }
 
 @Injectable()
@@ -64,47 +97,144 @@ export class SemaphoreReportsService {
 	async generateRcPdf(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
-	): Promise<{ pdf: Buffer; filename: string }> {
-		const lang = (dto.lang ?? 'es') as ReportLanguage;
-		const data = await this.fetchRenderData(dto, academicPeriodId, 'rc');
-		return this.reportGenerator.generateDocument(
-			this.buildDocument(data, 'rc', lang),
-			this.buildFilename('rc', lang),
-		);
+	): Promise<SemaphoreDownload> {
+		return this.generatePdfDownload(dto, academicPeriodId, 'rc');
 	}
 
 	async generateRvPdf(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
-	): Promise<{ pdf: Buffer; filename: string }> {
-		const lang = (dto.lang ?? 'es') as ReportLanguage;
-		const data = await this.fetchRenderData(dto, academicPeriodId, 'rv');
-		return this.reportGenerator.generateDocument(
-			this.buildDocument(data, 'rv', lang),
-			this.buildFilename('rv', lang),
-		);
+	): Promise<SemaphoreDownload> {
+		return this.generatePdfDownload(dto, academicPeriodId, 'rv');
 	}
 
 	async generateRcExcel(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
-	): Promise<{ xlsx: Buffer; filename: string }> {
-		const lang = (dto.lang ?? 'es') as 'es' | 'en';
-		const data = await this.fetchRenderData(dto, academicPeriodId, 'rc');
-		const xlsx = await this.renderExcel(data, 'rc', lang);
-		const filename = this.buildExcelFilename('rc', lang);
-		return { xlsx, filename };
+	): Promise<SemaphoreDownload> {
+		return this.generateExcelDownload(dto, academicPeriodId, 'rc');
 	}
 
 	async generateRvExcel(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
-	): Promise<{ xlsx: Buffer; filename: string }> {
+	): Promise<SemaphoreDownload> {
+		return this.generateExcelDownload(dto, academicPeriodId, 'rv');
+	}
+
+	/**
+	 * Campus-selection-aware PDF download: one consolidated report, one report scoped to a single
+	 * campus, or a zip of one report per campus -- see `SemaphoreCampusPlan`.
+	 */
+	private async generatePdfDownload(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+		instrument: 'rc' | 'rv',
+	): Promise<SemaphoreDownload> {
+		const lang = (dto.lang ?? 'es') as ReportLanguage;
+		const plan = await this.resolveCampusPlan(dto.campusIds, lang);
+
+		if (plan.mode !== 'zip') {
+			const campusIds = plan.mode === 'single' ? [plan.campuses[0].id] : null;
+			const campusCode = plan.mode === 'single' ? plan.campuses[0].code : undefined;
+			const data = await this.fetchRenderData(dto, academicPeriodId, instrument, campusIds);
+			const { pdf, filename } = await this.reportGenerator.generateDocument(
+				this.buildDocument(data, instrument, lang),
+				this.buildFilename(instrument, lang, campusCode),
+			);
+			return { buffer: pdf, filename, contentType: 'application/pdf' };
+		}
+
+		const perCampus = await this.fetchPerCampusRenderData(
+			dto,
+			academicPeriodId,
+			instrument,
+			plan.campuses,
+		);
+		const reports = perCampus.map(({ campus, data }) => ({
+			document: this.buildDocument(data, instrument, lang),
+			filename: this.buildFilename(instrument, lang, campus.code),
+		}));
+		const { zip, filename } = await this.reportGenerator.generateZip(
+			reports,
+			this.buildZipFilename(instrument, lang),
+		);
+		return { buffer: zip, filename, contentType: 'application/zip' };
+	}
+
+	/** Same campus-selection rules as `generatePdfDownload`, but rendering XLSX workbooks. */
+	private async generateExcelDownload(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+		instrument: 'rc' | 'rv',
+	): Promise<SemaphoreDownload> {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
-		const data = await this.fetchRenderData(dto, academicPeriodId, 'rv');
-		const xlsx = await this.renderExcel(data, 'rv', lang);
-		const filename = this.buildExcelFilename('rv', lang);
-		return { xlsx, filename };
+		const plan = await this.resolveCampusPlan(dto.campusIds, lang);
+
+		if (plan.mode !== 'zip') {
+			const campusIds = plan.mode === 'single' ? [plan.campuses[0].id] : null;
+			const campusCode = plan.mode === 'single' ? plan.campuses[0].code : undefined;
+			const data = await this.fetchRenderData(dto, academicPeriodId, instrument, campusIds);
+			const xlsx = await this.renderExcel(data, instrument, lang);
+			return {
+				buffer: xlsx,
+				filename: this.buildExcelFilename(instrument, lang, campusCode),
+				contentType: XLSX_CONTENT_TYPE,
+			};
+		}
+
+		const perCampus = await this.fetchPerCampusRenderData(
+			dto,
+			academicPeriodId,
+			instrument,
+			plan.campuses,
+		);
+		// Workbook building is CPU-bound (ExcelJS, no DB round trip), so building every campus's
+		// file concurrently is safe and keeps the zip from serializing on the slowest one.
+		const files = await Promise.all(
+			perCampus.map(async ({ campus, data }) => ({
+				filename: this.buildExcelFilename(instrument, lang, campus.code),
+				pdf: await this.renderExcel(data, instrument, lang),
+			})),
+		);
+
+		const { zip, filename } = await this.reportGenerator.archivePdfFiles(
+			files,
+			this.buildZipFilename(instrument, lang),
+		);
+		return { buffer: zip, filename, contentType: 'application/zip' };
+	}
+
+	private throwNoData(): never {
+		throw new HttpException(
+			{
+				message: semaphoreReportsValidationStrings.result.generateFailed,
+				errors: [semaphoreReportsValidationStrings.error.noData],
+			},
+			HttpStatus.NOT_FOUND,
+		);
+	}
+
+	/**
+	 * Resolves a requested campus selection against the active campus catalog. An empty/omitted
+	 * selection, or one that names every active campus, is treated as "all" -- the caller must not
+	 * trust the client's own idea of "select all" (e.g. a stale campus list on the frontend), since
+	 * that would silently start zipping a selection that was actually meant to be consolidated.
+	 */
+	private async resolveCampusPlan(
+		campusIds: number[] | undefined,
+		lang: string,
+	): Promise<SemaphoreCampusPlan> {
+		const requested = campusIds?.length ? [...new Set(campusIds)] : null;
+		if (!requested) return { mode: 'all' };
+
+		const allCampuses = await this.runQuery(() => this.repository.getCampuses(lang));
+		const requestedSet = new Set(requested);
+		const selected = allCampuses.filter((campus) => requestedSet.has(campus.id));
+
+		if (selected.length === 0) this.throwNoData();
+		if (selected.length === allCampuses.length) return { mode: 'all' };
+		return { mode: selected.length === 1 ? 'single' : 'zip', campuses: selected };
 	}
 
 	/**
@@ -149,7 +279,7 @@ export class SemaphoreReportsService {
 		const lang = dto.lang ?? 'es';
 		const programCommissionId = dto.programCommissionId ?? null;
 		const outcomeId = dto.outcomeId ?? null;
-		const campusId = dto.campusId ?? null;
+		const campusIds = dto.campusIds?.length ? dto.campusIds : null;
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
@@ -159,14 +289,14 @@ export class SemaphoreReportsService {
 						academicPeriodId,
 						programCommissionId,
 						outcomeId,
-						campusId,
+						campusIds,
 						lang,
 					)
 				: this.repository.getRvScreen(
 						academicPeriodId,
 						programCommissionId,
 						outcomeId,
-						campusId,
+						campusIds,
 						lang,
 						rubricIds,
 						gradeTypeIds,
@@ -190,16 +320,60 @@ export class SemaphoreReportsService {
 		return this.buildScreenReport(rows, legendRows, metadata);
 	}
 
-	/** Data for PDF/Excel: replicates the legacy critical/representative filtering. */
+	/**
+	 * Data for PDF/Excel: replicates the legacy critical/representative filtering. `campusIds` is
+	 * resolved by the caller (`resolveCampusPlan`), not read off `dto`: the single/consolidated case
+	 * passes `null` (or a single id); the zip case never calls this per campus -- see
+	 * `fetchPerCampusRenderData`, which fetches every selected campus in one pass instead.
+	 */
 	private async fetchRenderData(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
 		instrument: 'rc' | 'rv',
+		campusIds: number[] | null,
 	): Promise<SemaphoreRenderReportDto> {
+		const { detailRows, summaryRows, screenRows } = await this.fetchRenderRows(
+			dto,
+			academicPeriodId,
+			instrument,
+			campusIds,
+		);
+		if (detailRows.length === 0) this.throwNoData();
+		const [legendRows, metadata] = await this.fetchLegendAndMetadata(
+			dto,
+			academicPeriodId,
+			instrument,
+		);
+		return this.buildRenderReport(
+			detailRows,
+			summaryRows,
+			screenRows,
+			legendRows,
+			metadata,
+			(dto.lang ?? 'es') as ReportLanguage,
+		);
+	}
+
+	/**
+	 * The three heavy report queries (detail/summary/screen), run once. Kept apart from
+	 * `buildRenderReport` so the zip path can call this ONCE for every selected campus together
+	 * (`campusIds` holding all of them) and split the result per campus in memory afterwards,
+	 * instead of re-running this same multi-way join once per campus -- see
+	 * `fetchPerCampusRenderData`.
+	 */
+	private async fetchRenderRows(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+		instrument: 'rc' | 'rv',
+		campusIds: number[] | null,
+	): Promise<{
+		detailRows: SemaphoreDetailRow[];
+		summaryRows: SemaphoreSummaryRow[];
+		screenRows: SemaphoreCourseOutcomeRow[];
+	}> {
 		const lang = dto.lang ?? 'es';
 		const programCommissionId = dto.programCommissionId ?? null;
 		const outcomeId = dto.outcomeId ?? null;
-		const campusId = dto.campusId ?? null;
 		const rubricIds = dto.rubricIds?.length ? dto.rubricIds : null;
 		const gradeTypeIds = dto.gradeTypeIds?.length ? dto.gradeTypeIds : null;
 
@@ -214,21 +388,21 @@ export class SemaphoreReportsService {
 								academicPeriodId,
 								programCommissionId,
 								outcomeId,
-								campusId,
+								campusIds,
 								lang,
 							),
 							this.repository.getRcSummary(
 								academicPeriodId,
 								programCommissionId,
 								outcomeId,
-								campusId,
+								campusIds,
 								lang,
 							),
 							this.repository.getRcScreen(
 								academicPeriodId,
 								programCommissionId,
 								outcomeId,
-								campusId,
+								campusIds,
 								lang,
 							),
 						] as const)
@@ -237,7 +411,7 @@ export class SemaphoreReportsService {
 								academicPeriodId,
 								programCommissionId,
 								outcomeId,
-								campusId,
+								campusIds,
 								lang,
 								rubricIds,
 								gradeTypeIds,
@@ -246,7 +420,7 @@ export class SemaphoreReportsService {
 								academicPeriodId,
 								programCommissionId,
 								outcomeId,
-								campusId,
+								campusIds,
 								lang,
 								rubricIds,
 								gradeTypeIds,
@@ -255,7 +429,7 @@ export class SemaphoreReportsService {
 								academicPeriodId,
 								programCommissionId,
 								outcomeId,
-								campusId,
+								campusIds,
 								lang,
 								rubricIds,
 								gradeTypeIds,
@@ -263,29 +437,80 @@ export class SemaphoreReportsService {
 						] as const),
 			),
 		);
-		if (detailRows.length === 0) {
-			throw new HttpException(
-				{
-					message: semaphoreReportsValidationStrings.result.generateFailed,
-					errors: [semaphoreReportsValidationStrings.error.noData],
-				},
-				HttpStatus.NOT_FOUND,
-			);
-		}
-		const [legendRows, metadata] = await this.runQuery(() =>
+		return { detailRows, summaryRows, screenRows };
+	}
+
+	/** Legend and metadata are campus-independent (period+instrument, and program-commission,
+	 *  scoped respectively), so every caller -- single report or the whole zip -- fetches them once. */
+	private async fetchLegendAndMetadata(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+		instrument: 'rc' | 'rv',
+	): Promise<[SemaphoreLevelLegendRow[], MetadataRow | null]> {
+		const lang = dto.lang ?? 'es';
+		const programCommissionId = dto.programCommissionId ?? null;
+		return this.runQuery(() =>
 			Promise.all([
 				this.repository.getLevelsLegend(academicPeriodId, instrument, lang),
 				this.repository.getMetadata(programCommissionId, academicPeriodId, lang),
 			]),
 		);
-		return this.buildRenderReport(
-			detailRows,
-			summaryRows,
-			screenRows,
-			legendRows,
-			metadata,
-			lang as ReportLanguage,
-		);
+	}
+
+	/**
+	 * The zip path's data fetch: every selected campus's detail/summary/screen rows in ONE call to
+	 * `fetchRenderRows` (campus-scoped only by the full selection, not one call per campus), then
+	 * split by each row's own `campusId` to build one `SemaphoreRenderReportDto` per campus.
+	 *
+	 * This is safe because the detail/summary SQL's window functions partition by
+	 * `(campus, outcome_code)` already -- see semaphore-reports.sql.ts -- so a campus's computed
+	 * quantities/percentages/critical-selection do not depend on which OTHER campuses' rows are
+	 * present in the same query result. Fetching campus A and campus B together and then grouping by
+	 * `campusId` in memory yields byte-identical numbers to fetching them one at a time; it only
+	 * changes how many times the underlying multi-way join runs.
+	 *
+	 * A campus with no rows in the shared fetch is skipped rather than failing the whole zip
+	 * (`throwNoData` only fires if not a single selected campus has data).
+	 */
+	private async fetchPerCampusRenderData(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+		instrument: 'rc' | 'rv',
+		campuses: SemaphoreCampusRow[],
+	): Promise<Array<{ campus: SemaphoreCampusRow; data: SemaphoreRenderReportDto }>> {
+		const lang = (dto.lang ?? 'es') as ReportLanguage;
+		const [{ detailRows, summaryRows, screenRows }, [legendRows, metadata]] = await Promise.all([
+			this.fetchRenderRows(
+				dto,
+				academicPeriodId,
+				instrument,
+				campuses.map((campus) => campus.id),
+			),
+			this.fetchLegendAndMetadata(dto, academicPeriodId, instrument),
+		]);
+
+		const detailByCampus = groupByCampusId(detailRows);
+		const summaryByCampus = groupByCampusId(summaryRows);
+		const screenByCampus = groupByCampusId(screenRows);
+
+		const reports: Array<{ campus: SemaphoreCampusRow; data: SemaphoreRenderReportDto }> = [];
+		for (const campus of campuses) {
+			const campusDetailRows = detailByCampus.get(campus.id) ?? [];
+			if (campusDetailRows.length === 0) continue;
+			reports.push({
+				campus,
+				data: this.buildRenderReport(
+					campusDetailRows,
+					summaryByCampus.get(campus.id) ?? [],
+					screenByCampus.get(campus.id) ?? [],
+					legendRows,
+					metadata,
+					lang,
+				),
+			});
+		}
+		if (reports.length === 0) this.throwNoData();
+		return reports;
 	}
 
 	/** Aggregates red/yellow/green student counts per outcome for the PDF chart. */
@@ -444,18 +669,32 @@ export class SemaphoreReportsService {
 		};
 	}
 
-	private buildFilename(type: 'rc' | 'rv', lang: ReportLanguage): string {
+	private reportBaseName(type: 'rc' | 'rv', lang: 'es' | 'en'): string {
 		const prefix = lang === 'en' ? 'Report' : 'Reporte';
 		const suffix =
 			type === 'rc' ? 'Control_RC' : lang === 'en' ? 'Verification_RV' : 'Verificacion_RV';
-		return `${prefix}_${suffix}.pdf`;
+		return `${prefix}_${suffix}`;
 	}
 
-	private buildExcelFilename(type: 'rc' | 'rv', lang: 'es' | 'en'): string {
-		const prefix = lang === 'en' ? 'Report' : 'Reporte';
-		const suffix =
-			type === 'rc' ? 'Control_RC' : lang === 'en' ? 'Verification_RV' : 'Verificacion_RV';
-		return `${prefix}_${suffix}_${Date.now()}.xlsx`;
+	private buildFilename(type: 'rc' | 'rv', lang: ReportLanguage, campusCode?: string): string {
+		const campusSuffix = campusCode ? `_${this.sanitizeFilenamePart(campusCode)}` : '';
+		return `${this.reportBaseName(type, lang)}${campusSuffix}.pdf`;
+	}
+
+	private buildExcelFilename(type: 'rc' | 'rv', lang: 'es' | 'en', campusCode?: string): string {
+		const campusSuffix = campusCode ? `_${this.sanitizeFilenamePart(campusCode)}` : '';
+		return `${this.reportBaseName(type, lang)}${campusSuffix}_${Date.now()}.xlsx`;
+	}
+
+	/** Zip filename for the multi-campus download -- no campus suffix, since it holds all of them. */
+	private buildZipFilename(type: 'rc' | 'rv', lang: 'es' | 'en'): string {
+		return `${this.reportBaseName(type, lang)}.zip`;
+	}
+
+	/** Campus codes are catalog data, not user input, but still get sanitized before landing in a
+	 *  filename -- a stray '/' or ':' would otherwise change the path a client saves the file to. */
+	private sanitizeFilenamePart(value: string): string {
+		return value.replace(/[^\p{L}\p{N}_-]+/gu, '-');
 	}
 
 	private buildDocument(

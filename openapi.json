@@ -13854,7 +13854,12 @@
 						"description": "Program commission ID to filter by"
 					},
 					"outcomeId": { "type": "number", "example": 1, "description": "Outcome ID to filter by" },
-					"campusId": { "type": "number", "example": 1, "description": "Campus ID to filter by" },
+					"campusIds": {
+						"example": [1, 2],
+						"description": "Campus IDs to filter by. Omit, or select every campus, for one consolidated report. Select a single campus for one report scoped to it. Select more than one (but not all) to download a zip with one report per selected campus -- applies to the PDF/Excel download endpoints only; the JSON screen endpoints always return one combined result.",
+						"type": "array",
+						"items": { "type": "number" }
+					},
 					"lang": {
 						"type": "string",
 						"example": "es",
