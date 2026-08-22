@@ -13,7 +13,7 @@ import {
 	GRADES_RC_TEMP_TABLE,
 	INDEX_GRADES_RC_TEMP_SQL,
 	MATERIALIZE_GRADES_RC_SQL,
-	READ_GRADES_RC_PAGE_SQL,
+	READ_GRADES_RC_ALL_PAGE_SQL,
 	UPLOADED_SECTIONS_SQL,
 } from './grades-rc-export.sql';
 import { EXPORTS_RAW_CONNECTION, resolveAcademicPeriodCode } from './scraping-exports.repository';
@@ -30,10 +30,12 @@ export interface EnrolledSectionStudentRow {
 	studentCodes: string[];
 }
 
-// A reader over the materialized export. Each worksheet asks for its own half: `withObservations`
-// false yields the clean rows, true the ones carrying an observation.
+// A reader over the materialized export: one unfiltered pass, tagging each row with whether it
+// carries an observation. Used only to copy the merge into the durable
+// scraping_export_gradesrc_rows table -- the two-sheet split happens on that read instead (see
+// ScrapingExportGradesRcRowRepository.readPage), not here.
 export interface GradesRcExportHandle {
-	rows: (withObservations: boolean) => AsyncGenerator<GradeRcExportRow>;
+	rows: () => AsyncGenerator<GradeRcExportRow & { hasObservations: boolean }>;
 	close: () => Promise<void>;
 }
 
@@ -86,24 +88,19 @@ export class GradesRcExportRepository {
 		}
 
 		return {
-			rows: (withObservations: boolean) => this.readGradesRcPages(runner, withObservations),
+			rows: () => this.readGradesRcPages(runner),
 			close: () => this.closeGradesRcExport(runner),
 		};
 	}
 
 	private async *readGradesRcPages(
 		runner: QueryRunner,
-		withObservations: boolean,
-	): AsyncGenerator<GradeRcExportRow> {
+	): AsyncGenerator<GradeRcExportRow & { hasObservations: boolean }> {
 		let lastSeq = '0';
 
 		for (;;) {
 			const page: Array<GradeRcExportRow & { exportSeq: string; hasObservations: boolean }> =
-				await runner.query(READ_GRADES_RC_PAGE_SQL, [
-					lastSeq,
-					GRADES_RC_PAGE_SIZE,
-					withObservations,
-				]);
+				await runner.query(READ_GRADES_RC_ALL_PAGE_SQL, [lastSeq, GRADES_RC_PAGE_SIZE]);
 			if (page.length === 0) return;
 
 			for (const row of page) yield row;

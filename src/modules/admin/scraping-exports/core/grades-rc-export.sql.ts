@@ -505,8 +505,8 @@ export const GRADES_RC_TEMP_TABLE = 'grades_rc_export_rows';
 // streamed once, and paging the merge itself would re-run 400 lines of cross-scrape SQL per page.
 //
 // "exportSeq" restates the ORDER BY rather than inheriting it -- a subquery's ordering is not
-// guaranteed to survive. "hasObservations" is the worksheet split, materialized so it can lead the
-// index.
+// guaranteed to survive. "hasObservations" is the worksheet split; materialized here and carried
+// through to scraping_export_gradesrc_rows, where it drives the download-time two-sheet read.
 export const MATERIALIZE_GRADES_RC_SQL = `
 CREATE TEMP TABLE ${GRADES_RC_TEMP_TABLE} AS
 SELECT
@@ -516,20 +516,22 @@ SELECT
 FROM (${GRADES_RC_SQL}) q
 `;
 
-// Keyset, not OFFSET: each page is an index scan from where the last one stopped, instead of
-// re-scanning and re-sorting the whole table once per page. "hasObservations" leads because every
-// page filters on it.
+// Keyset, not OFFSET: each page of the single ingestion pass (READ_GRADES_RC_ALL_PAGE_SQL) is an
+// index scan from where the last one stopped, instead of re-scanning and re-sorting the whole
+// table once per page. No longer leads with "hasObservations" -- that split now happens on the
+// durable scraping_export_gradesrc_rows table this temp table is copied into, not here.
 export const INDEX_GRADES_RC_TEMP_SQL = `
-CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_has_observations_export_seq"
-	ON ${GRADES_RC_TEMP_TABLE} ("hasObservations", "exportSeq")
+CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_export_seq"
+	ON ${GRADES_RC_TEMP_TABLE} ("exportSeq")
 `;
 
-// Disjoint halves: $3 false for the clean rows of the upload sheet, true for the reviewed ones.
-// Filtering in Node instead would make a page yield almost nothing whenever one half dominates.
-export const READ_GRADES_RC_PAGE_SQL = `
+// One unfiltered pass over the temp table, used only to copy it into the durable
+// scraping_export_gradesrc_rows table (see ScrapingExportGradesRcRowRepository). The two-sheet
+// split ("clean" vs "observations") is a property of the destination read, done there via an
+// indexed WHERE on the persisted `has_observations` column -- not re-derived here.
+export const READ_GRADES_RC_ALL_PAGE_SQL = `
 SELECT * FROM ${GRADES_RC_TEMP_TABLE}
-WHERE "hasObservations" = $3::boolean
-  AND "exportSeq" > $1::bigint
+WHERE "exportSeq" > $1::bigint
 ORDER BY "exportSeq"
 LIMIT $2::int
 `;
