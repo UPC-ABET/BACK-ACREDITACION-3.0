@@ -4,6 +4,8 @@ import { ScrapingExportsService } from './scraping-exports.service';
 import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
 import { gradesRcDescriptiveLabels } from '../model/scraping-exports.labels';
 
+const GENERATED_AT = new Date('2026-08-22T00:00:00Z');
+
 const row = (over: Partial<Record<string, unknown>> = {}) => ({
 	sectionCode: 'NRC1',
 	studentCode: 'A1',
@@ -38,7 +40,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 		rows = [];
 		// Mirrors the repository's own keyset pagination: one page, then empty.
 		readPage.mockImplementation(
-			async (_runId: number, hasObservations: boolean, afterId: number) => {
+			async (_runId: number, _generatedAt: Date, hasObservations: boolean, afterId: number) => {
 				if (afterId > 0) return [];
 				return rows.filter((r) => r.hasObservations === hasObservations);
 			},
@@ -66,7 +68,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 	it('writes the six template columns in order', async () => {
 		givenRows([row()]);
 
-		const { fileName, buffer } = await service.renderGradesRc(1);
+		const { fileName, buffer } = await service.renderGradesRc(1, GENERATED_AT);
 		const [header, first] = readSheet(await loadWorkbook(buffer), 'Data');
 
 		expect(fileName).toBe('NotasRC.xlsx');
@@ -85,7 +87,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 	it('keeps the upload sheet first and puts the descriptive sheet after it', async () => {
 		givenRows([row()]);
 
-		const workbook = await loadWorkbook((await service.renderGradesRc(1)).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer);
 
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Detalle']);
 	});
@@ -94,7 +96,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 		givenRows([row({ observations: [GRADE_RC_OBSERVATIONS.FALLBACK_GRADE] })]);
 
 		const [header, first] = readSheet(
-			await loadWorkbook((await service.renderGradesRc(1)).buffer),
+			await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer),
 			'Detalle',
 		);
 
@@ -136,6 +138,31 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 		]);
 	});
 
+	// Regression coverage for a dropped test case: a row carrying 2+ observation codes must join
+	// them with ' | ', not just resolve a single one.
+	it('joins multiple observation codes with " | " in the descriptive sheet', async () => {
+		givenRows([
+			row({
+				observations: [
+					GRADE_RC_OBSERVATIONS.FALLBACK_GRADE,
+					GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS,
+				],
+			}),
+		]);
+
+		const [, first] = readSheet(
+			await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer),
+			'Detalle',
+		);
+
+		expect(first[first.length - 1]).toBe(
+			[
+				gradesRcDescriptiveLabels.es.observations[GRADE_RC_OBSERVATIONS.FALLBACK_GRADE],
+				gradesRcDescriptiveLabels.es.observations[GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS],
+			].join(' | '),
+		);
+	});
+
 	it('splits the rows between the sheets by whether they carry an observation', async () => {
 		givenRows([
 			row(),
@@ -148,7 +175,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 			}),
 		]);
 
-		const workbook = await loadWorkbook((await service.renderGradesRc(1)).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer);
 
 		const uploadRows = readSheet(workbook, 'Data').slice(1);
 		expect(uploadRows.map((r) => r[1])).toEqual(['NRC1', 'NRC2']);
@@ -168,15 +195,17 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 			}),
 		]);
 
-		const workbook = await loadWorkbook((await service.renderGradesRc(1, 'en')).buffer);
+		const workbook = await loadWorkbook(
+			(await service.renderGradesRc(1, GENERATED_AT, 'en')).buffer,
+		);
 		expect(readSheet(workbook, 'Data')).toHaveLength(1);
 		const [header, first] = readSheet(workbook, 'Details');
 
 		expect(header[2]).toBe('Section code');
 		expect(first[8]).toBe('TF1');
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Details']);
-		expect(readPage).toHaveBeenCalledWith(1, false, 0, expect.any(Number));
-		expect(readPage).toHaveBeenCalledWith(1, true, 0, expect.any(Number));
+		expect(readPage).toHaveBeenCalledWith(1, GENERATED_AT, false, 0, expect.any(Number));
+		expect(readPage).toHaveBeenCalledWith(1, GENERATED_AT, true, 0, expect.any(Number));
 	});
 });
 
@@ -207,6 +236,15 @@ describe('ScrapingExportsService.materializeGradesRc', () => {
 		close,
 	});
 
+	const manyRowsHandle = (count: number, close = jest.fn().mockResolvedValue(undefined)) => ({
+		rows: async function* () {
+			for (let i = 0; i < count; i++) {
+				yield row({ sectionCode: `NRC${i}` });
+			}
+		},
+		close,
+	});
+
 	it('opens the merge exactly once and inserts the resulting rows tagged with the run id and timestamp', async () => {
 		openGradesRcExport.mockResolvedValue(oneRowHandle());
 		const generatedAt = new Date('2026-08-22T00:00:00Z');
@@ -218,6 +256,23 @@ describe('ScrapingExportsService.materializeGradesRc', () => {
 		expect(insertBatch).toHaveBeenCalledWith(42, generatedAt, [
 			expect.objectContaining({ sectionCode: 'NRC1' }),
 		]);
+	});
+
+	// Regression coverage for the full-period-in-memory OOM risk: a merge larger than one batch must
+	// be flushed in chunks as it streams, never buffered whole before the first insert.
+	it('flushes the merge into the child table in bounded chunks instead of buffering it all in memory', async () => {
+		openGradesRcExport.mockResolvedValue(manyRowsHandle(2500));
+		const generatedAt = new Date('2026-08-22T00:00:00Z');
+
+		await service.materializeGradesRc(1, 42, generatedAt);
+
+		expect(insertBatch).toHaveBeenCalledTimes(3);
+		const chunkSizes = insertBatch.mock.calls.map(([, , chunk]) => chunk.length);
+		expect(chunkSizes).toEqual([1000, 1000, 500]);
+		for (const [runId, calledGeneratedAt] of insertBatch.mock.calls) {
+			expect(runId).toBe(42);
+			expect(calledGeneratedAt).toBe(generatedAt);
+		}
 	});
 
 	it('rejects when the merge itself fails', async () => {

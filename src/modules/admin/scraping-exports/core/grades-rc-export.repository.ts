@@ -4,7 +4,7 @@ import { DataSource, QueryRunner } from 'typeorm';
 
 import { TYPE_CODES, TYPE_GROUP_CODES } from 'src/modules/core/types/constants/type-codes';
 
-import { GradeRcExportRow } from '../model/scraping-exports.types';
+import { GRADES_RC_PAGE_SIZE, GradeRcExportRow } from '../model/scraping-exports.types';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 import {
 	CONTROL_OUTCOME_SECTIONS_SQL,
@@ -38,10 +38,6 @@ export interface GradesRcExportHandle {
 	rows: () => AsyncGenerator<GradeRcExportRow & { hasObservations: boolean }>;
 	close: () => Promise<void>;
 }
-
-// Rows held in memory at a time. Small enough that the peak no longer scales with the period, large
-// enough that a full period is tens of round trips rather than thousands.
-const GRADES_RC_PAGE_SIZE = 5000;
 
 /**
  * Builds the RC bulk-upload-ready data out of both scrapings — Banner and Planner, which share the

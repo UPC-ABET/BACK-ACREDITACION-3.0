@@ -2,14 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 
-import { GradeRcExportRow } from '../model/scraping-exports.types';
+import { GRADES_RC_PAGE_SIZE, GradeRcExportRow } from '../model/scraping-exports.types';
 import { ScrapingExportGradesRcRowEntity } from '../model/scraping-export-gradesrc-row.entity';
 
 // Rows inserted per statement. Small enough to keep one INSERT's payload bounded, large enough
 // that a full period is tens of round trips rather than thousands — mirrors GRADES_RC_PAGE_SIZE's
 // reasoning in GradesRcExportRepository.
 const INSERT_BATCH_SIZE = 1000;
-const READ_PAGE_SIZE = 5000;
 
 /**
  * Durable storage for one materialized gradesRc merge, replacing the session-scoped TEMP table
@@ -38,15 +37,21 @@ export class ScrapingExportGradesRcRowRepository {
 	}
 
 	// Keyset-paginated read, mirrors GradesRcExportRepository.readGradesRcPages's cursor shape.
+	// Filtered by `generatedAt`, not just `scrapingExportRunId`: a run id can momentarily hold two
+	// generations' rows at once (the new batch, inserted before the old one is deleted — see
+	// deleteStaleBatches), so pinning the exact batch is what stops a download racing a regenerate
+	// from reading a torn mix of both.
 	async readPage(
 		scrapingExportRunId: number,
+		generatedAt: Date,
 		hasObservations: boolean,
 		afterId: number,
-		limit: number = READ_PAGE_SIZE,
+		limit: number = GRADES_RC_PAGE_SIZE,
 	): Promise<Array<GradeRcExportRow & { id: number }>> {
 		return await this.repository.find({
 			where: {
 				scrapingExportRunId,
+				generatedAt,
 				hasObservations,
 				...(afterId > 0 ? { id: MoreThan(afterId) } : {}),
 			},
@@ -56,9 +61,13 @@ export class ScrapingExportGradesRcRowRepository {
 	}
 
 	// Existence check for `download`'s "has this ever completed" gate — cheaper than paging both
-	// halves, and correct regardless of which half (or both) happens to hold rows.
-	async hasRows(scrapingExportRunId: number): Promise<boolean> {
-		const count = await this.repository.count({ where: { scrapingExportRunId }, take: 1 });
+	// halves, and correct regardless of which half (or both) happens to hold rows. Scoped to
+	// `generatedAt` for the same torn-read reason as `readPage`.
+	async hasRows(scrapingExportRunId: number, generatedAt: Date): Promise<boolean> {
+		const count = await this.repository.count({
+			where: { scrapingExportRunId, generatedAt },
+			take: 1,
+		});
 		return count > 0;
 	}
 

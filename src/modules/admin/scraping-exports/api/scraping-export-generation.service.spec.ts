@@ -6,6 +6,7 @@ import { ScrapingExportRunRepository } from '../core/scraping-export-run.reposit
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
+import { getDefaultExportFileName } from '../model/scraping-exports.labels';
 import { ScrapingExportsService } from './scraping-exports.service';
 import {
 	GENERATION_STALE_TIMEOUT_MS,
@@ -181,6 +182,29 @@ describe('ScrapingExportGenerationService AF-1 Banner period-not-found guard', (
 	});
 });
 
+describe('ScrapingExportGenerationService AC-4 sync export generation persists rowsData', () => {
+	it('upserts the completed row with the fetched rowsData, and no fileBytes/fileName', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const rows = [{ professorCode: 'N001' }];
+		mockExportsService.fetchStaffRows.mockResolvedValue(rows);
+		const service = buildService();
+
+		await service.regenerate('staff', PERIOD, 'user-1');
+		await flush();
+
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'staff',
+			PERIOD,
+			expect.objectContaining({ status: 'completed', rowsData: rows }),
+		);
+		const completedCall = mockRunRepository.upsertByKey.mock.calls.find(
+			([, , patch]) => (patch as { status?: string }).status === 'completed',
+		);
+		expect(completedCall?.[2]).not.toHaveProperty('fileBytes');
+		expect(completedCall?.[2]).not.toHaveProperty('fileName');
+	});
+});
+
 describe('ScrapingExportGenerationService AF-3 source run id wiring', () => {
 	it('writes sourceBannerRunId on the four Banner exports triggered from a Banner run', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
@@ -206,6 +230,27 @@ describe('ScrapingExportGenerationService AF-3 source run id wiring', () => {
 		const service = buildService();
 
 		await service.triggerForBannerRun(PERIOD, 'banner-run-1');
+		await flush();
+
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'gradesRc',
+			PERIOD,
+			expect.objectContaining({
+				status: 'running',
+				sourceBannerRunId: 'banner-run-1',
+				sourcePlannerRunId: 'planner-run-1',
+			}),
+		);
+	});
+
+	it('writes both source ids on gradesRc triggered from a Planner run when a completed Banner run exists', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockScrapeRunRepository.findByPeriod.mockResolvedValue([
+			{ status: 'completed', id: 'banner-run-1' },
+		]);
+		const service = buildService();
+
+		await service.triggerForPlannerRun(PERIOD, 'planner-run-1');
 		await flush();
 
 		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
@@ -411,12 +456,34 @@ describe('ScrapingExportGenerationService.getStatus', () => {
 			exportType: 'staff',
 			period: PERIOD,
 			status: 'completed',
+			fileName: getDefaultExportFileName('staff'),
 			errorMessage: null,
 			startedAt: row.startedAt,
 			finishedAt: row.finishedAt,
 		});
 		expect(result).not.toHaveProperty('rowsData');
 		expect(result).not.toHaveProperty('lang');
+	});
+
+	// Blocker fix: the frontend gates its download action on `fileName !== null`, so a row that has
+	// never completed must report null even though it otherwise looks read-only-safe to serialize.
+	it('reports fileName: null for a row that has never completed', async () => {
+		mockRunRepository.findByKey.mockResolvedValue({
+			id: 1,
+			exportType: 'staff',
+			period: PERIOD,
+			status: 'running',
+			rowsData: null,
+			errorMessage: null,
+			startedAt: new Date(),
+			finishedAt: null,
+			updatedAt: new Date(),
+		});
+		const service = buildService();
+
+		const result = await service.getStatus('staff', PERIOD);
+
+		expect(result).toMatchObject({ status: 'running', fileName: null });
 	});
 });
 
@@ -487,27 +554,48 @@ describe('ScrapingExportGenerationService.download', () => {
 		expect(mockExportsService.renderStaffExcel).toHaveBeenCalledWith(rows, 'en');
 	});
 
+	it('gradesRc: returns null when the row has never completed a generation (no finishedAt)', async () => {
+		mockRunRepository.findByKey.mockResolvedValue({
+			id: 1,
+			exportType: 'gradesRc',
+			period: PERIOD,
+			status: 'running',
+			finishedAt: null,
+			updatedAt: new Date(),
+		});
+		const service = buildService();
+
+		await expect(service.download('gradesRc', PERIOD, 'es')).resolves.toBeNull();
+		expect(mockGradesRcRowRepository.hasRows).not.toHaveBeenCalled();
+		expect(mockExportsService.renderGradesRc).not.toHaveBeenCalled();
+	});
+
 	it('gradesRc: returns null when no rows were ever materialized for this run', async () => {
+		const finishedAt = new Date('2026-08-20T09:05:00Z');
 		mockRunRepository.findByKey.mockResolvedValue({
 			id: 1,
 			exportType: 'gradesRc',
 			period: PERIOD,
 			status: 'completed',
+			finishedAt,
 			updatedAt: new Date(),
 		});
 		mockGradesRcRowRepository.hasRows.mockResolvedValue(false);
 		const service = buildService();
 
 		await expect(service.download('gradesRc', PERIOD, 'es')).resolves.toBeNull();
+		expect(mockGradesRcRowRepository.hasRows).toHaveBeenCalledWith(1, finishedAt);
 		expect(mockExportsService.renderGradesRc).not.toHaveBeenCalled();
 	});
 
-	it('gradesRc: renders from the persisted rows without re-running the merge', async () => {
+	it("gradesRc: renders from the persisted rows without re-running the merge, pinned to the row's own generatedAt", async () => {
+		const finishedAt = new Date('2026-08-20T09:05:00Z');
 		mockRunRepository.findByKey.mockResolvedValue({
 			id: 1,
 			exportType: 'gradesRc',
 			period: PERIOD,
 			status: 'completed',
+			finishedAt,
 			updatedAt: new Date(),
 		});
 		const service = buildService();
@@ -515,7 +603,27 @@ describe('ScrapingExportGenerationService.download', () => {
 		await service.download('gradesRc', PERIOD, 'en');
 
 		expect(mockExportsService.materializeGradesRc).not.toHaveBeenCalled();
-		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(1, 'en');
+		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(1, finishedAt, 'en');
+	});
+
+	// Blocker fix: a download racing a regenerate must read the batch `finishedAt` pins, i.e. the
+	// previous completed generation, not whatever the in-flight regenerate has half-inserted.
+	it('gradesRc: while a regenerate is running, still renders the previous batch pinned to the old finishedAt', async () => {
+		const previousFinishedAt = new Date('2026-08-20T09:05:00Z');
+		mockRunRepository.findByKey.mockResolvedValue({
+			id: 1,
+			exportType: 'gradesRc',
+			period: PERIOD,
+			status: 'running',
+			finishedAt: previousFinishedAt,
+			updatedAt: new Date(),
+		});
+		const service = buildService();
+
+		await service.download('gradesRc', PERIOD, 'es');
+
+		expect(mockGradesRcRowRepository.hasRows).toHaveBeenCalledWith(1, previousFinishedAt);
+		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(1, previousFinishedAt, 'es');
 	});
 });
 
@@ -681,6 +789,24 @@ describe('ScrapingExportGenerationService gradesRc generation', () => {
 
 		expect(callOrder).toEqual(['materialize', 'upsert-completed', 'delete-stale']);
 		expect(mockGradesRcRowRepository.deleteStaleBatches).toHaveBeenCalledWith(1, expect.any(Date));
+	});
+
+	// Blocker fix: a cleanup failure must not undo a generation that already succeeded — the parent
+	// row is already 'completed' and correctly pinned to the new batch by the time deleteStaleBatches
+	// runs, so a delete failure here is a cleanup problem, not a generation failure.
+	it('does not flip the row to failed when deleteStaleBatches fails after the row was already completed', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		mockGradesRcRowRepository.deleteStaleBatches.mockRejectedValue(new Error('delete blew up'));
+		const service = buildService();
+
+		await service.regenerate('gradesRc', PERIOD, 'user-1');
+		await flush();
+
+		const statuses = mockRunRepository.upsertByKey.mock.calls
+			.filter(([exportType, period]) => exportType === 'gradesRc' && period === PERIOD)
+			.map(([, , patch]) => (patch as { status?: string }).status);
+		expect(statuses).toEqual(['running', 'completed']);
+		expect(statuses).not.toContain('failed');
 	});
 });
 

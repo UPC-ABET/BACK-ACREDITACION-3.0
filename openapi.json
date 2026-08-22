@@ -17534,6 +17534,7 @@
 						"type": "string",
 						"enum": ["running", "completed", "failed", "notGenerated"]
 					},
+					"fileName": { "type": "string", "nullable": true },
 					"errorMessage": { "type": "string", "nullable": true },
 					"startedAt": { "format": "date-time", "type": "string", "nullable": true },
 					"finishedAt": { "format": "date-time", "type": "string", "nullable": true }

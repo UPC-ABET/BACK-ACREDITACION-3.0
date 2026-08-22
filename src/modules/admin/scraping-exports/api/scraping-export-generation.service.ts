@@ -9,6 +9,7 @@ import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
 import { ScrapingExportStatusResponse, ScrapingExportType } from '../model/scraping-exports.types';
+import { getDefaultExportFileName } from '../model/scraping-exports.labels';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
 
@@ -169,8 +170,16 @@ export class ScrapingExportGenerationService {
 		const reconciled = await this.reconcileIfStale(row);
 
 		if (exportType === 'gradesRc') {
-			if (!(await this.gradesRcRowRepository.hasRows(reconciled.id))) return null;
-			return this.exportsService.renderGradesRc(reconciled.id, lang);
+			// `finishedAt` pins exactly the batch this row's last completed generation produced —
+			// while a regenerate is `running`, it still holds the previous completed generation's
+			// timestamp, since `claimForGeneration`'s patch to 'running' never touches it. Reading by
+			// this exact value (rather than by runId alone) is what stops a concurrent regenerate's
+			// in-flight batch from being torn together with the old one (see
+			// ScrapingExportGradesRcRowRepository.readPage).
+			const generatedAt = reconciled.finishedAt;
+			if (!generatedAt) return null;
+			if (!(await this.gradesRcRowRepository.hasRows(reconciled.id, generatedAt))) return null;
+			return this.exportsService.renderGradesRc(reconciled.id, generatedAt, lang);
 		}
 
 		if (!reconciled.rowsData) return null;
@@ -403,19 +412,36 @@ export class ScrapingExportGenerationService {
 				updatedAt: new Date(),
 			});
 
-			await this.gradesRcRowRepository.deleteStaleBatches(runId, generatedAt);
+			// The parent row is already 'completed' and correctly pinned to this batch at this point —
+			// a failure here is a cleanup problem, not a generation failure. Letting it propagate would
+			// have `runGeneration()`'s catch flip a successful generation to 'failed' while a perfectly
+			// valid new batch sits live and unreachable behind that status. The previous batch simply
+			// outlives its usefulness on disk until the next successful generation retries the delete.
+			try {
+				await this.gradesRcRowRepository.deleteStaleBatches(runId, generatedAt);
+			} catch (error) {
+				this.logger.error(
+					`Failed to delete stale gradesRc batches for run ${runId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+					error instanceof Error ? error.stack : undefined,
+				);
+			}
 		} finally {
 			this.gradesRcMergeStartedAt = null;
 		}
 	}
 
 	// `status`/`regenerate` never hand back a downloadable file — see ScrapingExportStatusResponse's
-	// own comment. `download` is the only endpoint that ever renders and streams bytes.
+	// own comment. `download` is the only endpoint that ever renders and streams bytes. `fileName`
+	// is a readiness signal only (always the default-language name), present exactly when `status`
+	// is 'completed'.
 	private toStatusResponse(row: ScrapingExportRunEntity): ScrapingExportStatusResponse {
 		return {
 			exportType: row.exportType,
 			period: row.period,
 			status: row.status,
+			fileName: row.status === 'completed' ? getDefaultExportFileName(row.exportType) : null,
 			errorMessage: row.errorMessage,
 			startedAt: row.startedAt,
 			finishedAt: row.finishedAt,

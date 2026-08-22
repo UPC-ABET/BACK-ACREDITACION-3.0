@@ -106,6 +106,14 @@ language to render," not "which cached row to fetch." `openapi.json` is regenera
 regardless, since `ScrapingExportStatusResponse`'s shape changes and the endpoints' descriptions
 change even where params don't.
 
+`ScrapingExportStatusResponse.fileName` **stays**, but its meaning narrows: it is no longer the
+name of a specific stored file (there is no longer a per-language file to name), it is a readiness
+signal — always the default-language name (`getDefaultExportFileName`), non-null exactly when
+`status === 'completed'`. This was caught during pre-PR audit as a frontend-breaking omission:
+`FRONT-ACREDITACION-3.0`'s `canDownload`/`isScrapingExportDownloadable` both gate the download
+action on `response.fileName !== null`, and the original version of this design dropped the field
+outright alongside `lang` without checking that consumer. See the Risks table below.
+
 ### AC-6 — migration reconciles existing rows without orphaning/duplicating data
 
 Per ADR-003 §6: the migration clears `core.scraping_export_runs` outright (these are pure
@@ -149,13 +157,17 @@ in `docs/POLICIES.md` does not apply):
   free text, `TextShortColumn`'s 100-char cap is too tight to trust blindly); `observations` —
   `@JsonColumn()` (a small jsonb array of `GRADE_RC_OBSERVATIONS` codes — plain strings, no
   snake_case concern since there are no object keys).
-- `hasObservations` — `@BooleanColumn({ indexed: true, indexName:
-'IDX_scraping_export_gradesrc_rows_has_observations' })`, precomputed from
+- `hasObservations` — `@BooleanColumn({ withDefault: false })`, precomputed from
   `observations.length > 0` at insert time (mirrors what `READ_GRADES_RC_PAGE_SQL` already computes
   server-side today). Turns the two-pass sheet read into an indexed `WHERE`, not a jsonb
-  array-length scan.
-- Index `IDX_scraping_export_gradesrc_rows_run_id` on `scrapingExportRunId` (the join/filter every
-  read uses).
+  array-length scan — served by the composite index below, not a column-level one of its own.
+- Composite index `IDX_scraping_export_gradesrc_rows_run_generated_observations` on
+  `(scrapingExportRunId, generatedAt, hasObservations, id)` — covers `readPage`'s full WHERE (run
+  id, generated-at batch, observation half) + `ORDER BY id` in one scan. Added during pre-PR audit
+  in place of the two single-column indexes an earlier version of this design had planned
+  (`scrapingExportRunId` alone, `hasObservations` alone) — both would have been redundant once every
+  real query filters on all three columns together, and three indexes on an insert-heavy table cost
+  write throughput for no matching read benefit.
 - `@PrimaryGeneratedColumn` id doubles as the keyset-pagination cursor (`ORDER BY id`,
   `WHERE id > $lastId`), same shape as `READ_GRADES_RC_PAGE_SQL`'s `exportSeq` cursor today.
 
@@ -181,13 +193,28 @@ gains optional `rowsData?: unknown[] | null`.
 **New `ScrapingExportGradesRcRowRepository`** (`core/scraping-export-gradesrc-row.repository.ts`),
 main datasource, via the injected `Repository<ScrapingExportGradesRcRowEntity>`:
 
-- `insertBatch(runId, generatedAt, rows)` — chunked insert (e.g. 1,000 rows/statement) as the
-  ingestion pass consumes `GradesRcExportRepository`'s reader.
-- `readPage(runId, hasObservations, afterId, limit)` — keyset-paginated read, mirrors
-  `READ_GRADES_RC_PAGE_SQL`'s shape.
+- `insertBatch(runId, generatedAt, rows)` — chunked insert (1,000 rows/statement) as the ingestion
+  pass consumes `GradesRcExportRepository`'s reader; `ScrapingExportsService.materializeGradesRc`
+  flushes each chunk as it streams rather than collecting the whole merge into memory first (a
+  full-period buffer being read in whole before the first insert was the exact risk this table
+  exists to remove — caught in pre-PR audit and fixed before merge).
+- `readPage(runId, generatedAt, hasObservations, afterId, limit)` — keyset-paginated read, mirrors
+  `READ_GRADES_RC_PAGE_SQL`'s shape. `generatedAt` pins the read to one specific completed batch —
+  also added during pre-PR audit — so a `download` racing a `regenerate` reads one self-consistent
+  generation instead of a torn mix of the old and new rows (the child table briefly holds both
+  batches at once between insert and delete; see Retention below). Served by the composite index
+  `IDX_scraping_export_gradesrc_rows_run_generated_observations` on
+  `(scrapingExportRunId, generatedAt, hasObservations, id)`, which covers this method's full WHERE +
+  ORDER BY in one scan — there is deliberately no separate single-column index on
+  `scrapingExportRunId` alone, since it would be redundant with this one's leading columns.
 - `deleteStaleBatches(runId, keepGeneratedAt)` — `DELETE ... WHERE scraping_export_run_id = $1 AND
 generated_at <> $2`. Called only after a new generation's own rows are fully inserted **and** the
-  parent row has flipped to `completed` — see Retention below.
+  parent row has flipped to `completed` — see Retention below. A failure here is caught and logged,
+  not propagated: the parent row is already `completed` and correctly pinned to the new batch by
+  this point, so letting the error bubble up would have `runGeneration`'s catch incorrectly flip a
+  successful generation to `failed` while a valid new batch sits live and unreachable behind that
+  status. The stale batch simply outlives its usefulness on disk until the next successful
+  generation retries the delete.
 
 **`GradesRcExportRepository`** (`core/grades-rc-export.repository.ts`) — `GradesRcExportHandle.rows`
 narrows from `(withObservations: boolean) => AsyncGenerator<...>` (two separate filtered passes,
@@ -238,10 +265,12 @@ generatedAt, ...)` → **only after that upsert commits**, `gradesRcRowRepositor
 
 `ScrapingExportsController` (`api/scraping-exports.controller.ts`) — `status` and `regenerate` stop
 accepting `@Query('lang')`; `download` keeps it. `ScrapingExportStatusResponse`
-(`model/scraping-exports.types.ts`) drops `lang`. Swagger descriptions on all three endpoints
-updated to describe the new semantics (`download`'s `lang` docs get an explicit "selects the
-rendered language; does not affect whether the export is ready" note, since that is the whole point
-of this change and worth saying to whoever reads the spec next).
+(`model/scraping-exports.types.ts`) drops `lang` but keeps `fileName` — see AC-5 — now sourced from
+`getDefaultExportFileName(exportType)` (`model/scraping-exports.labels.ts`) rather than a stored
+column. Swagger descriptions on all three endpoints updated to describe the new semantics
+(`download`'s `lang` docs get an explicit "selects the rendered language; does not affect whether
+the export is ready" note, since that is the whole point of this change and worth saying to whoever
+reads the spec next).
 
 ### i18n / validation
 
@@ -262,13 +291,14 @@ they fire, not what they say.
 
 ## Risks
 
-| Risk                                                                                                                                                  | Mitigation                                                                                                                                                                                                                                                                                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every download now re-renders the workbook, reintroducing per-request work ADR-002 removed                                                            | Rendering reads only already-persisted data (an in-memory array, or an indexed table read) — never re-queries the raw datasource or reruns the Banner+Planner merge. Materially cheaper than what ADR-002 eliminated; named and accepted in ADR-003.                                                                                                  |
-| Migration deletes every existing cached export                                                                                                        | Documented deploy step in `runbook.md`; regenerating is a normal, already-existing, self-service action — no data is lost that isn't trivially reproducible.                                                                                                                                                                                          |
-| `core.scraping_export_gradesrc_rows` grows the main DB with a full period's grade lines, and briefly holds two generations' worth during a regenerate | Old batch deleted immediately after the new one completes (never before) — bounded to ~2x one period's rows at any moment, never unbounded.                                                                                                                                                                                                           |
-| `lang`'s meaning silently changes on `regenerate`, and disappears from `ScrapingExportStatusResponse`, without a version bump                         | `openapi.json` regenerated in the same PR; both are additive-safe at the transport level (unknown query params are ignored, a removed response field only matters if read) — flagged here rather than requiring a coordinated frontend PR. Confirm during implementation that the frontend does not read `.lang` off `status`/`regenerate` responses. |
-| `GradesRcExportHandle.rows` signature change (`(withObservations) => ...` → `() => ...`) is a breaking change to an internal interface                | Contained entirely within `scraping-exports` module; no external consumer.                                                                                                                                                                                                                                                                            |
+| Risk                                                                                                                                                                                                                                                                                                                 | Mitigation                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Every download now re-renders the workbook, reintroducing per-request work ADR-002 removed                                                                                                                                                                                                                           | Rendering reads only already-persisted data (an in-memory array, or an indexed table read) — never re-queries the raw datasource or reruns the Banner+Planner merge. Materially cheaper than what ADR-002 eliminated; named and accepted in ADR-003.                                                                                                   |
+| Migration deletes every existing cached export                                                                                                                                                                                                                                                                       | Documented deploy step in `runbook.md`; regenerating is a normal, already-existing, self-service action — no data is lost that isn't trivially reproducible.                                                                                                                                                                                           |
+| `core.scraping_export_gradesrc_rows` grows the main DB with a full period's grade lines, and briefly holds two generations' worth during a regenerate                                                                                                                                                                | Old batch deleted immediately after the new one completes (never before) — bounded to ~2x one period's rows at any moment, never unbounded.                                                                                                                                                                                                            |
+| `lang`'s meaning silently changes on `regenerate`, and disappears from `ScrapingExportStatusResponse`, without a version bump                                                                                                                                                                                        | `openapi.json` regenerated in the same PR; `lang` is additive-safe at the transport level (unknown query params are ignored, a removed response field only matters if read) — flagged here rather than requiring a coordinated frontend PR. Confirm during implementation that the frontend does not read `.lang` off `status`/`regenerate` responses. |
+| `fileName` dropping from `ScrapingExportStatusResponse` breaks `FRONT-ACREDITACION-3.0`'s Download button (`canDownload`/`isScrapingExportDownloadable` both gate on `response.fileName !== null`, which the response would never send again) — caught in pre-PR audit, not assessed when `lang` was first evaluated | `fileName` is kept as a readiness signal (see AC-5): always the default-language name, non-null exactly when `status === 'completed'`. No frontend PR required for this specific regression; the frontend still needs its own migration off reading `.lang`.                                                                                           |
+| `GradesRcExportHandle.rows` signature change (`(withObservations) => ...` → `() => ...`) is a breaking change to an internal interface                                                                                                                                                                               | Contained entirely within `scraping-exports` module; no external consumer.                                                                                                                                                                                                                                                                             |
 
 ## Docs to update in this PR
 

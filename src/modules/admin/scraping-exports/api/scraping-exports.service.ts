@@ -7,6 +7,7 @@ import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
 import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import {
 	EnrolledStudentExportRow,
+	GRADES_RC_PAGE_SIZE,
 	GradeRcExportRow,
 	SectionExportRow,
 	StaffExportRow,
@@ -28,7 +29,10 @@ export interface GeneratedExcel {
 	fileName: string;
 }
 
-const GRADES_RC_READ_PAGE_SIZE = 5000;
+// Rows buffered before each `insertBatch` call while streaming the merge into the child table —
+// keeps peak memory bounded to one chunk regardless of how large the period's merge is, instead of
+// holding the entire period in memory before writing anything.
+const MATERIALIZE_BATCH_SIZE = 1000;
 
 @Injectable()
 export class ScrapingExportsService {
@@ -117,6 +121,10 @@ export class ScrapingExportsService {
 	// The pooled `exports-raw` connection `openGradesRcExport` pins is held only for the merge and
 	// this single ingestion pass, then released -- materially less than the old design, which held
 	// it through the entire render too.
+	//
+	// Flushes every MATERIALIZE_BATCH_SIZE rows instead of collecting the whole merge into one array
+	// first: a full period's grade lines held entirely in memory before the first insert is exactly
+	// the OOM risk `scraping_export_gradesrc_rows` exists to eliminate (see ADR-003).
 	async materializeGradesRc(
 		academicPeriodId: number,
 		scrapingExportRunId: number,
@@ -124,17 +132,30 @@ export class ScrapingExportsService {
 	): Promise<void> {
 		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
 		try {
-			const batch: Array<GradeRcExportRow & { hasObservations: boolean }> = [];
+			let batch: Array<GradeRcExportRow & { hasObservations: boolean }> = [];
 			for await (const row of handle.rows()) {
 				batch.push(row);
+				if (batch.length >= MATERIALIZE_BATCH_SIZE) {
+					await this.gradesRcRowRepository.insertBatch(scrapingExportRunId, generatedAt, batch);
+					batch = [];
+				}
 			}
-			await this.gradesRcRowRepository.insertBatch(scrapingExportRunId, generatedAt, batch);
+			if (batch.length > 0) {
+				await this.gradesRcRowRepository.insertBatch(scrapingExportRunId, generatedAt, batch);
+			}
 		} finally {
 			await handle.close();
 		}
 	}
 
-	async renderGradesRc(scrapingExportRunId: number, lang?: string): Promise<GeneratedExcel> {
+	// `generatedAt` pins the read to one specific completed batch (see
+	// ScrapingExportGradesRcRowRepository.readPage) so a download racing a regenerate reads one
+	// self-consistent generation instead of a torn mix of the old and new rows.
+	async renderGradesRc(
+		scrapingExportRunId: number,
+		generatedAt: Date,
+		lang?: string,
+	): Promise<GeneratedExcel> {
 		const chunks: Buffer[] = [];
 		const sink = new Writable({
 			write(chunk: Buffer, _encoding, callback) {
@@ -145,7 +166,7 @@ export class ScrapingExportsService {
 
 		const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: sink, useStyles: true });
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
-		await this.writeGradesRcSheets(workbook, scrapingExportRunId, labels, lang);
+		await this.writeGradesRcSheets(workbook, scrapingExportRunId, generatedAt, labels, lang);
 
 		return { buffer: Buffer.concat(chunks), fileName: labels.fileName };
 	}
@@ -153,6 +174,7 @@ export class ScrapingExportsService {
 	private async writeGradesRcSheets(
 		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
 		scrapingExportRunId: number,
+		generatedAt: Date,
 		labels: ExportLabels,
 		lang: string | undefined,
 	): Promise<void> {
@@ -171,7 +193,7 @@ export class ScrapingExportsService {
 		// academic.student_course_grades permanently. ZERO_GRADE_UNEXPLAINED ships ASISTIO, which is
 		// the one status the RC semaphore counts -- holding it back moves the RC average.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
-		for await (const r of this.pageGradesRcRows(scrapingExportRunId, false)) {
+		for await (const r of this.pageGradesRcRows(scrapingExportRunId, generatedAt, false)) {
 			uploadSheet
 				.addRow([
 					r.sectionCode,
@@ -190,7 +212,7 @@ export class ScrapingExportsService {
 		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
 			[descriptive.headers.length]: 90,
 		});
-		for await (const r of this.pageGradesRcRows(scrapingExportRunId, true)) {
+		for await (const r of this.pageGradesRcRows(scrapingExportRunId, generatedAt, true)) {
 			detailSheet
 				.addRow([
 					r.academicPeriod,
@@ -219,15 +241,17 @@ export class ScrapingExportsService {
 
 	private async *pageGradesRcRows(
 		scrapingExportRunId: number,
+		generatedAt: Date,
 		hasObservations: boolean,
 	): AsyncGenerator<GradeRcExportRow> {
 		let lastId = 0;
 		for (;;) {
 			const page = await this.gradesRcRowRepository.readPage(
 				scrapingExportRunId,
+				generatedAt,
 				hasObservations,
 				lastId,
-				GRADES_RC_READ_PAGE_SIZE,
+				GRADES_RC_PAGE_SIZE,
 			);
 			if (page.length === 0) return;
 

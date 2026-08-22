@@ -343,6 +343,76 @@ boolean }>` — one full pass over the `TEMP` table (`READ_GRADES_RC_PAGE_SQL` a
 
 ---
 
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1 ✅ DONE (2026-08-22)
+
+- [x] Task complete
+
+Fixed all 16 findings from the pre-PR audit (3 blockers, 2 majors, 6 minors, 5 suggestions).
+Two suggestions were deliberately left as-is; see below.
+
+**Blockers**
+
+1. `ScrapingExportStatusResponse` was missing `fileName`, which
+   `FRONT-ACREDITACION-3.0`'s `canDownload`/`isScrapingExportDownloadable` both gate on
+   (`fileName !== null`) — restored as a readiness signal (always the default-language name via
+   the new `getDefaultExportFileName`, non-null exactly when `status === 'completed'`), not a
+   per-language stored value. `scraping-exports.types.ts`, `scraping-exports.labels.ts`,
+   `scraping-exports.response.dtos.ts`, `scraping-export-generation.service.ts`, `design.md` § AC-5
+   and Risks.
+2. `materializeGradesRc` collected the entire Banner+Planner merge into memory before a single
+   `insertBatch` call, reintroducing the full-period OOM ADR-003 exists to eliminate. Now flushes
+   every 1,000 rows (`MATERIALIZE_BATCH_SIZE`) as the merge streams. `scraping-exports.service.ts`.
+3. `readPage`/`hasRows` filtered only by `scrapingExportRunId`, so a `download` racing a
+   `regenerate` could read a torn mix of the old and new batch; and a `deleteStaleBatches` failure
+   after the parent row flipped to `completed` would have `runGeneration`'s catch incorrectly reset
+   a successful generation to `failed` while the valid new batch sat unreachable. Fixed by (a)
+   threading the row's own `finishedAt` through as the pinned `generatedAt` for every gradesRc read
+   (`download`'s gradesRc branch, `renderGradesRc`, `readPage`, `hasRows`), and (b) containing
+   `deleteStaleBatches`'s failure in its own try/catch that logs but does not rethrow.
+   `scraping-export-generation.service.ts`, `scraping-exports.service.ts`,
+   `scraping-export-gradesrc-row.repository.ts`.
+
+**Majors**
+
+4. Added the composite index `IDX_scraping_export_gradesrc_rows_run_generated_observations` on
+   `(scrapingExportRunId, generatedAt, hasObservations, id)` — covers `readPage`'s full WHERE +
+   `ORDER BY` in one scan — in place of the two single-column indexes the not-yet-applied migration
+   had planned (both now redundant). Migration, entity.
+5. Added a test asserting a successful sync-export generation upserts the completed row with
+   `rowsData` and no `fileBytes`/`fileName`.
+
+**Minors**
+
+6. Fixed the module comment claiming the run entity persists `fileBytes` (it persists `rowsData`).
+7. Updated `design.md` § AC-5, Controller/DTOs, Repository changes and Risks to document the
+   restored `fileName` and the `generatedAt`-pinned read path.
+8. `observations` used `@JsonColumn({ withDefault: true })` (`'{}'` object default) for an array
+   column; changed to `default: () => "'[]'"`, matching the existing array-column convention.
+9. Restored the dropped test asserting `triggerForPlannerRun` wires both `sourceBannerRunId`/
+   `sourcePlannerRunId`.
+10. Restored the dropped multi-observation `.join(' | ')` test in `scraping-exports.service.spec.ts`.
+11. Added `scraping-export-gradesrc-row.repository.spec.ts` covering insert chunk boundaries,
+    keyset cursor behavior, `hasRows`, and `deleteStaleBatches`.
+12. Security (PII now in queryable rows, not just an opaque `.xlsx` blob) — no code change per the
+    finding; noted here for whoever next reviews retention/anonymization policy.
+
+**Suggestions**
+
+13. Extracted the page-size constant (previously duplicated as three separate `= 5000` constants)
+    to `GRADES_RC_PAGE_SIZE` in `scraping-exports.types.ts`.
+14. **Not done** — ADR index table (`docs/adr/README.md`). Per this repo's `CLAUDE.md`, only
+    `/abet-adr` writes `docs/adr/`; left for that workflow.
+15. **Not done** — flipping ADR-003's status to `Accepted`. Same `docs/adr/` restriction as #14.
+16. **Not done** — the `claimForGeneration` TOCTOU/upsert-conditional-claim follow-up. The finding's
+    own fix note is conditional ("if collision frequency becomes a problem"); left as the
+    already-accepted, already-benign race it was found to be.
+
+All changes verified: `pnpm exec tsc --noEmit -p tsconfig.build.json` clean; full
+`scraping-exports` Jest suite green (93 tests, 7 suites); `pnpm openapi:export` diff scoped to the
+one restored `fileName` field.
+
 <!--
 Append-only sections below. These record what actually happened, not what was planned,
 and they are the best input to the next design.
@@ -353,8 +423,4 @@ and they are the best input to the next design.
 - [ ] Task complete
 
 ## Post-QA fixes
-
-## Audit fixes (/abet-audit-pr)
-
-### Review round 1
 -->

@@ -41,13 +41,13 @@ export class AddScrapingExportGradesrcRowsTable1787378550454 implements Migratio
 			ON DELETE CASCADE
 		`);
 
+		// Covers readPage's exact WHERE (run id, generated_at, has_observations) + ORDER BY id shape
+		// in one index scan; a single-column run-id-only index would be redundant with this one's
+		// leading columns, so there is deliberately no separate index on scraping_export_run_id alone.
 		await queryRunner.query(`
-			CREATE INDEX "IDX_scraping_export_gradesrc_rows_run_id"
-			ON "core"."scraping_export_gradesrc_rows" ("scraping_export_run_id")
-		`);
-		await queryRunner.query(`
-			CREATE INDEX "IDX_scraping_export_gradesrc_rows_has_observations"
-			ON "core"."scraping_export_gradesrc_rows" ("has_observations")
+			CREATE INDEX "IDX_scraping_export_gradesrc_rows_run_generated_observations"
+			ON "core"."scraping_export_gradesrc_rows"
+			("scraping_export_run_id", "generated_at", "has_observations", "id")
 		`);
 	}
 

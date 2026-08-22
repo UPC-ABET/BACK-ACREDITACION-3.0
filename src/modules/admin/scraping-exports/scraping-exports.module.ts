@@ -25,7 +25,7 @@ import { ScrapingExportGradesRcRowRepository } from './core/scraping-export-grad
 // RAW_DB_URL as the scrapers; only mounted when RAW_DB_URL is configured (see app.module).
 //
 // `ScrapingExportRunEntity` is this module's first entity on the *main* datasource: it persists
-// generation state (status/fileBytes/errorMessage) for each generated export, registered through
+// generation state (status/rowsData/errorMessage) for each generated export, registered through
 // the default `TypeOrmModule.forFeature` connection.
 @Module({
 	imports: [
