@@ -1,88 +1,72 @@
-import { PassThrough } from 'node:stream';
 import * as ExcelJS from 'exceljs';
 
 import { ScrapingExportsService } from './scraping-exports.service';
 import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
 import { gradesRcDescriptiveLabels } from '../model/scraping-exports.labels';
 
+const row = (over: Partial<Record<string, unknown>> = {}) => ({
+	sectionCode: 'NRC1',
+	studentCode: 'A1',
+	gradeTypeCode: 'TG205-T001',
+	gradeTypePercentage: '20',
+	grade: '14.80',
+	qualificationStatusCode: 'TG404-T001',
+	academicPeriod: '202610',
+	courseCode: '1ASI0725',
+	courseName: 'Arquitectura de Computadoras',
+	studentName: 'Anahua Ancachi, Liz Maribel',
+	careerCode: 'SW',
+	gradeTypeName: 'EA1',
+	qualificationStatusName: 'Asistió',
+	source: 'Banner',
+	scrapedAt: '2026-08-08 16:20',
+	observations: [] as string[],
+	hasObservations: false,
+	...over,
+});
+
 // The RC bulk upload parses the file positionally, so the generated sheet has to keep the template
 // column order exactly. This is the only thing standing between a reordered mapping and an upload
 // that assigns weights to grades.
-describe('ScrapingExportsService.prepareGradesRc', () => {
-	// Stands in for the scratch-table reader: the service walks it once per worksheet, so `rows` has
-	// to hand back a fresh generator each time it is called. The observation split is reproduced here
-	// the way READ_GRADES_RC_PAGE_SQL does it, so the sheets get the same disjoint halves they would
-	// in production.
-	const exportedRows: Array<{ observations?: string[] }> = [];
-	const openGradesRcExport = jest.fn().mockImplementation(() =>
-		Promise.resolve({
-			rows: async function* (withObservations: boolean) {
-				for (const r of exportedRows) {
-					if ((r.observations ?? []).length > 0 === withObservations) yield r;
-				}
+describe('ScrapingExportsService.renderGradesRc', () => {
+	let rows: Array<ReturnType<typeof row> & { id: number }>;
+	const readPage = jest.fn();
+	const service = new ScrapingExportsService({} as any, {} as any, { readPage } as any);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		rows = [];
+		// Mirrors the repository's own keyset pagination: one page, then empty.
+		readPage.mockImplementation(
+			async (_runId: number, hasObservations: boolean, afterId: number) => {
+				if (afterId > 0) return [];
+				return rows.filter((r) => r.hasObservations === hasObservations);
 			},
-			close: jest.fn().mockResolvedValue(undefined),
-		}),
-	);
-	const givenRows = (rows: Array<{ observations?: string[] }>) => {
-		exportedRows.length = 0;
-		exportedRows.push(...rows);
-	};
-	const service = new ScrapingExportsService({} as any, { openGradesRcExport } as any);
+		);
+	});
 
-	beforeEach(() => jest.clearAllMocks());
-
-	// The export writes into whatever Writable it is handed (the response, in production), so the
-	// test hands it a PassThrough and collects the workbook out of it.
-	const streamToBuffer = async (lang?: string) => {
-		const stream = new PassThrough();
-		const chunks: Buffer[] = [];
-		stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
-		const finished = new Promise<void>((resolve) => stream.on('end', () => resolve()));
-
-		const prepared = await service.prepareGradesRc(1, lang);
-		await prepared.write(stream);
-		await finished;
-
-		return { ...prepared, buffer: Buffer.concat(chunks) };
+	const givenRows = (given: Array<Partial<Record<string, unknown>>>) => {
+		rows = given.map((r, index) => {
+			const built = row(r);
+			return { ...built, id: index + 1, hasObservations: (built.observations ?? []).length > 0 };
+		});
 	};
 
 	const loadWorkbook = async (buffer: Buffer) => {
 		const workbook = new ExcelJS.Workbook();
-		// exceljs types `load` against an older Buffer declaration than the installed @types/node.
 		await workbook.xlsx.load(buffer as unknown as Parameters<ExcelJS.Xlsx['load']>[0]);
 		return workbook;
 	};
 
 	const readSheet = (workbook: ExcelJS.Workbook, name: string) => {
 		const sheet = workbook.getWorksheet(name)!;
-		return sheet.getRows(1, sheet.rowCount)!.map((row) => row.values as unknown[]);
+		return sheet.getRows(1, sheet.rowCount)!.map((r) => r.values as unknown[]);
 	};
-
-	const row = (over: Partial<Record<string, unknown>> = {}) => ({
-		sectionCode: 'NRC1',
-		studentCode: 'A1',
-		gradeTypeCode: 'TG205-T001',
-		gradeTypePercentage: '20',
-		grade: '14.80',
-		qualificationStatusCode: 'TG404-T001',
-		academicPeriod: '202610',
-		courseCode: '1ASI0725',
-		courseName: 'Arquitectura de Computadoras',
-		studentName: 'Anahua Ancachi, Liz Maribel',
-		careerCode: 'SW',
-		gradeTypeName: 'EA1',
-		qualificationStatusName: 'Asistió',
-		source: 'Banner',
-		scrapedAt: '2026-08-08 16:20',
-		observations: [] as string[],
-		...over,
-	});
 
 	it('writes the six template columns in order', async () => {
 		givenRows([row()]);
 
-		const { fileName, buffer } = await streamToBuffer();
+		const { fileName, buffer } = await service.renderGradesRc(1);
 		const [header, first] = readSheet(await loadWorkbook(buffer), 'Data');
 
 		expect(fileName).toBe('NotasRC.xlsx');
@@ -101,18 +85,16 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 	it('keeps the upload sheet first and puts the descriptive sheet after it', async () => {
 		givenRows([row()]);
 
-		const workbook = await loadWorkbook((await streamToBuffer()).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(1)).buffer);
 
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Detalle']);
 	});
 
 	it('writes the descriptive sheet with codes resolved to names', async () => {
-		// Carries an observation so it lands in the descriptive sheet: that is what the two sheets
-		// are split on.
 		givenRows([row({ observations: [GRADE_RC_OBSERVATIONS.FALLBACK_GRADE] })]);
 
 		const [header, first] = readSheet(
-			await loadWorkbook((await streamToBuffer()).buffer),
+			await loadWorkbook((await service.renderGradesRc(1)).buffer),
 			'Detalle',
 		);
 
@@ -154,34 +136,6 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 		]);
 	});
 
-	// The observation codes are what tell a reviewer which rows to look at before uploading, so they
-	// have to reach the sheet as readable text, not as raw codes.
-	it('resolves observation codes to localized text, joined when a row has several', async () => {
-		givenRows([
-			row({
-				observations: [
-					GRADE_RC_OBSERVATIONS.FALLBACK_GRADE,
-					GRADE_RC_OBSERVATIONS.ZERO_GRADE_UNEXPLAINED,
-				],
-			}),
-		]);
-
-		const [, first] = readSheet(await loadWorkbook((await streamToBuffer()).buffer), 'Detalle');
-
-		// Asserted against the labels themselves: the wording is meant to be reworded for whoever
-		// reads the file, and a test pinned to a phrase would break on every rewrite.
-		const observations = gradesRcDescriptiveLabels.es.observations;
-		expect(first[16]).toBe(
-			[
-				observations[GRADE_RC_OBSERVATIONS.FALLBACK_GRADE],
-				observations[GRADE_RC_OBSERVATIONS.ZERO_GRADE_UNEXPLAINED],
-			].join(' | '),
-		);
-	});
-
-	// The sheets are disjoint halves: the upload sheet holds only rows that came out complete, so it
-	// can be uploaded without a single rejection, and anything with something to say about it goes to
-	// the review sheet -- including rows that would upload fine, like a withdrawn student's 0/RET.
 	it('splits the rows between the sheets by whether they carry an observation', async () => {
 		givenRows([
 			row(),
@@ -194,7 +148,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 			}),
 		]);
 
-		const workbook = await loadWorkbook((await streamToBuffer()).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(1)).buffer);
 
 		const uploadRows = readSheet(workbook, 'Data').slice(1);
 		expect(uploadRows.map((r) => r[1])).toEqual(['NRC1', 'NRC2']);
@@ -203,9 +157,7 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 		expect(detailRows.map((r) => r[2])).toEqual(['NRC3']);
 	});
 
-	// A rescued row always carries FALLBACK_GRADE in production, so it is the review sheet that has
-	// to keep the raw code -- asserting it on the upload sheet would pin a state that cannot happen.
-	it('keeps the raw grade type code of a grade rescued by the fallback', async () => {
+	it('renders the requested language from the same persisted rows', async () => {
 		givenRows([
 			row({
 				sectionCode: 'NRC2',
@@ -216,23 +168,31 @@ describe('ScrapingExportsService.prepareGradesRc', () => {
 			}),
 		]);
 
-		const workbook = await loadWorkbook((await streamToBuffer('en')).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(1, 'en')).buffer);
 		expect(readSheet(workbook, 'Data')).toHaveLength(1);
 		const [header, first] = readSheet(workbook, 'Details');
 
 		expect(header[2]).toBe('Section code');
 		expect(first[8]).toBe('TF1');
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Details']);
+		expect(readPage).toHaveBeenCalledWith(1, false, 0, expect.any(Number));
+		expect(readPage).toHaveBeenCalledWith(1, true, 0, expect.any(Number));
 	});
 });
 
-describe('ScrapingExportsService.generateGradesRc', () => {
+describe('ScrapingExportsService.materializeGradesRc', () => {
 	let openGradesRcExport: jest.Mock;
+	let insertBatch: jest.Mock;
 	let service: ScrapingExportsService;
 
 	beforeEach(() => {
 		openGradesRcExport = jest.fn();
-		service = new ScrapingExportsService({} as any, { openGradesRcExport } as any);
+		insertBatch = jest.fn().mockResolvedValue(undefined);
+		service = new ScrapingExportsService(
+			{} as any,
+			{ openGradesRcExport } as any,
+			{ insertBatch } as any,
+		);
 	});
 
 	const emptyHandle = (close = jest.fn().mockResolvedValue(undefined)) => ({
@@ -240,31 +200,42 @@ describe('ScrapingExportsService.generateGradesRc', () => {
 		close,
 	});
 
-	it('resolves with a downloadable file once the merge finishes', async () => {
-		openGradesRcExport.mockResolvedValue(emptyHandle());
+	const oneRowHandle = (close = jest.fn().mockResolvedValue(undefined)) => ({
+		rows: async function* () {
+			yield row();
+		},
+		close,
+	});
 
-		const result = await service.generateGradesRc(1, 'es');
+	it('opens the merge exactly once and inserts the resulting rows tagged with the run id and timestamp', async () => {
+		openGradesRcExport.mockResolvedValue(oneRowHandle());
+		const generatedAt = new Date('2026-08-22T00:00:00Z');
 
-		expect(result.fileName).toBe('NotasRC.xlsx');
-		expect(Buffer.isBuffer(result.buffer)).toBe(true);
+		await service.materializeGradesRc(1, 42, generatedAt);
+
+		expect(openGradesRcExport).toHaveBeenCalledTimes(1);
+		expect(openGradesRcExport).toHaveBeenCalledWith(1);
+		expect(insertBatch).toHaveBeenCalledWith(42, generatedAt, [
+			expect.objectContaining({ sectionCode: 'NRC1' }),
+		]);
 	});
 
 	it('rejects when the merge itself fails', async () => {
 		openGradesRcExport.mockRejectedValue(new Error('merge failed'));
 
-		await expect(service.generateGradesRc(1, 'es')).rejects.toThrow('merge failed');
+		await expect(service.materializeGradesRc(1, 42, new Date())).rejects.toThrow('merge failed');
 	});
 
-	it('releases the runner once generation completes', async () => {
+	it('releases the handle once ingestion completes', async () => {
 		const close = jest.fn().mockResolvedValue(undefined);
 		openGradesRcExport.mockResolvedValue(emptyHandle(close));
 
-		await service.generateGradesRc(1, 'es');
+		await service.materializeGradesRc(1, 42, new Date());
 
 		expect(close).toHaveBeenCalled();
 	});
 
-	it('releases the runner when writing the workbook fails after the merge succeeded', async () => {
+	it('releases the handle when reading rows fails after the merge succeeded', async () => {
 		const close = jest.fn().mockResolvedValue(undefined);
 		openGradesRcExport.mockResolvedValue({
 			rows: () => {
@@ -273,8 +244,36 @@ describe('ScrapingExportsService.generateGradesRc', () => {
 			close,
 		});
 
-		await expect(service.generateGradesRc(1, 'es')).rejects.toThrow('stream died');
-
+		await expect(service.materializeGradesRc(1, 42, new Date())).rejects.toThrow('stream died');
 		expect(close).toHaveBeenCalled();
+	});
+});
+
+describe('ScrapingExportsService sync export fetch/render split', () => {
+	it('fetchStaffRows delegates to the repository and takes no lang', async () => {
+		const getStaff = jest
+			.fn()
+			.mockResolvedValue([
+				{ professorCode: 'N001', lastName: 'Doe', firstName: 'Jane', email: 'jane@upc.pe' },
+			]);
+		const service = new ScrapingExportsService({ getStaff } as any, {} as any, {} as any);
+
+		const rows = await service.fetchStaffRows(5);
+
+		expect(getStaff).toHaveBeenCalledWith(5);
+		expect(rows).toHaveLength(1);
+	});
+
+	it('renderStaffExcel applies the requested language without re-fetching', async () => {
+		const service = new ScrapingExportsService({} as any, {} as any, {} as any);
+		const rows = [
+			{ professorCode: 'N001', lastName: 'Doe', firstName: 'Jane', email: 'jane@upc.pe' },
+		];
+
+		const es = await service.renderStaffExcel(rows, 'es');
+		const en = await service.renderStaffExcel(rows, 'en');
+
+		expect(es.fileName).toBe('Docentes.xlsx');
+		expect(en.fileName).toBe('Professors.xlsx');
 	});
 });

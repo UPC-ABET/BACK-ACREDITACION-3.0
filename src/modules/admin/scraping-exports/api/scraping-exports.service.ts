@@ -3,10 +3,15 @@ import * as ExcelJS from 'exceljs';
 import { Writable } from 'stream';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
+import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
+import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import {
-	GradesRcExportHandle,
-	GradesRcExportRepository,
-} from '../core/grades-rc-export.repository';
+	EnrolledStudentExportRow,
+	GradeRcExportRow,
+	SectionExportRow,
+	StaffExportRow,
+	StudentSectionExportRow,
+} from '../model/scraping-exports.types';
 import {
 	DEFAULT_TEMPLATE_LANGUAGE,
 	ExportLabels,
@@ -23,16 +28,7 @@ export interface GeneratedExcel {
 	fileName: string;
 }
 
-// An export too large to hold in memory: the file is written into the caller's stream instead of
-// being handed over as a Buffer. `write` resolves once the workbook is fully committed, and the
-// rows behind it are already loaded by the time this object exists.
-export interface StreamedExcel {
-	fileName: string;
-	write: (out: Writable) => Promise<void>;
-	// Releases the pooled connection and the scratch table behind `write`. Must be called in a
-	// `finally` by whoever asked for the export, including when `write` was never reached.
-	close: () => Promise<void>;
-}
+const GRADES_RC_READ_PAGE_SIZE = 5000;
 
 @Injectable()
 export class ScrapingExportsService {
@@ -41,18 +37,30 @@ export class ScrapingExportsService {
 	constructor(
 		private readonly repository: ScrapingExportsRepository,
 		private readonly gradesRcRepository: GradesRcExportRepository,
+		private readonly gradesRcRowRepository: ScrapingExportGradesRcRowRepository,
 	) {}
 
-	async generateStaff(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+	// %% SYNC EXPORTS — fetch is language-neutral (called once per generation); render applies
+	// labels for a requested language (called once per download). Splitting these is what lets
+	// generation persist `rowsData` once and download render it for any supported language without
+	// re-querying the raw datasource.
+
+	async fetchStaffRows(academicPeriodId: number | null): Promise<StaffExportRow[]> {
+		return await this.repository.getStaff(academicPeriodId);
+	}
+
+	renderStaffExcel(rows: StaffExportRow[], lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(staffExportLabels, lang);
-		const rows = await this.repository.getStaff(academicPeriodId);
 		const data = rows.map((r) => [r.professorCode, r.lastName, r.firstName, r.email]);
 		return this.buildExcel(labels, data);
 	}
 
-	async generateSections(academicPeriodId: number | null, lang?: string): Promise<GeneratedExcel> {
+	async fetchSectionRows(academicPeriodId: number | null): Promise<SectionExportRow[]> {
+		return await this.repository.getSections(academicPeriodId);
+	}
+
+	renderSectionsExcel(rows: SectionExportRow[], lang?: string): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(sectionExportLabels, lang);
-		const rows = await this.repository.getSections(academicPeriodId);
 		const data = rows.map((r) => [
 			r.courseCode,
 			r.sectionCode,
@@ -63,12 +71,17 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateEnrolledStudents(
+	async fetchEnrolledStudentRows(
 		academicPeriodId: number | null,
+	): Promise<EnrolledStudentExportRow[]> {
+		return await this.repository.getEnrolledStudents(academicPeriodId);
+	}
+
+	renderEnrolledStudentsExcel(
+		rows: EnrolledStudentExportRow[],
 		lang?: string,
 	): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(enrolledStudentExportLabels, lang);
-		const rows = await this.repository.getEnrolledStudents(academicPeriodId);
 		const data = rows.map((r) => [
 			r.studentCode,
 			r.lastName,
@@ -80,51 +93,48 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	async generateStudentSections(
+	async fetchStudentSectionRows(
 		academicPeriodId: number | null,
+	): Promise<StudentSectionExportRow[]> {
+		return await this.repository.getStudentSections(academicPeriodId);
+	}
+
+	renderStudentSectionsExcel(
+		rows: StudentSectionExportRow[],
 		lang?: string,
 	): Promise<GeneratedExcel> {
 		const labels = this.resolveLabels(studentSectionExportLabels, lang);
-		const rows = await this.repository.getStudentSections(academicPeriodId);
 		const data = rows.map((r) => [r.sectionCode, r.studentCode]);
 		return this.buildExcel(labels, data);
 	}
 
-	// Nothing here is ever held whole: buildExcel's three copies of the dataset (row array, sheet
-	// model, xlsx Buffer) OOM-crashed the process on a real period. The rows page out of a scratch
-	// table and WorkbookWriter drops each one on commit, so the peak is a page rather than a period.
-	//
-	// Returns a writer over any Writable instead of a GeneratedExcel because the file never exists as
-	// one buffer.
-	async prepareGradesRc(academicPeriodId: number, lang?: string): Promise<StreamedExcel> {
-		const labels = this.resolveLabels(gradesRcExportLabels, lang);
+	// %% GRADES RC — materialize runs the Banner+Planner merge once and copies it, language-neutral,
+	// into the durable scraping_export_gradesrc_rows table; render pages that table back out into a
+	// requested language's workbook. Neither touches the other's connection: materialize is the only
+	// caller of GradesRcExportRepository (the `exports-raw` connection), render only ever reads the
+	// main-datasource child table. See ADR-003.
+
+	// The pooled `exports-raw` connection `openGradesRcExport` pins is held only for the merge and
+	// this single ingestion pass, then released -- materially less than the old design, which held
+	// it through the entire render too.
+	async materializeGradesRc(
+		academicPeriodId: number,
+		scrapingExportRunId: number,
+		generatedAt: Date,
+	): Promise<void> {
 		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
-
-		return {
-			fileName: labels.fileName,
-			close: () => handle.close(),
-			write: async (out: Writable) => {
-				const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: out, useStyles: true });
-				await this.writeGradesRcSheets(workbook, handle, labels, lang);
-			},
-		};
-	}
-
-	// collectToBuffer only accumulates the serialized xlsx bytes, not the rows -- writeGradesRcSheets
-	// still pages the merge out a row at a time, so this does not reintroduce the OOM prepareGradesRc's
-	// streaming design avoids. The caller (ScrapingExportGenerationService) owns status bookkeeping
-	// and the system-wide single-flight guard; this method just does the work and returns or throws.
-	async generateGradesRc(academicPeriodId: number, lang?: string): Promise<GeneratedExcel> {
-		const { fileName, write, close } = await this.prepareGradesRc(academicPeriodId, lang);
 		try {
-			const file = await this.collectToBuffer(write);
-			return { buffer: file, fileName };
+			const batch: Array<GradeRcExportRow & { hasObservations: boolean }> = [];
+			for await (const row of handle.rows()) {
+				batch.push(row);
+			}
+			await this.gradesRcRowRepository.insertBatch(scrapingExportRunId, generatedAt, batch);
 		} finally {
-			await close();
+			await handle.close();
 		}
 	}
 
-	private collectToBuffer(write: (out: Writable) => Promise<void>): Promise<Buffer> {
+	async renderGradesRc(scrapingExportRunId: number, lang?: string): Promise<GeneratedExcel> {
 		const chunks: Buffer[] = [];
 		const sink = new Writable({
 			write(chunk: Buffer, _encoding, callback) {
@@ -132,12 +142,17 @@ export class ScrapingExportsService {
 				callback();
 			},
 		});
-		return write(sink).then(() => Buffer.concat(chunks));
+
+		const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: sink, useStyles: true });
+		const labels = this.resolveLabels(gradesRcExportLabels, lang);
+		await this.writeGradesRcSheets(workbook, scrapingExportRunId, labels, lang);
+
+		return { buffer: Buffer.concat(chunks), fileName: labels.fileName };
 	}
 
 	private async writeGradesRcSheets(
 		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
-		handle: GradesRcExportHandle,
+		scrapingExportRunId: number,
 		labels: ExportLabels,
 		lang: string | undefined,
 	): Promise<void> {
@@ -156,7 +171,7 @@ export class ScrapingExportsService {
 		// academic.student_course_grades permanently. ZERO_GRADE_UNEXPLAINED ships ASISTIO, which is
 		// the one status the RC semaphore counts -- holding it back moves the RC average.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
-		for await (const r of handle.rows(false)) {
+		for await (const r of this.pageGradesRcRows(scrapingExportRunId, false)) {
 			uploadSheet
 				.addRow([
 					r.sectionCode,
@@ -175,8 +190,7 @@ export class ScrapingExportsService {
 		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
 			[descriptive.headers.length]: 90,
 		});
-		// Re-read rather than keeping the first pass's rows: that is what holds the peak at one page.
-		for await (const r of handle.rows(true)) {
+		for await (const r of this.pageGradesRcRows(scrapingExportRunId, true)) {
 			detailSheet
 				.addRow([
 					r.academicPeriod,
@@ -201,6 +215,25 @@ export class ScrapingExportsService {
 		detailSheet.commit();
 
 		await workbook.commit();
+	}
+
+	private async *pageGradesRcRows(
+		scrapingExportRunId: number,
+		hasObservations: boolean,
+	): AsyncGenerator<GradeRcExportRow> {
+		let lastId = 0;
+		for (;;) {
+			const page = await this.gradesRcRowRepository.readPage(
+				scrapingExportRunId,
+				hasObservations,
+				lastId,
+				GRADES_RC_READ_PAGE_SIZE,
+			);
+			if (page.length === 0) return;
+
+			for (const row of page) yield row;
+			lastId = page[page.length - 1].id;
+		}
 	}
 
 	// Widths have to be set before the first commit: the writer seals the sheet's metadata then.
