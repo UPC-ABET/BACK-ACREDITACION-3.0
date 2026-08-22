@@ -32,20 +32,16 @@ export class ScrapingExportsController {
 	@Get(routes.operation.status.route)
 	@ApiOperation({ summary: routes.operation.status.summary })
 	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
-	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@ApiAcademicPeriodHeader()
 	@ApiResponse({ status: 200, type: ScrapingExportStatusResponseDto })
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	async status(
 		@Param('exportType') exportTypeParam: string,
-		@Query('lang') lang: string,
 		@AcademicPeriodId() academicPeriodId: number,
 	) {
 		const exportType = parseExportTypeParam(exportTypeParam);
 		const period = await this.resolvePeriod(academicPeriodId);
-		return parseSuccessResponse(
-			await this.generationService.getStatus(exportType, period, this.resolveLang(lang)),
-		);
+		return parseSuccessResponse(await this.generationService.getStatus(exportType, period));
 	}
 
 	// The academic period is required here, unlike the module's previous synchronous export GETs:
@@ -54,12 +50,18 @@ export class ScrapingExportsController {
 	@Get(routes.operation.download.route)
 	@ApiOperation({ summary: routes.operation.download.summary })
 	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
-	@ApiQuery({ name: 'lang', required: false, example: 'es' })
+	@ApiQuery({
+		name: 'lang',
+		required: false,
+		example: 'es',
+		description:
+			'Selects the rendered language for this download. Does not affect whether the export is ready — generation is language-neutral (see ADR-003); the same underlying data is rendered on demand for whichever lang is requested.',
+	})
 	@ApiAcademicPeriodHeader()
-	@ApiResponse({ status: 200, description: 'The last successfully generated export file' })
+	@ApiResponse({ status: 200, description: 'The export file, rendered in the requested language' })
 	@ApiResponse({
 		status: 404,
-		description: 'No successful generation exists yet for this export/period/lang',
+		description: 'No successful generation exists yet for this export/period',
 	})
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.GET })
 	async download(
@@ -78,13 +80,12 @@ export class ScrapingExportsController {
 		if (!result) {
 			throw new NotFoundError(scrapingExportsValidationStrings.error.notGenerated);
 		}
-		this.send(res, { buffer: result.fileBytes, fileName: result.fileName });
+		this.send(res, result);
 	}
 
 	@Post(routes.operation.regenerate.route)
 	@ApiOperation({ summary: routes.operation.regenerate.summary })
 	@ApiParam({ name: 'exportType', enum: [...EXPORT_TYPE_PARAM_VALUES] })
-	@ApiQuery({ name: 'lang', required: false, example: 'es' })
 	@ApiAcademicPeriodHeader()
 	@ApiResponse({ status: 200, type: ScrapingExportStatusResponseDto })
 	@ApiResponse({
@@ -94,19 +95,13 @@ export class ScrapingExportsController {
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.POST })
 	async regenerate(
 		@Param('exportType') exportTypeParam: string,
-		@Query('lang') lang: string,
 		@AcademicPeriodId() academicPeriodId: number,
 		@CurrentUser() user: RequestUser,
 	) {
 		const exportType = parseExportTypeParam(exportTypeParam);
 		const period = await this.resolvePeriod(academicPeriodId);
 		return parseSuccessResponse(
-			await this.generationService.regenerate(
-				exportType,
-				period,
-				this.resolveLang(lang),
-				`user:${user.userId}`,
-			),
+			await this.generationService.regenerate(exportType, period, `user:${user.userId}`),
 		);
 	}
 

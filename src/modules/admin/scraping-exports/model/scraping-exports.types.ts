@@ -11,21 +11,19 @@ export type ScrapingExportType =
 	| 'studentSections'
 	| 'gradesRc';
 
-// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, period, lang) key.
-// No 'pending' state: "no row yet" is represented separately as `{ status: 'notGenerated' }`
-// (see ScrapingExportStatusResponse below), not by a status value on a persisted row.
+// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, period) key. No
+// 'pending' state: "no row yet" is represented separately as `{ status: 'notGenerated' }` (see
+// ScrapingExportStatusResponse below), not by a status value on a persisted row.
 export type ScrapingExportGenerationStatus = 'running' | 'completed' | 'failed';
 
-// What `status`/`regenerate` hand back to a caller: the row's metadata, never `fileBytes` — that
-// column can hold a multi-megabyte workbook, and JSON-serializing a Buffer blows it up further
-// still (`{ type: 'Buffer', data: [...] }`). `download` is the only endpoint that ever streams the
-// actual bytes.
+// What `status`/`regenerate` hand back to a caller: the row's metadata, never `rowsData` — a
+// language-neutral row array with no meaning to a status poller, and potentially large. `download`
+// is the only endpoint that renders and streams an actual file; there is no `lang`/`fileName` here
+// because generation is no longer scoped to a language — see ADR-003.
 export interface ScrapingExportStatusResponse {
 	exportType: ScrapingExportType;
 	period: string;
-	lang: string;
 	status: ScrapingExportGenerationStatus | 'notGenerated';
-	fileName: string | null;
 	errorMessage: string | null;
 	startedAt: Date | null;
 	finishedAt: Date | null;

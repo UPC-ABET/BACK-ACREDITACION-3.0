@@ -26,47 +26,25 @@ describe('ScrapingExportsController', () => {
 	});
 
 	describe('status', () => {
-		it('resolves exportType and period, and returns the service result wrapped', async () => {
+		it('resolves exportType and period, and returns the service result wrapped, without a lang', async () => {
 			getStatus.mockResolvedValue({ status: 'completed' });
 
-			const response = await controller.status('enrolled-students', 'es', 1);
+			const response = await controller.status('enrolled-students', 1);
 
 			expect(resolvePeriod).toHaveBeenCalledWith(1);
-			expect(getStatus).toHaveBeenCalledWith('enrolledStudents', '202610', 'es');
+			expect(getStatus).toHaveBeenCalledWith('enrolledStudents', '202610');
 			expect(response.data).toEqual({ status: 'completed' });
 		});
 
-		it('defaults lang to "es" when not provided', async () => {
-			getStatus.mockResolvedValue({ status: 'notGenerated' });
-
-			await controller.status('staff', undefined as unknown as string, 1);
-
-			expect(getStatus).toHaveBeenCalledWith('staff', '202610', 'es');
-		});
-
-		// resolveLang only defaults an empty/falsy lang to DEFAULT_TEMPLATE_LANGUAGE -- it never
-		// validates against the supported set (currently 'es'/'en'). An unsupported value is passed
-		// through unchanged as the lookup key; ScrapingExportsService.resolveLabels falls back to
-		// DEFAULT_TEMPLATE_LANGUAGE for actual file generation regardless of what key the row is
-		// stored under, so this never breaks generation -- but a row generated this way persists with
-		// a `lang` column that does not describe the language its content is actually in.
-		it('passes an unsupported lang through unchanged rather than defaulting it', async () => {
-			getStatus.mockResolvedValue({ status: 'notGenerated' });
-
-			await controller.status('staff', 'fr', 1);
-
-			expect(getStatus).toHaveBeenCalledWith('staff', '202610', 'fr');
-		});
-
 		it('rejects an exportType outside the fixed set', async () => {
-			await expect(controller.status('bogus', 'es', 1)).rejects.toThrow(BadRequestError);
+			await expect(controller.status('bogus', 1)).rejects.toThrow(BadRequestError);
 			expect(getStatus).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the academic period cannot be resolved to a period', async () => {
 			resolvePeriod.mockResolvedValue(null);
 
-			await expect(controller.status('staff', 'es', 999)).rejects.toThrow(NotFoundError);
+			await expect(controller.status('staff', 999)).rejects.toThrow(NotFoundError);
 			expect(getStatus).not.toHaveBeenCalled();
 		});
 	});
@@ -75,7 +53,7 @@ describe('ScrapingExportsController', () => {
 		it('streams the file with download headers when a result exists', async () => {
 			download.mockResolvedValue({
 				fileName: 'Docentes.xlsx',
-				fileBytes: Buffer.from('xlsx-bytes'),
+				buffer: Buffer.from('xlsx-bytes'),
 			});
 			const res = fakeResponse();
 
@@ -95,6 +73,22 @@ describe('ScrapingExportsController', () => {
 			);
 		});
 
+		it('defaults lang to "es" when not provided', async () => {
+			download.mockResolvedValue({ fileName: 'Docentes.xlsx', buffer: Buffer.from('x') });
+
+			await controller.download('staff', undefined as unknown as string, 1, fakeResponse());
+
+			expect(download).toHaveBeenCalledWith('staff', '202610', 'es');
+		});
+
+		it('renders a different language from the same generation, without any extra service call shape', async () => {
+			download.mockResolvedValue({ fileName: 'Professors.xlsx', buffer: Buffer.from('x') });
+
+			await controller.download('staff', 'en', 1, fakeResponse());
+
+			expect(download).toHaveBeenCalledWith('staff', '202610', 'en');
+		});
+
 		it('throws NotFoundError instead of streaming when nothing has ever been generated', async () => {
 			download.mockResolvedValue(null);
 			const res = fakeResponse();
@@ -108,12 +102,12 @@ describe('ScrapingExportsController', () => {
 	});
 
 	describe('regenerate', () => {
-		it('triggers regeneration as the current user and returns the row wrapped', async () => {
+		it('triggers regeneration as the current user, without a lang, and returns the row wrapped', async () => {
 			regenerate.mockResolvedValue({ status: 'running' });
 
-			const response = await controller.regenerate('grades-rc', 'es', 1, user);
+			const response = await controller.regenerate('grades-rc', 1, user);
 
-			expect(regenerate).toHaveBeenCalledWith('gradesRc', '202610', 'es', 'user:7');
+			expect(regenerate).toHaveBeenCalledWith('gradesRc', '202610', 'user:7');
 			expect(response.data).toEqual({ status: 'running' });
 		});
 
@@ -121,7 +115,7 @@ describe('ScrapingExportsController', () => {
 			const conflict = new Error('already generating');
 			regenerate.mockRejectedValue(conflict);
 
-			await expect(controller.regenerate('staff', 'es', 1, user)).rejects.toBe(conflict);
+			await expect(controller.regenerate('staff', 1, user)).rejects.toBe(conflict);
 		});
 	});
 });

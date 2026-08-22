@@ -26,14 +26,8 @@ export class ScrapingExportStatusResponseDto {
 	@ApiPropertyOptional()
 	period?: string;
 
-	@ApiPropertyOptional()
-	lang?: string;
-
 	@ApiProperty({ enum: SCRAPING_EXPORT_STATUS_VALUES })
 	status: string;
-
-	@ApiPropertyOptional({ nullable: true, type: String })
-	fileName?: string | null;
 
 	@ApiPropertyOptional({ nullable: true, type: String })
 	errorMessage?: string | null;
