@@ -6,20 +6,16 @@ import { ScrapeRunRepository } from '../../banner/raw/core/scrape-run.repository
 import { PlannerScrapeRunRepository } from '../../planner/raw/core/planner-scrape-run.repository';
 import { ScrapingExportRunRepository } from '../core/scraping-export-run.repository';
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
+import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
 import { ScrapingExportStatusResponse, ScrapingExportType } from '../model/scraping-exports.types';
-import { staffExportLabels } from '../model/scraping-exports.labels';
+import { getDefaultExportFileName } from '../model/scraping-exports.labels';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
 
-// Every export is generated once per language a downloaded file can be labeled in. Derived from
-// the labels map (rather than hardcoded) so this stays in sync with whatever langs the export
-// templates actually support — see model/scraping-exports.labels.ts.
-const SUPPORTED_EXPORT_LANGS = Object.keys(staffExportLabels);
-
 // The four exports built straight from a completed Banner scrape. `gradesRc` is deliberately
 // excluded here: it depends on a completed Planner run too (see triggerForBannerRun) and its
-// generation is wired in Milestone 6.
+// generation is wired separately below.
 const BANNER_EXPORT_TYPES: Array<Exclude<ScrapingExportType, 'gradesRc'>> = [
 	'staff',
 	'sections',
@@ -31,8 +27,6 @@ const BANNER_EXPORT_TYPES: Array<Exclude<ScrapingExportType, 'gradesRc'>> = [
 // generation that is still genuinely running is never mistaken for stale.
 export const GENERATION_STALE_TIMEOUT_MS = 20 * 60 * 1000;
 
-type DownloadResult = { fileName: string; fileBytes: Buffer };
-
 // Discriminates the gradesRc single-flight "slot taken" signal from any other generation
 // failure without comparing `error.message` against an i18n key string (AF-9). Module-private:
 // nothing outside this file needs to catch it.
@@ -40,9 +34,9 @@ class GradesRcMergeBusyError extends Error {}
 
 /**
  * Orchestrates generation of the persisted scraping exports (`core.scraping_export_runs`).
- * Replaces rebuilding an export on every download: a completed scrape run triggers generation in
- * the background, the result is persisted, and status/download/regenerate serve from storage
- * instead of always running the underlying export query synchronously. See ADR-002.
+ * Generation is keyed on `(exportType, period)` only — language is applied only when a file is
+ * rendered for `download`, never at generation time. See ADR-003, which supersedes ADR-002's
+ * per-language file storage.
  *
  * `period` is passed explicitly end-to-end rather than read from a request header, because
  * generation runs outside any HTTP request (triggered from the scraper services, or fire-and-
@@ -53,10 +47,9 @@ export class ScrapingExportGenerationService {
 	private readonly logger = new Logger(ScrapingExportGenerationService.name);
 
 	// System-wide, not per-key: only gradesRc pins a pooled Postgres connection for the minutes the
-	// merge takes, so a second concurrent merge (for a *different* period/lang) degrades the shared
-	// DB for everyone else, not just this export. The other four export types have no such cost and
-	// are not guarded by this flag. Restores the old JobRegistry-based flow's maxConcurrent=1
-	// guarantee, which the per-key 'running' check alone does not provide.
+	// merge takes, so a second concurrent merge (for a *different* period) degrades the shared DB
+	// for everyone else, not just this export. The other four export types have no such cost and
+	// are not guarded by this flag.
 	//
 	// Stores *when* the slot was taken, not a bare boolean (AF-2): a merge that genuinely hangs
 	// (never resolves or rejects) would otherwise leave the flag stuck `true` forever, permanently
@@ -71,6 +64,7 @@ export class ScrapingExportGenerationService {
 		private readonly scrapeRunRepository: ScrapeRunRepository,
 		private readonly plannerScrapeRunRepository: PlannerScrapeRunRepository,
 		private readonly exportsService: ScrapingExportsService,
+		private readonly gradesRcRowRepository: ScrapingExportGradesRcRowRepository,
 	) {}
 
 	// Forward lookup for the controller: it only has the request-derived academicPeriodId header,
@@ -82,24 +76,13 @@ export class ScrapingExportGenerationService {
 
 	async triggerForBannerRun(period: string, bannerRunId: string): Promise<void> {
 		for (const exportType of BANNER_EXPORT_TYPES) {
-			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate(exportType, period, lang, 'auto', bannerRunId);
-			}
+			this.fireAndForgetGenerate(exportType, period, 'auto', bannerRunId);
 		}
 
 		const plannerRuns = await this.plannerScrapeRunRepository.findByPeriod(period);
 		const completedPlannerRun = plannerRuns.find((run) => run.status === 'completed');
 		if (completedPlannerRun) {
-			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate(
-					'gradesRc',
-					period,
-					lang,
-					'auto',
-					bannerRunId,
-					completedPlannerRun.id,
-				);
-			}
+			this.fireAndForgetGenerate('gradesRc', period, 'auto', bannerRunId, completedPlannerRun.id);
 		}
 	}
 
@@ -109,23 +92,13 @@ export class ScrapingExportGenerationService {
 		const bannerRuns = await this.scrapeRunRepository.findByPeriod(period);
 		const completedBannerRun = bannerRuns.find((run) => run.status === 'completed');
 		if (completedBannerRun) {
-			for (const lang of SUPPORTED_EXPORT_LANGS) {
-				this.fireAndForgetGenerate(
-					'gradesRc',
-					period,
-					lang,
-					'auto',
-					completedBannerRun.id,
-					plannerRunId,
-				);
-			}
+			this.fireAndForgetGenerate('gradesRc', period, 'auto', completedBannerRun.id, plannerRunId);
 		}
 	}
 
 	async regenerate(
 		exportType: ScrapingExportType,
 		period: string,
-		lang: string,
 		triggeredBy: string,
 	): Promise<ScrapingExportStatusResponse> {
 		const { sourceBannerRunId, sourcePlannerRunId } = await this.resolveSourceRunIdsForRegenerate(
@@ -136,7 +109,6 @@ export class ScrapingExportGenerationService {
 		const claimed = await this.claimForGeneration(
 			exportType,
 			period,
-			lang,
 			triggeredBy,
 			sourceBannerRunId,
 			sourcePlannerRunId,
@@ -146,7 +118,7 @@ export class ScrapingExportGenerationService {
 			throw new ConflictError(scrapingExportsValidationStrings.error.alreadyGenerating);
 		}
 
-		this.fireAndForgetRunGeneration(exportType, period, lang, triggeredBy);
+		this.fireAndForgetRunGeneration(exportType, period, triggeredBy, claimed.id);
 
 		return this.toStatusResponse(claimed);
 	}
@@ -176,28 +148,59 @@ export class ScrapingExportGenerationService {
 	async getStatus(
 		exportType: ScrapingExportType,
 		period: string,
-		lang: string,
 	): Promise<ScrapingExportStatusResponse | { status: 'notGenerated' }> {
-		const row = await this.runRepository.findByKey(exportType, period, lang);
+		const row = await this.runRepository.findByKey(exportType, period);
 		if (!row) return { status: 'notGenerated' };
 		return this.toStatusResponse(await this.reconcileIfStale(row));
 	}
 
-	// Serves whatever `fileBytes` currently exist even while a regenerate is `running` — see
-	// design.md's "Download-while-stale is intentional". Only returns null when there has never
-	// been a successful generation for this key.
+	// Serves whatever data currently exists even while a regenerate is `running` — see
+	// design.md's "Download-while-stale is intentional". Renders the requested `lang` from
+	// whatever was already fetched/materialized at generation time — never re-queries the raw
+	// datasource or reruns the gradesRc merge. Returns null only when there has never been a
+	// successful generation for this key.
 	async download(
 		exportType: ScrapingExportType,
 		period: string,
 		lang: string,
-	): Promise<DownloadResult | null> {
-		const row = await this.runRepository.findByKey(exportType, period, lang);
+	): Promise<GeneratedExcel | null> {
+		const row = await this.runRepository.findByKey(exportType, period);
 		if (!row) return null;
 
 		const reconciled = await this.reconcileIfStale(row);
-		if (!reconciled.fileBytes || !reconciled.fileName) return null;
 
-		return { fileName: reconciled.fileName, fileBytes: reconciled.fileBytes };
+		if (exportType === 'gradesRc') {
+			// `finishedAt` pins exactly the batch this row's last completed generation produced —
+			// while a regenerate is `running`, it still holds the previous completed generation's
+			// timestamp, since `claimForGeneration`'s patch to 'running' never touches it. Reading by
+			// this exact value (rather than by runId alone) is what stops a concurrent regenerate's
+			// in-flight batch from being torn together with the old one (see
+			// ScrapingExportGradesRcRowRepository.readPage).
+			const generatedAt = reconciled.finishedAt;
+			if (!generatedAt) return null;
+			if (!(await this.gradesRcRowRepository.hasRows(reconciled.id, generatedAt))) return null;
+			return this.exportsService.renderGradesRc(reconciled.id, generatedAt, lang);
+		}
+
+		if (!reconciled.rowsData) return null;
+		return this.renderSyncExport(exportType, reconciled.rowsData, lang);
+	}
+
+	private renderSyncExport(
+		exportType: Exclude<ScrapingExportType, 'gradesRc'>,
+		rows: unknown[],
+		lang: string,
+	): Promise<GeneratedExcel> {
+		switch (exportType) {
+			case 'staff':
+				return this.exportsService.renderStaffExcel(rows as never, lang);
+			case 'sections':
+				return this.exportsService.renderSectionsExcel(rows as never, lang);
+			case 'enrolledStudents':
+				return this.exportsService.renderEnrolledStudentsExcel(rows as never, lang);
+			case 'studentSections':
+				return this.exportsService.renderStudentSectionsExcel(rows as never, lang);
+		}
 	}
 
 	// Used by the two auto-trigger paths (Banner/Planner run completion). Combines the claim and
@@ -210,7 +213,6 @@ export class ScrapingExportGenerationService {
 	private fireAndForgetGenerate(
 		exportType: ScrapingExportType,
 		period: string,
-		lang: string,
 		triggeredBy: string = 'auto',
 		sourceBannerRunId?: string,
 		sourcePlannerRunId?: string,
@@ -219,19 +221,18 @@ export class ScrapingExportGenerationService {
 			const claimed = await this.claimForGeneration(
 				exportType,
 				period,
-				lang,
 				triggeredBy,
 				sourceBannerRunId,
 				sourcePlannerRunId,
 			);
 			if (!claimed) {
-				this.logger.debug(`Skipped generating ${exportType}/${period}/${lang}: already in flight`);
+				this.logger.debug(`Skipped generating ${exportType}/${period}: already in flight`);
 				return;
 			}
-			await this.runGeneration(exportType, period, lang, triggeredBy);
+			await this.runGeneration(exportType, period, triggeredBy, claimed.id);
 		})().catch((error) => {
 			this.logger.error(
-				`Unexpected error generating ${exportType}/${period}/${lang}: ${
+				`Unexpected error generating ${exportType}/${period}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 				error instanceof Error ? error.stack : undefined,
@@ -245,12 +246,12 @@ export class ScrapingExportGenerationService {
 	private fireAndForgetRunGeneration(
 		exportType: ScrapingExportType,
 		period: string,
-		lang: string,
 		triggeredBy: string,
+		runId: number,
 	): void {
-		void this.runGeneration(exportType, period, lang, triggeredBy).catch((error) => {
+		void this.runGeneration(exportType, period, triggeredBy, runId).catch((error) => {
 			this.logger.error(
-				`Unexpected error generating ${exportType}/${period}/${lang}: ${
+				`Unexpected error generating ${exportType}/${period}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 				error instanceof Error ? error.stack : undefined,
@@ -258,7 +259,7 @@ export class ScrapingExportGenerationService {
 		});
 	}
 
-	// Checks whether this (exportType, period, lang) key — and, for gradesRc, the system-wide merge
+	// Checks whether this (exportType, period) key — and, for gradesRc, the system-wide merge
 	// slot — is free, and if so atomically (from this process's point of view — no `await` between
 	// the check and the upsert) transitions the row to `'running'`. Returns `null` when the key (or
 	// slot) is already claimed, leaving it to the caller to decide what that means: a 409 for
@@ -268,12 +269,11 @@ export class ScrapingExportGenerationService {
 	private async claimForGeneration(
 		exportType: ScrapingExportType,
 		period: string,
-		lang: string,
 		triggeredBy: string,
 		sourceBannerRunId?: string,
 		sourcePlannerRunId?: string,
 	): Promise<ScrapingExportRunEntity | null> {
-		const existing = await this.runRepository.findByKey(exportType, period, lang);
+		const existing = await this.runRepository.findByKey(exportType, period);
 		const reconciled = existing ? await this.reconcileIfStale(existing) : null;
 
 		if (reconciled?.status === 'running') {
@@ -282,12 +282,12 @@ export class ScrapingExportGenerationService {
 
 		// The per-key check above only catches a duplicate claim of this exact key. gradesRc
 		// additionally needs the system-wide check: the merge slot could be held by a different
-		// period/lang's generation right now.
+		// period's generation right now.
 		if (exportType === 'gradesRc' && this.isGradesRcMergeInFlight()) {
 			return null;
 		}
 
-		return this.runRepository.upsertByKey(exportType, period, lang, {
+		return this.runRepository.upsertByKey(exportType, period, {
 			status: 'running',
 			triggeredBy,
 			errorMessage: null,
@@ -303,24 +303,32 @@ export class ScrapingExportGenerationService {
 	private async runGeneration(
 		exportType: ScrapingExportType,
 		period: string,
-		lang: string,
 		triggeredBy: string,
+		runId: number,
 	): Promise<void> {
 		try {
-			const { buffer, fileName } = await this.runGenerator(exportType, period, lang);
+			if (exportType === 'gradesRc') {
+				await this.runGradesRcGeneration(period, runId, triggeredBy);
+				return;
+			}
 
-			await this.runRepository.upsertByKey(exportType, period, lang, {
+			const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(period);
+			if (academicPeriodId === null) {
+				throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
+			}
+			const rows = await this.fetchSyncExportRows(exportType, academicPeriodId);
+
+			await this.runRepository.upsertByKey(exportType, period, {
 				status: 'completed',
 				triggeredBy,
-				fileName,
-				fileBytes: buffer,
+				rowsData: rows,
 				errorMessage: null,
 				finishedAt: new Date(),
 				updatedAt: new Date(),
 			});
 		} catch (error) {
 			this.logger.error(
-				`Export generation failed (${exportType}/${period}/${lang}): ${
+				`Export generation failed (${exportType}/${period}): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 				error instanceof Error ? error.stack : undefined,
@@ -333,7 +341,7 @@ export class ScrapingExportGenerationService {
 				error instanceof GradesRcMergeBusyError
 					? scrapingExportsValidationStrings.error.gradesRcBusy
 					: scrapingExportsValidationStrings.error.generationFailed;
-			await this.runRepository.upsertByKey(exportType, period, lang, {
+			await this.runRepository.upsertByKey(exportType, period, {
 				status: 'failed',
 				triggeredBy,
 				errorMessage,
@@ -343,29 +351,19 @@ export class ScrapingExportGenerationService {
 		}
 	}
 
-	private async runGenerator(
-		exportType: ScrapingExportType,
-		period: string,
-		lang: string,
-	): Promise<GeneratedExcel> {
-		if (exportType === 'gradesRc') {
-			return this.runGradesRcMerge(period, lang);
-		}
-
-		const academicPeriodId = await this.exportsRepository.findAcademicPeriodIdByCode(period);
-		if (academicPeriodId === null) {
-			throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
-		}
-
+	private fetchSyncExportRows(
+		exportType: Exclude<ScrapingExportType, 'gradesRc'>,
+		academicPeriodId: number,
+	): Promise<unknown[]> {
 		switch (exportType) {
 			case 'staff':
-				return this.exportsService.generateStaff(academicPeriodId, lang);
+				return this.exportsService.fetchStaffRows(academicPeriodId);
 			case 'sections':
-				return this.exportsService.generateSections(academicPeriodId, lang);
+				return this.exportsService.fetchSectionRows(academicPeriodId);
 			case 'enrolledStudents':
-				return this.exportsService.generateEnrolledStudents(academicPeriodId, lang);
+				return this.exportsService.fetchEnrolledStudentRows(academicPeriodId);
 			case 'studentSections':
-				return this.exportsService.generateStudentSections(academicPeriodId, lang);
+				return this.exportsService.fetchStudentSectionRows(academicPeriodId);
 		}
 	}
 
@@ -379,7 +377,15 @@ export class ScrapingExportGenerationService {
 	// Only gradesRc pins a pooled connection for the minutes the merge takes (see design.md § AC-10),
 	// so this is the one export type that needs a system-wide single-flight guard, not just the
 	// per-key 'running' check every export type already gets from `claimForGeneration`.
-	private async runGradesRcMerge(period: string, lang: string): Promise<GeneratedExcel> {
+	//
+	// Insert new batch -> flip the parent row to 'completed' -> delete the previous batch, strictly
+	// in that order (design.md § Backend, Retention): a `download` mid-regenerate keeps serving the
+	// previous batch until the new one is confirmed live, never seeing a gap.
+	private async runGradesRcGeneration(
+		period: string,
+		runId: number,
+		triggeredBy: string,
+	): Promise<void> {
 		if (this.isGradesRcMergeInFlight()) {
 			// Reachable from the auto-trigger path, which has no caller to hand a 409 to — surfaced
 			// as an ordinary generation failure (caught by runGeneration()'s try/catch) instead of
@@ -394,21 +400,48 @@ export class ScrapingExportGenerationService {
 			if (academicPeriodId === null) {
 				throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
 			}
-			return await this.exportsService.generateGradesRc(academicPeriodId, lang);
+
+			const generatedAt = new Date();
+			await this.exportsService.materializeGradesRc(academicPeriodId, runId, generatedAt);
+
+			await this.runRepository.upsertByKey('gradesRc', period, {
+				status: 'completed',
+				triggeredBy,
+				errorMessage: null,
+				finishedAt: generatedAt,
+				updatedAt: new Date(),
+			});
+
+			// The parent row is already 'completed' and correctly pinned to this batch at this point —
+			// a failure here is a cleanup problem, not a generation failure. Letting it propagate would
+			// have `runGeneration()`'s catch flip a successful generation to 'failed' while a perfectly
+			// valid new batch sits live and unreachable behind that status. The previous batch simply
+			// outlives its usefulness on disk until the next successful generation retries the delete.
+			try {
+				await this.gradesRcRowRepository.deleteStaleBatches(runId, generatedAt);
+			} catch (error) {
+				this.logger.error(
+					`Failed to delete stale gradesRc batches for run ${runId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+					error instanceof Error ? error.stack : undefined,
+				);
+			}
 		} finally {
 			this.gradesRcMergeStartedAt = null;
 		}
 	}
 
-	// `status`/`regenerate` never hand back `fileBytes` — see ScrapingExportStatusResponse's own
-	// comment. `download` reads `fileBytes` straight off the reconciled row itself, not through this.
+	// `status`/`regenerate` never hand back a downloadable file — see ScrapingExportStatusResponse's
+	// own comment. `download` is the only endpoint that ever renders and streams bytes. `fileName`
+	// is a readiness signal only (always the default-language name), present exactly when `status`
+	// is 'completed'.
 	private toStatusResponse(row: ScrapingExportRunEntity): ScrapingExportStatusResponse {
 		return {
 			exportType: row.exportType,
 			period: row.period,
-			lang: row.lang,
 			status: row.status,
-			fileName: row.fileName,
+			fileName: row.status === 'completed' ? getDefaultExportFileName(row.exportType) : null,
 			errorMessage: row.errorMessage,
 			startedAt: row.startedAt,
 			finishedAt: row.finishedAt,
@@ -425,7 +458,7 @@ export class ScrapingExportGenerationService {
 		const updatedAtMs = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
 		if (Date.now() - updatedAtMs < GENERATION_STALE_TIMEOUT_MS) return row;
 
-		return this.runRepository.upsertByKey(row.exportType, row.period, row.lang, {
+		return this.runRepository.upsertByKey(row.exportType, row.period, {
 			status: 'failed',
 			triggeredBy: row.triggeredBy,
 			errorMessage: scrapingExportsValidationStrings.error.staleGenerationDetected,

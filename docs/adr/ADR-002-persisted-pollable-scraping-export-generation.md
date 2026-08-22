@@ -1,6 +1,7 @@
 # ADR-002 — Persist scraping export generation state and results in Postgres, replacing synchronous per-request builds and the ephemeral job registry
 
-- **Status**: Proposed
+- **Status**: Superseded by ADR-003 (storage shape only — the choice of Postgres over S3, and of
+  persisted state over the prior ephemeral `JobRegistry`, both still stand)
 - **Date**: 2026-08-20
 - **Deciders**: Leonardo Ferreyra
 - **Tags**: scraping, exports, api, storage

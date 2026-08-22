@@ -11,25 +11,32 @@ export type ScrapingExportType =
 	| 'studentSections'
 	| 'gradesRc';
 
-// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, period, lang) key.
-// No 'pending' state: "no row yet" is represented separately as `{ status: 'notGenerated' }`
-// (see ScrapingExportStatusResponse below), not by a status value on a persisted row.
+// Lifecycle of one `ScrapingExportRunEntity` row for a given (exportType, period) key. No
+// 'pending' state: "no row yet" is represented separately as `{ status: 'notGenerated' }` (see
+// ScrapingExportStatusResponse below), not by a status value on a persisted row.
 export type ScrapingExportGenerationStatus = 'running' | 'completed' | 'failed';
 
-// What `status`/`regenerate` hand back to a caller: the row's metadata, never `fileBytes` — that
-// column can hold a multi-megabyte workbook, and JSON-serializing a Buffer blows it up further
-// still (`{ type: 'Buffer', data: [...] }`). `download` is the only endpoint that ever streams the
-// actual bytes.
+// What `status`/`regenerate` hand back to a caller: the row's metadata, never `rowsData` — a
+// language-neutral row array with no meaning to a status poller, and potentially large. `download`
+// is the only endpoint that renders and streams an actual file, so there is no `lang` here — but
+// `fileName` stays as a readiness signal (a caller gates its download action on `fileName !==
+// null`): it is always the default-language name (`getDefaultExportFileName`), non-null exactly
+// when `status === 'completed'`, regardless of which `lang` a later `download` call will actually
+// render. See ADR-003.
 export interface ScrapingExportStatusResponse {
 	exportType: ScrapingExportType;
 	period: string;
-	lang: string;
 	status: ScrapingExportGenerationStatus | 'notGenerated';
 	fileName: string | null;
 	errorMessage: string | null;
 	startedAt: Date | null;
 	finishedAt: Date | null;
 }
+
+// Shared page size for every keyset-paginated read/write over gradesRc rows: the merge's own TEMP-
+// table page read, the child-table batch insert, and the child-table page read back out for
+// rendering. One constant keeps all three call sites moving together instead of drifting apart.
+export const GRADES_RC_PAGE_SIZE = 5000;
 
 // Codes emitted in the observations array of GradeRcExportRow, and the split between the two
 // worksheets: a row carrying any of them goes to the descriptive sheet instead of the upload one.

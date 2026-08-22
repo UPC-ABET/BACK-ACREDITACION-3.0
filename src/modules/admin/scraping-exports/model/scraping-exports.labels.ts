@@ -3,7 +3,7 @@
 // staff `email` column appended. The upload parsers read positionally, so the leading columns
 // must keep the template order.
 
-import { GRADE_RC_OBSERVATIONS } from './scraping-exports.types';
+import { GRADE_RC_OBSERVATIONS, ScrapingExportType } from './scraping-exports.types';
 
 export const DEFAULT_TEMPLATE_LANGUAGE = 'es';
 
@@ -120,6 +120,20 @@ export const gradesRcExportLabels: LangMap = {
 		fileName: 'GradesRC.xlsx',
 	},
 };
+
+const EXPORT_LABELS_BY_TYPE: Record<ScrapingExportType, LangMap> = {
+	staff: staffExportLabels,
+	sections: sectionExportLabels,
+	enrolledStudents: enrolledStudentExportLabels,
+	studentSections: studentSectionExportLabels,
+	gradesRc: gradesRcExportLabels,
+};
+
+// The status/regenerate contract has no `lang` to resolve a real filename with (see
+// ScrapingExportStatusResponse), so this is always the default-language name — a readiness signal,
+// not a promise about what a later `download` call will actually render.
+export const getDefaultExportFileName = (exportType: ScrapingExportType): string =>
+	EXPORT_LABELS_BY_TYPE[exportType][DEFAULT_TEMPLATE_LANGUAGE].fileName;
 
 // Column order must match the trailing fields of GradeRcExportRow as the service writes them.
 export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> = {

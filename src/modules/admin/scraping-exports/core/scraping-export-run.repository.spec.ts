@@ -16,19 +16,19 @@ describe('ScrapingExportRunRepository', () => {
 		it('returns null when no row exists for the key', async () => {
 			mockTypeormRepository.findOne.mockResolvedValue(null);
 
-			const result = await repo.findByKey('staff', '202610', 'es');
+			const result = await repo.findByKey('staff', '202610');
 
 			expect(result).toBeNull();
 			expect(mockTypeormRepository.findOne).toHaveBeenCalledWith({
-				where: { exportType: 'staff', period: '202610', lang: 'es' },
+				where: { exportType: 'staff', period: '202610' },
 			});
 		});
 
 		it('returns the row when one exists for the key', async () => {
-			const row = { id: 1, exportType: 'staff', period: '202610', lang: 'es' };
+			const row = { id: 1, exportType: 'staff', period: '202610' };
 			mockTypeormRepository.findOne.mockResolvedValue(row);
 
-			await expect(repo.findByKey('staff', '202610', 'es')).resolves.toEqual(row);
+			await expect(repo.findByKey('staff', '202610')).resolves.toEqual(row);
 		});
 	});
 
@@ -39,21 +39,19 @@ describe('ScrapingExportRunRepository', () => {
 				id: 1,
 				exportType: 'staff',
 				period: '202610',
-				lang: 'es',
 				status: 'running',
 			};
 			mockTypeormRepository.findOne.mockResolvedValue(created);
 
-			const result = await repo.upsertByKey('staff', '202610', 'es', { status: 'running' });
+			const result = await repo.upsertByKey('staff', '202610', { status: 'running' });
 
 			expect(mockTypeormRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					exportType: 'staff',
 					period: '202610',
-					lang: 'es',
 					status: 'running',
 				}),
-				{ conflictPaths: ['exportType', 'period', 'lang'] },
+				{ conflictPaths: ['exportType', 'period'] },
 			);
 			expect(result).toEqual(created);
 		});
@@ -64,28 +62,25 @@ describe('ScrapingExportRunRepository', () => {
 				id: 1,
 				exportType: 'staff',
 				period: '202610',
-				lang: 'es',
 				status: 'completed',
-				fileName: 'docentes.xlsx',
+				rowsData: [{ professor_code: 'N001' }],
 			});
 
-			const result = await repo.upsertByKey('staff', '202610', 'es', {
+			const result = await repo.upsertByKey('staff', '202610', {
 				status: 'completed',
-				fileName: 'docentes.xlsx',
+				rowsData: [{ professor_code: 'N001' }],
 			});
 
 			expect(result.id).toBe(1);
 			expect(result.status).toBe('completed');
-			expect(result.fileName).toBe('docentes.xlsx');
+			expect(result.rowsData).toEqual([{ professor_code: 'N001' }]);
 		});
 
 		it('throws when the row cannot be found back after the upsert', async () => {
 			mockTypeormRepository.upsert.mockResolvedValue(undefined);
 			mockTypeormRepository.findOne.mockResolvedValue(null);
 
-			await expect(
-				repo.upsertByKey('staff', '202610', 'es', { status: 'running' }),
-			).rejects.toThrow();
+			await expect(repo.upsertByKey('staff', '202610', { status: 'running' })).rejects.toThrow();
 		});
 	});
 });

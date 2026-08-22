@@ -12082,12 +12082,6 @@
 						}
 					},
 					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
-					},
-					{
 						"name": "X-Academic-Period-Id",
 						"in": "header",
 						"description": "Active academic period scope id",
@@ -12126,6 +12120,7 @@
 						"name": "lang",
 						"required": false,
 						"in": "query",
+						"description": "Selects the rendered language for this download. Does not affect whether the export is ready — generation is language-neutral (see ADR-003); the same underlying data is rendered on demand for whichever lang is requested.",
 						"schema": { "example": "es", "type": "string" }
 					},
 					{
@@ -12137,10 +12132,8 @@
 					}
 				],
 				"responses": {
-					"200": { "description": "The last successfully generated export file" },
-					"404": {
-						"description": "No successful generation exists yet for this export/period/lang"
-					}
+					"200": { "description": "The export file, rendered in the requested language" },
+					"404": { "description": "No successful generation exists yet for this export/period" }
 				},
 				"summary": "Download the last successfully generated scraping export",
 				"tags": ["Scraping — Exports"]
@@ -12158,12 +12151,6 @@
 							"enum": ["staff", "sections", "enrolled-students", "student-sections", "grades-rc"],
 							"type": "string"
 						}
-					},
-					{
-						"name": "lang",
-						"required": false,
-						"in": "query",
-						"schema": { "example": "es", "type": "string" }
 					},
 					{
 						"name": "X-Academic-Period-Id",
@@ -17543,7 +17530,6 @@
 						"enum": ["staff", "sections", "enrolledStudents", "studentSections", "gradesRc"]
 					},
 					"period": { "type": "string" },
-					"lang": { "type": "string" },
 					"status": {
 						"type": "string",
 						"enum": ["running", "completed", "failed", "notGenerated"]

@@ -26,12 +26,12 @@ export class ScrapingExportStatusResponseDto {
 	@ApiPropertyOptional()
 	period?: string;
 
-	@ApiPropertyOptional()
-	lang?: string;
-
 	@ApiProperty({ enum: SCRAPING_EXPORT_STATUS_VALUES })
 	status: string;
 
+	// Readiness signal, not the name `download` will actually stream: it is always the
+	// default-language name, non-null exactly when status is 'completed'. See
+	// ScrapingExportStatusResponse's own comment.
 	@ApiPropertyOptional({ nullable: true, type: String })
 	fileName?: string | null;
 
