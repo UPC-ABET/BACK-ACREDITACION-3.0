@@ -36,7 +36,7 @@ every object in memory — is a small, bounded cost, not the unbounded one ADR-0
 real number was available.
 
 The `gradesrc-export-performance-and-storage` proposal
-(`openspec/changes/gradesrc-export-performance-and-storage/proposal.md`) asks to re-open this
+(`openspec/specs/gradesrc-export-performance-and-storage/proposal.md`) asks to re-open this
 specific tradeoff with that number in hand, as part of unifying all five export types onto one
 storage shape and deleting the dedicated table as complexity no longer earning its cost.
 
@@ -117,7 +117,7 @@ jsonb column the other four export types already use, and delete
   guard all stand unchanged.
 - `openspec/specs/defer-export-language-to-download/` — the archived change ADR-003 designed and
   that implemented the `rows_data` column and the current `scraping_export_gradesrc_rows` table.
-- `openspec/changes/gradesrc-export-performance-and-storage/proposal.md` — the proposal this ADR
+- `openspec/specs/gradesrc-export-performance-and-storage/proposal.md` — the proposal this ADR
   supports, including the real production measurements (52,387 rows / 20.5MB for period 202610)
   that motivate revisiting ADR-003's assumption.
 - `src/modules/admin/scraping-exports/` — current implementation.
