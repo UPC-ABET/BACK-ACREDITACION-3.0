@@ -122,9 +122,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 	});
 
 	// Pages are read until one comes back short of the page size, and the rows are handed on
-	// untouched: the whole transformation is in SQL. One unfiltered pass now, tagged with
-	// hasObservations rather than split into two filtered walks -- the two-sheet split moved to the
-	// durable child table's own read (ScrapingExportGradesRcRowRepository).
+	// untouched: the whole transformation is in SQL. Tagged with hasObservations; the two-sheet
+	// split happens in memory once collected (see ScrapingExportsService.renderGradesRc, ADR-004).
 	it('walks the scratch table a page at a time and yields the rows untouched', async () => {
 		const row = (seq: string, studentCode: string) => ({
 			exportSeq: seq,
@@ -186,6 +185,7 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 			'DROP TABLE IF EXISTS grades_rc_export_rows',
 			'RESET work_mem',
 			'RESET jit',
+			'RESET enable_nestloop',
 		]);
 		expect(release).toHaveBeenCalled();
 	});

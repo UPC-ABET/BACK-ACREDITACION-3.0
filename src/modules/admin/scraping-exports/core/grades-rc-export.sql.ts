@@ -128,6 +128,14 @@ banner_legs AS (
 	  ON a.run_id = (SELECT id FROM banner_run)
 	 AND a.student_code = bg.student_code
 ),
+-- Resolved up front so planner_raw can filter nota.section_id directly -- filtering seccion.payload
+-- after the join left Postgres scanning every nota row before discarding ~80% as out of scope.
+scoped_planner_sections AS (
+	SELECT section_id
+	FROM raw_planner_seccion
+	WHERE run_id = (SELECT id FROM planner_run)
+	  AND payload->>'sectionNumber' = ANY($10::text[])
+),
 -- nota -> evaluación matched by eval_component_id, falling back to evaluation name within the
 -- section: the id correspondence is unconfirmed against a real run.
 planner_raw AS (
@@ -170,19 +178,28 @@ planner_raw AS (
 	LEFT JOIN raw_planner_evaluacion e_id
 	  ON e_id.run_id = n.run_id
 	 AND e_id.eval_component_id = n.component_id
-	LEFT JOIN raw_planner_evaluacion e_nm
-	  ON e_id.id IS NULL
-	 AND e_nm.run_id = n.run_id
-	 AND e_nm.section_id = n.section_id
-	 AND e_nm.payload->>'evalComponentName' = n.payload->>'evaluation'
-	CROSS JOIN LATERAL (SELECT COALESCE(e_id.payload, e_nm.payload) AS payload) ev
+	-- e_nm as a scalar subquery, not a second LEFT JOIN: COALESCE short-circuits, so this only runs
+	-- when e_id misses. e_id stays a real JOIN -- it can match >1 row on (run_id, eval_component_id)
+	-- alone, and a LIMIT 1 subquery would silently collapse that fan-out instead of preserving it.
+	CROSS JOIN LATERAL (
+		SELECT COALESCE(
+			e_id.payload,
+			(SELECT e_nm.payload
+			 FROM raw_planner_evaluacion e_nm
+			 WHERE e_nm.run_id = n.run_id
+			   AND e_nm.section_id = n.section_id
+			   AND e_nm.payload->>'evalComponentName' = n.payload->>'evaluation'
+			 LIMIT 1)
+		) AS payload
+	) ev
 	WHERE n.run_id = (SELECT id FROM planner_run)
+	  -- section_id, not seccion.payload -- pushes onto IDX_raw_planner_nota_section_id. The old
+	  -- NULLIF/TRIM check on sectionNumber is redundant: scoped_planner_sections already required it.
+	  AND n.section_id = ANY(ARRAY(SELECT section_id FROM scoped_planner_sections))
 	  AND ev.payload IS NOT NULL
 	  -- Drop the computed "Nota Final": it is a formula over the other components, not a grade.
 	  AND COALESCE(n.payload->>'isFinal', '0') IN ('0', 'false')
 	  AND COALESCE(ev.payload->>'isFinal', '0') IN ('0', 'false')
-	  AND s.payload->>'sectionNumber'                        = ANY($10::text[])
-	  AND NULLIF(TRIM(s.payload->>'sectionNumber'), '')      IS NOT NULL
 	  AND NULLIF(TRIM(n.student_code), '')                   IS NOT NULL
 	  AND NULLIF(TRIM(ev.payload->>'evalComponentCode'), '') IS NOT NULL
 ),
@@ -301,7 +318,12 @@ resolved AS (
 -- DISTINCT ON, not three max() windows: those pick per expression rather than per row, so a section
 -- designated by two study plans could export one type's code with the other's weight -- and that
 -- weight lands in student_course_grades.grade_type_percentage. The ORDER BY is only for determinism.
-section_designated AS (
+--
+-- MATERIALIZED: referenced once, so Postgres (PG12+) auto-inlines it by default -- and with every
+-- unnest($n::text[])-based CTE here misestimated at rows=1, an inlined re-run looks free to the
+-- planner. It isn't: unmaterialized, this was a Nested Loop re-running this CTE 320,025 times
+-- (25m of a 26.5m query). See openGradesRcExport's enable_nestloop for the rest of the fix.
+section_designated AS MATERIALIZED (
 	SELECT DISTINCT ON (r.section_code)
 		r.section_code,
 		r.grade_type_code AS designated_code,
@@ -525,10 +547,9 @@ CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_export_seq"
 	ON ${GRADES_RC_TEMP_TABLE} ("exportSeq")
 `;
 
-// One unfiltered pass over the temp table, used only to copy it into the durable
-// scraping_export_gradesrc_rows table (see ScrapingExportGradesRcRowRepository). The two-sheet
-// split ("clean" vs "observations") is a property of the destination read, done there via an
-// indexed WHERE on the persisted `has_observations` column -- not re-derived here.
+// One unfiltered pass over the temp table, collected in full into the rowsData array persisted for
+// this export (see ADR-004). The two-sheet split ("clean" vs "observations") happens in memory on
+// that array at render time, not re-derived here.
 export const READ_GRADES_RC_ALL_PAGE_SQL = `
 SELECT * FROM ${GRADES_RC_TEMP_TABLE}
 WHERE "exportSeq" > $1::bigint

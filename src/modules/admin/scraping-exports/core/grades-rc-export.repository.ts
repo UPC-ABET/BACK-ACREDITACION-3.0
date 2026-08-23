@@ -31,9 +31,8 @@ export interface EnrolledSectionStudentRow {
 }
 
 // A reader over the materialized export: one unfiltered pass, tagging each row with whether it
-// carries an observation. Used only to copy the merge into the durable
-// scraping_export_gradesrc_rows table -- the two-sheet split happens on that read instead (see
-// ScrapingExportGradesRcRowRepository.readPage), not here.
+// carries an observation. Collected in full by ScrapingExportsService.fetchGradesRcRows; the
+// two-sheet split happens in memory on that array, not here (see ADR-004).
 export interface GradesRcExportHandle {
 	rows: () => AsyncGenerator<GradeRcExportRow & { hasObservations: boolean }>;
 	close: () => Promise<void>;
@@ -73,6 +72,9 @@ export class GradesRcExportRepository {
 			// pooled connection is reused by unrelated queries once returned.
 			await runner.query(`SET work_mem = '128MB'`);
 			await runner.query(`SET jit = off`);
+			// Pairs with section_designated's MATERIALIZED hint (grades-rc-export.sql.ts): forces a
+			// hash join over it instead of a per-row scan. Scoped to this connection, same as above.
+			await runner.query(`SET enable_nestloop = off`);
 			await runner.query(MATERIALIZE_GRADES_RC_SQL, params);
 			await runner.query(INDEX_GRADES_RC_TEMP_SQL);
 			// CREATE TABLE AS writes no statistics and autovacuum never analyzes a TEMP table, so
@@ -112,6 +114,7 @@ export class GradesRcExportRepository {
 			try {
 				await runner.query(`RESET work_mem`);
 				await runner.query(`RESET jit`);
+				await runner.query(`RESET enable_nestloop`);
 			} finally {
 				await runner.release();
 			}
