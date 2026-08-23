@@ -10,19 +10,12 @@ import { ScrapingExportType } from '../model/scraping-exports.types';
 // excludes `rowsData`. `gradesRc` can hold tens of thousands of rows in that jsonb column, and a
 // plain `findOne`/`upsert`-then-read pulls and (de)serializes it in full regardless of column
 // selection unless explicitly excluded -- see findStatusByKey below.
-export type ScrapingExportRunStatusFields = Pick<
-	ScrapingExportRunEntity,
-	| 'exportType'
-	| 'period'
-	| 'status'
-	| 'errorMessage'
-	| 'triggeredBy'
-	| 'startedAt'
-	| 'finishedAt'
-	| 'updatedAt'
->;
-
-const STATUS_FIELDS: Array<keyof ScrapingExportRunStatusFields> = [
+//
+// A single source of truth: STATUS_FIELDS drives both the `select` array `findStatusByKey` sends
+// to TypeORM and the type callers see, so the two cannot drift apart the way two independently
+// maintained lists could (a field added to one but not the other would otherwise compile cleanly
+// and silently read back `undefined` at runtime).
+export const STATUS_FIELDS = [
 	'exportType',
 	'period',
 	'status',
@@ -31,7 +24,12 @@ const STATUS_FIELDS: Array<keyof ScrapingExportRunStatusFields> = [
 	'startedAt',
 	'finishedAt',
 	'updatedAt',
-];
+] as const satisfies ReadonlyArray<keyof ScrapingExportRunEntity>;
+
+export type ScrapingExportRunStatusFields = Pick<
+	ScrapingExportRunEntity,
+	(typeof STATUS_FIELDS)[number]
+>;
 
 export class ScrapingExportRunRepository extends BaseRepository<ScrapingExportRunEntity> {
 	constructor(
@@ -58,7 +56,7 @@ export class ScrapingExportRunRepository extends BaseRepository<ScrapingExportRu
 	): Promise<ScrapingExportRunStatusFields | null> {
 		return await this.repository.findOne({
 			where: { exportType, period },
-			select: STATUS_FIELDS,
+			select: [...STATUS_FIELDS],
 		});
 	}
 

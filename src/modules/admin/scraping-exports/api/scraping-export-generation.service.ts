@@ -443,6 +443,13 @@ export class ScrapingExportGenerationService {
 	// `docs/POLICIES.md` rules out adding `@nestjs/schedule`. A `running` row whose `updatedAt`
 	// is older than `GENERATION_STALE_TIMEOUT_MS` means the process that was generating it died
 	// mid-flight (e.g. a deploy), so it is flipped to `failed` right here, on read.
+	//
+	// Generic over the caller's input shape (T), but the stale branch always returns the *full*
+	// entity: it flips status via `upsertByKey`, whose read-back is never the lightweight
+	// `findStatusByKey` variant, since `download` also reaches this method and genuinely needs
+	// `rowsData` back. Accepted trade-off: `getStatus`/`claimForGeneration` only pay that full
+	// read's cost on the rare row that is both `running` and stale (a real mid-generation crash,
+	// not routine polling) — not on every call, which was round 1's actual finding.
 	private async reconcileIfStale<T extends ScrapingExportRunStatusFields>(
 		row: T,
 	): Promise<T | ScrapingExportRunEntity> {

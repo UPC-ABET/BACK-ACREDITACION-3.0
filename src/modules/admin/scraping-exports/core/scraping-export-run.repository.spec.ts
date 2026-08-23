@@ -1,4 +1,4 @@
-import { ScrapingExportRunRepository } from './scraping-export-run.repository';
+import { ScrapingExportRunRepository, STATUS_FIELDS } from './scraping-export-run.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
 
 describe('ScrapingExportRunRepository', () => {
@@ -42,10 +42,13 @@ describe('ScrapingExportRunRepository', () => {
 
 			await repo.findStatusByKey('gradesRc', '202610');
 
+			// Asserts the exact field list, not just "rowsData is absent" -- a select dropped
+			// entirely (reverting to loading the full row) would satisfy a weaker negative check.
 			expect(mockTypeormRepository.findOne).toHaveBeenCalledWith({
 				where: { exportType: 'gradesRc', period: '202610' },
-				select: expect.not.arrayContaining(['rowsData']),
+				select: [...STATUS_FIELDS],
 			});
+			expect(STATUS_FIELDS).not.toContain('rowsData');
 		});
 
 		it('returns null when no row exists for the key', async () => {
