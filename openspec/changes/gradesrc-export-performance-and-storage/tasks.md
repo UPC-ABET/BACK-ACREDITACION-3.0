@@ -510,6 +510,64 @@ tests for `findStatusByKey`/`upsertByKeyNoReturn`/the fault-tolerant `RESET`/the
 enable_nestloop` assertion); the migration backfill verified end-to-end against a disposable local
 Postgres (see above).
 
+### Review round 2 (2026-08-22)
+
+Re-ran the same six auditors against the round-1 fixes (7 new commits) before opening the PR, per
+`/abet-create-pr`'s audit precondition. All five round-1 majors independently confirmed genuinely
+fixed (exact `jsonb_build_object` key match verified against the deleted entity; test-revert
+analysis on each new regression test; repo-wide grep for leftover references; generic typing
+verified end-to-end). Two new majors and several minors surfaced from the round-1 fixes themselves:
+
+- **Major — fixed.** The migration backfill had no guard on `run.status`, so it could pick up an
+  in-flight (partial) batch if `pnpm migration:run` executed while an old-code `gradesRc`
+  generation was still writing chunks — independent of the documented deploy-order window, since
+  a scrape completion can fire-and-forget trigger a generation at any time. `download` deliberately
+  serves `rowsData` even while `status` is `'running'` (stale-while-regenerating), so this could
+  have silently served torn/wrong data instead of the honest `null` round 1 was fixing — a worse
+  failure mode. Fixed: added `AND run.status = 'completed'` to the backfill's `WHERE` clause;
+  skipped runs simply keep `rowsData` null, self-healing on the next regenerate. Re-verified against
+  a disposable local Postgres with three fixtures (a `'completed'` run, a `'running'` run, and a
+  revert/re-run cycle) — the running run's rows are correctly never backfilled.
+- **Major — fixed.** `design.md` § Backend still asserted the disproven premise ("the table will be
+  empty either way... since gradesRc generation no longer writes to it") that round 1's migration
+  fix directly contradicts — `defer-export-language-to-download` (creator of the table) is already
+  merged to `develop`, so the table can genuinely hold real rows at migration time. Fixed: appended
+  a dated correction note in `design.md` pointing at the actual `up()`/`down()` behavior, without
+  rewriting the original design-time text (this file isn't covered by `tasks.md`'s "don't touch
+  ADRs" restriction, which only names `docs/POLICIES.md`/`docs/adr/*`).
+- **Minor — fixed.** `down()` recreated the empty table but never cleared the `rowsData` that
+  `up()`'s backfill had written, an asymmetry that could let a revert-then-reapply-without-
+  regenerate cycle see stale data as "already backfilled" (via the `rows_data IS NULL` guard) and
+  skip re-backfilling a run that changed under the recreated table. Fixed: `down()` now also nulls
+  `rowsData` for every `gradesRc` run, verified in the same disposable-Postgres round trip.
+- **Minor — fixed.** `closeGradesRcExport`'s `Promise.allSettled` over the three `RESET` calls
+  (round 1's fix) discarded every result, so a genuine `RESET` failure was silent — no different
+  from the original bug's lack of visibility, just no longer compounding it. Fixed: inspect each
+  `PromiseSettledResult` and `logger.warn` on any rejection; new test asserts the warning fires.
+- **Minor — fixed** (found independently by two auditors). `findStatusByKey`'s regression test
+  asserted `select: expect.not.arrayContaining(['rowsData'])`, which is satisfied even if `select`
+  were omitted entirely (a fixture trap — the test would not catch a regression back to loading the
+  full row). Fixed: `STATUS_FIELDS` exported from the repository as a single source of truth (also
+  resolves the suggestion below) and the test now asserts the exact array.
+- **Suggestion — fixed.** `ScrapingExportRunStatusFields` (the `Pick<...>` type) and the runtime
+  `STATUS_FIELDS` array were two independently-maintained lists of the same 8 field names, able to
+  drift apart silently. Fixed: `STATUS_FIELDS` is now a `const` tuple (`as const satisfies
+ReadonlyArray<keyof ScrapingExportRunEntity>`) and the type is derived from it.
+- **Suggestion — fixed.** Added a comment on `reconcileIfStale` documenting why its stale branch
+  always returns the full entity regardless of the caller's narrowed input type, and explicitly
+  naming the one residual case not optimized (a row that is both `running` _and_ stale, reached via
+  `getStatus`/`claimForGeneration`, still pays a full `rowsData` read-back) as an accepted
+  trade-off — a real mid-generation crash, not routine polling, so not worth the added complexity
+  of a third repository read variant for this diff.
+- **Suggestion — informational, no action.** `SET enable_nestloop = off` remains a connection-wide
+  planner override rather than scoped to the one join it targets; already well-documented and an
+  accepted, not new, category of risk (mirrors the existing `work_mem`/`jit` pattern).
+
+**Verification**: `pnpm exec tsc --noEmit -p tsconfig.build.json` clean; full repo suite green
+(133 suites, 1353 passed, 2 pre-existing skips); the migration re-verified end-to-end against a
+fresh disposable local Postgres (completed run backfilled, running run correctly skipped, `down()`
+clears `rowsData`, full run→revert→run round trip clean).
+
 ---
 
 <!--
