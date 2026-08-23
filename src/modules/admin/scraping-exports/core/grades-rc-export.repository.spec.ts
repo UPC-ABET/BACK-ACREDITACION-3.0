@@ -71,6 +71,22 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		rawQuery.mockResolvedValue([]);
 	});
 
+	it('sets work_mem, jit and enable_nestloop on the connection before materializing', async () => {
+		await repo.openGradesRcExport(1);
+
+		const materializeIndex = rawQuery.mock.calls.findIndex(
+			([sql]) => sql === MATERIALIZE_GRADES_RC_SQL,
+		);
+		const settingSqls = rawQuery.mock.calls.slice(0, materializeIndex).map(([sql]) => sql);
+		expect(settingSqls).toEqual(
+			expect.arrayContaining([
+				`SET work_mem = '128MB'`,
+				`SET jit = off`,
+				`SET enable_nestloop = off`,
+			]),
+		);
+	});
+
 	it('ships the period code, both catalogs and the designated types as parallel arrays', async () => {
 		await repo.openGradesRcExport(1);
 
@@ -194,6 +210,27 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		rawQuery.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('merge failed'));
 
 		await expect(repo.openGradesRcExport(1)).rejects.toThrow('merge failed');
+		expect(release).toHaveBeenCalled();
+	});
+
+	// A failed RESET must not suppress the others: enable_nestloop=off leaking on the pooled
+	// connection would silently degrade unrelated queries reusing it after release.
+	it('still attempts every RESET and still releases the connection when one RESET rejects', async () => {
+		const handle = await repo.openGradesRcExport(1);
+		rawQuery.mockClear();
+		rawQuery.mockImplementation((sql: string) =>
+			sql === 'RESET work_mem' ? Promise.reject(new Error('reset failed')) : Promise.resolve([]),
+		);
+
+		await handle.close();
+
+		const sqls = rawQuery.mock.calls.map(([sql]) => sql);
+		expect(sqls).toEqual([
+			'DROP TABLE IF EXISTS grades_rc_export_rows',
+			'RESET work_mem',
+			'RESET jit',
+			'RESET enable_nestloop',
+		]);
 		expect(release).toHaveBeenCalled();
 	});
 

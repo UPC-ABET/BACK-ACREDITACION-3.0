@@ -112,9 +112,14 @@ export class GradesRcExportRepository {
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
 		} finally {
 			try {
-				await runner.query(`RESET work_mem`);
-				await runner.query(`RESET jit`);
-				await runner.query(`RESET enable_nestloop`);
+				// Independent, not sequential-and-hope: a failed RESET must not skip the ones after
+				// it. Left unreset, enable_nestloop=off in particular is a planner-wide override that
+				// would silently degrade unrelated queries on the next reuse of this pooled connection.
+				await Promise.allSettled([
+					runner.query(`RESET work_mem`),
+					runner.query(`RESET jit`),
+					runner.query(`RESET enable_nestloop`),
+				]);
 			} finally {
 				await runner.release();
 			}
