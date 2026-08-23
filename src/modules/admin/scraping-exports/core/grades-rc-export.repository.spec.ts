@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { GradesRcExportRepository } from './grades-rc-export.repository';
 import { MATERIALIZE_GRADES_RC_SQL, READ_GRADES_RC_ALL_PAGE_SQL } from './grades-rc-export.sql';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
@@ -215,7 +216,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 
 	// A failed RESET must not suppress the others: enable_nestloop=off leaking on the pooled
 	// connection would silently degrade unrelated queries reusing it after release.
-	it('still attempts every RESET and still releases the connection when one RESET rejects', async () => {
+	it('still attempts every RESET, logs the failure, and still releases the connection when one RESET rejects', async () => {
+		const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 		const handle = await repo.openGradesRcExport(1);
 		rawQuery.mockClear();
 		rawQuery.mockImplementation((sql: string) =>
@@ -232,6 +234,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 			'RESET enable_nestloop',
 		]);
 		expect(release).toHaveBeenCalled();
+		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('work_mem'));
+		warnSpy.mockRestore();
 	});
 
 	// The loaded sections are what keeps a grade out of the upload sheet, so they have to reach the

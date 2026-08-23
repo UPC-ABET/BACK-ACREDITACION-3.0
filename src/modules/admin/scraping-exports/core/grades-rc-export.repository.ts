@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, QueryRunner } from 'typeorm';
 
@@ -44,6 +44,8 @@ export interface GradesRcExportHandle {
  */
 @Injectable()
 export class GradesRcExportRepository {
+	private readonly logger = new Logger(GradesRcExportRepository.name);
+
 	constructor(
 		@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly rawDataSource: DataSource,
 		@InjectDataSource() private readonly mainDataSource: DataSource,
@@ -115,11 +117,21 @@ export class GradesRcExportRepository {
 				// Independent, not sequential-and-hope: a failed RESET must not skip the ones after
 				// it. Left unreset, enable_nestloop=off in particular is a planner-wide override that
 				// would silently degrade unrelated queries on the next reuse of this pooled connection.
-				await Promise.allSettled([
-					runner.query(`RESET work_mem`),
-					runner.query(`RESET jit`),
-					runner.query(`RESET enable_nestloop`),
-				]);
+				const settings = ['work_mem', 'jit', 'enable_nestloop'];
+				const results = await Promise.allSettled(
+					settings.map((setting) => runner.query(`RESET ${setting}`)),
+				);
+				// A rejection here means this pooled connection returns to the pool with that setting
+				// still active -- worth a log, since it is otherwise silent until it degrades an
+				// unrelated query's plan later.
+				results.forEach((result, index) => {
+					if (result.status === 'rejected') {
+						this.logger.warn(
+							`Failed to RESET ${settings[index]} on the gradesRc export connection before ` +
+								`release: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+						);
+					}
+				});
 			} finally {
 				await runner.release();
 			}
