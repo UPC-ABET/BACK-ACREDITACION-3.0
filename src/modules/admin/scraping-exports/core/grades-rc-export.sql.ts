@@ -528,7 +528,8 @@ export const GRADES_RC_TEMP_TABLE = 'grades_rc_export_rows';
 //
 // "exportSeq" restates the ORDER BY rather than inheriting it -- a subquery's ordering is not
 // guaranteed to survive. "hasObservations" is the worksheet split; materialized here and carried
-// through to scraping_export_gradesrc_rows, where it drives the download-time two-sheet read.
+// through to the in-memory rows array persisted via rowsData (see ADR-004), where it drives the
+// download-time two-sheet read.
 export const MATERIALIZE_GRADES_RC_SQL = `
 CREATE TEMP TABLE ${GRADES_RC_TEMP_TABLE} AS
 SELECT
@@ -540,8 +541,8 @@ FROM (${GRADES_RC_SQL}) q
 
 // Keyset, not OFFSET: each page of the single ingestion pass (READ_GRADES_RC_ALL_PAGE_SQL) is an
 // index scan from where the last one stopped, instead of re-scanning and re-sorting the whole
-// table once per page. No longer leads with "hasObservations" -- that split now happens on the
-// durable scraping_export_gradesrc_rows table this temp table is copied into, not here.
+// table once per page. No longer leads with "hasObservations" -- that split now happens in memory
+// on the rowsData array this temp table is collected into (see ADR-004), not here.
 export const INDEX_GRADES_RC_TEMP_SQL = `
 CREATE INDEX "IDX_${GRADES_RC_TEMP_TABLE}_export_seq"
 	ON ${GRADES_RC_TEMP_TABLE} ("exportSeq")

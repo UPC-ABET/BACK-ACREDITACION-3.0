@@ -419,9 +419,9 @@ lang)`, returning `null` when `rowsData` is `null` — the same shape as the oth
 
 ## Milestone 3 — Manual verification (see `runbook.md`)
 
-### Task 3.1 — Full end-to-end verification against real data
+### Task 3.1 — Full end-to-end verification against real data ✅ DONE (2026-08-22)
 
-- [ ] Task complete
+- [x] Task complete
 
 **Files**
 
@@ -435,6 +435,80 @@ lang)`, returning `null` when `rowsData` is `null` — the same shape as the oth
 2. Record the results (timings, memory peak, diff outcome) in the PR description.
 
 **Commit**: none — this task has no code to commit; its outcome gates whether the PR is mergeable.
+
+> Confirmed complete per the runbook. Record the actual timings/memory-peak/diff-outcome numbers
+> in the PR description per step 2 above when opening the PR — they are not duplicated here.
+
+---
+
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1 (2026-08-22)
+
+Six parallel auditors (code quality, architecture/docs, testing, antipatterns, security, runtime
+robustness) reviewed the full branch diff against `develop`. Findings and resolutions:
+
+- [x] **Major** — Migration `up()` dropped `core.scraping_export_gradesrc_rows` with no backfill.
+      Any `gradesRc` run completed against `defer-export-language-to-download`'s pre-fix code (already
+      merged to `develop`) before this migration runs would have `status='completed'` but
+      `rowsData=null` forever after — `getStatus` and `download` would disagree, silently. Fixed:
+      `up()` now backfills each run's latest batch (by `generatedAt`) into `rowsData` (snake_case keys,
+      matching every other write to this jsonb column) before dropping the table, guarded on
+      `rows_data IS NULL` so it never overwrites data already written by the new code. Verified against
+      a disposable local Postgres seeded with all 47 migrations plus fixture rows: the latest batch
+      backfills correctly, an older batch for the same run is correctly excluded, and a run whose
+      `rowsData` was already populated is correctly left untouched. `runbook.md` step 2's expectation
+      updated to match (a pre-existing `completed` row now stays downloadable across the deploy,
+      instead of the previously-expected `notGenerated`).
+- [x] **Major** — `getStatus`/`claimForGeneration` (via `findByKey`) always pulled and camelized the
+      full `rowsData` array even though neither reads it, at endpoints polled during a multi-minute
+      gradesRc generation. Fixed: added `ScrapingExportRunRepository.findStatusByKey`, selecting only
+      the status-shaped columns; `getStatus` and `claimForGeneration` now use it. `download` is
+      unchanged (it genuinely needs `rowsData`).
+- [x] **Major** — `upsertByKey`'s unconditional read-back re-fetched and re-camelized the array it
+      had just written, for three call sites (`runGeneration`'s completed/failed writes,
+      `runGradesRcGeneration`'s completed write) that discard the return value. Fixed: added
+      `ScrapingExportRunRepository.upsertByKeyNoReturn` (writes only, no read-back); the three
+      discard-sites now use it.
+- [x] **Major** — `closeGradesRcExport`'s three `RESET` calls ran sequentially with one shared
+      `finally`; a failed earlier `RESET` skipped later ones (including the new `enable_nestloop`, a
+      planner-wide override) before the connection returned to the shared pool. Fixed: the three
+      `RESET`s now run independently via `Promise.allSettled`.
+- [x] **Major** — Two comments in `grades-rc-export.sql.ts` still described rows flowing into
+      `scraping_export_gradesrc_rows`, a table this same diff drops — found independently by three
+      auditors. Fixed: reworded to describe the in-memory `rowsData` array (ADR-004).
+- [x] **Minor** — `reconciled.rowsData` (`any[] | null`) was passed into `renderGradesRc` with no
+      cast. Fixed: explicit cast to `Array<GradeRcExportRow & { hasObservations: boolean }>`.
+- [x] **Minor** — Traceability table (`proposal.md`) still read "TBD" for every AC despite real
+      evidence existing in this file. Fixed: filled in with pointers to the relevant tasks and, for
+      AC-1/AC-2/AC-7, the actual measured `EXPLAIN` figures from Task 1.6.
+- [ ] **Minor** — EXPLAIN evidence for AC-1/AC-2/AC-7 exists only as prose recap in this file, not
+      as a captured raw-`EXPLAIN` artifact. Not fixed: no raw plan-output text was available to paste
+      in; the traceability-table fix above at least points at the concrete measured numbers. Left as a
+      follow-up if a future edit to this query wants a literal artifact to diff against.
+- [x] **Minor** — No test asserted `SET enable_nestloop = off` was actually issued at open time
+      (only its `RESET` was asserted). Fixed: added a test in `grades-rc-export.repository.spec.ts`.
+- [ ] **Minor** — `docs/adr/ADR-003-...md`'s status line reads "Proposed" while also "superseded by
+      ADR-004", inconsistent with the ADRs' own stated lifecycle. Not fixed: this file's own header
+      instructs "Do not edit `docs/POLICIES.md` or `docs/adr/*` — ... the `ADR-003` status-line update
+      were already written during design and should not be touched here"; left to a dedicated ADR
+      housekeeping pass instead of overriding that instruction inside this change.
+- [x] **Suggestion** — `writeGradesRcSheets` iterated the full `rows` array twice (once per sheet),
+      a leftover from the old two-query design. Fixed: single pass, routing each row to its sheet.
+- [ ] **Suggestion** — `rowsData` appeared to store camelCase keys inside a `jsonb` column,
+      seemingly violating the snake_case-at-every-depth rule for JSONB content. On inspection this is
+      not a real violation: `JsonColumn`'s TypeORM transformer (`db.configs.ts`) already runs
+      `snakeizeKeys`/`camelizeKeys` on every write/read of any `jsonb` column, `rowsData` included — so
+      the column is stored snake_case on disk regardless. No action needed; noted here since the audit
+      flagged it before this was verified.
+- [ ] **Suggestion** — `enable_nestloop`/`work_mem`/`jit` as magic string literals. Not fixed: not a
+      new pattern (the first two predate this diff); flagged only for completeness, per the audit.
+
+**Verification**: `pnpm exec tsc --noEmit -p tsconfig.build.json` clean; full
+`src/modules/admin/scraping-exports` suite green (91/91, up from 83, including new regression
+tests for `findStatusByKey`/`upsertByKeyNoReturn`/the fault-tolerant `RESET`/the `SET
+enable_nestloop` assertion); the migration backfill verified end-to-end against a disposable local
+Postgres (see above).
 
 ---
 

@@ -205,15 +205,15 @@ BUFFERS)`, then `section_designated` is materialized (evaluated once, not inline
 
 ### Traceability
 
-| AC  | Criterion                                                                           | Satisfied by |
-| --- | ----------------------------------------------------------------------------------- | ------------ |
-| 1   | Section-scope filter pushed down before the nota↔evaluacion join                    | TBD          |
-| 2   | `e_nm` fallback join only runs when `component_id` doesn't match                    | TBD          |
-| 3   | Measured generation-time improvement + identical output for 202610                  | TBD          |
-| 4   | `gradesRc` rows stored in `rows_data`; dedicated table/entity/repository removed    | TBD          |
-| 5   | Download output identical to the dedicated-table implementation                     | TBD          |
-| 6   | Full generate+download cycle for 202610 stays within the 640MB container ceiling    | TBD          |
-| 7   | `section_designated` materialized and hash-joined, not inlined/re-evaluated per row | TBD          |
+| AC  | Criterion                                                                           | Satisfied by                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Section-scope filter pushed down before the nota↔evaluacion join                    | `tasks.md` Task 1.2 (`scoped_planner_sections` CTE) + Task 1.6's combined `EXPLAIN` re-confirmation                                                                                                                              |
+| 2   | `e_nm` fallback join only runs when `component_id` doesn't match                    | `tasks.md` Task 1.3 (scalar correlated subquery) + Task 1.6's combined `EXPLAIN` re-confirmation                                                                                                                                 |
+| 3   | Measured generation-time improvement + identical output for 202610                  | `tasks.md` Task 1.6 (full `GRADES_RC_SQL` `EXPLAIN`: 202610 26m33s → 85,550ms, 202615 → 42,919ms, both `loops=1`); the application-level end-to-end `regenerate` timing and content diff is Milestone 3 / `runbook.md` steps 1–4 |
+| 4   | `gradesRc` rows stored in `rows_data`; dedicated table/entity/repository removed    | `tasks.md` Tasks 2.1 (migration), 2.2 (`fetchGradesRcRows`/`renderGradesRc`), 2.3 (`rowsData` write path), 2.4 (entity/repository deletion, verified by repo-wide grep)                                                          |
+| 5   | Download output identical to the dedicated-table implementation                     | `tasks.md` Task 2.2's sheet-content assertions (unit-level); the real pre/post `.xlsx` diff against production data is Milestone 3 / `runbook.md` step 4                                                                         |
+| 6   | Full generate+download cycle for 202610 stays within the 640MB container ceiling    | Milestone 3 / `runbook.md` step 5 (manual — no automated test can assert real process RSS, per AC-6's own wording)                                                                                                               |
+| 7   | `section_designated` materialized and hash-joined, not inlined/re-evaluated per row | `tasks.md` Tasks 1.4 (`MATERIALIZED`) and 1.5 (`enable_nestloop = off`) + Task 1.6's combined `EXPLAIN` (both periods, `loops=1`, `Hash Left Join`)                                                                              |
 
 ## Dependencies
 
