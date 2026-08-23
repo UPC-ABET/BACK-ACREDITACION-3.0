@@ -1,6 +1,9 @@
 # ADR-003 — Persist scraping exports as one language-neutral dataset per (exportType, period), rendered into a specific language only at download time
 
-- **Status**: Proposed
+- **Status**: Proposed; superseded by [ADR-004](./ADR-004-gradesrc-rows-in-shared-jsonb-storage.md)
+  on the `gradesRc` storage-shape point only (the single `jsonb` blob it rejected for `gradesRc` in
+  "Alternatives considered") — the language-neutral generation model, the `(exportType, period)`
+  key, and the single-flight guard described below all still stand.
 - **Date**: 2026-08-22
 - **Deciders**: Leonardo Ferreyra
 - **Tags**: scraping, exports, api, storage
