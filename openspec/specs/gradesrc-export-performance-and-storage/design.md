@@ -5,7 +5,7 @@
 
 ## Read first
 
-- `openspec/changes/gradesrc-export-performance-and-storage/proposal.md` — the full investigation,
+- `openspec/specs/gradesrc-export-performance-and-storage/proposal.md` — the full investigation,
   measurements and acceptance criteria this design implements.
 - `docs/adr/ADR-003-language-neutral-scraping-export-generation.md` — the language-neutral
   generation model this change builds on, and the storage split (jsonb for four exports, a
