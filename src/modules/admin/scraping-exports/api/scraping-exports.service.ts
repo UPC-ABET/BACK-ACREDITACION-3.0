@@ -157,49 +157,53 @@ export class ScrapingExportsService {
 		// status the RC semaphore counts) -- is unchanged from the prior design; see git history for
 		// the full reasoning if this sheet split is ever revisited.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
-		for (const r of rows) {
-			if (r.hasObservations) continue;
-			uploadSheet
-				.addRow([
-					r.sectionCode,
-					r.studentCode,
-					r.gradeTypeCode,
-					r.gradeTypePercentage,
-					r.grade,
-					r.qualificationStatusCode,
-				])
-				.commit();
-		}
-		uploadSheet.commit();
 
 		const descriptive = this.resolveLabels(gradesRcDescriptiveLabels, lang);
 		// The observations are full sentences, so the last column gets room for one.
 		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
 			[descriptive.headers.length]: 90,
 		});
+
+		// One pass, not two: `rows` is a fully in-memory array now (see ADR-004), so there is no
+		// separate paginated query per sheet to justify a second full iteration.
 		for (const r of rows) {
-			if (!r.hasObservations) continue;
-			detailSheet
-				.addRow([
-					r.academicPeriod,
-					r.sectionCode,
-					r.courseCode,
-					r.courseName,
-					r.studentCode,
-					r.studentName,
-					r.careerCode,
-					r.gradeTypeCode,
-					r.gradeTypeName,
-					r.gradeTypePercentage,
-					r.grade,
-					r.qualificationStatusCode,
-					r.qualificationStatusName,
-					r.source,
-					r.scrapedAt,
-					(r.observations ?? []).map((code) => descriptive.observations[code] ?? code).join(' | '),
-				])
-				.commit();
+			if (r.hasObservations) {
+				detailSheet
+					.addRow([
+						r.academicPeriod,
+						r.sectionCode,
+						r.courseCode,
+						r.courseName,
+						r.studentCode,
+						r.studentName,
+						r.careerCode,
+						r.gradeTypeCode,
+						r.gradeTypeName,
+						r.gradeTypePercentage,
+						r.grade,
+						r.qualificationStatusCode,
+						r.qualificationStatusName,
+						r.source,
+						r.scrapedAt,
+						(r.observations ?? [])
+							.map((code) => descriptive.observations[code] ?? code)
+							.join(' | '),
+					])
+					.commit();
+			} else {
+				uploadSheet
+					.addRow([
+						r.sectionCode,
+						r.studentCode,
+						r.gradeTypeCode,
+						r.gradeTypePercentage,
+						r.grade,
+						r.qualificationStatusCode,
+					])
+					.commit();
+			}
 		}
+		uploadSheet.commit();
 		detailSheet.commit();
 	}
 
