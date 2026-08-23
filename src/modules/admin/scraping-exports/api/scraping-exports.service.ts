@@ -4,10 +4,8 @@ import { Writable } from 'stream';
 
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { GradesRcExportRepository } from '../core/grades-rc-export.repository';
-import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import {
 	EnrolledStudentExportRow,
-	GRADES_RC_PAGE_SIZE,
 	GradeRcExportRow,
 	SectionExportRow,
 	StaffExportRow,
@@ -29,11 +27,6 @@ export interface GeneratedExcel {
 	fileName: string;
 }
 
-// Rows buffered before each `insertBatch` call while streaming the merge into the child table —
-// keeps peak memory bounded to one chunk regardless of how large the period's merge is, instead of
-// holding the entire period in memory before writing anything.
-const MATERIALIZE_BATCH_SIZE = 1000;
-
 @Injectable()
 export class ScrapingExportsService {
 	private readonly logger = new Logger(ScrapingExportsService.name);
@@ -41,7 +34,6 @@ export class ScrapingExportsService {
 	constructor(
 		private readonly repository: ScrapingExportsRepository,
 		private readonly gradesRcRepository: GradesRcExportRepository,
-		private readonly gradesRcRowRepository: ScrapingExportGradesRcRowRepository,
 	) {}
 
 	// %% SYNC EXPORTS — fetch is language-neutral (called once per generation); render applies
@@ -112,48 +104,26 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	// %% GRADES RC — materialize runs the Banner+Planner merge once and copies it, language-neutral,
-	// into the durable scraping_export_gradesrc_rows table; render pages that table back out into a
-	// requested language's workbook. Neither touches the other's connection: materialize is the only
-	// caller of GradesRcExportRepository (the `exports-raw` connection), render only ever reads the
-	// main-datasource child table. See ADR-003.
+	// %% GRADES RC — fetch runs the Banner+Planner merge once and collects it, language-neutral, into
+	// one array (the same shape the sync exports' fetch* methods already produce, persisted through
+	// `rowsData` — see ADR-004); render splits that array by `hasObservations` and writes both
+	// sheets. Fetch is the only caller of GradesRcExportRepository (the `exports-raw` connection).
 
-	// The pooled `exports-raw` connection `openGradesRcExport` pins is held only for the merge and
-	// this single ingestion pass, then released -- materially less than the old design, which held
-	// it through the entire render too.
-	//
-	// Flushes every MATERIALIZE_BATCH_SIZE rows instead of collecting the whole merge into one array
-	// first: a full period's grade lines held entirely in memory before the first insert is exactly
-	// the OOM risk `scraping_export_gradesrc_rows` exists to eliminate (see ADR-003).
-	async materializeGradesRc(
+	async fetchGradesRcRows(
 		academicPeriodId: number,
-		scrapingExportRunId: number,
-		generatedAt: Date,
-	): Promise<void> {
+	): Promise<Array<GradeRcExportRow & { hasObservations: boolean }>> {
 		const handle = await this.gradesRcRepository.openGradesRcExport(academicPeriodId);
 		try {
-			let batch: Array<GradeRcExportRow & { hasObservations: boolean }> = [];
-			for await (const row of handle.rows()) {
-				batch.push(row);
-				if (batch.length >= MATERIALIZE_BATCH_SIZE) {
-					await this.gradesRcRowRepository.insertBatch(scrapingExportRunId, generatedAt, batch);
-					batch = [];
-				}
-			}
-			if (batch.length > 0) {
-				await this.gradesRcRowRepository.insertBatch(scrapingExportRunId, generatedAt, batch);
-			}
+			const rows: Array<GradeRcExportRow & { hasObservations: boolean }> = [];
+			for await (const row of handle.rows()) rows.push(row);
+			return rows;
 		} finally {
 			await handle.close();
 		}
 	}
 
-	// `generatedAt` pins the read to one specific completed batch (see
-	// ScrapingExportGradesRcRowRepository.readPage) so a download racing a regenerate reads one
-	// self-consistent generation instead of a torn mix of the old and new rows.
 	async renderGradesRc(
-		scrapingExportRunId: number,
-		generatedAt: Date,
+		rows: Array<GradeRcExportRow & { hasObservations: boolean }>,
 		lang?: string,
 	): Promise<GeneratedExcel> {
 		const chunks: Buffer[] = [];
@@ -166,98 +136,75 @@ export class ScrapingExportsService {
 
 		const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: sink, useStyles: true });
 		const labels = this.resolveLabels(gradesRcExportLabels, lang);
-		await this.writeGradesRcSheets(workbook, scrapingExportRunId, generatedAt, labels, lang);
+		this.writeGradesRcSheets(workbook, rows, labels, lang);
+		await workbook.commit();
 
 		return { buffer: Buffer.concat(chunks), fileName: labels.fileName };
 	}
 
-	private async writeGradesRcSheets(
+	private writeGradesRcSheets(
 		workbook: ExcelJS.stream.xlsx.WorkbookWriter,
-		scrapingExportRunId: number,
-		generatedAt: Date,
+		rows: Array<GradeRcExportRow & { hasObservations: boolean }>,
 		labels: ExportLabels,
 		lang: string | undefined,
-	): Promise<void> {
+	): void {
 		// Sheet order is load-bearing: the upload parses worksheets[0], and the writer streams sheets
 		// in creation order.
 		//
-		// The two are disjoint halves split on whether the row carries an observation, so this one
-		// uploads without a single rejection.
-		//
-		// The cost is that a row which WOULD upload fine but carries an observation -- a withdrawn
-		// student's 0/RET, a genuine unexplained 0 -- is held back with no way through: the upload
-		// parses worksheets[0] only, and the review sheet is 16 descriptive columns rather than this
-		// 6-column template. Observations that clear once someone fixes the source (a fallback grade,
-		// an unregistered type, a missing enrollment) come back in the next download; COURSE_LEVEL_STATUS
-		// and ZERO_GRADE_UNEXPLAINED never do, so those enrollments stay out of
-		// academic.student_course_grades permanently. ZERO_GRADE_UNEXPLAINED ships ASISTIO, which is
-		// the one status the RC semaphore counts -- holding it back moves the RC average.
+		// The cost of holding back a row that carries an observation -- COURSE_LEVEL_STATUS and
+		// ZERO_GRADE_UNEXPLAINED never clear on their own, so those enrollments stay out of
+		// academic.student_course_grades permanently, and ZERO_GRADE_UNEXPLAINED ships ASISTIO (the
+		// status the RC semaphore counts) -- is unchanged from the prior design; see git history for
+		// the full reasoning if this sheet split is ever revisited.
 		const uploadSheet = this.startSheet(workbook, 'Data', labels.headers);
-		for await (const r of this.pageGradesRcRows(scrapingExportRunId, generatedAt, false)) {
-			uploadSheet
-				.addRow([
-					r.sectionCode,
-					r.studentCode,
-					r.gradeTypeCode,
-					r.gradeTypePercentage,
-					r.grade,
-					r.qualificationStatusCode,
-				])
-				.commit();
-		}
-		uploadSheet.commit();
 
 		const descriptive = this.resolveLabels(gradesRcDescriptiveLabels, lang);
 		// The observations are full sentences, so the last column gets room for one.
 		const detailSheet = this.startSheet(workbook, descriptive.sheetName, descriptive.headers, {
 			[descriptive.headers.length]: 90,
 		});
-		for await (const r of this.pageGradesRcRows(scrapingExportRunId, generatedAt, true)) {
-			detailSheet
-				.addRow([
-					r.academicPeriod,
-					r.sectionCode,
-					r.courseCode,
-					r.courseName,
-					r.studentCode,
-					r.studentName,
-					r.careerCode,
-					r.gradeTypeCode,
-					r.gradeTypeName,
-					r.gradeTypePercentage,
-					r.grade,
-					r.qualificationStatusCode,
-					r.qualificationStatusName,
-					r.source,
-					r.scrapedAt,
-					(r.observations ?? []).map((code) => descriptive.observations[code] ?? code).join(' | '),
-				])
-				.commit();
+
+		// One pass, not two: `rows` is a fully in-memory array now (see ADR-004), so there is no
+		// separate paginated query per sheet to justify a second full iteration.
+		for (const r of rows) {
+			if (r.hasObservations) {
+				detailSheet
+					.addRow([
+						r.academicPeriod,
+						r.sectionCode,
+						r.courseCode,
+						r.courseName,
+						r.studentCode,
+						r.studentName,
+						r.careerCode,
+						r.gradeTypeCode,
+						r.gradeTypeName,
+						r.gradeTypePercentage,
+						r.grade,
+						r.qualificationStatusCode,
+						r.qualificationStatusName,
+						r.source,
+						r.scrapedAt,
+						(r.observations ?? [])
+							.map((code) => descriptive.observations[code] ?? code)
+							.join(' | '),
+					])
+					.commit();
+			} else {
+				uploadSheet
+					.addRow([
+						r.sectionCode,
+						r.studentCode,
+						r.gradeTypeCode,
+						r.gradeTypePercentage,
+						r.grade,
+						r.qualificationStatusCode,
+					])
+					.commit();
+			}
 		}
+		uploadSheet.commit();
 		detailSheet.commit();
-
-		await workbook.commit();
-	}
-
-	private async *pageGradesRcRows(
-		scrapingExportRunId: number,
-		generatedAt: Date,
-		hasObservations: boolean,
-	): AsyncGenerator<GradeRcExportRow> {
-		let lastId = 0;
-		for (;;) {
-			const page = await this.gradesRcRowRepository.readPage(
-				scrapingExportRunId,
-				generatedAt,
-				hasObservations,
-				lastId,
-				GRADES_RC_PAGE_SIZE,
-			);
-			if (page.length === 0) return;
-
-			for (const row of page) yield row;
-			lastId = page[page.length - 1].id;
-		}
 	}
 
 	// Widths have to be set before the first commit: the writer seals the sheet's metadata then.

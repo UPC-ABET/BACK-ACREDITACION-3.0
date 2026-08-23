@@ -36,12 +36,10 @@ export class ScrapingExportRunEntity extends BaseEntity {
 	@TextShortColumn({ nullable: false })
 	status: ScrapingExportGenerationStatus;
 
-	// Language-neutral row data for the four sync export types (staff/sections/enrolledStudents/
-	// studentSections), rendered into a specific language's .xlsx only at download time. Always
-	// null for gradesRc, whose rows live in ScrapingExportGradesRcRowEntity instead — a full
-	// period's grade lines are too large to hold safely in one jsonb blob (see design.md).
-	// `any[]`, not `unknown[]`, mirrors BaseEntity.extra's own `any` — TypeORM's DeepPartial upsert
-	// typing cannot resolve a jsonb array column typed any more strictly than that.
+	// Language-neutral row data for all five export types, rendered into a specific language's
+	// .xlsx only at download time (see ADR-003, ADR-004). `any[]`, not `unknown[]`, mirrors
+	// BaseEntity.extra's own `any` — TypeORM's DeepPartial upsert typing cannot resolve a jsonb
+	// array column typed any more strictly than that.
 	@JsonColumn({ nullable: true, withDefault: false })
 	rowsData: any[] | null;
 

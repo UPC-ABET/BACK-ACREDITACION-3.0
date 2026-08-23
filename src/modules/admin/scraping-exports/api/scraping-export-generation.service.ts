@@ -4,11 +4,17 @@ import { ConflictError } from 'src/commons/domain-error';
 
 import { ScrapeRunRepository } from '../../banner/raw/core/scrape-run.repository';
 import { PlannerScrapeRunRepository } from '../../planner/raw/core/planner-scrape-run.repository';
-import { ScrapingExportRunRepository } from '../core/scraping-export-run.repository';
+import {
+	ScrapingExportRunRepository,
+	ScrapingExportRunStatusFields,
+} from '../core/scraping-export-run.repository';
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
-import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
-import { ScrapingExportStatusResponse, ScrapingExportType } from '../model/scraping-exports.types';
+import {
+	GradeRcExportRow,
+	ScrapingExportStatusResponse,
+	ScrapingExportType,
+} from '../model/scraping-exports.types';
 import { getDefaultExportFileName } from '../model/scraping-exports.labels';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
@@ -26,6 +32,11 @@ const BANNER_EXPORT_TYPES: Array<Exclude<ScrapingExportType, 'gradesRc'>> = [
 // Comfortably above Grades RC's documented multi-minute merge (see design.md § AC-9), so a
 // generation that is still genuinely running is never mistaken for stale.
 export const GENERATION_STALE_TIMEOUT_MS = 20 * 60 * 1000;
+
+// ~3x the largest known real period (202610: 52,387 rows) at design time. A future period past
+// this is not blocked -- ADR-004 accepts the storage risk -- but should be visible in logs before
+// it becomes an incident.
+export const GRADES_RC_ROW_COUNT_WARNING_THRESHOLD = 150_000;
 
 // Discriminates the gradesRc single-flight "slot taken" signal from any other generation
 // failure without comparing `error.message` against an i18n key string (AF-9). Module-private:
@@ -64,7 +75,6 @@ export class ScrapingExportGenerationService {
 		private readonly scrapeRunRepository: ScrapeRunRepository,
 		private readonly plannerScrapeRunRepository: PlannerScrapeRunRepository,
 		private readonly exportsService: ScrapingExportsService,
-		private readonly gradesRcRowRepository: ScrapingExportGradesRcRowRepository,
 	) {}
 
 	// Forward lookup for the controller: it only has the request-derived academicPeriodId header,
@@ -149,7 +159,7 @@ export class ScrapingExportGenerationService {
 		exportType: ScrapingExportType,
 		period: string,
 	): Promise<ScrapingExportStatusResponse | { status: 'notGenerated' }> {
-		const row = await this.runRepository.findByKey(exportType, period);
+		const row = await this.runRepository.findStatusByKey(exportType, period);
 		if (!row) return { status: 'notGenerated' };
 		return this.toStatusResponse(await this.reconcileIfStale(row));
 	}
@@ -168,21 +178,14 @@ export class ScrapingExportGenerationService {
 		if (!row) return null;
 
 		const reconciled = await this.reconcileIfStale(row);
+		if (!reconciled.rowsData) return null;
 
 		if (exportType === 'gradesRc') {
-			// `finishedAt` pins exactly the batch this row's last completed generation produced —
-			// while a regenerate is `running`, it still holds the previous completed generation's
-			// timestamp, since `claimForGeneration`'s patch to 'running' never touches it. Reading by
-			// this exact value (rather than by runId alone) is what stops a concurrent regenerate's
-			// in-flight batch from being torn together with the old one (see
-			// ScrapingExportGradesRcRowRepository.readPage).
-			const generatedAt = reconciled.finishedAt;
-			if (!generatedAt) return null;
-			if (!(await this.gradesRcRowRepository.hasRows(reconciled.id, generatedAt))) return null;
-			return this.exportsService.renderGradesRc(reconciled.id, generatedAt, lang);
+			return this.exportsService.renderGradesRc(
+				reconciled.rowsData as Array<GradeRcExportRow & { hasObservations: boolean }>,
+				lang,
+			);
 		}
-
-		if (!reconciled.rowsData) return null;
 		return this.renderSyncExport(exportType, reconciled.rowsData, lang);
 	}
 
@@ -273,7 +276,7 @@ export class ScrapingExportGenerationService {
 		sourceBannerRunId?: string,
 		sourcePlannerRunId?: string,
 	): Promise<ScrapingExportRunEntity | null> {
-		const existing = await this.runRepository.findByKey(exportType, period);
+		const existing = await this.runRepository.findStatusByKey(exportType, period);
 		const reconciled = existing ? await this.reconcileIfStale(existing) : null;
 
 		if (reconciled?.status === 'running') {
@@ -318,7 +321,7 @@ export class ScrapingExportGenerationService {
 			}
 			const rows = await this.fetchSyncExportRows(exportType, academicPeriodId);
 
-			await this.runRepository.upsertByKey(exportType, period, {
+			await this.runRepository.upsertByKeyNoReturn(exportType, period, {
 				status: 'completed',
 				triggeredBy,
 				rowsData: rows,
@@ -341,7 +344,7 @@ export class ScrapingExportGenerationService {
 				error instanceof GradesRcMergeBusyError
 					? scrapingExportsValidationStrings.error.gradesRcBusy
 					: scrapingExportsValidationStrings.error.generationFailed;
-			await this.runRepository.upsertByKey(exportType, period, {
+			await this.runRepository.upsertByKeyNoReturn(exportType, period, {
 				status: 'failed',
 				triggeredBy,
 				errorMessage,
@@ -376,11 +379,9 @@ export class ScrapingExportGenerationService {
 
 	// Only gradesRc pins a pooled connection for the minutes the merge takes (see design.md § AC-10),
 	// so this is the one export type that needs a system-wide single-flight guard, not just the
-	// per-key 'running' check every export type already gets from `claimForGeneration`.
-	//
-	// Insert new batch -> flip the parent row to 'completed' -> delete the previous batch, strictly
-	// in that order (design.md § Backend, Retention): a `download` mid-regenerate keeps serving the
-	// previous batch until the new one is confirmed live, never seeing a gap.
+	// per-key 'running' check every export type already gets from `claimForGeneration`. Otherwise
+	// this mirrors the non-gradesRc branch of `runGeneration` exactly: one `rowsData` write, atomic
+	// by virtue of being a single row (see ADR-004) -- no separate batch/retention step needed.
 	private async runGradesRcGeneration(
 		period: string,
 		runId: number,
@@ -401,32 +402,22 @@ export class ScrapingExportGenerationService {
 				throw new Error(scrapingExportsValidationStrings.error.periodNotFound);
 			}
 
-			const generatedAt = new Date();
-			await this.exportsService.materializeGradesRc(academicPeriodId, runId, generatedAt);
-
-			await this.runRepository.upsertByKey('gradesRc', period, {
-				status: 'completed',
-				triggeredBy,
-				errorMessage: null,
-				finishedAt: generatedAt,
-				updatedAt: new Date(),
-			});
-
-			// The parent row is already 'completed' and correctly pinned to this batch at this point —
-			// a failure here is a cleanup problem, not a generation failure. Letting it propagate would
-			// have `runGeneration()`'s catch flip a successful generation to 'failed' while a perfectly
-			// valid new batch sits live and unreachable behind that status. The previous batch simply
-			// outlives its usefulness on disk until the next successful generation retries the delete.
-			try {
-				await this.gradesRcRowRepository.deleteStaleBatches(runId, generatedAt);
-			} catch (error) {
-				this.logger.error(
-					`Failed to delete stale gradesRc batches for run ${runId}: ${
-						error instanceof Error ? error.message : String(error)
-					}`,
-					error instanceof Error ? error.stack : undefined,
+			const rows = await this.exportsService.fetchGradesRcRows(academicPeriodId);
+			if (rows.length > GRADES_RC_ROW_COUNT_WARNING_THRESHOLD) {
+				this.logger.warn(
+					`gradesRc/${period} produced ${rows.length} rows, above the documented threshold ` +
+						`of ${GRADES_RC_ROW_COUNT_WARNING_THRESHOLD} (see ADR-004).`,
 				);
 			}
+
+			await this.runRepository.upsertByKeyNoReturn('gradesRc', period, {
+				status: 'completed',
+				triggeredBy,
+				rowsData: rows,
+				errorMessage: null,
+				finishedAt: new Date(),
+				updatedAt: new Date(),
+			});
 		} finally {
 			this.gradesRcMergeStartedAt = null;
 		}
@@ -436,7 +427,7 @@ export class ScrapingExportGenerationService {
 	// own comment. `download` is the only endpoint that ever renders and streams bytes. `fileName`
 	// is a readiness signal only (always the default-language name), present exactly when `status`
 	// is 'completed'.
-	private toStatusResponse(row: ScrapingExportRunEntity): ScrapingExportStatusResponse {
+	private toStatusResponse(row: ScrapingExportRunStatusFields): ScrapingExportStatusResponse {
 		return {
 			exportType: row.exportType,
 			period: row.period,
@@ -452,7 +443,16 @@ export class ScrapingExportGenerationService {
 	// `docs/POLICIES.md` rules out adding `@nestjs/schedule`. A `running` row whose `updatedAt`
 	// is older than `GENERATION_STALE_TIMEOUT_MS` means the process that was generating it died
 	// mid-flight (e.g. a deploy), so it is flipped to `failed` right here, on read.
-	private async reconcileIfStale(row: ScrapingExportRunEntity): Promise<ScrapingExportRunEntity> {
+	//
+	// Generic over the caller's input shape (T), but the stale branch always returns the *full*
+	// entity: it flips status via `upsertByKey`, whose read-back is never the lightweight
+	// `findStatusByKey` variant, since `download` also reaches this method and genuinely needs
+	// `rowsData` back. Accepted trade-off: `getStatus`/`claimForGeneration` only pay that full
+	// read's cost on the rare row that is both `running` and stale (a real mid-generation crash,
+	// not routine polling) — not on every call, which was round 1's actual finding.
+	private async reconcileIfStale<T extends ScrapingExportRunStatusFields>(
+		row: T,
+	): Promise<T | ScrapingExportRunEntity> {
 		if (row.status !== 'running') return row;
 
 		const updatedAtMs = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;

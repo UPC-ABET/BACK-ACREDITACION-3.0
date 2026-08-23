@@ -4,8 +4,6 @@ import { ScrapingExportsService } from './scraping-exports.service';
 import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
 import { gradesRcDescriptiveLabels } from '../model/scraping-exports.labels';
 
-const GENERATED_AT = new Date('2026-08-22T00:00:00Z');
-
 const row = (over: Partial<Record<string, unknown>> = {}) => ({
 	sectionCode: 'NRC1',
 	studentCode: 'A1',
@@ -31,26 +29,17 @@ const row = (over: Partial<Record<string, unknown>> = {}) => ({
 // column order exactly. This is the only thing standing between a reordered mapping and an upload
 // that assigns weights to grades.
 describe('ScrapingExportsService.renderGradesRc', () => {
-	let rows: Array<ReturnType<typeof row> & { id: number }>;
-	const readPage = jest.fn();
-	const service = new ScrapingExportsService({} as any, {} as any, { readPage } as any);
+	let rows: Array<ReturnType<typeof row>>;
+	const service = new ScrapingExportsService({} as any, {} as any);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
 		rows = [];
-		// Mirrors the repository's own keyset pagination: one page, then empty.
-		readPage.mockImplementation(
-			async (_runId: number, _generatedAt: Date, hasObservations: boolean, afterId: number) => {
-				if (afterId > 0) return [];
-				return rows.filter((r) => r.hasObservations === hasObservations);
-			},
-		);
 	});
 
 	const givenRows = (given: Array<Partial<Record<string, unknown>>>) => {
-		rows = given.map((r, index) => {
+		rows = given.map((r) => {
 			const built = row(r);
-			return { ...built, id: index + 1, hasObservations: (built.observations ?? []).length > 0 };
+			return { ...built, hasObservations: (built.observations ?? []).length > 0 };
 		});
 	};
 
@@ -68,7 +57,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 	it('writes the six template columns in order', async () => {
 		givenRows([row()]);
 
-		const { fileName, buffer } = await service.renderGradesRc(1, GENERATED_AT);
+		const { fileName, buffer } = await service.renderGradesRc(rows);
 		const [header, first] = readSheet(await loadWorkbook(buffer), 'Data');
 
 		expect(fileName).toBe('NotasRC.xlsx');
@@ -87,7 +76,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 	it('keeps the upload sheet first and puts the descriptive sheet after it', async () => {
 		givenRows([row()]);
 
-		const workbook = await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(rows)).buffer);
 
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Detalle']);
 	});
@@ -96,7 +85,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 		givenRows([row({ observations: [GRADE_RC_OBSERVATIONS.FALLBACK_GRADE] })]);
 
 		const [header, first] = readSheet(
-			await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer),
+			await loadWorkbook((await service.renderGradesRc(rows)).buffer),
 			'Detalle',
 		);
 
@@ -151,7 +140,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 		]);
 
 		const [, first] = readSheet(
-			await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer),
+			await loadWorkbook((await service.renderGradesRc(rows)).buffer),
 			'Detalle',
 		);
 
@@ -175,7 +164,7 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 			}),
 		]);
 
-		const workbook = await loadWorkbook((await service.renderGradesRc(1, GENERATED_AT)).buffer);
+		const workbook = await loadWorkbook((await service.renderGradesRc(rows)).buffer);
 
 		const uploadRows = readSheet(workbook, 'Data').slice(1);
 		expect(uploadRows.map((r) => r[1])).toEqual(['NRC1', 'NRC2']);
@@ -195,33 +184,23 @@ describe('ScrapingExportsService.renderGradesRc', () => {
 			}),
 		]);
 
-		const workbook = await loadWorkbook(
-			(await service.renderGradesRc(1, GENERATED_AT, 'en')).buffer,
-		);
+		const workbook = await loadWorkbook((await service.renderGradesRc(rows, 'en')).buffer);
 		expect(readSheet(workbook, 'Data')).toHaveLength(1);
 		const [header, first] = readSheet(workbook, 'Details');
 
 		expect(header[2]).toBe('Section code');
 		expect(first[8]).toBe('TF1');
 		expect(workbook.worksheets.map((s) => s.name)).toEqual(['Data', 'Details']);
-		expect(readPage).toHaveBeenCalledWith(1, GENERATED_AT, false, 0, expect.any(Number));
-		expect(readPage).toHaveBeenCalledWith(1, GENERATED_AT, true, 0, expect.any(Number));
 	});
 });
 
-describe('ScrapingExportsService.materializeGradesRc', () => {
+describe('ScrapingExportsService.fetchGradesRcRows', () => {
 	let openGradesRcExport: jest.Mock;
-	let insertBatch: jest.Mock;
 	let service: ScrapingExportsService;
 
 	beforeEach(() => {
 		openGradesRcExport = jest.fn();
-		insertBatch = jest.fn().mockResolvedValue(undefined);
-		service = new ScrapingExportsService(
-			{} as any,
-			{ openGradesRcExport } as any,
-			{ insertBatch } as any,
-		);
+		service = new ScrapingExportsService({} as any, { openGradesRcExport } as any);
 	});
 
 	const emptyHandle = (close = jest.fn().mockResolvedValue(undefined)) => ({
@@ -245,47 +224,35 @@ describe('ScrapingExportsService.materializeGradesRc', () => {
 		close,
 	});
 
-	it('opens the merge exactly once and inserts the resulting rows tagged with the run id and timestamp', async () => {
+	it('opens the merge exactly once and collects the resulting rows into one array', async () => {
 		openGradesRcExport.mockResolvedValue(oneRowHandle());
-		const generatedAt = new Date('2026-08-22T00:00:00Z');
 
-		await service.materializeGradesRc(1, 42, generatedAt);
+		const rows = await service.fetchGradesRcRows(1);
 
 		expect(openGradesRcExport).toHaveBeenCalledTimes(1);
 		expect(openGradesRcExport).toHaveBeenCalledWith(1);
-		expect(insertBatch).toHaveBeenCalledWith(42, generatedAt, [
-			expect.objectContaining({ sectionCode: 'NRC1' }),
-		]);
+		expect(rows).toEqual([expect.objectContaining({ sectionCode: 'NRC1' })]);
 	});
 
-	// Regression coverage for the full-period-in-memory OOM risk: a merge larger than one batch must
-	// be flushed in chunks as it streams, never buffered whole before the first insert.
-	it('flushes the merge into the child table in bounded chunks instead of buffering it all in memory', async () => {
+	it('collects a merge larger than one page in full', async () => {
 		openGradesRcExport.mockResolvedValue(manyRowsHandle(2500));
-		const generatedAt = new Date('2026-08-22T00:00:00Z');
 
-		await service.materializeGradesRc(1, 42, generatedAt);
+		const rows = await service.fetchGradesRcRows(1);
 
-		expect(insertBatch).toHaveBeenCalledTimes(3);
-		const chunkSizes = insertBatch.mock.calls.map(([, , chunk]) => chunk.length);
-		expect(chunkSizes).toEqual([1000, 1000, 500]);
-		for (const [runId, calledGeneratedAt] of insertBatch.mock.calls) {
-			expect(runId).toBe(42);
-			expect(calledGeneratedAt).toBe(generatedAt);
-		}
+		expect(rows).toHaveLength(2500);
 	});
 
 	it('rejects when the merge itself fails', async () => {
 		openGradesRcExport.mockRejectedValue(new Error('merge failed'));
 
-		await expect(service.materializeGradesRc(1, 42, new Date())).rejects.toThrow('merge failed');
+		await expect(service.fetchGradesRcRows(1)).rejects.toThrow('merge failed');
 	});
 
-	it('releases the handle once ingestion completes', async () => {
+	it('releases the handle once collection completes', async () => {
 		const close = jest.fn().mockResolvedValue(undefined);
 		openGradesRcExport.mockResolvedValue(emptyHandle(close));
 
-		await service.materializeGradesRc(1, 42, new Date());
+		await service.fetchGradesRcRows(1);
 
 		expect(close).toHaveBeenCalled();
 	});
@@ -299,7 +266,7 @@ describe('ScrapingExportsService.materializeGradesRc', () => {
 			close,
 		});
 
-		await expect(service.materializeGradesRc(1, 42, new Date())).rejects.toThrow('stream died');
+		await expect(service.fetchGradesRcRows(1)).rejects.toThrow('stream died');
 		expect(close).toHaveBeenCalled();
 	});
 });
@@ -311,7 +278,7 @@ describe('ScrapingExportsService sync export fetch/render split', () => {
 			.mockResolvedValue([
 				{ professorCode: 'N001', lastName: 'Doe', firstName: 'Jane', email: 'jane@upc.pe' },
 			]);
-		const service = new ScrapingExportsService({ getStaff } as any, {} as any, {} as any);
+		const service = new ScrapingExportsService({ getStaff } as any, {} as any);
 
 		const rows = await service.fetchStaffRows(5);
 
@@ -320,7 +287,7 @@ describe('ScrapingExportsService sync export fetch/render split', () => {
 	});
 
 	it('renderStaffExcel applies the requested language without re-fetching', async () => {
-		const service = new ScrapingExportsService({} as any, {} as any, {} as any);
+		const service = new ScrapingExportsService({} as any, {} as any);
 		const rows = [
 			{ professorCode: 'N001', lastName: 'Doe', firstName: 'Jane', email: 'jane@upc.pe' },
 		];

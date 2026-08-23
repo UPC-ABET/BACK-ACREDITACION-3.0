@@ -1,4 +1,4 @@
-import { ScrapingExportRunRepository } from './scraping-export-run.repository';
+import { ScrapingExportRunRepository, STATUS_FIELDS } from './scraping-export-run.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
 
 describe('ScrapingExportRunRepository', () => {
@@ -29,6 +29,32 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.findOne.mockResolvedValue(row);
 
 			await expect(repo.findByKey('staff', '202610')).resolves.toEqual(row);
+		});
+	});
+
+	describe('findStatusByKey', () => {
+		it('selects only the status-shaped columns, excluding rowsData', async () => {
+			mockTypeormRepository.findOne.mockResolvedValue({
+				exportType: 'gradesRc',
+				period: '202610',
+				status: 'completed',
+			});
+
+			await repo.findStatusByKey('gradesRc', '202610');
+
+			// Asserts the exact field list, not just "rowsData is absent" -- a select dropped
+			// entirely (reverting to loading the full row) would satisfy a weaker negative check.
+			expect(mockTypeormRepository.findOne).toHaveBeenCalledWith({
+				where: { exportType: 'gradesRc', period: '202610' },
+				select: [...STATUS_FIELDS],
+			});
+			expect(STATUS_FIELDS).not.toContain('rowsData');
+		});
+
+		it('returns null when no row exists for the key', async () => {
+			mockTypeormRepository.findOne.mockResolvedValue(null);
+
+			await expect(repo.findStatusByKey('gradesRc', '202610')).resolves.toBeNull();
 		});
 	});
 
@@ -81,6 +107,28 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.findOne.mockResolvedValue(null);
 
 			await expect(repo.upsertByKey('staff', '202610', { status: 'running' })).rejects.toThrow();
+		});
+	});
+
+	describe('upsertByKeyNoReturn', () => {
+		it('upserts without reading the row back', async () => {
+			mockTypeormRepository.upsert.mockResolvedValue(undefined);
+
+			const result = await repo.upsertByKeyNoReturn('gradesRc', '202610', {
+				status: 'completed',
+				rowsData: [{ section_code: 'NRC1' }],
+			});
+
+			expect(mockTypeormRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					exportType: 'gradesRc',
+					period: '202610',
+					status: 'completed',
+				}),
+				{ conflictPaths: ['exportType', 'period'] },
+			);
+			expect(mockTypeormRepository.findOne).not.toHaveBeenCalled();
+			expect(result).toBeUndefined();
 		});
 	});
 });

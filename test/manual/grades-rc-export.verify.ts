@@ -39,7 +39,7 @@ import {
 	GRADES_RC_TEMP_TABLE,
 	INDEX_GRADES_RC_TEMP_SQL,
 	MATERIALIZE_GRADES_RC_SQL,
-	READ_GRADES_RC_PAGE_SQL,
+	READ_GRADES_RC_ALL_PAGE_SQL,
 } from 'src/modules/admin/scraping-exports/core/grades-rc-export.sql';
 import { GRADE_RC_OBSERVATIONS } from 'src/modules/admin/scraping-exports/model/scraping-exports.types';
 import { PROGRAM_CAREER_MAP } from 'src/modules/admin/scraping-exports/model/scraping-exports.transforms';
@@ -236,26 +236,26 @@ async function assertThrowaway(db: Client): Promise<void> {
 async function loadFixtures(db: Client): Promise<void> {
 	await db.query(`TRUNCATE scrape_run, planner_scrape_run CASCADE`);
 	await db.query(
-		`INSERT INTO scrape_run (id, periodo, nivel, departamentos, status, started_at) VALUES
+		`INSERT INTO scrape_run (id, period, level, departments, status, started_at) VALUES
 			($1, '202610', 'UG', '{ISW}', 'completed', $3),
 			($2, '202610', 'UG', '{ISW}', 'running',   $4)`,
 		[BANNER_RUN, BANNER_UNFINISHED_RUN, OLDER_SCRAPE, NEWER_SCRAPE],
 	);
 	await db.query(
-		`INSERT INTO planner_scrape_run (id, periodo, status, started_at)
+		`INSERT INTO planner_scrape_run (id, period, status, started_at)
 		 VALUES ($1, '202610', 'completed', $2)`,
 		[PLANNER_RUN, OLDER_SCRAPE],
 	);
 
 	const horario = (nrc: string, courseNumber: string) =>
 		db.query(
-			`INSERT INTO raw_horario (run_id, nivel, periodo, departamento, nrc, payload, payload_hash)
+			`INSERT INTO raw_horario (run_id, level, period, department, nrc, payload, payload_hash)
 			 VALUES ($1, 'UG', '202610', 'ISW', $2, $3::jsonb, repeat('0', 64))`,
 			[BANNER_RUN, nrc, JSON.stringify({ materia: { codigo: '1ASI' }, numeroCurso: courseNumber })],
 		);
 	const matricula = (nrc: string, studentCode: string) =>
 		db.query(
-			`INSERT INTO raw_matricula (run_id, nivel, periodo, nrc, codigo_alumno, payload, payload_hash)
+			`INSERT INTO raw_matricula (run_id, level, period, nrc, student_code, payload, payload_hash)
 			 VALUES ($1, 'UG', '202610', $2, $3, '{}'::jsonb, repeat('0', 64))`,
 			[BANNER_RUN, nrc, studentCode],
 		);
@@ -263,7 +263,7 @@ async function loadFixtures(db: Client): Promise<void> {
 	// student who exists solely in Planner has neither -- which is a case the assertions cover.
 	const alumno = (studentCode: string, programCode: string | null) =>
 		db.query(
-			`INSERT INTO raw_alumno (run_id, nivel, codigo_alumno, payload, payload_hash)
+			`INSERT INTO raw_alumno (run_id, level, student_code, payload, payload_hash)
 			 VALUES ($1, 'UG', $2, $3::jsonb, repeat('0', 64))`,
 			[
 				BANNER_RUN,
@@ -283,7 +283,7 @@ async function loadFixtures(db: Client): Promise<void> {
 	) =>
 		db.query(
 			`INSERT INTO raw_notas
-				(run_id, nivel, periodo, codigo_alumno, curso_codigo, payload, payload_hash, scraped_at)
+				(run_id, level, period, student_code, course_code, payload, payload_hash, scraped_at)
 			 VALUES ($1, 'UG', '202610', $2, $3, $4::jsonb, repeat('0', 64), $5)`,
 			[
 				options.runId ?? BANNER_RUN,
@@ -296,7 +296,7 @@ async function loadFixtures(db: Client): Promise<void> {
 
 	const seccion = (sectionId: string, nrc: string) =>
 		db.query(
-			`INSERT INTO raw_planner_seccion (run_id, periodo, section_id, payload, payload_hash)
+			`INSERT INTO raw_planner_seccion (run_id, period, section_id, payload, payload_hash)
 			 VALUES ($1, '202610', $2, $3::jsonb, repeat('0', 64))`,
 			[
 				PLANNER_RUN,
@@ -734,9 +734,11 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 	];
 }
 
-// The worksheet split lives in MATERIALIZE_GRADES_RC_SQL, which the export runs and this script
-// otherwise never touches. Both halves are paged the way the repository does it, so what is checked
-// is that they partition the export: disjoint, and together the whole thing.
+// The worksheet split used to be a WHERE on the durable child table (readPage); that table is gone
+// (see ADR-004), so the split now happens client-side on the same in-memory array the real
+// generation collects. This script mirrors that: one unfiltered page-through of the temp table,
+// then partition by hasObservations locally -- what is checked is that the partition is disjoint
+// and adds up to the whole export, the same property the old two-query version checked.
 async function verifySplit(
 	db: Client,
 	params: unknown[],
@@ -746,23 +748,22 @@ async function verifySplit(
 	await db.query(MATERIALIZE_GRADES_RC_SQL, params);
 	await db.query(INDEX_GRADES_RC_TEMP_SQL);
 
-	const page = async (withObservations: boolean): Promise<ExportedRow[]> => {
-		const collected: ExportedRow[] = [];
-		let lastSeq = '0';
-		for (;;) {
-			const { rows: pageRows } = await db.query<ExportedRow & { exportSeq: string }>(
-				READ_GRADES_RC_PAGE_SQL,
-				[lastSeq, 2, withObservations],
-			);
-			if (pageRows.length === 0) return collected;
-			collected.push(...pageRows);
-			lastSeq = pageRows[pageRows.length - 1].exportSeq;
-		}
-	};
+	type MaterializedRow = ExportedRow & { exportSeq: string; hasObservations: boolean };
+	const all: MaterializedRow[] = [];
+	let lastSeq = '0';
+	for (;;) {
+		const { rows: pageRows } = await db.query<MaterializedRow>(READ_GRADES_RC_ALL_PAGE_SQL, [
+			lastSeq,
+			2,
+		]);
+		if (pageRows.length === 0) break;
+		all.push(...pageRows);
+		lastSeq = pageRows[pageRows.length - 1].exportSeq;
+	}
 
 	const key = (row: ExportedRow) => `${row.sectionCode}|${row.studentCode}`;
-	const clean = await page(false);
-	const review = await page(true);
+	const clean = all.filter((r) => !r.hasObservations);
+	const review = all.filter((r) => r.hasObservations);
 	const cleanKeys = new Set(clean.map(key));
 
 	return [

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { GradesRcExportRepository } from './grades-rc-export.repository';
 import { MATERIALIZE_GRADES_RC_SQL, READ_GRADES_RC_ALL_PAGE_SQL } from './grades-rc-export.sql';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
@@ -71,6 +72,22 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		rawQuery.mockResolvedValue([]);
 	});
 
+	it('sets work_mem, jit and enable_nestloop on the connection before materializing', async () => {
+		await repo.openGradesRcExport(1);
+
+		const materializeIndex = rawQuery.mock.calls.findIndex(
+			([sql]) => sql === MATERIALIZE_GRADES_RC_SQL,
+		);
+		const settingSqls = rawQuery.mock.calls.slice(0, materializeIndex).map(([sql]) => sql);
+		expect(settingSqls).toEqual(
+			expect.arrayContaining([
+				`SET work_mem = '128MB'`,
+				`SET jit = off`,
+				`SET enable_nestloop = off`,
+			]),
+		);
+	});
+
 	it('ships the period code, both catalogs and the designated types as parallel arrays', async () => {
 		await repo.openGradesRcExport(1);
 
@@ -122,9 +139,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 	});
 
 	// Pages are read until one comes back short of the page size, and the rows are handed on
-	// untouched: the whole transformation is in SQL. One unfiltered pass now, tagged with
-	// hasObservations rather than split into two filtered walks -- the two-sheet split moved to the
-	// durable child table's own read (ScrapingExportGradesRcRowRepository).
+	// untouched: the whole transformation is in SQL. Tagged with hasObservations; the two-sheet
+	// split happens in memory once collected (see ScrapingExportsService.renderGradesRc, ADR-004).
 	it('walks the scratch table a page at a time and yields the rows untouched', async () => {
 		const row = (seq: string, studentCode: string) => ({
 			exportSeq: seq,
@@ -186,6 +202,7 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 			'DROP TABLE IF EXISTS grades_rc_export_rows',
 			'RESET work_mem',
 			'RESET jit',
+			'RESET enable_nestloop',
 		]);
 		expect(release).toHaveBeenCalled();
 	});
@@ -195,6 +212,30 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 
 		await expect(repo.openGradesRcExport(1)).rejects.toThrow('merge failed');
 		expect(release).toHaveBeenCalled();
+	});
+
+	// A failed RESET must not suppress the others: enable_nestloop=off leaking on the pooled
+	// connection would silently degrade unrelated queries reusing it after release.
+	it('still attempts every RESET, logs the failure, and still releases the connection when one RESET rejects', async () => {
+		const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+		const handle = await repo.openGradesRcExport(1);
+		rawQuery.mockClear();
+		rawQuery.mockImplementation((sql: string) =>
+			sql === 'RESET work_mem' ? Promise.reject(new Error('reset failed')) : Promise.resolve([]),
+		);
+
+		await handle.close();
+
+		const sqls = rawQuery.mock.calls.map(([sql]) => sql);
+		expect(sqls).toEqual([
+			'DROP TABLE IF EXISTS grades_rc_export_rows',
+			'RESET work_mem',
+			'RESET jit',
+			'RESET enable_nestloop',
+		]);
+		expect(release).toHaveBeenCalled();
+		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('work_mem'));
+		warnSpy.mockRestore();
 	});
 
 	// The loaded sections are what keeps a grade out of the upload sheet, so they have to reach the

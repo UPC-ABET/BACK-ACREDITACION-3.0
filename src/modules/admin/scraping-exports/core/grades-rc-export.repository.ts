@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, QueryRunner } from 'typeorm';
 
@@ -31,9 +31,8 @@ export interface EnrolledSectionStudentRow {
 }
 
 // A reader over the materialized export: one unfiltered pass, tagging each row with whether it
-// carries an observation. Used only to copy the merge into the durable
-// scraping_export_gradesrc_rows table -- the two-sheet split happens on that read instead (see
-// ScrapingExportGradesRcRowRepository.readPage), not here.
+// carries an observation. Collected in full by ScrapingExportsService.fetchGradesRcRows; the
+// two-sheet split happens in memory on that array, not here (see ADR-004).
 export interface GradesRcExportHandle {
 	rows: () => AsyncGenerator<GradeRcExportRow & { hasObservations: boolean }>;
 	close: () => Promise<void>;
@@ -45,6 +44,8 @@ export interface GradesRcExportHandle {
  */
 @Injectable()
 export class GradesRcExportRepository {
+	private readonly logger = new Logger(GradesRcExportRepository.name);
+
 	constructor(
 		@InjectDataSource(EXPORTS_RAW_CONNECTION) private readonly rawDataSource: DataSource,
 		@InjectDataSource() private readonly mainDataSource: DataSource,
@@ -73,6 +74,9 @@ export class GradesRcExportRepository {
 			// pooled connection is reused by unrelated queries once returned.
 			await runner.query(`SET work_mem = '128MB'`);
 			await runner.query(`SET jit = off`);
+			// Pairs with section_designated's MATERIALIZED hint (grades-rc-export.sql.ts): forces a
+			// hash join over it instead of a per-row scan. Scoped to this connection, same as above.
+			await runner.query(`SET enable_nestloop = off`);
 			await runner.query(MATERIALIZE_GRADES_RC_SQL, params);
 			await runner.query(INDEX_GRADES_RC_TEMP_SQL);
 			// CREATE TABLE AS writes no statistics and autovacuum never analyzes a TEMP table, so
@@ -110,8 +114,24 @@ export class GradesRcExportRepository {
 			await runner.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
 		} finally {
 			try {
-				await runner.query(`RESET work_mem`);
-				await runner.query(`RESET jit`);
+				// Independent, not sequential-and-hope: a failed RESET must not skip the ones after
+				// it. Left unreset, enable_nestloop=off in particular is a planner-wide override that
+				// would silently degrade unrelated queries on the next reuse of this pooled connection.
+				const settings = ['work_mem', 'jit', 'enable_nestloop'];
+				const results = await Promise.allSettled(
+					settings.map((setting) => runner.query(`RESET ${setting}`)),
+				);
+				// A rejection here means this pooled connection returns to the pool with that setting
+				// still active -- worth a log, since it is otherwise silent until it degrades an
+				// unrelated query's plan later.
+				results.forEach((result, index) => {
+					if (result.status === 'rejected') {
+						this.logger.warn(
+							`Failed to RESET ${settings[index]} on the gradesRc export connection before ` +
+								`release: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+						);
+					}
+				});
 			} finally {
 				await runner.release();
 			}
