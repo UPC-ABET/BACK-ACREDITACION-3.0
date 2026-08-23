@@ -1,15 +1,17 @@
+import { Logger } from '@nestjs/common';
+
 import { ConflictError } from 'src/commons/domain-error';
 
 import { ScrapeRunRepository } from '../../banner/raw/core/scrape-run.repository';
 import { PlannerScrapeRunRepository } from '../../planner/raw/core/planner-scrape-run.repository';
 import { ScrapingExportRunRepository } from '../core/scraping-export-run.repository';
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
-import { ScrapingExportGradesRcRowRepository } from '../core/scraping-export-gradesrc-row.repository';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 import { getDefaultExportFileName } from '../model/scraping-exports.labels';
 import { ScrapingExportsService } from './scraping-exports.service';
 import {
 	GENERATION_STALE_TIMEOUT_MS,
+	GRADES_RC_ROW_COUNT_WARNING_THRESHOLD,
 	ScrapingExportGenerationService,
 } from './scraping-export-generation.service';
 
@@ -37,12 +39,8 @@ const mockExportsService = {
 	renderSectionsExcel: jest.fn(),
 	renderEnrolledStudentsExcel: jest.fn(),
 	renderStudentSectionsExcel: jest.fn(),
-	materializeGradesRc: jest.fn(),
+	fetchGradesRcRows: jest.fn(),
 	renderGradesRc: jest.fn(),
-};
-const mockGradesRcRowRepository = {
-	hasRows: jest.fn(),
-	deleteStaleBatches: jest.fn(),
 };
 
 const buildService = () =>
@@ -52,7 +50,6 @@ const buildService = () =>
 		mockScrapeRunRepository as unknown as ScrapeRunRepository,
 		mockPlannerScrapeRunRepository as unknown as PlannerScrapeRunRepository,
 		mockExportsService as unknown as ScrapingExportsService,
-		mockGradesRcRowRepository as unknown as ScrapingExportGradesRcRowRepository,
 	);
 
 // Both trigger paths fire generation without awaiting it, so tests have to let the microtask
@@ -96,13 +93,11 @@ beforeEach(() => {
 	mockExportsService.fetchSectionRows.mockResolvedValue([{ sectionCode: 'NRC1' }]);
 	mockExportsService.fetchEnrolledStudentRows.mockResolvedValue([{ studentCode: 'A1' }]);
 	mockExportsService.fetchStudentSectionRows.mockResolvedValue([{ sectionCode: 'NRC1' }]);
-	mockExportsService.materializeGradesRc.mockResolvedValue(undefined);
+	mockExportsService.fetchGradesRcRows.mockResolvedValue([]);
 	mockExportsService.renderGradesRc.mockResolvedValue({
 		buffer: Buffer.from('rc'),
 		fileName: 'NotasRC.xlsx',
 	});
-	mockGradesRcRowRepository.hasRows.mockResolvedValue(true);
-	mockGradesRcRowRepository.deleteStaleBatches.mockResolvedValue(undefined);
 });
 
 describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
@@ -125,7 +120,7 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 		await service.triggerForBannerRun(PERIOD, 'banner-run-1');
 		await flush();
 
-		expect(mockExportsService.materializeGradesRc).not.toHaveBeenCalled();
+		expect(mockExportsService.fetchGradesRcRows).not.toHaveBeenCalled();
 	});
 
 	it('triggers gradesRc exactly once when a completed Planner run exists for the period', async () => {
@@ -137,7 +132,7 @@ describe('ScrapingExportGenerationService.triggerForBannerRun', () => {
 		await service.triggerForBannerRun(PERIOD, 'banner-run-1');
 		await flush();
 
-		expect(mockExportsService.materializeGradesRc).toHaveBeenCalledTimes(1);
+		expect(mockExportsService.fetchGradesRcRows).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -151,7 +146,7 @@ describe('ScrapingExportGenerationService.triggerForPlannerRun', () => {
 		await service.triggerForPlannerRun(PERIOD, 'planner-run-1');
 		await flush();
 
-		expect(mockExportsService.materializeGradesRc).toHaveBeenCalledTimes(1);
+		expect(mockExportsService.fetchGradesRcRows).toHaveBeenCalledTimes(1);
 	});
 
 	it('does nothing when no completed Banner run exists for the period', async () => {
@@ -554,76 +549,56 @@ describe('ScrapingExportGenerationService.download', () => {
 		expect(mockExportsService.renderStaffExcel).toHaveBeenCalledWith(rows, 'en');
 	});
 
-	it('gradesRc: returns null when the row has never completed a generation (no finishedAt)', async () => {
-		mockRunRepository.findByKey.mockResolvedValue({
-			id: 1,
-			exportType: 'gradesRc',
-			period: PERIOD,
-			status: 'running',
-			finishedAt: null,
-			updatedAt: new Date(),
-		});
-		const service = buildService();
-
-		await expect(service.download('gradesRc', PERIOD, 'es')).resolves.toBeNull();
-		expect(mockGradesRcRowRepository.hasRows).not.toHaveBeenCalled();
-		expect(mockExportsService.renderGradesRc).not.toHaveBeenCalled();
-	});
-
-	it('gradesRc: returns null when no rows were ever materialized for this run', async () => {
-		const finishedAt = new Date('2026-08-20T09:05:00Z');
+	it('gradesRc: returns null when rowsData has never been written', async () => {
 		mockRunRepository.findByKey.mockResolvedValue({
 			id: 1,
 			exportType: 'gradesRc',
 			period: PERIOD,
 			status: 'completed',
-			finishedAt,
+			rowsData: null,
 			updatedAt: new Date(),
 		});
-		mockGradesRcRowRepository.hasRows.mockResolvedValue(false);
 		const service = buildService();
 
 		await expect(service.download('gradesRc', PERIOD, 'es')).resolves.toBeNull();
-		expect(mockGradesRcRowRepository.hasRows).toHaveBeenCalledWith(1, finishedAt);
 		expect(mockExportsService.renderGradesRc).not.toHaveBeenCalled();
 	});
 
-	it("gradesRc: renders from the persisted rows without re-running the merge, pinned to the row's own generatedAt", async () => {
-		const finishedAt = new Date('2026-08-20T09:05:00Z');
+	it('gradesRc: renders from the persisted rows without re-running the merge', async () => {
+		const rows = [{ sectionCode: 'NRC1', studentCode: 'A1' }];
 		mockRunRepository.findByKey.mockResolvedValue({
 			id: 1,
 			exportType: 'gradesRc',
 			period: PERIOD,
 			status: 'completed',
-			finishedAt,
+			rowsData: rows,
 			updatedAt: new Date(),
 		});
 		const service = buildService();
 
 		await service.download('gradesRc', PERIOD, 'en');
 
-		expect(mockExportsService.materializeGradesRc).not.toHaveBeenCalled();
-		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(1, finishedAt, 'en');
+		expect(mockExportsService.fetchGradesRcRows).not.toHaveBeenCalled();
+		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(rows, 'en');
 	});
 
-	// Blocker fix: a download racing a regenerate must read the batch `finishedAt` pins, i.e. the
-	// previous completed generation, not whatever the in-flight regenerate has half-inserted.
-	it('gradesRc: while a regenerate is running, still renders the previous batch pinned to the old finishedAt', async () => {
-		const previousFinishedAt = new Date('2026-08-20T09:05:00Z');
+	// Stale-while-regenerating, same as the sync exports: a single rowsData column update is one
+	// row, so a concurrent read sees either the whole old array or the whole new one.
+	it('gradesRc: renders the stored rows even when status is running (stale-while-regenerating)', async () => {
+		const rows = [{ sectionCode: 'NRC1', studentCode: 'A1' }];
 		mockRunRepository.findByKey.mockResolvedValue({
 			id: 1,
 			exportType: 'gradesRc',
 			period: PERIOD,
 			status: 'running',
-			finishedAt: previousFinishedAt,
+			rowsData: rows,
 			updatedAt: new Date(),
 		});
 		const service = buildService();
 
 		await service.download('gradesRc', PERIOD, 'es');
 
-		expect(mockGradesRcRowRepository.hasRows).toHaveBeenCalledWith(1, previousFinishedAt);
-		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(1, previousFinishedAt, 'es');
+		expect(mockExportsService.renderGradesRc).toHaveBeenCalledWith(rows, 'es');
 	});
 });
 
@@ -733,28 +708,26 @@ describe('ScrapingExportGenerationService reconcileIfStale boundary (AF-13)', ()
 });
 
 describe('ScrapingExportGenerationService gradesRc generation', () => {
-	it('materializes gradesRc via ScrapingExportsService.materializeGradesRc and stores completed status without rowsData', async () => {
+	it('fetches gradesRc rows via ScrapingExportsService.fetchGradesRcRows and stores completed status with rowsData', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
+		const rows = [{ sectionCode: 'NRC1', studentCode: 'A1' }];
+		mockExportsService.fetchGradesRcRows.mockResolvedValue(rows);
 		const service = buildService();
 
 		await service.regenerate('gradesRc', PERIOD, 'user-1');
 		await flush();
 
-		expect(mockExportsService.materializeGradesRc).toHaveBeenCalledWith(5, 1, expect.any(Date));
+		expect(mockExportsService.fetchGradesRcRows).toHaveBeenCalledWith(5);
 		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
 			'gradesRc',
 			PERIOD,
-			expect.objectContaining({ status: 'completed' }),
+			expect.objectContaining({ status: 'completed', rowsData: rows }),
 		);
-		const completedCall = mockRunRepository.upsertByKey.mock.calls.find(
-			([, , patch]) => (patch as { status?: string }).status === 'completed',
-		);
-		expect(completedCall?.[2]).not.toHaveProperty('rowsData');
 	});
 
 	it('sets status failed with an errorMessage, not an unhandled rejection, when the merge fails', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockExportsService.materializeGradesRc.mockRejectedValue(new Error('merge blew up'));
+		mockExportsService.fetchGradesRcRows.mockRejectedValue(new Error('merge blew up'));
 		const service = buildService();
 
 		await expect(service.regenerate('gradesRc', PERIOD, 'user-1')).resolves.toBeDefined();
@@ -767,46 +740,40 @@ describe('ScrapingExportGenerationService gradesRc generation', () => {
 		);
 	});
 
-	// Retention ordering: insert new batch -> flip parent to completed -> delete the stale batch,
-	// strictly in that order, so a download mid-regenerate never sees a gap.
-	it('deletes the previous batch only after the new one is inserted and the parent row is completed', async () => {
+	// ADR-004's accepted risk: a future period could grow past what a single jsonb value should
+	// safely hold. This is a visibility net, not a cap -- generation still completes.
+	it('logs a warning when the fetched row count exceeds the documented threshold, but still completes', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		const callOrder: string[] = [];
-		mockExportsService.materializeGradesRc.mockImplementation(async () => {
-			callOrder.push('materialize');
-		});
-		mockRunRepository.upsertByKey.mockImplementation(async (exportType, period, patch) => {
-			if (patch.status === 'completed') callOrder.push('upsert-completed');
-			return { id: 1, exportType, period, ...patch };
-		});
-		mockGradesRcRowRepository.deleteStaleBatches.mockImplementation(async () => {
-			callOrder.push('delete-stale');
-		});
+		const rows = Array.from({ length: GRADES_RC_ROW_COUNT_WARNING_THRESHOLD + 1 }, (_, i) => ({
+			sectionCode: `NRC${i}`,
+		}));
+		mockExportsService.fetchGradesRcRows.mockResolvedValue(rows);
+		const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 		const service = buildService();
 
 		await service.regenerate('gradesRc', PERIOD, 'user-1');
 		await flush();
 
-		expect(callOrder).toEqual(['materialize', 'upsert-completed', 'delete-stale']);
-		expect(mockGradesRcRowRepository.deleteStaleBatches).toHaveBeenCalledWith(1, expect.any(Date));
+		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(String(rows.length)));
+		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+			'gradesRc',
+			PERIOD,
+			expect.objectContaining({ status: 'completed', rowsData: rows }),
+		);
+		warnSpy.mockRestore();
 	});
 
-	// Blocker fix: a cleanup failure must not undo a generation that already succeeded — the parent
-	// row is already 'completed' and correctly pinned to the new batch by the time deleteStaleBatches
-	// runs, so a delete failure here is a cleanup problem, not a generation failure.
-	it('does not flip the row to failed when deleteStaleBatches fails after the row was already completed', async () => {
+	it('does not log a warning when the row count is under the threshold', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
-		mockGradesRcRowRepository.deleteStaleBatches.mockRejectedValue(new Error('delete blew up'));
+		mockExportsService.fetchGradesRcRows.mockResolvedValue([{ sectionCode: 'NRC1' }]);
+		const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 		const service = buildService();
 
 		await service.regenerate('gradesRc', PERIOD, 'user-1');
 		await flush();
 
-		const statuses = mockRunRepository.upsertByKey.mock.calls
-			.filter(([exportType, period]) => exportType === 'gradesRc' && period === PERIOD)
-			.map(([, , patch]) => (patch as { status?: string }).status);
-		expect(statuses).toEqual(['running', 'completed']);
-		expect(statuses).not.toContain('failed');
+		expect(warnSpy).not.toHaveBeenCalled();
+		warnSpy.mockRestore();
 	});
 });
 
@@ -821,8 +788,9 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 		]);
 		let releaseFirstMerge!: () => void;
 		const firstMergeGate = new Promise<void>((resolve) => (releaseFirstMerge = resolve));
-		mockExportsService.materializeGradesRc.mockImplementationOnce(async () => {
+		mockExportsService.fetchGradesRcRows.mockImplementationOnce(async () => {
 			await firstMergeGate;
+			return [];
 		});
 		const service = buildService();
 
@@ -834,7 +802,7 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 		await service.triggerForPlannerRun('P2', 'planner-run-2');
 		await flush();
 
-		expect(mockExportsService.materializeGradesRc).toHaveBeenCalledTimes(1);
+		expect(mockExportsService.fetchGradesRcRows).toHaveBeenCalledTimes(1);
 		expect(upsertCallsFor('gradesRc', 'P2')).toHaveLength(0);
 
 		releaseFirstMerge();

@@ -15,8 +15,6 @@ import {
 import { GradesRcExportRepository } from './core/grades-rc-export.repository';
 import { ScrapingExportRunEntity } from './model/scraping-export-run.entity';
 import { ScrapingExportRunRepository } from './core/scraping-export-run.repository';
-import { ScrapingExportGradesRcRowEntity } from './model/scraping-export-gradesrc-row.entity';
-import { ScrapingExportGradesRcRowRepository } from './core/scraping-export-gradesrc-row.repository';
 
 // Builds the uploads-ready Excel files (staff, sections, enrolled students, student-sections) out of
 // the raw scraping tables. Banner and Planner raw tables share one physical DB, so this module
@@ -42,7 +40,7 @@ import { ScrapingExportGradesRcRowRepository } from './core/scraping-export-grad
 				entities: [],
 			}),
 		}),
-		TypeOrmModule.forFeature([ScrapingExportRunEntity, ScrapingExportGradesRcRowEntity]),
+		TypeOrmModule.forFeature([ScrapingExportRunEntity]),
 		// ScrapingExportGenerationService needs ScrapeRunRepository/PlannerScrapeRunRepository to
 		// check whether the "other side" of a scrape (Banner/Planner) has a completed run before
 		// triggering gradesRc. Safe direction: neither raw module imports ScrapingExportsModule.
@@ -55,7 +53,6 @@ import { ScrapingExportGradesRcRowRepository } from './core/scraping-export-grad
 		ScrapingExportsRepository,
 		GradesRcExportRepository,
 		ScrapingExportRunRepository,
-		ScrapingExportGradesRcRowRepository,
 		ScrapingExportGenerationService,
 	],
 	exports: [ScrapingExportGenerationService],
