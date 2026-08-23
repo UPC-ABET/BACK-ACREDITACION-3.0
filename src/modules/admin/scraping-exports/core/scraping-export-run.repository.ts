@@ -9,7 +9,7 @@ import { ScrapingExportType } from '../model/scraping-exports.types';
 // Every field callers that only care about generation status/progress ever read -- deliberately
 // excludes `rowsData`. `gradesRc` can hold tens of thousands of rows in that jsonb column, and a
 // plain `findOne`/`upsert`-then-read pulls and (de)serializes it in full regardless of column
-// selection unless explicitly excluded -- see findStatusByKey/upsertByKeyReturningStatus below.
+// selection unless explicitly excluded -- see findStatusByKey below.
 export type ScrapingExportRunStatusFields = Pick<
 	ScrapingExportRunEntity,
 	| 'exportType'
