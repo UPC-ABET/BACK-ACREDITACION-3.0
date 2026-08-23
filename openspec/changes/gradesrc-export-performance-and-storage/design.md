@@ -324,8 +324,14 @@ argues the measured 20.5MB is small enough that this is confirmatory, not explor
     CLI-timestamped, forward-only. `up()` drops `core.scraping_export_gradesrc_rows` (and its FK/
     index, dropped implicitly with the table). `down()` recreates the table/FK/index exactly as
     `1787378550454-add-scraping-export-gradesrc-rows-table.ts` created them, so a rollback restores
-    the _shape_ (not the data — the table will be empty either way by the time this runs, since
-    `gradesRc` generation no longer writes to it).
+    the _shape_ (not the data).
+    > **Correction (audit, 2026-08-22):** the assumption originally written here — "the table will
+    > be empty either way by the time this runs, since `gradesRc` generation no longer writes to
+    > it" — does not hold. `defer-export-language-to-download`, which created this table, is
+    > already merged to `develop` and may have real rows in it by the time this migration deploys.
+    > `up()` now backfills each run's latest batch into `rowsData` (guarded on `status = 'completed'`
+    > and `rowsData IS NULL`) before dropping the table, and `down()` clears `gradesRc`'s `rowsData`
+    > for symmetry. See the migration file and `tasks.md`'s "Audit fixes" section.
   - No migration needed for `rows_data` itself — that column and its `UQ_scraping_export_runs_export_type_period`
     constraint already exist from the already-merged `defer-export-language-to-download`.
 - **Entities**: delete `ScrapingExportGradesRcRowEntity`

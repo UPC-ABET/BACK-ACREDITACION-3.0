@@ -16,6 +16,17 @@ export class DropScrapingExportGradesrcRowsTable1787446467593 implements Migrati
 		//
 		// Keys are snake_case to match every other write to this jsonb column (SnakeNamingStrategy's
 		// transformer only bridges top-level columns, not jsonb content -- see docs/POLICIES.md).
+		//
+		// `run.status = 'completed'` is a deliberate guard, not incidental: the old (pre-fix) code
+		// only flips a run to 'completed' after every chunk of a batch has been inserted, so a run
+		// still 'running' at the instant this migration executes (an old-code generation genuinely
+		// in flight, independent of the deploy window -- scrape completions fire-and-forget trigger
+		// it) has, at best, a partial batch on disk. Backfilling that would let `download` --
+		// which deliberately serves `rowsData` even while `status` is 'running' (stale-while-
+		// regenerating) -- silently hand out torn data instead of the honest `null` this migration
+		// exists to avoid. Skipping a still-running run here just leaves its `rowsData` `null`,
+		// which self-heals on the next regenerate -- the same accepted fallback as any other run
+		// this backfill can't reach.
 		await queryRunner.query(`
 			WITH latest_batch AS (
 				SELECT scraping_export_run_id, MAX(generated_at) AS generated_at
@@ -58,12 +69,24 @@ export class DropScrapingExportGradesrcRowsTable1787446467593 implements Migrati
 			FROM rows_json rj
 			WHERE run.id = rj.scraping_export_run_id
 				AND run.rows_data IS NULL
+				AND run.status = 'completed'
 		`);
 
 		await queryRunner.query(`DROP TABLE IF EXISTS "core"."scraping_export_gradesrc_rows"`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		// Symmetric with up()'s backfill: a run whose rowsData up() populated from this table should
+		// not silently keep serving that content once the table (and the invariant that rowsData
+		// mirrors it) is gone again -- otherwise a later re-run of up() would see rows_data already
+		// non-null and skip re-backfilling a run that may since have changed under the recreated
+		// table. Every export type already tolerates a null rowsData (self-heals on regenerate).
+		await queryRunner.query(`
+			UPDATE "core"."scraping_export_runs"
+			SET rows_data = NULL
+			WHERE export_type = 'gradesRc'
+		`);
+
 		await queryRunner.query(`
 			CREATE TABLE "core"."scraping_export_gradesrc_rows" (
 				"id" SERIAL NOT NULL,
