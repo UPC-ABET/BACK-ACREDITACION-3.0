@@ -6,6 +6,33 @@ import { sharedStrings } from 'src/shared/strings/shared.strings';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
 import { ScrapingExportType } from '../model/scraping-exports.types';
 
+// Every field callers that only care about generation status/progress ever read -- deliberately
+// excludes `rowsData`. `gradesRc` can hold tens of thousands of rows in that jsonb column, and a
+// plain `findOne`/`upsert`-then-read pulls and (de)serializes it in full regardless of column
+// selection unless explicitly excluded -- see findStatusByKey/upsertByKeyReturningStatus below.
+export type ScrapingExportRunStatusFields = Pick<
+	ScrapingExportRunEntity,
+	| 'exportType'
+	| 'period'
+	| 'status'
+	| 'errorMessage'
+	| 'triggeredBy'
+	| 'startedAt'
+	| 'finishedAt'
+	| 'updatedAt'
+>;
+
+const STATUS_FIELDS: Array<keyof ScrapingExportRunStatusFields> = [
+	'exportType',
+	'period',
+	'status',
+	'errorMessage',
+	'triggeredBy',
+	'startedAt',
+	'finishedAt',
+	'updatedAt',
+];
+
 export class ScrapingExportRunRepository extends BaseRepository<ScrapingExportRunEntity> {
 	constructor(
 		@InjectRepository(ScrapingExportRunEntity)
@@ -22,6 +49,19 @@ export class ScrapingExportRunRepository extends BaseRepository<ScrapingExportRu
 		return await this.repository.findOne({ where: { exportType, period } });
 	}
 
+	// Same lookup as findByKey, but excludes `rowsData`. For callers (status polling, generation
+	// claims) that never read it -- see docs/CONTEXT.md's 640MB container ceiling and ADR-004's
+	// accepted gradesRc storage risk.
+	async findStatusByKey(
+		exportType: ScrapingExportType,
+		period: string,
+	): Promise<ScrapingExportRunStatusFields | null> {
+		return await this.repository.findOne({
+			where: { exportType, period },
+			select: STATUS_FIELDS,
+		});
+	}
+
 	/**
 	 * A single `upsert` rather than find-then-write: two concurrent triggers for the same key
 	 * (e.g. a completed scrape racing a manual regenerate) would both see no row and race into a
@@ -33,15 +73,35 @@ export class ScrapingExportRunRepository extends BaseRepository<ScrapingExportRu
 		period: string,
 		patch: DeepPartial<ScrapingExportRunEntity>,
 	): Promise<ScrapingExportRunEntity> {
-		await this.repository.upsert(
-			{ exportType, period, ...patch },
-			{ conflictPaths: ['exportType', 'period'] },
-		);
+		await this.doUpsert(exportType, period, patch);
 
 		const entity = await this.findByKey(exportType, period);
 		if (!entity) {
 			throw new NotFoundException(sharedStrings.error.notFound);
 		}
 		return entity;
+	}
+
+	// Same write as upsertByKey, but skips the read-back entirely -- for callers that never use
+	// the returned entity (writing a terminal 'completed'/'failed' state at the end of
+	// generation). Avoids re-fetching and re-camelizing a potentially large `rowsData` array
+	// purely to discard it.
+	async upsertByKeyNoReturn(
+		exportType: ScrapingExportType,
+		period: string,
+		patch: DeepPartial<ScrapingExportRunEntity>,
+	): Promise<void> {
+		await this.doUpsert(exportType, period, patch);
+	}
+
+	private async doUpsert(
+		exportType: ScrapingExportType,
+		period: string,
+		patch: DeepPartial<ScrapingExportRunEntity>,
+	): Promise<void> {
+		await this.repository.upsert(
+			{ exportType, period, ...patch },
+			{ conflictPaths: ['exportType', 'period'] },
+		);
 	}
 }

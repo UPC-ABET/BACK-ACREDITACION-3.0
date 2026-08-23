@@ -32,6 +32,29 @@ describe('ScrapingExportRunRepository', () => {
 		});
 	});
 
+	describe('findStatusByKey', () => {
+		it('selects only the status-shaped columns, excluding rowsData', async () => {
+			mockTypeormRepository.findOne.mockResolvedValue({
+				exportType: 'gradesRc',
+				period: '202610',
+				status: 'completed',
+			});
+
+			await repo.findStatusByKey('gradesRc', '202610');
+
+			expect(mockTypeormRepository.findOne).toHaveBeenCalledWith({
+				where: { exportType: 'gradesRc', period: '202610' },
+				select: expect.not.arrayContaining(['rowsData']),
+			});
+		});
+
+		it('returns null when no row exists for the key', async () => {
+			mockTypeormRepository.findOne.mockResolvedValue(null);
+
+			await expect(repo.findStatusByKey('gradesRc', '202610')).resolves.toBeNull();
+		});
+	});
+
 	describe('upsertByKey', () => {
 		it('creates a new row on the first call for a key', async () => {
 			mockTypeormRepository.upsert.mockResolvedValue(undefined);
@@ -81,6 +104,28 @@ describe('ScrapingExportRunRepository', () => {
 			mockTypeormRepository.findOne.mockResolvedValue(null);
 
 			await expect(repo.upsertByKey('staff', '202610', { status: 'running' })).rejects.toThrow();
+		});
+	});
+
+	describe('upsertByKeyNoReturn', () => {
+		it('upserts without reading the row back', async () => {
+			mockTypeormRepository.upsert.mockResolvedValue(undefined);
+
+			const result = await repo.upsertByKeyNoReturn('gradesRc', '202610', {
+				status: 'completed',
+				rowsData: [{ section_code: 'NRC1' }],
+			});
+
+			expect(mockTypeormRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					exportType: 'gradesRc',
+					period: '202610',
+					status: 'completed',
+				}),
+				{ conflictPaths: ['exportType', 'period'] },
+			);
+			expect(mockTypeormRepository.findOne).not.toHaveBeenCalled();
+			expect(result).toBeUndefined();
 		});
 	});
 });

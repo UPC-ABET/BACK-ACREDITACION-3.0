@@ -19,7 +19,9 @@ const PERIOD = '202610';
 
 const mockRunRepository = {
 	findByKey: jest.fn(),
+	findStatusByKey: jest.fn(),
 	upsertByKey: jest.fn(),
+	upsertByKeyNoReturn: jest.fn(),
 };
 const mockExportsRepository = {
 	findAcademicPeriodIdByCode: jest.fn(),
@@ -86,6 +88,12 @@ beforeEach(() => {
 		period,
 		...patch,
 	}));
+	mockRunRepository.upsertByKeyNoReturn.mockResolvedValue(undefined);
+	// getStatus/claimForGeneration read through findStatusByKey now, not findByKey -- delegate so
+	// every existing test that only configures findByKey keeps working for both call paths.
+	mockRunRepository.findStatusByKey.mockImplementation((exportType, period) =>
+		mockRunRepository.findByKey(exportType, period),
+	);
 	mockExportsRepository.findAcademicPeriodIdByCode.mockResolvedValue(5);
 	mockScrapeRunRepository.findByPeriod.mockResolvedValue([]);
 	mockPlannerScrapeRunRepository.findByPeriod.mockResolvedValue([]);
@@ -169,7 +177,7 @@ describe('ScrapingExportGenerationService AF-1 Banner period-not-found guard', (
 		await flush();
 
 		expect(mockExportsService.fetchStaffRows).not.toHaveBeenCalled();
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+		expect(mockRunRepository.upsertByKeyNoReturn).toHaveBeenCalledWith(
 			'staff',
 			PERIOD,
 			expect.objectContaining({ status: 'failed', errorMessage: expect.any(String) }),
@@ -187,12 +195,12 @@ describe('ScrapingExportGenerationService AC-4 sync export generation persists r
 		await service.regenerate('staff', PERIOD, 'user-1');
 		await flush();
 
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+		expect(mockRunRepository.upsertByKeyNoReturn).toHaveBeenCalledWith(
 			'staff',
 			PERIOD,
 			expect.objectContaining({ status: 'completed', rowsData: rows }),
 		);
-		const completedCall = mockRunRepository.upsertByKey.mock.calls.find(
+		const completedCall = mockRunRepository.upsertByKeyNoReturn.mock.calls.find(
 			([, , patch]) => (patch as { status?: string }).status === 'completed',
 		);
 		expect(completedCall?.[2]).not.toHaveProperty('fileBytes');
@@ -343,6 +351,17 @@ describe('ScrapingExportGenerationService.regenerate', () => {
 		);
 	});
 
+	// AF-status-cost: the claim's own existence check never needs rowsData either -- only whether
+	// a row currently exists and, if so, its status.
+	it('checks for an existing claim through findStatusByKey, not the full findByKey', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const service = buildService();
+
+		await service.regenerate('gradesRc', PERIOD, 'user-1');
+
+		expect(mockRunRepository.findStatusByKey).toHaveBeenCalledWith('gradesRc', PERIOD);
+	});
+
 	it('calls upsertByKey to running exactly once per successful claim (AF-8)', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
 		const service = buildService();
@@ -423,6 +442,18 @@ describe('ScrapingExportGenerationService.regenerate', () => {
 });
 
 describe('ScrapingExportGenerationService.getStatus', () => {
+	// AF-status-cost: getStatus is the endpoint a frontend polls during a multi-minute gradesRc
+	// generation -- it must never pull rowsData (up to tens of thousands of rows) just to build a
+	// status response that never reads it.
+	it('reads through findStatusByKey, not the full findByKey, and never touches rowsData', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const service = buildService();
+
+		await service.getStatus('gradesRc', PERIOD);
+
+		expect(mockRunRepository.findStatusByKey).toHaveBeenCalledWith('gradesRc', PERIOD);
+	});
+
 	it('returns notGenerated when no row exists', async () => {
 		mockRunRepository.findByKey.mockResolvedValue(null);
 		const service = buildService();
@@ -488,6 +519,18 @@ describe('ScrapingExportGenerationService.download', () => {
 		const service = buildService();
 
 		await expect(service.download('staff', PERIOD, 'es')).resolves.toBeNull();
+	});
+
+	// Unlike getStatus/regenerate, download genuinely needs rowsData to render a file, so it must
+	// keep reading through the full findByKey rather than the status-only lookup.
+	it('reads through the full findByKey, not findStatusByKey', async () => {
+		mockRunRepository.findByKey.mockResolvedValue(null);
+		const service = buildService();
+
+		await service.download('staff', PERIOD, 'es');
+
+		expect(mockRunRepository.findByKey).toHaveBeenCalledWith('staff', PERIOD);
+		expect(mockRunRepository.findStatusByKey).not.toHaveBeenCalled();
 	});
 
 	it('returns null when rowsData has never been written for a sync export', async () => {
@@ -718,7 +761,7 @@ describe('ScrapingExportGenerationService gradesRc generation', () => {
 		await flush();
 
 		expect(mockExportsService.fetchGradesRcRows).toHaveBeenCalledWith(5);
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+		expect(mockRunRepository.upsertByKeyNoReturn).toHaveBeenCalledWith(
 			'gradesRc',
 			PERIOD,
 			expect.objectContaining({ status: 'completed', rowsData: rows }),
@@ -733,7 +776,7 @@ describe('ScrapingExportGenerationService gradesRc generation', () => {
 		await expect(service.regenerate('gradesRc', PERIOD, 'user-1')).resolves.toBeDefined();
 		await flush();
 
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+		expect(mockRunRepository.upsertByKeyNoReturn).toHaveBeenCalledWith(
 			'gradesRc',
 			PERIOD,
 			expect.objectContaining({ status: 'failed', errorMessage: expect.any(String) }),
@@ -755,7 +798,7 @@ describe('ScrapingExportGenerationService gradesRc generation', () => {
 		await flush();
 
 		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(String(rows.length)));
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+		expect(mockRunRepository.upsertByKeyNoReturn).toHaveBeenCalledWith(
 			'gradesRc',
 			PERIOD,
 			expect.objectContaining({ status: 'completed', rowsData: rows }),
@@ -807,7 +850,7 @@ describe('ScrapingExportGenerationService gradesRc system-wide single-flight gua
 
 		releaseFirstMerge();
 		await flush();
-		expect(mockRunRepository.upsertByKey).toHaveBeenCalledWith(
+		expect(mockRunRepository.upsertByKeyNoReturn).toHaveBeenCalledWith(
 			'gradesRc',
 			'P1',
 			expect.objectContaining({ status: 'completed' }),

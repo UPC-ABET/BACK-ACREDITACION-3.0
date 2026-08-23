@@ -4,10 +4,17 @@ import { ConflictError } from 'src/commons/domain-error';
 
 import { ScrapeRunRepository } from '../../banner/raw/core/scrape-run.repository';
 import { PlannerScrapeRunRepository } from '../../planner/raw/core/planner-scrape-run.repository';
-import { ScrapingExportRunRepository } from '../core/scraping-export-run.repository';
+import {
+	ScrapingExportRunRepository,
+	ScrapingExportRunStatusFields,
+} from '../core/scraping-export-run.repository';
 import { ScrapingExportsRepository } from '../core/scraping-exports.repository';
 import { ScrapingExportRunEntity } from '../model/scraping-export-run.entity';
-import { ScrapingExportStatusResponse, ScrapingExportType } from '../model/scraping-exports.types';
+import {
+	GradeRcExportRow,
+	ScrapingExportStatusResponse,
+	ScrapingExportType,
+} from '../model/scraping-exports.types';
 import { getDefaultExportFileName } from '../model/scraping-exports.labels';
 import { scrapingExportsValidationStrings } from '../config/strings/scraping-exports.validation';
 import { GeneratedExcel, ScrapingExportsService } from './scraping-exports.service';
@@ -152,7 +159,7 @@ export class ScrapingExportGenerationService {
 		exportType: ScrapingExportType,
 		period: string,
 	): Promise<ScrapingExportStatusResponse | { status: 'notGenerated' }> {
-		const row = await this.runRepository.findByKey(exportType, period);
+		const row = await this.runRepository.findStatusByKey(exportType, period);
 		if (!row) return { status: 'notGenerated' };
 		return this.toStatusResponse(await this.reconcileIfStale(row));
 	}
@@ -174,7 +181,10 @@ export class ScrapingExportGenerationService {
 		if (!reconciled.rowsData) return null;
 
 		if (exportType === 'gradesRc') {
-			return this.exportsService.renderGradesRc(reconciled.rowsData, lang);
+			return this.exportsService.renderGradesRc(
+				reconciled.rowsData as Array<GradeRcExportRow & { hasObservations: boolean }>,
+				lang,
+			);
 		}
 		return this.renderSyncExport(exportType, reconciled.rowsData, lang);
 	}
@@ -266,7 +276,7 @@ export class ScrapingExportGenerationService {
 		sourceBannerRunId?: string,
 		sourcePlannerRunId?: string,
 	): Promise<ScrapingExportRunEntity | null> {
-		const existing = await this.runRepository.findByKey(exportType, period);
+		const existing = await this.runRepository.findStatusByKey(exportType, period);
 		const reconciled = existing ? await this.reconcileIfStale(existing) : null;
 
 		if (reconciled?.status === 'running') {
@@ -311,7 +321,7 @@ export class ScrapingExportGenerationService {
 			}
 			const rows = await this.fetchSyncExportRows(exportType, academicPeriodId);
 
-			await this.runRepository.upsertByKey(exportType, period, {
+			await this.runRepository.upsertByKeyNoReturn(exportType, period, {
 				status: 'completed',
 				triggeredBy,
 				rowsData: rows,
@@ -334,7 +344,7 @@ export class ScrapingExportGenerationService {
 				error instanceof GradesRcMergeBusyError
 					? scrapingExportsValidationStrings.error.gradesRcBusy
 					: scrapingExportsValidationStrings.error.generationFailed;
-			await this.runRepository.upsertByKey(exportType, period, {
+			await this.runRepository.upsertByKeyNoReturn(exportType, period, {
 				status: 'failed',
 				triggeredBy,
 				errorMessage,
@@ -400,7 +410,7 @@ export class ScrapingExportGenerationService {
 				);
 			}
 
-			await this.runRepository.upsertByKey('gradesRc', period, {
+			await this.runRepository.upsertByKeyNoReturn('gradesRc', period, {
 				status: 'completed',
 				triggeredBy,
 				rowsData: rows,
@@ -417,7 +427,7 @@ export class ScrapingExportGenerationService {
 	// own comment. `download` is the only endpoint that ever renders and streams bytes. `fileName`
 	// is a readiness signal only (always the default-language name), present exactly when `status`
 	// is 'completed'.
-	private toStatusResponse(row: ScrapingExportRunEntity): ScrapingExportStatusResponse {
+	private toStatusResponse(row: ScrapingExportRunStatusFields): ScrapingExportStatusResponse {
 		return {
 			exportType: row.exportType,
 			period: row.period,
@@ -433,7 +443,9 @@ export class ScrapingExportGenerationService {
 	// `docs/POLICIES.md` rules out adding `@nestjs/schedule`. A `running` row whose `updatedAt`
 	// is older than `GENERATION_STALE_TIMEOUT_MS` means the process that was generating it died
 	// mid-flight (e.g. a deploy), so it is flipped to `failed` right here, on read.
-	private async reconcileIfStale(row: ScrapingExportRunEntity): Promise<ScrapingExportRunEntity> {
+	private async reconcileIfStale<T extends ScrapingExportRunStatusFields>(
+		row: T,
+	): Promise<T | ScrapingExportRunEntity> {
 		if (row.status !== 'running') return row;
 
 		const updatedAtMs = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
