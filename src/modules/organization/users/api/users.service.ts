@@ -132,6 +132,16 @@ export class UserService extends BaseService<UserRepository> {
 		return { message: usersValidationStrings.result.passwordResetCompleted };
 	}
 
+	async resetPasswordsToDefault(
+		userIds: number[],
+	): Promise<Array<{ id: number; firstName: string; lastName: string }>> {
+		if (userIds.length === 0) return [];
+		const passwordHash = await hashPassword(
+			this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'),
+		);
+		return await this.repository.resetPasswordsByIds(userIds, passwordHash);
+	}
+
 	private async getAuthorizationProfile(userId: number): Promise<AuthorizationProfile> {
 		const profile = await this.userAuthorizationService.buildAuthorizationProfile(userId);
 		return this.validateAuthorizationProfile(profile);

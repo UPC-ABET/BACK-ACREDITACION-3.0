@@ -23,6 +23,7 @@ describe('UserService - login', () => {
 		findOneByCondition: jest.Mock;
 		findForLogin: jest.Mock;
 		findActiveByEmail: jest.Mock;
+		resetPasswordsByIds: jest.Mock;
 	};
 	let passwordResetTokenRepository: {
 		expirePendingTokens: jest.Mock;
@@ -49,10 +50,16 @@ describe('UserService - login', () => {
 	};
 
 	beforeEach(() => {
+		// bcryptjs is mocked once at module scope, so its call history otherwise leaks across tests
+		// in this file (e.g. the `resetPassword` tests below call `hashPassword` too).
+		(bcrypt.hash as unknown as jest.Mock).mockClear();
+		(bcrypt.compare as unknown as jest.Mock).mockClear();
+
 		userRepository = {
 			findOneByCondition: jest.fn(),
 			findForLogin: jest.fn(),
 			findActiveByEmail: jest.fn(),
+			resetPasswordsByIds: jest.fn(),
 		};
 		passwordResetTokenRepository = {
 			expirePendingTokens: jest.fn().mockResolvedValue(undefined),
@@ -340,6 +347,34 @@ describe('UserService - login', () => {
 				permissions: authorizationProfile.permissions,
 				userSchools,
 			});
+		});
+	});
+
+	describe('resetPasswordsToDefault', () => {
+		it('returns an empty array without hashing or querying when given no ids', async () => {
+			const result = await service.resetPasswordsToDefault([]);
+
+			expect(result).toEqual([]);
+			expect(bcrypt.hash).not.toHaveBeenCalled();
+			expect(userRepository.resetPasswordsByIds).not.toHaveBeenCalled();
+		});
+
+		it('hashes the configured default password once and resets every given id', async () => {
+			(bcrypt.hash as unknown as jest.Mock).mockResolvedValueOnce('hashed-default-password');
+			const updated = [
+				{ id: 1, firstName: 'Ada', lastName: 'Lovelace' },
+				{ id: 2, firstName: 'Alan', lastName: 'Turing' },
+			];
+			userRepository.resetPasswordsByIds.mockResolvedValueOnce(updated);
+
+			const result = await service.resetPasswordsToDefault([1, 2]);
+
+			expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+			expect(userRepository.resetPasswordsByIds).toHaveBeenCalledWith(
+				[1, 2],
+				'hashed-default-password',
+			);
+			expect(result).toEqual(updated);
 		});
 	});
 });
