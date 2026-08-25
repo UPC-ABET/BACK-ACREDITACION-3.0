@@ -109,6 +109,16 @@ describe('ChartService.resetMaintenancePasswords', () => {
 		expect(repository.findChartUsersByTypes).toHaveBeenCalledWith(7, 7, [ENTITY.SCHOOL]);
 	});
 
+	it('uses the existing rootChartId as root when the school node has a parent', async () => {
+		const { service, repository } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
+		repository.findChartUsersByTypes.mockResolvedValue([]);
+
+		await service.resetMaintenancePasswords(100, 7, [ENTITY.COURSE]);
+
+		expect(repository.findChartUsersByTypes).toHaveBeenCalledWith(1, 7, [ENTITY.COURSE]);
+	});
+
 	it('skips a node with no linked user and reports it, without resetting anything for it', async () => {
 		const { service, repository, userService } = buildService();
 		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
@@ -146,16 +156,23 @@ describe('ChartService.resetMaintenancePasswords', () => {
 		});
 	});
 
-	it('returns an empty reset list without calling userService when every matched row is unlinked', async () => {
+	it('reports every row as skipped and never calls userService when all matched rows are unlinked', async () => {
 		const { service, repository, userService } = buildService();
 		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
 		repository.findChartUsersByTypes.mockResolvedValue([
 			{ chartId: 30, entityTypeCode: ENTITY.COURSE, staffId: 40, userId: null },
+			{ chartId: 31, entityTypeCode: ENTITY.AREA, staffId: 41, userId: null },
 		]);
 
-		const result = await service.resetMaintenancePasswords(100, 7, [ENTITY.COURSE]);
+		const result = await service.resetMaintenancePasswords(100, 7, [ENTITY.COURSE, ENTITY.AREA]);
 
 		expect(userService.resetPasswordsToDefault).not.toHaveBeenCalled();
-		expect(result.reset).toEqual([]);
+		expect(result).toEqual({
+			reset: [],
+			skipped: [
+				{ chartId: 30, staffId: 40, entityTypeCode: ENTITY.COURSE },
+				{ chartId: 31, staffId: 41, entityTypeCode: ENTITY.AREA },
+			],
+		});
 	});
 });
