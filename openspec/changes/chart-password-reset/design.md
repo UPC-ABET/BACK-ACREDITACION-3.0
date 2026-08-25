@@ -185,6 +185,15 @@ as "nothing to show," not a 404.
 
 ### AC-8 — Unauthorized caller is rejected via permission guard
 
+> **Superseded 2026-08-25 — see `tasks.md` § Audit fixes, Task R1.1.** The reasoning below
+> (`ORGANIZATION`/`POST`) was the original design call and is kept here for the record, but
+> `/abet-audit-pr` found it let a caller scoped to one school force-reset the cross-school
+> Dean's password, since Dean is a shared root (§ AC-3 above). The requester's explicit fix
+> was to gate the **entire** endpoint behind `PERMISSION_MODULES.ADMIN` instead — the
+> opposite of the "considered and rejected" conclusion below. `tasks.md` R1.1 is the current
+> source of truth for the permission this endpoint actually requires; do not re-derive it
+> from this paragraph.
+
 `@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })`
 — the same module/action already guarding `maintenanceCreate` (`charts.controller.ts:95`).
 **Decision, not a default carried over unexamined**: this reset action is reachable only
@@ -278,7 +287,7 @@ ids.
     `entityType.code`, so the frontend sends back exactly what it already has, no new
     vocabulary.
   - Response: `{ reset: Array<{ userId, firstName, lastName, chartIds: number[] }>, skipped: Array<{ chartId, staffId, entityTypeCode }> }`.
-- **Guards / scope**: `@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })` (see AC-8). `@ApiAcademicPeriodHeader()` / `@ApiSchoolHeader()` for Swagger.
+- **Guards / scope**: `@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })` — changed from the original `ORGANIZATION`/`POST` call per the audit fix (see the superseded note under AC-8 and `tasks.md` R1.1). `@ApiAcademicPeriodHeader()` / `@ApiSchoolHeader()` for Swagger.
 - **i18n keys**: none new. No new error path is introduced — a missing/not-yet-configured
   school chart and an empty selected-type match are both success responses (AC-7), and DTO
   shape violations already fall through to the global `error.validation` key.
@@ -325,13 +334,13 @@ those parameters produce is verified manually.
 
 ## Risks
 
-| Risk                                                                                                                                  | Mitigation                                                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Duplicated branch-CTE literal (this change's query vs. `getMaintenanceBranch`) drifts over time                                       | Cross-referencing comment in both methods, matching the existing `translateDuplicateNode` duplication precedent in this same module |
-| One shared global default password put on several live accounts in one call                                                           | Accepted by requester in `proposal.md` — identical to what `UserService.create()` already does at signup, no new mechanism          |
-| No audit trail of who reset which users                                                                                               | Explicitly out of scope per `proposal.md`; response payload (ids + names) is the only record, and is not persisted                  |
-| `PERMISSION_MODULES.ORGANIZATION`/`POST` is the same gate as ordinary chart-node CRUD, not a dedicated "credential action" permission | Reasoned explicitly in AC-8 above rather than assumed; revisit only if a real incident shows it's too broad                         |
-| Manual end-to-end verification (real login with the default password) has no automated coverage                                       | Captured as the one runbook step; everything else is unit/repository-tested                                                         |
+| Risk                                                                                                                                                                                    | Mitigation                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Duplicated branch-CTE literal (this change's query vs. `getMaintenanceBranch`) drifts over time                                                                                         | Cross-referencing comment in both methods, matching the existing `translateDuplicateNode` duplication precedent in this same module                                                                                                                                                                                                                                                                                                                                                 |
+| One shared global default password put on several live accounts in one call                                                                                                             | Accepted by requester in `proposal.md` — identical to what `UserService.create()` already does at signup, no new mechanism                                                                                                                                                                                                                                                                                                                                                          |
+| No audit trail of who reset which users                                                                                                                                                 | Explicitly out of scope per `proposal.md`; response payload (ids + names) is the only record, and is not persisted                                                                                                                                                                                                                                                                                                                                                                  |
+| ~~`PERMISSION_MODULES.ORGANIZATION`/`POST` is the same gate as ordinary chart-node CRUD~~ — superseded: `/abet-audit-pr` found this let a caller reset the cross-school Dean's password | Changed to `PERMISSION_MODULES.ADMIN` for the whole endpoint (`tasks.md` R1.1). Trades a real privilege-escalation hole for a new one: `ADMIN` is this codebase's coarse, all-or-nothing superuser tier (seed data grants it every module permission at once), so a school coordinator can no longer self-serve even a single course-level password reset without also gaining IAM/upload/period-config access. Not re-litigated in this round — flagged for the requester to weigh |
+| Manual end-to-end verification (real login with the default password) has no automated coverage                                                                                         | Captured as the one runbook step; everything else is unit/repository-tested                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 ## Docs to update in this PR
 

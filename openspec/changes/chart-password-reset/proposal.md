@@ -126,17 +126,17 @@ in the codebase.
 
 ### Traceability
 
-| AC  | Criterion                                                               | Satisfied by                                                                                               |
-| --- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 1   | Selected-type nodes in school's tree get user reset to default password | `ChartRepository.findChartUsersByTypes`, `ChartService.resetMaintenancePasswords`                          |
-| 2   | Unselected-type nodes in the same tree are untouched                    | `ChartRepository.findChartUsersByTypes` (`WHERE et.code = ANY($3)`)                                        |
-| 3   | DEAN reset is global-per-period, independent of triggering school       | `ChartRepository.findChartUsersByTypes` branch CTE anchor (design.md AC-3)                                 |
-| 4   | SCHOOL reset is scoped to the triggering school only                    | `ChartRepository.findChartUsersByTypes` branch CTE second arm (design.md AC-4)                             |
-| 5   | Node with no linked user is skipped and reported, not an error          | `ChartService.resetMaintenancePasswords` (skipped partition)                                               |
-| 6   | A user reachable via multiple in-scope nodes is reset once              | `ChartService.resetMaintenancePasswords` (`chartIdsByUser` grouping)                                       |
-| 7   | Zero matching linked users returns success with empty result            | `ChartService.resetMaintenancePasswords`                                                                   |
-| 8   | Unauthorized caller is rejected via permission guard                    | `ChartController.maintenanceResetPasswords` — `@RequirePermission({ module: ORGANIZATION, action: POST })` |
-| 9   | Response reports reset + skipped, never the password value              | `UserService.resetPasswordsToDefault`, `UserRepository.resetPasswordsByIds`                                |
+| AC  | Criterion                                                               | Satisfied by                                                                                                                                                                                                          |
+| --- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Selected-type nodes in school's tree get user reset to default password | `ChartRepository.findChartUsersByTypes`, `ChartService.resetMaintenancePasswords`                                                                                                                                     |
+| 2   | Unselected-type nodes in the same tree are untouched                    | `ChartRepository.findChartUsersByTypes` (`WHERE et.code = ANY($3)`)                                                                                                                                                   |
+| 3   | DEAN reset is global-per-period, independent of triggering school       | `ChartRepository.findChartUsersByTypes` branch CTE anchor (design.md AC-3)                                                                                                                                            |
+| 4   | SCHOOL reset is scoped to the triggering school only                    | `ChartRepository.findChartUsersByTypes` branch CTE second arm (design.md AC-4)                                                                                                                                        |
+| 5   | Node with no linked user is skipped and reported, not an error          | `ChartService.resetMaintenancePasswords` (skipped partition)                                                                                                                                                          |
+| 6   | A user reachable via multiple in-scope nodes is reset once              | `ChartService.resetMaintenancePasswords` (`chartIdsByUser` grouping)                                                                                                                                                  |
+| 7   | Zero matching linked users returns success with empty result            | `ChartService.resetMaintenancePasswords`                                                                                                                                                                              |
+| 8   | Unauthorized caller is rejected via permission guard                    | `ChartController.maintenanceResetPasswords` — `@RequirePermission({ module: ADMIN, action: POST })`. Originally `ORGANIZATION`; changed by the audit fix in `tasks.md` R1.1 — see `design.md`'s AC-8 superseded note. |
+| 9   | Response reports reset + skipped, never the password value              | `UserService.resetPasswordsToDefault`, `UserRepository.resetPasswordsByIds`                                                                                                                                           |
 
 ## Dependencies
 
