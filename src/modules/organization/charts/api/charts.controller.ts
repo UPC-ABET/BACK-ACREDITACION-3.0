@@ -117,10 +117,14 @@ export class ChartController extends BaseController<ChartService> {
 		return parseSuccessResponse(await this.service.deleteNode(id));
 	}
 
+	// DEAN sits at the shared root of every school's tree for a period (see resolveTreeRoot in
+	// ChartService), so this action can reach a cross-school account -- gated behind ADMIN, not the
+	// ORGANIZATION permission ordinary chart-node CRUD uses, so a single-school chart maintainer
+	// cannot use it to reset the Dean's password.
 	@SwaggerChartMaintenanceResetPasswords()
 	@ApiAcademicPeriodHeader()
 	@ApiSchoolHeader()
-	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.POST })
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
 	async maintenanceResetPasswords(
 		@AcademicPeriodId() academicPeriodId: number,
 		@SchoolId() schoolId: number,
