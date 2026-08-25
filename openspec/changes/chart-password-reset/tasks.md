@@ -1,0 +1,242 @@
+# Tasks — Reset chart node users' password to default, scoped by entity type
+
+**Slug**: `chart-password-reset` · **Proposal**: `./proposal.md` · **Design**: `./design.md`
+
+## For whoever executes this
+
+- Work in checkpointed batches of 3–5 tasks. Partition each batch by files touched and
+  fan the non-overlapping ones out to parallel subagents.
+- TDD throughout: write the test, **see it fail**, implement, see it pass.
+- A task is complete when **its test passes**, not when the code is written.
+- Marking done means checking the box **and** appending `✅ DONE (YYYY-MM-DD)` to the
+  heading. Never one without the other — the completeness gate reads the boxes.
+- **No autonomous commits.** Propose the grouping and stop.
+- Do not edit `docs/POLICIES.md` or `docs/adr/*`.
+- Run tests with `npx jest --no-coverage <path>`; typecheck with
+  `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+- Repository specs in this codebase mock the injected TypeORM `Repository`/`DataSource` —
+  there is no real test database. For a raw-SQL `dataSource.query` method, mock `query`'s
+  resolved value and assert the parameter-binding contract (see
+  `grades-rc-export.repository.spec.ts` for the established pattern); the SQL's actual
+  filtering behaviour is verified manually per `runbook.md`.
+
+## Goal
+
+Add `POST /charts/maintenance/reset-password`: given an academic period, a school, and a
+list of selected chart entity types (`DEAN`/`SCHOOL`/`PROGRAM`/`AREA`/`SUBAREA`/`COURSE`),
+reset the password of every user attached to a matching chart node in that school's
+maintenance tree to `DEFAULT_USER_PASSWORD`, skipping and reporting nodes with no linked
+user, and resetting a user reachable via more than one node exactly once.
+
+## Slicing
+
+Vertical. Each milestone delivers something demonstrable — schema-adjacent read, service
+logic, endpoint and tests together — rather than a horizontal layer.
+
+---
+
+## Milestone 1 — Users module: reset-to-default primitive
+
+### Task 1.1 — `UserRepository.resetPasswordsByIds` ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/organization/users/core/users.repository.ts` (modify)
+- `src/modules/organization/users/core/users.repository.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Write a failing case in `users.repository.spec.ts`: given seeded user ids and a
+   password hash, `resetPasswordsByIds` updates `organization.users.password` for exactly
+   those ids and returns `{ id, firstName, lastName }` for each — `npx jest --no-coverage
+src/modules/organization/users/core/users.repository.spec.ts` → **red**.
+2. Implement `resetPasswordsByIds(userIds: number[], passwordHash: string)` per
+   `design.md` § AC-9 (`UPDATE ... WHERE id = ANY($2::int[]) RETURNING id, first_name AS
+"firstName", last_name AS "lastName"`). Add an empty-array early return.
+3. Re-run → **green**.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(users): add bulk password reset by id`
+
+> Green on the first implementation attempt. Followed the `findDisplayNamesByIds` test's
+> `buildRepositoryWithDataSource` shape (a fresh helper mocking `dataSource.query`, since
+> the file's existing `buildRepository` only mocks the TypeORM `Repository`, not the raw
+> `DataSource`).
+
+### Task 1.2 — `UserService.resetPasswordsToDefault` ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/organization/users/api/users.service.ts` (modify)
+- `src/modules/organization/users/api/users.service.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Write failing cases in `users.service.spec.ts`: (a) given `userIds`, hashes
+   `DEFAULT_USER_PASSWORD` exactly once (mock `hashPassword`/spy) and calls
+   `repository.resetPasswordsByIds` with that hash and the full id list; (b) an empty
+   `userIds` array returns `[]` without calling the repository or hashing anything →
+   **red**.
+2. Implement `resetPasswordsToDefault(userIds: number[])` per `design.md` § AC-9.
+3. Re-run → **green**.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(users): add resetPasswordsToDefault service method`
+
+> Red confirmed both assertions failed with `service.resetPasswordsToDefault is not a
+function`, as expected. Once implemented, the "hashes once" assertion initially failed
+> for an unrelated reason: `bcrypt.hash` is mocked once at module scope in
+> `users.service.spec.ts` and its call count was leaking across the file's `it` blocks (the
+> earlier `resetPassword` tests also call `hashPassword`), so `not.toHaveBeenCalled()` and
+> `toHaveBeenCalledTimes(1)` saw stale counts. Fixed by adding
+> `(bcrypt.hash as jest.Mock).mockClear()` / `(bcrypt.compare as jest.Mock).mockClear()` to
+> the file's shared `beforeEach` — a latent gap in the existing suite that nothing had
+> exercised before (no prior test asserted an exact `bcrypt` call count).
+
+---
+
+## Milestone 2 — Charts module: scoped read
+
+### Task 2.1 — `ChartRepository.findChartUsersByTypes` ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.repository.ts` (modify)
+- `src/modules/organization/charts/core/charts.repository.spec.ts` (test)
+
+**Steps (TDD)**
+
+1. Write a failing case in `charts.repository.spec.ts`, mocking `dataSource.query` (see
+   `grades-rc-export.repository.spec.ts` for the pattern — this codebase has no real test
+   database): `findChartUsersByTypes(rootChartId, schoolChartId, entityTypeCodes)` calls
+   `dataSource.query` with those three values bound in that order, and returns whatever
+   rows the mock resolves (including a row shaped `{ chartId, entityTypeCode, staffId,
+userId: null }`, to confirm the method does not filter or transform the result). Run
+   `npx jest --no-coverage src/modules/organization/charts/core/charts.repository.spec.ts`
+   → **red**.
+2. Implement `findChartUsersByTypes(rootChartId, schoolChartId, entityTypeCodes)` per
+   `design.md` § AC-1/AC-2 (the branch-CTE query). Add the cross-reference comment to
+   `getMaintenanceBranch` noted in the design. Note in a code comment that AC-3
+   (DEAN global scope) and AC-4 (School isolation) are the SQL's actual filtering
+   behaviour and are verified manually per `runbook.md`, not by this test.
+3. Re-run → **green**.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(charts): add findChartUsersByTypes for scoped password reset`
+
+> Green on the first implementation attempt. This is also where the original design's
+> claim that "`charts.repository.spec.ts` runs against a real test database" was found to
+> be wrong before any code was written for this task — corrected in `design.md` and this
+> file's preamble first (see the `design.md` § Testing strategy correction note), then
+> implemented against the actual mocked-`dataSource.query` convention.
+
+---
+
+## Milestone 3 — Charts module: service orchestration + endpoint
+
+### Task 3.1 — `ChartService.resetMaintenancePasswords` ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/organization/charts/api/charts.service.ts` (modify)
+- `src/modules/organization/charts/api/charts.service.spec.ts` (test)
+- `src/modules/organization/charts/charts.module.ts` (modify — import `UserModule`, wire
+  `UserService` into `ChartService`)
+
+**Steps (TDD)**
+
+1. Write failing cases in `charts.service.spec.ts` (mocked `ChartRepository` +
+   `UserService`, following the existing `buildService()` pattern in that file):
+   - a node with `userId: null` lands in `skipped`, `userService.resetPasswordsToDefault`
+     is not called for it;
+   - two rows sharing one `userId` produce a single `reset` entry whose `chartIds`
+     contains both chart ids, and `resetPasswordsToDefault` is called with that id once;
+   - `getSchoolChartNode` returning `null` short-circuits to `{ reset: [], skipped: [] }`
+     without calling `resetPasswordsToDefault`;
+   - all matched rows unlinked (`userId: null` for every row) also short-circuits without
+     calling `resetPasswordsToDefault`.
+     Run `npx jest --no-coverage src/modules/organization/charts/api/charts.service.spec.ts`
+     → **red**.
+2. Extract `resolveTreeRoot(school)` from the existing `getMaintenanceTree` and reuse it.
+   Implement `resetMaintenancePasswords(academicPeriodId, schoolId, entityTypeCodes)` per
+   `design.md` § AC-5/AC-6/AC-7/AC-9. Add `UserService` to `ChartService`'s constructor and
+   `UserModule` to `ChartModule`'s `imports`.
+3. Re-run → **green**.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `feat(charts): add resetMaintenancePasswords orchestration`
+
+> Green on the first implementation attempt. Extended the existing `buildService()` helper
+> in `charts.service.spec.ts` with `getSchoolChartNode`/`findChartUsersByTypes` on the
+> repository stub and a `userService` stub, rather than adding a second builder — every
+> `updateNode` test kept passing unmodified. Confirmed no circular NestJS module dependency
+> by grepping `org-scope`/`mail`/`email-templates` (the modules `UserModule` imports) for
+> any reference back to `ChartModule` — none found.
+
+### Task 3.2 — DTO, route, controller, Swagger ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/organization/charts/model/charts.dtos.ts` (modify — add
+  `ResetMaintenancePasswordsDto`)
+- `src/modules/organization/charts/config/charts.routes.ts` (modify)
+- `src/modules/organization/charts/api/docs/charts.swagger.ts` (modify — add
+  `SwaggerChartMaintenanceResetPasswords`)
+- `src/modules/organization/charts/api/charts.controller.ts` (modify)
+- `src/modules/organization/charts/api/charts.controller.spec.ts` (test — create if it does
+  not already exist, following the pattern of an existing controller spec elsewhere, e.g.
+  `users.controller.spec.ts`)
+
+**Steps (TDD)**
+
+1. Write a failing controller test: `maintenanceResetPasswords` calls
+   `service.resetMaintenancePasswords(academicPeriodId, schoolId, dto.entityTypeCodes)` and
+   wraps the result in `parseSuccessResponse` → **red**.
+2. Implement `ResetMaintenancePasswordsDto` (per `design.md` § Backend — `@IsArray()
+@ArrayNotEmpty() @ArrayUnique() @IsIn(Object.values(TYPE_CODES.ENTITY_TYPE), { each:
+true })`), the route entry, the Swagger decorator, and the controller method
+   (`@ApiAcademicPeriodHeader()`, `@ApiSchoolHeader()`,
+   `@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action:
+PERMISSION_ACTIONS.POST })`).
+3. Re-run → **green**.
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+5. `pnpm openapi:export` and commit the resulting `openapi.json` diff.
+
+**Commit**: `feat(charts): expose POST /charts/maintenance/reset-password`
+
+> `charts.controller.spec.ts` did not exist yet, created following `users.controller.spec.ts`'s
+> shape. Wrote the controller/DTO/route/Swagger together before the test this one time
+> (the four pieces are too small to sequence separately), then verified the new test was
+> not a tautology by temporarily swapping the `academicPeriodId`/`schoolId` argument order
+> in the controller — confirmed it failed for the right reason — before reverting to the
+> correct order. Full suite (`pnpm test`), lint, and `pnpm openapi:export` all clean; the
+> `openapi.json` diff is purely additive (48 insertions, 0 deletions) — one new path, no
+> existing route/DTO/response shape touched.
+
+---
+
+<!--
+Append-only sections below. These record what actually happened, not what was planned,
+and they are the best input to the next design.
+
+## Unplanned — <what and why>
+
+### Task U.1 — <title>
+- [ ] Task complete
+
+## Post-QA fixes
+
+## Audit fixes (/abet-audit-pr)
+
+### Review round 1
+-->
