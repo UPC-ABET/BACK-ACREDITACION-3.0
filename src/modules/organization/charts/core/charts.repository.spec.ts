@@ -1,8 +1,11 @@
 import { DataSource, Repository } from 'typeorm';
 import { DomainError } from 'src/commons/domain-error';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ChartEntity } from '../model/charts.entity';
 import { ChartRepository, UNIQUE_CHART_ENTITY_INDEX } from './charts.repository';
 import { chartsValidationStrings } from '../config/strings/charts.validation';
+
+const ENTITY = TYPE_CODES.ENTITY_TYPE;
 
 // Spelled out rather than imported, so a rename of the exported constant has to be a deliberate
 // two-place edit instead of a silent one that keeps this file green.
@@ -114,5 +117,45 @@ describe('ChartRepository — duplicate-node race translation', () => {
 		it('exports the constant the migration creates', () => {
 			expect(UNIQUE_CHART_ENTITY_INDEX).toBe(UNIQUE_INDEX);
 		});
+	});
+});
+
+// The branch-CTE's actual filtering behaviour (DEAN global scope, School isolation) is SQL and is
+// NOT exercised here — dataSource.query is mocked. What is testable is the parameter-binding
+// contract, per the convention in grades-rc-export.repository.spec.ts. See runbook.md for the
+// manual verification of AC-3/AC-4.
+describe('ChartRepository.findChartUsersByTypes', () => {
+	const buildRepositoryWithDataSource = () => {
+		const dataSource = { query: jest.fn() };
+		const repository = new ChartRepository(
+			{} as unknown as Repository<ChartEntity>,
+			dataSource as unknown as DataSource,
+		);
+		return { repository, dataSource };
+	};
+
+	it('binds rootChartId, schoolChartId and entityTypeCodes in that order', async () => {
+		const { repository, dataSource } = buildRepositoryWithDataSource();
+		dataSource.query.mockResolvedValue([]);
+
+		await repository.findChartUsersByTypes(1, 2, [ENTITY.SCHOOL, ENTITY.PROGRAM]);
+
+		expect(dataSource.query).toHaveBeenCalledTimes(1);
+		const [sql, params] = dataSource.query.mock.calls[0];
+		expect(sql).toMatch(/WITH RECURSIVE branch/);
+		expect(params).toEqual([1, 2, [ENTITY.SCHOOL, ENTITY.PROGRAM]]);
+	});
+
+	it('returns whatever rows resolve, including a node with no linked user', async () => {
+		const { repository, dataSource } = buildRepositoryWithDataSource();
+		const rows = [
+			{ chartId: 10, entityTypeCode: ENTITY.COURSE, staffId: 20, userId: null },
+			{ chartId: 11, entityTypeCode: ENTITY.PROGRAM, staffId: 21, userId: 99 },
+		];
+		dataSource.query.mockResolvedValue(rows);
+
+		const result = await repository.findChartUsersByTypes(1, 2, [ENTITY.COURSE, ENTITY.PROGRAM]);
+
+		expect(result).toEqual(rows);
 	});
 });
