@@ -235,8 +235,186 @@ and they are the best input to the next design.
 - [ ] Task complete
 
 ## Post-QA fixes
+-->
 
 ## Audit fixes (/abet-audit-pr)
 
 ### Review round 1
--->
+
+Six parallel auditors (code quality, architecture/docs/API-contract, testing, antipatterns,
+security, runtime robustness) ran over the diff against `origin/develop`. Verdict: **NOT
+READY** — two majors. All majors, minors, and the actionable suggestions were fixed on the
+user's explicit direction ("fix all the majors, minors and suggestions"); items an auditor
+itself concluded needed no action were deliberately left alone (listed at the end) rather
+than churned for the sake of it.
+
+#### Task R1.1 — Gate the reset-password endpoint behind ADMIN, not ORGANIZATION ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Severity**: Major (security/authorization). Selecting `DEAN` resets the single,
+cross-school Dean account, but the endpoint was gated by the same `ORGANIZATION`/`POST`
+permission as ordinary single-school chart CRUD — letting anyone who manages one school's
+chart maintenance force-reset the cross-school Dean's password to the known default and
+log in as Dean. `proposal.md`'s own Risks table had already flagged that this permission
+"must" not just reuse the generic chart CRUD permission; the design ended up doing exactly
+that. Resolved per the user's explicit choice: gate the whole endpoint behind `ADMIN`
+(the same permission `chart-heads` already uses), rather than excluding `DEAN` or
+splitting the permission per selected type.
+
+**Files**
+
+- `src/modules/organization/charts/api/charts.controller.ts` (modify)
+
+**Fix**: `@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })`
+on `maintenanceResetPasswords`, with a comment explaining why this route alone departs from
+the controller's other `ORGANIZATION`-gated endpoints.
+
+**Commit**: `fix(charts): gate password reset behind ADMIN permission`
+
+> No test change — decorator permission values aren't unit-tested anywhere in this
+> codebase (confirmed by the testing auditor); `PermissionsGuard` coverage is centralized
+> and unaffected by which module/action string is passed.
+
+#### Task R1.2 — Fix `entityTypeCodes` Swagger array item type; add a typed response DTO ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Severity**: Major (API contract). `ResetMaintenancePasswordsDto.entityTypeCodes` was
+declared `@ApiProperty({ isArray: true, ... })` with no `type`, producing
+`"items": { "type": "array" }` in the committed `openapi.json` instead of
+`{ "type": "string" }` — verified directly in the file before fixing. Bundled with a
+related minor (antipatterns auditor): `resetMaintenancePasswords`'s inline object-literal
+return type had no named type and no `@ApiResponse`, unlike the newer, better-established
+convention elsewhere in this codebase (`responseType` on `HttpMethodWithSwagger`, e.g.
+`IfcFindingDetailResponseDto`) — fixed together since both are the same underlying gap
+(an endpoint whose real shape isn't reflected in the spec).
+
+**Files**
+
+- `src/modules/organization/charts/model/charts.dtos.ts` (modify — `type: [String]` on
+  `entityTypeCodes`; new `ResetMaintenancePasswordsResetUserDto`,
+  `ResetMaintenancePasswordsSkippedNodeDto`, `ResetMaintenancePasswordsResponseDto`)
+- `src/modules/organization/charts/api/docs/charts.swagger.ts` (modify — `responseType:
+ResetMaintenancePasswordsResponseDto`)
+- `src/modules/organization/charts/api/charts.service.ts` (modify — `resetMaintenancePasswords`
+  now returns `ResetMaintenancePasswordsResponseDto` instead of an inline literal type)
+- `openapi.json` (regenerate)
+
+**Commit**: `fix(charts): type the reset-password request array and response shape`
+
+> `pnpm openapi:export` confirmed: `entityTypeCodes.items` is now `{ "type": "string" }`,
+> and the new response schema (`reset`/`skipped` arrays of the two new DTOs) is present.
+> Diff vs. `origin/develop` is still purely additive (schemas + one path).
+
+#### Task R1.3 — Exclude deactivated users from the reset scope ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Severity**: Minor (security). Neither `findChartUsersByTypes` nor `resetPasswordsByIds`
+filtered on `organization.users.is_active` — a chart node whose staff was still linked to
+a deactivated user account would have that account's password reset like any active one.
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.repository.ts` (modify — join
+  `organization.users` with `AND u.is_active = true`, select `u.id` instead of
+  `s.user_id`, so a deactivated link now folds into the same "no active login" case as an
+  unset one)
+- `src/modules/organization/charts/core/charts.repository.spec.ts` (test)
+
+**Steps (TDD)**: added a test asserting the SQL joins `organization.users` with
+`u.is_active = true`; confirmed **red** by temporarily reverting the join condition,
+observed the exact expected failure, then restored the fix and confirmed **green**.
+
+**Commit**: `fix(charts): exclude deactivated users from password reset scope`
+
+> Deliberately did not add a matching filter inside `UserRepository.resetPasswordsByIds`
+> itself — the chart-repository read is now the single point where "resettable" is
+> decided, and `resetPasswordsByIds` has no other caller. Duplicating the same rule in the
+> write path would just be a second place to drift out of sync with the first.
+
+#### Task R1.4 — Strengthen `resetMaintenancePasswords` test coverage ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Severity**: Minor (testing), two findings fixed together.
+
+1. The non-null `rootChartId` branch of `resolveTreeRoot` (the AC-3 TS-side plumbing) was
+   exercised but never asserted on — only the null-root case pinned
+   `findChartUsersByTypes`'s call args, which is degenerate since both branches resolve to
+   the same value there.
+2. The AC-7 "every matched row unlinked" test was a mechanical duplicate of the AC-5
+   single-unlinked-node test — same one-row fixture, no broadened coverage.
+
+**Files**
+
+- `src/modules/organization/charts/api/charts.service.spec.ts` (test)
+
+**Fix**: added `'uses the existing rootChartId as root when the school node has a parent'`
+asserting `findChartUsersByTypes` is called with `(1, 7, ...)` — distinguishable from
+`schoolId` (7) — when `rootChartId: 1`. Rewrote the redundant AC-7 test to use two
+all-`userId: null` rows and assert both land in `skipped` with `reset: []`.
+
+**Commit**: `test(charts): cover resolveTreeRoot's non-null branch and true multi-row AC-7`
+
+#### Task R1.5 — Single-pass partition/grouping; defensive fallback over non-null assertion ✅ DONE (2026-08-24)
+
+- [x] Task complete
+
+**Severity**: Minor/suggestion (code quality, antipatterns), three related findings fixed
+together.
+
+1. `resetMaintenancePasswords` iterated `rows` twice (once to filter `skipped`, once to
+   build `chartIdsByUser`) and reallocated a new array on every grouped push via spread.
+2. `chartIdsByUser.get(user.id)!` relied on an undocumented invariant (every id
+   `resetPasswordsToDefault` returns was inserted moments earlier) — true today because
+   `resetPasswordsByIds` filters `WHERE id = ANY($2)`, but would throw a raw `TypeError`
+   instead of failing predictably if that ever changed.
+3. (Suggestion, runtime robustness) The two-round-trip shape (CTE read, then bulk write)
+   has no shared transaction, so the response's `chartIds` reflect a pre-write snapshot —
+   worth a one-line comment, not a design change (nothing here is a data-integrity risk;
+   the bulk `UPDATE` is itself atomic).
+
+**Files**
+
+- `src/modules/organization/charts/api/charts.service.ts` (modify)
+
+**Fix**: rewrote the skip/group logic as one pass over `rows`, pushing into the grouped
+array in place; changed `chartIdsByUser.get(user.id)!` to `... ?? []` with a comment
+stating the invariant; added a comment above the `resetPasswordsToDefault` call documenting
+the read/write staleness window.
+
+**Commit**: bundled into `fix(charts): type the reset-password request array and response
+shape` (task R1.2) — both touched `charts.service.ts`'s `resetMaintenancePasswords`, and
+the file was staged once rather than split into two commits over the same function.
+
+> All 94 tests across the charts/users modules pass unchanged by this task — this was a
+> pure refactor of already-covered logic, not new behavior.
+
+### Findings deliberately left unchanged (no action, not silently skipped)
+
+Each of these was flagged by an auditor who themselves concluded no code change was
+warranted; changing them anyway would contradict the auditor's own reasoning or reintroduce
+inconsistency the auditor specifically warned against:
+
+- **CTE duplication** between `findChartUsersByTypes` and `getMaintenanceBranch` (runtime
+  robustness auditor) — already documented and cross-referenced by design; the two queries'
+  shapes differ enough that extracting a shared fragment was already considered and
+  rejected in `design.md`.
+- **Hand-rolled `groupBy`-style loop** (antipatterns auditor) — consistent with at least two
+  other local, private implementations elsewhere in this codebase; not new duplication
+  against a single shared utility.
+- **Spanish Swagger route summary** for `maintenanceResetPasswords` (antipatterns auditor)
+  — every other summary in `charts.routes.ts` is already Spanish; changing one entry alone
+  would be a new inconsistency, not a fix. Auditor's own words: "if the team ever
+  normalizes... do it file-wide."
+- **Idempotency of a retried/double-submitted request** (runtime robustness auditor) —
+  explicitly confirmed safe as-is (re-resetting to the same default password is a no-op in
+  effect).
+- **No persisted audit trail of who triggered a reset** (security auditor, restating
+  `proposal.md`'s own confirmed non-goal) — a product decision already made with the
+  requester before implementation, not a defect this round surfaced.
+- **Repository-spec convention** (mocking `dataSource.query` rather than a real DB) —
+  testing auditor confirmed this is the established, correct convention for this codebase;
+  no change needed.
