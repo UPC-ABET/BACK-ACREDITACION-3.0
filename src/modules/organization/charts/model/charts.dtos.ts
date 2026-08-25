@@ -72,12 +72,49 @@ export class ResetMaintenancePasswordsDto {
 	@ArrayUnique()
 	@IsIn(Object.values(TYPE_CODES.ENTITY_TYPE), { each: true })
 	@ApiProperty({
+		type: [String],
 		example: [TYPE_CODES.ENTITY_TYPE.SCHOOL, TYPE_CODES.ENTITY_TYPE.PROGRAM],
 		required: true,
 		description: 'Entity type codes (TG903) whose chart node users get their password reset',
-		isArray: true,
 	})
 	entityTypeCodes: string[];
+}
+
+export class ResetMaintenancePasswordsResetUserDto {
+	@ApiProperty({ example: 12, description: 'Reset user id' })
+	userId: number;
+
+	@ApiProperty({ example: 'Ada' })
+	firstName: string;
+
+	@ApiProperty({ example: 'Lovelace' })
+	lastName: string;
+
+	@ApiProperty({
+		type: [Number],
+		example: [45, 50],
+		description: 'Chart node ids that resolved to this user',
+	})
+	chartIds: number[];
+}
+
+export class ResetMaintenancePasswordsSkippedNodeDto {
+	@ApiProperty({ example: 30, description: 'Chart node id with no linked (active) login user' })
+	chartId: number;
+
+	@ApiProperty({ example: 40 })
+	staffId: number;
+
+	@ApiProperty({ example: TYPE_CODES.ENTITY_TYPE.COURSE })
+	entityTypeCode: string;
+}
+
+export class ResetMaintenancePasswordsResponseDto {
+	@ApiProperty({ type: [ResetMaintenancePasswordsResetUserDto] })
+	reset: ResetMaintenancePasswordsResetUserDto[];
+
+	@ApiProperty({ type: [ResetMaintenancePasswordsSkippedNodeDto] })
+	skipped: ResetMaintenancePasswordsSkippedNodeDto[];
 }
 
 export class CreateChartDto {

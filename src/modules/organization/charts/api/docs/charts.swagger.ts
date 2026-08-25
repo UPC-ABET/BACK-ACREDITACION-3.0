@@ -7,6 +7,7 @@ import {
 	CreateChartNodeDto,
 	UpdateChartNodeDto,
 	ResetMaintenancePasswordsDto,
+	ResetMaintenancePasswordsResponseDto,
 } from '../../model/charts.dtos';
 
 const cfg = chartsRoutes.charts;
@@ -44,4 +45,5 @@ export const SwaggerChartMaintenanceResetPasswords = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.maintenanceResetPasswords,
 		body: ResetMaintenancePasswordsDto,
+		responseType: ResetMaintenancePasswordsResponseDto,
 	});

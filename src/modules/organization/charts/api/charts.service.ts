@@ -17,6 +17,9 @@ import {
 	FilterChartDto,
 	CreateChartNodeDto,
 	UpdateChartNodeDto,
+	ResetMaintenancePasswordsResetUserDto,
+	ResetMaintenancePasswordsSkippedNodeDto,
+	ResetMaintenancePasswordsResponseDto,
 } from '../model/charts.dtos';
 import { EntityManager } from 'typeorm';
 
@@ -62,10 +65,7 @@ export class ChartService extends BaseService<ChartRepository> {
 		academicPeriodId: number,
 		schoolId: number,
 		entityTypeCodes: string[],
-	): Promise<{
-		reset: Array<{ userId: number; firstName: string; lastName: string; chartIds: number[] }>;
-		skipped: Array<{ chartId: number; staffId: number; entityTypeCode: string }>;
-	}> {
+	): Promise<ResetMaintenancePasswordsResponseDto> {
 		const school = await this.repository.getSchoolChartNode(academicPeriodId, schoolId);
 		if (!school) return { reset: [], skipped: [] };
 
@@ -75,24 +75,35 @@ export class ChartService extends BaseService<ChartRepository> {
 			entityTypeCodes,
 		);
 
-		const skipped = rows
-			.filter((row) => row.userId === null)
-			.map(({ chartId, staffId, entityTypeCode }) => ({ chartId, staffId, entityTypeCode }));
-
+		const skipped: ResetMaintenancePasswordsSkippedNodeDto[] = [];
 		const chartIdsByUser = new Map<number, number[]>();
 		for (const row of rows) {
-			if (row.userId === null) continue;
-			chartIdsByUser.set(row.userId, [...(chartIdsByUser.get(row.userId) ?? []), row.chartId]);
+			if (row.userId === null) {
+				skipped.push({
+					chartId: row.chartId,
+					staffId: row.staffId,
+					entityTypeCode: row.entityTypeCode,
+				});
+				continue;
+			}
+			const chartIds = chartIdsByUser.get(row.userId);
+			if (chartIds) chartIds.push(row.chartId);
+			else chartIdsByUser.set(row.userId, [row.chartId]);
 		}
 
 		if (chartIdsByUser.size === 0) return { reset: [], skipped };
 
+		// Two round trips, no shared transaction: chartIds reflects the chart->user link as read
+		// here, a moment before the write below. A link changing in between is a display staleness on
+		// this response, not a data-integrity issue -- the bulk UPDATE below is itself atomic.
 		const updated = await this.userService.resetPasswordsToDefault([...chartIdsByUser.keys()]);
-		const reset = updated.map((user) => ({
+		const reset: ResetMaintenancePasswordsResetUserDto[] = updated.map((user) => ({
 			userId: user.id,
 			firstName: user.firstName,
 			lastName: user.lastName,
-			chartIds: chartIdsByUser.get(user.id)!,
+			// resetPasswordsToDefault only ever returns ids from the array it was given, so every key
+			// here was inserted above -- falling back to [] is defensive, not an expected path.
+			chartIds: chartIdsByUser.get(user.id) ?? [],
 		}));
 
 		return { reset, skipped };

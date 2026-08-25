@@ -7510,7 +7510,14 @@
 					}
 				},
 				"responses": {
-					"201": { "description": "Resource created successfully" },
+					"201": {
+						"description": "Resource created successfully",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ResetMaintenancePasswordsResponseDto" }
+							}
+						}
+					},
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
@@ -15731,10 +15738,52 @@
 						"example": ["TG903-T002", "TG903-T003"],
 						"description": "Entity type codes (TG903) whose chart node users get their password reset",
 						"type": "array",
-						"items": { "type": "array" }
+						"items": { "type": "string" }
 					}
 				},
 				"required": ["entityTypeCodes"]
+			},
+			"ResetMaintenancePasswordsResetUserDto": {
+				"type": "object",
+				"properties": {
+					"userId": { "type": "number", "example": 12, "description": "Reset user id" },
+					"firstName": { "type": "string", "example": "Ada" },
+					"lastName": { "type": "string", "example": "Lovelace" },
+					"chartIds": {
+						"example": [45, 50],
+						"description": "Chart node ids that resolved to this user",
+						"type": "array",
+						"items": { "type": "number" }
+					}
+				},
+				"required": ["userId", "firstName", "lastName", "chartIds"]
+			},
+			"ResetMaintenancePasswordsSkippedNodeDto": {
+				"type": "object",
+				"properties": {
+					"chartId": {
+						"type": "number",
+						"example": 30,
+						"description": "Chart node id with no linked (active) login user"
+					},
+					"staffId": { "type": "number", "example": 40 },
+					"entityTypeCode": { "type": "string", "example": "TG903-T006" }
+				},
+				"required": ["chartId", "staffId", "entityTypeCode"]
+			},
+			"ResetMaintenancePasswordsResponseDto": {
+				"type": "object",
+				"properties": {
+					"reset": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ResetMaintenancePasswordsResetUserDto" }
+					},
+					"skipped": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ResetMaintenancePasswordsSkippedNodeDto" }
+					}
+				},
+				"required": ["reset", "skipped"]
 			},
 			"CreateFacultyDto": {
 				"type": "object",
