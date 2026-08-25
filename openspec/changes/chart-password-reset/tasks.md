@@ -418,3 +418,98 @@ inconsistency the auditor specifically warned against:
 - **Repository-spec convention** (mocking `dataSource.query` rather than a real DB) —
   testing auditor confirmed this is the established, correct convention for this codebase;
   no change needed.
+
+### Review round 2
+
+A full 6-agent re-audit ran on the current HEAD (feature + round-1 fixes together) before
+opening the PR, per `/abet-create-pr`'s precondition that the audit must have run on the
+commit being shipped. **Both round-1 majors were independently re-verified as genuinely
+closed** — the security auditor traced the actual `PermissionsGuard` matching logic (exact
+string match, no module hierarchy/implication) to confirm an `ORGANIZATION`-only caller is
+rejected, and traced the read→skip→write chain end to end to confirm a deactivated user's
+password is never touched. No regressions found in any of the six domains.
+
+This round surfaced one real drift and a handful of quick quality fixes, plus one product
+question that needs the requester's call rather than a code change.
+
+#### Task R2.1 — Correct stale design docs after the round-1 permission change ✅ DONE (2026-08-25)
+
+- [x] Task complete
+
+**Severity**: Major (documentation currency, architecture auditor). `design.md`'s AC-8 and
+its Risks table still argued for `ORGANIZATION`/`POST` and explicitly recorded rejecting
+`ADMIN` — the opposite of what round 1 actually shipped. `proposal.md`'s traceability table
+for AC-8 was equally stale.
+
+**Files**
+
+- `openspec/changes/chart-password-reset/design.md` (modify — superseded-note on AC-8,
+  corrected "Guards / scope" bullet, corrected Risks table row)
+- `openspec/changes/chart-password-reset/proposal.md` (modify — corrected AC-8
+  traceability row)
+
+**Fix**: added a dated (2026-08-25) superseded note on AC-8 pointing to this file's R1.1
+entry as the source of truth, rather than rewriting the original reasoning as if `ADMIN`
+had been the design's first call — the original reasoning is kept for the record, marked
+clearly as no longer current.
+
+**Commit**: `docs(openspec): correct chart-password-reset docs after permission change`
+
+#### Task R2.2 — Strengthen the deactivated-user regression test ✅ DONE (2026-08-25)
+
+- [x] Task complete
+
+**Severity**: Minor (testing auditor). The round-1 test asserting the `is_active` join
+condition matched starting at `organization.users`, not `LEFT JOIN organization.users` —
+so a regression from `LEFT JOIN` to `INNER JOIN` (which would silently drop a
+deactivated-user's chart node from the result instead of surfacing it as `skipped`,
+changing observable API behavior) would not have been caught.
+
+**Files**
+
+- `src/modules/organization/charts/core/charts.repository.spec.ts` (test)
+
+**Fix**: broadened the regex to require `LEFT\s+JOIN` immediately before
+`organization\.users`, with a comment explaining why the join type is part of the pinned
+contract, not just the `ON` condition.
+
+**Commit**: `test(charts): pin LEFT JOIN in the deactivated-user regression test`
+
+#### Task R2.3 — De-duplicate the default-password-hash logic ✅ DONE (2026-08-25)
+
+- [x] Task complete
+
+**Severity**: Suggestion (code quality + antipatterns auditors, same underlying finding
+from two angles). `hashPassword(configService.getOrThrow('DEFAULT_USER_PASSWORD'))` was
+duplicated verbatim between `UserService.create()` (pre-existing) and the new
+`resetPasswordsToDefault()`; separately, the `{ id, firstName, lastName }` return shape was
+repeated inline across `UserRepository.resetPasswordsByIds` and `UserService`'s method
+signature.
+
+**Files**
+
+- `src/modules/organization/users/core/users.repository.ts` (modify — export
+  `ResetPasswordUserSummary` interface, used as `resetPasswordsByIds`'s return type)
+- `src/modules/organization/users/api/users.service.ts` (modify — private
+  `getDefaultPasswordHash()`, called from both `create()` and `resetPasswordsToDefault()`;
+  `resetPasswordsToDefault` now returns `ResetPasswordUserSummary[]`)
+
+**Commit**: `refactor(users): extract shared default-password-hash helper and result type`
+
+> All 94 tests across the charts/users modules pass unchanged — a pure refactor, same
+> runtime behavior.
+
+### Findings not fixed — needs the requester's decision, not a code change
+
+- **`ADMIN` is an all-or-nothing tier in this codebase's seed data** (architecture auditor,
+  major severity as a product-fit concern, not a defect in round 1's fix). Round 1 closed
+  the DEAN privilege-escalation hole by gating the _entire_ reset endpoint behind `ADMIN`.
+  The re-audit found that in this codebase, `ADMIN` is a single coarse module — the seed
+  data grants the `ADMIN` role every module permission at once, with no finer-grained,
+  composable "reset passwords for my school's chart" action. Practically: a school-level
+  coordinator can no longer self-serve even a single course-level password reset without
+  also being granted IAM/role management, every bulk-upload capability, and period
+  configuration — capabilities well outside what the original feature request asked for.
+  This is not a security defect (the fix correctly closes the escalation path) — it is a
+  question of whether the fix over-corrected against the feature's original audience.
+  Raised with the requester directly rather than silently re-opened or silently accepted.
