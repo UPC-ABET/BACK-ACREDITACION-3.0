@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/commons/base.service';
-import { UserRepository } from '../core/users.repository';
+import { UserRepository, ResetPasswordUserSummary } from '../core/users.repository';
 import { PasswordResetTokenRepository } from '../core/password-reset-token.repository';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
@@ -132,14 +132,14 @@ export class UserService extends BaseService<UserRepository> {
 		return { message: usersValidationStrings.result.passwordResetCompleted };
 	}
 
-	async resetPasswordsToDefault(
-		userIds: number[],
-	): Promise<Array<{ id: number; firstName: string; lastName: string }>> {
+	async resetPasswordsToDefault(userIds: number[]): Promise<ResetPasswordUserSummary[]> {
 		if (userIds.length === 0) return [];
-		const passwordHash = await hashPassword(
-			this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'),
-		);
+		const passwordHash = await this.getDefaultPasswordHash();
 		return await this.repository.resetPasswordsByIds(userIds, passwordHash);
+	}
+
+	private async getDefaultPasswordHash(): Promise<string> {
+		return await hashPassword(this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'));
 	}
 
 	private async getAuthorizationProfile(userId: number): Promise<AuthorizationProfile> {
@@ -195,9 +195,7 @@ export class UserService extends BaseService<UserRepository> {
 
 	async create(dto: CreateUserDto, manager?: EntityManager) {
 		await UserValidation.validateCreate(this.repository, dto);
-		const password = await hashPassword(
-			this.configService.getOrThrow<string>('DEFAULT_USER_PASSWORD'),
-		);
+		const password = await this.getDefaultPasswordHash();
 		const { staffId, ...userData } = dto;
 		const created = await super.create({ ...userData, password }, manager);
 		await this.linkStaffToUser(created.id, staffId, manager);
