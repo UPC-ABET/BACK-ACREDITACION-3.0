@@ -146,6 +146,18 @@ describe('ChartRepository.findChartUsersByTypes', () => {
 		expect(params).toEqual([1, 2, [ENTITY.SCHOOL, ENTITY.PROGRAM]]);
 	});
 
+	it('only joins an active user, so a deactivated account is not returned as a linked user', async () => {
+		const { repository, dataSource } = buildRepositoryWithDataSource();
+		dataSource.query.mockResolvedValue([]);
+
+		await repository.findChartUsersByTypes(1, 2, [ENTITY.COURSE]);
+
+		const [sql] = dataSource.query.mock.calls[0];
+		expect(sql).toMatch(
+			/organization\.users\s+u\s+ON\s+u\.id\s*=\s*s\.user_id\s+AND\s+u\.is_active\s*=\s*true/,
+		);
+	});
+
 	it('returns whatever rows resolve, including a node with no linked user', async () => {
 		const { repository, dataSource } = buildRepositoryWithDataSource();
 		const rows = [

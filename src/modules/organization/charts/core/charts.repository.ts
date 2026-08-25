@@ -216,6 +216,10 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 	// separate, flat query rather than reusing getMaintenanceBranch because that method builds a
 	// nested tree for rendering; this only needs (chartId, entityTypeCode, staffId, userId) rows
 	// filtered to the requested types. If the branch-scoping rule ever changes, update both.
+	//
+	// userId is null both when staff.user_id is unset AND when it points to a deactivated user --
+	// the join condition folds "no login" and "no active login" into the same case, so the service
+	// treats a deactivated account exactly like an unlinked one (skipped, not silently reset).
 	async findChartUsersByTypes(
 		rootChartId: number,
 		schoolChartId: number,
@@ -238,10 +242,11 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 				c.id       AS "chartId",
 				et.code    AS "entityTypeCode",
 				c.staff_id AS "staffId",
-				s.user_id  AS "userId"
+				u.id       AS "userId"
 			FROM branch b
 			INNER JOIN organization.charts c ON c.id = b.id
 			INNER JOIN organization.staff  s ON s.id = c.staff_id
+			LEFT JOIN organization.users   u ON u.id = s.user_id AND u.is_active = true
 			LEFT JOIN core.types           et ON et.id = c.entity_type_id
 			WHERE et.code = ANY($3::text[])
 			ORDER BY c.id`,
