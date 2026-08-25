@@ -146,15 +146,18 @@ describe('ChartRepository.findChartUsersByTypes', () => {
 		expect(params).toEqual([1, 2, [ENTITY.SCHOOL, ENTITY.PROGRAM]]);
 	});
 
-	it('only joins an active user, so a deactivated account is not returned as a linked user', async () => {
+	it('left-joins (not inner-joins) an active user, so a deactivated account nulls userId instead of dropping the row', async () => {
 		const { repository, dataSource } = buildRepositoryWithDataSource();
 		dataSource.query.mockResolvedValue([]);
 
 		await repository.findChartUsersByTypes(1, 2, [ENTITY.COURSE]);
 
 		const [sql] = dataSource.query.mock.calls[0];
+		// LEFT JOIN matters as much as the is_active condition: an INNER JOIN with the same ON
+		// clause would silently drop a deactivated-user's chart node from the result entirely
+		// instead of surfacing it as skipped, changing observable API behavior.
 		expect(sql).toMatch(
-			/organization\.users\s+u\s+ON\s+u\.id\s*=\s*s\.user_id\s+AND\s+u\.is_active\s*=\s*true/,
+			/LEFT\s+JOIN\s+organization\.users\s+u\s+ON\s+u\.id\s*=\s*s\.user_id\s+AND\s+u\.is_active\s*=\s*true/,
 		);
 	});
 
