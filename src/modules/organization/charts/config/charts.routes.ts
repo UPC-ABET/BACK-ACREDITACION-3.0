@@ -31,6 +31,11 @@ export const chartsRoutes = {
 				summary: 'Eliminar un nodo y sus descendientes del organigrama',
 				params: [{ name: 'id', description: 'ID del nodo del organigrama', type: Number }],
 			},
+			maintenanceResetPasswords: {
+				method: 'POST',
+				route: '/maintenance/reset-password',
+				summary: 'Restablecer la contrasena por defecto de los usuarios de los tipos seleccionados',
+			},
 		},
 	},
 };
