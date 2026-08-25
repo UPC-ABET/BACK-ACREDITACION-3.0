@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/commons/base.service';
 import { BadRequestError } from 'src/commons/domain-error';
+import { UserService } from 'src/modules/organization/users/api/users.service';
 import { ChartRepository } from '../core/charts.repository';
 import { chartsValidationStrings } from '../config/strings/charts.validation';
 import {
@@ -21,7 +22,10 @@ import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class ChartService extends BaseService<ChartRepository> {
-	constructor(protected readonly repository: ChartRepository) {
+	constructor(
+		protected readonly repository: ChartRepository,
+		private readonly userService: UserService,
+	) {
 		super(repository);
 	}
 
@@ -51,8 +55,53 @@ export class ChartService extends BaseService<ChartRepository> {
 	async getMaintenanceTree(academicPeriodId: number, schoolId: number) {
 		const school = await this.repository.getSchoolChartNode(academicPeriodId, schoolId);
 		if (!school) return null;
-		const rootChartId = school.rootChartId ?? school.id;
-		return await this.repository.getMaintenanceBranch(rootChartId, school.id);
+		return await this.repository.getMaintenanceBranch(this.resolveTreeRoot(school), school.id);
+	}
+
+	async resetMaintenancePasswords(
+		academicPeriodId: number,
+		schoolId: number,
+		entityTypeCodes: string[],
+	): Promise<{
+		reset: Array<{ userId: number; firstName: string; lastName: string; chartIds: number[] }>;
+		skipped: Array<{ chartId: number; staffId: number; entityTypeCode: string }>;
+	}> {
+		const school = await this.repository.getSchoolChartNode(academicPeriodId, schoolId);
+		if (!school) return { reset: [], skipped: [] };
+
+		const rows = await this.repository.findChartUsersByTypes(
+			this.resolveTreeRoot(school),
+			school.id,
+			entityTypeCodes,
+		);
+
+		const skipped = rows
+			.filter((row) => row.userId === null)
+			.map(({ chartId, staffId, entityTypeCode }) => ({ chartId, staffId, entityTypeCode }));
+
+		const chartIdsByUser = new Map<number, number[]>();
+		for (const row of rows) {
+			if (row.userId === null) continue;
+			chartIdsByUser.set(row.userId, [...(chartIdsByUser.get(row.userId) ?? []), row.chartId]);
+		}
+
+		if (chartIdsByUser.size === 0) return { reset: [], skipped };
+
+		const updated = await this.userService.resetPasswordsToDefault([...chartIdsByUser.keys()]);
+		const reset = updated.map((user) => ({
+			userId: user.id,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			chartIds: chartIdsByUser.get(user.id)!,
+		}));
+
+		return { reset, skipped };
+	}
+
+	// Dean is the true root; a School node whose own rootChartId is null is itself the root (no Dean
+	// configured yet for this academic period).
+	private resolveTreeRoot(school: { id: number; rootChartId: number | null }): number {
+		return school.rootChartId ?? school.id;
 	}
 
 	async createNode(academicPeriodId: number, dto: CreateChartNodeDto) {
