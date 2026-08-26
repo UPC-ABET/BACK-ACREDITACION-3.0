@@ -9,8 +9,9 @@ is unit/repository-tested (see `design.md` § Testing strategy).
 ## ⚠️ Deploy prerequisite
 
 None. No migration to run, no permission/seed sync needed —
-`PERMISSION_MODULES.ORGANIZATION` / `PERMISSION_ACTIONS.POST` is the same gate already
-seeded for `maintenanceCreate`.
+`PERMISSION_MODULES.ADMIN` / `PERMISSION_ACTIONS.POST` is the same gate already seeded for
+`chart-heads`'s `configure` endpoint (changed from `ORGANIZATION` during audit — see
+`tasks.md` R1.1).
 
 ## Manual validation
 
@@ -22,7 +23,7 @@ seeded for `maintenanceCreate`.
 | 4   | Call the endpoint again with `entityTypeCodes: ["TG903-T001"]` (DEAN) from **two different schools** in the same academic period (both sharing one Dean).                              | Both calls return the same `userId` in `reset`; the Dean's user can log in with the default password after either call.                    |
 | 5   | Pick a Course node whose staff has no linked user (`staff.user_id IS NULL`) and include `COURSE` in the selection.                                                                     | That node appears in `skipped` with its `chartId`/`staffId`/`entityTypeCode`; the call still succeeds and resets everything else selected. |
 | 6   | Call the endpoint for a school/period combination with no chart configured yet.                                                                                                        | `200` with `{ reset: [], skipped: [] }`, not an error.                                                                                     |
-| 7   | Call the endpoint as a user without `ORGANIZATION`/`POST` permission.                                                                                                                  | `403`, same as any other `/charts/maintenance/*` write.                                                                                    |
+| 7   | Call the endpoint as a user with `ORGANIZATION`/`POST` (ordinary chart maintenance) but not `ADMIN`.                                                                                   | `403` — confirms a school-scoped chart maintainer cannot reach this endpoint, closing the DEAN cross-school escalation path.               |
 
 ## Data validation
 
