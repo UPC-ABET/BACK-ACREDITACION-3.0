@@ -127,6 +127,8 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 		return row ?? null;
 	}
 
+	// findChartUsersByTypes below duplicates this method's branch CTE (same anchor, same
+	// only-this-school rule) as a flat, filtered query. Keep the two in sync if this scoping changes.
 	async getMaintenanceBranch(
 		rootChartId: number,
 		schoolChartId: number,
@@ -206,6 +208,50 @@ export class ChartRepository extends BaseRepository<ChartEntity> {
 			else root = node;
 		}
 		return root;
+	}
+
+	// Same branch-CTE scoping as getMaintenanceBranch above (same anchor, same "only descend into
+	// the triggering school" rule at depth 0) — the password-reset action's scope must match exactly
+	// what the maintenance tree already shows, not a re-derived approximation of it. Kept as a
+	// separate, flat query rather than reusing getMaintenanceBranch because that method builds a
+	// nested tree for rendering; this only needs (chartId, entityTypeCode, staffId, userId) rows
+	// filtered to the requested types. If the branch-scoping rule ever changes, update both.
+	//
+	// userId is null both when staff.user_id is unset AND when it points to a deactivated user --
+	// the join condition folds "no login" and "no active login" into the same case, so the service
+	// treats a deactivated account exactly like an unlinked one (skipped, not silently reset).
+	async findChartUsersByTypes(
+		rootChartId: number,
+		schoolChartId: number,
+		entityTypeCodes: string[],
+	): Promise<
+		Array<{ chartId: number; entityTypeCode: string; staffId: number; userId: number | null }>
+	> {
+		return await this.dataSource.query(
+			`WITH RECURSIVE branch AS (
+				SELECT c.id, c.root_chart_id, 0 AS depth
+				FROM organization.charts c
+				WHERE c.id = $1 AND c.is_active = true
+				UNION ALL
+				SELECT c.id, c.root_chart_id, b.depth + 1
+				FROM organization.charts c
+				INNER JOIN branch b ON c.root_chart_id = b.id
+				WHERE c.is_active = true AND (b.depth > 0 OR c.id = $2)
+			)
+			SELECT
+				c.id       AS "chartId",
+				et.code    AS "entityTypeCode",
+				c.staff_id AS "staffId",
+				u.id       AS "userId"
+			FROM branch b
+			INNER JOIN organization.charts c ON c.id = b.id
+			INNER JOIN organization.staff  s ON s.id = c.staff_id
+			LEFT JOIN organization.users   u ON u.id = s.user_id AND u.is_active = true
+			LEFT JOIN core.types           et ON et.id = c.entity_type_id
+			WHERE et.code = ANY($3::text[])
+			ORDER BY c.id`,
+			[rootChartId, schoolChartId, entityTypeCodes],
+		);
 	}
 
 	async getNodeWithType(id: number): Promise<ChartNodeRecord | null> {

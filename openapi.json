@@ -7482,6 +7482,49 @@
 				"tags": ["Organigramas"]
 			}
 		},
+		"/charts/maintenance/reset-password": {
+			"post": {
+				"operationId": "ChartController_maintenanceResetPasswords",
+				"parameters": [
+					{
+						"name": "X-School-Id",
+						"in": "header",
+						"description": "Active school scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 3 }
+					},
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/ResetMaintenancePasswordsDto" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Resource created successfully",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ResetMaintenancePasswordsResponseDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Restablecer la contrasena por defecto de los usuarios de los tipos seleccionados",
+				"tags": ["Organigramas"]
+			}
+		},
 		"/faculties/create": {
 			"post": {
 				"operationId": "FacultyController_create",
@@ -15687,6 +15730,60 @@
 						"description": "Referenced entity id; omit for Area/Subarea"
 					}
 				}
+			},
+			"ResetMaintenancePasswordsDto": {
+				"type": "object",
+				"properties": {
+					"entityTypeCodes": {
+						"example": ["TG903-T002", "TG903-T003"],
+						"description": "Entity type codes (TG903) whose chart node users get their password reset",
+						"type": "array",
+						"items": { "type": "string" }
+					}
+				},
+				"required": ["entityTypeCodes"]
+			},
+			"ResetMaintenancePasswordsResetUserDto": {
+				"type": "object",
+				"properties": {
+					"userId": { "type": "number", "example": 12, "description": "Reset user id" },
+					"firstName": { "type": "string", "example": "Ada" },
+					"lastName": { "type": "string", "example": "Lovelace" },
+					"chartIds": {
+						"example": [45, 50],
+						"description": "Chart node ids that resolved to this user",
+						"type": "array",
+						"items": { "type": "number" }
+					}
+				},
+				"required": ["userId", "firstName", "lastName", "chartIds"]
+			},
+			"ResetMaintenancePasswordsSkippedNodeDto": {
+				"type": "object",
+				"properties": {
+					"chartId": {
+						"type": "number",
+						"example": 30,
+						"description": "Chart node id with no linked (active) login user"
+					},
+					"staffId": { "type": "number", "example": 40 },
+					"entityTypeCode": { "type": "string", "example": "TG903-T006" }
+				},
+				"required": ["chartId", "staffId", "entityTypeCode"]
+			},
+			"ResetMaintenancePasswordsResponseDto": {
+				"type": "object",
+				"properties": {
+					"reset": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ResetMaintenancePasswordsResetUserDto" }
+					},
+					"skipped": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ResetMaintenancePasswordsSkippedNodeDto" }
+					}
+				},
+				"required": ["reset", "skipped"]
 			},
 			"CreateFacultyDto": {
 				"type": "object",

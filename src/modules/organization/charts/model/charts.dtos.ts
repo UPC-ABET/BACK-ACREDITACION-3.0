@@ -1,6 +1,17 @@
-import { IsBoolean, IsInt, IsNumber, IsObject, IsOptional } from 'class-validator';
+import {
+	ArrayNotEmpty,
+	ArrayUnique,
+	IsArray,
+	IsBoolean,
+	IsIn,
+	IsInt,
+	IsNumber,
+	IsObject,
+	IsOptional,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { I18nText } from 'src/shared/types/i18n';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 
 export class CreateChartNodeDto {
 	@IsInt()
@@ -53,6 +64,57 @@ export class UpdateChartNodeDto {
 		description: 'Referenced entity id; omit for Area/Subarea',
 	})
 	entityCode?: number;
+}
+
+export class ResetMaintenancePasswordsDto {
+	@IsArray()
+	@ArrayNotEmpty()
+	@ArrayUnique()
+	@IsIn(Object.values(TYPE_CODES.ENTITY_TYPE), { each: true })
+	@ApiProperty({
+		type: [String],
+		example: [TYPE_CODES.ENTITY_TYPE.SCHOOL, TYPE_CODES.ENTITY_TYPE.PROGRAM],
+		required: true,
+		description: 'Entity type codes (TG903) whose chart node users get their password reset',
+	})
+	entityTypeCodes: string[];
+}
+
+export class ResetMaintenancePasswordsResetUserDto {
+	@ApiProperty({ example: 12, description: 'Reset user id' })
+	userId: number;
+
+	@ApiProperty({ example: 'Ada' })
+	firstName: string;
+
+	@ApiProperty({ example: 'Lovelace' })
+	lastName: string;
+
+	@ApiProperty({
+		type: [Number],
+		example: [45, 50],
+		description: 'Chart node ids that resolved to this user',
+	})
+	chartIds: number[];
+}
+
+export class ResetMaintenancePasswordsSkippedNodeDto {
+	@ApiProperty({ example: 30, description: 'Chart node id with no linked (active) login user' })
+	chartId: number;
+
+	@ApiProperty({ example: 40 })
+	staffId: number;
+
+	@ApiProperty({ example: TYPE_CODES.ENTITY_TYPE.COURSE })
+	entityTypeCode: string;
+}
+
+export class ResetMaintenancePasswordsResponseDto {
+	@ApiProperty({ type: [ResetMaintenancePasswordsResetUserDto] })
+	reset: ResetMaintenancePasswordsResetUserDto[];
+
+	@ApiProperty({ type: [ResetMaintenancePasswordsSkippedNodeDto] })
+	skipped: ResetMaintenancePasswordsSkippedNodeDto[];
 }
 
 export class CreateChartDto {

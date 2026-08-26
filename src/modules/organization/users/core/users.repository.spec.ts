@@ -13,6 +13,17 @@ const buildRepository = () => {
 	return { repository, typeorm };
 };
 
+const buildRepositoryWithDataSource = () => {
+	const dataSource = {
+		query: jest.fn(),
+	};
+	const repository = new UserRepository(
+		{} as unknown as Repository<UserEntity>,
+		dataSource as unknown as DataSource,
+	);
+	return { repository, dataSource };
+};
+
 describe('UserRepository.findDisplayNamesByIds', () => {
 	it('returns an empty map without querying when given no ids', async () => {
 		const { repository, typeorm } = buildRepository();
@@ -56,5 +67,33 @@ describe('UserRepository.findDisplayNamesByIds', () => {
 
 		expect(result.has(2)).toBe(false);
 		expect(result.size).toBe(1);
+	});
+});
+
+describe('UserRepository.resetPasswordsByIds', () => {
+	it('returns an empty array without querying when given no ids', async () => {
+		const { repository, dataSource } = buildRepositoryWithDataSource();
+
+		await expect(repository.resetPasswordsByIds([], 'hash')).resolves.toEqual([]);
+		expect(dataSource.query).not.toHaveBeenCalled();
+	});
+
+	it('updates the password for exactly the given ids and returns the affected users', async () => {
+		const { repository, dataSource } = buildRepositoryWithDataSource();
+		dataSource.query.mockResolvedValue([
+			{ id: 1, firstName: 'Ada', lastName: 'Lovelace' },
+			{ id: 2, firstName: 'Alan', lastName: 'Turing' },
+		]);
+
+		const result = await repository.resetPasswordsByIds([1, 2], 'hashed-value');
+
+		expect(dataSource.query).toHaveBeenCalledTimes(1);
+		const [sql, params] = dataSource.query.mock.calls[0];
+		expect(sql).toMatch(/UPDATE organization\.users/);
+		expect(params).toEqual(['hashed-value', [1, 2]]);
+		expect(result).toEqual([
+			{ id: 1, firstName: 'Ada', lastName: 'Lovelace' },
+			{ id: 2, firstName: 'Alan', lastName: 'Turing' },
+		]);
 	});
 });

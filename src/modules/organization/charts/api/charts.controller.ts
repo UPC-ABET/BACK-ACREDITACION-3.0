@@ -12,6 +12,7 @@ import {
 	SwaggerChartMaintenanceCreate,
 	SwaggerChartMaintenanceUpdate,
 	SwaggerChartMaintenanceDelete,
+	SwaggerChartMaintenanceResetPasswords,
 } from './docs/charts.swagger';
 import { ChartService } from './charts.service';
 import {
@@ -20,6 +21,7 @@ import {
 	FilterChartDto,
 	CreateChartNodeDto,
 	UpdateChartNodeDto,
+	ResetMaintenancePasswordsDto,
 } from '../model/charts.dtos';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
@@ -113,5 +115,23 @@ export class ChartController extends BaseController<ChartService> {
 	@RequirePermission({ module: PERMISSION_MODULES.ORGANIZATION, action: PERMISSION_ACTIONS.DELETE })
 	async maintenanceDelete(@Param('id', ParseIntPipe) id: number) {
 		return parseSuccessResponse(await this.service.deleteNode(id));
+	}
+
+	// DEAN sits at the shared root of every school's tree for a period (see resolveTreeRoot in
+	// ChartService), so this action can reach a cross-school account -- gated behind ADMIN, not the
+	// ORGANIZATION permission ordinary chart-node CRUD uses, so a single-school chart maintainer
+	// cannot use it to reset the Dean's password.
+	@SwaggerChartMaintenanceResetPasswords()
+	@ApiAcademicPeriodHeader()
+	@ApiSchoolHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.ADMIN, action: PERMISSION_ACTIONS.POST })
+	async maintenanceResetPasswords(
+		@AcademicPeriodId() academicPeriodId: number,
+		@SchoolId() schoolId: number,
+		@Body() dto: ResetMaintenancePasswordsDto,
+	) {
+		return parseSuccessResponse(
+			await this.service.resetMaintenancePasswords(academicPeriodId, schoolId, dto.entityTypeCodes),
+		);
 	}
 }

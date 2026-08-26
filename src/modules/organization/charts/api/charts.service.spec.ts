@@ -18,8 +18,15 @@ const buildService = () => {
 		getNodeWithType: jest.fn().mockResolvedValue(COURSE_NODE),
 		getEntityTypeCode: jest.fn(),
 		updateNode: jest.fn().mockResolvedValue(undefined),
+		getSchoolChartNode: jest.fn(),
+		findChartUsersByTypes: jest.fn(),
 	};
-	return { service: new ChartService(repository as any), repository };
+	const userService = { resetPasswordsToDefault: jest.fn() };
+	return {
+		service: new ChartService(repository as any, userService as any),
+		repository,
+		userService,
+	};
 };
 
 // The partial handed to repository.updateNode is what actually reaches the database, so these
@@ -77,5 +84,95 @@ describe('ChartService.updateNode — effective entity written', () => {
 
 		await expect(service.updateNode(5, { entityCode: 51 })).rejects.toThrow(DomainError);
 		expect(repository.updateNode).not.toHaveBeenCalled();
+	});
+});
+
+describe('ChartService.resetMaintenancePasswords', () => {
+	it('returns an empty result without calling the repository when the school has no chart yet', async () => {
+		const { service, repository, userService } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue(null);
+
+		const result = await service.resetMaintenancePasswords(100, 7, [ENTITY.SCHOOL]);
+
+		expect(result).toEqual({ reset: [], skipped: [] });
+		expect(repository.findChartUsersByTypes).not.toHaveBeenCalled();
+		expect(userService.resetPasswordsToDefault).not.toHaveBeenCalled();
+	});
+
+	it('uses the Dean as root when the school node has no parent', async () => {
+		const { service, repository } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: null });
+		repository.findChartUsersByTypes.mockResolvedValue([]);
+
+		await service.resetMaintenancePasswords(100, 7, [ENTITY.SCHOOL]);
+
+		expect(repository.findChartUsersByTypes).toHaveBeenCalledWith(7, 7, [ENTITY.SCHOOL]);
+	});
+
+	it('uses the existing rootChartId as root when the school node has a parent', async () => {
+		const { service, repository } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
+		repository.findChartUsersByTypes.mockResolvedValue([]);
+
+		await service.resetMaintenancePasswords(100, 7, [ENTITY.COURSE]);
+
+		expect(repository.findChartUsersByTypes).toHaveBeenCalledWith(1, 7, [ENTITY.COURSE]);
+	});
+
+	it('skips a node with no linked user and reports it, without resetting anything for it', async () => {
+		const { service, repository, userService } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
+		repository.findChartUsersByTypes.mockResolvedValue([
+			{ chartId: 30, entityTypeCode: ENTITY.COURSE, staffId: 40, userId: null },
+		]);
+
+		const result = await service.resetMaintenancePasswords(100, 7, [ENTITY.COURSE]);
+
+		expect(result).toEqual({
+			reset: [],
+			skipped: [{ chartId: 30, staffId: 40, entityTypeCode: ENTITY.COURSE }],
+		});
+		expect(userService.resetPasswordsToDefault).not.toHaveBeenCalled();
+	});
+
+	it('resets a user reachable through two in-scope nodes exactly once', async () => {
+		const { service, repository, userService } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
+		repository.findChartUsersByTypes.mockResolvedValue([
+			{ chartId: 30, entityTypeCode: ENTITY.PROGRAM, staffId: 40, userId: 99 },
+			{ chartId: 31, entityTypeCode: ENTITY.AREA, staffId: 41, userId: 99 },
+		]);
+		userService.resetPasswordsToDefault.mockResolvedValue([
+			{ id: 99, firstName: 'Ada', lastName: 'Lovelace' },
+		]);
+
+		const result = await service.resetMaintenancePasswords(100, 7, [ENTITY.PROGRAM, ENTITY.AREA]);
+
+		expect(userService.resetPasswordsToDefault).toHaveBeenCalledTimes(1);
+		expect(userService.resetPasswordsToDefault).toHaveBeenCalledWith([99]);
+		expect(result).toEqual({
+			reset: [{ userId: 99, firstName: 'Ada', lastName: 'Lovelace', chartIds: [30, 31] }],
+			skipped: [],
+		});
+	});
+
+	it('reports every row as skipped and never calls userService when all matched rows are unlinked', async () => {
+		const { service, repository, userService } = buildService();
+		repository.getSchoolChartNode.mockResolvedValue({ id: 7, rootChartId: 1 });
+		repository.findChartUsersByTypes.mockResolvedValue([
+			{ chartId: 30, entityTypeCode: ENTITY.COURSE, staffId: 40, userId: null },
+			{ chartId: 31, entityTypeCode: ENTITY.AREA, staffId: 41, userId: null },
+		]);
+
+		const result = await service.resetMaintenancePasswords(100, 7, [ENTITY.COURSE, ENTITY.AREA]);
+
+		expect(userService.resetPasswordsToDefault).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			reset: [],
+			skipped: [
+				{ chartId: 30, staffId: 40, entityTypeCode: ENTITY.COURSE },
+				{ chartId: 31, staffId: 41, entityTypeCode: ENTITY.AREA },
+			],
+		});
 	});
 });

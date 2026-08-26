@@ -11,6 +11,12 @@ export interface LinkedTeacherRow {
 	lastName: string;
 }
 
+export interface ResetPasswordUserSummary {
+	id: number;
+	firstName: string;
+	lastName: string;
+}
+
 export interface UserDeleteBlockerRefs {
 	hasStaff: boolean;
 	hasUploads: boolean;
@@ -201,6 +207,20 @@ export class UserRepository extends BaseRepository<UserEntity> {
 			.skip(skip)
 			.take(take)
 			.getManyAndCount();
+	}
+
+	async resetPasswordsByIds(
+		userIds: number[],
+		passwordHash: string,
+	): Promise<ResetPasswordUserSummary[]> {
+		if (userIds.length === 0) return [];
+		return await this.dataSource.query(
+			`UPDATE organization.users
+			 SET password = $1, updated_at = NOW()
+			 WHERE id = ANY($2::int[])
+			 RETURNING id, first_name AS "firstName", last_name AS "lastName"`,
+			[passwordHash, userIds],
+		);
 	}
 
 	async findDisplayNamesByIds(userIds: number[]): Promise<Map<number, string>> {
