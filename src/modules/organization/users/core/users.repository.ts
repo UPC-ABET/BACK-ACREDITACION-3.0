@@ -214,13 +214,14 @@ export class UserRepository extends BaseRepository<UserEntity> {
 		passwordHash: string,
 	): Promise<ResetPasswordUserSummary[]> {
 		if (userIds.length === 0) return [];
-		return await this.dataSource.query(
+		const [rows] = (await this.dataSource.query(
 			`UPDATE organization.users
 			 SET password = $1, updated_at = NOW()
 			 WHERE id = ANY($2::int[])
 			 RETURNING id, first_name AS "firstName", last_name AS "lastName"`,
 			[passwordHash, userIds],
-		);
+		)) as [ResetPasswordUserSummary[], number];
+		return rows;
 	}
 
 	async findDisplayNamesByIds(userIds: number[]): Promise<Map<number, string>> {

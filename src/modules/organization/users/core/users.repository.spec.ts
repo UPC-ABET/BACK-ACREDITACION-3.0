@@ -81,8 +81,11 @@ describe('UserRepository.resetPasswordsByIds', () => {
 	it('updates the password for exactly the given ids and returns the affected users', async () => {
 		const { repository, dataSource } = buildRepositoryWithDataSource();
 		dataSource.query.mockResolvedValue([
-			{ id: 1, firstName: 'Ada', lastName: 'Lovelace' },
-			{ id: 2, firstName: 'Alan', lastName: 'Turing' },
+			[
+				{ id: 1, firstName: 'Ada', lastName: 'Lovelace' },
+				{ id: 2, firstName: 'Alan', lastName: 'Turing' },
+			],
+			2,
 		]);
 
 		const result = await repository.resetPasswordsByIds([1, 2], 'hashed-value');
