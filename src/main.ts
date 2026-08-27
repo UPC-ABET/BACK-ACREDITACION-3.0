@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, LogLevel, Logger, ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import { CamelCaseInterceptor } from './shared/interceptors/camel-case.interceptor';
+import { EncryptedResponseInterceptor } from './modules/auth/protocols/response-encryption/interceptors/encrypted-response.interceptor';
+import { ResponseEncryptionService } from './modules/admin/iam/integration-keys/core/response-encryption.service';
 import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
 import { API_GLOBAL_PREFIX } from './shared/constants/app.constants';
@@ -35,10 +37,15 @@ async function bootstrap() {
 	app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
 
 	app.useGlobalFilters(new AllExceptionsFilter());
-	// CamelCaseInterceptor is registered first so on the response path it runs last — after
-	// ClassSerializerInterceptor has turned entities into plain objects — letting it camelize
-	// JSONB `extra` content and nested relations across every endpoint.
+	// Interceptors run their response-path transform in the REVERSE of registration order, so the
+	// first one registered here runs LAST. EncryptedResponseInterceptor is registered first so it
+	// encrypts the already-camelCased, already-serialized final body — an external integrator's
+	// decrypted plaintext is byte-identical to what a human caller would have received unencrypted.
+	// CamelCaseInterceptor is registered next so it in turn runs after ClassSerializerInterceptor has
+	// turned entities into plain objects, letting it camelize JSONB `extra` content and nested
+	// relations across every endpoint.
 	app.useGlobalInterceptors(
+		new EncryptedResponseInterceptor(app.get(Reflector), app.get(ResponseEncryptionService)),
 		new CamelCaseInterceptor(),
 		new ClassSerializerInterceptor(app.get(Reflector)),
 	);
