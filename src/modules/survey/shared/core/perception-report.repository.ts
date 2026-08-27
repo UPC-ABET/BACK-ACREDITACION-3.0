@@ -10,6 +10,7 @@ export interface PerceptionScoreRow {
 	campusName: I18nText | string | null;
 	commissionId: number | null;
 	commissionName: I18nText | string | null;
+	surveyNumber: number | null;
 	score: string;
 	count: number;
 }
@@ -77,6 +78,7 @@ export class PerceptionReportRepository {
 				c.name            AS "campusName",
 				pc.commission_id  AS "commissionId",
 				comm.name         AS "commissionName",
+				s.survey_number   AS "surveyNumber",
 				sc.score          AS "score",
 				COUNT(*)::int     AS "count"
 			FROM evidence.surveys s
@@ -86,7 +88,7 @@ export class PerceptionReportRepository {
 			LEFT JOIN accreditation.commissions comm ON comm.id = pc.commission_id
 			LEFT JOIN organization.campuses c ON c.id = s.campus_id
 			WHERE ${conditions.join(' AND ')}
-			GROUP BY o.id, o.outcome_code, o.outcome_name, s.campus_id, c.name, pc.commission_id, comm.name, sc.score
+			GROUP BY o.id, o.outcome_code, o.outcome_name, s.campus_id, c.name, pc.commission_id, comm.name, s.survey_number, sc.score
 			ORDER BY o.outcome_code, s.campus_id`,
 			params,
 		);

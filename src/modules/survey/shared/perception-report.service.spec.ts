@@ -18,19 +18,33 @@ const baseRequest: PerceptionReportRequest = {
 	surveyTypeCode: 'TG601-T001',
 	fileLabel: 'GRA',
 	reportName: { es: 'Informe', en: 'Report' },
+	totalLabel: { es: 'Total de graduandos', en: 'Total graduating students' },
 	academicPeriodId: 1,
 	lang: 'es',
 };
 
-const scoreRow = (campusId: number, campusName: string, score: string, count: number) => ({
+const scoreRow = (
+	campusId: number,
+	campusName: string,
+	score: string,
+	count: number,
+	overrides: Partial<{ outcomeId: number; outcomeCode: string; surveyNumber: number }> = {},
+) => ({
 	outcomeId: 1,
-	outcomeCode: 'O1',
+	outcomeCode: 'EAC-BIO-1',
 	outcomeName: 'Outcome 1',
 	campusId,
 	campusName,
+	commissionId: null,
+	commissionName: null,
+	surveyNumber: null,
 	score,
 	count,
+	...overrides,
 });
+
+const documentOf = (callIndex: number) =>
+	generator.generateDocument.mock.calls[callIndex][0] as { bodyHtml: string; metadata: unknown[] };
 
 describe('PerceptionReportService', () => {
 	beforeEach(() => {
@@ -136,14 +150,14 @@ describe('PerceptionReportService', () => {
 		repo.getConfiguredOutcomes.mockResolvedValue([
 			{
 				outcomeId: 1,
-				outcomeCode: 'O1',
+				outcomeCode: 'EAC-BIO-1',
 				outcomeName: 'Outcome 1',
 				commissionId: 1,
 				commissionName: 'EAC',
 			},
 			{
 				outcomeId: 2,
-				outcomeCode: 'O2',
+				outcomeCode: 'EAC-BIO-2',
 				outcomeName: 'Outcome 2',
 				commissionId: 2,
 				commissionName: 'CAC',
@@ -153,6 +167,69 @@ describe('PerceptionReportService', () => {
 		await service.generate({ ...baseRequest, campusId: 1 });
 
 		const categories = chart.buildGroupedBarChart.mock.calls[0][0].categories;
-		expect(categories).toEqual(['O1', 'O2']);
+		expect(categories).toEqual(['1', '2']);
+	});
+
+	it('labels the results table with the band names, the average and the caller total label', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([
+			scoreRow(1, 'Lima', '5', 3),
+			scoreRow(1, 'Lima', '3', 1),
+		]);
+
+		await service.generate({ ...baseRequest, campusId: 1 });
+
+		const { bodyHtml } = documentOf(0);
+		expect(bodyHtml).toContain('Necesita mejora');
+		expect(bodyHtml).toContain('Sobresaliente');
+		expect(bodyHtml).toContain('Promedio');
+		expect(bodyHtml).toContain('Total de graduandos');
+		expect(bodyHtml).not.toContain('1 Punto');
+		expect(bodyHtml).not.toContain('Modalidad de Estudio</th>');
+		// (5 x 3 + 3 x 1) / 4
+		expect(bodyHtml).toContain('4.50');
+	});
+
+	it('splits into one report per survey number when the survey type asks for it', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([
+			scoreRow(1, 'Lima', '5', 3, { surveyNumber: 1 }),
+			scoreRow(1, 'Lima', '2', 1, { surveyNumber: 2 }),
+		]);
+
+		const result = await service.generate({
+			...baseRequest,
+			fileLabel: 'PPP',
+			campusId: 1,
+			surveyNumberSplit: {
+				label: { es: 'Práctica', en: 'Internship' },
+				valueLabels: {
+					1: { es: 'Primera Práctica Preprofesional', en: 'First' },
+					2: { es: 'Segunda Práctica Preprofesional', en: 'Second' },
+				},
+			},
+		});
+
+		expect(result.reports).toHaveLength(2);
+		expect(result.reports[0].filename).toContain('Primera_Practica_Preprofesional');
+		expect(result.reports[1].filename).toContain('Segunda_Practica_Preprofesional');
+		expect(documentOf(0).metadata).toContainEqual({
+			label: 'Práctica',
+			value: 'Primera Práctica Preprofesional',
+		});
+	});
+
+	it('keeps a single report when the split is requested but no survey number is recorded', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([scoreRow(1, 'Lima', '4.5', 3)]);
+
+		const result = await service.generate({
+			...baseRequest,
+			campusId: 1,
+			surveyNumberSplit: { label: { es: 'Práctica', en: 'Internship' }, valueLabels: {} },
+		});
+
+		expect(result.reports).toHaveLength(1);
+		expect(documentOf(0).metadata).toHaveLength(4);
 	});
 });

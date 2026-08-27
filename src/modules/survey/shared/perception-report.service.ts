@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ReportChartService } from 'src/libs/reporting/report-chart.service';
 import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
-import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
+import type {
+	ReportDocument,
+	ReportLanguage,
+	ReportMetadataItem,
+} from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
 import type { I18nText } from 'src/shared/types/i18n';
 import { BadRequestError } from 'src/commons/domain-error';
@@ -12,15 +16,26 @@ import {
 	type PerceptionScoreRow,
 } from './core/perception-report.repository';
 
+/**
+ * Splits the report into one PDF per survey number (PPP's first vs second internship),
+ * naming each one in the header and the filename.
+ */
+export interface PerceptionSurveyNumberSplit {
+	label: I18nText;
+	valueLabels: Record<number, I18nText>;
+}
+
 export interface PerceptionReportRequest {
 	surveyTypeCode: string;
 	fileLabel: string;
 	reportName: I18nText;
+	totalLabel: I18nText;
 	academicPeriodId: number;
 	programId?: number;
 	commissionId?: number;
 	campusId?: number;
 	surveyNumbers?: number[];
+	surveyNumberSplit?: PerceptionSurveyNumberSplit;
 	modalityLabel?: string;
 	lang: ReportLanguage;
 }
@@ -44,8 +59,21 @@ interface ReportSection {
 	configuredOutcomes: ConfiguredOutcomeRow[];
 }
 
+interface SurveyNumberGroup {
+	label: string | null;
+	rows: PerceptionScoreRow[];
+}
+
+interface OutcomeAggregate {
+	code: string;
+	label: string;
+	name: string;
+	counts: number[];
+	total: number;
+	scoreSum: number;
+}
+
 interface AcceptanceBand {
-	order: number;
 	name: string;
 	minScore: number;
 	maxScore: number;
@@ -56,7 +84,7 @@ const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
 
 const REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
-	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
+	section h3 { color: #18181b; font-size: 12pt; margin: 0 0 10px; }
 	thead th { background: #3a3a3c; color: #fff; text-align: center; }
 	td.num, th.num { text-align: center; }
 	.band-cell { color: #fff; font-weight: 700; }
@@ -65,7 +93,7 @@ const REPORT_STYLES = `
 const LABELS = {
 	es: {
 		outcome: 'Outcome',
-		total: 'Total',
+		average: 'Promedio',
 		modality: 'Modalidad de Estudio',
 		count: 'Cantidad',
 		chartTitle: 'Percepción por Outcome',
@@ -76,18 +104,15 @@ const LABELS = {
 		period: 'Periodo',
 		campus: 'Sede',
 		commission: 'Comisión',
-		surveyNumber: 'N° de encuesta',
 		allCampuses: 'TODAS',
 		allCommissions: 'TODAS',
 		allPrograms: 'TODAS LAS CARRERAS',
 		all: 'TODOS',
 		empty: 'Sin datos para los filtros seleccionados',
-		point: 'Punto',
-		points: 'Puntos',
 	},
 	en: {
 		outcome: 'Outcome',
-		total: 'Total',
+		average: 'Average',
 		modality: 'Study modality',
 		count: 'Count',
 		chartTitle: 'Perception by outcome',
@@ -98,14 +123,11 @@ const LABELS = {
 		period: 'Period',
 		campus: 'Campus',
 		commission: 'Commission',
-		surveyNumber: 'Survey number',
 		allCampuses: 'ALL',
 		allCommissions: 'ALL',
 		allPrograms: 'ALL CAREERS',
 		all: 'ALL',
 		empty: 'No data for the selected filters',
-		point: 'Point',
-		points: 'Points',
 	},
 } as const;
 
@@ -160,47 +182,18 @@ export class PerceptionReportService {
 			? this.localizeValue(commissionName, request.lang)
 			: L.allCommissions;
 
-		// When a campus is selected but no commission AND the data spans multiple commissions:
-		// split by commission + general. Otherwise fall back to the regular campus split.
-		// Note: PerceptionReportDto requires commissionId whenever programId is set, so this
-		// split path is only reachable for campus-only requests (no career filter) — it can
-		// never combine with a programId.
-		const distinctCommissions = new Set(
-			rows.map((r) => r.commissionId).filter((id): id is number => id !== null && id !== undefined),
-		);
-		const useCommissionSplit =
-			request.campusId !== undefined &&
-			request.commissionId === undefined &&
-			distinctCommissions.size > 1;
-
-		const sections = useCommissionSplit
-			? this.buildCommissionSections(rows, request, L, configuredOutcomes)
-			: this.buildCampusSections(rows, request, L, configuredOutcomes);
-
-		// In commission-split mode the campus is fixed; grab its localised name from the rows.
-		const fixedCampusLabel = useCommissionSplit
-			? rows.length > 0
-				? this.localizeValue(rows[0].campusName, request.lang)
-				: L.allCampuses
-			: undefined;
-
-		const documents = sections.map((section) => ({
-			campusId: section.campusId,
-			campusName: section.label,
-			document: this.buildDocument({
-				rows: section.rows,
-				configuredOutcomes: section.configuredOutcomes,
+		const documents = this.buildSurveyNumberGroups(rows, request).flatMap((group) =>
+			this.buildGroupDocuments({
+				group,
 				bands,
 				request,
-				reportName: this.localizeValue(request.reportName, request.lang),
+				configuredOutcomes,
 				programLabel: localizedProgram,
 				periodCode: periodCode ?? String(request.academicPeriodId),
-				campusLabel: useCommissionSplit ? (fixedCampusLabel ?? L.allCampuses) : section.label,
-				commissionLabel: useCommissionSplit ? section.label : headerCommission,
+				headerCommission,
 				labels: L,
 			}),
-			filename: this.buildFilename(request.fileLabel, section.label),
-		}));
+		);
 
 		const generated = await Promise.all(
 			documents.map(async (entry) => {
@@ -234,6 +227,93 @@ export class PerceptionReportService {
 		return { reports, zip };
 	}
 
+	private buildGroupDocuments(args: {
+		group: SurveyNumberGroup;
+		bands: AcceptanceBand[];
+		request: PerceptionReportRequest;
+		configuredOutcomes: ConfiguredOutcomeRow[];
+		programLabel: string;
+		periodCode: string;
+		headerCommission: string;
+		labels: (typeof LABELS)[ReportLanguage];
+	}) {
+		const { group, request, configuredOutcomes, labels: L } = args;
+
+		// When a campus is selected but no commission AND the data spans multiple commissions:
+		// split by commission + general. Otherwise fall back to the regular campus split.
+		// Note: PerceptionReportDto requires commissionId whenever programId is set, so this
+		// split path is only reachable for campus-only requests (no career filter) — it can
+		// never combine with a programId.
+		const distinctCommissions = new Set(
+			group.rows
+				.map((r) => r.commissionId)
+				.filter((id): id is number => id !== null && id !== undefined),
+		);
+		const useCommissionSplit =
+			request.campusId !== undefined &&
+			request.commissionId === undefined &&
+			distinctCommissions.size > 1;
+
+		const sections = useCommissionSplit
+			? this.buildCommissionSections(group.rows, request, L, configuredOutcomes)
+			: this.buildCampusSections(group.rows, request, L, configuredOutcomes);
+
+		// In commission-split mode the campus is fixed; grab its localised name from the rows.
+		const fixedCampusLabel = useCommissionSplit
+			? group.rows.length > 0
+				? this.localizeValue(group.rows[0].campusName, request.lang)
+				: L.allCampuses
+			: undefined;
+
+		return sections.map((section) => ({
+			campusId: section.campusId,
+			campusName: section.label,
+			document: this.buildDocument({
+				rows: section.rows,
+				configuredOutcomes: section.configuredOutcomes,
+				bands: args.bands,
+				request,
+				reportName: this.localizeValue(request.reportName, request.lang),
+				programLabel: args.programLabel,
+				periodCode: args.periodCode,
+				campusLabel: useCommissionSplit ? (fixedCampusLabel ?? L.allCampuses) : section.label,
+				commissionLabel: useCommissionSplit ? section.label : args.headerCommission,
+				surveyNumberLabel: group.label,
+				labels: L,
+			}),
+			filename: this.buildFilename(request.fileLabel, section.label, group.label),
+		}));
+	}
+
+	/**
+	 * One group per survey number present in the data when the survey type asks for the split
+	 * (PPP: first / second internship), so each practice gets its own PDF. Every other survey
+	 * type — and PPP data with no survey number recorded — stays as a single unsplit group.
+	 */
+	private buildSurveyNumberGroups(
+		rows: PerceptionScoreRow[],
+		request: PerceptionReportRequest,
+	): SurveyNumberGroup[] {
+		const split = request.surveyNumberSplit;
+		if (!split) return [{ label: null, rows }];
+
+		const surveyNumbers = [
+			...new Set(
+				rows
+					.map((row) => row.surveyNumber)
+					.filter((value): value is number => value !== null && value !== undefined),
+			),
+		].sort((a, b) => a - b);
+
+		if (surveyNumbers.length === 0) return [{ label: null, rows }];
+
+		return surveyNumbers.map((surveyNumber) => ({
+			label:
+				this.localizeValue(split.valueLabels[surveyNumber], request.lang) || String(surveyNumber),
+			rows: rows.filter((row) => row.surveyNumber === surveyNumber),
+		}));
+	}
+
 	private async loadBands(
 		surveyTypeId: number,
 		academicPeriodId: number,
@@ -246,8 +326,7 @@ export class PerceptionReportService {
 		}
 
 		return levels
-			.map((level, index) => ({
-				order: Number(level.uniqueValue) || index + 1,
+			.map((level) => ({
 				name: this.localizeValue(level.name, lang),
 				minScore: Number(level.minScore),
 				maxScore: Number(level.maxScore),
@@ -348,31 +427,41 @@ export class PerceptionReportService {
 		periodCode: string;
 		campusLabel: string;
 		commissionLabel: string;
+		surveyNumberLabel: string | null;
 		labels: (typeof LABELS)[ReportLanguage];
 	}): ReportDocument {
 		const { rows, configuredOutcomes, bands, request, labels: L } = args;
 		const modalityLabel = request.modalityLabel?.trim() || L.all;
 
 		const outcomes = this.aggregateOutcomes(rows, configuredOutcomes, bands, request.lang);
+		const totalLabel = this.localizeValue(request.totalLabel, request.lang);
 
 		const bodyHtml = outcomes.length
 			? `
 				${this.buildChart(outcomes, bands, L)}
-				${this.buildResultsTable(outcomes, bands, modalityLabel, L)}
+				${this.buildResultsTable(outcomes, bands, totalLabel, L)}
 				${this.buildAcceptanceTable(bands, L)}
 			`
 			: `<section><p class="report-empty">${escapeHtml(L.empty)}</p></section>`;
+
+		const metadata: ReportMetadataItem[] = [
+			{ label: L.period, value: args.periodCode },
+			{ label: L.commission, value: args.commissionLabel },
+			{ label: L.campus, value: args.campusLabel },
+			{ label: L.modality, value: modalityLabel },
+		];
+		if (args.surveyNumberLabel && request.surveyNumberSplit) {
+			metadata.push({
+				label: this.localizeValue(request.surveyNumberSplit.label, request.lang),
+				value: args.surveyNumberLabel,
+			});
+		}
 
 		return {
 			language: request.lang,
 			reportName: args.reportName,
 			programName: args.programLabel,
-			metadata: [
-				{ label: L.period, value: args.periodCode },
-				{ label: L.commission, value: args.commissionLabel },
-				{ label: L.campus, value: args.campusLabel },
-				{ label: L.modality, value: modalityLabel },
-			],
+			metadata,
 			bodyHtml,
 			additionalStyles: REPORT_STYLES,
 		};
@@ -383,20 +472,19 @@ export class PerceptionReportService {
 		configuredOutcomes: ConfiguredOutcomeRow[],
 		bands: AcceptanceBand[],
 		lang: ReportLanguage,
-	): Array<{ code: string; name: string; counts: number[]; total: number }> {
-		const byOutcome = new Map<
-			number,
-			{ code: string; name: string; counts: number[]; total: number }
-		>();
+	): OutcomeAggregate[] {
+		const byOutcome = new Map<number, OutcomeAggregate>();
 
 		// Seed every configured outcome at zero first, so ones without a single response yet still
 		// show up in the chart/table instead of being silently omitted.
 		for (const outcome of configuredOutcomes) {
 			byOutcome.set(outcome.outcomeId, {
 				code: outcome.outcomeCode,
+				label: outcomeLabel(outcome.outcomeCode),
 				name: this.localizeValue(outcome.outcomeName, lang),
 				counts: bands.map(() => 0),
 				total: 0,
+				scoreSum: 0,
 			});
 		}
 
@@ -405,20 +493,34 @@ export class PerceptionReportService {
 			if (!entry) {
 				entry = {
 					code: row.outcomeCode,
+					label: outcomeLabel(row.outcomeCode),
 					name: this.localizeValue(row.outcomeName, lang),
 					counts: bands.map(() => 0),
 					total: 0,
+					scoreSum: 0,
 				};
 				byOutcome.set(row.outcomeId, entry);
 			}
-			const bandIndex = this.bandIndexForScore(Number(row.score), bands);
+			const score = Number(row.score);
+			const bandIndex = this.bandIndexForScore(score, bands);
 			entry.counts[bandIndex] += row.count;
 			entry.total += row.count;
+			entry.scoreSum += score * row.count;
 		}
 
-		return [...byOutcome.values()].sort((a, b) =>
+		const outcomes = [...byOutcome.values()].sort((a, b) =>
 			a.code.localeCompare(b.code, undefined, { numeric: true }),
 		);
+
+		// A section spanning several commissions (campus-only request) can hold EAC-BIO-1 and
+		// CAC-BIO-1 at once, which both shorten to "1". Ambiguous axis labels are worse than long
+		// ones, so the whole section falls back to full codes when the short form collides.
+		const shortLabels = new Set(outcomes.map((outcome) => outcome.label));
+		if (shortLabels.size < outcomes.length) {
+			for (const outcome of outcomes) outcome.label = outcome.code;
+		}
+
+		return outcomes;
 	}
 
 	private bandIndexForScore(score: number, bands: AcceptanceBand[]): number {
@@ -429,13 +531,13 @@ export class PerceptionReportService {
 	}
 
 	private buildChart(
-		outcomes: Array<{ code: string; counts: number[] }>,
+		outcomes: OutcomeAggregate[],
 		bands: AcceptanceBand[],
 		labels: (typeof LABELS)[ReportLanguage],
 	): string {
 		const chart = this.reportChart.buildGroupedBarChart({
 			title: labels.chartTitle,
-			categories: outcomes.map((outcome) => outcome.code),
+			categories: outcomes.map((outcome) => outcome.label),
 			series: bands.map((band, bandIndex) => ({
 				label: band.name,
 				color: band.color,
@@ -448,9 +550,9 @@ export class PerceptionReportService {
 	}
 
 	private buildResultsTable(
-		outcomes: Array<{ code: string; name: string; counts: number[]; total: number }>,
+		outcomes: OutcomeAggregate[],
 		bands: AcceptanceBand[],
-		modalityLabel: string,
+		totalLabel: string,
 		labels: (typeof LABELS)[ReportLanguage],
 	): string {
 		const head = `
@@ -460,22 +562,22 @@ export class PerceptionReportService {
 					.map(
 						(band) =>
 							`<th class="num band-cell" style="background:${escapeHtml(band.color)}">${escapeHtml(
-								this.bandPointsLabel(band, labels),
+								band.name,
 							)}</th>`,
 					)
 					.join('')}
-				<th class="num">${escapeHtml(labels.total)}</th>
-				<th>${escapeHtml(labels.modality)}</th>
+				<th class="num">${escapeHtml(labels.average)}</th>
+				<th class="num">${escapeHtml(totalLabel)}</th>
 			</tr>`;
 
 		const body = outcomes
 			.map(
 				(outcome) =>
 					`<tr>
-						<td class="num">${escapeHtml(outcome.code)}</td>
+						<td class="num">${escapeHtml(outcome.label)}</td>
 						${outcome.counts.map((count) => `<td class="num">${count}</td>`).join('')}
+						<td class="num">${escapeHtml(formatAverage(outcome))}</td>
 						<td class="num">${outcome.total}</td>
-						<td>${escapeHtml(modalityLabel)}</td>
 					</tr>`,
 			)
 			.join('');
@@ -516,14 +618,20 @@ export class PerceptionReportService {
 			</section>`;
 	}
 
-	private bandPointsLabel(band: AcceptanceBand, labels: (typeof LABELS)[ReportLanguage]): string {
-		const unit = band.order === 1 ? labels.point : labels.points;
-		return `${band.order} ${unit}`;
-	}
-
-	private buildFilename(surveyTypeCode: string, campusLabel: string): string {
-		const base = `Reporte_${surveyTypeCode}_Percepcion_Por_Outcome_${campusLabel}_${dateStamp()}`;
-		return `${sanitizeReportFilename(base)}.pdf`;
+	private buildFilename(
+		surveyTypeCode: string,
+		campusLabel: string,
+		surveyNumberLabel: string | null,
+	): string {
+		const parts = [
+			'Reporte',
+			surveyTypeCode,
+			'Percepcion_Por_Outcome',
+			campusLabel,
+			...(surveyNumberLabel ? [surveyNumberLabel] : []),
+			dateStamp(),
+		];
+		return `${sanitizeReportFilename(parts.join('_'))}.pdf`;
 	}
 
 	private buildZipFilename(surveyTypeCode: string): string {
@@ -536,6 +644,21 @@ export class PerceptionReportService {
 		if (typeof value === 'string') return value;
 		return localize(value, lang);
 	}
+}
+
+/**
+ * Outcome codes are namespaced by commission (`EAC-BIO-1`), but both the old system and the
+ * report's own chart axis only ever show the outcome number, so the trailing digits are the
+ * label. Codes without a trailing number fall back to the full code.
+ */
+function outcomeLabel(code: string): string {
+	const trailingNumber = /(\d+)\s*$/.exec(code ?? '');
+	return trailingNumber ? trailingNumber[1] : (code ?? '');
+}
+
+function formatAverage(outcome: OutcomeAggregate): string {
+	if (outcome.total === 0) return '—';
+	return (outcome.scoreSum / outcome.total).toFixed(2);
 }
 
 function formatScore(value: number): string {

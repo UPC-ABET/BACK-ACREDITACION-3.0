@@ -63,6 +63,7 @@ export class GraService {
 				es: 'Informe de Encuesta de Graduandos',
 				en: 'Graduating Students Survey Report',
 			},
+			totalLabel: { es: 'Total de graduandos', en: 'Total graduating students' },
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,
