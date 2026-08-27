@@ -1,4 +1,5 @@
 import { Body, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
+import { ApiSecurity } from '@nestjs/swagger';
 import { BaseController } from 'src/commons/base.controller';
 import {
 	SwaggerStudyPlanCourseController,
@@ -31,6 +32,7 @@ import {
 	ApiSchoolHeader,
 } from 'src/modules/auth/protocols/jwt/decorators/school-id.decorator';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
+import { ApiTokenAuth } from 'src/modules/auth/protocols/api-key/decorators/api-token-auth.decorator';
 
 @SwaggerStudyPlanCourseController()
 export class StudyPlanCourseController extends BaseController<StudyPlanCourseService> {
@@ -68,7 +70,15 @@ export class StudyPlanCourseController extends BaseController<StudyPlanCourseSer
 		return await super.getById(id);
 	}
 
+	// Opted into machine-to-machine access (see docs/POLICIES.md § Auth & Guards): a token scoped
+	// to {ACADEMIC, POST} can read course status/outcome/career per academic period. `create` and
+	// `maintenanceCreate` below need the same {ACADEMIC, POST} permission but stay JWT-only —
+	// `@ApiTokenAuth()` is checked per route by `ApiTokenAuthGuard` before the scope is ever
+	// evaluated, so a token is rejected there for any route that doesn't carry this decorator,
+	// regardless of what its scopes say.
 	@SwaggerStudyPlanCourseGetByFilters()
+	@ApiSecurity('apiKey')
+	@ApiTokenAuth()
 	@ApiSchoolHeader(false)
 	@ApiAcademicPeriodHeader(false)
 	@RequirePermission({ module: PERMISSION_MODULES.ACADEMIC, action: PERMISSION_ACTIONS.POST })

@@ -10,6 +10,7 @@ import {
 	schoolProgramFilterParams,
 } from 'src/libs/school-program.functions';
 import { CourseEntity } from '../../courses/model/courses.entity';
+import { ProgramEntity } from '../../programs/model/programs.entity';
 import { camelToSnake, snakeizeKeys } from 'src/libs/case.functions';
 import {
 	FilterStudyPlanCourseDto,
@@ -74,7 +75,17 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 
 		const qb = this.dataSource
 			.createQueryBuilder(StudyPlanCourseEntity, 'spc')
-			.leftJoinAndSelect('spc.course', 'course');
+			.leftJoinAndSelect('spc.course', 'course')
+			// study_plan_academic_period_id is NOT NULL, so this chain is always resolvable — joined
+			// unconditionally so every row carries which career (program) it belongs to, not only when
+			// the caller filters by academicPeriodId/programId/schoolId.
+			.innerJoin(
+				StudyPlanAcademicPeriodEntity,
+				'spap',
+				'spap.id = spc.study_plan_academic_period_id',
+			)
+			.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id')
+			.leftJoinAndMapOne('spc.program', ProgramEntity, 'program', 'program.id = sp.program_id');
 
 		if (filters.isActive !== undefined)
 			qb.andWhere('spc.is_active = :isActive', { isActive: filters.isActive });
@@ -89,31 +100,18 @@ export class StudyPlanCourseRepository extends BaseRepository<StudyPlanCourseEnt
 				studyPlanAcademicPeriodId: filters.studyPlanAcademicPeriodId,
 			});
 
-		if (
-			academicPeriodId !== undefined ||
-			filters.programId !== undefined ||
-			schoolId !== undefined
-		) {
-			qb.innerJoin(
-				StudyPlanAcademicPeriodEntity,
-				'spap',
-				'spap.id = spc.study_plan_academic_period_id',
+		if (academicPeriodId !== undefined) {
+			qb.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId });
+		}
+
+		if (filters.programId !== undefined) {
+			qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
+		}
+
+		if (schoolId !== undefined) {
+			qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
+				schoolProgramFilterParams(schoolId),
 			);
-			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
-
-			if (academicPeriodId !== undefined) {
-				qb.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId });
-			}
-
-			if (filters.programId !== undefined) {
-				qb.andWhere('sp.program_id = :programId', { programId: filters.programId });
-			}
-
-			if (schoolId !== undefined) {
-				qb.andWhere(programInSchoolSubquery('sp.program_id')).setParameters(
-					schoolProgramFilterParams(schoolId),
-				);
-			}
 		}
 
 		if (filters.isEvaluable !== undefined) {
