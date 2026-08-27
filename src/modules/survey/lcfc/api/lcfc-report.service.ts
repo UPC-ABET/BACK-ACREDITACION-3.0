@@ -23,11 +23,16 @@ const LCFC_REPORT_STYLES = `
 interface CountRow {
 	programName?: I18nText | string;
 	courseName?: I18nText | string;
+	courseCode?: string;
 	sectionCode?: string;
+	professorName?: string;
+	enrolled?: number;
 	completed: number;
 	pending: number;
 	total: number;
 }
+
+type ReportGroupBy = 'course' | 'section';
 
 const LABELS = {
 	es: {
@@ -44,7 +49,10 @@ const LABELS = {
 		byCourse: 'Encuestas por curso',
 		program: 'Programa',
 		course: 'Curso',
+		courseCode: 'Código',
+		professor: 'Profesor',
 		section: 'Sección',
+		enrolled: 'Matriculados',
 		empty: 'Sin datos',
 		summaryReportName: 'Reporte General LCFC por Carrera',
 		career: 'Carrera',
@@ -65,7 +73,10 @@ const LABELS = {
 		byCourse: 'Surveys by course',
 		program: 'Program',
 		course: 'Course',
+		courseCode: 'Code',
+		professor: 'Professor',
 		section: 'Section',
+		enrolled: 'Enrolled',
 		empty: 'No data',
 		summaryReportName: 'LCFC Overview Report by Program',
 		career: 'Program',
@@ -87,9 +98,10 @@ export class LcfcReportService {
 		academicPeriodId: number,
 		programId: number | undefined,
 		lang: ReportLanguage,
+		groupBy: ReportGroupBy = 'section',
 	) {
 		const dashboard = await this.notifService.getDashboard({ academicPeriodId, programId });
-		const document = this.buildDocument(dashboard, academicPeriodId, programId, lang);
+		const document = this.buildDocument(dashboard, academicPeriodId, programId, lang, groupBy);
 		const filename = this.buildFilename(dashboard, academicPeriodId, programId, lang);
 		return this.reportGenerator.generateDocument(document, filename);
 	}
@@ -151,6 +163,35 @@ export class LcfcReportService {
 		return this.reportGenerator.generateDocument(document, filename);
 	}
 
+	/**
+	 * Collapses the per-section rows into one row per course (summing counts, dropping
+	 * section/professor) for the "course" granularity — a course spans several NRCs, each with
+	 * its own professor, so course-level totals can't carry a single professor's name.
+	 */
+	private aggregateByCourse(rows: CountRow[]): CountRow[] {
+		const byCourse = new Map<string, CountRow>();
+		for (const row of rows) {
+			const key = row.courseCode || JSON.stringify(row.courseName);
+			const existing = byCourse.get(key);
+			if (existing) {
+				existing.enrolled = (existing.enrolled ?? 0) + (row.enrolled ?? 0);
+				existing.completed += row.completed;
+				existing.pending += row.pending;
+				existing.total += row.total;
+			} else {
+				byCourse.set(key, {
+					courseName: row.courseName,
+					courseCode: row.courseCode,
+					enrolled: row.enrolled ?? 0,
+					completed: row.completed,
+					pending: row.pending,
+					total: row.total,
+				});
+			}
+		}
+		return [...byCourse.values()];
+	}
+
 	private rate(completed: number, total: number): number {
 		return total > 0 ? Math.round((completed / total) * 100) : 0;
 	}
@@ -183,11 +224,15 @@ export class LcfcReportService {
 		academicPeriodId: number,
 		programId: number | undefined,
 		lang: ReportLanguage,
+		groupBy: ReportGroupBy,
 	): ReportDocument {
 		const L = LABELS[lang];
 		const summary = dashboard.summary ?? {};
 		const byProgram = dashboard.byProgram ?? [];
-		const byCourse = dashboard.byCourse ?? [];
+		const byCourse =
+			groupBy === 'course'
+				? this.aggregateByCourse(dashboard.byCourse ?? [])
+				: (dashboard.byCourse ?? []);
 
 		const programName =
 			programId && byProgram.length === 1
@@ -249,7 +294,9 @@ export class LcfcReportService {
 				<table>
 					<thead><tr>
 						<th>${escapeHtml(L.course)}</th>
-						<th>${escapeHtml(L.section)}</th>
+						<th>${escapeHtml(L.courseCode)}</th>
+						${groupBy === 'section' ? `<th>${escapeHtml(L.professor)}</th><th>${escapeHtml(L.section)}</th>` : ''}
+						<th class="num">${escapeHtml(L.enrolled)}</th>
 						<th class="num">${escapeHtml(L.completed)}</th>
 						<th class="num">${escapeHtml(L.pending)}</th>
 						<th class="num">${escapeHtml(L.total)}</th>
@@ -258,7 +305,11 @@ export class LcfcReportService {
 					<tbody>${byCourse
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.courseName, lang))}</td><td>${escapeHtml(r.sectionCode ?? '')}</td><td class="num">${r.completed}</td><td class="num">${r.pending}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.courseName, lang))}</td><td>${escapeHtml(r.courseCode ?? '')}</td>${
+									groupBy === 'section'
+										? `<td>${escapeHtml(r.professorName ?? '')}</td><td>${escapeHtml(r.sectionCode ?? '')}</td>`
+										: ''
+								}<td class="num">${r.enrolled ?? 0}</td><td class="num">${r.completed}</td><td class="num">${r.pending}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
 				</table>

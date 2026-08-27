@@ -38,8 +38,13 @@ export class LcfcService {
 		return this.conversionService.rebuildPeriod(academicPeriodId);
 	}
 
-	generateReportPdf(academicPeriodId: number, programId: number | undefined, lang: ReportLanguage) {
-		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang);
+	generateReportPdf(
+		academicPeriodId: number,
+		programId: number | undefined,
+		lang: ReportLanguage,
+		groupBy: 'course' | 'section' = 'section',
+	) {
+		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang, groupBy);
 	}
 
 	async generatePerceptionReport(
