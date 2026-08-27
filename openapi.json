@@ -12001,6 +12001,113 @@
 				"tags": ["IAM - Permisos por Rol y Modulo"]
 			}
 		},
+		"/admin-api-tokens/create": {
+			"post": {
+				"operationId": "ApiTokenController_issue",
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/CreateApiTokenDto" } }
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Resource created successfully\n\nToken issued. The plaintext `apiKey` is returned exactly once in this response.",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/IssuedApiTokenDto" } }
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Emitir token de API",
+				"tags": ["IAM - API Tokens"]
+			}
+		},
+		"/admin-api-tokens/update/{id}": {
+			"put": {
+				"operationId": "ApiTokenController_update",
+				"parameters": [
+					{ "name": "id", "required": true, "in": "path", "schema": { "type": "number" } }
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/UpdateApiTokenDto" } }
+					}
+				},
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Actualizar token de API",
+				"tags": ["IAM - API Tokens"]
+			}
+		},
+		"/admin-api-tokens/delete/{id}": {
+			"delete": {
+				"operationId": "ApiTokenController_revoke",
+				"parameters": [
+					{ "name": "id", "required": true, "in": "path", "schema": { "type": "number" } }
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Revocar token de API",
+				"tags": ["IAM - API Tokens"]
+			}
+		},
+		"/admin-api-tokens/get-all": {
+			"get": {
+				"operationId": "ApiTokenController_getAll",
+				"parameters": [],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Listar tokens de API",
+				"tags": ["IAM - API Tokens"]
+			}
+		},
+		"/admin-api-tokens/get-by-id/{id}": {
+			"get": {
+				"operationId": "ApiTokenController_getById",
+				"parameters": [
+					{ "name": "id", "required": true, "in": "path", "schema": { "type": "number" } }
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Obtener token de API",
+				"tags": ["IAM - API Tokens"]
+			}
+		},
+		"/admin-api-tokens/get-by-filters": {
+			"post": {
+				"operationId": "ApiTokenController_getByFilters",
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/FilterApiTokenDto" } }
+					}
+				},
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Buscar tokens de API",
+				"tags": ["IAM - API Tokens"]
+			}
+		},
 		"/banner/session/status": {
 			"get": {
 				"operationId": "BannerSessionController_getStatus",
@@ -12471,7 +12578,10 @@
 	"tags": [],
 	"servers": [],
 	"components": {
-		"securitySchemes": { "bearer": { "scheme": "bearer", "bearerFormat": "JWT", "type": "http" } },
+		"securitySchemes": {
+			"bearer": { "scheme": "bearer", "bearerFormat": "JWT", "type": "http" },
+			"apiKey": { "type": "apiKey", "in": "header", "name": "X-Api-Key" }
+		},
 		"schemas": {
 			"CreateUserDto": {
 				"type": "object",
@@ -17535,6 +17645,86 @@
 					"roleId": { "type": "number", "example": 1 },
 					"moduleTypeId": { "type": "number", "example": 1 },
 					"permissionTypeId": { "type": "number", "example": 1 }
+				}
+			},
+			"ApiTokenScopeDto": {
+				"type": "object",
+				"properties": {
+					"module": {
+						"type": "string",
+						"example": "ACADEMIC",
+						"enum": [
+							"HOME",
+							"ADMIN",
+							"USERS",
+							"CORE",
+							"ACADEMIC",
+							"ACCREDITATION",
+							"EVALUATION",
+							"EVIDENCE",
+							"IMPROVEMENT",
+							"ORGANIZATION",
+							"SURVEY",
+							"IFCS",
+							"IFC_FINDINGS",
+							"RUBRICS",
+							"TESTS",
+							"LOADS",
+							"PORTFOLIO",
+							"SCRAPPING"
+						]
+					},
+					"action": {
+						"type": "string",
+						"example": "GET",
+						"enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+					}
+				},
+				"required": ["module", "action"]
+			},
+			"CreateApiTokenDto": {
+				"type": "object",
+				"properties": {
+					"name": { "type": "string", "example": "Integration X" },
+					"scopes": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ApiTokenScopeDto" }
+					},
+					"expiresAt": { "type": "string", "example": "2027-01-01T00:00:00.000Z" }
+				},
+				"required": ["name", "scopes"]
+			},
+			"IssuedApiTokenDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number" },
+					"name": { "type": "string" },
+					"keyId": { "type": "string" },
+					"scopes": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/ApiTokenScopeDto" }
+					},
+					"expiresAt": { "type": "object", "nullable": true },
+					"createdAt": { "format": "date-time", "type": "string" },
+					"apiKey": {
+						"type": "string",
+						"description": "Plaintext secret material, returned exactly once."
+					}
+				},
+				"required": ["id", "name", "keyId", "scopes", "createdAt", "apiKey"]
+			},
+			"UpdateApiTokenDto": {
+				"type": "object",
+				"properties": {
+					"name": { "type": "string", "example": "Integration X" },
+					"expiresAt": { "type": "object", "example": "2027-01-01T00:00:00.000Z", "nullable": true }
+				}
+			},
+			"FilterApiTokenDto": {
+				"type": "object",
+				"properties": {
+					"name": { "type": "string", "example": "Integration X" },
+					"isActive": { "type": "boolean", "example": true }
 				}
 			},
 			"RunScrapeDto": {

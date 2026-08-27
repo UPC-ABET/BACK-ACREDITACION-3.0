@@ -14,6 +14,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/protocols/jwt/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/protocols/jwt/guards/permissions.guard';
+import { ApiTokenAuthGuard } from './modules/auth/protocols/api-key/guards/api-token-auth.guard';
 import { JwtStrategy } from './modules/auth/protocols/jwt/strategies/jwt.strategy';
 import { JWT_EXPIRES_IN, getRequiredJwtSecret } from './modules/auth/protocols/jwt/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -99,6 +100,7 @@ import { ChartHeadsModule } from './modules/admin/organization/chart-heads/chart
 import { RoleModule } from './modules/admin/iam/roles/roles.module';
 import { UserRoleModule } from './modules/admin/iam/user-roles/user-roles.module';
 import { RoleModulePermissionModule } from './modules/admin/iam/role-module-permissions/role-module-permissions.module';
+import { ApiTokenModule } from './modules/admin/iam/api-tokens/api-tokens.module';
 import { ClassRepresentativesUploadModule } from 'src/modules/uploads/class-representatives/class-representatives-upload.module';
 
 import { ClassRepresentativesModule } from './modules/academic/class-representatives/class-representatives.module';
@@ -226,12 +228,17 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		RoleModule,
 		UserRoleModule,
 		RoleModulePermissionModule,
+		ApiTokenModule,
 		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule, ScrapingExportsModule] : []),
 	],
 	controllers: [AppController],
 	providers: [
 		AppService,
 		JwtStrategy,
+		{
+			provide: APP_GUARD,
+			useClass: ApiTokenAuthGuard,
+		},
 		{
 			provide: APP_GUARD,
 			useClass: JwtAuthGuard,
