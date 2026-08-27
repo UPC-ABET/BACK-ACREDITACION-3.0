@@ -138,6 +138,13 @@ export const SwaggerLcfcReportPdf = () =>
 			type: String,
 			required: false,
 		}),
+		ApiQuery({
+			name: 'groupBy',
+			description:
+				'By-course table granularity: "course" (aggregated, no professor) or "section" (per NRC, with professor)',
+			type: String,
+			required: false,
+		}),
 	);
 export const SwaggerLcfcReportPerception = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.reportPerception, body: PerceptionReportDto });

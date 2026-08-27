@@ -40,6 +40,17 @@ export class LcfcReportQueryDto extends LcfcProgramQueryDto {
 	@Transform(({ value }) => (value === 'en' ? 'en' : 'es'))
 	@ApiPropertyOptional({ example: 'es', enum: ['es', 'en'], description: 'Report language' })
 	lang?: 'es' | 'en';
+
+	@IsOptional()
+	@IsIn(['course', 'section'])
+	@ApiPropertyOptional({
+		example: 'section',
+		enum: ['course', 'section'],
+		description:
+			'Breakdown granularity for the by-course table: "course" aggregates every section ' +
+			'together (no professor/section shown), "section" breaks down per NRC with its professor',
+	})
+	groupBy?: 'course' | 'section';
 }
 
 export class GenerateLcfcConfigDto {

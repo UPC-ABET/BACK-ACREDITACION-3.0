@@ -4,6 +4,20 @@ import { DataSource, Repository } from 'typeorm';
 import { BaseRepository } from 'src/commons/base.repository';
 import { SurveyEntity } from 'src/modules/evidence/surveys/model/surveys.entity';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
+import type { I18nText } from 'src/shared/types/i18n';
+
+export interface LcfcCourseSectionRow {
+	courseId: number;
+	courseName: I18nText;
+	courseCode: string;
+	courseSectionId: number;
+	sectionCode: string;
+	professorName: string;
+	enrolled: number;
+	completed: number;
+	pending: number;
+	total: number;
+}
 
 @Injectable()
 export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
@@ -233,7 +247,7 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		completed: number;
 		pending: number;
 		total: number;
-		byCourse: any[];
+		byCourse: LcfcCourseSectionRow[];
 		byProgram: any[];
 	}> {
 		let whereClause = `s.survey_type_id = $1`;
@@ -264,16 +278,27 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 			),
 			this.dataSource.query(
 				`SELECT
-					c.name                                                                              AS "courseName",
+					c.id                                                                                 AS "courseId",
+					c.name                                                                               AS "courseName",
+					c.code                                                                                AS "courseCode",
+					cs.id                                                                                AS "courseSectionId",
 					cs.section_code                                                                     AS "sectionCode",
+					TRIM(CONCAT(st.first_name, ' ', st.last_name))                                      AS "professorName",
+					(
+						SELECT COUNT(*)::int
+						FROM academic.student_section_enrollments sse
+						WHERE sse.course_section_id = cs.id
+					)                                                                                    AS "enrolled",
 					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 1})::int       AS "completed",
 					COUNT(*) FILTER (WHERE s.survey_status_type_id = $${params.length + 2})::int       AS "pending",
 					COUNT(*)::int                                                                       AS "total"
 				FROM evidence.surveys s
 				INNER JOIN academic.course_sections cs ON cs.id = s.course_section_id
 				INNER JOIN academic.courses c ON c.id = cs.course_id
+				INNER JOIN academic.professors pr ON pr.id = cs.professor_id
+				INNER JOIN organization.staff st ON st.id = pr.staff_id
 				WHERE ${whereClause}
-				GROUP BY c.name, cs.section_code
+				GROUP BY c.id, c.name, c.code, cs.id, cs.section_code, st.first_name, st.last_name
 				ORDER BY c.name ASC, cs.section_code ASC`,
 				[...params, closedStatusId, activeStatusId],
 			),

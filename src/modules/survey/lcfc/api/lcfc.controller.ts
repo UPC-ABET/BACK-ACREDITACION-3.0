@@ -273,6 +273,7 @@ export class LcfcController {
 			academicPeriodId,
 			query.programId,
 			query.lang ?? 'es',
+			query.groupBy ?? 'section',
 		);
 		const encoded = encodeURIComponent(filename);
 		res.setHeader('Content-Type', 'application/pdf');
