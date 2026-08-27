@@ -9,7 +9,10 @@ import {
 	RequiredPermission,
 } from '../decorators/require-permission.decorator';
 import { isAdmin } from 'src/modules/auth/model/authorization.functions';
-import type { RequestUser } from 'src/modules/auth/model/authorization.types';
+import type { ApiTokenPrincipal, RequestUser } from 'src/modules/auth/model/authorization.types';
+import { ForbiddenError } from 'src/commons/domain-error';
+import { API_TOKEN_PRINCIPAL } from 'src/modules/auth/protocols/api-key/api-key.constants';
+import { apiTokensValidationStrings } from 'src/modules/admin/iam/api-tokens/config/strings/api-tokens.validation';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -29,9 +32,16 @@ export class PermissionsGuard implements CanActivate {
 			return true;
 		}
 
-		const request = context.switchToHttp().getRequest<Request & { user?: RequestUser }>();
+		const request = context
+			.switchToHttp()
+			.getRequest<Request & { user?: RequestUser; [API_TOKEN_PRINCIPAL]?: ApiTokenPrincipal }>();
 
-		if (isAdmin(request.user)) {
+		const machine = request[API_TOKEN_PRINCIPAL];
+
+		// The isAdmin short-circuit is human-only by construction (D4): ApiTokenPrincipal has no
+		// `roles` field, so a machine principal must never reach it, even if `request.user`
+		// independently carries an ADMIN role.
+		if (!machine && isAdmin(request.user)) {
 			return true;
 		}
 
@@ -43,7 +53,7 @@ export class PermissionsGuard implements CanActivate {
 			throw new ForbiddenException(authValidationStrings.error.noPermissionsConfigured);
 		}
 
-		const permissions = request.user?.permissions ?? [];
+		const permissions = machine ? machine.permissions : (request.user?.permissions ?? []);
 
 		const canAccess = permissions.some((permission) => {
 			if (!permission?.module || !Array.isArray(permission.permissions)) {
@@ -62,6 +72,9 @@ export class PermissionsGuard implements CanActivate {
 		});
 
 		if (!canAccess) {
+			if (machine) {
+				throw new ForbiddenError(apiTokensValidationStrings.error.insufficientScope);
+			}
 			throw new ForbiddenException(authValidationStrings.error.accessDenied);
 		}
 

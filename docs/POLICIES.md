@@ -297,6 +297,35 @@ Three decorators control access:
 
 Default (no decorator): JWT required + permissions required. If endpoint has no `@RequirePermission`, `PermissionsGuard` throws `error.auth.noPermissionsConfigured`.
 
+### Machine-to-machine auth (`@ApiTokenAuth()`)
+
+A fourth, orthogonal decorator lets an external system call an endpoint with an API token
+instead of a human JWT: `@ApiTokenAuth()`
+(`src/modules/auth/protocols/api-key/decorators/api-token-auth.decorator.ts`). It is opt-in per
+route — a route without it rejects a presented token even if the token itself is valid, so a
+token never widens reach beyond routes that were deliberately exposed.
+
+- **Transport**: header `X-Api-Key: <keyId>.<secret>`. `keyId` is a public, indexed lookup key;
+  `secret` is checked with a single bcrypt comparison — never a scan of every active token.
+- **`ApiTokenAuthGuard`** runs first in the `APP_GUARD` chain
+  (`src/app.module.ts`, order: `ApiTokenAuthGuard` → `JwtAuthGuard` → `PermissionsGuard` — this
+  order is asserted by `src/app.module.spec.ts` and must not be reordered). When no `X-Api-Key`
+  header is present, or the route carries `@Public()`, it is a no-op and every existing route
+  behaves exactly as before.
+- A machine principal is attached at **`request.apiToken`**, never `request.user`. It has no
+  `userId` and no `roles`, so it is structurally unreachable by `@CurrentUser()` and by the
+  `isAdmin(...)` short-circuit in `PermissionsGuard` — a token must carry every scope
+  (`{ module, action }`) it needs, explicitly. `@RequirePermission` stays the single
+  authorization primitive for both human and machine callers.
+- Token issuance/revocation is admin-only CRUD under
+  `src/modules/admin/iam/api-tokens/`, gated by the existing `{ ADMIN, ... }` permission. A
+  token's plaintext secret is returned exactly once, at issuance; the stored column is a bcrypt
+  hash (`select: false`) and is never recoverable afterwards. No business endpoint opts into
+  `@ApiTokenAuth()` by default — enabling M2M access to a given domain is a deliberate,
+  endpoint-by-endpoint decision, not a side effect of this mechanism existing.
+- **Do not combine `@ApiTokenAuth()` with `@SkipPermissions()`** — that pairing would authorize a
+  machine principal with no scope check at all.
+
 **Authorization belongs in `@RequirePermission`, not in controller bodies.** Do not hand-roll inline role/admin checks (e.g. reading `req.user.user.isAdmin` and throwing). Access control is centralized in the guard layer so it can be managed consistently across the codebase.
 
 **JWT payload** (set by `JwtStrategy.validate()`):

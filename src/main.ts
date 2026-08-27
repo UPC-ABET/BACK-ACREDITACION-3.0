@@ -94,6 +94,7 @@ async function bootstrap() {
 				},
 				'bearer',
 			)
+			.addApiKey({ type: 'apiKey', in: 'header', name: 'X-Api-Key' }, 'apiKey')
 			.addSecurityRequirements('bearer')
 			.build();
 
