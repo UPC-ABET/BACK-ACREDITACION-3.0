@@ -326,6 +326,30 @@ token never widens reach beyond routes that were deliberately exposed.
 - **Do not combine `@ApiTokenAuth()` with `@SkipPermissions()`** — that pairing would authorize a
   machine principal with no scope check at all.
 
+### Per-integration response encryption (`@EncryptedResponse()`)
+
+A fifth decorator lets an `@ApiTokenAuth()` route have its JSON response encrypted for the specific
+integration that called it: `@EncryptedResponse()`
+(`src/modules/auth/protocols/response-encryption/decorators/encrypted-response.decorator.ts`). It
+is opt-in per route, same as `@ApiTokenAuth()`.
+
+- **Key model**: one symmetric key per `core.api_tokens` row (1:1), admin-issued/rotated through
+  `admin/iam/integration-keys/`. The plaintext is returned exactly once (at issuance/rotation) and
+  is never retrievable afterwards — the stored column is `EncryptService`-encrypted ciphertext,
+  `select: false`, mirroring `ScraperCredentialEntity.passwordEncrypted` (ADR-001). Not `APP_SECRET`
+  itself: that key is internal and must never be shared with an external system.
+- **`EncryptedResponseInterceptor`** is registered globally in `main.ts` (first in
+  `useGlobalInterceptors`, so it runs last on the response path — after camelCasing/serialization).
+  When the route has no `@EncryptedResponse()` metadata, or the caller has no resolved
+  `request.apiToken` (i.e. a human JWT/cookie caller hit the same route), it is a no-op and the
+  response is unchanged plaintext.
+- When it does apply, `ResponseDto.data` is replaced with a string
+  `"<ivHex>:<encryptedHex>:<authTagHex>"` (AES-256-GCM) — the integrator decrypts with the key
+  issued to them and `JSON.parse()`s the result. **Errors are never encrypted**: the interceptor
+  only transforms the success path, so a thrown exception reaches `AllExceptionsFilter` unchanged.
+- A route marked `@EncryptedResponse()` whose calling token has no provisioned key fails closed
+  with a `503` — it never falls back to returning the payload in plaintext.
+
 **Authorization belongs in `@RequirePermission`, not in controller bodies.** Do not hand-roll inline role/admin checks (e.g. reading `req.user.user.isAdmin` and throwing). Access control is centralized in the guard layer so it can be managed consistently across the codebase.
 
 **JWT payload** (set by `JwtStrategy.validate()`):

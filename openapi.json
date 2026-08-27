@@ -2851,6 +2851,7 @@
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
+				"security": [{ "apiKey": [] }],
 				"summary": "Buscar cursos de plan de estudio",
 				"tags": ["Cursos de plan de estudio"]
 			}
@@ -12108,6 +12109,116 @@
 				"tags": ["IAM - API Tokens"]
 			}
 		},
+		"/admin-iam-integration-keys/issue": {
+			"post": {
+				"operationId": "IntegrationKeyController_issue",
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/IssueIntegrationKeyDto" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Resource created successfully\n\nKey issued. The plaintext `key` is returned exactly once in this response.",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IssuedIntegrationKeyDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Emitir clave de cifrado de integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-integration-keys/rotate/{apiTokenId}": {
+			"post": {
+				"operationId": "IntegrationKeyController_rotate",
+				"parameters": [
+					{
+						"name": "apiTokenId",
+						"required": true,
+						"in": "path",
+						"description": "apiTokenId",
+						"schema": { "type": "number" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Key rotated. The new plaintext `key` is returned exactly once in this response.",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IssuedIntegrationKeyDto" }
+							}
+						}
+					},
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Rotar clave de cifrado de integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-integration-keys/get-by-api-token/{apiTokenId}": {
+			"get": {
+				"operationId": "IntegrationKeyController_getByApiToken",
+				"parameters": [
+					{
+						"name": "apiTokenId",
+						"required": true,
+						"in": "path",
+						"description": "apiTokenId",
+						"schema": { "type": "number" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Obtener metadata de la clave de una integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-integration-keys/get-all": {
+			"get": {
+				"operationId": "IntegrationKeyController_getAll",
+				"parameters": [],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Listar claves de integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/integrations/health/ping": {
+			"get": {
+				"operationId": "IntegrationsHealthController_ping",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation\n\n`data` is encrypted for a machine caller — see the Integration Keys module for the wire format.",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/PingResponseDto" } }
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "Health check for external integration callers",
+				"tags": ["Integrations - Health"]
+			}
+		},
 		"/banner/session/status": {
 			"get": {
 				"operationId": "BannerSessionController_getStatus",
@@ -17671,7 +17782,8 @@
 							"TESTS",
 							"LOADS",
 							"PORTFOLIO",
-							"SCRAPPING"
+							"SCRAPPING",
+							"INTEGRATIONS"
 						]
 					},
 					"action": {
@@ -17726,6 +17838,31 @@
 					"name": { "type": "string", "example": "Integration X" },
 					"isActive": { "type": "boolean", "example": true }
 				}
+			},
+			"IssueIntegrationKeyDto": {
+				"type": "object",
+				"properties": { "apiTokenId": { "type": "number", "example": 1 } },
+				"required": ["apiTokenId"]
+			},
+			"IssuedIntegrationKeyDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number" },
+					"apiTokenId": { "type": "number" },
+					"issuedByUserId": { "type": "number" },
+					"createdAt": { "format": "date-time", "type": "string" },
+					"updatedAt": { "format": "date-time", "type": "string" },
+					"key": {
+						"type": "string",
+						"description": "Plaintext key material (64 hex chars = 32 bytes), returned exactly once."
+					}
+				},
+				"required": ["id", "apiTokenId", "issuedByUserId", "createdAt", "updatedAt", "key"]
+			},
+			"PingResponseDto": {
+				"type": "object",
+				"properties": { "ok": { "type": "boolean" }, "timestamp": { "type": "string" } },
+				"required": ["ok", "timestamp"]
 			},
 			"RunScrapeDto": {
 				"type": "object",

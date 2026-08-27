@@ -101,6 +101,8 @@ import { RoleModule } from './modules/admin/iam/roles/roles.module';
 import { UserRoleModule } from './modules/admin/iam/user-roles/user-roles.module';
 import { RoleModulePermissionModule } from './modules/admin/iam/role-module-permissions/role-module-permissions.module';
 import { ApiTokenModule } from './modules/admin/iam/api-tokens/api-tokens.module';
+import { IntegrationKeyModule } from './modules/admin/iam/integration-keys/integration-keys.module';
+import { IntegrationsHealthModule } from './modules/integrations/health/health.module';
 import { ClassRepresentativesUploadModule } from 'src/modules/uploads/class-representatives/class-representatives-upload.module';
 
 import { ClassRepresentativesModule } from './modules/academic/class-representatives/class-representatives.module';
@@ -229,6 +231,8 @@ import { ClassRepresentativesModule } from './modules/academic/class-representat
 		UserRoleModule,
 		RoleModulePermissionModule,
 		ApiTokenModule,
+		IntegrationKeyModule,
+		IntegrationsHealthModule,
 		...(process.env.RAW_DB_URL ? [BannerModule, PlannerModule, ScrapingExportsModule] : []),
 	],
 	controllers: [AppController],

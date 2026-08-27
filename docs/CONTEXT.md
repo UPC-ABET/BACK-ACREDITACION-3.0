@@ -97,6 +97,7 @@ src/
 │   ├── evidence/
 │   ├── ifc/
 │   ├── improvement/
+│   ├── integrations/           # Endpoints meant to be called by external systems (see below)
 │   ├── mail/
 │   ├── organization/
 │   └── survey/
@@ -137,9 +138,21 @@ Every feature module follows this exact structure:
 ```
 
 **Exceptions:** `auth` (no entity, orchestrates via other modules), `mail` (utility module, no
-controller/model), and `admin/scraping/credentials` (no controller — it is infrastructure consumed
+controller/model), `admin/scraping/credentials` (no controller — it is infrastructure consumed
 by the provider modules, whose own endpoints expose it; a generic endpoint here would be a second
-way to write the same row with different validation).
+way to write the same row with different validation), and `integrations/health` (no entity/model —
+a stateless ping, kept only as a working proof of the external-integration chain).
+
+**`modules/integrations/<resource>/`** is where endpoints meant to be called by external systems
+live, parallel to `admin/` — "reachable by an external system" is an orthogonal responsibility axis,
+the same way "admin responsibility" is for `admin/`. A route here typically opts in with
+`@ApiTokenAuth()` (`src/modules/auth/protocols/api-key/`, see
+[POLICIES.md § Machine-to-machine auth](./POLICIES.md#machine-to-machine-auth-apitokenauth)) and,
+when the response must be encrypted for that specific caller, `@EncryptedResponse()`
+(`src/modules/auth/protocols/response-encryption/`, see
+[POLICIES.md § Per-integration response encryption](./POLICIES.md#per-integration-response-encryption-encryptedresponse)).
+Encryption keys themselves — one per `api_tokens` row, admin-issued/rotated — are managed by
+`admin/iam/integration-keys/`, a standard-layout sibling of `admin/iam/api-tokens/`.
 
 **Admin modules:** Functionality that is an administrator responsibility (configuration, settings, templates, notification rules) lives under `modules/admin/<domain>/<module>` — e.g. `admin/ifc/notification-configs`. Each admin module still follows the standard layout above; only its location signals admin ownership. This grouping does not change the database: entities keep their original `@Entity({ schema, name })` (e.g. notification configs remain in the `ifc` schema), and raw SQL keeps referencing the original schema-qualified table.
 
