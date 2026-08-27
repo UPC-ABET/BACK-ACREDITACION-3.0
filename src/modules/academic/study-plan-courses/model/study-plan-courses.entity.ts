@@ -3,6 +3,7 @@ import { BaseEntity } from 'src/commons/base.entity';
 import { IntegerFKIDColumn, BooleanColumn } from 'src/commons/configs/db.configs';
 import { CourseEntity } from 'src/modules/academic/courses/model/courses.entity';
 import { StudyPlanAcademicPeriodEntity } from 'src/modules/academic/study-plan-academic-periods/model/study-plan-academic-periods.entity';
+import { ProgramEntity } from 'src/modules/academic/programs/model/programs.entity';
 import { TypeEntity } from 'src/modules/core/types/model/types.entity';
 
 @Entity({ name: 'study_plan_courses', schema: 'academic' })
@@ -44,4 +45,9 @@ export class StudyPlanCourseEntity extends BaseEntity {
 		foreignKeyConstraintName: 'FK_study_plan_courses_level_type_id',
 	})
 	levelType: TypeEntity;
+
+	// Not a direct FK — reaches the program through study_plan_academic_period -> study_plan.
+	// Populated only by `StudyPlanCourseRepository.getByFilters` via `leftJoinAndMapOne`; absent on
+	// entities loaded through `BaseRepository` (find/create/update).
+	program?: ProgramEntity;
 }
