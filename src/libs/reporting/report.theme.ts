@@ -32,6 +32,9 @@ export const REPORT_BASE_STYLES = `
 		margin: 0;
 		font-size: 22pt;
 		line-height: 1.1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.report-header__logo {
 		width: 58px;
@@ -47,6 +50,9 @@ export const REPORT_BASE_STYLES = `
 		margin: 0;
 		font-size: 17pt;
 		line-height: 1.2;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.report-metadata {
 		display: grid;

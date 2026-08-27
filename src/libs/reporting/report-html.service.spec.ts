@@ -39,4 +39,28 @@ describe('ReportHtmlService', () => {
 		expect(html).toContain('&quot;Software&quot;');
 		expect(html).toContain('<p>Trusted module HTML</p>');
 	});
+
+	it('shrinks the title font size so a long report name still fits on one line', () => {
+		const shortTitle = service.build({
+			language: 'es',
+			reportName: 'Informe',
+			programName: 'Software',
+			bodyHtml: '',
+		});
+		const longTitle = service.build({
+			language: 'es',
+			reportName: 'Informe de Encuesta de Graduandos',
+			programName: 'Ingeniería de Gestión Minera y Metalúrgica Aplicada',
+			bodyHtml: '',
+		});
+
+		expect(shortTitle).toContain('<h2 style="font-size:17pt">');
+		expect(fontSizeOf(longTitle, 'h2')).toBeLessThan(17);
+		expect(fontSizeOf(longTitle, 'h2')).toBeGreaterThanOrEqual(9);
+	});
 });
+
+function fontSizeOf(html: string, tag: string): number {
+	const match = new RegExp(`<${tag} style="font-size:([\\d.]+)pt"`).exec(html);
+	return match ? Number(match[1]) : Number.NaN;
+}

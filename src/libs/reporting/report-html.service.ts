@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { UPC_LOGO_DATA_URI } from 'src/libs/pdf-renderer.service';
 import { REPORT_BASE_STYLES, REPORT_ORGANIZATION_NAME } from './report.theme';
-import type { ReportDocument, ReportMetadataItem } from './report.types';
-import { escapeHtml } from './report.utils';
+import type { ReportDocument, ReportMetadataItem, ReportOrientation } from './report.types';
+import { escapeHtml, fitFontSizePt } from './report.utils';
+
+/** A4 minus the 12mm page margins and the 28px header padding, in points. */
+const HEADER_WIDTH_PT: Record<ReportOrientation, number> = { portrait: 480, landscape: 725 };
+const LOGO_WIDTH_PT = 60;
 
 @Injectable()
 export class ReportHtmlService {
@@ -13,6 +17,18 @@ export class ReportHtmlService {
 		const logo = UPC_LOGO_DATA_URI
 			? `<img class="report-header__logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
 			: '';
+
+		const headerWidthPt = HEADER_WIDTH_PT[orientation];
+		const organizationFontSizePt = fitFontSizePt(
+			REPORT_ORGANIZATION_NAME,
+			headerWidthPt - (logo ? LOGO_WIDTH_PT : 0),
+			{ maxFontSizePt: 22, minFontSizePt: 11, glyphRatio: 0.6 },
+		);
+		const titleFontSizePt = fitFontSizePt(reportTitle, headerWidthPt, {
+			maxFontSizePt: 17,
+			minFontSizePt: 9,
+			glyphRatio: 0.55,
+		});
 
 		return `
 			<!doctype html>
@@ -30,11 +46,11 @@ export class ReportHtmlService {
 			<body>
 				<header class="report-header">
 					<div class="report-header__primary">
-						<h1>${escapeHtml(REPORT_ORGANIZATION_NAME)}</h1>
+						<h1 style="font-size:${organizationFontSizePt}pt">${escapeHtml(REPORT_ORGANIZATION_NAME)}</h1>
 						${logo}
 					</div>
 					<div class="report-header__secondary">
-						<h2>${escapeHtml(reportTitle)}</h2>
+						<h2 style="font-size:${titleFontSizePt}pt">${escapeHtml(reportTitle)}</h2>
 					</div>
 					${metadata}
 				</header>

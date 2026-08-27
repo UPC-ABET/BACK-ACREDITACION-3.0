@@ -66,6 +66,7 @@ export class LcfcService {
 			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.LCFC,
 			fileLabel: 'LCFC',
 			reportName: { es: 'Informe de Resultados LCFC', en: 'LCFC Results Report' },
+			totalLabel: { es: 'Total de estudiantes', en: 'Total students' },
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,

@@ -20,6 +20,25 @@ export function localize(value: I18nText | null | undefined, language: ReportLan
 	return value?.[language] ?? value?.es ?? value?.en ?? '';
 }
 
+/**
+ * Largest font size (pt) at which `text` still fits on a single line of `availableWidthPt`.
+ * Arial has no metrics available at HTML-build time, so width is approximated as
+ * `characters x glyphRatio x fontSize` — glyphRatio is the average advance width of the
+ * typeface as a fraction of its em, measured for mixed-case (~0.55) and uppercase (~0.6) text.
+ */
+export function fitFontSizePt(
+	text: string,
+	availableWidthPt: number,
+	options: { maxFontSizePt: number; minFontSizePt: number; glyphRatio: number },
+): number {
+	const characters = text.trim().length;
+	if (characters === 0) return options.maxFontSizePt;
+
+	const fitted = availableWidthPt / (characters * options.glyphRatio);
+	const clamped = Math.min(options.maxFontSizePt, Math.max(options.minFontSizePt, fitted));
+	return Math.floor(clamped * 10) / 10;
+}
+
 export function sanitizeReportFilename(value: string): string {
 	return value
 		.normalize('NFKD')

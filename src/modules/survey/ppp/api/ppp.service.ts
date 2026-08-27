@@ -34,6 +34,20 @@ export class PppService {
 				es: 'Informe de Prácticas Pre Profesionales',
 				en: 'Pre-Professional Internship Report',
 			},
+			totalLabel: { es: 'Total de alumnos', en: 'Total students' },
+			surveyNumberSplit: {
+				label: { es: 'Práctica', en: 'Internship' },
+				valueLabels: {
+					1: {
+						es: 'Primera Práctica Preprofesional',
+						en: 'First Pre-Professional Internship',
+					},
+					2: {
+						es: 'Segunda Práctica Preprofesional',
+						en: 'Second Pre-Professional Internship',
+					},
+				},
+			},
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,
