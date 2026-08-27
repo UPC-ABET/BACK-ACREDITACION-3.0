@@ -2,7 +2,7 @@ import { ReportChartService } from 'src/libs/reporting/report-chart.service';
 import { LcfcReportService } from './lcfc-report.service';
 
 describe('LcfcReportService', () => {
-	it('includes program and course charts in the generated document', async () => {
+	function buildService() {
 		const notificationService = {
 			getDashboard: jest.fn().mockResolvedValue({
 				summary: { completed: 18, pending: 6, total: 24, completionRatePct: 75 },
@@ -17,10 +17,23 @@ describe('LcfcReportService', () => {
 				byCourse: [
 					{
 						courseName: { es: 'Arquitectura', en: 'Architecture' },
+						courseCode: 'CC47',
 						sectionCode: 'SI01',
+						professorName: 'Victor Parasi',
+						enrolled: 29,
 						completed: 10,
 						pending: 2,
 						total: 12,
+					},
+					{
+						courseName: { es: 'Arquitectura', en: 'Architecture' },
+						courseCode: 'CC47',
+						sectionCode: 'SI02',
+						professorName: 'Ana Torres',
+						enrolled: 15,
+						completed: 5,
+						pending: 1,
+						total: 6,
 					},
 				],
 			}),
@@ -35,6 +48,11 @@ describe('LcfcReportService', () => {
 			new ReportChartService(),
 			reportGenerator as never,
 		);
+		return service;
+	}
+
+	it('includes program and course charts, broken down per NRC by default', async () => {
+		const service = buildService();
 
 		const result = (await service.generateResultsPdf(5, 7, 'es')) as unknown as {
 			document: { bodyHtml: string; programName: string };
@@ -45,5 +63,26 @@ describe('LcfcReportService', () => {
 		expect(result.document.bodyHtml).toContain('SI01 - Arquitectura');
 		expect(result.document.bodyHtml).toContain('Completadas');
 		expect(result.document.bodyHtml).toContain('Pendientes');
+		expect(result.document.bodyHtml).toContain('CC47');
+		expect(result.document.bodyHtml).toContain('Victor Parasi');
+		expect(result.document.bodyHtml).toContain('SI01');
+		expect(result.document.bodyHtml).toContain('SI02');
+	});
+
+	it('aggregates by course and omits professor/section when groupBy is "course"', async () => {
+		const service = buildService();
+
+		const result = (await service.generateResultsPdf(5, 7, 'es', 'course')) as unknown as {
+			document: { bodyHtml: string };
+		};
+
+		expect(result.document.bodyHtml).toContain('CC47');
+		expect(result.document.bodyHtml).not.toContain('Victor Parasi');
+		expect(result.document.bodyHtml).not.toContain('SI01');
+		expect(result.document.bodyHtml).not.toContain('SI02');
+		// Enrolled/completed/pending summed across both sections (29+15, 10+5, 2+1).
+		expect(result.document.bodyHtml).toContain('<td class="num">44</td>');
+		expect(result.document.bodyHtml).toContain('<td class="num">15</td>');
+		expect(result.document.bodyHtml).toContain('<td class="num">3</td>');
 	});
 });
