@@ -37,7 +37,11 @@ What to send the admin:
 - Optionally, an **expiration date** (ISO 8601). If you don't need one, omit it — the token is
   valid indefinitely until revoked.
 
-The admin calls (as an authenticated ADMIN user):
+The admin calls this as an authenticated ADMIN user. There is no username/password login on this
+backend — the only sign-in is Microsoft Entra ID (`GET /auth/microsoft`, browser OAuth redirect),
+and it lands the JWT in an `httpOnly` cookie named `accessToken`, not in a JSON response. To get a
+bearer token for `curl`/Postman: log into the app normally in a browser as an ADMIN, open devtools
+→ Application/Storage → Cookies, and copy the `accessToken` value.
 
 ```
 POST /api/admin-api-tokens/create
@@ -247,13 +251,9 @@ You don't need a second system to verify this works — you can play both roles 
 **Prerequisites**: checkout `production`, run the app (`pnpm start:dev`), have an ADMIN user's
 credentials.
 
-1. **Log in as admin** and grab the JWT:
-
-   ```bash
-   curl -s -X POST http://localhost:3000/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username":"<admin-user>","password":"<password>"}' | jq -r '.data.accessToken'
-   ```
+1. **Log in as admin** in a browser (Microsoft Entra ID — there is no password login), then copy
+   the `accessToken` cookie value from devtools (Application/Storage → Cookies). Use it as
+   `<admin JWT>` below.
 
 2. **Issue a token** scoped to `{ "module": "ACADEMIC", "action": "POST" }` (§3's endpoint):
 
