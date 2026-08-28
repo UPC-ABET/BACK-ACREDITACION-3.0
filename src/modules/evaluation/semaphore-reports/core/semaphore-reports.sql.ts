@@ -28,8 +28,8 @@ const RV_CLASSIFIED_GRADES_CTE = `
 		  AND prg.is_active = true
 		  AND sse.is_active = true
 		  AND es.is_active = true
-		  AND ($6::int[] IS NULL OR ev.rubric_id = ANY($6::int[]))
-		  AND ($7::int[] IS NULL OR r.grade_type_id = ANY($7::int[]))
+		  AND ($5::int[] IS NULL OR ev.rubric_id = ANY($5::int[]))
+		  AND ($6::int[] IS NULL OR r.grade_type_id = ANY($6::int[]))
 	)
 `;
 
@@ -60,10 +60,10 @@ WITH course_grades AS (
 	  AND qst.code = 'TG404-T001'
 ),
 filtered_outcomes AS (
-	SELECT id, outcome_code, outcome_name
+	SELECT id, outcome_code, outcome_name, outcome_description
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($5::int IS NULL OR program_commission_id = $5::int)
+	  AND ($4::int IS NULL OR program_commission_id = $4::int)
 ),
 levels AS (
 	SELECT
@@ -90,6 +90,7 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		o.outcome_description                                         AS outcome_description,
 		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		ap.code                                                       AS academic_period_cycle,
@@ -109,21 +110,21 @@ course_outcome_results AS (
 	JOIN core.types ot ON ot.id = com.outcome_type_id
 	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
-	  AND ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
-	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
+	  AND ($2::int[] IS NULL OR camp.id = ANY($2::int[]))
+	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, o.outcome_description, camp.id, camp.name, ap.code
 )
 SELECT
 	course_code                                                  AS "courseCode",
-	COALESCE(course_name->>$4::text, course_name->>'es', '')     AS "courseName",
+	COALESCE(course_name->>$3::text, course_name->>'es', '')     AS "courseName",
 	outcome_code                                                 AS "outcomeCode",
-	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_name->>$3::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_description->>$3::text, outcome_description->>'es', '') AS "outcomeDescription",
 	total_students                                               AS "totalStudents",
 	students_red                                                 AS "studentsRed",
 	students_yellow                                              AS "studentsYellow",
 	students_green                                                AS "studentsGreen",
 	campus_id                                                         AS "campusId",
-	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	COALESCE(campus->>$3::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
 ORDER BY campus, course_code, outcome_code
@@ -131,10 +132,10 @@ ORDER BY campus, course_code, outcome_code
 
 export const SEMAPHORE_RV_SCREEN_SQL = `
 WITH filtered_outcomes AS (
-	SELECT id, outcome_code, outcome_name
+	SELECT id, outcome_code, outcome_name, outcome_description
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($5::int IS NULL OR program_commission_id = $5::int)
+	  AND ($4::int IS NULL OR program_commission_id = $4::int)
 ),
 ${RV_CLASSIFIED_GRADES_CTE},
 course_outcome_results AS (
@@ -143,6 +144,7 @@ course_outcome_results AS (
 		c.name                                                        AS course_name,
 		o.outcome_code                                                AS outcome_code,
 		o.outcome_name                                                AS outcome_name,
+		o.outcome_description                                         AS outcome_description,
 		camp.id                                                       AS campus_id,
 		camp.name                                                     AS campus,
 		ap.code                                                       AS academic_period_cycle,
@@ -156,21 +158,21 @@ course_outcome_results AS (
 	JOIN academic.academic_periods ap ON ap.id = cs.academic_period_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
-	WHERE ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
-	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
+	WHERE ($2::int[] IS NULL OR camp.id = ANY($2::int[]))
+	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, o.outcome_description, camp.id, camp.name, ap.code
 )
 SELECT
 	course_code                                                  AS "courseCode",
-	COALESCE(course_name->>$4::text, course_name->>'es', '')     AS "courseName",
+	COALESCE(course_name->>$3::text, course_name->>'es', '')     AS "courseName",
 	outcome_code                                                 AS "outcomeCode",
-	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_name->>$3::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_description->>$3::text, outcome_description->>'es', '') AS "outcomeDescription",
 	total_students                                               AS "totalStudents",
 	students_red                                                 AS "studentsRed",
 	students_yellow                                              AS "studentsYellow",
 	students_green                                                AS "studentsGreen",
 	campus_id                                                         AS "campusId",
-	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	COALESCE(campus->>$3::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
 ORDER BY campus, course_code, outcome_code
@@ -202,7 +204,7 @@ filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($5::int IS NULL OR program_commission_id = $5::int)
+	  AND ($4::int IS NULL OR program_commission_id = $4::int)
 ),
 levels AS (
 	SELECT
@@ -248,8 +250,7 @@ course_outcome_results AS (
 	JOIN core.types ot ON ot.id = com.outcome_type_id
 	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
-	  AND ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	  AND ($2::int[] IS NULL OR camp.id = ANY($2::int[]))
 	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
 ),
 level_rows AS (
@@ -298,15 +299,15 @@ final_rows AS (
 )
 SELECT
 	course_code                                                  AS "courseCode",
-	COALESCE(course_name->>$4::text, course_name->>'es', '')     AS "courseName",
+	COALESCE(course_name->>$3::text, course_name->>'es', '')     AS "courseName",
 	outcome_code                                                 AS "outcomeCode",
-	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_name->>$3::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
 	campus_id                                                         AS "campusId",
-	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	COALESCE(campus->>$3::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM final_rows
 WHERE effective_weight = effective_group_max
@@ -339,7 +340,7 @@ filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($5::int IS NULL OR program_commission_id = $5::int)
+	  AND ($4::int IS NULL OR program_commission_id = $4::int)
 ),
 levels AS (
 	SELECT
@@ -382,8 +383,7 @@ course_outcome_results AS (
 	JOIN core.types ot ON ot.id = com.outcome_type_id
 	WHERE cs.academic_period_id = $1::int
 	  AND ot.code = 'TG302-T002'
-	  AND ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	  AND ($2::int[] IS NULL OR camp.id = ANY($2::int[]))
 	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.id, camp.name
 ),
 level_rows AS (
@@ -424,13 +424,13 @@ final_rows AS (
 )
 SELECT
 	outcome_code                                                 AS "outcomeCode",
-	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_name->>$3::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
 	campus_id                                                         AS "campusId",
-	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus"
+	COALESCE(campus->>$3::text, campus->>'es', '')                   AS "campus"
 FROM final_rows
 -- Only critical outcomes: a (campus, outcome) group is critical when its lowest
 -- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_weight = 1.
@@ -443,7 +443,7 @@ WITH filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($5::int IS NULL OR program_commission_id = $5::int)
+	  AND ($4::int IS NULL OR program_commission_id = $4::int)
 ),
 ${RV_CLASSIFIED_GRADES_CTE},
 course_outcome_results AS (
@@ -465,8 +465,7 @@ course_outcome_results AS (
 	JOIN academic.academic_periods ap ON ap.id = cs.academic_period_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
-	WHERE ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	WHERE ($2::int[] IS NULL OR camp.id = ANY($2::int[]))
 	GROUP BY c.code, c.name, o.outcome_code, o.outcome_name, camp.id, camp.name, ap.code
 ),
 level_rows AS (
@@ -514,15 +513,15 @@ final_rows AS (
 )
 SELECT
 	course_code                                                  AS "courseCode",
-	COALESCE(course_name->>$4::text, course_name->>'es', '')     AS "courseName",
+	COALESCE(course_name->>$3::text, course_name->>'es', '')     AS "courseName",
 	outcome_code                                                 AS "outcomeCode",
-	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_name->>$3::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
 	campus_id                                                         AS "campusId",
-	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus",
+	COALESCE(campus->>$3::text, campus->>'es', '')                   AS "campus",
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM final_rows
 WHERE effective_weight = effective_group_max
@@ -534,7 +533,7 @@ WITH filtered_outcomes AS (
 	SELECT id, outcome_code, outcome_name
 	FROM accreditation.outcomes
 	WHERE is_active = true
-	  AND ($5::int IS NULL OR program_commission_id = $5::int)
+	  AND ($4::int IS NULL OR program_commission_id = $4::int)
 ),
 ${RV_CLASSIFIED_GRADES_CTE},
 course_outcome_results AS (
@@ -553,8 +552,7 @@ course_outcome_results AS (
 	JOIN academic.courses c ON c.id = cs.course_id
 	JOIN organization.campuses camp ON camp.id = cs.campus_id
 	JOIN filtered_outcomes o ON o.id = cg.outcome_id
-	WHERE ($2::int IS NULL OR o.id = $2::int)
-	  AND ($3::int[] IS NULL OR camp.id = ANY($3::int[]))
+	WHERE ($2::int[] IS NULL OR camp.id = ANY($2::int[]))
 	GROUP BY c.code, o.outcome_code, o.outcome_name, camp.id, camp.name
 ),
 level_rows AS (
@@ -595,13 +593,13 @@ final_rows AS (
 )
 SELECT
 	outcome_code                                                 AS "outcomeCode",
-	COALESCE(outcome_name->>$4::text, outcome_name->>'es', '')   AS "outcomeName",
+	COALESCE(outcome_name->>$3::text, outcome_name->>'es', '')   AS "outcomeName",
 	level_rank                                                   AS "levelRank",
 	quantity                                                     AS "quantity",
 	total_students                                               AS "totalStudents",
 	percentage                                                   AS "percentage",
 	campus_id                                                         AS "campusId",
-	COALESCE(campus->>$4::text, campus->>'es', '')                   AS "campus"
+	COALESCE(campus->>$3::text, campus->>'es', '')                   AS "campus"
 FROM final_rows
 -- Only critical outcomes: a (campus, outcome) group is critical when its lowest
 -- level (rank 1) holds >= ${CRITICAL_RED_THRESHOLD}% of students, i.e. group_max_weight = 1.
