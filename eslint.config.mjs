@@ -50,4 +50,19 @@ export default [
 			],
 		},
 	},
+
+	// Plain CommonJS control scripts for the sidecar Docker services (e.g. browser-auth) —
+	// not part of the TypeScript project, so they need their own globals instead of falling
+	// through to eslint.configs.recommended with none at all. `globals.browser` is included
+	// too: these files embed Playwright `page.evaluate`/`waitForFunction` callbacks whose
+	// source is statically parsed here even though it actually runs inside the remote page.
+	{
+		files: ['docker/**/*.js'],
+		languageOptions: {
+			globals: {
+				...globals.node,
+				...globals.browser,
+			},
+		},
+	},
 ];

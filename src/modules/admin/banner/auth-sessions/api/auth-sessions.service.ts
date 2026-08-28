@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuthSessionStatus, AuthSessionStore } from '../core/auth-session.store';
 import { SessionTokenService } from '../core/session-token.service';
-import { BrowserAuthClient } from '../core/browser-auth.client';
+import { BrowserAuthClient, BrowserAuthCredentials } from '../core/browser-auth.client';
 import { authSessionsValidationStrings } from '../config/strings/auth-sessions.validation';
 import { API_GLOBAL_PREFIX } from 'src/shared/constants/app.constants';
 
@@ -31,7 +31,11 @@ export class AuthSessionService {
 		private readonly browserAuth: BrowserAuthClient,
 	) {}
 
-	async start(startedBy: string | null, origin: RequestOrigin = {}): Promise<StartSessionResult> {
+	async start(
+		startedBy: string | null,
+		origin: RequestOrigin = {},
+		credentials?: BrowserAuthCredentials,
+	): Promise<StartSessionResult> {
 		if (this.store.hasActive()) {
 			throw new HttpException(
 				authSessionsValidationStrings.error.sessionInProgress,
@@ -41,7 +45,7 @@ export class AuthSessionService {
 
 		const sessionId = randomUUID();
 		try {
-			await this.browserAuth.start(sessionId);
+			await this.browserAuth.start(sessionId, credentials);
 		} catch (error) {
 			this.logger.error(`browser-auth unavailable: ${(error as Error).message}`);
 			throw new HttpException(
