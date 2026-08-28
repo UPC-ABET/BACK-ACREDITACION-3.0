@@ -113,6 +113,19 @@ export class SemaphoreReportDto {
 	metadata: SemaphoreMetadataDto;
 }
 
+/** One row of RC's "Resumen por Outcome" table -- critical outcomes only, one row per
+ *  (campus, outcome, level), rendered with that level's colour. */
+export class SemaphoreOutcomeSummaryRowDto {
+	campus: string;
+	outcomeCode: string;
+	outcomeName: string;
+	totalStudents: number;
+	levelName: string;
+	count: number;
+	percentage: number;
+	color: string;
+}
+
 export class SemaphoreOutcomeLevelCellDto {
 	name: string;
 	color: string;
