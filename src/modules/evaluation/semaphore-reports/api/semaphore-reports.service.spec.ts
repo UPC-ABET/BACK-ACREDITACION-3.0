@@ -48,8 +48,18 @@ const makeService = (
 		{} as any,
 	) as unknown as {
 		runQuery: <T>(read: () => Promise<T>) => Promise<T>;
-		renderExcel: (data: unknown, type: 'rc' | 'rv', lang: 'es' | 'en') => Promise<Buffer>;
-		buildExcel: (data: unknown, type: 'rc' | 'rv', lang: 'es' | 'en') => Promise<Buffer>;
+		renderExcel: (
+			data: unknown,
+			type: 'rc' | 'rv',
+			lang: 'es' | 'en',
+			campusLabel: string,
+		) => Promise<Buffer>;
+		buildExcel: (
+			data: unknown,
+			type: 'rc' | 'rv',
+			lang: 'es' | 'en',
+			campusLabel: string,
+		) => Promise<Buffer>;
 		toSheetName: (label: string, taken: Set<string>) => string;
 		resolveCampusPlan: (campusIds: number[] | undefined, lang: string) => Promise<CampusPlan>;
 		buildFilename: (type: 'rc' | 'rv', lang: 'es' | 'en', campusCode?: string) => string;
@@ -122,14 +132,14 @@ describe('SemaphoreReportsService', () => {
 			const buffer = Buffer.from('xlsx');
 			jest.spyOn(service, 'buildExcel').mockResolvedValue(buffer);
 
-			await expect(service.renderExcel({} as never, 'rc', 'es')).resolves.toBe(buffer);
+			await expect(service.renderExcel({} as never, 'rc', 'es', 'Todas')).resolves.toBe(buffer);
 		});
 
 		it('maps a workbook build failure to a 500 with the excelFailed key', async () => {
 			const service = makeService();
 			jest.spyOn(service, 'buildExcel').mockRejectedValue(new Error('duplicate sheet name'));
 
-			await expect(service.renderExcel({} as never, 'rc', 'es')).rejects.toMatchObject({
+			await expect(service.renderExcel({} as never, 'rc', 'es', 'Todas')).rejects.toMatchObject({
 				status: HttpStatus.INTERNAL_SERVER_ERROR,
 				response: {
 					message: semaphoreReportsValidationStrings.result.generateFailed,
@@ -312,6 +322,7 @@ describe('SemaphoreReportsService', () => {
 			courseName: `Course ${campusId}`,
 			outcomeCode: '1',
 			outcomeName: 'Outcome 1',
+			outcomeDescription: 'Outcome 1 description',
 			totalStudents: 20,
 			studentsRed: 5,
 			studentsYellow: 0,
@@ -348,7 +359,7 @@ describe('SemaphoreReportsService', () => {
 
 			// One shared call carrying both campus ids -- not one call per campus.
 			expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(1);
-			expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [1, 2], 'es');
+			expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [1, 2], 'es');
 
 			expect(results).toHaveLength(2);
 			const [lima, arequipa] = results;
@@ -452,7 +463,7 @@ describe('SemaphoreReportsService', () => {
 
 				const result = await service.generatePdfDownload({}, 10, 'rc');
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, null, 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es');
 				expect(reportGeneratorMocks.generateDocument).toHaveBeenCalledTimes(1);
 				expect(reportGeneratorMocks.generateDocument.mock.calls[0][1]).toBe(
 					'Reporte_Control_RC.pdf',
@@ -477,7 +488,7 @@ describe('SemaphoreReportsService', () => {
 					'rc',
 				);
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [2], 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [2], 'es');
 				expect(reportGeneratorMocks.generateDocument.mock.calls[0][1]).toBe(
 					'Reporte_Control_RC_ARE.pdf',
 				);
@@ -498,7 +509,7 @@ describe('SemaphoreReportsService', () => {
 				);
 
 				expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(1);
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [1, 3], 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [1, 3], 'es');
 				expect(reportGeneratorMocks.generateZip).toHaveBeenCalledTimes(1);
 				const reports = reportGeneratorMocks.generateZip.mock.calls[0][0];
 				expect(reports.map((r: { filename: string }) => r.filename)).toEqual([
@@ -521,7 +532,7 @@ describe('SemaphoreReportsService', () => {
 
 				const result = await service.generateExcelDownload({}, 10, 'rc');
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, null, 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es');
 				expect(result.contentType).toBe(
 					'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 				);

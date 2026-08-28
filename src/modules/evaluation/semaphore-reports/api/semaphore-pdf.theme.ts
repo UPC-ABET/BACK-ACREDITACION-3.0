@@ -3,11 +3,17 @@ export const SEMAPHORE_PDF_LABELS = {
 		reportTitleRC: 'Reporte de Control (RC)',
 		reportTitleRV: 'Reporte de Verificación (RV)',
 		programName: 'Programa',
+		career: 'Carrera',
 		commission: 'Comisión',
-		academicPeriod: 'Ciclo',
+		academicPeriod: 'Periodo Académico',
 		accreditor: 'Acreditador',
+		acceptanceLevel: 'Nivel de Aceptación',
+		allLevels: 'Todos',
+		allCampuses: 'Todas',
 		legendTitle: 'Niveles de Aceptación',
 		summary: 'Resumen por Outcome',
+		colDescription: 'Descripción',
+		colTotals: 'TOTALES',
 		redDetail: 'Listado de Cursos con Nivel Necesita Mejora',
 		yellowDetail: 'Listado de Cursos con Nivel Esperado',
 		greenDetail: 'Listado de Cursos con Nivel Sobresaliente',
@@ -25,11 +31,17 @@ export const SEMAPHORE_PDF_LABELS = {
 		reportTitleRC: 'Control Report (RC)',
 		reportTitleRV: 'Verification Report (RV)',
 		programName: 'Program',
+		career: 'Career',
 		commission: 'Commission',
-		academicPeriod: 'Term',
+		academicPeriod: 'Academic Period',
 		accreditor: 'Accreditor',
+		acceptanceLevel: 'Acceptance Level',
+		allLevels: 'All',
+		allCampuses: 'All',
 		legendTitle: 'Acceptance Levels',
 		summary: 'Summary by Outcome',
+		colDescription: 'Description',
+		colTotals: 'TOTALS',
 		redDetail: 'List of Courses with Level Needs Improvement',
 		yellowDetail: 'List of Courses with Expected Level',
 		greenDetail: 'List of Courses with Outstanding Level',
@@ -51,6 +63,7 @@ export const SEMAPHORE_REPORT_STYLES = `
 	section h4 { font-size: 11pt; margin: 10px 0 6px; }
 	thead th { background: #e30613; color: #fff; text-align: left; font-size: 9pt; }
 	tbody tr:nth-child(even) td { background: #fafafa; }
+	tbody tr.totals-row td { background: #e5e7eb; font-weight: bold; }
 	.legend-line { margin: 8px 0 16px; font-size: 9pt; }
 	.legend-item { display: inline-flex; align-items: center; margin-right: 18px; }
 	.semaphore-dot {

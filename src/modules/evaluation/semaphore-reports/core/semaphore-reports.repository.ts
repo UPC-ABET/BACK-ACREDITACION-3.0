@@ -17,6 +17,7 @@ export interface SemaphoreCourseOutcomeRow {
 	courseName: string;
 	outcomeCode: string;
 	outcomeName: string;
+	outcomeDescription: string;
 	totalStudents: number;
 	studentsRed: number;
 	studentsYellow: number;
@@ -109,13 +110,11 @@ export class SemaphoreReportsRepository {
 	async getRcScreen(
 		academicPeriodId: number,
 		programCommissionId: number | null,
-		outcomeId: number | null,
 		campusIds: number[] | null,
 		language: string,
 	): Promise<SemaphoreCourseOutcomeRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_SCREEN_SQL, [
 			academicPeriodId,
-			outcomeId,
 			campusIds,
 			language,
 			programCommissionId,
@@ -125,7 +124,6 @@ export class SemaphoreReportsRepository {
 	async getRvScreen(
 		academicPeriodId: number,
 		programCommissionId: number | null,
-		outcomeId: number | null,
 		campusIds: number[] | null,
 		language: string,
 		rubricIds: number[] | null = null,
@@ -133,7 +131,6 @@ export class SemaphoreReportsRepository {
 	): Promise<SemaphoreCourseOutcomeRow[]> {
 		return this.runReportQuery(SEMAPHORE_RV_SCREEN_SQL, [
 			academicPeriodId,
-			outcomeId,
 			campusIds,
 			language,
 			programCommissionId,
@@ -145,13 +142,11 @@ export class SemaphoreReportsRepository {
 	async getRcDetail(
 		academicPeriodId: number,
 		programCommissionId: number | null,
-		outcomeId: number | null,
 		campusIds: number[] | null,
 		language: string,
 	): Promise<SemaphoreDetailRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_DETAIL_SQL, [
 			academicPeriodId,
-			outcomeId,
 			campusIds,
 			language,
 			programCommissionId,
@@ -161,13 +156,11 @@ export class SemaphoreReportsRepository {
 	async getRcSummary(
 		academicPeriodId: number,
 		programCommissionId: number | null,
-		outcomeId: number | null,
 		campusIds: number[] | null,
 		language: string,
 	): Promise<SemaphoreSummaryRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_SUMMARY_SQL, [
 			academicPeriodId,
-			outcomeId,
 			campusIds,
 			language,
 			programCommissionId,
@@ -177,7 +170,6 @@ export class SemaphoreReportsRepository {
 	async getRvDetail(
 		academicPeriodId: number,
 		programCommissionId: number | null,
-		outcomeId: number | null,
 		campusIds: number[] | null,
 		language: string,
 		rubricIds: number[] | null = null,
@@ -185,7 +177,6 @@ export class SemaphoreReportsRepository {
 	): Promise<SemaphoreDetailRow[]> {
 		return this.runReportQuery(SEMAPHORE_RV_DETAIL_SQL, [
 			academicPeriodId,
-			outcomeId,
 			campusIds,
 			language,
 			programCommissionId,
@@ -197,7 +188,6 @@ export class SemaphoreReportsRepository {
 	async getRvSummary(
 		academicPeriodId: number,
 		programCommissionId: number | null,
-		outcomeId: number | null,
 		campusIds: number[] | null,
 		language: string,
 		rubricIds: number[] | null = null,
@@ -205,7 +195,6 @@ export class SemaphoreReportsRepository {
 	): Promise<SemaphoreSummaryRow[]> {
 		return this.runReportQuery(SEMAPHORE_RV_SUMMARY_SQL, [
 			academicPeriodId,
-			outcomeId,
 			campusIds,
 			language,
 			programCommissionId,

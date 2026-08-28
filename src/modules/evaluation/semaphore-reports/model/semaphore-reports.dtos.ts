@@ -11,14 +11,6 @@ export class SemaphoreFilterDto {
 	@ApiProperty({ example: 1, required: false, description: 'Program commission ID to filter by' })
 	programCommissionId?: number;
 
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'Outcome ID to filter by' })
-	outcomeId?: number;
-
 	@Transform(({ value }) => {
 		if (value === undefined || value === null || value === '') return undefined;
 		const list = Array.isArray(value) ? value : [value];
@@ -119,15 +111,18 @@ export class SemaphoreReportDto {
 	metadata: SemaphoreMetadataDto;
 }
 
-export class SemaphoreOutcomeSummaryRowDto {
-	campus: string;
+export class SemaphoreOutcomeLevelCellDto {
+	name: string;
+	color: string;
+	count: number;
+	percentage: number;
+}
+
+export class SemaphoreOutcomePivotRowDto {
 	outcomeCode: string;
 	outcomeName: string;
 	totalStudents: number;
-	levelName: string;
-	count: number;
-	percentage: number;
-	color: string;
+	levels: SemaphoreOutcomeLevelCellDto[];
 }
 
 export class SemaphoreCourseDetailRowDto {
