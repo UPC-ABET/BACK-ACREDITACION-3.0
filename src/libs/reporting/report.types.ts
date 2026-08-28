@@ -29,6 +29,9 @@ export interface ReportDocument {
 	reportName: string;
 	programName: string;
 	metadata?: ReportMetadataItem[];
+	/** Rendered as its own row below `metadata` — centered as a group, or full-width when it's a
+	 *  single item (e.g. a course/NRC/professor line that only sometimes applies). */
+	secondaryMetadata?: ReportMetadataItem[];
 	bodyHtml: string;
 	orientation?: ReportOrientation;
 	additionalStyles?: string;

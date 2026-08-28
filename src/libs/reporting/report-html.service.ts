@@ -13,6 +13,7 @@ export class ReportHtmlService {
 	build(document: ReportDocument): string {
 		const orientation = document.orientation ?? 'portrait';
 		const metadata = this.buildMetadata(document.metadata ?? []);
+		const secondaryMetadata = this.buildMetadata(document.secondaryMetadata ?? [], 'secondary');
 		const reportTitle = `${document.reportName} — ${document.programName}`;
 		const logo = UPC_LOGO_DATA_URI
 			? `<img class="report-header__logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
@@ -53,6 +54,7 @@ export class ReportHtmlService {
 						<h2 style="font-size:${titleFontSizePt}pt">${escapeHtml(reportTitle)}</h2>
 					</div>
 					${metadata}
+					${secondaryMetadata}
 				</header>
 				<main class="report-content">${document.bodyHtml}</main>
 			</body>
@@ -60,7 +62,7 @@ export class ReportHtmlService {
 		`;
 	}
 
-	private buildMetadata(items: ReportMetadataItem[]): string {
+	private buildMetadata(items: ReportMetadataItem[], variant?: 'secondary'): string {
 		if (items.length === 0) return '';
 
 		const content = items
@@ -74,6 +76,12 @@ export class ReportHtmlService {
 			)
 			.join('');
 
-		return `<div class="report-metadata">${content}</div>`;
+		const classes = ['report-metadata'];
+		if (variant === 'secondary') {
+			classes.push('report-metadata--secondary');
+			if (items.length === 1) classes.push('report-metadata--single');
+		}
+
+		return `<div class="${classes.join(' ')}">${content}</div>`;
 	}
 }

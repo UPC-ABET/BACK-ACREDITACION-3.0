@@ -765,6 +765,7 @@ export class SemaphoreReportsService {
 						categories: data.chart.categories,
 						series: data.chart.series,
 						yAxisLabel: L.colTotalStudents,
+						xAxisLabel: L.colOutcome,
 						emptyLabel: L.noTranslation,
 					})}</section>`
 				: '';
