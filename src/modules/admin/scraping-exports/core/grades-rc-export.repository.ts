@@ -15,6 +15,7 @@ import {
 	MATERIALIZE_GRADES_RC_SQL,
 	PERIOD_ENROLLED_STUDENTS_SQL,
 	READ_GRADES_RC_ALL_PAGE_SQL,
+	STUDY_PLAN_SECTION_STUDENTS_SQL,
 	UPLOADED_SECTIONS_SQL,
 } from './grades-rc-export.sql';
 import { EXPORTS_RAW_CONNECTION, resolveAcademicPeriodCode } from './scraping-exports.repository';
@@ -24,8 +25,8 @@ export interface DesignatedGradeTypeRow {
 	gradeTypeCode: string;
 }
 
-// The two parallel arrays the merge binds, aggregated by the database — see
-// ENROLLED_SECTION_STUDENTS_SQL.
+// The two parallel arrays the merge binds, aggregated by the database — shape shared by
+// ENROLLED_SECTION_STUDENTS_SQL and STUDY_PLAN_SECTION_STUDENTS_SQL.
 export interface EnrolledSectionStudentRow {
 	sectionCodes: string[];
 	studentCodes: string[];
@@ -139,9 +140,8 @@ export class GradesRcExportRepository {
 		}
 	}
 
-	// Gathered before the scratch table exists, so a failure here costs no connection. Only the
-	// enrollment lookup depends on the scoped sections, so it's the only one held back behind that
-	// intersection -- the rest run alongside it rather than paying an avoidable extra round trip.
+	// Gathered before the scratch table exists, so a failure here costs no connection. The two
+	// section-pair lookups depend on the scoped sections and run alongside each other once it's known.
 	private async buildGradesRcParams(academicPeriodId: number): Promise<unknown[]> {
 		const [
 			period,
@@ -168,7 +168,10 @@ export class GradesRcExportRepository {
 		const controlScope = new Set(controlSections);
 		const scopedSections = uploadedSections.filter((section) => controlScope.has(section));
 
-		const enrollments = await this.getEnrolledSectionStudents(academicPeriodId, scopedSections);
+		const [enrollments, studyPlanPairs] = await Promise.all([
+			this.getEnrolledSectionStudents(academicPeriodId, scopedSections),
+			this.getStudyPlanSectionStudents(academicPeriodId, scopedSections),
+		]);
 
 		return [
 			period,
@@ -188,6 +191,8 @@ export class GradesRcExportRepository {
 			Object.values(PROGRAM_CAREER_MAP),
 			TYPE_CODES.QUALIFICATION_STATUS.NR,
 			periodEnrolledStudentCodes,
+			studyPlanPairs.sectionCodes,
+			studyPlanPairs.studentCodes,
 		];
 	}
 
@@ -201,9 +206,8 @@ export class GradesRcExportRepository {
 		return rows.map((row) => row.sectionCode);
 	}
 
-	// Not a filter: a row whose pair is missing still ships, carrying the observation that says so.
-	// sectionScope narrows which sections' enrollments are worth fetching at all -- see
-	// ENROLLED_SECTION_STUDENTS_SQL.
+	// Not a hard filter alone: a row missing this pair still ships if it clears
+	// getStudyPlanSectionStudents. sectionScope narrows which sections are worth fetching at all.
 	async getEnrolledSectionStudents(
 		academicPeriodId: number,
 		sectionScope: string[],
@@ -241,6 +245,18 @@ export class GradesRcExportRepository {
 			[academicPeriodId],
 		);
 		return rows.map((row) => row.studentCode);
+	}
+
+	// The rescue for a not_in_section row: without this pairing too, it is dropped rather than flagged.
+	async getStudyPlanSectionStudents(
+		academicPeriodId: number,
+		sectionScope: string[],
+	): Promise<EnrolledSectionStudentRow> {
+		const [row]: EnrolledSectionStudentRow[] = await this.mainDataSource.query(
+			STUDY_PLAN_SECTION_STUDENTS_SQL,
+			[academicPeriodId, sectionScope],
+		);
+		return row ?? { sectionCodes: [], studentCodes: [] };
 	}
 
 	// name (es, uppercased) -> code, for every active type in the given group (main DB).

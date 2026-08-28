@@ -51,6 +51,10 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		if (sql.includes('course_outcome_mappings')) {
 			return Promise.resolve([{ sectionCode: 'NRC1' }]);
 		}
+		// Must precede the plain study_plan_courses branch below (only query joining both tables).
+		if (sql.includes('study_plan_courses') && sql.includes('enrolled_students')) {
+			return Promise.resolve([{ sectionCodes: ['NRC1'], studentCodes: ['A1'] }]);
+		}
 		if (sql.includes('study_plan_courses')) {
 			return Promise.resolve([
 				{ sectionCode: 'NRC1', gradeTypeCode: 'TG205-T001' },
@@ -115,7 +119,9 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 		expect(params[15]).toBe('TG404-T002');
 		expect(params[16]).toEqual(['A1', 'A2']);
-		expect(params).toHaveLength(17);
+		expect(params[17]).toEqual(['NRC1']);
+		expect(params[18]).toEqual(['A1']);
+		expect(params).toHaveLength(19);
 	});
 
 	// One scope array, not two ANDed in SQL: the planner reads two arrays over section_code as
@@ -140,6 +146,16 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 			sql.includes('student_section_enrollments'),
 		);
 		expect(enrollmentCall?.[1]).toEqual([1, ['NRC1']]);
+	});
+
+	// One JOIN, not one query per student -- same shape as getEnrolledSectionStudents.
+	it('scopes the study plan lookup to the same intersected sections', async () => {
+		await repo.openGradesRcExport(1);
+
+		const studyPlanCall = mainQuery.mock.calls.find(
+			([sql]) => sql.includes('study_plan_courses') && sql.includes('enrolled_students'),
+		);
+		expect(studyPlanCall?.[1]).toEqual([1, ['NRC1']]);
 	});
 
 	// Pages are read until one comes back short of the page size, and the rows are handed on

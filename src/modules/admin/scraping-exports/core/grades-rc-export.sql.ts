@@ -25,6 +25,7 @@ const VERIFIED_ZERO_MARK = `'CAL'`;
 // $16 NR code, shipped when the student has no grade: not ASISTIO, so the semaphore leaves those
 // zeros out of the RC average.
 // $17 student codes enrolled in the PERIOD at all (academic.enrolled_students), broader than $12/$13
+// $18/$19 (section, student) pairs where the course is on the student's OWN study plan revision
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
 //
 // $10 is applied inside EACH leg rather than once over their union: the union is the whole
@@ -385,11 +386,9 @@ shaped AS (
 	FROM flagged f
 	WHERE f.pick_rank = 1
 ),
--- period_enrolled (matriculado at all) is a hard scope, dropped via the JOIN below like $10's section
--- scopes. enrolled (paired to THIS section) is narrower and recoverable: missing it only flags the
--- row below. The drop still only ever affects the descriptive sheet, never the upload one: a
--- student_section_enrollments row requires an enrolled_students row, so failing period_enrolled
--- already implied failing enrolled below -- the row was never going to reach the upload sheet anyway.
+-- period_enrolled (matriculado) is a hard scope, dropped below like $10's section scopes. Missing
+-- enrolled (paired to THIS section) only flags the row (not_in_section) -- unless the course isn't
+-- even on the student's study plan (in_study_plan), in which case it's dropped too (WHERE below).
 period_enrolled AS (
 	SELECT DISTINCT student_code
 	FROM unnest($17::text[]) AS t(student_code)
@@ -397,6 +396,10 @@ period_enrolled AS (
 enrolled AS (
 	SELECT DISTINCT section_code, student_code
 	FROM unnest($12::text[], $13::text[]) AS t(section_code, student_code)
+),
+in_study_plan AS (
+	SELECT DISTINCT section_code, student_code
+	FROM unnest($18::text[], $19::text[]) AS t(section_code, student_code)
 ),
 final AS (
 	SELECT
@@ -427,6 +430,11 @@ final AS (
 	LEFT JOIN enrolled e
 	  ON e.section_code = s.section_code
 	 AND e.student_code = s.student_code
+	LEFT JOIN in_study_plan isp
+	  ON isp.section_code = s.section_code
+	 AND isp.student_code = s.student_code
+	-- Section-paired rows ship regardless; an unpaired row needs in_study_plan too (see above).
+	WHERE e.student_code IS NOT NULL OR isp.student_code IS NOT NULL
 )
 -- The first six columns are the upload template, in order: the RC upload parses positionally, so
 -- nothing may be inserted among them. The rest is descriptive and feeds the second worksheet.
@@ -592,6 +600,23 @@ FROM academic.enrolled_students es
 JOIN academic.students st ON st.id = es.student_id
 JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
 WHERE spap.academic_period_id = $1::int
+`;
+
+// Pairs for $18/$19, pinned to the student's OWN study plan revision -- same join as
+// DESIGNATED_GRADE_TYPES_SQL. Same COALESCE consequence as ENROLLED_SECTION_STUDENTS_SQL.
+export const STUDY_PLAN_SECTION_STUDENTS_SQL = `
+SELECT
+	COALESCE(array_agg(pair.section_code), '{}') AS "sectionCodes",
+	COALESCE(array_agg(pair.student_code), '{}') AS "studentCodes"
+FROM (
+	SELECT DISTINCT cs.section_code, st.code AS student_code
+	FROM academic.course_sections cs
+	JOIN academic.study_plan_courses spc ON spc.course_id = cs.course_id
+	JOIN academic.enrolled_students es ON es.study_plan_academic_period_id = spc.study_plan_academic_period_id
+	JOIN academic.students st ON st.id = es.student_id
+	WHERE cs.academic_period_id = $1::int
+	  AND cs.section_code = ANY($2::text[])
+) pair
 `;
 
 // Query the main DB runs against academic.course_sections: the grade type designated for a
