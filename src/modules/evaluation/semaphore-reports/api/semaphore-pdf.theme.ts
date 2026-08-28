@@ -9,11 +9,13 @@ export const SEMAPHORE_PDF_LABELS = {
 		accreditor: 'Acreditador',
 		acceptanceLevel: 'Nivel de Aceptación',
 		allLevels: 'Todos',
-		allCampuses: 'Todas',
+		allCampuses: 'TODAS',
 		legendTitle: 'Niveles de Aceptación',
+		indicatorScale: 'Interpretación de Indicadores',
 		summary: 'Resumen por Outcome',
 		colDescription: 'Descripción',
 		colTotals: 'TOTALES',
+		consolidatedDetail: 'Detalle de Cursos por Outcome',
 		redDetail: 'Listado de Cursos con Nivel Necesita Mejora',
 		yellowDetail: 'Listado de Cursos con Nivel Esperado',
 		greenDetail: 'Listado de Cursos con Nivel Sobresaliente',
@@ -21,10 +23,11 @@ export const SEMAPHORE_PDF_LABELS = {
 		colOutcome: 'Outcome',
 		colCourse: 'Curso',
 		colCode: 'Código',
-		colTotalStudents: 'Total Alumnos',
+		colTotalStudents: 'Total de Alumnos',
 		colQuantity: 'Cantidad',
 		colTotalStudentsByOutcome: 'Total Alumnos por Outcome',
 		colPercentage: '%',
+		totals: 'TOTALES',
 		noTranslation: 'NO TIENE TRADUCCIÓN',
 	},
 	en: {
@@ -37,11 +40,13 @@ export const SEMAPHORE_PDF_LABELS = {
 		accreditor: 'Accreditor',
 		acceptanceLevel: 'Acceptance Level',
 		allLevels: 'All',
-		allCampuses: 'All',
+		allCampuses: 'ALL',
 		legendTitle: 'Acceptance Levels',
+		indicatorScale: 'Indicator Interpretation',
 		summary: 'Summary by Outcome',
 		colDescription: 'Description',
 		colTotals: 'TOTALS',
+		consolidatedDetail: 'Course Detail by Outcome',
 		redDetail: 'List of Courses with Level Needs Improvement',
 		yellowDetail: 'List of Courses with Expected Level',
 		greenDetail: 'List of Courses with Outstanding Level',
@@ -53,6 +58,7 @@ export const SEMAPHORE_PDF_LABELS = {
 		colQuantity: 'Quantity',
 		colTotalStudentsByOutcome: 'Total Students by Outcome',
 		colPercentage: '%',
+		totals: 'TOTALS',
 		noTranslation: 'NO TRANSLATION',
 	},
 } as const;
@@ -73,4 +79,34 @@ export const SEMAPHORE_REPORT_STYLES = `
 		margin-right: 6px;
 		vertical-align: middle;
 	}
+
+	/* Horizontal 0-20 score scale: one segment per performance level, widths proportional to
+	   each level's span so the bar reads as the grading scale itself, not three equal thirds. */
+	.indicator-scale {
+		display: flex;
+		width: 100%;
+		border-radius: 4px;
+		overflow: hidden;
+	}
+	.indicator-scale__segment {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		padding: 8px 6px;
+		text-align: center;
+		min-width: 0;
+	}
+	.indicator-scale__name { font-size: 9pt; font-weight: 700; }
+	.indicator-scale__range { font-size: 8.5pt; }
+
+	.consolidated td:nth-child(4),
+	.consolidated td:nth-child(5),
+	.consolidated td:nth-child(6),
+	.consolidated td:last-child { text-align: center; white-space: nowrap; }
+	/* Selector kept at the same specificity as the zebra-striping rule above and declared after
+	   it, so a totals row landing on an even stripe still reads as a totals row. */
+	tbody tr.consolidated__totals td { font-weight: 700; background: #f4f4f5; text-align: center; }
+	tbody tr.consolidated__totals td:first-child { text-align: right; }
 `;

@@ -26,10 +26,12 @@ export class SemaphoreFilterDto {
 		example: [1, 2],
 		required: false,
 		description:
-			'Campus IDs to filter by. Omit, or select every campus, for one consolidated report. ' +
-			'Select a single campus for one report scoped to it. Select more than one (but not all) ' +
-			'to download a zip with one report per selected campus -- applies to the PDF/Excel ' +
-			'download endpoints only; the JSON screen endpoints always return one combined result.',
+			'Campus IDs to filter by. The PDF/Excel download endpoints accept at most one: omit it ' +
+			'for one consolidated report over every campus, or send a single id for a report scoped ' +
+			'to that campus. More than one id is rejected with 400 ' +
+			'error.semaphoreReport.singleCampusRequired, since one document per campus times the ' +
+			'selected outcomes is more than a single report can carry. The JSON screen endpoints ' +
+			'accept any number of ids and always return one combined result.',
 	})
 	campusIds?: number[];
 
@@ -134,6 +136,30 @@ export class SemaphoreCourseDetailRowDto {
 	count: number;
 	totalStudents: number;
 	percentage: number;
+}
+
+/** One level's cell in the consolidated RC table -- rendered as `(count) percentage%`. */
+export class SemaphoreConsolidatedCellDto {
+	count: number;
+	percentage: number;
+}
+
+export class SemaphoreConsolidatedRowDto {
+	courseCode: string;
+	courseName: string;
+	/** One entry per performance level, ascending -- same order as `legend`. */
+	levels: SemaphoreConsolidatedCellDto[];
+	totalStudents: number;
+}
+
+/** The consolidated RC table, split into one block per outcome so each can close with a
+ *  TOTALES row. */
+export class SemaphoreConsolidatedGroupDto {
+	outcomeCode: string;
+	outcomeName: string;
+	rows: SemaphoreConsolidatedRowDto[];
+	levelTotals: number[];
+	totalStudents: number;
 }
 
 export class SemaphoreMetadataDto {

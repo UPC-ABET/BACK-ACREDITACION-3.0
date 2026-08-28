@@ -20,7 +20,9 @@ import type {
 	SemaphoreCourseOutcomeSummaryDto,
 	SemaphoreCourseDetailRowDto,
 	SemaphoreOutcomePivotRowDto,
+	SemaphoreOutcomeSummaryRowDto,
 	SemaphoreLevelLegendDto,
+	SemaphoreConsolidatedGroupDto,
 } from '../model/semaphore-reports.dtos';
 import * as ExcelJS from 'exceljs';
 
@@ -39,13 +41,15 @@ interface SemaphoreRenderReportDto {
 	legend: SemaphoreLevelLegendDto[];
 	chart: SemaphoreChartData;
 	outcomePivot: SemaphoreOutcomePivotRowDto[];
+	outcomeSummary: SemaphoreOutcomeSummaryRowDto[];
+	consolidated: SemaphoreConsolidatedGroupDto[];
 	redDetail: SemaphoreCourseDetailRowDto[];
 	yellowDetail: SemaphoreCourseDetailRowDto[];
 	greenDetail: SemaphoreCourseDetailRowDto[];
 	metadata: SemaphoreReportDto['metadata'];
 }
 
-/** What the download endpoints hand the controller -- content type varies with the campus plan. */
+/** What the download endpoints hand the controller. */
 interface SemaphoreDownload {
 	buffer: Buffer;
 	filename: string;
@@ -54,27 +58,17 @@ interface SemaphoreDownload {
 
 /**
  * How a campus selection resolves for a download (see docs/CONTEXT.md's report business rules):
- *  - 'all': no campus filter, or the selection covers every active campus -- one consolidated
- *    report with every campus's data.
+ *  - 'all': no campus filter -- one consolidated report with every campus's data.
  *  - 'single': exactly one campus selected -- one report scoped to it.
- *  - 'zip': more than one campus selected, short of all of them -- one report per selected
- *    campus, bundled into a zip.
+ *
+ * There is deliberately no multi-campus arm: a document holding one section per selected campus
+ * times the selected outcomes is not readable, so more than one id is rejected outright.
  */
-type SemaphoreCampusPlan =
-	| { mode: 'all' }
-	| { mode: 'single' | 'zip'; campuses: SemaphoreCampusRow[] };
+type SemaphoreCampusPlan = { mode: 'all' } | { mode: 'single'; campus: SemaphoreCampusRow };
 
-/** Buckets rows carrying a `campusId` by that id -- used to split one shared, multi-campus query
- *  result into each campus's own slice without a separate query per campus. */
-function groupByCampusId<T extends { campusId: number }>(rows: T[]): Map<number, T[]> {
-	const grouped = new Map<number, T[]>();
-	for (const row of rows) {
-		const bucket = grouped.get(row.campusId);
-		if (bucket) bucket.push(row);
-		else grouped.set(row.campusId, [row]);
-	}
-	return grouped;
-}
+/** Sorts codes the way a reader expects ('2' before '10'), for outcome and course codes alike. */
+const compareCodes = (a: string, b: string): number =>
+	a.localeCompare(b, undefined, { numeric: true });
 
 @Injectable()
 export class SemaphoreReportsService {
@@ -123,8 +117,8 @@ export class SemaphoreReportsService {
 	}
 
 	/**
-	 * Campus-selection-aware PDF download: one consolidated report, one report scoped to a single
-	 * campus, or a zip of one report per campus -- see `SemaphoreCampusPlan`.
+	 * Campus-selection-aware PDF download: one consolidated report over every campus, or one
+	 * scoped to the single selected campus -- see `SemaphoreCampusPlan`.
 	 */
 	private async generatePdfDownload(
 		dto: SemaphoreFilterDto,
@@ -133,35 +127,16 @@ export class SemaphoreReportsService {
 	): Promise<SemaphoreDownload> {
 		const lang = (dto.lang ?? 'es') as ReportLanguage;
 		const plan = await this.resolveCampusPlan(dto.campusIds, lang);
+		const campusIds = plan.mode === 'single' ? [plan.campus.id] : null;
+		const campusLabel =
+			plan.mode === 'single' ? plan.campus.name : SEMAPHORE_PDF_LABELS[lang].allCampuses;
 
-		if (plan.mode !== 'zip') {
-			const campusIds = plan.mode === 'single' ? [plan.campuses[0].id] : null;
-			const campusCode = plan.mode === 'single' ? plan.campuses[0].code : undefined;
-			const campusLabel =
-				plan.mode === 'single' ? plan.campuses[0].name : SEMAPHORE_PDF_LABELS[lang].allCampuses;
-			const data = await this.fetchRenderData(dto, academicPeriodId, instrument, campusIds);
-			const { pdf, filename } = await this.reportGenerator.generateDocument(
-				this.buildDocument(data, instrument, lang, campusLabel),
-				this.buildFilename(instrument, lang, campusCode),
-			);
-			return { buffer: pdf, filename, contentType: 'application/pdf' };
-		}
-
-		const perCampus = await this.fetchPerCampusRenderData(
-			dto,
-			academicPeriodId,
-			instrument,
-			plan.campuses,
+		const data = await this.fetchRenderData(dto, academicPeriodId, instrument, campusIds);
+		const { pdf, filename } = await this.reportGenerator.generateDocument(
+			this.buildDocument(data, instrument, lang, campusLabel),
+			this.buildFilename(instrument, lang, plan.mode === 'single' ? plan.campus.code : undefined),
 		);
-		const reports = perCampus.map(({ campus, data }) => ({
-			document: this.buildDocument(data, instrument, lang, campus.name),
-			filename: this.buildFilename(instrument, lang, campus.code),
-		}));
-		const { zip, filename } = await this.reportGenerator.generateZip(
-			reports,
-			this.buildZipFilename(instrument, lang),
-		);
-		return { buffer: zip, filename, contentType: 'application/zip' };
+		return { buffer: pdf, filename, contentType: 'application/pdf' };
 	}
 
 	/** Same campus-selection rules as `generatePdfDownload`, but rendering XLSX workbooks. */
@@ -172,41 +147,21 @@ export class SemaphoreReportsService {
 	): Promise<SemaphoreDownload> {
 		const lang = (dto.lang ?? 'es') as 'es' | 'en';
 		const plan = await this.resolveCampusPlan(dto.campusIds, lang);
+		const campusIds = plan.mode === 'single' ? [plan.campus.id] : null;
+		const campusLabel =
+			plan.mode === 'single' ? plan.campus.name : SEMAPHORE_PDF_LABELS[lang].allCampuses;
 
-		if (plan.mode !== 'zip') {
-			const campusIds = plan.mode === 'single' ? [plan.campuses[0].id] : null;
-			const campusCode = plan.mode === 'single' ? plan.campuses[0].code : undefined;
-			const campusLabel =
-				plan.mode === 'single' ? plan.campuses[0].name : SEMAPHORE_PDF_LABELS[lang].allCampuses;
-			const data = await this.fetchRenderData(dto, academicPeriodId, instrument, campusIds);
-			const xlsx = await this.renderExcel(data, instrument, lang, campusLabel);
-			return {
-				buffer: xlsx,
-				filename: this.buildExcelFilename(instrument, lang, campusCode),
-				contentType: XLSX_CONTENT_TYPE,
-			};
-		}
-
-		const perCampus = await this.fetchPerCampusRenderData(
-			dto,
-			academicPeriodId,
-			instrument,
-			plan.campuses,
-		);
-		// Workbook building is CPU-bound (ExcelJS, no DB round trip), so building every campus's
-		// file concurrently is safe and keeps the zip from serializing on the slowest one.
-		const files = await Promise.all(
-			perCampus.map(async ({ campus, data }) => ({
-				filename: this.buildExcelFilename(instrument, lang, campus.code),
-				pdf: await this.renderExcel(data, instrument, lang, campus.name),
-			})),
-		);
-
-		const { zip, filename } = await this.reportGenerator.archivePdfFiles(
-			files,
-			this.buildZipFilename(instrument, lang),
-		);
-		return { buffer: zip, filename, contentType: 'application/zip' };
+		const data = await this.fetchRenderData(dto, academicPeriodId, instrument, campusIds);
+		const xlsx = await this.renderExcel(data, instrument, lang, campusLabel);
+		return {
+			buffer: xlsx,
+			filename: this.buildExcelFilename(
+				instrument,
+				lang,
+				plan.mode === 'single' ? plan.campus.code : undefined,
+			),
+			contentType: XLSX_CONTENT_TYPE,
+		};
 	}
 
 	private throwNoData(): never {
@@ -221,9 +176,8 @@ export class SemaphoreReportsService {
 
 	/**
 	 * Resolves a requested campus selection against the active campus catalog. An empty/omitted
-	 * selection, or one that names every active campus, is treated as "all" -- the caller must not
-	 * trust the client's own idea of "select all" (e.g. a stale campus list on the frontend), since
-	 * that would silently start zipping a selection that was actually meant to be consolidated.
+	 * selection means "all" -- one consolidated report. Anything past a single campus is refused
+	 * before the catalog is even read, so an over-broad selection costs no query.
 	 */
 	private async resolveCampusPlan(
 		campusIds: number[] | undefined,
@@ -231,14 +185,20 @@ export class SemaphoreReportsService {
 	): Promise<SemaphoreCampusPlan> {
 		const requested = campusIds?.length ? [...new Set(campusIds)] : null;
 		if (!requested) return { mode: 'all' };
+		if (requested.length > 1) {
+			throw new HttpException(
+				{
+					message: semaphoreReportsValidationStrings.result.generateFailed,
+					errors: [semaphoreReportsValidationStrings.error.singleCampusRequired],
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
 
 		const allCampuses = await this.runQuery(() => this.repository.getCampuses(lang));
-		const requestedSet = new Set(requested);
-		const selected = allCampuses.filter((campus) => requestedSet.has(campus.id));
-
-		if (selected.length === 0) this.throwNoData();
-		if (selected.length === allCampuses.length) return { mode: 'all' };
-		return { mode: selected.length === 1 ? 'single' : 'zip', campuses: selected };
+		const campus = allCampuses.find((candidate) => candidate.id === requested[0]);
+		if (!campus) this.throwNoData();
+		return { mode: 'single', campus };
 	}
 
 	/**
@@ -318,9 +278,8 @@ export class SemaphoreReportsService {
 
 	/**
 	 * Data for PDF/Excel: replicates the legacy critical/representative filtering. `campusIds` is
-	 * resolved by the caller (`resolveCampusPlan`), not read off `dto`: the single/consolidated case
-	 * passes `null` (or a single id); the zip case never calls this per campus -- see
-	 * `fetchPerCampusRenderData`, which fetches every selected campus in one pass instead.
+	 * resolved by the caller (`resolveCampusPlan`), not read off `dto` -- `null` for the
+	 * consolidated report, a one-element array for a campus-scoped one.
 	 */
 	private async fetchRenderData(
 		dto: SemaphoreFilterDto,
@@ -350,13 +309,7 @@ export class SemaphoreReportsService {
 		);
 	}
 
-	/**
-	 * The three heavy report queries (detail/summary/screen), run once. Kept apart from
-	 * `buildRenderReport` so the zip path can call this ONCE for every selected campus together
-	 * (`campusIds` holding all of them) and split the result per campus in memory afterwards,
-	 * instead of re-running this same multi-way join once per campus -- see
-	 * `fetchPerCampusRenderData`.
-	 */
+	/** The three heavy report queries (detail/summary/screen), run once. */
 	private async fetchRenderRows(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
@@ -415,7 +368,7 @@ export class SemaphoreReportsService {
 	}
 
 	/** Legend and metadata are campus-independent (period+instrument, and program-commission,
-	 *  scoped respectively), so every caller -- single report or the whole zip -- fetches them once. */
+	 *  scoped respectively), so they are fetched once per report regardless of the campus plan. */
 	private async fetchLegendAndMetadata(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
@@ -431,64 +384,8 @@ export class SemaphoreReportsService {
 		);
 	}
 
-	/**
-	 * The zip path's data fetch: every selected campus's detail/summary/screen rows in ONE call to
-	 * `fetchRenderRows` (campus-scoped only by the full selection, not one call per campus), then
-	 * split by each row's own `campusId` to build one `SemaphoreRenderReportDto` per campus.
-	 *
-	 * This is safe because the detail/summary SQL's window functions partition by
-	 * `(campus, outcome_code)` already -- see semaphore-reports.sql.ts -- so a campus's computed
-	 * quantities/percentages/critical-selection do not depend on which OTHER campuses' rows are
-	 * present in the same query result. Fetching campus A and campus B together and then grouping by
-	 * `campusId` in memory yields byte-identical numbers to fetching them one at a time; it only
-	 * changes how many times the underlying multi-way join runs.
-	 *
-	 * A campus with no rows in the shared fetch is skipped rather than failing the whole zip
-	 * (`throwNoData` only fires if not a single selected campus has data).
-	 */
-	private async fetchPerCampusRenderData(
-		dto: SemaphoreFilterDto,
-		academicPeriodId: number,
-		instrument: 'rc' | 'rv',
-		campuses: SemaphoreCampusRow[],
-	): Promise<Array<{ campus: SemaphoreCampusRow; data: SemaphoreRenderReportDto }>> {
-		const lang = (dto.lang ?? 'es') as ReportLanguage;
-		const [{ detailRows, summaryRows, screenRows }, [legendRows, metadata]] = await Promise.all([
-			this.fetchRenderRows(
-				dto,
-				academicPeriodId,
-				instrument,
-				campuses.map((campus) => campus.id),
-			),
-			this.fetchLegendAndMetadata(dto, academicPeriodId, instrument),
-		]);
-
-		const detailByCampus = groupByCampusId(detailRows);
-		const summaryByCampus = groupByCampusId(summaryRows);
-		const screenByCampus = groupByCampusId(screenRows);
-
-		const reports: Array<{ campus: SemaphoreCampusRow; data: SemaphoreRenderReportDto }> = [];
-		for (const campus of campuses) {
-			const campusDetailRows = detailByCampus.get(campus.id) ?? [];
-			if (campusDetailRows.length === 0) continue;
-			reports.push({
-				campus,
-				data: this.buildRenderReport(
-					campusDetailRows,
-					summaryByCampus.get(campus.id) ?? [],
-					screenByCampus.get(campus.id) ?? [],
-					legendRows,
-					metadata,
-					lang,
-				),
-			});
-		}
-		if (reports.length === 0) this.throwNoData();
-		return reports;
-	}
-
 	/** Sums red/yellow/green student counts per outcome across every course and campus in the
-	 *  (unfiltered) screen rows -- shared by the PDF chart and the pivoted summary table. */
+	 *  (unfiltered) screen rows -- shared by the PDF chart and the pivoted RV summary table. */
 	private aggregateOutcomeCounts(
 		screenRows: SemaphoreCourseOutcomeRow[],
 	): { code: string; name: string; red: number; yellow: number; green: number; total: number }[] {
@@ -510,9 +407,7 @@ export class SemaphoreReportsService {
 			entry.total += Number(r.totalStudents);
 			byOutcome.set(r.outcomeCode, entry);
 		}
-		const codes = [...byOutcome.keys()].sort((a, b) =>
-			a.localeCompare(b, undefined, { numeric: true }),
-		);
+		const codes = [...byOutcome.keys()].sort(compareCodes);
 		return codes.map((code) => ({ code, ...byOutcome.get(code)! }));
 	}
 
@@ -559,20 +454,19 @@ export class SemaphoreReportsService {
 		};
 	}
 
-	/** One row per outcome, with a count+percentage cell per acceptance level -- the "Reporte de
-	 *  Verificación Consolidado" table shape (Outcome | Descripción | level columns | Total). */
+	/** One row per outcome, with a count+percentage cell per acceptance level -- the RV
+	 *  "Reporte de Verificación Consolidado" table shape (Outcome | Descripción | level columns |
+	 *  Total). */
 	private buildOutcomePivot(
 		screenRows: SemaphoreCourseOutcomeRow[],
 		legend: SemaphoreLevelLegendDto[],
 	): SemaphoreOutcomePivotRowDto[] {
 		const entries = this.aggregateOutcomeCounts(screenRows);
-		const pct = (count: number, total: number): number =>
-			total > 0 ? Math.round((count / total) * 10000) / 100 : 0;
 		const level = (rank: number, count: number, total: number, fallback: string) => ({
 			name: legend[rank]?.name ?? fallback,
 			color: legend[rank]?.color ?? '#6b7280',
 			count,
-			percentage: pct(count, total),
+			percentage: this.toPercentage(count, total),
 		});
 		return entries.map((e) => ({
 			outcomeCode: e.code,
@@ -608,9 +502,9 @@ export class SemaphoreReportsService {
 			const studentsRed = Number(r.studentsRed);
 			const studentsYellow = Number(r.studentsYellow);
 			const studentsGreen = Number(r.studentsGreen);
-			const percentageRed = total > 0 ? Math.round((studentsRed / total) * 10000) / 100 : 0;
-			const percentageYellow = total > 0 ? Math.round((studentsYellow / total) * 10000) / 100 : 0;
-			const percentageGreen = total > 0 ? Math.round((studentsGreen / total) * 10000) / 100 : 0;
+			const percentageRed = this.toPercentage(studentsRed, total);
+			const percentageYellow = this.toPercentage(studentsYellow, total);
+			const percentageGreen = this.toPercentage(studentsGreen, total);
 			const isCritical = percentageRed >= CRITICAL_RED_THRESHOLD;
 			const color = isCritical
 				? levelColor(0)
@@ -649,18 +543,32 @@ export class SemaphoreReportsService {
 		};
 	}
 
-	/** `summaryRows` (the critical/representative rows) is fetched by `fetchRenderRows` for the
-	 *  per-campus zip split, but the render report's summary table is now the full outcome pivot
-	 *  built from `screenRows` -- see `buildOutcomePivot`. */
 	private buildRenderReport(
 		detailRows: SemaphoreDetailRow[],
-		_summaryRows: SemaphoreSummaryRow[],
+		summaryRows: SemaphoreSummaryRow[],
 		screenRows: SemaphoreCourseOutcomeRow[],
 		legendRows: SemaphoreLevelLegendRow[],
 		metadata: MetadataRow | null,
 		lang: ReportLanguage = 'es',
 	): SemaphoreRenderReportDto {
 		const legend = this.buildLegend(legendRows);
+		const levelName = (rank: number): string => legend[rank - 1]?.name ?? '';
+		const levelColor = (rank: number): string => legend[rank - 1]?.color ?? '#6b7280';
+
+		// Feeds RC's "Resumen por Outcome" table (critical outcomes only, from `getRcSummary`'s
+		// representative-row filtering) -- see `buildSummarySection`. RV no longer renders this
+		// table (replaced by the full pivot below), but the row shape is still built here so a
+		// future RV consumer of the JSON/Excel path is not surprised by a missing field.
+		const outcomeSummary: SemaphoreOutcomeSummaryRowDto[] = summaryRows.map((r) => ({
+			campus: r.campus,
+			outcomeCode: r.outcomeCode,
+			outcomeName: r.outcomeName,
+			totalStudents: Number(r.totalStudents),
+			levelName: levelName(Number(r.levelRank)),
+			count: Number(r.quantity),
+			percentage: Number(r.percentage),
+			color: levelColor(Number(r.levelRank)),
+		}));
 
 		const toDetailRow = (r: SemaphoreDetailRow): SemaphoreCourseDetailRowDto => ({
 			campus: r.campus,
@@ -677,6 +585,8 @@ export class SemaphoreReportsService {
 			legend,
 			chart: this.buildOutcomeChartData(screenRows, legend, lang),
 			outcomePivot: this.buildOutcomePivot(screenRows, legend),
+			outcomeSummary,
+			consolidated: this.buildConsolidatedGroups(screenRows),
 			redDetail: detailRows.filter((r) => Number(r.levelRank) === 1).map(toDetailRow),
 			yellowDetail: detailRows.filter((r) => Number(r.levelRank) === 2).map(toDetailRow),
 			greenDetail: detailRows.filter((r) => Number(r.levelRank) === 3).map(toDetailRow),
@@ -687,6 +597,82 @@ export class SemaphoreReportsService {
 				accreditorCode: metadata?.accreditorCode ?? '',
 			},
 		};
+	}
+
+	/**
+	 * Collapses the per-`(course, outcome, campus)` screen rows into the consolidated RC table:
+	 * one block per outcome, one row per course inside it, and a totals line.
+	 *
+	 * The consolidated report (no campus filter) returns the same course once per campus, so the
+	 * counts are summed across campuses before the percentage is taken -- `Σcount / Σtotal`, never
+	 * an average of per-campus percentages, which would weight a 3-student campus like a
+	 * 300-student one.
+	 *
+	 * The three buckets are fixed: the report SQL classifies every grade into `level_rank` 1|2|3.
+	 * A grade outside every configured level lands in none of them, so the three counts can sum to
+	 * less than `totalStudents` -- visible, deliberately, in the totals row.
+	 */
+	private buildConsolidatedGroups(
+		screenRows: SemaphoreCourseOutcomeRow[],
+	): SemaphoreConsolidatedGroupDto[] {
+		interface Accumulator {
+			outcomeCode: string;
+			outcomeName: string;
+			courseCode: string;
+			courseName: string;
+			counts: number[];
+			totalStudents: number;
+		}
+
+		const byCourse = new Map<string, Accumulator>();
+		for (const row of screenRows) {
+			const key = `${row.outcomeCode} ${row.courseCode}`;
+			const entry = byCourse.get(key) ?? {
+				outcomeCode: row.outcomeCode,
+				outcomeName: row.outcomeName,
+				courseCode: row.courseCode,
+				courseName: row.courseName,
+				counts: [0, 0, 0],
+				totalStudents: 0,
+			};
+			entry.counts[0] += Number(row.studentsRed);
+			entry.counts[1] += Number(row.studentsYellow);
+			entry.counts[2] += Number(row.studentsGreen);
+			entry.totalStudents += Number(row.totalStudents);
+			byCourse.set(key, entry);
+		}
+
+		const groups = new Map<string, SemaphoreConsolidatedGroupDto>();
+		for (const entry of [...byCourse.values()].sort(
+			(a, b) =>
+				compareCodes(a.outcomeCode, b.outcomeCode) || compareCodes(a.courseCode, b.courseCode),
+		)) {
+			const group = groups.get(entry.outcomeCode) ?? {
+				outcomeCode: entry.outcomeCode,
+				outcomeName: entry.outcomeName,
+				rows: [],
+				levelTotals: [0, 0, 0],
+				totalStudents: 0,
+			};
+			group.rows.push({
+				courseCode: entry.courseCode,
+				courseName: entry.courseName,
+				levels: entry.counts.map((count) => ({
+					count,
+					percentage: this.toPercentage(count, entry.totalStudents),
+				})),
+				totalStudents: entry.totalStudents,
+			});
+			group.levelTotals = group.levelTotals.map((total, index) => total + entry.counts[index]);
+			group.totalStudents += entry.totalStudents;
+			groups.set(entry.outcomeCode, group);
+		}
+
+		return [...groups.values()];
+	}
+
+	private toPercentage(count: number, total: number): number {
+		return total > 0 ? Math.round((count / total) * 10000) / 100 : 0;
 	}
 
 	private reportBaseName(type: 'rc' | 'rv', lang: 'es' | 'en'): string {
@@ -706,11 +692,6 @@ export class SemaphoreReportsService {
 		return `${this.reportBaseName(type, lang)}${campusSuffix}_${Date.now()}.xlsx`;
 	}
 
-	/** Zip filename for the multi-campus download -- no campus suffix, since it holds all of them. */
-	private buildZipFilename(type: 'rc' | 'rv', lang: 'es' | 'en'): string {
-		return `${this.reportBaseName(type, lang)}.zip`;
-	}
-
 	/** Campus codes are catalog data, not user input, but still get sanitized before landing in a
 	 *  filename -- a stray '/' or ':' would otherwise change the path a client saves the file to. */
 	private sanitizeFilenamePart(value: string): string {
@@ -726,6 +707,64 @@ export class SemaphoreReportsService {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		const reportTitle = type === 'rc' ? L.reportTitleRC : L.reportTitleRV;
 
+		return {
+			language: lang,
+			reportName: reportTitle,
+			programName: data.metadata.programName,
+			metadata: [
+				{ label: L.colCampus, value: campusLabel },
+				{ label: L.academicPeriod, value: data.metadata.academicPeriodCode },
+				{ label: L.career, value: data.metadata.programName },
+				{ label: L.accreditor, value: data.metadata.accreditorCode },
+				{ label: L.commission, value: data.metadata.commissionName },
+				{ label: L.acceptanceLevel, value: L.allLevels },
+			],
+			bodyHtml:
+				type === 'rc'
+					? this.buildRcBody(data, reportTitle, lang)
+					: this.buildRvBody(data, reportTitle, lang),
+			orientation: 'landscape',
+			additionalStyles: SEMAPHORE_REPORT_STYLES,
+		};
+	}
+
+	/**
+	 * RC body: chart, the "Interpretación de Indicadores" scale, the critical-outcome summary, and
+	 * one consolidated course table.
+	 *
+	 * The dotted legend line the RV body still carries is deliberately absent -- the scale below
+	 * the chart is the same performance-level data rendered as an actual scale, and printing both
+	 * would say the same thing twice.
+	 */
+	private buildRcBody(
+		data: SemaphoreRenderReportDto,
+		reportTitle: string,
+		lang: ReportLanguage,
+	): string {
+		const L = SEMAPHORE_PDF_LABELS[lang];
+		return `
+			${this.buildChartSection(data, reportTitle, lang)}
+			<section>
+				<h3>${escapeHtml(L.indicatorScale)}</h3>
+				${this.buildIndicatorScale(data.legend)}
+			</section>
+			${this.buildSummarySection(data, lang)}
+			${this.buildConsolidatedSection(data, lang)}
+		`;
+	}
+
+	/**
+	 * RV body: chart (its own legend already carries the acceptance-level ranges) plus the
+	 * pivoted "Reporte de Verificación Consolidado" table -- one row per outcome, a count+% cell
+	 * per level, and a TOTALES row. No per-course listings: every outcome the courses in scope
+	 * were evaluated on is already represented in that single table.
+	 */
+	private buildRvBody(
+		data: SemaphoreRenderReportDto,
+		reportTitle: string,
+		lang: ReportLanguage,
+	): string {
+		const L = SEMAPHORE_PDF_LABELS[lang];
 		const levelHeaders = data.outcomePivot[0]?.levels ?? [];
 		const summaryHeaderCells = levelHeaders
 			.map(
@@ -759,58 +798,8 @@ export class SemaphoreReportsService {
 				</tr>`
 				: '';
 
-		const detailBlock = (label: string, items: SemaphoreCourseDetailRowDto[]) => {
-			if (items.length === 0) return '';
-			const rows = items
-				.map(
-					(r) => `
-					<tr>
-						<td>${escapeHtml(r.campus)}</td>
-						<td>${escapeHtml(r.outcomeCode)}</td>
-						<td>${escapeHtml(r.outcomeName)}</td>
-						<td>${escapeHtml(r.courseCode)}</td>
-						<td>${escapeHtml(r.courseName) || L.noTranslation}</td>
-						<td>${r.count}</td>
-						<td>${r.percentage}%</td>
-						<td>${r.totalStudents}</td>
-					</tr>`,
-				)
-				.join('');
-			return `
-				<section>
-					<h4>${escapeHtml(label)} (${items.length})</h4>
-					<table>
-						<thead><tr>
-							<th>${escapeHtml(L.colCampus)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th><th>${escapeHtml(L.colTotalStudentsByOutcome)}</th>
-						</tr></thead>
-						<tbody>${rows}</tbody>
-					</table>
-				</section>`;
-		};
-
-		const chartHtml =
-			data.chart.categories.length > 0
-				? `<section>${this.reportChart.buildGroupedBarChart({
-						title: reportTitle,
-						categories: data.chart.categories,
-						series: data.chart.series,
-						yAxisLabel: L.colTotalStudents,
-						emptyLabel: L.noTranslation,
-					})}</section>`
-				: '';
-
-		// The RV "Reporte de Verificación Consolidado" is legend + chart + the pivoted outcome
-		// table only -- no per-course listings. RC keeps its course-level detail blocks.
-		const detailSections =
-			type === 'rc'
-				? `
-			${detailBlock(L.redDetail, data.redDetail)}
-			${detailBlock(L.yellowDetail, data.yellowDetail)}
-			${detailBlock(L.greenDetail, data.greenDetail)}`
-				: '';
-
-		const bodyHtml = `
-			${chartHtml}
+		return `
+			${this.buildChartSection(data, reportTitle, lang)}
 			<section>
 				<h3>${escapeHtml(L.summary)}</h3>
 				<table>
@@ -819,25 +808,164 @@ export class SemaphoreReportsService {
 					</tr></thead>
 					<tbody>${summaryRows}${totalsRow}</tbody>
 				</table>
-			</section>${detailSections}
+			</section>
 		`;
+	}
 
-		return {
-			language: lang,
-			reportName: reportTitle,
-			programName: data.metadata.programName,
-			metadata: [
-				{ label: L.colCampus, value: campusLabel },
-				{ label: L.academicPeriod, value: data.metadata.academicPeriodCode },
-				{ label: L.career, value: data.metadata.programName },
-				{ label: L.accreditor, value: data.metadata.accreditorCode },
-				{ label: L.commission, value: data.metadata.commissionName },
-				{ label: L.acceptanceLevel, value: L.allLevels },
-			],
-			bodyHtml,
-			orientation: 'landscape',
-			additionalStyles: SEMAPHORE_REPORT_STYLES,
-		};
+	private buildChartSection(
+		data: SemaphoreRenderReportDto,
+		reportTitle: string,
+		lang: ReportLanguage,
+	): string {
+		if (data.chart.categories.length === 0) return '';
+		const L = SEMAPHORE_PDF_LABELS[lang];
+		return `<section>${this.reportChart.buildGroupedBarChart({
+			title: reportTitle,
+			categories: data.chart.categories,
+			series: data.chart.series,
+			yAxisLabel: L.colTotalStudents,
+			emptyLabel: L.noTranslation,
+		})}</section>`;
+	}
+
+	/** RC-only "Resumen por Outcome" table: critical outcomes only, one row per (campus, outcome,
+	 *  level), coloured by that level -- unchanged from before the consolidated-table redesign. */
+	private buildSummarySection(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
+		const L = SEMAPHORE_PDF_LABELS[lang];
+		const rows = data.outcomeSummary
+			.map(
+				(r) => `
+				<tr style="background-color:${escapeHtml(r.color)}">
+					<td>${escapeHtml(r.campus)}</td>
+					<td>${escapeHtml(r.outcomeCode)}</td>
+					<td>${escapeHtml(r.outcomeName)}</td>
+					<td>${r.totalStudents}</td>
+					<td>${r.count}</td>
+					<td>${r.percentage}%</td>
+				</tr>`,
+			)
+			.join('');
+		return `
+			<section>
+				<h3>${escapeHtml(L.summary)}</h3>
+				<table>
+					<thead><tr>
+						<th>${escapeHtml(L.colCampus)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colTotalStudents)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th>
+					</tr></thead>
+					<tbody>${rows}</tbody>
+				</table>
+			</section>`;
+	}
+
+	/**
+	 * The score scale as a single horizontal bar. Each segment's `flex-grow` is that level's span,
+	 * so the bar reads as the real 0-20 scale rather than N equal slices; a level configured with a
+	 * non-positive span still gets a visible slice instead of collapsing to nothing.
+	 */
+	private buildIndicatorScale(legend: SemaphoreLevelLegendDto[]): string {
+		if (legend.length === 0) return '';
+		const segments = legend
+			.map((level, index) => {
+				const upper = this.levelUpperBound(legend, index);
+				const span = Math.max(upper - Number(level.minScore), 1);
+				return `
+				<div class="indicator-scale__segment" style="flex-grow:${span};background-color:${escapeHtml(level.color)};color:${this.contrastText(level.color)}">
+					<span class="indicator-scale__name">${escapeHtml(level.name)}</span>
+					<span class="indicator-scale__range">${escapeHtml(this.formatLevelRange(legend, index))}</span>
+				</div>`;
+			})
+			.join('');
+		return `<div class="indicator-scale">${segments}</div>`;
+	}
+
+	/**
+	 * The consolidated course table: `Outcome | Código | Curso | <level…> | Total de Alumnos`, one
+	 * block of rows per outcome closed by a TOTALES line. Only the level headers are coloured, in
+	 * the level's own colour, so the reader can map a column to a segment of the scale above.
+	 */
+	private buildConsolidatedSection(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
+		if (data.consolidated.length === 0) return '';
+		const L = SEMAPHORE_PDF_LABELS[lang];
+		const levelLabels = [L.redDetail, L.yellowDetail, L.greenDetail];
+		const levelHeaders = levelLabels
+			.map((fallback, index) => {
+				const level = data.legend[index];
+				const label = level?.name || fallback;
+				const style = level
+					? ` style="background-color:${escapeHtml(level.color)};color:${this.contrastText(level.color)}"`
+					: '';
+				return `<th${style}>${escapeHtml(label)}</th>`;
+			})
+			.join('');
+
+		const cell = (count: number, percentage: number) => `<td>(${count}) ${percentage}%</td>`;
+		const body = data.consolidated
+			.map(
+				(group) => `
+				${group.rows
+					.map(
+						(row) => `
+					<tr>
+						<td>${escapeHtml(group.outcomeCode)}</td>
+						<td>${escapeHtml(row.courseCode)}</td>
+						<td>${escapeHtml(row.courseName) || L.noTranslation}</td>
+						${row.levels.map((level) => cell(level.count, level.percentage)).join('')}
+						<td>${row.totalStudents}</td>
+					</tr>`,
+					)
+					.join('')}
+				<tr class="consolidated__totals">
+					<td colspan="3">${escapeHtml(L.totals)}</td>
+					${group.levelTotals.map((total) => `<td>${total}</td>`).join('')}
+					<td>${group.totalStudents}</td>
+				</tr>`,
+			)
+			.join('');
+
+		return `
+			<section>
+				<h3>${escapeHtml(L.consolidatedDetail)}</h3>
+				<table class="consolidated">
+					<thead><tr>
+						<th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th>${levelHeaders}<th>${escapeHtml(L.colTotalStudents)}</th>
+					</tr></thead>
+					<tbody>${body}</tbody>
+				</table>
+			</section>`;
+	}
+
+	/**
+	 * A level's real upper bound is the next level's `minScore`, not its own `maxScore`: the rows
+	 * are stored closed (`[13, 15.999999]`) to make the SQL's BETWEEN work, so printing `maxScore`
+	 * verbatim would render `[13 - 15.999999]`. The top level has no successor and keeps its own.
+	 */
+	private levelUpperBound(legend: SemaphoreLevelLegendDto[], index: number): number {
+		const next = legend[index + 1];
+		return Number(next ? next.minScore : legend[index].maxScore);
+	}
+
+	/** `[0 - 13>` for every level but the last, which closes on its own maximum: `[16 - 20]`. */
+	private formatLevelRange(legend: SemaphoreLevelLegendDto[], index: number): string {
+		const lower = this.formatScore(legend[index].minScore);
+		const upper = this.formatScore(this.levelUpperBound(legend, index));
+		return index === legend.length - 1 ? `[${lower} - ${upper}]` : `[${lower} - ${upper}>`;
+	}
+
+	/** Scores are numeric(_, 6) columns, so they arrive as `13.000000`; trim to what a reader reads. */
+	private formatScore(value: number): string {
+		return String(Math.round(Number(value) * 100) / 100);
+	}
+
+	/**
+	 * Black or white label text, whichever the segment's own colour can carry. The middle level is
+	 * normally yellow, where white text is unreadable, so a fixed colour is not an option.
+	 */
+	private contrastText(hex: string): string {
+		const clean = hex.replace('#', '');
+		if (!/^[0-9a-f]{6}$/i.test(clean)) return '#ffffff';
+		const [r, g, b] = [0, 2, 4].map((offset) => parseInt(clean.slice(offset, offset + 2), 16));
+		const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+		return luminance > 0.6 ? '#18181b' : '#ffffff';
 	}
 
 	private async renderExcel(
@@ -968,11 +1096,6 @@ export class SemaphoreReportsService {
 		}
 		taken.add(name);
 		return name;
-	}
-
-	private hexToArgb(hex: string): string {
-		const clean = hex.replace('#', '');
-		return `FF${clean.length === 6 ? clean.toUpperCase() : 'FFFFFF'}`;
 	}
 
 	private writeExcelHeader(ws: ExcelJS.Worksheet, headers: string[], rowIndex = 1): void {
