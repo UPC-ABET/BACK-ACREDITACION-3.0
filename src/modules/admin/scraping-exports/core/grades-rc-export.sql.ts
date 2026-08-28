@@ -20,10 +20,11 @@ const VERIFIED_ZERO_MARK = `'CAL'`;
 // $6/$7 section codes / designated grade type codes | $8 ASISTIO code | $9 SAN code
 // $10 the export's section scope: loaded in academic.course_sections AND carrying a CONTROL
 // outcome, already intersected by the repository | $11 RET code
-// $12/$13 the (section, student) pairs enrolled in the period (academic.student_section_enrollments)
+// $12/$13 the (section, student) pairs enrolled IN THAT SECTION (academic.student_section_enrollments)
 // $14/$15 Banner program codes / career codes (PROGRAM_CAREER_MAP)
 // $16 NR code, shipped when the student has no grade: not ASISTIO, so the semaphore leaves those
 // zeros out of the RC average.
+// $17 student codes enrolled in the PERIOD at all (academic.enrolled_students), broader than $12/$13
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
 //
 // $10 is applied inside EACH leg rather than once over their union: the union is the whole
@@ -384,17 +385,23 @@ shaped AS (
 	FROM flagged f
 	WHERE f.pick_rank = 1
 ),
--- The (section, student) pairs the app has enrolled; the upload refuses the whole file over a row
--- that is not among them (studentNotFound / enrollmentNotFound).
+-- period_enrolled (matriculado at all) is a hard scope, dropped via the JOIN below like $10's section
+-- scopes. enrolled (paired to THIS section) is narrower and recoverable: missing it only flags the
+-- row below. The drop still only ever affects the descriptive sheet, never the upload one: a
+-- student_section_enrollments row requires an enrolled_students row, so failing period_enrolled
+-- already implied failing enrolled below -- the row was never going to reach the upload sheet anyway.
+period_enrolled AS (
+	SELECT DISTINCT student_code
+	FROM unnest($17::text[]) AS t(student_code)
+),
 enrolled AS (
 	SELECT DISTINCT section_code, student_code
 	FROM unnest($12::text[], $13::text[]) AS t(section_code, student_code)
 ),
--- Settled here, not in the SELECT, so the observations key off the value that actually ships.
 final AS (
 	SELECT
 		s.*,
-		(e.student_code IS NULL) AS not_enrolled,
+		(e.student_code IS NULL) AS not_in_section,
 		CASE
 			WHEN s.missing_designated THEN COALESCE(s.explained_status_code, $16::text)
 			-- A plain zero yields to a status when one exists; a CAL zero is an awarded grade.
@@ -416,6 +423,7 @@ final AS (
 				(SELECT name FROM qual_status WHERE code = $16), '')
 		END AS final_status_name
 	FROM shaped s
+	JOIN period_enrolled pe ON pe.student_code = s.student_code
 	LEFT JOIN enrolled e
 	  ON e.section_code = s.section_code
 	 AND e.student_code = s.student_code
@@ -463,8 +471,8 @@ SELECT
 		-- gradeTypeInvalid. Keyed off the shipped code, since the fallback often rescues a known type.
 		CASE WHEN NOT s.missing_designated AND s.grade_type_code IS NULL
 			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE}' END,
-		CASE WHEN s.not_enrolled
-			THEN '${GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED}' END,
+		CASE WHEN s.not_in_section
+			THEN '${GRADE_RC_OBSERVATIONS.STUDENT_NOT_IN_SECTION}' END,
 		-- The shipped status is raw source text, resolved through no TG404 type: the upload would
 		-- auto-provision it as a permanent one, so it has to be confirmed by hand first.
 		CASE WHEN NOT EXISTS (SELECT 1 FROM qual_status q WHERE q.code = s.final_status_code)
@@ -558,12 +566,9 @@ ORDER BY "exportSeq"
 LIMIT $2::int
 `;
 
-// The period's enrollments, aggregated into the two parallel arrays the merge takes as $12/$13 --
-// returned row by row they would be hundreds of thousands of objects built only to be flattened.
-// COALESCE because array_agg over no rows yields NULL, which would mark EVERY student as unenrolled.
-// $2 is the same scoped-section set GRADES_RC_SQL's $10 uses -- only those rows ever reach the
-// "not_enrolled" check these pairs feed, so scoping here avoids pulling the whole period's
-// enrollments just to discard most of them downstream.
+// Section pairings, aggregated into the parallel arrays $12/$13 -- row-by-row would be hundreds of
+// thousands of objects. COALESCE: array_agg over no rows is NULL, which would flag every row as
+// STUDENT_NOT_IN_SECTION instead of leaving `enrolled` empty. $2 is GRADES_RC_SQL's $10 scope.
 export const ENROLLED_SECTION_STUDENTS_SQL = `
 SELECT
 	COALESCE(array_agg(pair.section_code), '{}') AS "sectionCodes",
@@ -577,6 +582,16 @@ FROM (
 	WHERE cs.academic_period_id = $1::int
 	  AND cs.section_code = ANY($2::text[])
 ) pair
+`;
+
+// Period-wide matriculados ($17 in GRADES_RC_SQL), independent of section. COALESCE has the opposite
+// consequence here: an empty array drops every row from the export instead of just flagging it.
+export const PERIOD_ENROLLED_STUDENTS_SQL = `
+SELECT DISTINCT st.code AS "studentCode"
+FROM academic.enrolled_students es
+JOIN academic.students st ON st.id = es.student_id
+JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academic_period_id
+WHERE spap.academic_period_id = $1::int
 `;
 
 // Query the main DB runs against academic.course_sections: the grade type designated for a

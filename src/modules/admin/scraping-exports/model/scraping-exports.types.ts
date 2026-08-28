@@ -50,10 +50,11 @@ export const GRADE_RC_OBSERVATIONS = {
 	ZERO_GRADE_UNEXPLAINED: 'zeroGradeUnexplained',
 	UNREGISTERED_STATUS: 'unregisteredStatus',
 	NO_SOURCE_GRADE_OR_STATUS: 'noSourceGradeOrStatus',
-	// gradeTypeInvalid and studentNotFound/enrollmentNotFound: with sectionNotFound already covered
-	// by the scope filter, these are the remaining reasons the upload refuses a whole file.
+	// gradeTypeInvalid and enrollmentNotFound: sectionNotFound and studentNotFound are already covered
+	// by GRADES_RC_SQL's hard scope filters.
 	UNREGISTERED_GRADE_TYPE: 'unregisteredGradeType',
-	STUDENT_NOT_ENROLLED: 'studentNotEnrolled',
+	// Matriculated for the period, but not paired to THIS section (student_section_enrollments).
+	STUDENT_NOT_IN_SECTION: 'studentNotInSection',
 } as const;
 
 // uploads/staff template: professorCode | lastName | firstName. professorCode is the Banner

@@ -116,8 +116,8 @@ const CONTROL_SECTIONS = LOADED_SECTIONS.filter((section) => section !== 'NRC14'
 // two arrays inside it -- see the $10 note in GRADES_RC_SQL.
 const SCOPED_SECTIONS = LOADED_SECTIONS.filter((section) => CONTROL_SECTIONS.includes(section));
 
-// academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: the
-// upload rejects the whole file over it, so the row has to ship carrying that warning.
+// academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: A1B is
+// still a matriculado (PERIOD_ENROLLED below), just not paired to NRC1.
 const ENROLLED: Array<[string, string]> = [
 	['NRC1', 'A1'],
 	['NRC1', 'A1C'],
@@ -138,6 +138,10 @@ const ENROLLED: Array<[string, string]> = [
 	['NRC13', 'A13'],
 	['NRC14', 'A14'],
 ];
+
+// academic.enrolled_students for the period. A1E is deliberately absent from both this and ENROLLED:
+// not a matriculado at all, so their NRC1 grade below must not reach either worksheet.
+const PERIOD_ENROLLED: string[] = [...new Set(ENROLLED.map(([, student]) => student)), 'A1B'];
 
 interface ExportedRow {
 	sectionCode: string;
@@ -329,6 +333,7 @@ async function loadFixtures(db: Client): Promise<void> {
 	const banner: Array<[string, string, string]> = [
 		['NRC1', '1', 'A1'],
 		['NRC1', '1', 'A1B'],
+		['NRC1', '1', 'A1E'],
 		['NRC1', '1', 'A1C'],
 		['NRC1', '1', 'A1D'],
 		['NRC1B', '1', 'A1'],
@@ -382,6 +387,8 @@ async function loadFixtures(db: Client): Promise<void> {
 		{ tipo: 'TA', peso: 10, nota: 'XXX', numero: 5 },
 	]);
 	await notas('A1B', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '11.00', numero: 1 }]);
+	// A1E: never matriculated at all -- see PERIOD_ENROLLED above.
+	await notas('A1E', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '9.00', numero: 1 }]);
 	// Designated grade that is a known TG404 status instead of a number, and one whose text is not a
 	// status at all.
 	await notas('A1C', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: 'RET', numero: 1 }]);
@@ -727,9 +734,13 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 		],
 		['R8 student with no Banner record -> empty career', of('NRC7|A7')?.careerCode === ''],
 		[
-			'R5 a student the app has not enrolled is flagged',
-			has('NRC1|A1B', GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED) &&
-				!has('NRC1|A1', GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED),
+			'R5a a student the app has not matriculated for the period at all is dropped entirely',
+			of('NRC1|A1E') === undefined,
+		],
+		[
+			'R5b a matriculado missing from THIS section still ships, flagged',
+			has('NRC1|A1B', GRADE_RC_OBSERVATIONS.STUDENT_NOT_IN_SECTION) &&
+				!has('NRC1|A1', GRADE_RC_OBSERVATIONS.STUDENT_NOT_IN_SECTION),
 		],
 	];
 }
@@ -803,6 +814,7 @@ async function main(): Promise<void> {
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			QUALIFICATION_STATUSES.NR,
+			PERIOD_ENROLLED,
 		];
 		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, params);
 

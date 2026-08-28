@@ -60,6 +60,9 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		if (sql.includes('student_section_enrollments')) {
 			return Promise.resolve([{ sectionCodes: ['NRC1', 'NRC2'], studentCodes: ['A1', 'A2'] }]);
 		}
+		if (sql.includes('academic.enrolled_students')) {
+			return Promise.resolve([{ studentCode: 'A1' }, { studentCode: 'A2' }]);
+		}
 		if (sql.includes('course_sections')) {
 			return Promise.resolve([{ sectionCode: 'NRC1' }, { sectionCode: 'NRC2' }]);
 		}
@@ -111,7 +114,8 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(params[13]).toEqual(Object.keys(PROGRAM_CAREER_MAP));
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 		expect(params[15]).toBe('TG404-T002');
-		expect(params).toHaveLength(16);
+		expect(params[16]).toEqual(['A1', 'A2']);
+		expect(params).toHaveLength(17);
 	});
 
 	// One scope array, not two ANDed in SQL: the planner reads two arrays over section_code as

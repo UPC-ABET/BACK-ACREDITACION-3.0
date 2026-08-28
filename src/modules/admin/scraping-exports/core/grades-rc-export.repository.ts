@@ -13,6 +13,7 @@ import {
 	GRADES_RC_TEMP_TABLE,
 	INDEX_GRADES_RC_TEMP_SQL,
 	MATERIALIZE_GRADES_RC_SQL,
+	PERIOD_ENROLLED_STUDENTS_SQL,
 	READ_GRADES_RC_ALL_PAGE_SQL,
 	UPLOADED_SECTIONS_SQL,
 } from './grades-rc-export.sql';
@@ -149,6 +150,7 @@ export class GradesRcExportRepository {
 			designated,
 			uploadedSections,
 			controlSections,
+			periodEnrolledStudentCodes,
 		] = await Promise.all([
 			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
 			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
@@ -156,6 +158,7 @@ export class GradesRcExportRepository {
 			this.getDesignatedGradeTypesBySection(academicPeriodId),
 			this.getUploadedSectionCodes(academicPeriodId),
 			this.getControlOutcomeSectionCodes(academicPeriodId),
+			this.getPeriodEnrolledStudentCodes(academicPeriodId),
 		]);
 
 		// Intersected here, not as a second array the SQL ANDs together: two scope arrays on
@@ -184,6 +187,7 @@ export class GradesRcExportRepository {
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			TYPE_CODES.QUALIFICATION_STATUS.NR,
+			periodEnrolledStudentCodes,
 		];
 	}
 
@@ -227,6 +231,16 @@ export class GradesRcExportRepository {
 			[academicPeriodId],
 		);
 		return rows.map((row) => row.sectionCode);
+	}
+
+	// Hard scope, broader than getEnrolledSectionStudents: a student not matriculated for the period
+	// at all has nowhere to land, so their grade is dropped rather than reported.
+	async getPeriodEnrolledStudentCodes(academicPeriodId: number): Promise<string[]> {
+		const rows: Array<{ studentCode: string }> = await this.mainDataSource.query(
+			PERIOD_ENROLLED_STUDENTS_SQL,
+			[academicPeriodId],
+		);
+		return rows.map((row) => row.studentCode);
 	}
 
 	// name (es, uppercased) -> code, for every active type in the given group (main DB).
