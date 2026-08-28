@@ -11,14 +11,6 @@ export class SemaphoreFilterDto {
 	@ApiProperty({ example: 1, required: false, description: 'Program commission ID to filter by' })
 	programCommissionId?: number;
 
-	@Transform(({ value }) =>
-		value === undefined || value === null || value === '' ? undefined : Number(value),
-	)
-	@IsOptional()
-	@IsNumber()
-	@ApiProperty({ example: 1, required: false, description: 'Outcome ID to filter by' })
-	outcomeId?: number;
-
 	@Transform(({ value }) => {
 		if (value === undefined || value === null || value === '') return undefined;
 		const list = Array.isArray(value) ? value : [value];
@@ -34,10 +26,12 @@ export class SemaphoreFilterDto {
 		example: [1, 2],
 		required: false,
 		description:
-			'Campus IDs to filter by. Omit, or select every campus, for one consolidated report. ' +
-			'Select a single campus for one report scoped to it. Select more than one (but not all) ' +
-			'to download a zip with one report per selected campus -- applies to the PDF/Excel ' +
-			'download endpoints only; the JSON screen endpoints always return one combined result.',
+			'Campus IDs to filter by. The PDF/Excel download endpoints accept at most one: omit it ' +
+			'for one consolidated report over every campus, or send a single id for a report scoped ' +
+			'to that campus. More than one id is rejected with 400 ' +
+			'error.semaphoreReport.singleCampusRequired, since one document per campus times the ' +
+			'selected outcomes is more than a single report can carry. The JSON screen endpoints ' +
+			'accept any number of ids and always return one combined result.',
 	})
 	campusIds?: number[];
 
@@ -119,6 +113,8 @@ export class SemaphoreReportDto {
 	metadata: SemaphoreMetadataDto;
 }
 
+/** One row of RC's "Resumen por Outcome" table -- critical outcomes only, one row per
+ *  (campus, outcome, level), rendered with that level's colour. */
 export class SemaphoreOutcomeSummaryRowDto {
 	campus: string;
 	outcomeCode: string;
@@ -130,6 +126,20 @@ export class SemaphoreOutcomeSummaryRowDto {
 	color: string;
 }
 
+export class SemaphoreOutcomeLevelCellDto {
+	name: string;
+	color: string;
+	count: number;
+	percentage: number;
+}
+
+export class SemaphoreOutcomePivotRowDto {
+	outcomeCode: string;
+	outcomeName: string;
+	totalStudents: number;
+	levels: SemaphoreOutcomeLevelCellDto[];
+}
+
 export class SemaphoreCourseDetailRowDto {
 	campus: string;
 	outcomeCode: string;
@@ -139,6 +149,30 @@ export class SemaphoreCourseDetailRowDto {
 	count: number;
 	totalStudents: number;
 	percentage: number;
+}
+
+/** One level's cell in the consolidated RC table -- rendered as `(count) percentage%`. */
+export class SemaphoreConsolidatedCellDto {
+	count: number;
+	percentage: number;
+}
+
+export class SemaphoreConsolidatedRowDto {
+	courseCode: string;
+	courseName: string;
+	/** One entry per performance level, ascending -- same order as `legend`. */
+	levels: SemaphoreConsolidatedCellDto[];
+	totalStudents: number;
+}
+
+/** The consolidated RC table, split into one block per outcome so each can close with a
+ *  TOTALES row. */
+export class SemaphoreConsolidatedGroupDto {
+	outcomeCode: string;
+	outcomeName: string;
+	rows: SemaphoreConsolidatedRowDto[];
+	levelTotals: number[];
+	totalStudents: number;
 }
 
 export class SemaphoreMetadataDto {
