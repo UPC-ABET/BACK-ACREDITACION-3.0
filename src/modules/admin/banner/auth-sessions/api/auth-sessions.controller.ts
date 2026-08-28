@@ -1,10 +1,11 @@
-import { Headers, HttpStatus, Param } from '@nestjs/common';
+import { Body, Headers, HttpStatus, Param } from '@nestjs/common';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
 import type { RequestUser } from 'src/modules/auth/model/authorization.types';
 import { PERMISSION_ACTIONS, PERMISSION_MODULES } from 'src/shared/constants/permission-modules';
 import { AuthSessionService } from './auth-sessions.service';
+import { StartAuthSessionDto } from '../model/auth-sessions.dtos';
 import {
 	SwaggerAuthSessionController,
 	SwaggerAuthSessionCreate,
@@ -20,11 +21,18 @@ export class AuthSessionController {
 	@RequirePermission({ module: PERMISSION_MODULES.SCRAPPING, action: PERMISSION_ACTIONS.POST })
 	async create(
 		@CurrentUser() user: RequestUser,
+		@Body() dto: StartAuthSessionDto,
 		@Headers('host') host?: string,
 		@Headers('x-forwarded-proto') forwardedProto?: string,
 	) {
 		return parseSuccessResponse(
-			await this.service.start(`user:${user.userId}`, { host, forwardedProto }),
+			await this.service.start(
+				`user:${user.userId}`,
+				{ host, forwardedProto },
+				dto.username && dto.password
+					? { username: dto.username, password: dto.password }
+					: undefined,
+			),
 			HttpStatus.CREATED,
 		);
 	}
