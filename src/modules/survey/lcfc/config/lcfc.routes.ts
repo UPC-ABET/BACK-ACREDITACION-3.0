@@ -139,6 +139,18 @@ export const lcfcRoutes = {
 				'Generate the LCFC perception-by-outcome PDF report (all sedes + one per sede). ' +
 				'With no program/commission/campus filter, returns a per-program completion overview PDF instead',
 		},
+		outcomesList: {
+			method: 'POST',
+			route: 'outcomes/list',
+			summary: 'List outcomes for a program/commission (for the "Percepción por Outcome" filter)',
+		},
+		reportPerceptionByOutcome: {
+			method: 'POST',
+			route: 'report/perception-by-outcome',
+			summary:
+				'Generate the LCFC "Percepción por Outcome" PDF: one chart + a shared results table, ' +
+				'one row/mini-chart per course found under the given program/commission/outcome',
+		},
 	},
 	conversion: {
 		rebuild: {

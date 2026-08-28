@@ -1,3 +1,11 @@
+// `generate()`/`generateOutcomeReport()` throttle PDF rendering via createConcurrencyLimiter,
+// which wraps the ESM-only `p-limit` package. Mock the wrapper (not `p-limit` itself) since
+// `await import('p-limit')` is a real dynamic import under this project's `module: nodenext` —
+// Jest's CJS transform can't intercept it directly, but it can mock this whole module.
+jest.mock('src/libs/reporting/concurrency-limit', () => ({
+	createConcurrencyLimiter: async () => (fn: (...args: any[]) => any) => fn(),
+}));
+
 import { PerceptionReportService, type PerceptionReportRequest } from './perception-report.service';
 
 const repo = {
@@ -8,6 +16,7 @@ const repo = {
 	getPeriodCode: jest.fn(),
 	getCommissionName: jest.fn(),
 	getConfiguredOutcomes: jest.fn(),
+	getCourseSectionLabel: jest.fn(),
 };
 const chart = { buildGroupedBarChart: jest.fn().mockReturnValue('<svg></svg>') };
 const generator = { generateDocument: jest.fn(), archivePdfFiles: jest.fn() };
@@ -28,7 +37,14 @@ const scoreRow = (
 	campusName: string,
 	score: string,
 	count: number,
-	overrides: Partial<{ outcomeId: number; outcomeCode: string; surveyNumber: number }> = {},
+	overrides: Partial<{
+		outcomeId: number;
+		outcomeCode: string;
+		surveyNumber: number;
+		courseId: number;
+		courseName: string;
+		courseCode: string;
+	}> = {},
 ) => ({
 	outcomeId: 1,
 	outcomeCode: 'EAC-BIO-1',
@@ -40,6 +56,9 @@ const scoreRow = (
 	surveyNumber: null,
 	score,
 	count,
+	courseId: null,
+	courseName: null,
+	courseCode: null,
 	...overrides,
 });
 
@@ -78,6 +97,7 @@ describe('PerceptionReportService', () => {
 		repo.getProgramName.mockResolvedValue(null);
 		repo.getCommissionName.mockResolvedValue(null);
 		repo.getConfiguredOutcomes.mockResolvedValue([]);
+		repo.getCourseSectionLabel.mockResolvedValue(null);
 	});
 
 	it('returns an empty result when the survey type code is unknown', async () => {
@@ -117,6 +137,59 @@ describe('PerceptionReportService', () => {
 		expect(result.reports[0].campusId).toBeNull();
 		expect(result.zip).not.toBeNull();
 		expect(generator.archivePdfFiles).toHaveBeenCalledTimes(1);
+	});
+
+	it('never auto-splits by course for GRA/PPP (showCourseFilters unset), even though every survey row carries a courseId', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([
+			scoreRow(1, 'Lima', '4.5', 3, { courseId: 101, courseName: 'Curso A', courseCode: 'C-A' }),
+			scoreRow(2, 'Arequipa', '2', 1, { courseId: 102, courseName: 'Curso B', courseCode: 'C-B' }),
+		]);
+
+		// baseRequest has no `showCourseFilters` (GRA/PPP shape) — course data on the rows must be
+		// ignored entirely, or this would incorrectly fan out per course × campus.
+		const result = await service.generate(baseRequest);
+
+		expect(result.reports).toHaveLength(3);
+		expect(result.reports.some((r) => r.filename.includes('C-A'))).toBe(false);
+		expect(result.reports.some((r) => r.filename.includes('C-B'))).toBe(false);
+	});
+
+	it('uses a raw 1-5 score histogram and skips outcome zero-seeding when scoped to a specific curso', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		repo.getScoreRows.mockResolvedValue([
+			scoreRow(1, 'Lima', '2', 5, { courseId: 55, courseName: 'Curso X', courseCode: 'X-1' }),
+			scoreRow(1, 'Lima', '4', 3, { courseId: 55, courseName: 'Curso X', courseCode: 'X-1' }),
+		]);
+		// An outcome configured for the program/commission but unrelated to this course — must NOT
+		// be zero-seeded into the table once a specific curso narrows the scope.
+		repo.getConfiguredOutcomes.mockResolvedValue([
+			{
+				outcomeId: 99,
+				outcomeCode: 'EAC-XX-9',
+				outcomeName: 'Outcome no relacionado',
+				commissionId: null,
+				commissionName: null,
+			},
+		]);
+		repo.getCourseSectionLabel.mockResolvedValue({
+			courseName: 'Curso X',
+			sectionCode: null,
+			professorName: null,
+		});
+
+		await service.generate({
+			...baseRequest,
+			fileLabel: 'LCFC',
+			showCourseFilters: true,
+			courseId: 55,
+		});
+
+		const chartArgs = chart.buildGroupedBarChart.mock.calls[0][0];
+		expect(chartArgs.categories).toEqual(['1', '2', '3', '4', '5']);
+
+		const doc = documentOf(0);
+		expect(doc.bodyHtml).not.toContain('<td class="num">9</td>');
 	});
 
 	it('builds a single report and no zip when filtered to one campus', async () => {
@@ -172,10 +245,7 @@ describe('PerceptionReportService', () => {
 
 	it('labels the results table with the band names, the average and the caller total label', async () => {
 		repo.getSurveyTypeId.mockResolvedValue(10);
-		repo.getScoreRows.mockResolvedValue([
-			scoreRow(1, 'Lima', '5', 3),
-			scoreRow(1, 'Lima', '3', 1),
-		]);
+		repo.getScoreRows.mockResolvedValue([scoreRow(1, 'Lima', '5', 3), scoreRow(1, 'Lima', '3', 1)]);
 
 		await service.generate({ ...baseRequest, campusId: 1 });
 

@@ -29,6 +29,8 @@ import {
 	SwaggerLcfcExport,
 	SwaggerLcfcReportPdf,
 	SwaggerLcfcReportPerception,
+	SwaggerLcfcOutcomesList,
+	SwaggerLcfcReportPerceptionByOutcome,
 	SwaggerLcfcConversionRebuild,
 } from './docs/lcfc.swagger';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
@@ -47,6 +49,8 @@ import {
 	LcfcProgramQueryDto,
 	LcfcSectionCommissionsQueryDto,
 	LcfcReportQueryDto,
+	ListLcfcOutcomesDto,
+	LcfcOutcomeReportDto,
 } from '../model/lcfc.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
@@ -274,6 +278,9 @@ export class LcfcController {
 			query.programId,
 			query.lang ?? 'es',
 			query.groupBy ?? 'section',
+			query.courseId,
+			query.courseSectionId,
+			query.hideCourseBreakdown,
 		);
 		const encoded = encodeURIComponent(filename);
 		res.setHeader('Content-Type', 'application/pdf');
@@ -294,6 +301,28 @@ export class LcfcController {
 	) {
 		return parseSuccessResponse(
 			await this.lcfcService.generatePerceptionReport(dto, academicPeriodId),
+		);
+	}
+
+	@SwaggerLcfcOutcomesList()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async outcomesList(
+		@Body() dto: ListLcfcOutcomesDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.lcfcService.listOutcomes(dto, academicPeriodId));
+	}
+
+	@SwaggerLcfcReportPerceptionByOutcome()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async reportPerceptionByOutcome(
+		@Body() dto: LcfcOutcomeReportDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.lcfcService.generateOutcomeReportPdf(dto, academicPeriodId),
 		);
 	}
 

@@ -82,10 +82,10 @@ export class GraReportService {
 					<tbody>${sorted
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${r.completed}</td><td class="num">${r.pending}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
-					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${totals.completed}</td><td class="num">${totals.pending}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
+					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${this.formatCountWithPercent(totals.completed, totals.total)}</td><td class="num">${this.formatCountWithPercent(totals.pending, totals.total)}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
 				</table>
 			</section>`
 			: `<section><p>${escapeHtml(L.empty)}</p></section>`;
@@ -106,6 +106,12 @@ export class GraReportService {
 
 	private rate(completed: number, total: number): number {
 		return total > 0 ? Math.round((completed / total) * 100) : 0;
+	}
+
+	/** "count (12.50%)" — the share of this count out of the row's total. */
+	private formatCountWithPercent(count: number, total: number): string {
+		const percent = total > 0 ? (count / total) * 100 : 0;
+		return `${count} (${percent.toFixed(2)}%)`;
 	}
 }
 

@@ -51,6 +51,28 @@ export class LcfcReportQueryDto extends LcfcProgramQueryDto {
 			'together (no professor/section shown), "section" breaks down per NRC with its professor',
 	})
 	groupBy?: 'course' | 'section';
+
+	@IsOptional()
+	@IsInt()
+	@Transform(toOptionalPositiveInt)
+	@ApiPropertyOptional({ example: 1, type: Number, description: 'Filter by course (curso)' })
+	courseId?: number;
+
+	@IsOptional()
+	@IsInt()
+	@Transform(toOptionalPositiveInt)
+	@ApiPropertyOptional({ example: 1, type: Number, description: 'Filter by course section (NRC)' })
+	courseSectionId?: number;
+
+	@IsOptional()
+	@IsBoolean()
+	@Transform(({ value }) => value === true || value === 'true')
+	@ApiPropertyOptional({
+		example: false,
+		description:
+			'When true, omits the "Encuestas por curso" breakdown table entirely (curso = "Agrupar")',
+	})
+	hideCourseBreakdown?: boolean;
 }
 
 export class GenerateLcfcConfigDto {
@@ -343,4 +365,53 @@ export class DashboardLcfcDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Filter by course (curso)', required: false })
+	courseId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({ example: 1, description: 'Filter by course section (NRC)', required: false })
+	courseSectionId?: number;
+}
+
+export class ListLcfcOutcomesDto {
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Program/Carrera ID' })
+	programId: number;
+
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Commission ID' })
+	commissionId: number;
+}
+
+export class LcfcOutcomeReportDto {
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Program/Carrera ID' })
+	programId: number;
+
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Commission ID' })
+	commissionId: number;
+
+	@IsOptional()
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({
+		example: 1,
+		description: 'Outcome ID. Omit to generate one PDF per outcome configured for the commission.',
+		required: false,
+	})
+	outcomeId?: number;
+
+	@IsOptional()
+	@IsIn(['es', 'en'])
+	@ApiProperty({ example: 'es', description: 'Report language: es | en', required: false })
+	lang?: 'es' | 'en';
 }

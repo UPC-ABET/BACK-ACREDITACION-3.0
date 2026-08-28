@@ -13,6 +13,8 @@ export interface LcfcCourseSectionRow {
 	courseSectionId: number;
 	sectionCode: string;
 	professorName: string;
+	campusName: I18nText | null;
+	modalityName: I18nText | null;
 	enrolled: number;
 	completed: number;
 	pending: number;
@@ -242,7 +244,13 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 		lcfcSurveyTypeId: number,
 		activeStatusId: number,
 		closedStatusId: number,
-		filters: { academicPeriodId?: number; programId?: number; campusId?: number },
+		filters: {
+			academicPeriodId?: number;
+			programId?: number;
+			campusId?: number;
+			courseId?: number;
+			courseSectionId?: number;
+		},
 	): Promise<{
 		completed: number;
 		pending: number;
@@ -265,6 +273,13 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 			whereClause += ` AND s.campus_id = $${params.length + 1}`;
 			params.push(filters.campusId);
 		}
+		if (filters.courseSectionId) {
+			whereClause += ` AND s.course_section_id = $${params.length + 1}`;
+			params.push(filters.courseSectionId);
+		} else if (filters.courseId) {
+			whereClause += ` AND s.course_section_id IN (SELECT id FROM academic.course_sections WHERE course_id = $${params.length + 1})`;
+			params.push(filters.courseId);
+		}
 
 		const [summary, byCourse, byProgram] = await Promise.all([
 			this.dataSource.query(
@@ -284,6 +299,8 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 					cs.id                                                                                AS "courseSectionId",
 					cs.section_code                                                                     AS "sectionCode",
 					TRIM(CONCAT(st.first_name, ' ', st.last_name))                                      AS "professorName",
+					camp.name                                                                           AS "campusName",
+					mt.name                                                                             AS "modalityName",
 					(
 						SELECT COUNT(*)::int
 						FROM academic.student_section_enrollments sse
@@ -297,8 +314,10 @@ export class LcfcSurveyRepository extends BaseRepository<SurveyEntity> {
 				INNER JOIN academic.courses c ON c.id = cs.course_id
 				INNER JOIN academic.professors pr ON pr.id = cs.professor_id
 				INNER JOIN organization.staff st ON st.id = pr.staff_id
+				LEFT JOIN organization.campuses camp ON camp.id = cs.campus_id
+				LEFT JOIN core.types mt ON mt.id = cs.section_modality_type_id
 				WHERE ${whereClause}
-				GROUP BY c.id, c.name, c.code, cs.id, cs.section_code, st.first_name, st.last_name
+				GROUP BY c.id, c.name, c.code, cs.id, cs.section_code, st.first_name, st.last_name, camp.name, mt.name
 				ORDER BY c.name ASC, cs.section_code ASC`,
 				[...params, closedStatusId, activeStatusId],
 			),

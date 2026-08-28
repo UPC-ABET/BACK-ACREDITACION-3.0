@@ -48,6 +48,30 @@ describe('ReportChartService', () => {
 		expect(html).toContain('No data');
 	});
 
+	it('renders exactly one bar per category (not one per series) when singleBarPerCategory is set', () => {
+		const html = service.buildGroupedBarChart({
+			categories: ['1', '2', '3'],
+			series: [
+				{ label: 'Necesita mejora', color: '#e30613', values: [4, 0, 0] },
+				{ label: 'Esperado', color: '#f4c20d', values: [0, 6, 0] },
+				{ label: 'Sobresaliente', color: '#16a34a', values: [0, 0, 9] },
+			],
+			xAxisLabel: 'Respuestas',
+			singleBarPerCategory: true,
+		});
+
+		// 3 category bars + 3 legend swatches (one per series) — not 3 categories x 3 series = 9.
+		expect((html.match(/<rect/g) ?? []).length).toBe(6);
+		expect(html).toContain('#e30613');
+		expect(html).toContain('#f4c20d');
+		expect(html).toContain('#16a34a');
+		expect(html).toContain('Respuestas');
+		// Legend still lists all three bands even though each category shows only one bar.
+		expect(html).toContain('Necesita mejora');
+		expect(html).toContain('Esperado');
+		expect(html).toContain('Sobresaliente');
+	});
+
 	it('escapes chart labels and colors', () => {
 		const html = service.buildGroupedBarChart({
 			title: '<Report>',

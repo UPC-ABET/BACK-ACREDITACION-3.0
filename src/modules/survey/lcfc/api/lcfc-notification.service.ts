@@ -609,6 +609,8 @@ export class LcfcNotificationService {
 				academicPeriodId: dto.academicPeriodId ?? undefined,
 				programId: dto.programId,
 				campusId: dto.campusId,
+				courseId: dto.courseId,
+				courseSectionId: dto.courseSectionId,
 			},
 		);
 

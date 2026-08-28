@@ -13,6 +13,9 @@ export interface PerceptionScoreRow {
 	surveyNumber: number | null;
 	score: string;
 	count: number;
+	courseId: number | null;
+	courseName: I18nText | string | null;
+	courseCode: string | null;
 }
 
 export interface PerceptionQueryFilters {
@@ -22,6 +25,22 @@ export interface PerceptionQueryFilters {
 	commissionId?: number;
 	campusId?: number;
 	surveyNumbers?: number[];
+	courseId?: number;
+	courseSectionId?: number;
+	outcomeId?: number;
+}
+
+export interface OutcomeOption {
+	id: number;
+	code: string;
+	name: I18nText | string | null;
+}
+
+/** Course / NRC / professor labels shown in the report header when those filters are set. */
+export interface CourseSectionLabel {
+	courseName: I18nText | string | null;
+	sectionCode: string | null;
+	professorName: string | null;
 }
 
 export interface ConfiguredOutcomeRow {
@@ -68,6 +87,18 @@ export class PerceptionReportRepository {
 			params.push(filters.surveyNumbers);
 			conditions.push(`s.survey_number = ANY($${params.length})`);
 		}
+		if (filters.courseSectionId !== undefined) {
+			params.push(filters.courseSectionId);
+			conditions.push(`s.course_section_id = $${params.length}`);
+		}
+		if (filters.courseId !== undefined) {
+			params.push(filters.courseId);
+			conditions.push(`cs.course_id = $${params.length}`);
+		}
+		if (filters.outcomeId !== undefined) {
+			params.push(filters.outcomeId);
+			conditions.push(`o.id = $${params.length}`);
+		}
 
 		return await this.dataSource.query(
 			`SELECT
@@ -80,18 +111,57 @@ export class PerceptionReportRepository {
 				comm.name         AS "commissionName",
 				s.survey_number   AS "surveyNumber",
 				sc.score          AS "score",
-				COUNT(*)::int     AS "count"
+				COUNT(*)::int     AS "count",
+				crs.id            AS "courseId",
+				crs.name          AS "courseName",
+				crs.code          AS "courseCode"
 			FROM evidence.surveys s
 			INNER JOIN survey.scores sc ON sc.survey_id = s.id
 			INNER JOIN accreditation.outcomes o ON o.id = sc.outcome_id
 			LEFT JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
 			LEFT JOIN accreditation.commissions comm ON comm.id = pc.commission_id
 			LEFT JOIN organization.campuses c ON c.id = s.campus_id
+			LEFT JOIN academic.course_sections cs ON cs.id = s.course_section_id
+			LEFT JOIN academic.courses crs ON crs.id = cs.course_id
 			WHERE ${conditions.join(' AND ')}
-			GROUP BY o.id, o.outcome_code, o.outcome_name, s.campus_id, c.name, pc.commission_id, comm.name, s.survey_number, sc.score
+			GROUP BY o.id, o.outcome_code, o.outcome_name, s.campus_id, c.name, pc.commission_id, comm.name, s.survey_number, sc.score, crs.id, crs.name, crs.code
 			ORDER BY o.outcome_code, s.campus_id`,
 			params,
 		);
+	}
+
+	/** Course/NRC/professor labels for the report header — courseSectionId (NRC) resolves all
+	 *  three; courseId alone resolves just the course name. */
+	async getCourseSectionLabel(filters: {
+		courseId?: number;
+		courseSectionId?: number;
+	}): Promise<CourseSectionLabel | null> {
+		if (filters.courseSectionId !== undefined) {
+			const rows = await this.dataSource.query(
+				`SELECT
+					c.name AS "courseName",
+					cs.section_code AS "sectionCode",
+					TRIM(CONCAT(st.first_name, ' ', st.last_name)) AS "professorName"
+				FROM academic.course_sections cs
+				INNER JOIN academic.courses c ON c.id = cs.course_id
+				LEFT JOIN academic.professors pr ON pr.id = cs.professor_id
+				LEFT JOIN organization.staff st ON st.id = pr.staff_id
+				WHERE cs.id = $1
+				LIMIT 1`,
+				[filters.courseSectionId],
+			);
+			return rows?.[0] ?? null;
+		}
+		if (filters.courseId !== undefined) {
+			const rows = await this.dataSource.query(
+				`SELECT name AS "courseName" FROM academic.courses WHERE id = $1 LIMIT 1`,
+				[filters.courseId],
+			);
+			return rows?.[0]
+				? { courseName: rows[0].courseName, sectionCode: null, professorName: null }
+				: null;
+		}
+		return null;
 	}
 
 	/**
@@ -171,6 +241,40 @@ export class PerceptionReportRepository {
 			[commissionId],
 		);
 		return rows?.[0]?.name ?? null;
+	}
+
+	async getOutcomeById(outcomeId: number): Promise<OutcomeOption | null> {
+		const rows = await this.dataSource.query(
+			`SELECT id, outcome_code AS "code", outcome_name AS "name"
+			 FROM accreditation.outcomes
+			 WHERE id = $1
+			 LIMIT 1`,
+			[outcomeId],
+		);
+		return rows?.[0] ?? null;
+	}
+
+	/** Outcomes for the "Percepción por Outcome" filter — scoped to a single program + commission,
+	 *  the same pair the report itself is generated for. */
+	async getOutcomesForCommission(
+		programId: number,
+		commissionId: number,
+		academicPeriodId: number,
+	): Promise<OutcomeOption[]> {
+		return await this.dataSource.query(
+			`SELECT
+				o.id           AS "id",
+				o.outcome_code AS "code",
+				o.outcome_name AS "name"
+			FROM accreditation.outcomes o
+			INNER JOIN accreditation.program_commissions pc ON pc.id = o.program_commission_id
+			WHERE pc.program_id = $1
+				AND pc.commission_id = $2
+				AND pc.academic_period_id = $3
+				AND o.is_active = true
+			ORDER BY o.outcome_code`,
+			[programId, commissionId, academicPeriodId],
+		);
 	}
 
 	async getCommissions(
