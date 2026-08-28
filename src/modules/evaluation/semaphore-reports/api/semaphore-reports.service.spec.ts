@@ -9,7 +9,12 @@ import type {
 	SemaphoreLevelLegendRow,
 	MetadataRow,
 } from '../core/semaphore-reports.repository';
-import type { SemaphoreFilterDto } from '../model/semaphore-reports.dtos';
+import type {
+	SemaphoreConsolidatedGroupDto,
+	SemaphoreFilterDto,
+	SemaphoreLevelLegendDto,
+} from '../model/semaphore-reports.dtos';
+import type { ReportDocument } from 'src/libs/reporting/report.types';
 
 const CAMPUSES: SemaphoreCampusRow[] = [
 	{ id: 1, code: 'LIM', name: 'Lima' },
@@ -17,13 +22,14 @@ const CAMPUSES: SemaphoreCampusRow[] = [
 	{ id: 3, code: 'TRU', name: 'Trujillo' },
 ];
 
-type CampusPlan = { mode: 'all' } | { mode: 'single' | 'zip'; campuses: SemaphoreCampusRow[] };
+// The real RC rows: closed ranges whose maximum is the next level's minimum minus an epsilon.
+const RC_LEGEND: SemaphoreLevelLegendDto[] = [
+	{ name: 'Necesita Mejora', minScore: 0, maxScore: 12.999999, color: '#e30613' },
+	{ name: 'Esperado', minScore: 13, maxScore: 15.999999, color: '#f4c20d' },
+	{ name: 'Sobresaliente', minScore: 16, maxScore: 20, color: '#16a34a' },
+];
 
-interface RenderReportDto {
-	redDetail: Array<{ courseCode: string }>;
-	yellowDetail: Array<{ courseCode: string }>;
-	greenDetail: Array<{ courseCode: string }>;
-}
+type CampusPlan = { mode: 'all' } | { mode: 'single'; campus: SemaphoreCampusRow };
 
 interface Download {
 	buffer: Buffer;
@@ -38,8 +44,6 @@ const makeService = (
 	const repository = { getCampuses: jest.fn().mockResolvedValue(CAMPUSES), ...repositoryOverrides };
 	const reportGenerator = {
 		generateDocument: jest.fn().mockResolvedValue({ pdf: Buffer.from('pdf'), filename: 'r.pdf' }),
-		generateZip: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'r.zip' }),
-		archivePdfFiles: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'r.zip' }),
 		...reportGeneratorOverrides,
 	};
 	return new SemaphoreReportsService(
@@ -54,13 +58,9 @@ const makeService = (
 		resolveCampusPlan: (campusIds: number[] | undefined, lang: string) => Promise<CampusPlan>;
 		buildFilename: (type: 'rc' | 'rv', lang: 'es' | 'en', campusCode?: string) => string;
 		buildExcelFilename: (type: 'rc' | 'rv', lang: 'es' | 'en', campusCode?: string) => string;
-		buildZipFilename: (type: 'rc' | 'rv', lang: 'es' | 'en') => string;
-		fetchPerCampusRenderData: (
-			dto: SemaphoreFilterDto,
-			academicPeriodId: number,
-			instrument: 'rc' | 'rv',
-			campuses: SemaphoreCampusRow[],
-		) => Promise<Array<{ campus: SemaphoreCampusRow; data: RenderReportDto }>>;
+		buildConsolidatedGroups: (rows: SemaphoreCourseOutcomeRow[]) => SemaphoreConsolidatedGroupDto[];
+		formatLevelRange: (legend: SemaphoreLevelLegendDto[], index: number) => string;
+		contrastText: (hex: string) => string;
 		generatePdfDownload: (
 			dto: SemaphoreFilterDto,
 			academicPeriodId: number,
@@ -194,40 +194,47 @@ describe('SemaphoreReportsService', () => {
 			await expect(service.resolveCampusPlan([], 'es')).resolves.toEqual({ mode: 'all' });
 		});
 
-		it('resolves to "all" when the selection covers every active campus, in any order', async () => {
-			const service = makeService();
-
-			await expect(service.resolveCampusPlan([3, 1, 2], 'es')).resolves.toEqual({ mode: 'all' });
-		});
-
 		it('resolves to "single" when exactly one campus is requested', async () => {
 			const service = makeService();
 
 			await expect(service.resolveCampusPlan([2], 'es')).resolves.toEqual({
 				mode: 'single',
-				campuses: [CAMPUSES[1]],
+				campus: CAMPUSES[1],
 			});
 		});
 
-		it('resolves to "zip" for a proper subset of more than one campus', async () => {
-			const service = makeService();
-
-			await expect(service.resolveCampusPlan([1, 3], 'es')).resolves.toEqual({
-				mode: 'zip',
-				campuses: [CAMPUSES[0], CAMPUSES[2]],
-			});
-		});
-
-		it('ignores duplicate ids in the request instead of miscounting the selection', async () => {
+		it('ignores duplicate ids instead of reading them as a multi-campus request', async () => {
 			const service = makeService();
 
 			await expect(service.resolveCampusPlan([1, 1], 'es')).resolves.toEqual({
 				mode: 'single',
-				campuses: [CAMPUSES[0]],
+				campus: CAMPUSES[0],
 			});
 		});
 
-		it('throws 404/noData when every requested id is unknown', async () => {
+		it('rejects more than one campus with 400/singleCampusRequired, without reading the catalog', async () => {
+			const getCampuses = jest.fn().mockResolvedValue(CAMPUSES);
+			const service = makeService({ getCampuses });
+
+			await expect(service.resolveCampusPlan([1, 3], 'es')).rejects.toMatchObject({
+				status: HttpStatus.BAD_REQUEST,
+				response: {
+					message: semaphoreReportsValidationStrings.result.generateFailed,
+					errors: [semaphoreReportsValidationStrings.error.singleCampusRequired],
+				},
+			});
+			expect(getCampuses).not.toHaveBeenCalled();
+		});
+
+		it('rejects a selection naming every campus -- "all" is only ever the empty selection', async () => {
+			const service = makeService();
+
+			await expect(service.resolveCampusPlan([3, 1, 2], 'es')).rejects.toMatchObject({
+				status: HttpStatus.BAD_REQUEST,
+			});
+		});
+
+		it('throws 404/noData when the requested id is unknown', async () => {
 			const service = makeService();
 
 			await expect(service.resolveCampusPlan([999], 'es')).rejects.toMatchObject({
@@ -257,148 +264,136 @@ describe('SemaphoreReportsService', () => {
 				/^Report_Verification_RV_AR-EQ_\d+\.xlsx$/,
 			);
 		});
+	});
 
-		it('never includes a campus code in the zip filename', () => {
+	describe('formatLevelRange', () => {
+		it("takes each level's upper bound from the next level's minimum, not its own maximum", () => {
 			const service = makeService();
 
-			expect(service.buildZipFilename('rc', 'es')).toBe('Reporte_Control_RC.zip');
+			expect(service.formatLevelRange(RC_LEGEND, 0)).toBe('[0 - 13>');
+			expect(service.formatLevelRange(RC_LEGEND, 1)).toBe('[13 - 16>');
+		});
+
+		it('closes the top level on its own maximum', () => {
+			const service = makeService();
+
+			expect(service.formatLevelRange(RC_LEGEND, 2)).toBe('[16 - 20]');
+		});
+
+		it('trims the trailing zeros of a numeric(_, 6) score', () => {
+			const service = makeService();
+			const legend: SemaphoreLevelLegendDto[] = [
+				{ name: 'Only', minScore: 0, maxScore: 20, color: '#000000' },
+			];
+
+			expect(service.formatLevelRange(legend, 0)).toBe('[0 - 20]');
 		});
 	});
 
-	describe('fetchPerCampusRenderData', () => {
-		const legendRows: SemaphoreLevelLegendRow[] = [
-			{ name: 'Necesita mejora', minScore: 0, maxScore: 13, color: '#e30613' },
-			{ name: 'Esperado', minScore: 13, maxScore: 16, color: '#f4c20d' },
-			{ name: 'Sobresaliente', minScore: 16, maxScore: 20, color: '#16a34a' },
-		];
-		const metadata: MetadataRow = {
-			programName: 'P',
-			commissionName: 'C',
-			academicPeriodCode: '202510',
-			accreditorCode: 'ABET',
-		};
+	describe('contrastText', () => {
+		it('darkens the label on a light segment and lightens it on a dark one', () => {
+			const service = makeService();
 
-		// Row shapes only need `campusId` (the field the split groups by) and `levelRank`/`courseCode`
-		// (asserted below) to be realistic -- the rest just has to satisfy the row types.
-		const detailRow = (
-			campusId: number,
-			courseCode: string,
-			levelRank: number,
-		): SemaphoreDetailRow => ({
-			courseCode,
-			courseName: courseCode,
-			outcomeCode: '1',
-			outcomeName: 'Outcome 1',
-			levelRank,
-			quantity: 5,
-			totalStudents: 20,
-			percentage: 25,
-			campusId,
-			campus: `campus-${campusId}`,
-			academicPeriodCycle: '202510',
+			expect(service.contrastText('#f4c20d')).toBe('#18181b');
+			expect(service.contrastText('#e30613')).toBe('#ffffff');
+			expect(service.contrastText('#16a34a')).toBe('#ffffff');
 		});
-		const summaryRow = (campusId: number): SemaphoreSummaryRow => ({
-			outcomeCode: '1',
-			outcomeName: 'Outcome 1',
-			levelRank: 1,
-			quantity: 5,
-			totalStudents: 20,
-			percentage: 25,
-			campusId,
-			campus: `campus-${campusId}`,
+
+		it('falls back to white on a colour it cannot parse', () => {
+			const service = makeService();
+
+			expect(service.contrastText('not-a-colour')).toBe('#ffffff');
 		});
-		const screenRow = (campusId: number): SemaphoreCourseOutcomeRow => ({
-			courseCode: `C${campusId}`,
-			courseName: `Course ${campusId}`,
+	});
+
+	describe('buildConsolidatedGroups', () => {
+		const screenRow = (
+			overrides: Partial<SemaphoreCourseOutcomeRow>,
+		): SemaphoreCourseOutcomeRow => ({
+			courseCode: 'C1',
+			courseName: 'Course 1',
 			outcomeCode: '1',
 			outcomeName: 'Outcome 1',
 			totalStudents: 20,
 			studentsRed: 5,
 			studentsYellow: 0,
 			studentsGreen: 15,
-			campusId,
-			campus: `campus-${campusId}`,
+			campusId: 1,
+			campus: 'Lima',
 			academicPeriodCycle: '202510',
+			...overrides,
 		});
 
-		const makeRepositoryMocks = (
-			detailRows: SemaphoreDetailRow[],
-			summaryRows: SemaphoreSummaryRow[],
-			screenRows: SemaphoreCourseOutcomeRow[],
-		) => ({
-			getRcDetail: jest.fn().mockResolvedValue(detailRows),
-			getRcSummary: jest.fn().mockResolvedValue(summaryRows),
-			getRcScreen: jest.fn().mockResolvedValue(screenRows),
-			getLevelsLegend: jest.fn().mockResolvedValue(legendRows),
-			getMetadata: jest.fn().mockResolvedValue(metadata),
-		});
+		it('sums a course across campuses and takes the percentage from the summed counts', () => {
+			const service = makeService();
 
-		it('fetches every selected campus in ONE call, then splits the result per campus', async () => {
-			const repositoryMocks = makeRepositoryMocks(
-				[detailRow(1, 'C1', 1), detailRow(2, 'C2', 3)],
-				[summaryRow(1), summaryRow(2)],
-				[screenRow(1), screenRow(2)],
-			);
-			const service = makeService(repositoryMocks);
-
-			const results = await service.fetchPerCampusRenderData({}, 10, 'rc', [
-				CAMPUSES[0],
-				CAMPUSES[1],
+			const [group] = service.buildConsolidatedGroups([
+				screenRow({ campusId: 1, totalStudents: 20, studentsRed: 5, studentsGreen: 15 }),
+				screenRow({
+					campusId: 2,
+					totalStudents: 10,
+					studentsRed: 3,
+					studentsYellow: 2,
+					studentsGreen: 5,
+				}),
 			]);
 
-			// One shared call carrying both campus ids -- not one call per campus.
-			expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(1);
-			expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [1, 2], 'es');
-
-			expect(results).toHaveLength(2);
-			const [lima, arequipa] = results;
-			expect(lima.campus.id).toBe(1);
-			expect(lima.data.redDetail.map((r) => r.courseCode)).toEqual(['C1']);
-			expect(lima.data.greenDetail).toHaveLength(0);
-			expect(arequipa.campus.id).toBe(2);
-			expect(arequipa.data.greenDetail.map((r) => r.courseCode)).toEqual(['C2']);
-			expect(arequipa.data.redDetail).toHaveLength(0);
+			expect(group.rows).toHaveLength(1);
+			// 8/30, 2/30, 20/30 -- not the mean of the two campuses' own percentages.
+			expect(group.rows[0].levels).toEqual([
+				{ count: 8, percentage: 26.67 },
+				{ count: 2, percentage: 6.67 },
+				{ count: 20, percentage: 66.67 },
+			]);
+			expect(group.rows[0].totalStudents).toBe(30);
 		});
 
-		it('skips a selected campus with no rows instead of failing the whole batch', async () => {
-			const repositoryMocks = makeRepositoryMocks(
-				[detailRow(1, 'C1', 1)],
-				[summaryRow(1)],
-				[screenRow(1)],
-			);
-			const service = makeService(repositoryMocks);
+		it('closes each outcome with its own totals across the courses in it', () => {
+			const service = makeService();
 
-			const results = await service.fetchPerCampusRenderData({}, 10, 'rc', [
-				CAMPUSES[0],
-				CAMPUSES[1],
+			const [group] = service.buildConsolidatedGroups([
+				screenRow({ courseCode: 'C1', totalStudents: 20, studentsRed: 5, studentsGreen: 15 }),
+				screenRow({ courseCode: 'C2', totalStudents: 10, studentsRed: 1, studentsGreen: 9 }),
 			]);
 
-			expect(results).toHaveLength(1);
-			expect(results[0].campus.id).toBe(1);
+			expect(group.levelTotals).toEqual([6, 0, 24]);
+			expect(group.totalStudents).toBe(30);
 		});
 
-		it('throws 404/noData when none of the selected campuses have data', async () => {
-			const repositoryMocks = makeRepositoryMocks([], [], []);
-			const service = makeService(repositoryMocks);
+		it('splits outcomes into their own groups', () => {
+			const service = makeService();
 
-			await expect(
-				service.fetchPerCampusRenderData({}, 10, 'rc', [CAMPUSES[0], CAMPUSES[1]]),
-			).rejects.toMatchObject({
-				status: HttpStatus.NOT_FOUND,
-				response: {
-					message: semaphoreReportsValidationStrings.result.generateFailed,
-					errors: [semaphoreReportsValidationStrings.error.noData],
-				},
-			});
+			const groups = service.buildConsolidatedGroups([
+				screenRow({ outcomeCode: '1', courseCode: 'C1' }),
+				screenRow({ outcomeCode: '2', courseCode: 'C1' }),
+			]);
+
+			expect(groups.map((g) => g.outcomeCode)).toEqual(['1', '2']);
+			expect(groups.every((g) => g.rows.length === 1)).toBe(true);
+		});
+
+		it('orders outcomes and courses numerically, so 2 comes before 10', () => {
+			const service = makeService();
+
+			const groups = service.buildConsolidatedGroups([
+				screenRow({ outcomeCode: '10', courseCode: 'C10' }),
+				screenRow({ outcomeCode: '2', courseCode: 'C2' }),
+				screenRow({ outcomeCode: '10', courseCode: 'C2' }),
+			]);
+
+			expect(groups.map((g) => g.outcomeCode)).toEqual(['2', '10']);
+			expect(groups[1].rows.map((r) => r.courseCode)).toEqual(['C2', 'C10']);
+		});
+
+		it('returns nothing when there are no screen rows', () => {
+			const service = makeService();
+
+			expect(service.buildConsolidatedGroups([])).toEqual([]);
 		});
 	});
 
 	describe('generatePdfDownload / generateExcelDownload dispatch', () => {
-		const legendRows: SemaphoreLevelLegendRow[] = [
-			{ name: 'Necesita mejora', minScore: 0, maxScore: 13, color: '#e30613' },
-			{ name: 'Esperado', minScore: 13, maxScore: 16, color: '#f4c20d' },
-			{ name: 'Sobresaliente', minScore: 16, maxScore: 20, color: '#16a34a' },
-		];
+		const legendRows: SemaphoreLevelLegendRow[] = RC_LEGEND;
 		const metadata: MetadataRow = {
 			programName: 'P',
 			commissionName: 'C',
@@ -418,22 +413,12 @@ describe('SemaphoreReportsService', () => {
 			campus: `campus-${campusId}`,
 			academicPeriodCycle: '202510',
 		});
-		const summaryRow = (campusId: number): SemaphoreSummaryRow => ({
-			outcomeCode: '1',
-			outcomeName: 'Outcome 1',
-			levelRank: 1,
-			quantity: 5,
-			totalStudents: 20,
-			percentage: 25,
-			campusId,
-			campus: `campus-${campusId}`,
-		});
 
 		// screenRows stays empty: buildOutcomeChartData then yields no categories, which skips the
 		// chart-rendering branch in buildDocument and its ReportChartService dependency (unmocked here).
 		const makeRepositoryMocks = (
 			detailRows: SemaphoreDetailRow[],
-			summaryRows: SemaphoreSummaryRow[],
+			summaryRows: SemaphoreSummaryRow[] = [],
 		) => ({
 			getRcDetail: jest.fn().mockResolvedValue(detailRows),
 			getRcSummary: jest.fn().mockResolvedValue(summaryRows),
@@ -442,9 +427,12 @@ describe('SemaphoreReportsService', () => {
 			getMetadata: jest.fn().mockResolvedValue(metadata),
 		});
 
+		const campusHeaderValue = (document: ReportDocument) =>
+			document.metadata?.find((item) => item.label === 'Sede')?.value;
+
 		describe('generatePdfDownload', () => {
-			it('mode "all": fetches an unfiltered report and renders one PDF', async () => {
-				const repositoryMocks = makeRepositoryMocks([detailRow(1), detailRow(2)], []);
+			it('mode "all": fetches an unfiltered report and heads it "TODAS"', async () => {
+				const repositoryMocks = makeRepositoryMocks([detailRow(1), detailRow(2)]);
 				const reportGeneratorMocks = {
 					generateDocument: jest.fn().mockResolvedValue({ pdf: Buffer.from('pdf'), filename: 'x' }),
 				};
@@ -454,9 +442,9 @@ describe('SemaphoreReportsService', () => {
 
 				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, null, 'es');
 				expect(reportGeneratorMocks.generateDocument).toHaveBeenCalledTimes(1);
-				expect(reportGeneratorMocks.generateDocument.mock.calls[0][1]).toBe(
-					'Reporte_Control_RC.pdf',
-				);
+				const [document, filename] = reportGeneratorMocks.generateDocument.mock.calls[0];
+				expect(filename).toBe('Reporte_Control_RC.pdf');
+				expect(campusHeaderValue(document)).toBe('TODAS');
 				expect(result).toEqual({
 					buffer: Buffer.from('pdf'),
 					filename: 'x',
@@ -464,8 +452,8 @@ describe('SemaphoreReportsService', () => {
 				});
 			});
 
-			it('mode "single": scopes the fetch to the one selected campus and names the file after it', async () => {
-				const repositoryMocks = makeRepositoryMocks([detailRow(2)], []);
+			it('mode "single": scopes the fetch to the campus, and names both file and header after it', async () => {
+				const repositoryMocks = makeRepositoryMocks([detailRow(2)]);
 				const reportGeneratorMocks = {
 					generateDocument: jest.fn().mockResolvedValue({ pdf: Buffer.from('pdf'), filename: 'x' }),
 				};
@@ -478,44 +466,83 @@ describe('SemaphoreReportsService', () => {
 				);
 
 				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [2], 'es');
-				expect(reportGeneratorMocks.generateDocument.mock.calls[0][1]).toBe(
-					'Reporte_Control_RC_ARE.pdf',
-				);
+				const [document, filename] = reportGeneratorMocks.generateDocument.mock.calls[0];
+				expect(filename).toBe('Reporte_Control_RC_ARE.pdf');
+				expect(campusHeaderValue(document)).toBe('Arequipa');
 				expect(result.contentType).toBe('application/pdf');
 			});
 
-			it('mode "zip": fetches every selected campus once and zips one PDF per campus', async () => {
-				const repositoryMocks = makeRepositoryMocks([detailRow(1), detailRow(3)], []);
-				const reportGeneratorMocks = {
-					generateZip: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'x' }),
-				};
-				const service = makeService(repositoryMocks, reportGeneratorMocks);
+			it('rejects a multi-campus request before running any report query', async () => {
+				const repositoryMocks = makeRepositoryMocks([detailRow(1), detailRow(3)]);
+				const service = makeService(repositoryMocks);
 
-				const result = await service.generatePdfDownload(
-					{ campusIds: [1, 3] } as SemaphoreFilterDto,
-					10,
-					'rc',
-				);
-
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(1);
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [1, 3], 'es');
-				expect(reportGeneratorMocks.generateZip).toHaveBeenCalledTimes(1);
-				const reports = reportGeneratorMocks.generateZip.mock.calls[0][0];
-				expect(reports.map((r: { filename: string }) => r.filename)).toEqual([
-					'Reporte_Control_RC_LIM.pdf',
-					'Reporte_Control_RC_TRU.pdf',
-				]);
-				expect(result).toEqual({
-					buffer: Buffer.from('zip'),
-					filename: 'x',
-					contentType: 'application/zip',
+				await expect(
+					service.generatePdfDownload({ campusIds: [1, 3] } as SemaphoreFilterDto, 10, 'rc'),
+				).rejects.toMatchObject({
+					status: HttpStatus.BAD_REQUEST,
+					response: {
+						errors: [semaphoreReportsValidationStrings.error.singleCampusRequired],
+					},
 				});
+				expect(repositoryMocks.getRcDetail).not.toHaveBeenCalled();
+			});
+
+			it('renders the RC body without the per-level tables and the RV body with them', async () => {
+				const screenRow: SemaphoreCourseOutcomeRow = {
+					courseCode: 'C1',
+					courseName: 'Course 1',
+					outcomeCode: '1',
+					outcomeName: 'Outcome 1',
+					totalStudents: 20,
+					studentsRed: 5,
+					studentsYellow: 0,
+					studentsGreen: 15,
+					campusId: 1,
+					campus: 'Lima',
+					academicPeriodCycle: '202510',
+				};
+				const repositoryMocks = {
+					...makeRepositoryMocks([detailRow(1)]),
+					getRvDetail: jest.fn().mockResolvedValue([detailRow(1)]),
+					getRvSummary: jest.fn().mockResolvedValue([]),
+					getRvScreen: jest.fn().mockResolvedValue([]),
+				};
+				// The chart is the only ReportChartService caller; an empty screen result skips it for RV,
+				// and the RC case needs a real row, so the chart is stubbed for both.
+				const reportGeneratorMocks = {
+					generateDocument: jest.fn().mockResolvedValue({ pdf: Buffer.from('pdf'), filename: 'x' }),
+				};
+				const service = makeService(
+					{ ...repositoryMocks, getRcScreen: jest.fn().mockResolvedValue([screenRow]) },
+					reportGeneratorMocks,
+				);
+				(service as unknown as { reportChart: unknown }).reportChart = {
+					buildGroupedBarChart: jest.fn().mockReturnValue('<svg />'),
+				};
+
+				await service.generatePdfDownload({}, 10, 'rc');
+				await service.generatePdfDownload({}, 10, 'rv');
+
+				const [rcDocument] = reportGeneratorMocks.generateDocument.mock.calls[0] as [
+					ReportDocument,
+				];
+				const [rvDocument] = reportGeneratorMocks.generateDocument.mock.calls[1] as [
+					ReportDocument,
+				];
+
+				expect(rcDocument.bodyHtml).toContain('Interpretación de Indicadores');
+				expect(rcDocument.bodyHtml).toContain('Detalle de Cursos por Outcome');
+				expect(rcDocument.bodyHtml).toContain('(5) 25%');
+				expect(rcDocument.bodyHtml).not.toContain('Listado de Cursos con Nivel');
+
+				expect(rvDocument.bodyHtml).not.toContain('Interpretación de Indicadores');
+				expect(rvDocument.bodyHtml).toContain('Listado de Cursos con Nivel');
 			});
 		});
 
 		describe('generateExcelDownload', () => {
 			it('mode "all": fetches an unfiltered report and renders one workbook', async () => {
-				const repositoryMocks = makeRepositoryMocks([detailRow(1)], []);
+				const repositoryMocks = makeRepositoryMocks([detailRow(1)]);
 				const service = makeService(repositoryMocks);
 				jest.spyOn(service, 'renderExcel').mockResolvedValue(Buffer.from('xlsx'));
 
@@ -528,29 +555,34 @@ describe('SemaphoreReportsService', () => {
 				expect(result.filename).toMatch(/^Reporte_Control_RC_\d+\.xlsx$/);
 			});
 
-			it('mode "zip": fetches every selected campus once and zips one workbook per campus', async () => {
-				const repositoryMocks = makeRepositoryMocks([detailRow(1), detailRow(3)], []);
-				const reportGeneratorMocks = {
-					archivePdfFiles: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'x' }),
-				};
-				const service = makeService(repositoryMocks, reportGeneratorMocks);
+			it('mode "single": scopes the fetch and names the workbook after the campus', async () => {
+				const repositoryMocks = makeRepositoryMocks([detailRow(3)]);
+				const service = makeService(repositoryMocks);
 				jest.spyOn(service, 'renderExcel').mockResolvedValue(Buffer.from('xlsx'));
 
 				const result = await service.generateExcelDownload(
-					{ campusIds: [1, 3] } as SemaphoreFilterDto,
+					{ campusIds: [3] } as SemaphoreFilterDto,
 					10,
 					'rc',
 				);
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(1);
-				expect(reportGeneratorMocks.archivePdfFiles).toHaveBeenCalledTimes(1);
-				const files = reportGeneratorMocks.archivePdfFiles.mock.calls[0][0];
-				expect(files).toHaveLength(2);
-				expect(result).toEqual({
-					buffer: Buffer.from('zip'),
-					filename: 'x',
-					contentType: 'application/zip',
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, [3], 'es');
+				expect(result.filename).toMatch(/^Reporte_Control_RC_TRU_\d+\.xlsx$/);
+			});
+
+			it('rejects a multi-campus request before running any report query', async () => {
+				const repositoryMocks = makeRepositoryMocks([detailRow(1)]);
+				const service = makeService(repositoryMocks);
+
+				await expect(
+					service.generateExcelDownload({ campusIds: [1, 3] } as SemaphoreFilterDto, 10, 'rc'),
+				).rejects.toMatchObject({
+					status: HttpStatus.BAD_REQUEST,
+					response: {
+						errors: [semaphoreReportsValidationStrings.error.singleCampusRequired],
+					},
 				});
+				expect(repositoryMocks.getRcDetail).not.toHaveBeenCalled();
 			});
 		});
 
