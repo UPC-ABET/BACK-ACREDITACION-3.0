@@ -35,10 +35,12 @@ import { Client } from 'pg';
 import * as dotenv from 'dotenv';
 
 import {
-	GRADES_RC_SQL,
+	DROP_NOT_IN_SECTION_COLUMN_SQL,
 	GRADES_RC_TEMP_TABLE,
 	INDEX_GRADES_RC_TEMP_SQL,
 	MATERIALIZE_GRADES_RC_SQL,
+	NOT_IN_SECTION_CANDIDATES_SQL,
+	PRUNE_GRADES_RC_UNRESOLVED_SQL,
 	READ_GRADES_RC_ALL_PAGE_SQL,
 } from 'src/modules/admin/scraping-exports/core/grades-rc-export.sql';
 import { GRADE_RC_OBSERVATIONS } from 'src/modules/admin/scraping-exports/model/scraping-exports.types';
@@ -763,34 +765,13 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 
 // The worksheet split used to be a WHERE on the durable child table (readPage); that table is gone
 // (see ADR-004), so the split now happens client-side on the same in-memory array the real
-// generation collects. This script mirrors that: one unfiltered page-through of the temp table,
-// then partition by hasObservations locally -- what is checked is that the partition is disjoint
-// and adds up to the whole export, the same property the old two-query version checked.
-async function verifySplit(
-	db: Client,
-	params: unknown[],
-	rows: ExportedRow[],
-): Promise<Array<[string, boolean]>> {
-	await db.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
-	await db.query(MATERIALIZE_GRADES_RC_SQL, params);
-	await db.query(INDEX_GRADES_RC_TEMP_SQL);
-
-	type MaterializedRow = ExportedRow & { exportSeq: string; hasObservations: boolean };
-	const all: MaterializedRow[] = [];
-	let lastSeq = '0';
-	for (;;) {
-		const { rows: pageRows } = await db.query<MaterializedRow>(READ_GRADES_RC_ALL_PAGE_SQL, [
-			lastSeq,
-			2,
-		]);
-		if (pageRows.length === 0) break;
-		all.push(...pageRows);
-		lastSeq = pageRows[pageRows.length - 1].exportSeq;
-	}
-
+// generation collects. What is checked is that the partition is disjoint and adds up to the whole
+// export, the same property the old two-query version checked. Operates on the already-paginated
+// rows from main() -- no DB round trip of its own.
+function verifySplit(rows: MaterializedRow[]): Array<[string, boolean]> {
 	const key = (row: ExportedRow) => `${row.sectionCode}|${row.studentCode}`;
-	const clean = all.filter((r) => !r.hasObservations);
-	const review = all.filter((r) => r.hasObservations);
+	const clean = rows.filter((r) => !r.hasObservations);
+	const review = rows.filter((r) => r.hasObservations);
 	const cleanKeys = new Set(clean.map(key));
 
 	return [
@@ -805,6 +786,42 @@ async function verifySplit(
 		['R9 the halves are disjoint', !review.some((r) => cleanKeys.has(key(r)))],
 		['R9 the halves add up to the whole export', clean.length + review.length === rows.length],
 	];
+}
+
+type MaterializedRow = ExportedRow & { exportSeq: string; hasObservations: boolean };
+
+async function readAllPages(db: Client): Promise<MaterializedRow[]> {
+	const all: MaterializedRow[] = [];
+	let lastSeq = '0';
+	for (;;) {
+		const { rows: pageRows } = await db.query<MaterializedRow>(READ_GRADES_RC_ALL_PAGE_SQL, [
+			lastSeq,
+			2,
+		]);
+		if (pageRows.length === 0) break;
+		all.push(...pageRows);
+		lastSeq = pageRows[pageRows.length - 1].exportSeq;
+	}
+	return all;
+}
+
+// Mirrors GradesRcExportRepository.resolveInStudyPlanRescues, but answers the membership check from
+// the fixture's own IN_STUDY_PLAN pairs instead of a real STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL call:
+// that query reads academic.* on the MAIN datasource, which this throwaway (raw-only) database never
+// sets up. GRADES_RC_SQL's notInSection candidates and PRUNE_GRADES_RC_UNRESOLVED_SQL's prune both
+// still run for real -- only the membership answer itself is a fixture-driven stand-in.
+async function resolveInStudyPlanRescues(db: Client): Promise<void> {
+	const { rows: candidates } = await db.query<{ sectionCode: string; studentCode: string }>(
+		NOT_IN_SECTION_CANDIDATES_SQL,
+	);
+	const inStudyPlan = new Set(IN_STUDY_PLAN.map(([section, student]) => `${section}|${student}`));
+	const matched = candidates.filter((c) => inStudyPlan.has(`${c.sectionCode}|${c.studentCode}`));
+
+	await db.query(PRUNE_GRADES_RC_UNRESOLVED_SQL, [
+		matched.map((m) => m.sectionCode),
+		matched.map((m) => m.studentCode),
+	]);
+	await db.query(DROP_NOT_IN_SECTION_COLUMN_SQL);
 }
 
 async function main(): Promise<void> {
@@ -831,15 +848,20 @@ async function main(): Promise<void> {
 			Object.values(PROGRAM_CAREER_MAP),
 			QUALIFICATION_STATUSES.NR,
 			PERIOD_ENROLLED,
-			IN_STUDY_PLAN.map(([section]) => section),
-			IN_STUDY_PLAN.map(([, student]) => student),
 		];
-		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, params);
+
+		await db.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
+		await db.query(MATERIALIZE_GRADES_RC_SQL, params);
+		await resolveInStudyPlanRescues(db);
+		await db.query(INDEX_GRADES_RC_TEMP_SQL);
+		await db.query(`ANALYZE ${GRADES_RC_TEMP_TABLE}`);
+
+		const rows = await readAllPages(db);
 
 		console.table(
 			rows.map((row) => ({ ...row, observations: (row.observations ?? []).join(',') })),
 		);
-		const results = [...assertions(rows), ...(await verifySplit(db, params, rows))];
+		const results = [...assertions(rows), ...verifySplit(rows)];
 		for (const [label, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}`);
 
 		const failed = results.filter(([, ok]) => !ok).length;

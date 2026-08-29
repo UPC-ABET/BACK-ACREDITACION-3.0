@@ -25,8 +25,9 @@ const VERIFIED_ZERO_MARK = `'CAL'`;
 // $16 NR code, shipped when the student has no grade: not ASISTIO, so the semaphore leaves those
 // zeros out of the RC average.
 // $17 student codes enrolled in the PERIOD at all (academic.enrolled_students), broader than $12/$13
-// $18/$19 (section, student) pairs where the course is on the student's OWN study plan revision
 // ($9 and $11 are the course-level statuses -- see the classified CTE.)
+//
+// No $18/$19: the study-plan rescue is no longer a parameter pair here -- see `period_enrolled`.
 //
 // $10 is applied inside EACH leg rather than once over their union: the union is the whole
 // Banner-by-Planner cross, so scoping afterwards leaves both legs to be built in full first. That
@@ -387,8 +388,12 @@ shaped AS (
 	WHERE f.pick_rank = 1
 ),
 -- period_enrolled (matriculado) is a hard scope, dropped below like $10's section scopes. Missing
--- enrolled (paired to THIS section) only flags the row (not_in_section) -- unless the course isn't
--- even on the student's study plan (in_study_plan), in which case it's dropped too (WHERE below).
+-- enrolled (paired to THIS section) only flags the row (not_in_section) here. Whether the course is
+-- on the student's study plan is checked in a SEPARATE pass after this query, by
+-- ScrapingExportsRepository.resolveInStudyPlanRescues: that join, run unscoped against every student
+-- sharing a study-plan cohort, fanned out to 7M+ rows for a real period and OOM'd the process. Scoped
+-- instead to just the notInSection rows this query actually produces, it stays a cheap indexed
+-- lookup -- see STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL.
 period_enrolled AS (
 	SELECT DISTINCT student_code
 	FROM unnest($17::text[]) AS t(student_code)
@@ -396,10 +401,6 @@ period_enrolled AS (
 enrolled AS (
 	SELECT DISTINCT section_code, student_code
 	FROM unnest($12::text[], $13::text[]) AS t(section_code, student_code)
-),
-in_study_plan AS (
-	SELECT DISTINCT section_code, student_code
-	FROM unnest($18::text[], $19::text[]) AS t(section_code, student_code)
 ),
 final AS (
 	SELECT
@@ -430,11 +431,7 @@ final AS (
 	LEFT JOIN enrolled e
 	  ON e.section_code = s.section_code
 	 AND e.student_code = s.student_code
-	LEFT JOIN in_study_plan isp
-	  ON isp.section_code = s.section_code
-	 AND isp.student_code = s.student_code
-	-- Section-paired rows ship regardless; an unpaired row needs in_study_plan too (see above).
-	WHERE e.student_code IS NOT NULL OR isp.student_code IS NOT NULL
+	-- No study-plan filter: every matriculado row ships (see period_enrolled above).
 )
 -- The first six columns are the upload template, in order: the RC upload parses positionally, so
 -- nothing may be inserted among them. The rest is descriptive and feeds the second worksheet.
@@ -493,7 +490,11 @@ SELECT
 		CASE WHEN NOT s.missing_designated AND NOT s.is_numeric
 		          AND s.explained_status_code IS NULL AND s.status_text IS NULL
 			THEN '${GRADE_RC_OBSERVATIONS.NO_SOURCE_GRADE_OR_STATUS}' END
-	], NULL) AS "observations"
+	], NULL) AS "observations",
+	-- Internal to the two-pass prune (see the comment above period_enrolled): the caller drops this
+	-- column from the temp table (DROP_NOT_IN_SECTION_COLUMN_SQL) once the second pass has resolved
+	-- it, so it never reaches GradeRcExportRow / rowsData.
+	s.not_in_section AS "notInSection"
 FROM final s
 LEFT JOIN careers c ON c.program_code = s.program_code
 ORDER BY s.section_code, s.student_code
@@ -602,21 +603,47 @@ JOIN academic.study_plan_academic_periods spap ON spap.id = es.study_plan_academ
 WHERE spap.academic_period_id = $1::int
 `;
 
-// Pairs for $18/$19, pinned to the student's OWN study plan revision -- same join as
-// DESIGNATED_GRADE_TYPES_SQL. Same COALESCE consequence as ENROLLED_SECTION_STUDENTS_SQL.
-export const STUDY_PLAN_SECTION_STUDENTS_SQL = `
-SELECT
-	COALESCE(array_agg(pair.section_code), '{}') AS "sectionCodes",
-	COALESCE(array_agg(pair.student_code), '{}') AS "studentCodes"
-FROM (
-	SELECT DISTINCT cs.section_code, st.code AS student_code
-	FROM academic.course_sections cs
-	JOIN academic.study_plan_courses spc ON spc.course_id = cs.course_id
-	JOIN academic.enrolled_students es ON es.study_plan_academic_period_id = spc.study_plan_academic_period_id
-	JOIN academic.students st ON st.id = es.student_id
-	WHERE cs.academic_period_id = $1::int
-	  AND cs.section_code = ANY($2::text[])
-) pair
+// Second pass of the study-plan rescue (see `period_enrolled` in GRADES_RC_SQL). Scoping the same
+// join to `candidates` lets Postgres drive it off that small set instead of off
+// study_plan_courses/enrolled_students, which is what turned it from a 7M-row scan into an index
+// lookup.
+export const STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL = `
+WITH candidates AS (
+	SELECT * FROM unnest($2::text[], $3::text[]) AS t(section_code, student_code)
+)
+SELECT DISTINCT cs.section_code AS "sectionCode", st.code AS "studentCode"
+FROM academic.course_sections cs
+JOIN academic.study_plan_courses spc ON spc.course_id = cs.course_id
+JOIN academic.enrolled_students es ON es.study_plan_academic_period_id = spc.study_plan_academic_period_id
+JOIN academic.students st ON st.id = es.student_id
+JOIN candidates c ON c.section_code = cs.section_code AND c.student_code = st.code
+WHERE cs.academic_period_id = $1::int
+`;
+
+// Every (section, student) pair GRADES_RC_SQL shipped but could not pair to the section directly --
+// exactly the candidates STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL needs to check, and nothing broader.
+export const NOT_IN_SECTION_CANDIDATES_SQL = `
+SELECT DISTINCT "sectionCode", "studentCode"
+FROM ${GRADES_RC_TEMP_TABLE}
+WHERE "notInSection" = true
+`;
+
+// Drops every notInSection row not confirmed by STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL (see R5c in
+// test/manual/grades-rc-export.verify.ts). $1/$2 are the matches only: NOT EXISTS over an empty
+// unnest is true for every row, so an empty pair (nothing rescued) correctly prunes all of them.
+export const PRUNE_GRADES_RC_UNRESOLVED_SQL = `
+DELETE FROM ${GRADES_RC_TEMP_TABLE} t
+WHERE t."notInSection" = true
+  AND NOT EXISTS (
+    SELECT 1 FROM unnest($1::text[], $2::text[]) AS m(section_code, student_code)
+    WHERE m.section_code = t."sectionCode" AND m.student_code = t."studentCode"
+  )
+`;
+
+// Internal bookkeeping column, dropped once the prune above has resolved every candidate -- see the
+// comment on GRADES_RC_SQL's own "notInSection" output column.
+export const DROP_NOT_IN_SECTION_COLUMN_SQL = `
+ALTER TABLE ${GRADES_RC_TEMP_TABLE} DROP COLUMN "notInSection"
 `;
 
 // Query the main DB runs against academic.course_sections: the grade type designated for a
