@@ -90,8 +90,13 @@ describe('AcademicSyncService', () => {
 					courseId: 77,
 					sectionCode: '4321',
 					campus: { id: 1, code: 'LIM', name: { es: 'Lima', en: 'Lima' } },
+					sectionModalityType: {
+						id: 9,
+						code: 'TG103-T001',
+						name: { es: 'Presencial', en: 'In-person' },
+					},
 				},
-				{ id: 502, courseId: 77, sectionCode: '4322', campus: null },
+				{ id: 502, courseId: 77, sectionCode: '4322', campus: null, sectionModalityType: null },
 			]);
 			mockRepository.getCommissionsByPrograms.mockResolvedValue(
 				new Map([
@@ -123,8 +128,9 @@ describe('AcademicSyncService', () => {
 							id: 501,
 							sectionCode: '4321',
 							campus: { id: 1, code: 'LIM', name: { es: 'Lima', en: 'Lima' } },
+							modality: { id: 9, code: 'TG103-T001', name: { es: 'Presencial', en: 'In-person' } },
 						},
-						{ id: 502, sectionCode: '4322', campus: null },
+						{ id: 502, sectionCode: '4322', campus: null, modality: null },
 					],
 				},
 			]);

@@ -125,6 +125,13 @@ export class AcademicSyncService {
 				campus: section.campus
 					? { id: section.campus.id, code: section.campus.code, name: section.campus.name }
 					: null,
+				modality: section.sectionModalityType
+					? {
+							id: section.sectionModalityType.id,
+							code: section.sectionModalityType.code,
+							name: section.sectionModalityType.name,
+						}
+					: null,
 			})),
 		};
 	}
