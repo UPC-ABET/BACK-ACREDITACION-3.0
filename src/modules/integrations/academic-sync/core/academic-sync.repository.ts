@@ -74,7 +74,7 @@ export class AcademicSyncRepository {
 		if (courseIds.length === 0) return [];
 		return await this.courseSectionRepository.findByCondition(
 			{ where: { courseId: In(courseIds), academicPeriodId } },
-			['campus'],
+			['campus', 'sectionModalityType'],
 		);
 	}
 
