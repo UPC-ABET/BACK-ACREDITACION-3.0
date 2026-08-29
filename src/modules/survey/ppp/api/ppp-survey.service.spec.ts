@@ -112,6 +112,7 @@ describe('PppSurveyService bulk upload', () => {
 		surveyRepo: Record<string, jest.Mock>;
 		scoreRepo: Record<string, jest.Mock>;
 		configRepo: Record<string, jest.Mock>;
+		conversionService: Record<string, jest.Mock>;
 	};
 
 	function buildRepos(): Repos {
@@ -141,6 +142,7 @@ describe('PppSurveyService bulk upload', () => {
 			configRepo: {
 				findAllPpp: jest.fn().mockResolvedValue([config(10, TYPE_CODES.COMMISSION_TYPE.SPECIFIC)]),
 			},
+			conversionService: { convertSurveys: jest.fn().mockResolvedValue(undefined) },
 		};
 	}
 
@@ -149,6 +151,7 @@ describe('PppSurveyService bulk upload', () => {
 			repos.surveyRepo as never,
 			repos.scoreRepo as never,
 			repos.configRepo as never,
+			repos.conversionService as never,
 		);
 	}
 

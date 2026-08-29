@@ -110,3 +110,4 @@ export const SwaggerGraExport = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.export, produces: XLSX_CONTENT_TYPE });
 export const SwaggerGraReportPerception = () =>
 	HttpMethodWithSwagger({ ...cfg.report.perception, body: PerceptionReportDto });
+export const SwaggerGraConversionRebuild = () => HttpMethodWithSwagger(cfg.conversion.rebuild);

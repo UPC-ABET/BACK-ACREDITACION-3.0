@@ -121,4 +121,8 @@ export class PppService {
 	generateFindings(dto: GenerateFindingsPppDto, academicPeriodId: number) {
 		return this.surveyService.generateFindings(dto, academicPeriodId);
 	}
+
+	rebuildConversions(academicPeriodId: number) {
+		return this.surveyService.rebuildConversions(academicPeriodId);
+	}
 }

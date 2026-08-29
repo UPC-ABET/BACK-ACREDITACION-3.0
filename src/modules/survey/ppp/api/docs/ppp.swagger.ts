@@ -78,3 +78,4 @@ export const SwaggerPppSurveyGenerateFindings = () =>
 	HttpMethodWithSwagger({ ...cfg.survey.generateFindings, body: GenerateFindingsPppDto });
 export const SwaggerPppReportPerception = () =>
 	HttpMethodWithSwagger({ ...cfg.report.perception, body: PerceptionReportDto });
+export const SwaggerPppConversionRebuild = () => HttpMethodWithSwagger(cfg.conversion.rebuild);

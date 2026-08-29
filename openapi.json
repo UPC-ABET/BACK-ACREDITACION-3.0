@@ -2851,6 +2851,7 @@
 					"400": { "description": "Bad request" },
 					"500": { "description": "Internal server error" }
 				},
+				"security": [{ "apiKey": [] }],
 				"summary": "Buscar cursos de plan de estudio",
 				"tags": ["Cursos de plan de estudio"]
 			}
@@ -8747,6 +8748,27 @@
 				"tags": ["PPP - Pre-Professional Internship Survey"]
 			}
 		},
+		"/ppp/conversion/rebuild": {
+			"post": {
+				"operationId": "PppController_conversionRebuild",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Reprocess outcome_conversions (e.g. EAC → CAC/ICACIT) for every PPP survey of the period — backfill after loading historical surveys or after a conversion rule changes",
+				"tags": ["PPP - Pre-Professional Internship Survey"]
+			}
+		},
 		"/gra/config/create": {
 			"post": {
 				"operationId": "GraController_configCreate",
@@ -9419,6 +9441,27 @@
 				"tags": ["GRA - Graduate Survey"]
 			}
 		},
+		"/gra/conversion/rebuild": {
+			"post": {
+				"operationId": "GraController_conversionRebuild",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Reprocess outcome_conversions (e.g. EAC → CAC/ICACIT) for every closed GRA survey of the period — backfill after loading historical surveys or after a conversion rule changes",
+				"tags": ["GRA - Graduate Survey"]
+			}
+		},
 		"/lcfc/config/generate": {
 			"post": {
 				"operationId": "LcfcController_configGenerate",
@@ -9977,6 +10020,13 @@
 						"in": "query",
 						"description": "Report language (es|en)",
 						"schema": { "example": "es", "type": "string", "enum": ["es", "en"] }
+					},
+					{
+						"name": "groupBy",
+						"required": false,
+						"in": "query",
+						"description": "By-course table granularity: \"course\" (aggregated, no professor) or \"section\" (per NRC, with professor)",
+						"schema": { "example": "section", "type": "string", "enum": ["course", "section"] }
 					},
 					{
 						"name": "X-Academic-Period-Id",
@@ -13993,10 +14043,9 @@
 						"example": 1,
 						"description": "Program commission ID to filter by"
 					},
-					"outcomeId": { "type": "number", "example": 1, "description": "Outcome ID to filter by" },
 					"campusIds": {
 						"example": [1, 2],
-						"description": "Campus IDs to filter by. Omit, or select every campus, for one consolidated report. Select a single campus for one report scoped to it. Select more than one (but not all) to download a zip with one report per selected campus -- applies to the PDF/Excel download endpoints only; the JSON screen endpoints always return one combined result.",
+						"description": "Campus IDs to filter by. The PDF/Excel download endpoints accept at most one: omit it for one consolidated report over every campus, or send a single id for a report scoped to that campus. More than one id is rejected with 400 error.semaphoreReport.singleCampusRequired, since one document per campus times the selected outcomes is more than a single report can carry. The JSON screen endpoints accept any number of ids and always return one combined result.",
 						"type": "array",
 						"items": { "type": "number" }
 					},

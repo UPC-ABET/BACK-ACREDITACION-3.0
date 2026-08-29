@@ -24,6 +24,7 @@ import {
 	SwaggerPppSurveyDashboard,
 	SwaggerPppSurveyGenerateFindings,
 	SwaggerPppReportPerception,
+	SwaggerPppConversionRebuild,
 } from './docs/ppp.swagger';
 import {
 	CreatePppConfigDto,
@@ -232,5 +233,12 @@ export class PppController {
 		return parseSuccessResponse(
 			await this.pppService.generatePerceptionReport(dto, academicPeriodId),
 		);
+	}
+
+	@SwaggerPppConversionRebuild()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async conversionRebuild(@AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.pppService.rebuildConversions(academicPeriodId));
 	}
 }

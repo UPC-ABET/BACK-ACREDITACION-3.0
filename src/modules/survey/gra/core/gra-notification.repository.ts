@@ -25,6 +25,12 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		super(repository, dataSource);
 	}
 
+	/** Exposes a DB transaction to services without them injecting `DataSource`
+	 *  directly (repository boundary — see `docs/POLICIES.md`). */
+	async transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+		return this.dataSource.transaction(work);
+	}
+
 	async findByToken(token: string): Promise<NotificationEntity | null> {
 		return await this.repository
 			.createQueryBuilder('n')
@@ -381,8 +387,9 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 		closedStatusId: number,
 		scores: GraScoreItem[],
 		generalComment?: string,
+		manager?: EntityManager,
 	): Promise<void> {
-		await this.dataSource.transaction(async (manager: EntityManager) => {
+		const run = async (manager: EntityManager) => {
 			for (const item of scores) {
 				const configRows: { outcomeId: number }[] = await manager.query(
 					`SELECT outcome_id AS "outcomeId" FROM survey.outcome_configs WHERE id = $1 LIMIT 1`,
@@ -423,6 +430,12 @@ export class GraNotificationRepository extends BaseRepository<NotificationEntity
 					? [closedStatusId, surveyId, commentariesJson]
 					: [closedStatusId, surveyId],
 			);
-		});
+		};
+
+		if (manager) {
+			await run(manager);
+		} else {
+			await this.dataSource.transaction(run);
+		}
 	}
 }

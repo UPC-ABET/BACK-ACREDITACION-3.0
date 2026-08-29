@@ -32,6 +32,7 @@ import {
 	SwaggerGraDashboard,
 	SwaggerGraExport,
 	SwaggerGraReportPerception,
+	SwaggerGraConversionRebuild,
 } from './docs/gra.swagger';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 import {
@@ -311,5 +312,12 @@ export class GraController {
 		return parseSuccessResponse(
 			await this.graService.generatePerceptionReport(dto, academicPeriodId),
 		);
+	}
+
+	@SwaggerGraConversionRebuild()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async conversionRebuild(@AcademicPeriodId() academicPeriodId: number) {
+		return parseSuccessResponse(await this.graService.rebuildConversions(academicPeriodId));
 	}
 }
