@@ -141,6 +141,23 @@ export class AcademicSyncOrgChartStaffDto {
 
 	@ApiProperty({ example: 'maria.lopez@upc.edu.pe', nullable: true })
 	email: string | null;
+
+	@ApiProperty({
+		example: { es: 'Docente Tiempo Completo', en: 'Full-Time Faculty' },
+		nullable: true,
+	})
+	title: I18nText | null;
+
+	@ApiProperty({ example: 'PROF123', nullable: true })
+	professorCode: string | null;
+}
+
+export class AcademicSyncEntityRefDto {
+	@ApiProperty({ example: 'ISW' })
+	code: string;
+
+	@ApiProperty({ example: { es: 'Ingenieria de Software', en: 'Software Engineering' } })
+	name: I18nText;
 }
 
 export class AcademicSyncOrgChartNodeDto {
@@ -152,6 +169,12 @@ export class AcademicSyncOrgChartNodeDto {
 
 	@ApiProperty({ example: 'COURSE', nullable: true })
 	entityType: string | null;
+
+	@ApiProperty({ example: { es: 'Director de Escuela', en: 'School Director' } })
+	organizationLevelTitle: I18nText;
+
+	@ApiProperty({ type: AcademicSyncEntityRefDto, nullable: true })
+	entity: AcademicSyncEntityRefDto | null;
 
 	@ApiProperty({ example: 77, nullable: true })
 	entityCode: number | null;

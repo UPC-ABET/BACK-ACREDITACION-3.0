@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { I18nText } from 'src/shared/types/i18n';
 import { PaginatedResult, resolvePagination, toPaginated } from 'src/commons/pagination.dtos';
 import { CourseSectionEntity } from 'src/modules/academic/course-sections/model/course-sections.entity';
 import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/model/study-plan-courses.entity';
@@ -60,6 +61,11 @@ export class AcademicSyncService {
 			parentId: row.parentId,
 			entityType: row.entityType,
 			entityCode: row.entityCode,
+			organizationLevelTitle: row.organizationLevelTitle,
+			entity:
+				row.entityResolvedCode !== null
+					? { code: row.entityResolvedCode, name: row.entityResolvedName as I18nText }
+					: null,
 			staff:
 				row.staffId !== null
 					? {
@@ -67,6 +73,8 @@ export class AcademicSyncService {
 							firstName: row.staffFirstName ?? '',
 							lastName: row.staffLastName ?? '',
 							email: row.staffEmail,
+							title: row.staffTitle,
+							professorCode: row.professorCode,
 						}
 					: null,
 		}));

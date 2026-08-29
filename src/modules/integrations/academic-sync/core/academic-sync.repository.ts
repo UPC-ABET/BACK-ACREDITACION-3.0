@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import type { I18nText } from 'src/shared/types/i18n';
+import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { AcademicPeriodEntity } from 'src/modules/academic/academic-periods/model/academic-periods.entity';
 import { AcademicPeriodRepository } from 'src/modules/academic/academic-periods/core/academic-periods.repository';
 import { CampusEntity } from 'src/modules/organization/campuses/model/campuses.entity';
@@ -22,10 +23,15 @@ export interface OrgChartNodeRow {
 	parentId: number | null;
 	entityType: string | null;
 	entityCode: number | null;
+	organizationLevelTitle: I18nText;
 	staffId: number | null;
 	staffFirstName: string | null;
 	staffLastName: string | null;
 	staffEmail: string | null;
+	staffTitle: I18nText | null;
+	professorCode: string | null;
+	entityResolvedCode: string | null;
+	entityResolvedName: I18nText | null;
 }
 
 // A program can be linked to more than one active commission in the same period. EAC is the
@@ -109,23 +115,41 @@ export class AcademicSyncRepository {
 		return map;
 	}
 
+	// Mirrors ChartRepository.getMaintenanceBranch's entity resolution (COALESCE across
+	// School/Program/Course, joined by entity type code) so an external caller sees the same
+	// "Escuela ISW · Ingenieria de Software"-style label Acreditación's own UI shows — otherwise
+	// a SCHOOL/PROGRAM/COURSE node carries only an opaque entity_code with nothing to display.
 	async getOrgChartNodes(academicPeriodId: number): Promise<OrgChartNodeRow[]> {
 		return await this.dataSource.query(
 			`SELECT
-				c.id            AS "id",
-				c.root_chart_id AS "parentId",
-				et.code         AS "entityType",
-				c.entity_code   AS "entityCode",
-				s.id            AS "staffId",
-				s.first_name    AS "staffFirstName",
-				s.last_name     AS "staffLastName",
-				s.staff_email   AS "staffEmail"
+				c.id                 AS "id",
+				c.root_chart_id      AS "parentId",
+				et.code              AS "entityType",
+				c.entity_code        AS "entityCode",
+				c.title              AS "organizationLevelTitle",
+				s.id                 AS "staffId",
+				s.first_name         AS "staffFirstName",
+				s.last_name          AS "staffLastName",
+				s.staff_email        AS "staffEmail",
+				s.job_title          AS "staffTitle",
+				prof.code            AS "professorCode",
+				COALESCE(sch.code, prog.code, crs.code) AS "entityResolvedCode",
+				COALESCE(sch.name, prog.name, crs.name) AS "entityResolvedName"
 			FROM organization.charts c
-			LEFT JOIN core.types et        ON et.id = c.entity_type_id
-			LEFT JOIN organization.staff s ON s.id = c.staff_id
+			LEFT JOIN core.types et             ON et.id = c.entity_type_id
+			LEFT JOIN organization.staff s      ON s.id = c.staff_id
+			LEFT JOIN academic.professors prof  ON prof.staff_id = s.id
+			LEFT JOIN organization.schools sch  ON et.code = $2 AND sch.id = c.entity_code
+			LEFT JOIN academic.programs prog    ON et.code = $3 AND prog.id = c.entity_code
+			LEFT JOIN academic.courses crs      ON et.code = $4 AND crs.id = c.entity_code
 			WHERE c.academic_period_id = $1 AND c.is_active = true
 			ORDER BY c.id`,
-			[academicPeriodId],
+			[
+				academicPeriodId,
+				TYPE_CODES.ENTITY_TYPE.SCHOOL,
+				TYPE_CODES.ENTITY_TYPE.PROGRAM,
+				TYPE_CODES.ENTITY_TYPE.COURSE,
+			],
 		);
 	}
 
