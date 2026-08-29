@@ -144,4 +144,13 @@ export const graRoutes = {
 			summary: 'Generate the GRA perception-by-outcome PDF report (all sedes + one per sede)',
 		},
 	},
+	conversion: {
+		rebuild: {
+			method: 'POST',
+			route: 'conversion/rebuild',
+			summary:
+				'Reprocess outcome_conversions (e.g. EAC → CAC/ICACIT) for every closed GRA survey ' +
+				'of the period — backfill after loading historical surveys or after a conversion rule changes',
+		},
+	},
 };

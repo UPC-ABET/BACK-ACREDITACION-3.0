@@ -22,6 +22,7 @@ describe('GraNotificationService.exportStudents', () => {
 			{} as never,
 			{} as never,
 			{} as never,
+			{} as never,
 		);
 		return { service, notifRepo };
 	}

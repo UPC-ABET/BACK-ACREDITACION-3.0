@@ -9,6 +9,10 @@ import {
 import { PppSurveyRepository } from '../core/ppp-survey.repository';
 import { PppScoreRepository } from '../core/ppp-score.repository';
 import { PppConfigRepository } from '../core/ppp-config.repository';
+import {
+	SurveyConversionService,
+	type SurveyConversionResult,
+} from 'src/modules/survey/shared/api/survey-conversion.service';
 import { PppValidation, type PppExcelRow } from '../core/ppp.validation';
 import { pppValidationStrings } from '../config/strings/ppp.validation';
 import {
@@ -30,6 +34,10 @@ import {
 
 const PPP_TYPE_CODE = TYPE_CODES.SURVEY_TYPE.PPP;
 const PPP_STATUS_ACTIVE_CODE = 'TG602-T001';
+
+/** PPP surveys are answered on a 1-5 scale (see CreatePppSurveyDto's @Min(1)/@Max(5)) — a
+ *  conversion may average or weight outcomes, but it can never push a student outside it. */
+const PPP_SCALE = { min: 1, max: 5 };
 
 // The bulk template is intentionally lighter than the manual form: it omits `ruc`, `bossRole`,
 // `phone` and `email`, so a bulk-imported survey stores five `information` keys where `create`
@@ -132,6 +140,7 @@ export class PppSurveyService {
 		private readonly surveyRepo: PppSurveyRepository,
 		private readonly scoreRepo: PppScoreRepository,
 		private readonly configRepo: PppConfigRepository,
+		private readonly conversionService: SurveyConversionService,
 	) {}
 
 	private async getPppTypeId(): Promise<number> {
@@ -151,40 +160,52 @@ export class PppSurveyService {
 
 		const [typeId, statusId] = await Promise.all([this.getPppTypeId(), this.getPppStatusId()]);
 
-		const survey = await this.surveyRepo.create({
-			surveyTypeId: typeId,
-			surveyStatusTypeId: statusId,
-			studentId: dto.studentId,
-			academicPeriodId,
-			campusId: dto.campusId,
-			programId: dto.programId,
-			surveyNumber: dto.practiceNumber,
-			information: {
-				companyName: dto.companyName ?? null,
-				bossName: dto.bossName ?? null,
-				bossRole: dto.bossRole ?? null,
-				phone: dto.phone ?? null,
-				email: dto.email ?? null,
-				ruc: dto.ruc ?? null,
-				totalHours: dto.totalHours ?? null,
-				startDate: dto.startDate ?? null,
-				endDate: dto.endDate ?? null,
-			} as unknown as I18nText,
-			courseSectionId: 1,
+		const surveyId = await this.surveyRepo.transaction(async (manager) => {
+			const survey = await this.surveyRepo.create(
+				{
+					surveyTypeId: typeId,
+					surveyStatusTypeId: statusId,
+					studentId: dto.studentId,
+					academicPeriodId,
+					campusId: dto.campusId,
+					programId: dto.programId,
+					surveyNumber: dto.practiceNumber,
+					information: {
+						companyName: dto.companyName ?? null,
+						bossName: dto.bossName ?? null,
+						bossRole: dto.bossRole ?? null,
+						phone: dto.phone ?? null,
+						email: dto.email ?? null,
+						ruc: dto.ruc ?? null,
+						totalHours: dto.totalHours ?? null,
+						startDate: dto.startDate ?? null,
+						endDate: dto.endDate ?? null,
+					} as unknown as I18nText,
+					courseSectionId: 1,
+				},
+				manager,
+			);
+
+			if (dto.scores?.length) {
+				await this.scoreRepo.bulkCreate(
+					dto.scores.map((s) => ({
+						surveyId: survey.id,
+						outcomeId: s.outcomeId,
+						score: s.score,
+						...(s.commentaries !== undefined && { commentaries: i18nText(s.commentaries) }),
+					})),
+					manager,
+				);
+				// Derives any CAC/ICACIT (etc.) outcomes this program's commissions define a
+				// conversion for, from the scores just answered — so no manual backfill is ever
+				// needed for surveys created from here on.
+				await this.conversionService.convertSurveys([survey.id], PPP_SCALE, manager);
+			}
+
+			return survey.id;
 		});
 
-		if (dto.scores?.length) {
-			await this.scoreRepo.bulkCreate(
-				dto.scores.map((s) => ({
-					surveyId: survey.id,
-					outcomeId: s.outcomeId,
-					score: s.score,
-					...(s.commentaries !== undefined && { commentaries: i18nText(s.commentaries) }),
-				})),
-			);
-		}
-
-		return { surveyId: survey.id, scoresCreated: dto.scores?.length ?? 0 };
+		return { surveyId, scoresCreated: dto.scores?.length ?? 0 };
 	}
 
 	async getAll() {
@@ -580,6 +601,7 @@ export class PppSurveyService {
 							r.scores.map((s) => ({ ...s, surveyId: survey.id })),
 							manager,
 						);
+						await this.conversionService.convertSurveys([survey.id], PPP_SCALE, manager);
 					}
 				}
 			});
@@ -674,6 +696,10 @@ export class PppSurveyService {
 			},
 			errorFile,
 		};
+	}
+
+	async rebuildConversions(academicPeriodId: number): Promise<SurveyConversionResult> {
+		return this.conversionService.rebuildForSurveyType(PPP_TYPE_CODE, academicPeriodId, PPP_SCALE);
 	}
 
 	async getDashboard(dto: DashboardPppDto & { academicPeriodId?: number | null }) {
