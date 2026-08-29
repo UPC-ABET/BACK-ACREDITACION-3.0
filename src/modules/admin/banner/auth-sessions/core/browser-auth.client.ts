@@ -6,11 +6,20 @@ export type ControllerStatus = 'active' | 'completed' | 'failed' | 'expired';
 // Stable UPC host — env-overridable but defaulted so it isn't required config.
 const DEFAULT_BANNER_INTRANET_URL = 'https://intranetdocente-administrativo.upc.edu.pe';
 
+export interface BrowserAuthCredentials {
+	username: string;
+	password: string;
+}
+
 @Injectable()
 export class BrowserAuthClient {
 	constructor(private readonly config: ConfigService) {}
 
-	async start(sessionId: string): Promise<void> {
+	/**
+	 * `credentials` are forwarded once, in this single request body, to the browser-auth
+	 * controller — never logged here, never persisted anywhere in this NestJS process.
+	 */
+	async start(sessionId: string, credentials?: BrowserAuthCredentials): Promise<void> {
 		const res = await fetch(`${this.base()}/sessions`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -18,6 +27,7 @@ export class BrowserAuthClient {
 				sessionId,
 				intranetUrl: this.config.get<string>('BANNER_INTRANET_URL') ?? DEFAULT_BANNER_INTRANET_URL,
 				authStatePath: this.config.getOrThrow<string>('BANNER_AUTH_STATE_PATH'),
+				...(credentials ? { credentials } : {}),
 			}),
 		});
 		if (!res.ok) {

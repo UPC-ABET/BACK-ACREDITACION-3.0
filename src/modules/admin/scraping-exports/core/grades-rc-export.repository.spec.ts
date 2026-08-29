@@ -1,6 +1,12 @@
 import { Logger } from '@nestjs/common';
 import { GradesRcExportRepository } from './grades-rc-export.repository';
-import { MATERIALIZE_GRADES_RC_SQL, READ_GRADES_RC_ALL_PAGE_SQL } from './grades-rc-export.sql';
+import {
+	MATERIALIZE_GRADES_RC_SQL,
+	NOT_IN_SECTION_CANDIDATES_SQL,
+	PRUNE_GRADES_RC_UNRESOLVED_SQL,
+	READ_GRADES_RC_ALL_PAGE_SQL,
+	STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL,
+} from './grades-rc-export.sql';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 
 // The merge itself (Banner + Planner cross, newest scrape wins, last-grade fallback) is SQL, so it
@@ -51,6 +57,12 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		if (sql.includes('course_outcome_mappings')) {
 			return Promise.resolve([{ sectionCode: 'NRC1' }]);
 		}
+		// Must precede the plain study_plan_courses branch below (only query joining both tables).
+		// STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL -- one row per confirmed (section, student) pair, not
+		// the old array_agg shape (see the dedicated describe block below for how it's actually used).
+		if (sql.includes('study_plan_courses') && sql.includes('enrolled_students')) {
+			return Promise.resolve([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
+		}
 		if (sql.includes('study_plan_courses')) {
 			return Promise.resolve([
 				{ sectionCode: 'NRC1', gradeTypeCode: 'TG205-T001' },
@@ -59,6 +71,9 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		}
 		if (sql.includes('student_section_enrollments')) {
 			return Promise.resolve([{ sectionCodes: ['NRC1', 'NRC2'], studentCodes: ['A1', 'A2'] }]);
+		}
+		if (sql.includes('academic.enrolled_students')) {
+			return Promise.resolve([{ studentCode: 'A1' }, { studentCode: 'A2' }]);
 		}
 		if (sql.includes('course_sections')) {
 			return Promise.resolve([{ sectionCode: 'NRC1' }, { sectionCode: 'NRC2' }]);
@@ -111,7 +126,10 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(params[13]).toEqual(Object.keys(PROGRAM_CAREER_MAP));
 		expect(params[14]).toEqual(Object.values(PROGRAM_CAREER_MAP));
 		expect(params[15]).toBe('TG404-T002');
-		expect(params).toHaveLength(16);
+		expect(params[16]).toEqual(['A1', 'A2']);
+		// No study-plan pairs here anymore -- that check now runs as a second pass, scoped to
+		// whatever the merge actually flags notInSection (see the describe block below).
+		expect(params).toHaveLength(17);
 	});
 
 	// One scope array, not two ANDed in SQL: the planner reads two arrays over section_code as
@@ -136,6 +154,18 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 			sql.includes('student_section_enrollments'),
 		);
 		expect(enrollmentCall?.[1]).toEqual([1, ['NRC1']]);
+	});
+
+	// rawQuery defaults every call to `[]`, so NOT_IN_SECTION_CANDIDATES_SQL returns none here --
+	// see the dedicated describe block below for the rescue's full behaviour when it does find some.
+	it('skips the study-plan membership check entirely when nothing is notInSection', async () => {
+		await repo.openGradesRcExport(1);
+
+		expect(
+			mainQuery.mock.calls.some(
+				([sql]) => sql.includes('study_plan_courses') && sql.includes('enrolled_students'),
+			),
+		).toBe(false);
 	});
 
 	// Pages are read until one comes back short of the page size, and the rows are handed on
@@ -262,6 +292,86 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 		expect(runCtes).toContain('FROM scrape_run');
 		expect(runCtes).toContain('FROM planner_scrape_run');
 		expect(runCtes.match(/status IN \('completed'\)/g)).toHaveLength(2);
+	});
+});
+
+// See period_enrolled in grades-rc-export.sql.ts for why this is a second pass, scoped to only the
+// pairs MATERIALIZE_GRADES_RC_SQL flagged notInSection, rather than a whole-cohort query up front.
+describe('GradesRcExportRepository.resolveInStudyPlanRescues', () => {
+	const rawQuery = jest.fn();
+	const createQueryRunner = jest.fn(() => ({
+		connect: jest.fn().mockResolvedValue(undefined),
+		query: rawQuery,
+		release: jest.fn(),
+	}));
+	const mainQuery = jest.fn();
+	const repo = new GradesRcExportRepository(
+		{ createQueryRunner } as any,
+		{ query: mainQuery } as any,
+	);
+
+	const candidates = [
+		{ sectionCode: 'NRC1', studentCode: 'A1' },
+		{ sectionCode: 'NRC2', studentCode: 'A2' },
+	];
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		// Every main-DB call other than the membership check itself belongs to buildGradesRcParams,
+		// which this describe block does not care about -- give it just enough to not throw.
+		mainQuery.mockImplementation((sql: string) => {
+			if (sql.includes('FROM academic.academic_periods'))
+				return Promise.resolve([{ code: '202610' }]);
+			if (sql.includes('core.type_groups')) return Promise.resolve([]);
+			if (sql === STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL) {
+				// Only NRC1|A1 is actually on the student's study plan; NRC2|A2 is not.
+				return Promise.resolve([{ sectionCode: 'NRC1', studentCode: 'A1' }]);
+			}
+			return Promise.resolve([]);
+		});
+		rawQuery.mockImplementation((sql: string) =>
+			sql === NOT_IN_SECTION_CANDIDATES_SQL ? Promise.resolve(candidates) : Promise.resolve([]),
+		);
+	});
+
+	it('checks membership only for the notInSection candidates, scoped to this academic period', async () => {
+		await repo.openGradesRcExport(9);
+
+		const membershipCall = mainQuery.mock.calls.find(
+			([sql]) => sql === STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL,
+		);
+		expect(membershipCall?.[1]).toEqual([9, ['NRC1', 'NRC2'], ['A1', 'A2']]);
+	});
+
+	it('prunes only the candidates membership did not confirm, then drops the bookkeeping column', async () => {
+		await repo.openGradesRcExport(9);
+
+		const pruneCall = rawQuery.mock.calls.find(([sql]) => sql === PRUNE_GRADES_RC_UNRESOLVED_SQL);
+		expect(pruneCall?.[1]).toEqual([['NRC1'], ['A1']]);
+
+		const pruneIndex = rawQuery.mock.calls.findIndex(
+			([sql]) => sql === PRUNE_GRADES_RC_UNRESOLVED_SQL,
+		);
+		const dropColumnIndex = rawQuery.mock.calls.findIndex(
+			([sql]) => typeof sql === 'string' && sql.includes('DROP COLUMN "notInSection"'),
+		);
+		expect(dropColumnIndex).toBeGreaterThan(pruneIndex);
+	});
+
+	// An empty `matched` still has to run PRUNE: NOT EXISTS over an empty unnest is true for every
+	// notInSection row, which is what correctly drops all of them when nothing was rescued.
+	it('still prunes with empty matched arrays when the membership check confirms nothing', async () => {
+		mainQuery.mockImplementation((sql: string) => {
+			if (sql.includes('FROM academic.academic_periods'))
+				return Promise.resolve([{ code: '202610' }]);
+			if (sql === STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL) return Promise.resolve([]);
+			return Promise.resolve([]);
+		});
+
+		await repo.openGradesRcExport(9);
+
+		const pruneCall = rawQuery.mock.calls.find(([sql]) => sql === PRUNE_GRADES_RC_UNRESOLVED_SQL);
+		expect(pruneCall?.[1]).toEqual([[], []]);
 	});
 });
 

@@ -22,6 +22,8 @@ import {
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
 	DashboardLcfcDto,
+	ListLcfcOutcomesDto,
+	LcfcOutcomeReportDto,
 } from '../model/lcfc.dtos';
 
 @Injectable()
@@ -43,8 +45,19 @@ export class LcfcService {
 		programId: number | undefined,
 		lang: ReportLanguage,
 		groupBy: 'course' | 'section' = 'section',
+		courseId?: number,
+		courseSectionId?: number,
+		hideCourseBreakdown?: boolean,
 	) {
-		return this.reportService.generateResultsPdf(academicPeriodId, programId, lang, groupBy);
+		return this.reportService.generateResultsPdf(
+			academicPeriodId,
+			programId,
+			lang,
+			groupBy,
+			courseId,
+			courseSectionId,
+			hideCourseBreakdown,
+		);
 	}
 
 	async generatePerceptionReport(
@@ -57,7 +70,13 @@ export class LcfcService {
 		// set — PerceptionReportDto rejects a career filter without a commission before this
 		// method ever runs, so a "career only, split by every commission" request is no longer
 		// reachable here (deliberate: commission is required as soon as a career is filtered).
-		if (!dto.programId && !dto.commissionId && !dto.campusId) {
+		if (
+			!dto.programId &&
+			!dto.commissionId &&
+			!dto.campusId &&
+			!dto.courseId &&
+			!dto.courseSectionId
+		) {
 			const { pdf, filename } = await this.reportService.generateProgramSummaryPdf(
 				academicPeriodId,
 				dto.lang ?? 'es',
@@ -72,12 +91,35 @@ export class LcfcService {
 			fileLabel: 'LCFC',
 			reportName: { es: 'Informe de Resultados LCFC', en: 'LCFC Results Report' },
 			totalLabel: { es: 'Total de estudiantes', en: 'Total students' },
+			chartTitle: { es: 'Percepción por Curso', en: 'Perception by Course' },
+			showCourseFilters: true,
 			academicPeriodId,
 			programId: dto.programId,
 			commissionId: dto.commissionId,
 			campusId: dto.campusId,
 			surveyNumbers: dto.surveyNumbers,
 			modalityLabel: dto.modalityLabel,
+			courseId: dto.courseId,
+			courseSectionId: dto.courseSectionId,
+			lang: dto.lang ?? 'es',
+		});
+	}
+
+	listOutcomes(dto: ListLcfcOutcomesDto, academicPeriodId: number) {
+		return this.perceptionReport.listOutcomes(dto.programId, dto.commissionId, academicPeriodId);
+	}
+
+	generateOutcomeReportPdf(
+		dto: LcfcOutcomeReportDto,
+		academicPeriodId: number,
+	): Promise<PerceptionReportResult> {
+		return this.perceptionReport.generateOutcomeReport({
+			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.LCFC,
+			fileLabel: 'LCFC',
+			academicPeriodId,
+			programId: dto.programId,
+			commissionId: dto.commissionId,
+			outcomeId: dto.outcomeId,
 			lang: dto.lang ?? 'es',
 		});
 	}

@@ -60,6 +60,20 @@ export const REPORT_BASE_STYLES = `
 		gap: 14px;
 		padding: 16px 28px;
 	}
+	.report-metadata--secondary {
+		display: flex;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 14px;
+		padding: 0 28px 16px;
+	}
+	.report-metadata--secondary .report-metadata__item {
+		flex: 0 1 auto;
+		min-width: 110px;
+	}
+	.report-metadata--secondary.report-metadata--single .report-metadata__item {
+		flex: 1 1 100%;
+	}
 	.report-metadata__item {
 		min-width: 0;
 		text-align: center;

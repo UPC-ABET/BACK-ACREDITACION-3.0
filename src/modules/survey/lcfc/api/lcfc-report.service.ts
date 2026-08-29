@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ReportChartService } from 'src/libs/reporting/report-chart.service';
 import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
 import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
@@ -26,6 +25,8 @@ interface CountRow {
 	courseCode?: string;
 	sectionCode?: string;
 	professorName?: string;
+	campusName?: I18nText | string | null;
+	modalityName?: I18nText | string | null;
 	enrolled?: number;
 	completed: number;
 	pending: number;
@@ -52,6 +53,8 @@ const LABELS = {
 		courseCode: 'Código',
 		professor: 'Profesor',
 		section: 'Sección',
+		campus: 'Sede',
+		modality: 'Modalidad',
 		enrolled: 'Matriculados',
 		empty: 'Sin datos',
 		summaryReportName: 'Reporte General LCFC por Carrera',
@@ -76,6 +79,8 @@ const LABELS = {
 		courseCode: 'Code',
 		professor: 'Professor',
 		section: 'Section',
+		campus: 'Campus',
+		modality: 'Modality',
 		enrolled: 'Enrolled',
 		empty: 'No data',
 		summaryReportName: 'LCFC Overview Report by Program',
@@ -89,7 +94,6 @@ const LABELS = {
 export class LcfcReportService {
 	constructor(
 		private readonly notifService: LcfcNotificationService,
-		private readonly reportChart: ReportChartService,
 		private readonly reportGenerator: ReportGeneratorService,
 	) {}
 
@@ -99,9 +103,24 @@ export class LcfcReportService {
 		programId: number | undefined,
 		lang: ReportLanguage,
 		groupBy: ReportGroupBy = 'section',
+		courseId?: number,
+		courseSectionId?: number,
+		hideCourseBreakdown?: boolean,
 	) {
-		const dashboard = await this.notifService.getDashboard({ academicPeriodId, programId });
-		const document = this.buildDocument(dashboard, academicPeriodId, programId, lang, groupBy);
+		const dashboard = await this.notifService.getDashboard({
+			academicPeriodId,
+			programId,
+			courseId,
+			courseSectionId,
+		});
+		const document = this.buildDocument(
+			dashboard,
+			academicPeriodId,
+			programId,
+			lang,
+			groupBy,
+			hideCourseBreakdown,
+		);
 		const filename = this.buildFilename(dashboard, academicPeriodId, programId, lang);
 		return this.reportGenerator.generateDocument(document, filename);
 	}
@@ -141,10 +160,10 @@ export class LcfcReportService {
 					<tbody>${sorted
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${r.completed}</td><td class="num">${r.pending}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
-					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${totals.completed}</td><td class="num">${totals.pending}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
+					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${this.formatCountWithPercent(totals.completed, totals.total)}</td><td class="num">${this.formatCountWithPercent(totals.pending, totals.total)}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
 				</table>
 			</section>`
 			: `<section><p>${escapeHtml(L.empty)}</p></section>`;
@@ -196,6 +215,12 @@ export class LcfcReportService {
 		return total > 0 ? Math.round((completed / total) * 100) : 0;
 	}
 
+	/** "count (12.50%)" — the share of this count out of the row's total. */
+	private formatCountWithPercent(count: number, total: number): string {
+		const percent = total > 0 ? (count / total) * 100 : 0;
+		return `${count} (${percent.toFixed(2)}%)`;
+	}
+
 	private buildFilename(
 		dashboard: { byProgram?: CountRow[] },
 		academicPeriodId: number,
@@ -225,6 +250,7 @@ export class LcfcReportService {
 		programId: number | undefined,
 		lang: ReportLanguage,
 		groupBy: ReportGroupBy,
+		hideCourseBreakdown?: boolean,
 	): ReportDocument {
 		const L = LABELS[lang];
 		const summary = dashboard.summary ?? {};
@@ -254,13 +280,6 @@ export class LcfcReportService {
 			? `
 			<section>
 				<h3>${escapeHtml(L.byProgram)}</h3>
-				${this.buildCharts(
-					byProgram,
-					(row) => localizeName(row.programName, lang),
-					L.byProgram,
-					L.surveyCount,
-					L,
-				)}
 				<table>
 					<thead><tr>
 						<th>${escapeHtml(L.program)}</th>
@@ -272,30 +291,28 @@ export class LcfcReportService {
 					<tbody>${byProgram
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.completed}</td><td class="num">${r.pending}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
 				</table>
 			</section>`
 			: '';
 
-		const byCourseHtml = byCourse.length
-			? `
+		const byCourseHtml = hideCourseBreakdown
+			? ''
+			: byCourse.length
+				? `
 			<section>
 				<h3>${escapeHtml(L.byCourse)}</h3>
-				${this.buildCharts(
-					byCourse,
-					(row) =>
-						[row.sectionCode, localizeName(row.courseName, lang)].filter(Boolean).join(' - '),
-					L.byCourse,
-					L.surveyCount,
-					L,
-				)}
 				<table>
 					<thead><tr>
 						<th>${escapeHtml(L.course)}</th>
 						<th>${escapeHtml(L.courseCode)}</th>
-						${groupBy === 'section' ? `<th>${escapeHtml(L.professor)}</th><th>${escapeHtml(L.section)}</th>` : ''}
+						${
+							groupBy === 'section'
+								? `<th>${escapeHtml(L.professor)}</th><th>${escapeHtml(L.section)}</th><th>${escapeHtml(L.campus)}</th><th>${escapeHtml(L.modality)}</th>`
+								: ''
+						}
 						<th class="num">${escapeHtml(L.enrolled)}</th>
 						<th class="num">${escapeHtml(L.completed)}</th>
 						<th class="num">${escapeHtml(L.pending)}</th>
@@ -307,14 +324,14 @@ export class LcfcReportService {
 							(r) =>
 								`<tr><td>${escapeHtml(localizeName(r.courseName, lang))}</td><td>${escapeHtml(r.courseCode ?? '')}</td>${
 									groupBy === 'section'
-										? `<td>${escapeHtml(r.professorName ?? '')}</td><td>${escapeHtml(r.sectionCode ?? '')}</td>`
+										? `<td>${escapeHtml(r.professorName ?? '')}</td><td>${escapeHtml(r.sectionCode ?? '')}</td><td>${escapeHtml(localizeName(r.campusName ?? undefined, lang))}</td><td>${escapeHtml(localizeName(r.modalityName ?? undefined, lang))}</td>`
 										: ''
-								}<td class="num">${r.enrolled ?? 0}</td><td class="num">${r.completed}</td><td class="num">${r.pending}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								}<td class="num">${r.enrolled ?? 0}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
 				</table>
 			</section>`
-			: `<section><p>${escapeHtml(L.empty)}</p></section>`;
+				: `<section><p>${escapeHtml(L.empty)}</p></section>`;
 
 		return {
 			language: lang,
@@ -325,49 +342,10 @@ export class LcfcReportService {
 			additionalStyles: LCFC_REPORT_STYLES,
 		};
 	}
-
-	private buildCharts(
-		rows: CountRow[],
-		category: (row: CountRow) => string,
-		title: string,
-		yAxisLabel: string,
-		labels: (typeof LABELS)[ReportLanguage],
-	): string {
-		return chunk(rows, 6)
-			.map((group, index, groups) =>
-				this.reportChart.buildGroupedBarChart({
-					title: groups.length > 1 ? `${title} (${index + 1}/${groups.length})` : title,
-					categories: group.map(category),
-					series: [
-						{
-							label: labels.completed,
-							color: '#16a34a',
-							values: group.map((row) => row.completed),
-						},
-						{
-							label: labels.pending,
-							color: '#e30613',
-							values: group.map((row) => row.pending),
-						},
-					],
-					yAxisLabel,
-					emptyLabel: labels.empty,
-				}),
-			)
-			.join('');
-	}
 }
 
 function localizeName(value: I18nText | string | undefined, lang: ReportLanguage): string {
 	if (value == null) return '';
 	if (typeof value === 'string') return value;
 	return localize(value, lang);
-}
-
-function chunk<T>(values: T[], size: number): T[][] {
-	const groups: T[][] = [];
-	for (let index = 0; index < values.length; index += size) {
-		groups.push(values.slice(index, index + size));
-	}
-	return groups;
 }

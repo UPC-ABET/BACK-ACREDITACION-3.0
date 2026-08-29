@@ -15,6 +15,8 @@ import {
 	GetLcfcSurveyByTokenDto,
 	CompleteLcfcSurveyDto,
 	DashboardLcfcDto,
+	ListLcfcOutcomesDto,
+	LcfcOutcomeReportDto,
 } from '../../model/lcfc.dtos';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 
@@ -148,4 +150,8 @@ export const SwaggerLcfcReportPdf = () =>
 	);
 export const SwaggerLcfcReportPerception = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.reportPerception, body: PerceptionReportDto });
+export const SwaggerLcfcOutcomesList = () =>
+	HttpMethodWithSwagger({ ...cfg.dashboard.outcomesList, body: ListLcfcOutcomesDto });
+export const SwaggerLcfcReportPerceptionByOutcome = () =>
+	HttpMethodWithSwagger({ ...cfg.dashboard.reportPerceptionByOutcome, body: LcfcOutcomeReportDto });
 export const SwaggerLcfcConversionRebuild = () => HttpMethodWithSwagger(cfg.conversion.rebuild);

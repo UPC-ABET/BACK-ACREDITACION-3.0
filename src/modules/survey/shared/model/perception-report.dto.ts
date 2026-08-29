@@ -56,6 +56,25 @@ export class PerceptionReportDto {
 	modalityLabel?: string;
 
 	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 10,
+		description: 'Filter by course (curso). When set, the report header shows the course.',
+		required: false,
+	})
+	courseId?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 55,
+		description:
+			'Filter by course section (NRC). When set, the report header also shows the NRC and professor.',
+		required: false,
+	})
+	courseSectionId?: number;
+
+	@IsOptional()
 	@IsIn(['es', 'en'])
 	@ApiProperty({ example: 'es', description: 'Report language: es | en', required: false })
 	lang?: ReportLanguage;

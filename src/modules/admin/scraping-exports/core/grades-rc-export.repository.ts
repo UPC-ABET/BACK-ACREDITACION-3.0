@@ -9,11 +9,16 @@ import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 import {
 	CONTROL_OUTCOME_SECTIONS_SQL,
 	DESIGNATED_GRADE_TYPES_SQL,
+	DROP_NOT_IN_SECTION_COLUMN_SQL,
 	ENROLLED_SECTION_STUDENTS_SQL,
 	GRADES_RC_TEMP_TABLE,
 	INDEX_GRADES_RC_TEMP_SQL,
 	MATERIALIZE_GRADES_RC_SQL,
+	NOT_IN_SECTION_CANDIDATES_SQL,
+	PERIOD_ENROLLED_STUDENTS_SQL,
+	PRUNE_GRADES_RC_UNRESOLVED_SQL,
 	READ_GRADES_RC_ALL_PAGE_SQL,
+	STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL,
 	UPLOADED_SECTIONS_SQL,
 } from './grades-rc-export.sql';
 import { EXPORTS_RAW_CONNECTION, resolveAcademicPeriodCode } from './scraping-exports.repository';
@@ -23,8 +28,8 @@ export interface DesignatedGradeTypeRow {
 	gradeTypeCode: string;
 }
 
-// The two parallel arrays the merge binds, aggregated by the database — see
-// ENROLLED_SECTION_STUDENTS_SQL.
+// The two parallel arrays the merge binds, aggregated by the database — ENROLLED_SECTION_STUDENTS_SQL's
+// own shape.
 export interface EnrolledSectionStudentRow {
 	sectionCodes: string[];
 	studentCodes: string[];
@@ -78,6 +83,7 @@ export class GradesRcExportRepository {
 			// hash join over it instead of a per-row scan. Scoped to this connection, same as above.
 			await runner.query(`SET enable_nestloop = off`);
 			await runner.query(MATERIALIZE_GRADES_RC_SQL, params);
+			await this.resolveInStudyPlanRescues(runner, academicPeriodId);
 			await runner.query(INDEX_GRADES_RC_TEMP_SQL);
 			// CREATE TABLE AS writes no statistics and autovacuum never analyzes a TEMP table, so
 			// without this the planner guesses at the "hasObservations" selectivity of every page.
@@ -138,9 +144,8 @@ export class GradesRcExportRepository {
 		}
 	}
 
-	// Gathered before the scratch table exists, so a failure here costs no connection. Only the
-	// enrollment lookup depends on the scoped sections, so it's the only one held back behind that
-	// intersection -- the rest run alongside it rather than paying an avoidable extra round trip.
+	// Gathered before the scratch table exists, so a failure here costs no connection. No study-plan
+	// pairs here -- see resolveInStudyPlanRescues, which runs that lookup after the merge instead.
 	private async buildGradesRcParams(academicPeriodId: number): Promise<unknown[]> {
 		const [
 			period,
@@ -149,6 +154,7 @@ export class GradesRcExportRepository {
 			designated,
 			uploadedSections,
 			controlSections,
+			periodEnrolledStudentCodes,
 		] = await Promise.all([
 			resolveAcademicPeriodCode(this.mainDataSource, academicPeriodId),
 			this.getTypeCodesByName(TYPE_GROUP_CODES.GRADE_TYPE),
@@ -156,6 +162,7 @@ export class GradesRcExportRepository {
 			this.getDesignatedGradeTypesBySection(academicPeriodId),
 			this.getUploadedSectionCodes(academicPeriodId),
 			this.getControlOutcomeSectionCodes(academicPeriodId),
+			this.getPeriodEnrolledStudentCodes(academicPeriodId),
 		]);
 
 		// Intersected here, not as a second array the SQL ANDs together: two scope arrays on
@@ -184,7 +191,35 @@ export class GradesRcExportRepository {
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			TYPE_CODES.QUALIFICATION_STATUS.NR,
+			periodEnrolledStudentCodes,
 		];
+	}
+
+	// Second pass of the study-plan rescue (see `period_enrolled` in GRADES_RC_SQL for why this is a
+	// second pass at all). Scoped to the merge's own notInSection candidates, not the whole cohort.
+	private async resolveInStudyPlanRescues(
+		runner: QueryRunner,
+		academicPeriodId: number,
+	): Promise<void> {
+		const candidates: Array<{ sectionCode: string; studentCode: string }> = await runner.query(
+			NOT_IN_SECTION_CANDIDATES_SQL,
+		);
+
+		const matched = candidates.length
+			? ((await this.mainDataSource.query(STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL, [
+					academicPeriodId,
+					candidates.map((pair) => pair.sectionCode),
+					candidates.map((pair) => pair.studentCode),
+				])) as Array<{ sectionCode: string; studentCode: string }>)
+			: [];
+
+		// An empty `matched` still runs: NOT EXISTS over an empty unnest is true for every remaining
+		// notInSection row, which correctly prunes all of them when nothing was rescued.
+		await runner.query(PRUNE_GRADES_RC_UNRESOLVED_SQL, [
+			matched.map((pair) => pair.sectionCode),
+			matched.map((pair) => pair.studentCode),
+		]);
+		await runner.query(DROP_NOT_IN_SECTION_COLUMN_SQL);
 	}
 
 	// The second hard scope: a course with no CONTROL outcome mapped in the period's study plan is
@@ -197,9 +232,8 @@ export class GradesRcExportRepository {
 		return rows.map((row) => row.sectionCode);
 	}
 
-	// Not a filter: a row whose pair is missing still ships, carrying the observation that says so.
-	// sectionScope narrows which sections' enrollments are worth fetching at all -- see
-	// ENROLLED_SECTION_STUDENTS_SQL.
+	// Not a hard filter alone: a row missing this pair still ships if resolveInStudyPlanRescues
+	// rescues it afterwards. sectionScope narrows which sections are worth fetching at all.
 	async getEnrolledSectionStudents(
 		academicPeriodId: number,
 		sectionScope: string[],
@@ -227,6 +261,16 @@ export class GradesRcExportRepository {
 			[academicPeriodId],
 		);
 		return rows.map((row) => row.sectionCode);
+	}
+
+	// Hard scope, broader than getEnrolledSectionStudents: a student not matriculated for the period
+	// at all has nowhere to land, so their grade is dropped rather than reported.
+	async getPeriodEnrolledStudentCodes(academicPeriodId: number): Promise<string[]> {
+		const rows: Array<{ studentCode: string }> = await this.mainDataSource.query(
+			PERIOD_ENROLLED_STUDENTS_SQL,
+			[academicPeriodId],
+		);
+		return rows.map((row) => row.studentCode);
 	}
 
 	// name (es, uppercased) -> code, for every active type in the given group (main DB).

@@ -35,10 +35,12 @@ import { Client } from 'pg';
 import * as dotenv from 'dotenv';
 
 import {
-	GRADES_RC_SQL,
+	DROP_NOT_IN_SECTION_COLUMN_SQL,
 	GRADES_RC_TEMP_TABLE,
 	INDEX_GRADES_RC_TEMP_SQL,
 	MATERIALIZE_GRADES_RC_SQL,
+	NOT_IN_SECTION_CANDIDATES_SQL,
+	PRUNE_GRADES_RC_UNRESOLVED_SQL,
 	READ_GRADES_RC_ALL_PAGE_SQL,
 } from 'src/modules/admin/scraping-exports/core/grades-rc-export.sql';
 import { GRADE_RC_OBSERVATIONS } from 'src/modules/admin/scraping-exports/model/scraping-exports.types';
@@ -116,8 +118,8 @@ const CONTROL_SECTIONS = LOADED_SECTIONS.filter((section) => section !== 'NRC14'
 // two arrays inside it -- see the $10 note in GRADES_RC_SQL.
 const SCOPED_SECTIONS = LOADED_SECTIONS.filter((section) => CONTROL_SECTIONS.includes(section));
 
-// academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: the
-// upload rejects the whole file over it, so the row has to ship carrying that warning.
+// academic.student_section_enrollments for the period. (NRC1, A1B) is deliberately missing: A1B is
+// still a matriculado (PERIOD_ENROLLED below), just not paired to NRC1.
 const ENROLLED: Array<[string, string]> = [
 	['NRC1', 'A1'],
 	['NRC1', 'A1C'],
@@ -138,6 +140,19 @@ const ENROLLED: Array<[string, string]> = [
 	['NRC13', 'A13'],
 	['NRC14', 'A14'],
 ];
+
+// academic.enrolled_students for the period. A1E is absent from both this and ENROLLED (never
+// matriculated); A1F IS matriculado but, like A1B, absent from ENROLLED -- split by IN_STUDY_PLAN.
+const PERIOD_ENROLLED: string[] = [
+	...new Set(ENROLLED.map(([, student]) => student)),
+	'A1B',
+	'A1F',
+];
+
+// academic.study_plan_courses pairs, pinned to the student's own plan revision. A1B: course IS on
+// their plan, so their grade still ships flagged. A1F: same shape but course is NOT on their plan
+// (absent here too), so it is dropped entirely instead.
+const IN_STUDY_PLAN: Array<[string, string]> = [['NRC1', 'A1B']];
 
 interface ExportedRow {
 	sectionCode: string;
@@ -329,6 +344,8 @@ async function loadFixtures(db: Client): Promise<void> {
 	const banner: Array<[string, string, string]> = [
 		['NRC1', '1', 'A1'],
 		['NRC1', '1', 'A1B'],
+		['NRC1', '1', 'A1E'],
+		['NRC1', '1', 'A1F'],
 		['NRC1', '1', 'A1C'],
 		['NRC1', '1', 'A1D'],
 		['NRC1B', '1', 'A1'],
@@ -382,6 +399,10 @@ async function loadFixtures(db: Client): Promise<void> {
 		{ tipo: 'TA', peso: 10, nota: 'XXX', numero: 5 },
 	]);
 	await notas('A1B', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '11.00', numero: 1 }]);
+	// A1E: never matriculated at all -- see PERIOD_ENROLLED above.
+	await notas('A1E', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '9.00', numero: 1 }]);
+	// A1F: matriculado, but NRC1's course is not on their study plan -- see IN_STUDY_PLAN above.
+	await notas('A1F', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '8.00', numero: 1 }]);
 	// Designated grade that is a known TG404 status instead of a number, and one whose text is not a
 	// status at all.
 	await notas('A1C', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: 'RET', numero: 1 }]);
@@ -727,43 +748,30 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 		],
 		['R8 student with no Banner record -> empty career', of('NRC7|A7')?.careerCode === ''],
 		[
-			'R5 a student the app has not enrolled is flagged',
-			has('NRC1|A1B', GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED) &&
-				!has('NRC1|A1', GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED),
+			'R5a a student the app has not matriculated for the period at all is dropped entirely',
+			of('NRC1|A1E') === undefined,
+		],
+		[
+			'R5b a matriculado missing from THIS section, course on their plan, still ships, flagged',
+			has('NRC1|A1B', GRADE_RC_OBSERVATIONS.STUDENT_NOT_IN_SECTION) &&
+				!has('NRC1|A1', GRADE_RC_OBSERVATIONS.STUDENT_NOT_IN_SECTION),
+		],
+		[
+			'R5c a matriculado missing from THIS section, course NOT on their plan, is dropped entirely',
+			of('NRC1|A1F') === undefined,
 		],
 	];
 }
 
 // The worksheet split used to be a WHERE on the durable child table (readPage); that table is gone
 // (see ADR-004), so the split now happens client-side on the same in-memory array the real
-// generation collects. This script mirrors that: one unfiltered page-through of the temp table,
-// then partition by hasObservations locally -- what is checked is that the partition is disjoint
-// and adds up to the whole export, the same property the old two-query version checked.
-async function verifySplit(
-	db: Client,
-	params: unknown[],
-	rows: ExportedRow[],
-): Promise<Array<[string, boolean]>> {
-	await db.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
-	await db.query(MATERIALIZE_GRADES_RC_SQL, params);
-	await db.query(INDEX_GRADES_RC_TEMP_SQL);
-
-	type MaterializedRow = ExportedRow & { exportSeq: string; hasObservations: boolean };
-	const all: MaterializedRow[] = [];
-	let lastSeq = '0';
-	for (;;) {
-		const { rows: pageRows } = await db.query<MaterializedRow>(READ_GRADES_RC_ALL_PAGE_SQL, [
-			lastSeq,
-			2,
-		]);
-		if (pageRows.length === 0) break;
-		all.push(...pageRows);
-		lastSeq = pageRows[pageRows.length - 1].exportSeq;
-	}
-
+// generation collects. What is checked is that the partition is disjoint and adds up to the whole
+// export, the same property the old two-query version checked. Operates on the already-paginated
+// rows from main() -- no DB round trip of its own.
+function verifySplit(rows: MaterializedRow[]): Array<[string, boolean]> {
 	const key = (row: ExportedRow) => `${row.sectionCode}|${row.studentCode}`;
-	const clean = all.filter((r) => !r.hasObservations);
-	const review = all.filter((r) => r.hasObservations);
+	const clean = rows.filter((r) => !r.hasObservations);
+	const review = rows.filter((r) => r.hasObservations);
 	const cleanKeys = new Set(clean.map(key));
 
 	return [
@@ -778,6 +786,42 @@ async function verifySplit(
 		['R9 the halves are disjoint', !review.some((r) => cleanKeys.has(key(r)))],
 		['R9 the halves add up to the whole export', clean.length + review.length === rows.length],
 	];
+}
+
+type MaterializedRow = ExportedRow & { exportSeq: string; hasObservations: boolean };
+
+async function readAllPages(db: Client): Promise<MaterializedRow[]> {
+	const all: MaterializedRow[] = [];
+	let lastSeq = '0';
+	for (;;) {
+		const { rows: pageRows } = await db.query<MaterializedRow>(READ_GRADES_RC_ALL_PAGE_SQL, [
+			lastSeq,
+			2,
+		]);
+		if (pageRows.length === 0) break;
+		all.push(...pageRows);
+		lastSeq = pageRows[pageRows.length - 1].exportSeq;
+	}
+	return all;
+}
+
+// Mirrors GradesRcExportRepository.resolveInStudyPlanRescues, but answers the membership check from
+// the fixture's own IN_STUDY_PLAN pairs instead of a real STUDY_PLAN_MEMBERSHIP_FOR_PAIRS_SQL call:
+// that query reads academic.* on the MAIN datasource, which this throwaway (raw-only) database never
+// sets up. GRADES_RC_SQL's notInSection candidates and PRUNE_GRADES_RC_UNRESOLVED_SQL's prune both
+// still run for real -- only the membership answer itself is a fixture-driven stand-in.
+async function resolveInStudyPlanRescues(db: Client): Promise<void> {
+	const { rows: candidates } = await db.query<{ sectionCode: string; studentCode: string }>(
+		NOT_IN_SECTION_CANDIDATES_SQL,
+	);
+	const inStudyPlan = new Set(IN_STUDY_PLAN.map(([section, student]) => `${section}|${student}`));
+	const matched = candidates.filter((c) => inStudyPlan.has(`${c.sectionCode}|${c.studentCode}`));
+
+	await db.query(PRUNE_GRADES_RC_UNRESOLVED_SQL, [
+		matched.map((m) => m.sectionCode),
+		matched.map((m) => m.studentCode),
+	]);
+	await db.query(DROP_NOT_IN_SECTION_COLUMN_SQL);
 }
 
 async function main(): Promise<void> {
@@ -803,13 +847,21 @@ async function main(): Promise<void> {
 			Object.keys(PROGRAM_CAREER_MAP),
 			Object.values(PROGRAM_CAREER_MAP),
 			QUALIFICATION_STATUSES.NR,
+			PERIOD_ENROLLED,
 		];
-		const { rows } = await db.query<ExportedRow>(GRADES_RC_SQL, params);
+
+		await db.query(`DROP TABLE IF EXISTS ${GRADES_RC_TEMP_TABLE}`);
+		await db.query(MATERIALIZE_GRADES_RC_SQL, params);
+		await resolveInStudyPlanRescues(db);
+		await db.query(INDEX_GRADES_RC_TEMP_SQL);
+		await db.query(`ANALYZE ${GRADES_RC_TEMP_TABLE}`);
+
+		const rows = await readAllPages(db);
 
 		console.table(
 			rows.map((row) => ({ ...row, observations: (row.observations ?? []).join(',') })),
 		);
-		const results = [...assertions(rows), ...(await verifySplit(db, params, rows))];
+		const results = [...assertions(rows), ...verifySplit(rows)];
 		for (const [label, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}`);
 
 		const failed = results.filter(([, ok]) => !ok).length;

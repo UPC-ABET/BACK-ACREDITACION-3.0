@@ -65,6 +65,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: docker-compose.prod.yml
           target: /var/www/apps/sys_acc_back
+          overwrite: true
 
       - name: Pull image & restart on server
         uses: appleboy/ssh-action@v1.2.0

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ReportBarChart } from './report-chart.types';
+import type { ReportBarChart, ReportChartSeries } from './report-chart.types';
 import { escapeHtml } from './report.utils';
 
 const CHART_WIDTH = 960;
@@ -8,6 +8,11 @@ const MARGIN = { top: 35, right: 20, left: 65 };
 const GRID_LINES = 5;
 const CATEGORY_LINE_HEIGHT = 14;
 const LEGEND_HEIGHT = 34;
+const X_AXIS_TITLE_HEIGHT = 30;
+const LEGEND_SWATCH_GAP = 18;
+const LEGEND_ITEM_GAP = 24;
+const LEGEND_FONT_SIZE = 12;
+const LEGEND_GLYPH_RATIO = 0.6;
 
 @Injectable()
 export class ReportChartService {
@@ -23,7 +28,9 @@ export class ReportChartService {
 		const categoryLines = chart.categories.map((category) => wrapLabel(category, 20));
 		const maximumCategoryLines = Math.max(...categoryLines.map((lines) => lines.length));
 		const categoryHeight = maximumCategoryLines * CATEGORY_LINE_HEIGHT + 24;
-		const chartHeight = MARGIN.top + PLOT_HEIGHT + categoryHeight + LEGEND_HEIGHT;
+		const xAxisTitleHeight = chart.xAxisLabel ? X_AXIS_TITLE_HEIGHT : 0;
+		const chartHeight =
+			MARGIN.top + PLOT_HEIGHT + categoryHeight + xAxisTitleHeight + LEGEND_HEIGHT;
 		const groupWidth = plotWidth / chart.categories.length;
 		const groupPadding = Math.min(18, groupWidth * 0.18);
 		const barGap = Math.min(5, groupWidth * 0.04);
@@ -45,18 +52,27 @@ export class ReportChartService {
 		const bars = chart.categories
 			.map((category, categoryIndex) => {
 				const groupX = MARGIN.left + categoryIndex * groupWidth;
-				const categoryBars = chart.series
-					.map((series, seriesIndex) => {
-						const value = safeValue(series.values[categoryIndex]);
-						const height = (value / axisMaximum) * PLOT_HEIGHT;
-						const x = groupX + groupPadding + seriesIndex * (barWidth + barGap);
-						const y = MARGIN.top + PLOT_HEIGHT - height;
-						return `
-							<rect x="${x}" y="${y}" width="${barWidth}" height="${height}" fill="${escapeHtml(series.color)}" rx="1" />
-							<text x="${x + barWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>
-						`;
-					})
-					.join('');
+				const categoryBars = chart.singleBarPerCategory
+					? renderSingleBar(
+							chart.series,
+							categoryIndex,
+							groupX,
+							groupPadding,
+							barsWidth,
+							axisMaximum,
+						)
+					: chart.series
+							.map((series, seriesIndex) => {
+								const value = safeValue(series.values[categoryIndex]);
+								const height = (value / axisMaximum) * PLOT_HEIGHT;
+								const x = groupX + groupPadding + seriesIndex * (barWidth + barGap);
+								const y = MARGIN.top + PLOT_HEIGHT - height;
+								return `
+									<rect x="${x}" y="${y}" width="${barWidth}" height="${height}" fill="${escapeHtml(series.color)}" rx="1" />
+									<text x="${x + barWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>
+								`;
+							})
+							.join('');
 
 				const labelX = groupX + groupWidth / 2;
 				const labelY = MARGIN.top + PLOT_HEIGHT + 20;
@@ -73,14 +89,20 @@ export class ReportChartService {
 			})
 			.join('');
 
-		const legendItemWidth = plotWidth / chart.series.length;
+		const legendItemWidths = chart.series.map(
+			(series) =>
+				LEGEND_SWATCH_GAP + estimateTextWidth(series.label, LEGEND_FONT_SIZE) + LEGEND_ITEM_GAP,
+		);
+		const legendWidth = legendItemWidths.reduce((sum, width) => sum + width, 0) - LEGEND_ITEM_GAP;
 		const legendY = chartHeight - 16;
+		let legendX = MARGIN.left + Math.max(0, (plotWidth - legendWidth) / 2);
 		const legend = chart.series
 			.map((series, index) => {
-				const x = MARGIN.left + index * legendItemWidth;
+				const x = legendX;
+				legendX += legendItemWidths[index];
 				return `
 					<rect x="${x}" y="${legendY - 10}" width="12" height="12" fill="${escapeHtml(series.color)}" />
-					<text x="${x + 18}" y="${legendY}" class="report-chart__legend">${escapeHtml(series.label)}</text>
+					<text x="${x + LEGEND_SWATCH_GAP}" y="${legendY}" class="report-chart__legend">${escapeHtml(series.label)}</text>
 				`;
 			})
 			.join('');
@@ -90,6 +112,9 @@ export class ReportChartService {
 			: '';
 		const yAxisLabel = chart.yAxisLabel
 			? `<text transform="translate(16 ${MARGIN.top + PLOT_HEIGHT / 2}) rotate(-90)" class="report-chart__axis-title" text-anchor="middle">${escapeHtml(chart.yAxisLabel)}</text>`
+			: '';
+		const xAxisLabel = chart.xAxisLabel
+			? `<text x="${MARGIN.left + plotWidth / 2}" y="${MARGIN.top + PLOT_HEIGHT + categoryHeight + 12}" class="report-chart__axis-title" text-anchor="middle">${escapeHtml(chart.xAxisLabel)}</text>`
 			: '';
 
 		return `
@@ -101,6 +126,7 @@ export class ReportChartService {
 					<line x1="${MARGIN.left}" y1="${MARGIN.top}" x2="${MARGIN.left}" y2="${MARGIN.top + PLOT_HEIGHT}" class="report-chart__axis" />
 					<line x1="${MARGIN.left}" y1="${MARGIN.top + PLOT_HEIGHT}" x2="${CHART_WIDTH - MARGIN.right}" y2="${MARGIN.top + PLOT_HEIGHT}" class="report-chart__axis" />
 					${bars}
+					${xAxisLabel}
 					${legend}
 				</svg>
 			</figure>
@@ -121,6 +147,37 @@ export class ReportChartService {
 						: 10 * magnitude;
 		return Math.ceil(maximum / step) * step;
 	}
+}
+
+/** Same approximation approach as report.utils.ts's fitFontSizePt: no real metrics at build
+ *  time, so width ≈ characters x glyphRatio x fontSize. Used only to center the legend. */
+function estimateTextWidth(text: string, fontSizePx: number): number {
+	return text.length * fontSizePx * LEGEND_GLYPH_RATIO;
+}
+
+/**
+ * One bar for the whole category instead of one per series — for charts where at most one series
+ * is ever non-zero per category (e.g. a raw-score histogram bucketed into acceptance bands): the
+ * bar takes that series' value and color, so the legend still explains the coloring without
+ * wasting space on empty slots for the other series.
+ */
+function renderSingleBar(
+	series: ReportChartSeries[],
+	categoryIndex: number,
+	groupX: number,
+	groupPadding: number,
+	barsWidth: number,
+	axisMaximum: number,
+): string {
+	const active = series.find((s) => safeValue(s.values[categoryIndex]) > 0) ?? series[0];
+	const value = safeValue(active?.values[categoryIndex]);
+	const height = (value / axisMaximum) * PLOT_HEIGHT;
+	const x = groupX + groupPadding;
+	const y = MARGIN.top + PLOT_HEIGHT - height;
+	return `
+		<rect x="${x}" y="${y}" width="${barsWidth}" height="${height}" fill="${escapeHtml(active?.color ?? '#999')}" rx="1" />
+		<text x="${x + barsWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>
+	`;
 }
 
 function safeValue(value: number | undefined): number {

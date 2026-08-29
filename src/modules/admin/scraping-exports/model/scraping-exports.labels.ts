@@ -177,8 +177,8 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 				'REQUIERE ATENCIÓN. El origen no reporta nota ni estado para esta evaluación: no hay nada que indique que el alumno la haya rendido ni por qué no. Se muestra 0 con estado "NR" como valor por defecto, no porque el sistema de origen lo diga. Revisar el caso antes de cargar.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE]:
 				'REQUIERE ATENCIÓN. El tipo de nota no está registrado en el sistema. Registrarlo o configurar el tipo de nota del curso, y volver a descargar.',
-			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED]:
-				'REQUIERE ATENCIÓN. El alumno no figura matriculado en esta sección. Cargar antes matriculados y alumno-sección del periodo, y volver a descargar.',
+			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_IN_SECTION]:
+				'REQUIERE ATENCIÓN. El alumno está matriculado en el periodo, pero no figura registrado en esta sección (alumno-sección). Cargar el archivo de alumno-sección del periodo y volver a descargar.',
 		},
 	},
 	en: {
@@ -220,8 +220,6 @@ export const gradesRcDescriptiveLabels: Record<string, DescriptiveSheetLabels> =
 				'NEEDS ATTENTION. The source reports neither a grade nor a status for this evaluation: nothing indicates that the student sat it, or why they did not. It is shown as 0 with status "NR" as a default, not because the source system says so. Review the case before uploading.',
 			[GRADE_RC_OBSERVATIONS.UNREGISTERED_GRADE_TYPE]:
 				"NEEDS ATTENTION. The grade type is not registered in the system. Register it or configure the course's grade type, and download again.",
-			[GRADE_RC_OBSERVATIONS.STUDENT_NOT_ENROLLED]:
-				"NEEDS ATTENTION. The student is not recorded as enrolled in this section. Upload the period's enrolled-students and student-section files first, and download again.",
 		},
 	},
 };

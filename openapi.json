@@ -10029,6 +10029,27 @@
 						"schema": { "example": "section", "type": "string", "enum": ["course", "section"] }
 					},
 					{
+						"name": "courseId",
+						"required": false,
+						"in": "query",
+						"description": "Filter by course (curso)",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"name": "courseSectionId",
+						"required": false,
+						"in": "query",
+						"description": "Filter by course section (NRC)",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
+						"name": "hideCourseBreakdown",
+						"required": false,
+						"in": "query",
+						"description": "When true, omits the \"Encuestas por curso\" breakdown table entirely (curso = \"Agrupar\")",
+						"schema": { "example": false, "type": "boolean" }
+					},
+					{
 						"name": "X-Academic-Period-Id",
 						"in": "header",
 						"description": "Active academic period scope id",
@@ -10069,6 +10090,62 @@
 					"500": { "description": "Internal server error" }
 				},
 				"summary": "Generate the LCFC perception-by-outcome PDF report (all sedes + one per sede). With no program/commission/campus filter, returns a per-program completion overview PDF instead",
+				"tags": ["LCFC - End-of-Cycle Achievement Survey"]
+			}
+		},
+		"/lcfc/outcomes/list": {
+			"post": {
+				"operationId": "LcfcController_outcomesList",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/ListLcfcOutcomesDto" } }
+					}
+				},
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "List outcomes for a program/commission (for the \"Percepción por Outcome\" filter)",
+				"tags": ["LCFC - End-of-Cycle Achievement Survey"]
+			}
+		},
+		"/lcfc/report/perception-by-outcome": {
+			"post": {
+				"operationId": "LcfcController_reportPerceptionByOutcome",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/LcfcOutcomeReportDto" }
+						}
+					}
+				},
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Generate the LCFC \"Percepción por Outcome\" PDF: one chart + a shared results table, one row/mini-chart per course found under the given program/commission/outcome",
 				"tags": ["LCFC - End-of-Cycle Achievement Survey"]
 			}
 		},
@@ -12156,6 +12233,334 @@
 				},
 				"summary": "Buscar tokens de API",
 				"tags": ["IAM - API Tokens"]
+			}
+		},
+		"/admin-iam-integration-keys/issue": {
+			"post": {
+				"operationId": "IntegrationKeyController_issue",
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/IssueIntegrationKeyDto" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Resource created successfully\n\nKey issued. The plaintext `key` is returned exactly once in this response.",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IssuedIntegrationKeyDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Emitir clave de cifrado de integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-integration-keys/rotate/{apiTokenId}": {
+			"post": {
+				"operationId": "IntegrationKeyController_rotate",
+				"parameters": [
+					{
+						"name": "apiTokenId",
+						"required": true,
+						"in": "path",
+						"description": "apiTokenId",
+						"schema": { "type": "number" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Key rotated. The new plaintext `key` is returned exactly once in this response.",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IssuedIntegrationKeyDto" }
+							}
+						}
+					},
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Rotar clave de cifrado de integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-integration-keys/get-by-api-token/{apiTokenId}": {
+			"get": {
+				"operationId": "IntegrationKeyController_getByApiToken",
+				"parameters": [
+					{
+						"name": "apiTokenId",
+						"required": true,
+						"in": "path",
+						"description": "apiTokenId",
+						"schema": { "type": "number" }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Obtener metadata de la clave de una integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-integration-keys/get-all": {
+			"get": {
+				"operationId": "IntegrationKeyController_getAll",
+				"parameters": [],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Listar claves de integración",
+				"tags": ["IAM - Integration Keys"]
+			}
+		},
+		"/admin-iam-portfolio-sso/config": {
+			"get": {
+				"operationId": "PortfolioSsoController_getConfig",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation\n\nNever carries plaintext or ciphertext apiKey — only whether one is set.",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PortfolioSsoConfigSummaryDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Obtener configuración de SSO Portfolio",
+				"tags": ["IAM - Portfolio SSO"]
+			},
+			"put": {
+				"operationId": "PortfolioSsoController_upsertConfig",
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/UpsertPortfolioSsoConfigDto" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PortfolioSsoConfigSummaryDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Actualizar configuración de SSO Portfolio",
+				"tags": ["IAM - Portfolio SSO"]
+			}
+		},
+		"/admin-iam-portfolio-sso/link": {
+			"get": {
+				"operationId": "PortfolioSsoController_getLink",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation\n\nA freshly-signed, single-use SSO link into PORTFOLIO-AUDIT.",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/PortfolioSsoLinkResponseDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Obtener enlace de SSO a Portfolio",
+				"tags": ["IAM - Portfolio SSO"]
+			}
+		},
+		"/integrations/health/ping": {
+			"get": {
+				"operationId": "IntegrationsHealthController_ping",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation\n\n`data` is encrypted for a machine caller — see the Integration Keys module for the wire format.",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/PingResponseDto" } }
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "Health check for external integration callers",
+				"tags": ["Integrations - Health"]
+			}
+		},
+		"/integrations/academic-sync/periods": {
+			"get": {
+				"operationId": "AcademicSyncController_getPeriods",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/AcademicSyncPeriodDto" }
+								}
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "List academic periods for external mirroring",
+				"tags": ["Integrations - Academic Sync"]
+			}
+		},
+		"/integrations/academic-sync/campuses": {
+			"get": {
+				"operationId": "AcademicSyncController_getCampuses",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/AcademicSyncCampusDto" }
+								}
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "List campuses for external mirroring",
+				"tags": ["Integrations - Academic Sync"]
+			}
+		},
+		"/integrations/academic-sync/courses": {
+			"get": {
+				"operationId": "AcademicSyncController_getCourses",
+				"parameters": [
+					{
+						"name": "academicPeriodId",
+						"required": true,
+						"in": "query",
+						"description": "Academic period id to scope the query to",
+						"schema": { "example": 12, "type": "number" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/AcademicSyncCourseDto" }
+								}
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "List study plan courses, with sections and commission, for an academic period",
+				"tags": ["Integrations - Academic Sync"]
+			}
+		},
+		"/integrations/academic-sync/org-chart": {
+			"get": {
+				"operationId": "AcademicSyncController_getOrgChart",
+				"parameters": [
+					{
+						"name": "academicPeriodId",
+						"required": true,
+						"in": "query",
+						"description": "Academic period id to scope the query to",
+						"schema": { "example": 12, "type": "number" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": { "$ref": "#/components/schemas/AcademicSyncOrgChartNodeDto" }
+								}
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "List org chart nodes with assigned staff for an academic period",
+				"tags": ["Integrations - Academic Sync"]
+			}
+		},
+		"/integrations/academic-sync/users": {
+			"get": {
+				"operationId": "AcademicSyncController_getUsers",
+				"parameters": [
+					{
+						"name": "page",
+						"required": false,
+						"in": "query",
+						"schema": { "minimum": 1, "default": 1, "example": 1, "type": "number" }
+					},
+					{
+						"name": "pageSize",
+						"required": false,
+						"in": "query",
+						"schema": {
+							"minimum": 1,
+							"maximum": 200,
+							"default": 20,
+							"example": 20,
+							"type": "number"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful operation",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/AcademicSyncUsersPageDto" }
+							}
+						}
+					},
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"security": [{ "apiKey": [] }],
+				"summary": "List the organization-wide user directory",
+				"tags": ["Integrations - Academic Sync"]
 			}
 		},
 		"/banner/session/status": {
@@ -16534,6 +16939,16 @@
 						"example": "TODOS",
 						"description": "Study modality label shown in the report header (display only)"
 					},
+					"courseId": {
+						"type": "number",
+						"example": 10,
+						"description": "Filter by course (curso). When set, the report header shows the course."
+					},
+					"courseSectionId": {
+						"type": "number",
+						"example": 55,
+						"description": "Filter by course section (NRC). When set, the report header also shows the NRC and professor."
+					},
 					"lang": { "type": "string", "example": "es", "description": "Report language: es | en" }
 				}
 			},
@@ -17072,8 +17487,36 @@
 				"type": "object",
 				"properties": {
 					"programId": { "type": "number", "example": 1 },
-					"campusId": { "type": "number", "example": 1 }
+					"campusId": { "type": "number", "example": 1 },
+					"courseId": { "type": "number", "example": 1, "description": "Filter by course (curso)" },
+					"courseSectionId": {
+						"type": "number",
+						"example": 1,
+						"description": "Filter by course section (NRC)"
+					}
 				}
+			},
+			"ListLcfcOutcomesDto": {
+				"type": "object",
+				"properties": {
+					"programId": { "type": "number", "example": 1, "description": "Program/Carrera ID" },
+					"commissionId": { "type": "number", "example": 1, "description": "Commission ID" }
+				},
+				"required": ["programId", "commissionId"]
+			},
+			"LcfcOutcomeReportDto": {
+				"type": "object",
+				"properties": {
+					"programId": { "type": "number", "example": 1, "description": "Program/Carrera ID" },
+					"commissionId": { "type": "number", "example": 1, "description": "Commission ID" },
+					"outcomeId": {
+						"type": "number",
+						"example": 1,
+						"description": "Outcome ID. Omit to generate one PDF per outcome configured for the commission."
+					},
+					"lang": { "type": "string", "example": "es", "description": "Report language: es | en" }
+				},
+				"required": ["programId", "commissionId"]
 			},
 			"CreateProjectEvaluatorDto": {
 				"type": "object",
@@ -17720,7 +18163,8 @@
 							"TESTS",
 							"LOADS",
 							"PORTFOLIO",
-							"SCRAPPING"
+							"SCRAPPING",
+							"INTEGRATIONS"
 						]
 					},
 					"action": {
@@ -17775,6 +18219,226 @@
 					"name": { "type": "string", "example": "Integration X" },
 					"isActive": { "type": "boolean", "example": true }
 				}
+			},
+			"IssueIntegrationKeyDto": {
+				"type": "object",
+				"properties": { "apiTokenId": { "type": "number", "example": 1 } },
+				"required": ["apiTokenId"]
+			},
+			"IssuedIntegrationKeyDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number" },
+					"apiTokenId": { "type": "number" },
+					"issuedByUserId": { "type": "number" },
+					"createdAt": { "format": "date-time", "type": "string" },
+					"updatedAt": { "format": "date-time", "type": "string" },
+					"key": {
+						"type": "string",
+						"description": "Plaintext key material (64 hex chars = 32 bytes), returned exactly once."
+					}
+				},
+				"required": ["id", "apiTokenId", "issuedByUserId", "createdAt", "updatedAt", "key"]
+			},
+			"PortfolioSsoConfigSummaryDto": {
+				"type": "object",
+				"properties": {
+					"baseUrl": { "type": "string", "example": "https://portfolio.example.edu" },
+					"configured": {
+						"type": "boolean",
+						"description": "Whether a shared secret has been configured."
+					},
+					"updatedAt": { "type": "object", "nullable": true }
+				},
+				"required": ["baseUrl", "configured", "updatedAt"]
+			},
+			"UpsertPortfolioSsoConfigDto": {
+				"type": "object",
+				"properties": {
+					"baseUrl": { "type": "string", "example": "https://portfolio.example.edu" },
+					"apiKey": {
+						"type": "string",
+						"description": "Shared secret with PORTFOLIO-AUDIT, at least 32 characters."
+					}
+				},
+				"required": ["baseUrl", "apiKey"]
+			},
+			"PortfolioSsoLinkResponseDto": {
+				"type": "object",
+				"properties": {
+					"url": {
+						"type": "string",
+						"description": "Freshly-signed SSO link into PORTFOLIO-AUDIT."
+					}
+				},
+				"required": ["url"]
+			},
+			"PingResponseDto": {
+				"type": "object",
+				"properties": { "ok": { "type": "boolean" }, "timestamp": { "type": "string" } },
+				"required": ["ok", "timestamp"]
+			},
+			"AcademicSyncPeriodDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": { "type": "string", "example": "2026-1" },
+					"startDate": {
+						"format": "date-time",
+						"type": "string",
+						"example": "2026-03-01T00:00:00.000Z"
+					},
+					"endDate": {
+						"format": "date-time",
+						"type": "string",
+						"example": "2026-07-15T00:00:00.000Z"
+					},
+					"year": { "type": "number", "example": 2026 },
+					"modalityTypeId": { "type": "number", "example": 1 }
+				},
+				"required": ["id", "code", "startDate", "endDate", "year", "modalityTypeId"]
+			},
+			"AcademicSyncCampusDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": { "type": "string", "example": "LIM" },
+					"name": { "type": "object", "example": { "es": "Campus Lima", "en": "Lima Campus" } }
+				},
+				"required": ["id", "code", "name"]
+			},
+			"AcademicSyncProgramRefDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": { "type": "string", "example": "ISW" },
+					"name": {
+						"type": "object",
+						"example": { "es": "Ingenieria de Software", "en": "Software Engineering" }
+					}
+				},
+				"required": ["id", "code", "name"]
+			},
+			"AcademicSyncCommissionRefDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": { "type": "string", "example": "EAC" },
+					"name": { "type": "object", "example": { "es": "Comision EAC", "en": "EAC Commission" } }
+				},
+				"required": ["id", "code", "name"]
+			},
+			"AcademicSyncCampusRefDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": { "type": "string", "example": "LIM" },
+					"name": { "type": "object", "example": { "es": "Campus Lima", "en": "Lima Campus" } }
+				},
+				"required": ["id", "code", "name"]
+			},
+			"AcademicSyncSectionDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 501 },
+					"sectionCode": { "type": "string", "example": "4321" },
+					"campus": {
+						"nullable": true,
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncCampusRefDto" }]
+					}
+				},
+				"required": ["id", "sectionCode", "campus"]
+			},
+			"AcademicSyncCourseDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 77 },
+					"code": { "type": "string", "example": "CS301" },
+					"name": {
+						"type": "object",
+						"example": { "es": "Estructuras de Datos", "en": "Data Structures" }
+					},
+					"description": {
+						"type": "object",
+						"example": { "es": "Descripcion del curso", "en": "Course description" }
+					},
+					"learningOutcome": {
+						"type": "object",
+						"example": { "es": "Resultado de aprendizaje", "en": "Learning outcome" }
+					},
+					"program": { "$ref": "#/components/schemas/AcademicSyncProgramRefDto" },
+					"commission": {
+						"nullable": true,
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncCommissionRefDto" }]
+					},
+					"sections": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/AcademicSyncSectionDto" }
+					}
+				},
+				"required": [
+					"id",
+					"code",
+					"name",
+					"description",
+					"learningOutcome",
+					"program",
+					"commission",
+					"sections"
+				]
+			},
+			"AcademicSyncOrgChartStaffDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 10 },
+					"firstName": { "type": "string", "example": "Maria" },
+					"lastName": { "type": "string", "example": "Lopez" },
+					"email": { "type": "object", "example": "maria.lopez@upc.edu.pe", "nullable": true }
+				},
+				"required": ["id", "firstName", "lastName", "email"]
+			},
+			"AcademicSyncOrgChartNodeDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 100 },
+					"parentId": { "type": "object", "example": 5, "nullable": true },
+					"entityType": { "type": "object", "example": "COURSE", "nullable": true },
+					"entityCode": { "type": "object", "example": 77, "nullable": true },
+					"staff": {
+						"nullable": true,
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncOrgChartStaffDto" }]
+					}
+				},
+				"required": ["id", "parentId", "entityType", "entityCode", "staff"]
+			},
+			"AcademicSyncUserDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"documentCode": { "type": "object", "example": 12345678, "nullable": true },
+					"firstName": { "type": "string", "example": "Maria" },
+					"lastName": { "type": "string", "example": "Lopez" },
+					"email": { "type": "string", "example": "maria.lopez@upc.edu.pe" },
+					"phone": { "type": "object", "example": "+51999999999", "nullable": true }
+				},
+				"required": ["id", "documentCode", "firstName", "lastName", "email", "phone"]
+			},
+			"AcademicSyncUsersPageDto": {
+				"type": "object",
+				"properties": {
+					"items": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/AcademicSyncUserDto" }
+					},
+					"total": { "type": "number", "example": 532 },
+					"page": { "type": "number", "example": 1 },
+					"pageSize": { "type": "number", "example": 20 },
+					"totalPages": { "type": "number", "example": 27 }
+				},
+				"required": ["items", "total", "page", "pageSize", "totalPages"]
 			},
 			"RunScrapeDto": {
 				"type": "object",
