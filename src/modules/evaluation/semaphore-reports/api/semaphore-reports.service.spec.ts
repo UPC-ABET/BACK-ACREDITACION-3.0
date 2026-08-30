@@ -81,6 +81,7 @@ const makeService = (
 			academicPeriodId: number,
 			instrument: 'rc' | 'rv',
 		) => Promise<Download>;
+		generateRcZipDownload: (dto: SemaphoreFilterDto, academicPeriodId: number) => Promise<Download>;
 		generateRcPdf: (dto: SemaphoreFilterDto, academicPeriodId: number) => Promise<Download>;
 		generateRvPdf: (dto: SemaphoreFilterDto, academicPeriodId: number) => Promise<Download>;
 		generateRcExcel: (dto: SemaphoreFilterDto, academicPeriodId: number) => Promise<Download>;
@@ -457,7 +458,7 @@ describe('SemaphoreReportsService', () => {
 
 				const result = await service.generatePdfDownload({}, 10, 'rc');
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es', null);
 				expect(reportGeneratorMocks.generateDocument).toHaveBeenCalledTimes(1);
 				const [document, filename] = reportGeneratorMocks.generateDocument.mock.calls[0];
 				expect(filename).toBe('Reporte_Control_RC.pdf');
@@ -482,7 +483,7 @@ describe('SemaphoreReportsService', () => {
 					'rc',
 				);
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [2], 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [2], 'es', null);
 				const [document, filename] = reportGeneratorMocks.generateDocument.mock.calls[0];
 				expect(filename).toBe('Reporte_Control_RC_ARE.pdf');
 				expect(campusHeaderValue(document)).toBe('Arequipa');
@@ -568,7 +569,7 @@ describe('SemaphoreReportsService', () => {
 
 				const result = await service.generateExcelDownload({}, 10, 'rc');
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es', null);
 				expect(result.contentType).toBe(
 					'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 				);
@@ -586,7 +587,7 @@ describe('SemaphoreReportsService', () => {
 					'rc',
 				);
 
-				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [3], 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, [3], 'es', null);
 				expect(result.filename).toMatch(/^Reporte_Control_RC_TRU_\d+\.xlsx$/);
 			});
 
@@ -606,9 +607,107 @@ describe('SemaphoreReportsService', () => {
 			});
 		});
 
+		describe('generateRcZipDownload', () => {
+			const makeZipRepositoryMocks = (outcomes: { id: number; outcomeCode: string }[]) => ({
+				...makeRepositoryMocks([detailRow(1)]),
+				getRcOutcomes: jest.fn().mockResolvedValue(outcomes),
+			});
+
+			it('generates one PDF per active outcome of the commission when none are selected', async () => {
+				const repositoryMocks = makeZipRepositoryMocks([
+					{ id: 1, outcomeCode: '1' },
+					{ id: 2, outcomeCode: '2' },
+				]);
+				const reportGeneratorMocks = {
+					generateZip: jest
+						.fn()
+						.mockResolvedValue({ zip: Buffer.from('zip'), filename: 'Reporte_Control_RC.zip' }),
+				};
+				const service = makeService(repositoryMocks, reportGeneratorMocks);
+
+				const result = await service.generateRcZipDownload({} as SemaphoreFilterDto, 10);
+
+				expect(repositoryMocks.getRcOutcomes).toHaveBeenCalledWith(null, 'es');
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(2);
+				expect(repositoryMocks.getRcDetail).toHaveBeenNthCalledWith(1, 10, null, null, 'es', [1]);
+				expect(repositoryMocks.getRcDetail).toHaveBeenNthCalledWith(2, 10, null, null, 'es', [2]);
+				const [reports] = reportGeneratorMocks.generateZip.mock.calls[0];
+				expect(reports).toHaveLength(2);
+				expect(reports.map((r: { filename: string }) => r.filename)).toEqual([
+					'Reporte_Control_RC_1.pdf',
+					'Reporte_Control_RC_2.pdf',
+				]);
+				expect(result).toEqual({
+					buffer: Buffer.from('zip'),
+					filename: 'Reporte_Control_RC.zip',
+					contentType: 'application/zip',
+				});
+			});
+
+			it("narrows to the caller's selected outcome ids, dropping ones outside the commission", async () => {
+				const repositoryMocks = makeZipRepositoryMocks([
+					{ id: 1, outcomeCode: '1' },
+					{ id: 2, outcomeCode: '2' },
+				]);
+				const reportGeneratorMocks = {
+					generateZip: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'z' }),
+				};
+				const service = makeService(repositoryMocks, reportGeneratorMocks);
+
+				// 99 doesn't belong to this commission's outcome list -- silently dropped, not an error.
+				await service.generateRcZipDownload(
+					{ outcomeIds: [2, 99] } as unknown as SemaphoreFilterDto,
+					10,
+				);
+
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledTimes(1);
+				expect(repositoryMocks.getRcDetail).toHaveBeenCalledWith(10, null, null, 'es', [2]);
+			});
+
+			it('skips an outcome with no data instead of failing the whole zip', async () => {
+				const repositoryMocks = makeZipRepositoryMocks([
+					{ id: 1, outcomeCode: '1' },
+					{ id: 2, outcomeCode: '2' },
+				]);
+				repositoryMocks.getRcDetail = jest
+					.fn()
+					.mockResolvedValueOnce([]) // outcome 1: no data
+					.mockResolvedValueOnce([detailRow(1)]); // outcome 2: has data
+				const reportGeneratorMocks = {
+					generateZip: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'z' }),
+				};
+				const service = makeService(repositoryMocks, reportGeneratorMocks);
+
+				await service.generateRcZipDownload({} as SemaphoreFilterDto, 10);
+
+				const [reports] = reportGeneratorMocks.generateZip.mock.calls[0];
+				expect(reports).toHaveLength(1);
+				expect(reports[0].filename).toBe('Reporte_Control_RC_2.pdf');
+			});
+
+			it('throws 404/noData when the commission has no active outcomes at all', async () => {
+				const repositoryMocks = makeZipRepositoryMocks([]);
+				const service = makeService(repositoryMocks);
+
+				await expect(
+					service.generateRcZipDownload({} as SemaphoreFilterDto, 10),
+				).rejects.toMatchObject({
+					status: HttpStatus.NOT_FOUND,
+					response: { errors: [semaphoreReportsValidationStrings.error.noData] },
+				});
+			});
+		});
+
 		describe('public entry points', () => {
 			it('dispatches RC/RV PDF and Excel requests to the right instrument and generator', async () => {
 				const service = makeService();
+				// RC's PDF download is one zip per commission (one PDF per outcome), RV's stays a
+				// single PDF -- see SemaphoreReportsService.generateRcZipDownload.
+				const rcZipSpy = jest.spyOn(service, 'generateRcZipDownload').mockResolvedValue({
+					buffer: Buffer.from('z'),
+					filename: 'z',
+					contentType: 'application/zip',
+				});
 				const pdfSpy = jest.spyOn(service, 'generatePdfDownload').mockResolvedValue({
 					buffer: Buffer.from('p'),
 					filename: 'p',
@@ -624,8 +723,8 @@ describe('SemaphoreReportsService', () => {
 				await service.generateRcExcel(dto, 10);
 				await service.generateRvExcel(dto, 10);
 
-				expect(pdfSpy).toHaveBeenNthCalledWith(1, dto, 10, 'rc');
-				expect(pdfSpy).toHaveBeenNthCalledWith(2, dto, 10, 'rv');
+				expect(rcZipSpy).toHaveBeenCalledWith(dto, 10);
+				expect(pdfSpy).toHaveBeenCalledWith(dto, 10, 'rv');
 				expect(excelSpy).toHaveBeenNthCalledWith(1, dto, 10, 'rc');
 				expect(excelSpy).toHaveBeenNthCalledWith(2, dto, 10, 'rv');
 			});

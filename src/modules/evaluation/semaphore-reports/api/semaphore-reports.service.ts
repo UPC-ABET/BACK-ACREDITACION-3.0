@@ -11,6 +11,7 @@ import {
 	SemaphoreLevelLegendRow,
 	MetadataRow,
 	SemaphoreCampusRow,
+	SemaphoreOutcomeIdRow,
 } from '../core/semaphore-reports.repository';
 import { SEMAPHORE_PDF_LABELS, SEMAPHORE_REPORT_STYLES } from './semaphore-pdf.theme';
 import { semaphoreReportsValidationStrings } from '../config/strings/semaphore-reports.validation';
@@ -92,7 +93,7 @@ export class SemaphoreReportsService {
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
 	): Promise<SemaphoreDownload> {
-		return this.generatePdfDownload(dto, academicPeriodId, 'rc');
+		return this.generateRcZipDownload(dto, academicPeriodId);
 	}
 
 	async generateRvPdf(
@@ -137,6 +138,88 @@ export class SemaphoreReportsService {
 			this.buildFilename(instrument, lang, plan.mode === 'single' ? plan.campus.code : undefined),
 		);
 		return { buffer: pdf, filename, contentType: 'application/pdf' };
+	}
+
+	/**
+	 * RC is generated one outcome at a time, so the download is always a zip: one PDF per outcome
+	 * -- the selected ones (`dto.outcomeIds`), or every active outcome of the selected commission
+	 * when none are given.
+	 */
+	private async generateRcZipDownload(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+	): Promise<SemaphoreDownload> {
+		const lang = (dto.lang ?? 'es') as ReportLanguage;
+		const plan = await this.resolveCampusPlan(dto.campusIds, lang);
+		const campusIds = plan.mode === 'single' ? [plan.campus.id] : null;
+		const campusCode = plan.mode === 'single' ? plan.campus.code : undefined;
+		const campusLabel =
+			plan.mode === 'single' ? plan.campus.name : SEMAPHORE_PDF_LABELS[lang].allCampuses;
+
+		const outcomes = await this.resolveRcOutcomes(dto);
+		if (outcomes.length === 0) this.throwNoData();
+
+		const reports: { document: ReportDocument; filename: string }[] = [];
+		for (const outcome of outcomes) {
+			const data = await this.fetchRenderDataForOutcome(dto, academicPeriodId, campusIds, [
+				outcome.id,
+			]);
+			// An outcome with no data for the selected scope (campus/period) is skipped rather than
+			// failing the whole zip -- the reader still gets every outcome that does have data.
+			if (!data) continue;
+			reports.push({
+				document: this.buildDocument(data, 'rc', lang, campusLabel, outcome.outcomeName),
+				filename: this.buildOutcomeFilename(outcome.outcomeCode, lang, campusCode),
+			});
+		}
+		if (reports.length === 0) this.throwNoData();
+
+		const { zip, filename } = await this.reportGenerator.generateZip(
+			reports,
+			this.buildRcZipFilename(lang, campusCode),
+		);
+		return { buffer: zip, filename, contentType: 'application/zip' };
+	}
+
+	/** The outcomes to generate one RC PDF per: the caller's selection, filtered down to (and
+	 *  ordered by) the commission's actual active outcomes -- an id that doesn't belong to it is
+	 *  silently dropped rather than producing an empty/garbage report for it. Every active outcome
+	 *  of the commission when the caller selects none. */
+	private async resolveRcOutcomes(dto: SemaphoreFilterDto): Promise<SemaphoreOutcomeIdRow[]> {
+		const all = await this.runQuery(() =>
+			this.repository.getRcOutcomes(dto.programCommissionId ?? null, dto.lang ?? 'es'),
+		);
+		if (!dto.outcomeIds?.length) return all;
+		const selected = new Set(dto.outcomeIds);
+		return all.filter((outcome) => selected.has(outcome.id));
+	}
+
+	/** Same shape as `fetchRenderData`, but returns `null` instead of throwing when this one
+	 *  outcome has no data -- `generateRcZipDownload` skips it instead of failing the whole zip. */
+	private async fetchRenderDataForOutcome(
+		dto: SemaphoreFilterDto,
+		academicPeriodId: number,
+		campusIds: number[] | null,
+		outcomeIds: number[],
+	): Promise<SemaphoreRenderReportDto | null> {
+		const { detailRows, summaryRows, screenRows } = await this.fetchRenderRows(
+			dto,
+			academicPeriodId,
+			'rc',
+			campusIds,
+			outcomeIds,
+		);
+		if (detailRows.length === 0) return null;
+		const [legendRows, metadata] = await this.fetchLegendAndMetadata(dto, academicPeriodId, 'rc');
+		return this.buildRenderReport(
+			detailRows,
+			summaryRows,
+			screenRows,
+			legendRows,
+			metadata,
+			(dto.lang ?? 'es') as ReportLanguage,
+			'rc',
+		);
 	}
 
 	/** Same campus-selection rules as `generatePdfDownload`, but rendering XLSX workbooks. */
@@ -310,12 +393,14 @@ export class SemaphoreReportsService {
 		);
 	}
 
-	/** The three heavy report queries (detail/summary/screen), run once. */
+	/** The three heavy report queries (detail/summary/screen), run once. `outcomeIds` is RC-only
+	 *  (see `generateRcZipDownload`); RV ignores it. */
 	private async fetchRenderRows(
 		dto: SemaphoreFilterDto,
 		academicPeriodId: number,
 		instrument: 'rc' | 'rv',
 		campusIds: number[] | null,
+		outcomeIds: number[] | null = null,
 	): Promise<{
 		detailRows: SemaphoreDetailRow[];
 		summaryRows: SemaphoreSummaryRow[];
@@ -333,9 +418,27 @@ export class SemaphoreReportsService {
 			Promise.all(
 				instrument === 'rc'
 					? ([
-							this.repository.getRcDetail(academicPeriodId, programCommissionId, campusIds, lang),
-							this.repository.getRcSummary(academicPeriodId, programCommissionId, campusIds, lang),
-							this.repository.getRcScreen(academicPeriodId, programCommissionId, campusIds, lang),
+							this.repository.getRcDetail(
+								academicPeriodId,
+								programCommissionId,
+								campusIds,
+								lang,
+								outcomeIds,
+							),
+							this.repository.getRcSummary(
+								academicPeriodId,
+								programCommissionId,
+								campusIds,
+								lang,
+								outcomeIds,
+							),
+							this.repository.getRcScreen(
+								academicPeriodId,
+								programCommissionId,
+								campusIds,
+								lang,
+								outcomeIds,
+							),
 						] as const)
 					: ([
 							this.repository.getRvDetail(
@@ -426,15 +529,41 @@ export class SemaphoreReportsService {
 		return codes.map((code) => ({ code, ...byOutcome.get(code)! }));
 	}
 
-	/** Aggregates red/yellow/green student counts per outcome for the PDF chart. */
-	private buildOutcomeChartData(
+	/** Sums red/yellow/green student counts per course across every campus in the (already
+	 *  single-outcome, see generateRcZipDownload) screen rows -- feeds the RC PDF chart, one
+	 *  course per category. */
+	private aggregateCourseCounts(
 		screenRows: SemaphoreCourseOutcomeRow[],
+	): { code: string; name: string; red: number; yellow: number; green: number; total: number }[] {
+		const byCourse = new Map<
+			string,
+			{ name: string; red: number; yellow: number; green: number; total: number }
+		>();
+		for (const r of screenRows) {
+			const entry = byCourse.get(r.courseCode) ?? {
+				name: r.courseName,
+				red: 0,
+				yellow: 0,
+				green: 0,
+				total: 0,
+			};
+			entry.red += Number(r.studentsRed);
+			entry.yellow += Number(r.studentsYellow);
+			entry.green += Number(r.studentsGreen);
+			entry.total += Number(r.totalStudents);
+			byCourse.set(r.courseCode, entry);
+		}
+		const codes = [...byCourse.keys()].sort(compareCodes);
+		return codes.map((code) => ({ code, ...byCourse.get(code)! }));
+	}
+
+	/** Acceptance-level series labelled with their score range, shared by both chart flavours. */
+	private buildLevelSeries(
+		entries: { red: number; yellow: number; green: number }[],
 		legend: SemaphoreLevelLegendDto[],
 		lang: ReportLanguage,
-		instrument: 'rc' | 'rv',
-	): SemaphoreChartData {
+	): SemaphoreChartData['series'] {
 		const L = SEMAPHORE_PDF_LABELS[lang];
-		const entries = this.aggregateOutcomeCounts(screenRows);
 		const color = (rank: number, fallback: string): string => legend[rank]?.color ?? fallback;
 		// The chart's own legend carries the acceptance-level range, so no separate "Niveles de
 		// Aceptación" section is needed elsewhere in the document. Scores always render with 1
@@ -448,27 +577,51 @@ export class SemaphoreReportsService {
 			const range = lv ? ` [${round1(lv.minScore)} - ${round1(lv.maxScore)}]` : '';
 			return `${name}${range}`;
 		};
+		return [
+			{
+				label: seriesLabel(0, L.redDetail),
+				color: color(0, '#e30613'),
+				values: entries.map((e) => e.red),
+			},
+			{
+				label: seriesLabel(1, L.yellowDetail),
+				color: color(1, '#f4c20d'),
+				values: entries.map((e) => e.yellow),
+			},
+			{
+				label: seriesLabel(2, L.greenDetail),
+				color: color(2, '#16a34a'),
+				values: entries.map((e) => e.green),
+			},
+		];
+	}
+
+	/** RC's PDF chart: one outcome per file (see generateRcZipDownload), so the categories are its
+	 *  courses instead -- 3 bars (one per acceptance level) per course. */
+	private buildCourseChartData(
+		screenRows: SemaphoreCourseOutcomeRow[],
+		legend: SemaphoreLevelLegendDto[],
+		lang: ReportLanguage,
+	): SemaphoreChartData {
+		const entries = this.aggregateCourseCounts(screenRows);
 		return {
-			// RV shows the reader-facing outcome name (e.g. "1", "2") rather than the internal
-			// accreditor code (e.g. "EAC-SI-2"); RC keeps the code, unchanged.
-			categories: entries.map((e) => (instrument === 'rv' ? e.name : e.code)),
-			series: [
-				{
-					label: seriesLabel(0, L.redDetail),
-					color: color(0, '#e30613'),
-					values: entries.map((e) => e.red),
-				},
-				{
-					label: seriesLabel(1, L.yellowDetail),
-					color: color(1, '#f4c20d'),
-					values: entries.map((e) => e.yellow),
-				},
-				{
-					label: seriesLabel(2, L.greenDetail),
-					color: color(2, '#16a34a'),
-					values: entries.map((e) => e.green),
-				},
-			],
+			categories: entries.map((e) => e.code),
+			series: this.buildLevelSeries(entries, legend, lang),
+		};
+	}
+
+	/** RV's PDF chart: aggregates red/yellow/green student counts per outcome. */
+	private buildOutcomeChartData(
+		screenRows: SemaphoreCourseOutcomeRow[],
+		legend: SemaphoreLevelLegendDto[],
+		lang: ReportLanguage,
+	): SemaphoreChartData {
+		const entries = this.aggregateOutcomeCounts(screenRows);
+		return {
+			// The reader-facing outcome name (e.g. "1", "2"), not the internal accreditor code
+			// (e.g. "EAC-SI-2").
+			categories: entries.map((e) => e.name),
+			series: this.buildLevelSeries(entries, legend, lang),
 		};
 	}
 
@@ -576,10 +729,9 @@ export class SemaphoreReportsService {
 		const levelName = (rank: number): string => legend[rank - 1]?.name ?? '';
 		const levelColor = (rank: number): string => legend[rank - 1]?.color ?? '#6b7280';
 
-		// Feeds RC's "Resumen por Outcome" table (critical outcomes only, from `getRcSummary`'s
-		// representative-row filtering) -- see `buildSummarySection`. RV no longer renders this
-		// table (replaced by the full pivot below), but the row shape is still built here so a
-		// future RV consumer of the JSON/Excel path is not surprised by a missing field.
+		// Critical outcomes only, from `getRcSummary`'s representative-row filtering. Neither the RC
+		// nor RV PDF renders this as its own table anymore (RC's PDF is already scoped to a single
+		// outcome; RV uses the full pivot instead), but the JSON/Excel paths still expose it.
 		const outcomeSummary: SemaphoreOutcomeSummaryRowDto[] = summaryRows.map((r) => ({
 			campus: r.campus,
 			outcomeCode: r.outcomeCode,
@@ -604,7 +756,10 @@ export class SemaphoreReportsService {
 
 		return {
 			legend,
-			chart: this.buildOutcomeChartData(screenRows, legend, lang, instrument),
+			chart:
+				instrument === 'rc'
+					? this.buildCourseChartData(screenRows, legend, lang)
+					: this.buildOutcomeChartData(screenRows, legend, lang),
 			outcomePivot: this.buildOutcomePivot(screenRows, legend),
 			outcomeSummary,
 			consolidated: this.buildConsolidatedGroups(screenRows),
@@ -709,6 +864,23 @@ export class SemaphoreReportsService {
 		return `${this.reportBaseName(type, lang)}${campusSuffix}.pdf`;
 	}
 
+	/** One RC PDF's filename inside the zip -- same shape as `buildFilename` plus the outcome code,
+	 *  so the reader can tell the files apart without opening each one. */
+	private buildOutcomeFilename(
+		outcomeCode: string,
+		lang: ReportLanguage,
+		campusCode?: string,
+	): string {
+		const campusSuffix = campusCode ? `_${this.sanitizeFilenamePart(campusCode)}` : '';
+		const outcomeSuffix = `_${this.sanitizeFilenamePart(outcomeCode)}`;
+		return `${this.reportBaseName('rc', lang)}${campusSuffix}${outcomeSuffix}.pdf`;
+	}
+
+	private buildRcZipFilename(lang: ReportLanguage, campusCode?: string): string {
+		const campusSuffix = campusCode ? `_${this.sanitizeFilenamePart(campusCode)}` : '';
+		return `${this.reportBaseName('rc', lang)}${campusSuffix}.zip`;
+	}
+
 	private buildExcelFilename(type: 'rc' | 'rv', lang: 'es' | 'en', campusCode?: string): string {
 		const campusSuffix = campusCode ? `_${this.sanitizeFilenamePart(campusCode)}` : '';
 		return `${this.reportBaseName(type, lang)}${campusSuffix}_${Date.now()}.xlsx`;
@@ -725,6 +897,7 @@ export class SemaphoreReportsService {
 		type: 'rc' | 'rv',
 		lang: ReportLanguage,
 		campusLabel: string,
+		outcomeLabel?: string,
 	): ReportDocument {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		const reportTitle = type === 'rc' ? L.reportTitleRC : L.reportTitleRV;
@@ -732,9 +905,8 @@ export class SemaphoreReportsService {
 		return {
 			language: lang,
 			reportName: reportTitle,
-			// RV's title stays just "Reporte de Verificación (RV)" -- the career is already in the
-			// metadata block below, so repeating it in the title is redundant. RC keeps it.
-			programName: type === 'rv' ? '' : data.metadata.programName,
+			// Neither title repeats the career -- it's already in the metadata block below.
+			programName: '',
 			metadata: [
 				{ label: L.colCampus, value: campusLabel },
 				{ label: L.academicPeriod, value: data.metadata.academicPeriodCode },
@@ -743,26 +915,25 @@ export class SemaphoreReportsService {
 				{ label: L.accreditor, value: data.metadata.accreditorCode },
 				{ label: L.commission, value: data.metadata.commissionName },
 				{ label: L.acceptanceLevel, value: L.allLevels },
+				// RC only: one PDF per outcome (see generateRcZipDownload), so each file names its
+				// own outcome here -- the reader can tell them apart without opening every one.
+				...(outcomeLabel ? [{ label: L.colOutcome, value: outcomeLabel }] : []),
 			],
 			bodyHtml:
 				type === 'rc'
 					? this.buildRcBody(data, reportTitle, lang)
 					: this.buildRvBody(data, reportTitle, lang),
-			// RV's smaller chart and narrower pivot table (outcome, description, 3 level columns,
-			// total) fit a portrait page without breaking mid-table; RC's wider consolidated
-			// per-course table still needs landscape.
-			orientation: type === 'rc' ? 'landscape' : 'portrait',
+			// RC's consolidated table lost its outcome column now that each PDF only ever covers a
+			// single outcome (see generateRcZipDownload), so it fits a portrait page just like RV's.
+			orientation: 'portrait',
 			additionalStyles: SEMAPHORE_REPORT_STYLES,
 		};
 	}
 
 	/**
-	 * RC body: chart, the "Interpretación de Indicadores" scale, the critical-outcome summary, and
-	 * one consolidated course table.
-	 *
-	 * The dotted legend line the RV body still carries is deliberately absent -- the scale below
-	 * the chart is the same performance-level data rendered as an actual scale, and printing both
-	 * would say the same thing twice.
+	 * RC body: chart, the "Interpretación de Indicadores" scale, and the consolidated course table
+	 * -- no "Resumen por Outcome" table, since one PDF already covers a single outcome (see
+	 * generateRcZipDownload); repeating it as a one-row table would say the same thing twice.
 	 */
 	private buildRcBody(
 		data: SemaphoreRenderReportDto,
@@ -774,9 +945,8 @@ export class SemaphoreReportsService {
 			${this.buildChartSection(data, reportTitle, lang, 'rc')}
 			<section>
 				<h3>${escapeHtml(L.indicatorScale)}</h3>
-				${this.buildIndicatorScale(data.legend)}
+				${this.buildIndicatorScale(data.legend, true)}
 			</section>
-			${this.buildSummarySection(data, lang)}
 			${this.buildConsolidatedSection(data, lang)}
 		`;
 	}
@@ -853,56 +1023,21 @@ export class SemaphoreReportsService {
 	): string {
 		if (data.chart.categories.length === 0) return '';
 		const L = SEMAPHORE_PDF_LABELS[lang];
-		// RV's chart is rendered smaller and without its own legend -- the "Interpretación de
-		// Indicadores" scale right below it already carries the level colors/ranges, and its axes
-		// get explicit titles since outcome codes were replaced by their short names. RC is left
-		// untouched.
-		const rvOverrides =
-			instrument === 'rv'
-				? {
-						hideLegend: true as const,
-						width: 640,
-						plotHeight: 200,
-						xAxisLabel: L.axisOutcomes,
-					}
-				: {};
+		// RC (one outcome per PDF, see generateRcZipDownload) and RV both hide the series legend --
+		// the "Interpretación de Indicadores" scale right below the chart already carries the level
+		// colors/ranges. RC's categories are courses (buildCourseChartData); RV's are outcomes.
+		// Only RV's overall size is smaller.
+		const rvOverrides = instrument === 'rv' ? { width: 640, plotHeight: 200 } : {};
 		return `<section>${this.reportChart.buildGroupedBarChart({
 			title: reportTitle,
 			categories: data.chart.categories,
 			series: data.chart.series,
-			yAxisLabel: instrument === 'rv' ? L.axisStudentCount : L.colTotalStudents,
+			yAxisLabel: L.axisStudentCount,
+			xAxisLabel: instrument === 'rc' ? L.axisCourses : L.axisOutcomes,
+			hideLegend: true,
 			emptyLabel: L.noTranslation,
 			...rvOverrides,
 		})}</section>`;
-	}
-
-	/** RC-only "Resumen por Outcome" table: critical outcomes only, one row per (campus, outcome,
-	 *  level), coloured by that level -- unchanged from before the consolidated-table redesign. */
-	private buildSummarySection(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
-		const L = SEMAPHORE_PDF_LABELS[lang];
-		const rows = data.outcomeSummary
-			.map(
-				(r) => `
-				<tr style="background-color:${escapeHtml(r.color)}">
-					<td>${escapeHtml(r.campus)}</td>
-					<td>${escapeHtml(r.outcomeCode)}</td>
-					<td>${escapeHtml(r.outcomeName)}</td>
-					<td>${r.totalStudents}</td>
-					<td>${r.count}</td>
-					<td>${r.percentage}%</td>
-				</tr>`,
-			)
-			.join('');
-		return `
-			<section>
-				<h3>${escapeHtml(L.summary)}</h3>
-				<table>
-					<thead><tr>
-						<th>${escapeHtml(L.colCampus)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colTotalStudents)}</th><th>${escapeHtml(L.colQuantity)}</th><th>${escapeHtml(L.colPercentage)}</th>
-					</tr></thead>
-					<tbody>${rows}</tbody>
-				</table>
-			</section>`;
 	}
 
 	/**
@@ -930,9 +1065,11 @@ export class SemaphoreReportsService {
 	}
 
 	/**
-	 * The consolidated course table: `Outcome | Código | Curso | <level…> | Total de Alumnos`, one
-	 * block of rows per outcome closed by a TOTALES line. Only the level headers are coloured, in
-	 * the level's own colour, so the reader can map a column to a segment of the scale above.
+	 * The consolidated course table: `Código | Curso | <level…> | Total de Alumnos`, one block of
+	 * rows per outcome closed by a TOTALES line. No outcome column -- one PDF already covers a
+	 * single outcome (see generateRcZipDownload), named in the header instead. Only the level
+	 * headers are coloured, in the level's own colour, so the reader can map a column to a segment
+	 * of the scale above.
 	 */
 	private buildConsolidatedSection(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
 		if (data.consolidated.length === 0) return '';
@@ -957,7 +1094,6 @@ export class SemaphoreReportsService {
 					.map(
 						(row) => `
 					<tr>
-						<td>${escapeHtml(group.outcomeCode)}</td>
 						<td>${escapeHtml(row.courseCode)}</td>
 						<td>${escapeHtml(row.courseName) || L.noTranslation}</td>
 						${row.levels.map((level) => cell(level.count, level.percentage)).join('')}
@@ -966,7 +1102,7 @@ export class SemaphoreReportsService {
 					)
 					.join('')}
 				<tr class="consolidated__totals">
-					<td colspan="3">${escapeHtml(L.totals)}</td>
+					<td colspan="2">${escapeHtml(L.totals)}</td>
 					${group.levelTotals.map((total) => `<td>${total}</td>`).join('')}
 					<td>${group.totalStudents}</td>
 				</tr>`,
@@ -978,7 +1114,7 @@ export class SemaphoreReportsService {
 				<h3>${escapeHtml(L.consolidatedDetail)}</h3>
 				<table class="consolidated">
 					<thead><tr>
-						<th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th>${levelHeaders}<th>${escapeHtml(L.colTotalStudents)}</th>
+						<th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th>${levelHeaders}<th>${escapeHtml(L.colTotalStudents)}</th>
 					</tr></thead>
 					<tbody>${body}</tbody>
 				</table>

@@ -1,6 +1,6 @@
 export const SEMAPHORE_PDF_LABELS = {
 	es: {
-		reportTitleRC: 'Reporte de Control (RC)',
+		reportTitleRC: 'Reporte de Control por Outcome',
 		reportTitleRV: 'Reporte de Verificación Consolidado',
 		programName: 'Programa',
 		career: 'Carrera',
@@ -32,9 +32,10 @@ export const SEMAPHORE_PDF_LABELS = {
 		noTranslation: 'NO TIENE TRADUCCIÓN',
 		axisStudentCount: 'N° de Alumnos',
 		axisOutcomes: 'Outcomes',
+		axisCourses: 'Cursos',
 	},
 	en: {
-		reportTitleRC: 'Control Report (RC)',
+		reportTitleRC: 'Control Report by Outcome',
 		reportTitleRV: 'Consolidated Verification Report',
 		programName: 'Program',
 		career: 'Career',
@@ -66,6 +67,7 @@ export const SEMAPHORE_PDF_LABELS = {
 		noTranslation: 'NO TRANSLATION',
 		axisStudentCount: 'Number of Students',
 		axisOutcomes: 'Outcomes',
+		axisCourses: 'Courses',
 	},
 } as const;
 
@@ -120,9 +122,9 @@ export const SEMAPHORE_REPORT_STYLES = `
 	.indicator-scale__name { font-size: 9pt; font-weight: 700; }
 	.indicator-scale__range { font-size: 8.5pt; }
 
+	.consolidated td:nth-child(3),
 	.consolidated td:nth-child(4),
 	.consolidated td:nth-child(5),
-	.consolidated td:nth-child(6),
 	.consolidated td:last-child { text-align: center; white-space: nowrap; }
 	/* Selector kept at the same specificity as the zebra-striping rule above and declared after
 	   it, so a totals row landing on an even stripe still reads as a totals row. */

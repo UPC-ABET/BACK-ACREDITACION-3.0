@@ -64,6 +64,7 @@ filtered_outcomes AS (
 	FROM accreditation.outcomes
 	WHERE is_active = true
 	  AND ($4::int IS NULL OR program_commission_id = $4::int)
+	  AND ($5::int[] IS NULL OR id = ANY($5::int[]))
 ),
 levels AS (
 	SELECT
@@ -128,6 +129,20 @@ SELECT
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
 ORDER BY campus, course_code, outcome_code
+`;
+
+// Every active outcome of a commission, for the RC PDF download to know which outcome ids to
+// iterate over (one PDF per outcome) when the caller doesn't select any. outcomeName is what each
+// PDF's header names itself after (the code is only used in the filename).
+export const SEMAPHORE_RC_OUTCOMES_SQL = `
+SELECT
+	id                                                        AS "id",
+	outcome_code                                              AS "outcomeCode",
+	COALESCE(outcome_name->>$2::text, outcome_name->>'es', '') AS "outcomeName"
+FROM accreditation.outcomes
+WHERE is_active = true
+  AND ($1::int IS NULL OR program_commission_id = $1::int)
+ORDER BY outcome_code
 `;
 
 export const SEMAPHORE_RV_SCREEN_SQL = `
@@ -205,6 +220,7 @@ filtered_outcomes AS (
 	FROM accreditation.outcomes
 	WHERE is_active = true
 	  AND ($4::int IS NULL OR program_commission_id = $4::int)
+	  AND ($5::int[] IS NULL OR id = ANY($5::int[]))
 ),
 levels AS (
 	SELECT
@@ -341,6 +357,7 @@ filtered_outcomes AS (
 	FROM accreditation.outcomes
 	WHERE is_active = true
 	  AND ($4::int IS NULL OR program_commission_id = $4::int)
+	  AND ($5::int[] IS NULL OR id = ANY($5::int[]))
 ),
 levels AS (
 	SELECT

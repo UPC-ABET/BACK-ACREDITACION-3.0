@@ -34,6 +34,7 @@ export class OutcomeRepository extends BaseRepository<OutcomeEntity> {
 	async findMaintenancePage(
 		programId: number,
 		academicPeriodId: number,
+		commissionId: number | null,
 		search: string | undefined,
 		skip: number,
 		take: number,
@@ -44,6 +45,12 @@ export class OutcomeRepository extends BaseRepository<OutcomeEntity> {
 			.innerJoinAndSelect('program_commission.commission', 'commission')
 			.where('program_commission.program_id = :programId', { programId })
 			.andWhere('program_commission.academic_period_id = :academicPeriodId', { academicPeriodId });
+
+		// Without this, a program with more than one active commission in the period (e.g. dual
+		// accreditation) would return every commission's outcomes mixed together.
+		if (commissionId != null) {
+			qb.andWhere('commission.id = :commissionId', { commissionId });
+		}
 
 		if (search?.trim()) {
 			const term = `%${search.trim()}%`;
