@@ -277,17 +277,22 @@ describe('SemaphoreReportsService', () => {
 	});
 
 	describe('formatLevelRange', () => {
-		it("takes each level's upper bound from the next level's minimum, not its own maximum", () => {
+		it("takes the lowest level's upper bound from the next level's minimum, not its own maximum", () => {
 			const service = makeService();
 
 			expect(service.formatLevelRange(RC_LEGEND, 0)).toBe('[0 - 13>');
-			expect(service.formatLevelRange(RC_LEGEND, 1)).toBe('[13 - 16>');
 		});
 
-		it('closes the top level on its own maximum', () => {
+		it('closes a middle level on both its own minimum and maximum', () => {
 			const service = makeService();
 
-			expect(service.formatLevelRange(RC_LEGEND, 2)).toBe('[16 - 20]');
+			expect(service.formatLevelRange(RC_LEGEND, 1)).toBe('[13 - 16]');
+		});
+
+		it("opens the top level on the previous level's maximum, closes on its own maximum", () => {
+			const service = makeService();
+
+			expect(service.formatLevelRange(RC_LEGEND, 2)).toBe('<16 - 20]');
 		});
 
 		it('trims the trailing zeros of a numeric(_, 6) score', () => {
@@ -407,6 +412,7 @@ describe('SemaphoreReportsService', () => {
 		const legendRows: SemaphoreLevelLegendRow[] = RC_LEGEND;
 		const metadata: MetadataRow = {
 			programName: 'P',
+			modalityName: 'Presencial',
 			commissionName: 'C',
 			academicPeriodCode: '202510',
 			accreditorCode: 'ABET',
@@ -543,9 +549,9 @@ describe('SemaphoreReportsService', () => {
 				expect(rcDocument.bodyHtml).toContain('(5) 25%');
 				expect(rcDocument.bodyHtml).not.toContain('Listado de Cursos con Nivel');
 
-				// RV: chart + the pivoted outcome table only -- no separate legend line, no
-				// indicator scale, no per-course listings.
-				expect(rvDocument.bodyHtml).not.toContain('Interpretación de Indicadores');
+				// RV: chart (no legend of its own) + the "Interpretación de Indicadores" scale +
+				// the pivoted outcome table -- no separate legend line, no per-course listings.
+				expect(rvDocument.bodyHtml).toContain('Interpretación de Indicadores');
 				expect(rvDocument.bodyHtml).not.toContain('Listado de Cursos con Nivel');
 				expect(rvDocument.bodyHtml).not.toContain('Detalle de Cursos por Outcome');
 				expect(rvDocument.bodyHtml).toContain('Outcome 1 description');

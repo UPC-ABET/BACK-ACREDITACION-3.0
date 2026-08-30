@@ -306,6 +306,7 @@ export class SemaphoreReportsService {
 			legendRows,
 			metadata,
 			(dto.lang ?? 'es') as ReportLanguage,
+			instrument,
 		);
 	}
 
@@ -386,16 +387,30 @@ export class SemaphoreReportsService {
 
 	/** Sums red/yellow/green student counts per outcome across every course and campus in the
 	 *  (unfiltered) screen rows -- shared by the PDF chart and the pivoted RV summary table. */
-	private aggregateOutcomeCounts(
-		screenRows: SemaphoreCourseOutcomeRow[],
-	): { code: string; name: string; red: number; yellow: number; green: number; total: number }[] {
+	private aggregateOutcomeCounts(screenRows: SemaphoreCourseOutcomeRow[]): {
+		code: string;
+		name: string;
+		description: string;
+		red: number;
+		yellow: number;
+		green: number;
+		total: number;
+	}[] {
 		const byOutcome = new Map<
 			string,
-			{ name: string; red: number; yellow: number; green: number; total: number }
+			{
+				name: string;
+				description: string;
+				red: number;
+				yellow: number;
+				green: number;
+				total: number;
+			}
 		>();
 		for (const r of screenRows) {
 			const entry = byOutcome.get(r.outcomeCode) ?? {
-				name: r.outcomeDescription || r.outcomeName,
+				name: r.outcomeName,
+				description: r.outcomeDescription || r.outcomeName,
 				red: 0,
 				yellow: 0,
 				green: 0,
@@ -416,6 +431,7 @@ export class SemaphoreReportsService {
 		screenRows: SemaphoreCourseOutcomeRow[],
 		legend: SemaphoreLevelLegendDto[],
 		lang: ReportLanguage,
+		instrument: 'rc' | 'rv',
 	): SemaphoreChartData {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		const entries = this.aggregateOutcomeCounts(screenRows);
@@ -433,7 +449,9 @@ export class SemaphoreReportsService {
 			return `${name}${range}`;
 		};
 		return {
-			categories: entries.map((e) => e.code),
+			// RV shows the reader-facing outcome name (e.g. "1", "2") rather than the internal
+			// accreditor code (e.g. "EAC-SI-2"); RC keeps the code, unchanged.
+			categories: entries.map((e) => (instrument === 'rv' ? e.name : e.code)),
 			series: [
 				{
 					label: seriesLabel(0, L.redDetail),
@@ -471,6 +489,7 @@ export class SemaphoreReportsService {
 		return entries.map((e) => ({
 			outcomeCode: e.code,
 			outcomeName: e.name,
+			outcomeDescription: e.description,
 			totalStudents: e.total,
 			levels: [
 				level(0, e.red, e.total, 'Necesita mejora'),
@@ -536,6 +555,7 @@ export class SemaphoreReportsService {
 			summary,
 			metadata: {
 				programName: metadata?.programName ?? '',
+				modalityName: metadata?.modalityName ?? '',
 				commissionName: metadata?.commissionName ?? '',
 				academicPeriodCode: metadata?.academicPeriodCode ?? '',
 				accreditorCode: metadata?.accreditorCode ?? '',
@@ -550,6 +570,7 @@ export class SemaphoreReportsService {
 		legendRows: SemaphoreLevelLegendRow[],
 		metadata: MetadataRow | null,
 		lang: ReportLanguage = 'es',
+		instrument: 'rc' | 'rv' = 'rc',
 	): SemaphoreRenderReportDto {
 		const legend = this.buildLegend(legendRows);
 		const levelName = (rank: number): string => legend[rank - 1]?.name ?? '';
@@ -583,7 +604,7 @@ export class SemaphoreReportsService {
 
 		return {
 			legend,
-			chart: this.buildOutcomeChartData(screenRows, legend, lang),
+			chart: this.buildOutcomeChartData(screenRows, legend, lang, instrument),
 			outcomePivot: this.buildOutcomePivot(screenRows, legend),
 			outcomeSummary,
 			consolidated: this.buildConsolidatedGroups(screenRows),
@@ -592,6 +613,7 @@ export class SemaphoreReportsService {
 			greenDetail: detailRows.filter((r) => Number(r.levelRank) === 3).map(toDetailRow),
 			metadata: {
 				programName: metadata?.programName ?? '',
+				modalityName: metadata?.modalityName ?? '',
 				commissionName: metadata?.commissionName ?? '',
 				academicPeriodCode: metadata?.academicPeriodCode ?? '',
 				accreditorCode: metadata?.accreditorCode ?? '',
@@ -710,10 +732,13 @@ export class SemaphoreReportsService {
 		return {
 			language: lang,
 			reportName: reportTitle,
-			programName: data.metadata.programName,
+			// RV's title stays just "Reporte de Verificación (RV)" -- the career is already in the
+			// metadata block below, so repeating it in the title is redundant. RC keeps it.
+			programName: type === 'rv' ? '' : data.metadata.programName,
 			metadata: [
 				{ label: L.colCampus, value: campusLabel },
 				{ label: L.academicPeriod, value: data.metadata.academicPeriodCode },
+				{ label: L.modality, value: data.metadata.modalityName },
 				{ label: L.career, value: data.metadata.programName },
 				{ label: L.accreditor, value: data.metadata.accreditorCode },
 				{ label: L.commission, value: data.metadata.commissionName },
@@ -723,7 +748,10 @@ export class SemaphoreReportsService {
 				type === 'rc'
 					? this.buildRcBody(data, reportTitle, lang)
 					: this.buildRvBody(data, reportTitle, lang),
-			orientation: 'landscape',
+			// RV's smaller chart and narrower pivot table (outcome, description, 3 level columns,
+			// total) fit a portrait page without breaking mid-table; RC's wider consolidated
+			// per-course table still needs landscape.
+			orientation: type === 'rc' ? 'landscape' : 'portrait',
 			additionalStyles: SEMAPHORE_REPORT_STYLES,
 		};
 	}
@@ -743,7 +771,7 @@ export class SemaphoreReportsService {
 	): string {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		return `
-			${this.buildChartSection(data, reportTitle, lang)}
+			${this.buildChartSection(data, reportTitle, lang, 'rc')}
 			<section>
 				<h3>${escapeHtml(L.indicatorScale)}</h3>
 				${this.buildIndicatorScale(data.legend)}
@@ -754,10 +782,11 @@ export class SemaphoreReportsService {
 	}
 
 	/**
-	 * RV body: chart (its own legend already carries the acceptance-level ranges) plus the
-	 * pivoted "Reporte de Verificación Consolidado" table -- one row per outcome, a count+% cell
-	 * per level, and a TOTALES row. No per-course listings: every outcome the courses in scope
-	 * were evaluated on is already represented in that single table.
+	 * RV body: chart (legend hidden -- the level ranges are shown in the "Interpretación de
+	 * Indicadores" scale right below it instead) plus the pivoted "Reporte de Verificación
+	 * Consolidado" table -- one row per outcome, a count+% cell per level, and a TOTALES row. No
+	 * per-course listings: every outcome the courses in scope were evaluated on is already
+	 * represented in that single table.
 	 */
 	private buildRvBody(
 		data: SemaphoreRenderReportDto,
@@ -776,8 +805,8 @@ export class SemaphoreReportsService {
 			.map(
 				(r) => `
 				<tr>
-					<td>${escapeHtml(r.outcomeCode)}</td>
 					<td>${escapeHtml(r.outcomeName)}</td>
+					<td>${escapeHtml(r.outcomeDescription)}</td>
 					${r.levels.map((lv) => `<td>(${lv.count}) ${lv.percentage}%</td>`).join('')}
 					<td>${r.totalStudents}</td>
 				</tr>`,
@@ -799,7 +828,11 @@ export class SemaphoreReportsService {
 				: '';
 
 		return `
-			${this.buildChartSection(data, reportTitle, lang)}
+			${this.buildChartSection(data, reportTitle, lang, 'rv')}
+			<section>
+				<h3>${escapeHtml(L.indicatorScale)}</h3>
+				${this.buildIndicatorScale(data.legend, true)}
+			</section>
 			<section>
 				<h3>${escapeHtml(L.summary)}</h3>
 				<table>
@@ -816,15 +849,30 @@ export class SemaphoreReportsService {
 		data: SemaphoreRenderReportDto,
 		reportTitle: string,
 		lang: ReportLanguage,
+		instrument: 'rc' | 'rv',
 	): string {
 		if (data.chart.categories.length === 0) return '';
 		const L = SEMAPHORE_PDF_LABELS[lang];
+		// RV's chart is rendered smaller and without its own legend -- the "Interpretación de
+		// Indicadores" scale right below it already carries the level colors/ranges, and its axes
+		// get explicit titles since outcome codes were replaced by their short names. RC is left
+		// untouched.
+		const rvOverrides =
+			instrument === 'rv'
+				? {
+						hideLegend: true as const,
+						width: 640,
+						plotHeight: 200,
+						xAxisLabel: L.axisOutcomes,
+					}
+				: {};
 		return `<section>${this.reportChart.buildGroupedBarChart({
 			title: reportTitle,
 			categories: data.chart.categories,
 			series: data.chart.series,
-			yAxisLabel: L.colTotalStudents,
+			yAxisLabel: instrument === 'rv' ? L.axisStudentCount : L.colTotalStudents,
 			emptyLabel: L.noTranslation,
+			...rvOverrides,
 		})}</section>`;
 	}
 
@@ -858,16 +906,19 @@ export class SemaphoreReportsService {
 	}
 
 	/**
-	 * The score scale as a single horizontal bar. Each segment's `flex-grow` is that level's span,
-	 * so the bar reads as the real 0-20 scale rather than N equal slices; a level configured with a
-	 * non-positive span still gets a visible slice instead of collapsing to nothing.
+	 * The score scale as a single horizontal bar. By default each segment's `flex-grow` is that
+	 * level's span, so the bar reads as the real 0-20 scale rather than N equal slices; a level
+	 * configured with a non-positive span still gets a visible slice instead of collapsing to
+	 * nothing. RV renders it with `equalWidths` instead -- there it's read as a plain legend next
+	 * to the outcome table, not as a scale, so every segment gets the same width.
 	 */
-	private buildIndicatorScale(legend: SemaphoreLevelLegendDto[]): string {
+	private buildIndicatorScale(legend: SemaphoreLevelLegendDto[], equalWidths = false): string {
 		if (legend.length === 0) return '';
 		const segments = legend
 			.map((level, index) => {
-				const upper = this.levelUpperBound(legend, index);
-				const span = Math.max(upper - Number(level.minScore), 1);
+				const span = equalWidths
+					? 1
+					: Math.max(this.levelUpperBound(legend, index) - Number(level.minScore), 1);
 				return `
 				<div class="indicator-scale__segment" style="flex-grow:${span};background-color:${escapeHtml(level.color)};color:${this.contrastText(level.color)}">
 					<span class="indicator-scale__name">${escapeHtml(level.name)}</span>
@@ -936,19 +987,43 @@ export class SemaphoreReportsService {
 
 	/**
 	 * A level's real upper bound is the next level's `minScore`, not its own `maxScore`: the rows
-	 * are stored closed (`[13, 15.999999]`) to make the SQL's BETWEEN work, so printing `maxScore`
-	 * verbatim would render `[13 - 15.999999]`. The top level has no successor and keeps its own.
+	 * are stored closed (e.g. `[13, 15.999999]`) to make the SQL's BETWEEN work, so printing
+	 * `maxScore` verbatim could render an ugly `15.999999`. The top level has no successor and
+	 * keeps its own -- used both for `formatLevelRange` and the RC scale's proportional widths.
 	 */
 	private levelUpperBound(legend: SemaphoreLevelLegendDto[], index: number): number {
 		const next = legend[index + 1];
 		return Number(next ? next.minScore : legend[index].maxScore);
 	}
 
-	/** `[0 - 13>` for every level but the last, which closes on its own maximum: `[16 - 20]`. */
+	/** Mirror of `levelUpperBound` for the lower edge: a level's real lower bound is the previous
+	 *  level's own `maxScore`, not its own (possibly epsilon-shifted) `minScore`. */
+	private levelLowerBound(legend: SemaphoreLevelLegendDto[], index: number): number {
+		const previous = legend[index - 1];
+		return Number(previous ? previous.maxScore : legend[index].minScore);
+	}
+
+	/**
+	 * Only the two outer levels are half-open, on the side that faces the rest of the scale --
+	 * `[0 - 13>` for the lowest, `<16 - 20]` for the highest -- because that shared boundary
+	 * belongs to whichever level sits between them. Every level in between (and a lone level with
+	 * no neighbors) is closed on both ends, e.g. `[13 - 16]`.
+	 */
 	private formatLevelRange(legend: SemaphoreLevelLegendDto[], index: number): string {
-		const lower = this.formatScore(legend[index].minScore);
-		const upper = this.formatScore(this.levelUpperBound(legend, index));
-		return index === legend.length - 1 ? `[${lower} - ${upper}]` : `[${lower} - ${upper}>`;
+		const hasNeighbors = legend.length > 1;
+		const isFirst = index === 0;
+		const isLast = index === legend.length - 1;
+		const lowerValue =
+			isLast && hasNeighbors ? this.levelLowerBound(legend, index) : Number(legend[index].minScore);
+		const upperValue =
+			isFirst && hasNeighbors
+				? this.levelUpperBound(legend, index)
+				: Number(legend[index].maxScore);
+		const lower = this.formatScore(lowerValue);
+		const upper = this.formatScore(upperValue);
+		const openLeft = isLast && hasNeighbors ? '<' : '[';
+		const openRight = isFirst && hasNeighbors ? '>' : ']';
+		return `${openLeft}${lower} - ${upper}${openRight}`;
 	}
 
 	/** Scores are numeric(_, 6) columns, so they arrive as `13.000000`; trim to what a reader reads. */
@@ -1027,8 +1102,8 @@ export class SemaphoreReportsService {
 		this.writeExcelHeader(summarySheet, summaryHeaders, headerRowIndex);
 		for (const r of data.outcomePivot) {
 			const row = summarySheet.addRow([
-				r.outcomeCode,
 				r.outcomeName,
+				r.outcomeDescription,
 				...r.levels.map((lv) => `(${lv.count}) ${lv.percentage}%`),
 				r.totalStudents,
 			]);

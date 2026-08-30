@@ -136,6 +136,7 @@ export class SemaphoreOutcomeLevelCellDto {
 export class SemaphoreOutcomePivotRowDto {
 	outcomeCode: string;
 	outcomeName: string;
+	outcomeDescription: string;
 	totalStudents: number;
 	levels: SemaphoreOutcomeLevelCellDto[];
 }
@@ -177,6 +178,7 @@ export class SemaphoreConsolidatedGroupDto {
 
 export class SemaphoreMetadataDto {
 	programName: string;
+	modalityName: string;
 	commissionName: string;
 	academicPeriodCode: string;
 	accreditorCode: string;

@@ -61,6 +61,7 @@ export interface SemaphoreLevelLegendRow {
 
 export interface MetadataRow {
 	programName: string;
+	modalityName: string;
 	commissionName: string;
 	academicPeriodCode: string;
 	accreditorCode: string;

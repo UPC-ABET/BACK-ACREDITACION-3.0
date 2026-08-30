@@ -1,11 +1,12 @@
 export const SEMAPHORE_PDF_LABELS = {
 	es: {
 		reportTitleRC: 'Reporte de Control (RC)',
-		reportTitleRV: 'Reporte de Verificación (RV)',
+		reportTitleRV: 'Reporte de Verificación Consolidado',
 		programName: 'Programa',
 		career: 'Carrera',
 		commission: 'Comisión',
 		academicPeriod: 'Periodo Académico',
+		modality: 'Modalidad',
 		accreditor: 'Acreditador',
 		acceptanceLevel: 'Nivel de Aceptación',
 		allLevels: 'Todos',
@@ -29,14 +30,17 @@ export const SEMAPHORE_PDF_LABELS = {
 		colPercentage: '%',
 		totals: 'TOTALES',
 		noTranslation: 'NO TIENE TRADUCCIÓN',
+		axisStudentCount: 'N° de Alumnos',
+		axisOutcomes: 'Outcomes',
 	},
 	en: {
 		reportTitleRC: 'Control Report (RC)',
-		reportTitleRV: 'Verification Report (RV)',
+		reportTitleRV: 'Consolidated Verification Report',
 		programName: 'Program',
 		career: 'Career',
 		commission: 'Commission',
 		academicPeriod: 'Academic Period',
+		modality: 'Modality',
 		accreditor: 'Accreditor',
 		acceptanceLevel: 'Acceptance Level',
 		allLevels: 'All',
@@ -60,13 +64,28 @@ export const SEMAPHORE_PDF_LABELS = {
 		colPercentage: '%',
 		totals: 'TOTALS',
 		noTranslation: 'NO TRANSLATION',
+		axisStudentCount: 'Number of Students',
+		axisOutcomes: 'Outcomes',
 	},
 } as const;
 
 export const SEMAPHORE_REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
+	/* A section that holds a table can be taller than the room left on the page: forcing the
+	   whole section onto the next one (the default above) leaves the rest of the current page
+	   blank. Letting the table itself break keeps rows flowing right after whatever fit, while
+	   still never splitting a single row across pages. */
+	section:has(table) { break-inside: auto; }
+	table { break-inside: auto; }
+	tr { break-inside: avoid; }
+	thead { display: table-header-group; }
 	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
 	section h4 { font-size: 11pt; margin: 10px 0 6px; }
+	/* Narrower than the header's default columns so every metadata item (campus, period,
+	   modality, career, accreditor, commission, acceptance level) fits on one row. */
+	.report-metadata { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; padding: 12px 16px; }
+	.report-metadata__label { font-size: 7pt; }
+	.report-metadata__value { font-size: 7.5pt; }
 	thead th { background: #e30613; color: #fff; text-align: left; font-size: 9pt; }
 	tbody tr:nth-child(even) td { background: #fafafa; }
 	tbody tr.totals-row td { background: #e5e7eb; font-weight: bold; }

@@ -629,17 +629,20 @@ WITH target_pc AS (
 )
 SELECT
 	COALESCE(p.name->>$3::text, p.name->>'es', '')   AS "programName",
+	COALESCE(mt.name->>$3::text, mt.name->>'es', '')  AS "modalityName",
 	COALESCE(c.name->>$3::text, c.name->>'es', '')    AS "commissionName",
 	ap.code                                      AS "academicPeriodCode",
 	COALESCE(acc.code, '')                       AS "accreditorCode"
 FROM target_pc tpc
 JOIN academic.programs p ON p.id = tpc.program_id
 JOIN academic.academic_periods ap ON ap.id = tpc.academic_period_id
+LEFT JOIN core.types mt ON mt.id = p.modality_type_id
 LEFT JOIN accreditation.commissions c ON c.id = tpc.commission_id
 LEFT JOIN accreditation.accreditors acc ON acc.id = c.accreditor_id
 UNION ALL
 SELECT
 	'' AS "programName",
+	'' AS "modalityName",
 	'' AS "commissionName",
 	ap.code AS "academicPeriodCode",
 	'' AS "accreditorCode"

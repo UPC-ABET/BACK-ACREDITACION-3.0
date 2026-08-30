@@ -14,7 +14,9 @@ export class ReportHtmlService {
 		const orientation = document.orientation ?? 'portrait';
 		const metadata = this.buildMetadata(document.metadata ?? []);
 		const secondaryMetadata = this.buildMetadata(document.secondaryMetadata ?? [], 'secondary');
-		const reportTitle = `${document.reportName} — ${document.programName}`;
+		const reportTitle = document.programName
+			? `${document.reportName} — ${document.programName}`
+			: document.reportName;
 		const logo = UPC_LOGO_DATA_URI
 			? `<img class="report-header__logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
 			: '';
