@@ -102,9 +102,26 @@ export class SemaphoreFilterDto {
 			'RV only: grade type IDs (tipo de nota, core.types group TG205) to include. Filters RV grades by their rubric grade type. Omit for all.',
 	})
 	gradeTypeIds?: number[];
+
+	@Transform(({ value }) =>
+		value === undefined || value === null || value === '' ? undefined : Number(value),
+	)
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 3,
+		required: false,
+		description:
+			'RC PDF download only: a single academic.performance_levels id (see GET ' +
+			'rc/performance-levels). When set, the chart and the consolidated table narrow to that ' +
+			"one level's column/series instead of showing all of them. Ignored by RC Excel/JSON and " +
+			'by RV entirely.',
+	})
+	performanceLevelId?: number;
 }
 
 export class SemaphoreLevelLegendDto {
+	id: number;
 	name: string;
 	minScore: number;
 	maxScore: number;

@@ -24,9 +24,9 @@ const CAMPUSES: SemaphoreCampusRow[] = [
 
 // The real RC rows: closed ranges whose maximum is the next level's minimum minus an epsilon.
 const RC_LEGEND: SemaphoreLevelLegendDto[] = [
-	{ name: 'Necesita Mejora', minScore: 0, maxScore: 12.999999, color: '#e30613' },
-	{ name: 'Esperado', minScore: 13, maxScore: 15.999999, color: '#f4c20d' },
-	{ name: 'Sobresaliente', minScore: 16, maxScore: 20, color: '#16a34a' },
+	{ id: 1, name: 'Necesita Mejora', minScore: 0, maxScore: 12.999999, color: '#e30613' },
+	{ id: 2, name: 'Esperado', minScore: 13, maxScore: 15.999999, color: '#f4c20d' },
+	{ id: 3, name: 'Sobresaliente', minScore: 16, maxScore: 20, color: '#16a34a' },
 ];
 
 type CampusPlan = { mode: 'all' } | { mode: 'single'; campus: SemaphoreCampusRow };
@@ -299,7 +299,7 @@ describe('SemaphoreReportsService', () => {
 		it('trims the trailing zeros of a numeric(_, 6) score', () => {
 			const service = makeService();
 			const legend: SemaphoreLevelLegendDto[] = [
-				{ name: 'Only', minScore: 0, maxScore: 20, color: '#000000' },
+				{ id: 1, name: 'Only', minScore: 0, maxScore: 20, color: '#000000' },
 			];
 
 			expect(service.formatLevelRange(legend, 0)).toBe('[0 - 20]');
@@ -558,6 +558,60 @@ describe('SemaphoreReportsService', () => {
 				expect(rvDocument.bodyHtml).toContain('Outcome 1 description');
 				expect(rvDocument.bodyHtml).toContain('(5) 25%');
 				expect(rvDocument.bodyHtml).toContain('TOTALES');
+			});
+
+			it('narrows the RC chart series and table columns to one level when performanceLevelId is set', async () => {
+				const screenRow: SemaphoreCourseOutcomeRow = {
+					courseCode: 'C1',
+					courseName: 'Course 1',
+					outcomeCode: '1',
+					outcomeName: 'Outcome 1',
+					outcomeDescription: 'Outcome 1 description',
+					totalStudents: 20,
+					studentsRed: 5,
+					studentsYellow: 8,
+					studentsGreen: 7,
+					campusId: 1,
+					campus: 'Lima',
+					academicPeriodCycle: '202510',
+				};
+				const repositoryMocks = {
+					...makeRepositoryMocks([detailRow(1)]),
+					getRcScreen: jest.fn().mockResolvedValue([screenRow]),
+					getRcOutcomes: jest
+						.fn()
+						.mockResolvedValue([{ id: 1, outcomeCode: '1', outcomeName: 'Outcome 1' }]),
+				};
+				const reportGeneratorMocks = {
+					generateZip: jest.fn().mockResolvedValue({ zip: Buffer.from('zip'), filename: 'x.zip' }),
+				};
+				const service = makeService(repositoryMocks, reportGeneratorMocks);
+				(service as unknown as { reportChart: unknown }).reportChart = {
+					buildGroupedBarChart: jest.fn((opts: { series: unknown[] }) => {
+						return `<svg data-series="${opts.series.length}" />`;
+					}),
+				};
+
+				await service.generateRcZipDownload({ performanceLevelId: 2 } as SemaphoreFilterDto, 10);
+
+				const [{ document }] = reportGeneratorMocks.generateZip.mock.calls[0][0] as [
+					{ document: ReportDocument },
+				];
+
+				// Chart: one series instead of three.
+				expect(document.bodyHtml).toContain('data-series="1"');
+				// "Nivel de Desempeño" header names the selected level.
+				expect(
+					document.metadata?.some(
+						(item) => item.label === 'Nivel de Desempeño' && item.value === 'Esperado',
+					),
+				).toBe(true);
+				// The consolidated table's own header row drops down to one level column -- "Necesita
+				// Mejora"/"Sobresaliente" only still appear once each, from the untouched indicator
+				// scale, not from a second (table header) occurrence.
+				expect(document.bodyHtml.match(/Necesita Mejora/g)).toHaveLength(1);
+				expect(document.bodyHtml.match(/Sobresaliente/g)).toHaveLength(1);
+				expect(document.bodyHtml.match(/Esperado/g)?.length).toBeGreaterThanOrEqual(2);
 			});
 		});
 

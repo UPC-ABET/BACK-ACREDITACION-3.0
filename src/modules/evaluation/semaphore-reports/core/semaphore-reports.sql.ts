@@ -626,6 +626,7 @@ ORDER BY campus, outcome_code
 
 export const SEMAPHORE_LEVELS_LEGEND_SQL = `
 SELECT
+	pl.id                                             AS "id",
 	COALESCE(pl.name->>$3::text, pl.name->>'es', '') AS "name",
 	pl.min_score                                     AS "minScore",
 	pl.max_score                                     AS "maxScore",

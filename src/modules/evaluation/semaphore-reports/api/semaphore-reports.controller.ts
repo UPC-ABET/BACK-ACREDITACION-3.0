@@ -1,9 +1,10 @@
-import { Body, Res } from '@nestjs/common';
+import { Body, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import {
 	SwaggerSemaphoreReportsController,
 	SwaggerSemaphoreRc,
+	SwaggerSemaphoreRcPerformanceLevels,
 	SwaggerSemaphoreRcPdf,
 	SwaggerSemaphoreRcExcel,
 	SwaggerSemaphoreRv,
@@ -28,6 +29,17 @@ export class SemaphoreReportsController {
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.POST })
 	async rc(@Body() dto: SemaphoreFilterDto, @AcademicPeriodId() academicPeriodId: number) {
 		const result = await this.service.getRcData(dto, academicPeriodId);
+		return parseSuccessResponse(result);
+	}
+
+	@SwaggerSemaphoreRcPerformanceLevels()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
+	async rcPerformanceLevels(
+		@AcademicPeriodId() academicPeriodId: number,
+		@Query('lang') lang: 'es' | 'en' = 'es',
+	) {
+		const result = await this.service.getRcPerformanceLevels(academicPeriodId, lang);
 		return parseSuccessResponse(result);
 	}
 

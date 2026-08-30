@@ -168,7 +168,14 @@ export class SemaphoreReportsService {
 			// failing the whole zip -- the reader still gets every outcome that does have data.
 			if (!data) continue;
 			reports.push({
-				document: this.buildDocument(data, 'rc', lang, campusLabel, outcome.outcomeName),
+				document: this.buildDocument(
+					data,
+					'rc',
+					lang,
+					campusLabel,
+					outcome.outcomeName,
+					dto.performanceLevelId,
+				),
 				filename: this.buildOutcomeFilename(outcome.outcomeCode, lang, campusCode),
 			});
 		}
@@ -654,11 +661,24 @@ export class SemaphoreReportsService {
 
 	private buildLegend(legendRows: SemaphoreLevelLegendRow[]): SemaphoreLevelLegendDto[] {
 		return legendRows.map((r) => ({
+			id: r.id,
 			name: r.name,
 			minScore: Number(r.minScore),
 			maxScore: Number(r.maxScore),
 			color: r.color,
 		}));
+	}
+
+	/** Options for the RC "Nivel de Desempeño" filter -- same rows as the RC legend, ascending by
+	 *  score, scoped to the active academic period. */
+	async getRcPerformanceLevels(
+		academicPeriodId: number,
+		lang: 'es' | 'en',
+	): Promise<SemaphoreLevelLegendDto[]> {
+		const legendRows = await this.runQuery(() =>
+			this.repository.getLevelsLegend(academicPeriodId, 'rc', lang),
+		);
+		return this.buildLegend(legendRows);
 	}
 
 	private buildScreenReport(
@@ -898,9 +918,19 @@ export class SemaphoreReportsService {
 		lang: ReportLanguage,
 		campusLabel: string,
 		outcomeLabel?: string,
+		performanceLevelId?: number,
 	): ReportDocument {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		const reportTitle = type === 'rc' ? L.reportTitleRC : L.reportTitleRV;
+		// RC only (see generateRcZipDownload): narrows the chart series and the consolidated
+		// table's level columns down to this one, when the caller selected a "Nivel de Desempeño".
+		// `undefined` -- no filter selected, or the id didn't match any of this period's levels --
+		// shows every level, same as before this filter existed.
+		const levelIndex =
+			performanceLevelId !== undefined
+				? data.legend.findIndex((level) => level.id === performanceLevelId)
+				: -1;
+		const keepLevelIndex = levelIndex >= 0 ? levelIndex : undefined;
 
 		return {
 			language: lang,
@@ -918,8 +948,12 @@ export class SemaphoreReportsService {
 				// RC only: one PDF per outcome (see generateRcZipDownload), so each file names its
 				// own outcome here -- the reader can tell them apart without opening every one.
 				...(outcomeLabel ? [{ label: L.colOutcome, value: outcomeLabel }] : []),
+				...(keepLevelIndex !== undefined
+					? [{ label: L.performanceLevel, value: data.legend[keepLevelIndex].name }]
+					: []),
 			],
-			bodyHtml: type === 'rc' ? this.buildRcBody(data, lang) : this.buildRvBody(data, lang),
+			bodyHtml:
+				type === 'rc' ? this.buildRcBody(data, lang, keepLevelIndex) : this.buildRvBody(data, lang),
 			// RC's consolidated table lost its outcome column now that each PDF only ever covers a
 			// single outcome (see generateRcZipDownload), so it fits a portrait page just like RV's.
 			orientation: 'portrait',
@@ -932,15 +966,19 @@ export class SemaphoreReportsService {
 	 * -- no "Resumen por Outcome" table, since one PDF already covers a single outcome (see
 	 * generateRcZipDownload); repeating it as a one-row table would say the same thing twice.
 	 */
-	private buildRcBody(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
+	private buildRcBody(
+		data: SemaphoreRenderReportDto,
+		lang: ReportLanguage,
+		keepLevelIndex?: number,
+	): string {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		return `
-			${this.buildChartSection(data, lang, 'rc')}
+			${this.buildChartSection(data, lang, 'rc', keepLevelIndex)}
 			<section>
 				<h3>${escapeHtml(L.indicatorScale)}</h3>
 				${this.buildIndicatorScale(data.legend, true)}
 			</section>
-			${this.buildConsolidatedSection(data, lang)}
+			${this.buildConsolidatedSection(data, lang, keepLevelIndex)}
 		`;
 	}
 
@@ -1007,6 +1045,7 @@ export class SemaphoreReportsService {
 		data: SemaphoreRenderReportDto,
 		lang: ReportLanguage,
 		instrument: 'rc' | 'rv',
+		keepLevelIndex?: number,
 	): string {
 		if (data.chart.categories.length === 0) return '';
 		const L = SEMAPHORE_PDF_LABELS[lang];
@@ -1015,9 +1054,13 @@ export class SemaphoreReportsService {
 		// colors/ranges. RC's categories are courses (buildCourseChartData); RV's are outcomes.
 		// Only RV's overall size is smaller.
 		const rvOverrides = instrument === 'rv' ? { width: 640, plotHeight: 200 } : {};
+		// RC only: the "Nivel de Desempeño" filter narrows the chart to that one level's series
+		// instead of all three (see buildDocument).
+		const series =
+			keepLevelIndex !== undefined ? [data.chart.series[keepLevelIndex]] : data.chart.series;
 		return `<section>${this.reportChart.buildGroupedBarChart({
 			categories: data.chart.categories,
-			series: data.chart.series,
+			series,
 			yAxisLabel: L.axisStudentCount,
 			xAxisLabel: instrument === 'rc' ? L.axisCourses : L.axisOutcomes,
 			hideLegend: true,
@@ -1057,14 +1100,21 @@ export class SemaphoreReportsService {
 	 * headers are coloured, in the level's own colour, so the reader can map a column to a segment
 	 * of the scale above.
 	 */
-	private buildConsolidatedSection(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
+	private buildConsolidatedSection(
+		data: SemaphoreRenderReportDto,
+		lang: ReportLanguage,
+		keepLevelIndex?: number,
+	): string {
 		if (data.consolidated.length === 0) return '';
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		const levelLabels = [L.redDetail, L.yellowDetail, L.greenDetail];
-		const levelHeaders = levelLabels
-			.map((fallback, index) => {
+		// RC only: the "Nivel de Desempeño" filter narrows the table to that one level's column
+		// instead of all three (see buildDocument).
+		const levelIndices = keepLevelIndex !== undefined ? [keepLevelIndex] : [0, 1, 2];
+		const levelHeaders = levelIndices
+			.map((index) => {
 				const level = data.legend[index];
-				const label = level?.name || fallback;
+				const label = level?.name || levelLabels[index];
 				const style = level
 					? ` style="background-color:${escapeHtml(level.color)};color:${this.contrastText(level.color)}"`
 					: '';
@@ -1082,14 +1132,14 @@ export class SemaphoreReportsService {
 					<tr>
 						<td>${escapeHtml(row.courseCode)}</td>
 						<td>${escapeHtml(row.courseName) || L.noTranslation}</td>
-						${row.levels.map((level) => cell(level.count, level.percentage)).join('')}
+						${levelIndices.map((index) => cell(row.levels[index].count, row.levels[index].percentage)).join('')}
 						<td>${row.totalStudents}</td>
 					</tr>`,
 					)
 					.join('')}
 				<tr class="consolidated__totals">
 					<td colspan="2">${escapeHtml(L.totals)}</td>
-					${group.levelTotals.map((total) => `<td>${total}</td>`).join('')}
+					${levelIndices.map((index) => `<td>${group.levelTotals[index]}</td>`).join('')}
 					<td>${group.totalStudents}</td>
 				</tr>`,
 			)

@@ -54,6 +54,7 @@ export interface SemaphoreSummaryRow {
 }
 
 export interface SemaphoreLevelLegendRow {
+	id: number;
 	name: string;
 	minScore: number;
 	maxScore: number;
