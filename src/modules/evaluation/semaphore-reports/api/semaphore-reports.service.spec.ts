@@ -546,7 +546,7 @@ describe('SemaphoreReportsService', () => {
 				];
 
 				expect(rcDocument.bodyHtml).toContain('Interpretación de Indicadores');
-				expect(rcDocument.bodyHtml).toContain('Detalle de Cursos por Outcome');
+				expect(rcDocument.bodyHtml).toContain('class="consolidated"');
 				expect(rcDocument.bodyHtml).toContain('(5) 25%');
 				expect(rcDocument.bodyHtml).not.toContain('Listado de Cursos con Nivel');
 

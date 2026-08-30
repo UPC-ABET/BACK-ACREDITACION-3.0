@@ -919,10 +919,7 @@ export class SemaphoreReportsService {
 				// own outcome here -- the reader can tell them apart without opening every one.
 				...(outcomeLabel ? [{ label: L.colOutcome, value: outcomeLabel }] : []),
 			],
-			bodyHtml:
-				type === 'rc'
-					? this.buildRcBody(data, reportTitle, lang)
-					: this.buildRvBody(data, reportTitle, lang),
+			bodyHtml: type === 'rc' ? this.buildRcBody(data, lang) : this.buildRvBody(data, lang),
 			// RC's consolidated table lost its outcome column now that each PDF only ever covers a
 			// single outcome (see generateRcZipDownload), so it fits a portrait page just like RV's.
 			orientation: 'portrait',
@@ -935,14 +932,10 @@ export class SemaphoreReportsService {
 	 * -- no "Resumen por Outcome" table, since one PDF already covers a single outcome (see
 	 * generateRcZipDownload); repeating it as a one-row table would say the same thing twice.
 	 */
-	private buildRcBody(
-		data: SemaphoreRenderReportDto,
-		reportTitle: string,
-		lang: ReportLanguage,
-	): string {
+	private buildRcBody(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		return `
-			${this.buildChartSection(data, reportTitle, lang, 'rc')}
+			${this.buildChartSection(data, lang, 'rc')}
 			<section>
 				<h3>${escapeHtml(L.indicatorScale)}</h3>
 				${this.buildIndicatorScale(data.legend, true)}
@@ -958,11 +951,7 @@ export class SemaphoreReportsService {
 	 * per-course listings: every outcome the courses in scope were evaluated on is already
 	 * represented in that single table.
 	 */
-	private buildRvBody(
-		data: SemaphoreRenderReportDto,
-		reportTitle: string,
-		lang: ReportLanguage,
-	): string {
+	private buildRvBody(data: SemaphoreRenderReportDto, lang: ReportLanguage): string {
 		const L = SEMAPHORE_PDF_LABELS[lang];
 		const levelHeaders = data.outcomePivot[0]?.levels ?? [];
 		const summaryHeaderCells = levelHeaders
@@ -998,13 +987,12 @@ export class SemaphoreReportsService {
 				: '';
 
 		return `
-			${this.buildChartSection(data, reportTitle, lang, 'rv')}
+			${this.buildChartSection(data, lang, 'rv')}
 			<section>
 				<h3>${escapeHtml(L.indicatorScale)}</h3>
 				${this.buildIndicatorScale(data.legend, true)}
 			</section>
 			<section>
-				<h3>${escapeHtml(L.summary)}</h3>
 				<table>
 					<thead><tr>
 						<th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colDescription)}</th>${summaryHeaderCells}<th>${escapeHtml(L.colTotalStudents)}</th>
@@ -1017,7 +1005,6 @@ export class SemaphoreReportsService {
 
 	private buildChartSection(
 		data: SemaphoreRenderReportDto,
-		reportTitle: string,
 		lang: ReportLanguage,
 		instrument: 'rc' | 'rv',
 	): string {
@@ -1029,7 +1016,6 @@ export class SemaphoreReportsService {
 		// Only RV's overall size is smaller.
 		const rvOverrides = instrument === 'rv' ? { width: 640, plotHeight: 200 } : {};
 		return `<section>${this.reportChart.buildGroupedBarChart({
-			title: reportTitle,
 			categories: data.chart.categories,
 			series: data.chart.series,
 			yAxisLabel: L.axisStudentCount,
@@ -1111,7 +1097,6 @@ export class SemaphoreReportsService {
 
 		return `
 			<section>
-				<h3>${escapeHtml(L.consolidatedDetail)}</h3>
 				<table class="consolidated">
 					<thead><tr>
 						<th>${escapeHtml(L.colCode)}</th><th>${escapeHtml(L.colCourse)}</th>${levelHeaders}<th>${escapeHtml(L.colTotalStudents)}</th>
