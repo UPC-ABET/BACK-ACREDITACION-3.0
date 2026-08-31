@@ -28,19 +28,18 @@ const ENROLLMENT_CONCURRENCY = 3;
 // Banner at concurrency 20–200: real throughput plateaus at ~35 req/s by concurrency ~80 (zero
 // 429s even at 200, so this is backend capacity, not a policy throttle) — 120 bought +3%
 // throughput over 80 for +44% p50 latency, pure queueing cost with no wall-clock benefit.
+// That benchmark predates ADR-005 (grades scraping removed); this constant now governs
+// scrapeStudents alone and hasn't been re-validated against that endpoint in isolation.
 const SCRAPE_CONCURRENCY = 80;
 const INSERT_BATCH_SIZE = 500;
 
 interface ScrapeStats {
 	departments: { requested: string[]; succeeded: string[]; failed: string[] };
+	// grades stays in this shape permanently at 0 — Banner grades scraping was retired (see
+	// ADR-005); kept only so RunSummary.counts doesn't change shape for existing consumers.
 	counts: { schedule: number; enrollment: number; students: number; grades: number };
 	uniqueStudents: number;
 	errors: Array<{ step: string; key: string; message: string }>;
-}
-
-interface Enrollment {
-	studentCode: string;
-	nrc: string;
 }
 
 export interface RunSummary {
@@ -302,9 +301,8 @@ export class ScraperService {
 		departments: string[],
 		courseCodes: Set<string>,
 		stats: ScrapeStats,
-	): Promise<{ nrcs: string[]; courseByNrc: Map<string, string> }> {
+	): Promise<{ nrcs: string[] }> {
 		const nrcs = new Set<string>();
-		const courseByNrc = new Map<string, string>();
 		const limit = await this.createScheduleLimit();
 
 		await Promise.all(
@@ -324,14 +322,11 @@ export class ScraperService {
 						for (const section of sections) {
 							// Scope the scrape to courses tracked in the period's study plans. Sections whose
 							// derived code (materia.codigo + numeroCurso) isn't one of ours are dropped here, so
-							// they never reach raw_horario nor the downstream enrollment/students/grades steps.
+							// they never reach raw_horario nor the downstream enrollment/students steps.
 							const courseCode = courseCodeOf(section);
 							if (!courseCodes.has(courseCode)) continue;
 							const nrc = toStringOrNull(section.nrc);
-							if (nrc) {
-								nrcs.add(nrc);
-								courseByNrc.set(nrc, courseCode);
-							}
+							if (nrc) nrcs.add(nrc);
 							rows.push({
 								runId,
 								level,
@@ -358,7 +353,7 @@ export class ScraperService {
 			),
 		);
 
-		return { nrcs: [...nrcs], courseByNrc };
+		return { nrcs: [...nrcs] };
 	}
 
 	private async scrapeEnrollment(
@@ -367,9 +362,8 @@ export class ScraperService {
 		period: string,
 		nrcs: string[],
 		stats: ScrapeStats,
-	): Promise<{ studentCodes: string[]; enrollments: Enrollment[] }> {
+	): Promise<{ studentCodes: string[] }> {
 		const studentCodes = new Set<string>();
-		const enrollments: Enrollment[] = [];
 		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
 		// No stubbable seam here, unlike `scrapeSchedule`'s `createScheduleLimit()` — no end-to-end
 		// test path reaches this call today (the 'expired' test now stops at `scrapeSchedule`), so
@@ -392,10 +386,7 @@ export class ScraperService {
 							const alumnos = asArray<Record<string, unknown>>(item.listaAlumnos);
 							for (const alumno of alumnos) {
 								const studentCode = toStringOrNull(alumno.codigoAlumno);
-								if (studentCode) {
-									studentCodes.add(studentCode);
-									if (nrc) enrollments.push({ studentCode, nrc });
-								}
+								if (studentCode) studentCodes.add(studentCode);
 								rows.push({
 									runId,
 									level,
@@ -421,7 +412,7 @@ export class ScraperService {
 			),
 		);
 
-		return { studentCodes: [...studentCodes], enrollments };
+		return { studentCodes: [...studentCodes] };
 	}
 
 	private async scrapeStudents(
