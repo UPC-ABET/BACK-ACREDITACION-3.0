@@ -98,10 +98,12 @@ export interface StudentSectionExportRow {
 }
 
 // uploads/grades-rc template: sectionCode | studentCode | gradeTypeCode | gradeTypePercentage |
-// grade | qualificationStatusCode. Built from both scrapings (Banner raw_notas + Planner
-// raw_planner_nota); grade/qualificationStatusCode are resolved from the raw grade text, and
-// gradeTypeCode is a TG205 code or — for a grade rescued by the last-grade fallback — the raw
-// scraped code (see GradesRcExportRepository).
+// grade | qualificationStatusCode. Built from Planner's scraping (raw_planner_nota) — see
+// ADR-005 for why Banner's grades scraping was retired from this export; careerCode still comes
+// from Banner's raw_alumno via a standalone lookup, independent of the grades themselves.
+// grade/qualificationStatusCode are resolved from the raw grade text, and gradeTypeCode is a
+// TG205 code or — for a grade rescued by the last-grade fallback — the raw scraped code (see
+// GradesRcExportRepository).
 // The trailing fields carry no upload meaning: they feed the descriptive second worksheet, which
 // the RC bulk upload never parses (it reads worksheets[0] positionally).
 export interface GradeRcExportRow {

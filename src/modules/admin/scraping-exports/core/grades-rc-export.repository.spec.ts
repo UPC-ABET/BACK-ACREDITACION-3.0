@@ -9,7 +9,7 @@ import {
 } from './grades-rc-export.sql';
 import { PROGRAM_CAREER_MAP } from '../model/scraping-exports.transforms';
 
-// The merge itself (Banner + Planner cross, newest scrape wins, last-grade fallback) is SQL, so it
+// The merge itself (Planner-sourced, newest scrape wins, last-grade fallback) is SQL, so it
 // is NOT exercised here -- `query` is mocked. It is verified by running
 // `test/manual/grades-rc-export.verify.ts` against a real Postgres, by hand: nothing in CI does it.
 // What is testable here is the contract between the two connections: everything the main DB owns
@@ -288,7 +288,7 @@ describe('GradesRcExportRepository.openGradesRcExport', () => {
 	// its predecessor ('partial': scoped to one school, or died halfway) must not win on started_at
 	// -- it would silently ship a half-scraped period.
 	it('reads only complete runs, on both sources', () => {
-		const runCtes = MATERIALIZE_GRADES_RC_SQL.split('banner_grades AS')[0];
+		const runCtes = MATERIALIZE_GRADES_RC_SQL.split('program_lookup AS')[0];
 		expect(runCtes).toContain('FROM scrape_run');
 		expect(runCtes).toContain('FROM planner_scrape_run');
 		expect(runCtes.match(/status IN \('completed'\)/g)).toHaveLength(2);

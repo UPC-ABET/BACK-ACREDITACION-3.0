@@ -44,8 +44,10 @@ export interface GradesRcExportHandle {
 }
 
 /**
- * Builds the RC bulk-upload-ready data out of both scrapings — Banner and Planner, which share the
- * raw DB, so the whole cross runs in one SQL pass. Reads only.
+ * Builds the RC bulk-upload-ready data out of the Planner scraping (raw_planner_nota), plus a
+ * lean Banner-sourced (raw_alumno) career-code lookup — both share the raw DB, so the whole
+ * merge runs in one SQL pass. Reads only. See ADR-005 for why Banner's own grades scraping was
+ * retired from this merge.
  */
 @Injectable()
 export class GradesRcExportRepository {
