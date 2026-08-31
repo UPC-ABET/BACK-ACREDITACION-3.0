@@ -7,7 +7,6 @@ import { ScrapeRunRepository } from '../../raw/core/scrape-run.repository';
 import { RawHorarioRepository } from '../../raw/core/raw-horario.repository';
 import { RawMatriculaRepository } from '../../raw/core/raw-matricula.repository';
 import { RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
-import { RawNotasRepository } from '../../raw/core/raw-notas.repository';
 import { DepartmentSourceRepository } from '../core/department-source.repository';
 import { BannerHttpClient } from '../core/banner-http.client';
 import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
@@ -29,7 +28,6 @@ const mockScrapeRunRepository = {
 const mockRawHorarioRepository = { bulkInsert: jest.fn() };
 const mockRawMatriculaRepository = { bulkInsert: jest.fn() };
 const mockRawAlumnoRepository = { bulkInsert: jest.fn() };
-const mockRawNotasRepository = { bulkInsert: jest.fn() };
 const mockDepartmentSourceRepository = {
 	findAcademicPeriodCode: jest.fn(),
 	findActiveDepartmentCodes: jest.fn(),
@@ -45,7 +43,6 @@ const buildService = () =>
 		mockRawHorarioRepository as unknown as RawHorarioRepository,
 		mockRawMatriculaRepository as unknown as RawMatriculaRepository,
 		mockRawAlumnoRepository as unknown as RawAlumnoRepository,
-		mockRawNotasRepository as unknown as RawNotasRepository,
 		mockDepartmentSourceRepository as unknown as DepartmentSourceRepository,
 		mockHttp as unknown as BannerHttpClient,
 		mockExportGenerationService as unknown as ScrapingExportGenerationService,
@@ -207,14 +204,14 @@ describe('ScraperService.execute end-to-end wiring (reachable branch only)', () 
 });
 
 /**
- * `scrapeSchedule`/`scrapeEnrollment`/`scrapeStudents`/`scrapeGrades` are stubbed via spies here so
- * `execute()`'s phase-update call sites can be asserted in order without depending on
- * `createLimiter()`'s real `await import('p-limit')`, which is unusable under this file's
- * `module: nodenext` ts-jest setup (see the top-of-file comment). `execute()` itself still calls
- * `createLimiter(SCRAPE_CONCURRENCY)` directly between the enrollment and students/grades stages, so
- * even with every phase method stubbed, that call throws and is caught by `execute()`'s own
- * try/catch (recorded as a 'failed' finish, not asserted on here — that outcome is an artifact of
- * this jest limitation, not a phase-tracking behavior worth pinning to a test).
+ * `scrapeSchedule`/`scrapeEnrollment` are stubbed via spies here so `execute()`'s phase-update
+ * call sites can be asserted in order without depending on `createLimiter()`'s real `await
+ * import('p-limit')`, which is unusable under this file's `module: nodenext` ts-jest setup (see
+ * the top-of-file comment). `execute()` itself still calls `createScrapeLimit()` (unstubbed
+ * here) between the enrollment and students stages, which hits that same real `p-limit` import
+ * and throws, caught by `execute()`'s own try/catch (recorded as a 'failed' finish, not asserted
+ * on here). See the "reaches completed without grades scraping" describe block below for the
+ * variant that stubs `createScrapeLimit` too, past that limitation.
  */
 describe('ScraperService.execute phase tracking', () => {
 	beforeEach(() => {
@@ -329,6 +326,48 @@ describe('ScraperService.scrapeSchedule concurrency', () => {
 		).rejects.toBeInstanceOf(SessionExpiredError);
 
 		expect(stats.departments.failed).not.toContain('DEPT_BAD');
+	});
+});
+
+describe('ScraperService.execute reaches completed without grades scraping', () => {
+	beforeEach(() => {
+		mockScrapeRunRepository.finish.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteRun.mockResolvedValue(undefined);
+		mockScrapeRunRepository.deleteOtherRunsForPeriod.mockResolvedValue(undefined);
+	});
+
+	// Regression test for ADR-005 / the 'partial' cascade-delete bug this change fixes: a clean
+	// schedule/enrollment/students run must reach 'completed' on its own, with no grades call
+	// (and therefore nothing that can turn a Banner grades-endpoint outage into a lost run).
+	// `createScrapeLimit` is stubbed the same way `createScheduleLimit` already is elsewhere in
+	// this file, past the real `await import('p-limit')` that's unusable under this jest setup;
+	// `scrapeStudents` is left real -- with an empty `studentCodes` array it resolves trivially,
+	// with no HTTP calls and nothing to insert.
+	it('finishes completed when schedule/enrollment/students succeed, with no scrapeGrades call', async () => {
+		const service = buildService();
+		jest
+			.spyOn(service as any, 'scrapeSchedule')
+			.mockResolvedValue({ nrcs: [], courseByNrc: new Map() });
+		jest
+			.spyOn(service as any, 'scrapeEnrollment')
+			.mockResolvedValue({ studentCodes: [], enrollments: [] });
+		jest
+			.spyOn(service as any, 'createScrapeLimit')
+			.mockResolvedValue((fn: () => Promise<unknown>) => fn());
+
+		await (service as any).execute('run-1', 'UG', PERIOD, ['DEPT1'], new Set(['CS101']));
+
+		expect(mockScrapeRunRepository.finish).toHaveBeenCalledWith(
+			'run-1',
+			'completed',
+			expect.anything(),
+		);
+	});
+
+	it('has no scrapeGrades method left on the class', () => {
+		const service = buildService();
+
+		expect((service as any).scrapeGrades).toBeUndefined();
 	});
 });
 

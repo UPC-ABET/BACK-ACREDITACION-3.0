@@ -7,7 +7,6 @@ import {
 	RawMatriculaRepository,
 } from '../../raw/core/raw-matricula.repository';
 import { RawAlumnoInsert, RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
-import { RawNotasInsert, RawNotasRepository } from '../../raw/core/raw-notas.repository';
 import { DepartmentSourceRepository } from '../core/department-source.repository';
 import { BannerHttpClient } from '../core/banner-http.client';
 import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
@@ -43,11 +42,6 @@ interface Enrollment {
 	studentCode: string;
 	nrc: string;
 }
-// A unique (student, course) target for the grades endpoint (NRC is not part of its key).
-interface GradePair {
-	studentCode: string;
-	courseCode: string;
-}
 
 export interface RunSummary {
 	runId: string;
@@ -79,7 +73,6 @@ export class ScraperService {
 		private readonly rawHorarioRepository: RawHorarioRepository,
 		private readonly rawMatriculaRepository: RawMatriculaRepository,
 		private readonly rawAlumnoRepository: RawAlumnoRepository,
-		private readonly rawNotasRepository: RawNotasRepository,
 		private readonly departmentSourceRepository: DepartmentSourceRepository,
 		private readonly http: BannerHttpClient,
 		private readonly exportGenerationService: ScrapingExportGenerationService,
@@ -215,7 +208,7 @@ export class ScraperService {
 
 		try {
 			await this.scrapeRunRepository.updatePhase(runId, 'schedule');
-			const { nrcs, courseByNrc } = await this.scrapeSchedule(
+			const { nrcs } = await this.scrapeSchedule(
 				runId,
 				level,
 				period,
@@ -224,29 +217,11 @@ export class ScraperService {
 				stats,
 			);
 			await this.scrapeRunRepository.updatePhase(runId, 'enrollment');
-			const { studentCodes, enrollments } = await this.scrapeEnrollment(
-				runId,
-				level,
-				period,
-				nrcs,
-				stats,
-			);
+			const { studentCodes } = await this.scrapeEnrollment(runId, level, period, nrcs, stats);
 			stats.uniqueStudents = studentCodes.length;
 			await this.scrapeRunRepository.updatePhase(runId, 'studentsAndGrades');
-			// Students and Grades only depend on enrollment output, not on each other.
-			// Run them concurrently through one shared limiter (see SCRAPE_CONCURRENCY).
-			const limit = await createLimiter(SCRAPE_CONCURRENCY);
-			await Promise.all([
-				this.scrapeStudents(runId, level, studentCodes, stats, limit),
-				this.scrapeGrades(
-					runId,
-					level,
-					period,
-					buildGradePairs(enrollments, courseByNrc),
-					stats,
-					limit,
-				),
-			]);
+			const limit = await this.createScrapeLimit();
+			await this.scrapeStudents(runId, level, studentCodes, stats, limit);
 
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
@@ -312,6 +287,12 @@ export class ScraperService {
 	// ts-jest setup regardless of mocking (see this file's `.spec.ts` for the full explanation).
 	private async createScheduleLimit(): Promise<Limiter> {
 		return await createLimiter(SCHEDULE_CONCURRENCY);
+	}
+
+	// Same seam as createScheduleLimit, for the students phase's own real `await
+	// import('p-limit')` call.
+	private async createScrapeLimit(): Promise<Limiter> {
+		return await createLimiter(SCRAPE_CONCURRENCY);
 	}
 
 	private async scrapeSchedule(
@@ -486,57 +467,6 @@ export class ScraperService {
 
 		await buffer.flush();
 	}
-
-	private async scrapeGrades(
-		runId: string,
-		level: string,
-		period: string,
-		pairs: GradePair[],
-		stats: ScrapeStats,
-		limit: Limiter,
-	): Promise<void> {
-		const buffer = new InsertBuffer<RawNotasInsert>(INSERT_BATCH_SIZE, (rows) =>
-			this.rawNotasRepository.bulkInsert(rows),
-		);
-
-		await Promise.all(
-			pairs.map((pair) =>
-				limit(async () => {
-					try {
-						const path =
-							`/alumno/notaactual/notas/${encodeURIComponent(pair.studentCode)}` +
-							`/${encodeURIComponent(`${level}-${period}`)}/${encodeURIComponent(pair.courseCode)}`;
-						const json = await this.http.get<{
-							detalle?: { notaFinal?: unknown; notas?: unknown };
-						}>(path, {});
-						const detalle = json.detalle;
-						// No grades yet for this (student, course) — skip, don't store an empty row.
-						if (!detalle || (detalle.notaFinal == null && !detalle.notas)) return;
-
-						await buffer.add({
-							runId,
-							level,
-							period,
-							studentCode: pair.studentCode,
-							courseCode: pair.courseCode,
-							payload: json,
-							payloadHash: hashPayload(json),
-						});
-						stats.counts.grades += 1;
-					} catch (error) {
-						if (error instanceof SessionExpiredError) throw error;
-						stats.errors.push({
-							step: 'grade',
-							key: `${pair.studentCode}/${pair.courseCode}`,
-							message: (error as Error).message,
-						});
-					}
-				}),
-			),
-		);
-
-		await buffer.flush();
-	}
 }
 
 // Course code is derived: materia.codigo + numeroCurso (e.g. "1ASI" + "0572").
@@ -545,20 +475,6 @@ function courseCodeOf(section: Record<string, unknown>): string {
 	const codigo = toStringOrNull(materia?.codigo) ?? '';
 	const numero = toStringOrNull(section.numeroCurso) ?? '';
 	return `${codigo}${numero}`;
-}
-
-function buildGradePairs(enrollments: Enrollment[], courseByNrc: Map<string, string>): GradePair[] {
-	const pairs: GradePair[] = [];
-	const seen = new Set<string>();
-	for (const enrollment of enrollments) {
-		const courseCode = courseByNrc.get(enrollment.nrc);
-		if (!courseCode) continue;
-		const key = `${enrollment.studentCode}|${courseCode}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		pairs.push({ studentCode: enrollment.studentCode, courseCode });
-	}
-	return pairs;
 }
 
 function asArray<T>(value: unknown): T[] {
