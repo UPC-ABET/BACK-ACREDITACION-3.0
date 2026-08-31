@@ -421,7 +421,7 @@ _why_ writes them down. Do not populate it by guessing from the code.
   (`hasProgramAncestor`) and in `audit.fn_upload_charts`.
 - **A completed Banner or Planner scrape run deletes every other raw-data run for the same
   `period`; a run that itself finishes partial/failed/expired deletes only its own rows.**
-  Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno`/`raw_notas` on the `raw`
+  Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno` on the `raw`
   connection; `raw_planner_seccion`/`raw_planner_evaluacion`/`raw_planner_nota` on
   `planner-raw`) is otherwise insert-only, tagged by a `runId` FK to `scrape_run` /
   `planner_scrape_run` with `onDelete: 'CASCADE'` — nothing ever removed a superseded run
@@ -458,5 +458,15 @@ _why_ writes them down. Do not populate it by guessing from the code.
   [ADR-004](./adr/ADR-004-gradesrc-rows-in-shared-jsonb-storage.md), which revisits
   [ADR-003](./adr/ADR-003-language-neutral-scraping-export-generation.md)'s original decision to
   give `gradesRc` a dedicated table.
+- **`gradesRc` is generated from Planner (`raw_planner_nota`) alone — Banner's grades scraping and
+  `raw_notas` were retired.** Banner's grades endpoint only exposed the currently-active period's
+  notes and carried less detail per grade than Planner, and a transient outage on it was capable
+  of discarding an otherwise-successful Banner scrape's schedule/enrollment/student data too (see
+  the retention rule above). `careerCode` still resolves from Banner's `raw_alumno` — that table is
+  unaffected, since it's populated by the students phase, not by grades scraping. A real-data check
+  against production (period 202610, the only period with grades data at the time) found every
+  Banner-graded `(student, course)` pair also covered by Planner — 0 of 51,435 pairs Banner-only.
+  See [ADR-005](./adr/ADR-005-planner-only-grades-source.md) and
+  `openspec/changes/retire-banner-grades-scraping/`.
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->
