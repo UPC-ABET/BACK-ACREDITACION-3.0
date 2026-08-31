@@ -48,6 +48,7 @@ export class OutcomeService extends BaseService<OutcomeRepository> {
 		const [outcomes, total] = await this.repository.findMaintenancePage(
 			query.programId,
 			academicPeriodId,
+			query.commissionId ?? null,
 			query.search,
 			skip,
 			take,

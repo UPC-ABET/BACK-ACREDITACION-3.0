@@ -84,6 +84,21 @@ export class OutcomeMaintenanceQueryDto extends PaginationQueryDto {
 	@ApiProperty({ example: 1, required: true, description: 'Program (carrera) id, from header' })
 	programId: number;
 
+	// Optional on purpose: a program can have more than one active commission in the same period
+	// (e.g. dual accreditation), in which case omitting this mixes every commission's outcomes
+	// together. Callers that already know the commission (like the RC/RV report filters) should
+	// always send it.
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@ApiPropertyOptional({
+		example: 1,
+		description:
+			'Commission id to scope the list to. Omit only when the program has a single commission ' +
+			'in the period; otherwise outcomes from every commission come back mixed together.',
+	})
+	commissionId?: number;
+
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({

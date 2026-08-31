@@ -13,6 +13,9 @@ export const SwaggerSemaphoreRc = () =>
 		body: SemaphoreFilterDto,
 	});
 
+export const SwaggerSemaphoreRcPerformanceLevels = () =>
+	HttpMethodWithSwagger({ ...cfg.operation.rcPerformanceLevels });
+
 export const SwaggerSemaphoreRcPdf = () =>
 	HttpMethodWithSwagger({
 		...cfg.operation.rcPdf,

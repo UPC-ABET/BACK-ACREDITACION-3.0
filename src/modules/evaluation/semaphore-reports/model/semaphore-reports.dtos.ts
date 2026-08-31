@@ -35,6 +35,28 @@ export class SemaphoreFilterDto {
 	})
 	campusIds?: number[];
 
+	@Transform(({ value }) => {
+		if (value === undefined || value === null || value === '') return undefined;
+		const list = Array.isArray(value) ? value : [value];
+		const parsed = list.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+		return parsed.length > 0 ? parsed : undefined;
+	})
+	@IsOptional()
+	@IsArray()
+	@ArrayMaxSize(50)
+	@IsNumber({}, { each: true })
+	@ApiProperty({
+		type: [Number],
+		example: [1, 2],
+		required: false,
+		description:
+			'RC PDF download only: outcome IDs to report on. RC is generated one outcome at a time, ' +
+			'so the download endpoint returns a zip with one PDF per outcome -- the selected ones, or ' +
+			'every active outcome of the selected commission when omitted. Ignored by RC Excel/JSON ' +
+			'and by RV entirely.',
+	})
+	outcomeIds?: number[];
+
 	@IsOptional()
 	@IsIn(['es', 'en'])
 	@ApiProperty({
@@ -80,9 +102,26 @@ export class SemaphoreFilterDto {
 			'RV only: grade type IDs (tipo de nota, core.types group TG205) to include. Filters RV grades by their rubric grade type. Omit for all.',
 	})
 	gradeTypeIds?: number[];
+
+	@Transform(({ value }) =>
+		value === undefined || value === null || value === '' ? undefined : Number(value),
+	)
+	@IsOptional()
+	@IsNumber()
+	@ApiProperty({
+		example: 3,
+		required: false,
+		description:
+			'RC PDF download only: a single academic.performance_levels id (see GET ' +
+			'rc/performance-levels). When set, the chart and the consolidated table narrow to that ' +
+			"one level's column/series instead of showing all of them. Ignored by RC Excel/JSON and " +
+			'by RV entirely.',
+	})
+	performanceLevelId?: number;
 }
 
 export class SemaphoreLevelLegendDto {
+	id: number;
 	name: string;
 	minScore: number;
 	maxScore: number;
@@ -136,6 +175,7 @@ export class SemaphoreOutcomeLevelCellDto {
 export class SemaphoreOutcomePivotRowDto {
 	outcomeCode: string;
 	outcomeName: string;
+	outcomeDescription: string;
 	totalStudents: number;
 	levels: SemaphoreOutcomeLevelCellDto[];
 }
@@ -177,6 +217,7 @@ export class SemaphoreConsolidatedGroupDto {
 
 export class SemaphoreMetadataDto {
 	programName: string;
+	modalityName: string;
 	commissionName: string;
 	academicPeriodCode: string;
 	accreditorCode: string;
