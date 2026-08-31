@@ -64,6 +64,7 @@ filtered_outcomes AS (
 	FROM accreditation.outcomes
 	WHERE is_active = true
 	  AND ($4::int IS NULL OR program_commission_id = $4::int)
+	  AND ($5::int[] IS NULL OR id = ANY($5::int[]))
 ),
 levels AS (
 	SELECT
@@ -128,6 +129,20 @@ SELECT
 	academic_period_cycle                                              AS "academicPeriodCycle"
 FROM course_outcome_results
 ORDER BY campus, course_code, outcome_code
+`;
+
+// Every active outcome of a commission, for the RC PDF download to know which outcome ids to
+// iterate over (one PDF per outcome) when the caller doesn't select any. outcomeName is what each
+// PDF's header names itself after (the code is only used in the filename).
+export const SEMAPHORE_RC_OUTCOMES_SQL = `
+SELECT
+	id                                                        AS "id",
+	outcome_code                                              AS "outcomeCode",
+	COALESCE(outcome_name->>$2::text, outcome_name->>'es', '') AS "outcomeName"
+FROM accreditation.outcomes
+WHERE is_active = true
+  AND ($1::int IS NULL OR program_commission_id = $1::int)
+ORDER BY outcome_code
 `;
 
 export const SEMAPHORE_RV_SCREEN_SQL = `
@@ -205,6 +220,7 @@ filtered_outcomes AS (
 	FROM accreditation.outcomes
 	WHERE is_active = true
 	  AND ($4::int IS NULL OR program_commission_id = $4::int)
+	  AND ($5::int[] IS NULL OR id = ANY($5::int[]))
 ),
 levels AS (
 	SELECT
@@ -341,6 +357,7 @@ filtered_outcomes AS (
 	FROM accreditation.outcomes
 	WHERE is_active = true
 	  AND ($4::int IS NULL OR program_commission_id = $4::int)
+	  AND ($5::int[] IS NULL OR id = ANY($5::int[]))
 ),
 levels AS (
 	SELECT
@@ -609,6 +626,7 @@ ORDER BY campus, outcome_code
 
 export const SEMAPHORE_LEVELS_LEGEND_SQL = `
 SELECT
+	pl.id                                             AS "id",
 	COALESCE(pl.name->>$3::text, pl.name->>'es', '') AS "name",
 	pl.min_score                                     AS "minScore",
 	pl.max_score                                     AS "maxScore",
@@ -629,17 +647,20 @@ WITH target_pc AS (
 )
 SELECT
 	COALESCE(p.name->>$3::text, p.name->>'es', '')   AS "programName",
+	COALESCE(mt.name->>$3::text, mt.name->>'es', '')  AS "modalityName",
 	COALESCE(c.name->>$3::text, c.name->>'es', '')    AS "commissionName",
 	ap.code                                      AS "academicPeriodCode",
 	COALESCE(acc.code, '')                       AS "accreditorCode"
 FROM target_pc tpc
 JOIN academic.programs p ON p.id = tpc.program_id
 JOIN academic.academic_periods ap ON ap.id = tpc.academic_period_id
+LEFT JOIN core.types mt ON mt.id = p.modality_type_id
 LEFT JOIN accreditation.commissions c ON c.id = tpc.commission_id
 LEFT JOIN accreditation.accreditors acc ON acc.id = c.accreditor_id
 UNION ALL
 SELECT
 	'' AS "programName",
+	'' AS "modalityName",
 	'' AS "commissionName",
 	ap.code AS "academicPeriodCode",
 	'' AS "accreditorCode"

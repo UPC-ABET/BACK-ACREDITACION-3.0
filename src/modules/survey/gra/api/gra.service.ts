@@ -173,4 +173,8 @@ export class GraService {
 	exportSurveys(academicPeriodId: number, programId?: number) {
 		return this.notifService.exportSurveys(academicPeriodId, programId);
 	}
+
+	rebuildConversions(academicPeriodId: number) {
+		return this.notifService.rebuildConversions(academicPeriodId);
+	}
 }

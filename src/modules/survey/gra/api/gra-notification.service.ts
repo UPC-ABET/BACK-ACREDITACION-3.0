@@ -25,6 +25,10 @@ import { i18nText } from 'src/shared/types/i18n';
 import { graValidationStrings } from '../config/strings/gra.validation';
 import { JobRegistry } from 'src/modules/survey/shared/core/job-registry';
 import {
+	SurveyConversionService,
+	type SurveyConversionResult,
+} from 'src/modules/survey/shared/api/survey-conversion.service';
+import {
 	SaveGraNotificationDto,
 	BulkUploadGraNotificationDto,
 	UpdateGraEmailTemplateDto,
@@ -65,6 +69,10 @@ const MAX_CONCURRENT_SEND_JOBS = 10;
 const MAX_CONCURRENT_SEND_JOBS_PER_USER = 2;
 const MAX_RETAINED_SEND_JOBS = 100;
 
+/** GRA surveys are answered on a 1-5 scale (see CompleteGraSurveyDto's @Min(1)/@Max(5)) — a
+ *  conversion may average or weight outcomes, but it can never push a student outside it. */
+const GRA_SCALE = { min: 1, max: 5 };
+
 type GraNotificationJobStatus = {
 	progressPct: number;
 	totalStudents: number;
@@ -90,6 +98,7 @@ export class GraNotificationService {
 		private readonly configService: ConfigService,
 		private readonly mailService: MailService,
 		private readonly surveyEmailTemplateService: SurveyEmailTemplateService,
+		private readonly conversionService: SurveyConversionService,
 	) {}
 
 	private async getTypeIds() {
@@ -719,12 +728,19 @@ export class GraNotificationService {
 				score: item.score,
 				commentaries: i18nText(item.commentaries),
 			}));
-			await this.notifRepo.saveScoresAndCloseSurvey(
-				surveyId,
-				closedStatusId,
-				scoreItems,
-				dto.commentaries,
-			);
+			await this.notifRepo.transaction(async (manager) => {
+				await this.notifRepo.saveScoresAndCloseSurvey(
+					surveyId,
+					closedStatusId,
+					scoreItems,
+					dto.commentaries,
+					manager,
+				);
+				// Derives any CAC/ICACIT (etc.) outcomes this program's commissions define a
+				// conversion for, from the scores just answered — so no manual backfill is ever
+				// needed for surveys completed from here on.
+				await this.conversionService.convertSurveys([surveyId], GRA_SCALE, manager);
+			});
 
 			return {
 				success: true,
@@ -737,6 +753,14 @@ export class GraNotificationService {
 				description: (err as Error).message,
 			});
 		}
+	}
+
+	async rebuildConversions(academicPeriodId: number): Promise<SurveyConversionResult> {
+		return this.conversionService.rebuildForSurveyType(
+			TYPE_CODES.SURVEY_TYPE.GRA,
+			academicPeriodId,
+			GRA_SCALE,
+		);
 	}
 
 	async getDashboard(dto: DashboardGraDto, academicPeriodId?: number | null) {

@@ -21,16 +21,18 @@ export class ReportChartService {
 			return `<div class="report-chart report-chart--empty">${escapeHtml(chart.emptyLabel ?? '—')}</div>`;
 		}
 
+		const chartWidth = chart.width ?? CHART_WIDTH;
+		const plotHeight = chart.plotHeight ?? PLOT_HEIGHT;
+		const legendHeight = chart.hideLegend ? 0 : LEGEND_HEIGHT;
 		const values = chart.series.flatMap((series) => series.values.map((value) => safeValue(value)));
 		const maximum = Math.max(1, ...values);
 		const axisMaximum = this.roundAxisMaximum(maximum);
-		const plotWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
+		const plotWidth = chartWidth - MARGIN.left - MARGIN.right;
 		const categoryLines = chart.categories.map((category) => wrapLabel(category, 20));
 		const maximumCategoryLines = Math.max(...categoryLines.map((lines) => lines.length));
 		const categoryHeight = maximumCategoryLines * CATEGORY_LINE_HEIGHT + 24;
 		const xAxisTitleHeight = chart.xAxisLabel ? X_AXIS_TITLE_HEIGHT : 0;
-		const chartHeight =
-			MARGIN.top + PLOT_HEIGHT + categoryHeight + xAxisTitleHeight + LEGEND_HEIGHT;
+		const chartHeight = MARGIN.top + plotHeight + categoryHeight + xAxisTitleHeight + legendHeight;
 		const groupWidth = plotWidth / chart.categories.length;
 		const groupPadding = Math.min(18, groupWidth * 0.18);
 		const barGap = Math.min(5, groupWidth * 0.04);
@@ -42,9 +44,9 @@ export class ReportChartService {
 
 		const grid = Array.from({ length: GRID_LINES + 1 }, (_, index) => {
 			const value = (axisMaximum / GRID_LINES) * index;
-			const y = MARGIN.top + PLOT_HEIGHT - (value / axisMaximum) * PLOT_HEIGHT;
+			const y = MARGIN.top + plotHeight - (value / axisMaximum) * plotHeight;
 			return `
-				<line x1="${MARGIN.left}" y1="${y}" x2="${CHART_WIDTH - MARGIN.right}" y2="${y}" class="report-chart__grid" />
+				<line x1="${MARGIN.left}" y1="${y}" x2="${chartWidth - MARGIN.right}" y2="${y}" class="report-chart__grid" />
 				<text x="${MARGIN.left - 10}" y="${y + 4}" class="report-chart__axis-label" text-anchor="end">${formatNumber(value)}</text>
 			`;
 		}).join('');
@@ -60,13 +62,14 @@ export class ReportChartService {
 							groupPadding,
 							barsWidth,
 							axisMaximum,
+							plotHeight,
 						)
 					: chart.series
 							.map((series, seriesIndex) => {
 								const value = safeValue(series.values[categoryIndex]);
-								const height = (value / axisMaximum) * PLOT_HEIGHT;
+								const height = (value / axisMaximum) * plotHeight;
 								const x = groupX + groupPadding + seriesIndex * (barWidth + barGap);
-								const y = MARGIN.top + PLOT_HEIGHT - height;
+								const y = MARGIN.top + plotHeight - height;
 								return `
 									<rect x="${x}" y="${y}" width="${barWidth}" height="${height}" fill="${escapeHtml(series.color)}" rx="1" />
 									<text x="${x + barWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>
@@ -75,7 +78,7 @@ export class ReportChartService {
 							.join('');
 
 				const labelX = groupX + groupWidth / 2;
-				const labelY = MARGIN.top + PLOT_HEIGHT + 20;
+				const labelY = MARGIN.top + plotHeight + 20;
 				const label = categoryLines[categoryIndex]
 					.map(
 						(line, lineIndex) =>
@@ -96,35 +99,37 @@ export class ReportChartService {
 		const legendWidth = legendItemWidths.reduce((sum, width) => sum + width, 0) - LEGEND_ITEM_GAP;
 		const legendY = chartHeight - 16;
 		let legendX = MARGIN.left + Math.max(0, (plotWidth - legendWidth) / 2);
-		const legend = chart.series
-			.map((series, index) => {
-				const x = legendX;
-				legendX += legendItemWidths[index];
-				return `
-					<rect x="${x}" y="${legendY - 10}" width="12" height="12" fill="${escapeHtml(series.color)}" />
-					<text x="${x + LEGEND_SWATCH_GAP}" y="${legendY}" class="report-chart__legend">${escapeHtml(series.label)}</text>
-				`;
-			})
-			.join('');
+		const legend = chart.hideLegend
+			? ''
+			: chart.series
+					.map((series, index) => {
+						const x = legendX;
+						legendX += legendItemWidths[index];
+						return `
+							<rect x="${x}" y="${legendY - 10}" width="12" height="12" fill="${escapeHtml(series.color)}" />
+							<text x="${x + LEGEND_SWATCH_GAP}" y="${legendY}" class="report-chart__legend">${escapeHtml(series.label)}</text>
+						`;
+					})
+					.join('');
 
 		const title = chart.title
 			? `<h4 class="report-chart__title">${escapeHtml(chart.title)}</h4>`
 			: '';
 		const yAxisLabel = chart.yAxisLabel
-			? `<text transform="translate(16 ${MARGIN.top + PLOT_HEIGHT / 2}) rotate(-90)" class="report-chart__axis-title" text-anchor="middle">${escapeHtml(chart.yAxisLabel)}</text>`
+			? `<text transform="translate(16 ${MARGIN.top + plotHeight / 2}) rotate(-90)" class="report-chart__axis-title" text-anchor="middle">${escapeHtml(chart.yAxisLabel)}</text>`
 			: '';
 		const xAxisLabel = chart.xAxisLabel
-			? `<text x="${MARGIN.left + plotWidth / 2}" y="${MARGIN.top + PLOT_HEIGHT + categoryHeight + 12}" class="report-chart__axis-title" text-anchor="middle">${escapeHtml(chart.xAxisLabel)}</text>`
+			? `<text x="${MARGIN.left + plotWidth / 2}" y="${MARGIN.top + plotHeight + categoryHeight + 12}" class="report-chart__axis-title" text-anchor="middle">${escapeHtml(chart.xAxisLabel)}</text>`
 			: '';
 
 		return `
 			<figure class="report-chart">
 				${title}
-				<svg viewBox="0 0 ${CHART_WIDTH} ${chartHeight}" role="img" aria-label="${escapeHtml(chart.title ?? '')}">
+				<svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="${escapeHtml(chart.title ?? '')}">
 					${grid}
 					${yAxisLabel}
-					<line x1="${MARGIN.left}" y1="${MARGIN.top}" x2="${MARGIN.left}" y2="${MARGIN.top + PLOT_HEIGHT}" class="report-chart__axis" />
-					<line x1="${MARGIN.left}" y1="${MARGIN.top + PLOT_HEIGHT}" x2="${CHART_WIDTH - MARGIN.right}" y2="${MARGIN.top + PLOT_HEIGHT}" class="report-chart__axis" />
+					<line x1="${MARGIN.left}" y1="${MARGIN.top}" x2="${MARGIN.left}" y2="${MARGIN.top + plotHeight}" class="report-chart__axis" />
+					<line x1="${MARGIN.left}" y1="${MARGIN.top + plotHeight}" x2="${chartWidth - MARGIN.right}" y2="${MARGIN.top + plotHeight}" class="report-chart__axis" />
 					${bars}
 					${xAxisLabel}
 					${legend}
@@ -168,12 +173,13 @@ function renderSingleBar(
 	groupPadding: number,
 	barsWidth: number,
 	axisMaximum: number,
+	plotHeight: number,
 ): string {
 	const active = series.find((s) => safeValue(s.values[categoryIndex]) > 0) ?? series[0];
 	const value = safeValue(active?.values[categoryIndex]);
-	const height = (value / axisMaximum) * PLOT_HEIGHT;
+	const height = (value / axisMaximum) * plotHeight;
 	const x = groupX + groupPadding;
-	const y = MARGIN.top + PLOT_HEIGHT - height;
+	const y = MARGIN.top + plotHeight - height;
 	return `
 		<rect x="${x}" y="${y}" width="${barsWidth}" height="${height}" fill="${escapeHtml(active?.color ?? '#999')}" rx="1" />
 		<text x="${x + barsWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>

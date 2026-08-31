@@ -8748,6 +8748,27 @@
 				"tags": ["PPP - Pre-Professional Internship Survey"]
 			}
 		},
+		"/ppp/conversion/rebuild": {
+			"post": {
+				"operationId": "PppController_conversionRebuild",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Reprocess outcome_conversions (e.g. EAC → CAC/ICACIT) for every PPP survey of the period — backfill after loading historical surveys or after a conversion rule changes",
+				"tags": ["PPP - Pre-Professional Internship Survey"]
+			}
+		},
 		"/gra/config/create": {
 			"post": {
 				"operationId": "GraController_configCreate",
@@ -9417,6 +9438,27 @@
 					"500": { "description": "Internal server error" }
 				},
 				"summary": "Generate the GRA perception-by-outcome PDF report (all sedes + one per sede)",
+				"tags": ["GRA - Graduate Survey"]
+			}
+		},
+		"/gra/conversion/rebuild": {
+			"post": {
+				"operationId": "GraController_conversionRebuild",
+				"parameters": [
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"201": { "description": "Resource created successfully" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "Reprocess outcome_conversions (e.g. EAC → CAC/ICACIT) for every closed GRA survey of the period — backfill after loading historical surveys or after a conversion rule changes",
 				"tags": ["GRA - Graduate Survey"]
 			}
 		},

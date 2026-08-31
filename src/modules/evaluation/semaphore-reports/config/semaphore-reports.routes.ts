@@ -8,6 +8,13 @@ export const semaphoreReportsRoutes = {
 				route: '/rc',
 				summary: 'Get RC semaphore report data (JSON)',
 			},
+			rcPerformanceLevels: {
+				method: 'GET',
+				route: '/rc/performance-levels',
+				summary:
+					'List the RC performance levels (Nivel de Desempeño) configured for the active ' +
+					'academic period, for the "Nivel de Desempeño" filter',
+			},
 			rcPdf: {
 				method: 'POST',
 				route: '/rc/pdf',

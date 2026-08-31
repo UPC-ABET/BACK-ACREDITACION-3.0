@@ -7,6 +7,7 @@ import {
 	SEMAPHORE_RC_SUMMARY_SQL,
 	SEMAPHORE_RV_DETAIL_SQL,
 	SEMAPHORE_RV_SUMMARY_SQL,
+	SEMAPHORE_RC_OUTCOMES_SQL,
 	SEMAPHORE_LEVELS_LEGEND_SQL,
 	SEMAPHORE_METADATA_SQL,
 	SEMAPHORE_CAMPUSES_SQL,
@@ -53,6 +54,7 @@ export interface SemaphoreSummaryRow {
 }
 
 export interface SemaphoreLevelLegendRow {
+	id: number;
 	name: string;
 	minScore: number;
 	maxScore: number;
@@ -61,6 +63,7 @@ export interface SemaphoreLevelLegendRow {
 
 export interface MetadataRow {
 	programName: string;
+	modalityName: string;
 	commissionName: string;
 	academicPeriodCode: string;
 	accreditorCode: string;
@@ -70,6 +73,12 @@ export interface SemaphoreCampusRow {
 	id: number;
 	code: string;
 	name: string;
+}
+
+export interface SemaphoreOutcomeIdRow {
+	id: number;
+	outcomeCode: string;
+	outcomeName: string;
 }
 
 const RC_INSTRUMENT_TYPE_CODE = 'TG206-T003';
@@ -112,13 +121,24 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		campusIds: number[] | null,
 		language: string,
+		outcomeIds: number[] | null = null,
 	): Promise<SemaphoreCourseOutcomeRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_SCREEN_SQL, [
 			academicPeriodId,
 			campusIds,
 			language,
 			programCommissionId,
+			outcomeIds,
 		]);
+	}
+
+	// Every active outcome of a commission -- the RC PDF download iterates one report per id when
+	// the caller doesn't select any itself. See SemaphoreReportsService.resolveRcOutcomes.
+	async getRcOutcomes(
+		programCommissionId: number | null,
+		language: string,
+	): Promise<SemaphoreOutcomeIdRow[]> {
+		return this.runReportQuery(SEMAPHORE_RC_OUTCOMES_SQL, [programCommissionId, language]);
 	}
 
 	async getRvScreen(
@@ -144,12 +164,14 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		campusIds: number[] | null,
 		language: string,
+		outcomeIds: number[] | null = null,
 	): Promise<SemaphoreDetailRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_DETAIL_SQL, [
 			academicPeriodId,
 			campusIds,
 			language,
 			programCommissionId,
+			outcomeIds,
 		]);
 	}
 
@@ -158,12 +180,14 @@ export class SemaphoreReportsRepository {
 		programCommissionId: number | null,
 		campusIds: number[] | null,
 		language: string,
+		outcomeIds: number[] | null = null,
 	): Promise<SemaphoreSummaryRow[]> {
 		return this.runReportQuery(SEMAPHORE_RC_SUMMARY_SQL, [
 			academicPeriodId,
 			campusIds,
 			language,
 			programCommissionId,
+			outcomeIds,
 		]);
 	}
 
