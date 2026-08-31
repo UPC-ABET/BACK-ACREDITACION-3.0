@@ -9,22 +9,33 @@ from `gradesRc`). This runbook is both.
 
 ## ⚠️ Deploy prerequisite
 
+**Deploy the new application image FIRST, then run the migration — not the other way
+around.** The old (pre-fix) image is still calling Banner's grades endpoint and writing to
+`raw_notas` until it is fully retired; dropping the table while it might still be live
+(mid-scrape, or a scrape triggered during the rollout window) reintroduces the exact
+`'partial'`-cascade failure mode this change fixes, just for the deploy window instead of
+for a Banner outage.
+
 ```bash
-# 1. Run the migration BEFORE deploying the new application image — the new image no longer
-#    scrapes Banner grades (nothing writes to raw_notas after deploy either way), but running
-#    the migration after deploying the new image is harmless: the new code never touches
-#    raw_notas regardless of whether the table still exists. The only bad order is deploying
-#    an OLDER (pre-fix) image AFTER the migration has run — that image still calls Banner's
-#    grades endpoint and tries to write into raw_notas, which no longer exists, and every
-#    Banner scrape run's grades phase (and therefore, under the OLD retention rule, the whole
-#    run if grades failed) would fail from that point on. Do not roll back the application
-#    image past this change without first running `pnpm migration:raw:revert` for the
-#    migration below.
+# 1. Deploy the new application image and confirm it is serving traffic. It never touches
+#    raw_notas regardless of whether the table still exists, so this step alone is safe
+#    even before the migration runs.
+
+# 2. Confirm no Banner scrape is currently in flight on the OLD image before proceeding
+#    (GET .../banner/scraper/runs — no 'running' status for the period in question). If one
+#    is in flight, wait for it to finish (or fail) before running the migration.
+
+# 3. Only once the new image is confirmed live and no old-image scrape is in flight:
 pnpm migration:raw:run
 
-# 2. No seed step, no permission sync, no main-datasource migration — this change touches
+# 4. No seed step, no permission sync, no main-datasource migration — this change touches
 #    only the raw datasource's schema and application code that reads/writes it.
 ```
+
+**Reverting**: do not roll back the application image past this change without first
+running `pnpm migration:raw:revert` for the migration below — an OLDER (pre-fix) image still
+calls Banner's grades endpoint and writes into `raw_notas`, which would not exist yet if the
+migration was never reverted.
 
 ## Manual validation
 
@@ -117,6 +128,10 @@ beyond the migration step above.
 
 ## Do NOT
 
+- Do **not** run `pnpm migration:raw:run` before the new application image is confirmed
+  live and no Banner scrape is in flight on the old image — see the Deploy prerequisite
+  above. Running it first is the same class of mistake as the rollback one below, just in
+  the forward direction.
 - Do **not** deploy the reverted (pre-fix) application image before running
   `pnpm migration:raw:revert` — it will try to scrape and store Banner grades into a table
   that no longer exists, and every Banner scrape's grades phase will error until the migration
