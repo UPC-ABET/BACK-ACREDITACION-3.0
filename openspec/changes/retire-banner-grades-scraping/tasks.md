@@ -311,8 +311,9 @@ resolved independently of which row carries the grade` — same `NRC2`/`A2` key,
      source.
 3. Update `assertThrowaway`'s schema check to stop requiring `to_regclass('public.raw_notas')`
    — only `raw_planner_nota` is required going forward.
-4. `pnpm exec tsc --noEmit -p tsconfig.build.json` (this file is plain `ts-node`, not part of
-   the jest suite, but must still typecheck).
+4. `pnpm exec tsc --noEmit -p tsconfig.json` (this file is plain `ts-node`, not part of the
+   jest suite, but must still typecheck — note `tsconfig.build.json` excludes `test/`
+   entirely, so it must be the base `tsconfig.json` here, not the build one).
 
 **Commit**: `test(scraping-exports): rework grades-rc-export.verify.ts's cross-source assertions`
 
@@ -438,6 +439,202 @@ happen per design.md; if it does, note why in the PR description)
 
 ---
 
+## Audit fixes (/abet-audit-pr)
+
+Six parallel auditors (code quality, architecture/docs, testing, antipatterns, security,
+runtime robustness) reviewed the diff. Verdict: **NOT READY** — 2 majors, 5 minors, 2
+suggestions. Full report is in the conversation; tasks below implement the fixes.
+
+### Review round 1
+
+### Task AF.1 — Fix the runbook's deploy-order race (major) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Flipped the deploy prerequisite order (deploy image first, confirm no in-flight Banner
+> scrape, then migrate), added a matching "Do NOT" bullet for symmetry with the existing
+> rollback-order one, and left "How to revert" untouched — it already had the correct order
+> for a rollback (revert migration before deploying the old image back).
+
+**Files**
+
+- `openspec/changes/retire-banner-grades-scraping/runbook.md` (modify)
+
+**Steps**
+
+1. Reorder the "⚠️ Deploy prerequisite" section: recommend running `pnpm migration:raw:run`
+   only **after** the new image is confirmed serving traffic (already documented as
+   "harmless" in the existing text), not before. State explicitly why: an in-flight or
+   newly-triggered Banner scrape on the still-live **old** image calls `scrapeGrades` and
+   writes to `raw_notas` — dropping that table before the old image is fully retired
+   reintroduces the exact `'partial'`-cascade failure mode this change fixes, for the
+   deploy window itself.
+2. Update the "How to revert" section if its ordering logic is affected by this change.
+
+**Commit**: `docs(runbook): migrate raw_notas after deploy, not before`
+
+### Task AF.2 — Add a fixture proving the pure newest-scrape-wins tie-break (major) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Added a second `component_id` on NRC2 resolving to the same `raw_type` (`PC1`), older,
+> losing grade `10.00` vs. the existing newer `12.00` — same two-`component_id` technique
+> NRC12 already used, needed because `raw_planner_nota`'s unique constraint has no
+> `scraped_at` column. Ran the negative check explicitly: temporarily made the losing row
+> newer instead — `'R4 sources disagree -> newest scrape wins'` failed as expected (1 of 41),
+> confirming the assertion is now genuinely load-bearing, not vacuous. Reverted to the
+> correct state; re-ran, 41/41 green again.
+
+**Files**
+
+- `test/manual/grades-rc-export.verify.ts` (modify)
+
+**Steps (TDD-equivalent: red then green against a real Postgres)**
+
+1. Add a second Planner evaluation/nota competing on NRC2 for the same `raw_type` (a new
+   `component_id` resolving to `PC1` via its own `evalComponentCode`, mirroring the
+   NRC12 two-`component_id` technique already used for the status-vs-numeric case),
+   with an OLDER `scraped_at` and a different grade value than the existing (newer)
+   `338001` row.
+2. Confirm the existing 'R4 sources disagree -> newest scrape wins' assertion
+   (`of('NRC2|A2')?.grade === '12.00'`) now actually has two competing rows to prove
+   the recency tie-break over, instead of being vacuously true.
+3. Fix the stale fixture comment above NRC2's `notaPlanner` call, which already claims
+   "a later Planner scrape... replaces an earlier one" despite there being only one row.
+4. Run against a scratch Postgres per the file's own header instructions
+   (`docker run postgres:16`, `migration:raw:run`, `ts-node -T -r tsconfig-paths/register
+test/manual/grades-rc-export.verify.ts`) — confirm all checks still pass, and that
+   removing the new competing row's `scraped_at` ordering (as a manual sanity check) would
+   make the assertion fail, proving it's now load-bearing.
+
+**Commit**: `test(scraping-exports): cover the newest-scrape-wins tie-break with two competing Planner rows`
+
+### Task AF.3 — Remove dead `courseByNrc`/`enrollments` computation (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Also fixed an adjacent stale comment in `scrapeSchedule` ("...downstream enrollment/
+> students/grades steps" — grades no longer exists) while touching that exact line. No test
+> referenced the removed fields, so this was a pure internal cleanup — 23/23 green, `tsc`
+> clean.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify if any test asserts on the removed return fields)
+
+**Steps**
+
+1. `scrapeSchedule`: drop the `courseByNrc` `Map`, its population in the department loop,
+   and its field in the return type — return `Promise<{ nrcs: string[] }>` (or just
+   `string[]`, adjusting the one call site in `execute()` accordingly).
+2. `scrapeEnrollment`: drop the `enrollments` array, its population, the now-unused
+   `Enrollment` interface, and the field in the return type — return
+   `Promise<{ studentCodes: string[] }>` (or just `string[]`).
+3. `pnpm exec jest --no-coverage src/modules/admin/banner/scraper/api/scraper.service.spec.ts`
+   → confirm still green (no test currently asserts on `courseByNrc`/`enrollments`, so this
+   should be a pure internal cleanup).
+4. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `refactor(banner-scraper): remove dead courseByNrc/enrollments computation`
+
+### Task AF.4 — Disambiguate NRC12's two now-identical assertions (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Changed the second assertion to `inSection('NRC12').length === 1 && grade !== '15.00'`
+> (the newer competitor's own value) — genuinely distinct from the first assertion's
+> `grade === '0' && qualificationStatusCode === 'TG404-T006'` now. Verified as part of the
+> same 41/41 scratch-Postgres run as AF.2.
+
+**Files**
+
+- `test/manual/grades-rc-export.verify.ts` (modify)
+
+**Steps**
+
+1. Change the second NRC12 assertion ('R7 a course-level status beats a newer numeric
+   grade of the same evaluation type') so its condition is no longer byte-identical to
+   the first ('R7 sanctioned designated grade -> 0 + SAN') — e.g. additionally assert the
+   newer numeric row's own value (`'15.00'`) does NOT appear as the grade, so a future
+   regression that let the newer row win is caught by this assertion specifically, not
+   just coincidentally by the first one.
+2. Re-run against a scratch Postgres to confirm both assertions still pass.
+
+**Commit**: `test(scraping-exports): make NRC12's two RC7 assertions independently meaningful`
+
+### Task AF.5 — Comment `ScrapeStats.counts.grades`'s permanent zero (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+
+**Steps**
+
+1. Add a one-line comment at the `counts` object's `grades` field (or its initializer)
+   noting it stays permanently `0` since ADR-005 retired Banner grades scraping, kept in
+   the shape only for `RunSummary`/response-shape stability.
+2. `pnpm exec tsc --noEmit -p tsconfig.build.json`.
+
+**Commit**: `docs(banner-scraper): comment why counts.grades stays permanently zero`
+
+### Task AF.6 — Correct tasks.md Task 3.4's retro (minor, doc-only) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Corrected step 4 in Task 3.4's own body text (line 314) — it cited
+> `tsc -p tsconfig.build.json`, which excludes `test/` entirely and therefore never actually
+> typechecked this file. Fixed to cite `tsconfig.json`, matching what was actually run.
+
+**Files**
+
+- `openspec/changes/retire-banner-grades-scraping/tasks.md` (modify)
+
+**Steps**
+
+1. Task 3.4's step 4 claims `pnpm exec tsc --noEmit -p tsconfig.build.json` typechecks
+   `grades-rc-export.verify.ts` — `tsconfig.build.json` excludes `test/` entirely. Correct
+   it to cite `tsconfig.json` (which does include `test/`) and/or the live `ts-node` run
+   (Task 3.5) as what actually verified this file's types.
+
+**Commit**: folded into this same audit-fixes commit batch, no separate test/build step
+
+### Task AF.7 — Fix the stale `SCRAPE_CONCURRENCY` comment (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+
+**Steps**
+
+1. The comment justifying `SCRAPE_CONCURRENCY = 80` cites benchmarking "the grades
+   endpoint directly against Banner" — that endpoint's code path (`scrapeGrades`) is now
+   deleted; the constant governs `scrapeStudents` alone via the new `createScrapeLimit()`.
+   Amend the comment to note the benchmark predates this change and hasn't been
+   re-validated against the students-only path in isolation.
+
+**Commit**: folded into the same commit as AF.5 (both are comment-only edits to this file)
+
+### Task AF.8 — Clarify Banner's role in `docs/CONTEXT.md` (suggestion) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+**Files**
+
+- `docs/CONTEXT.md` (modify)
+
+**Steps**
+
+1. In the External Integrations table, Banner's "Role" cell still reads "...enrolment,
+   schedules and grades" with no note that grades are no longer scraped from it. Add a
+   short clause pointing at ADR-005.
+
+**Commit**: `docs(context): note Banner grades are no longer scraped, per ADR-005`
+
 <!--
 Append-only sections below. These record what actually happened, not what was planned,
 and they are the best input to the next design.
@@ -448,8 +645,4 @@ and they are the best input to the next design.
 - [ ] Task complete
 
 ## Post-QA fixes
-
-## Audit fixes (/abet-audit-pr)
-
-### Review round 1
 -->
