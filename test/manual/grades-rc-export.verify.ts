@@ -454,11 +454,24 @@ async function loadFixtures(db: Client): Promise<void> {
 		isSanctioned: 0,
 	});
 
-	// NRC2 (designated PC1): a later Planner scrape of the same evaluation replaces an earlier one.
+	// NRC2 (designated PC1): a later Planner scrape of the same evaluation type replaces an
+	// earlier one. Two different component_ids both resolving to raw_type 'PC1' (the same
+	// technique NRC12 uses below) -- raw_planner_nota's own UQ_..._component_id_student_code
+	// constraint has no scraped_at column, so two genuinely competing scrapes of "the same
+	// evaluation" can only be modeled this way, not as two rows sharing one component_id.
 	await seccion('900001', 'NRC2');
 	await evaluacion('900001', '338001', {
 		evalComponentCode: 'PC1',
 		evalComponentName: 'Práctica Calificada 1',
+		percentage: 15,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 2,
+		componentTypeId: 1,
+	});
+	await evaluacion('900001', '338002', {
+		evalComponentCode: 'PC1',
+		evalComponentName: 'Práctica Calificada 1 (recalificada)',
 		percentage: 15,
 		isFinal: 0,
 		isSubmitted: 1,
@@ -472,6 +485,14 @@ async function loadFixtures(db: Client): Promise<void> {
 		{ grade: 12, gradeFormat: '12.00', isFinal: 0, isSanctioned: 0 },
 		{ scrapedAt: NEWER_SCRAPE },
 	);
+	// The older, losing competitor -- without this row, 'newest scrape wins' has nothing to
+	// win against and is vacuously true.
+	await notaPlanner('900001', '338002', 'A2', {
+		grade: 10,
+		gradeFormat: '10.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
 
 	// NRC3 (designated EB1): a single Planner value.
 	await seccion('900002', 'NRC3');
@@ -868,7 +889,7 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 		],
 		[
 			'R7 a course-level status beats a newer numeric grade of the same evaluation type',
-			of('NRC12|A12')?.grade === '0' && of('NRC12|A12')?.qualificationStatusCode === 'TG404-T006',
+			inSection('NRC12').length === 1 && of('NRC12|A12')?.grade !== '15.00',
 		],
 		[
 			'R7 a defaulted status is flagged, so a 0 the source never stated cannot reach the upload sheet',
