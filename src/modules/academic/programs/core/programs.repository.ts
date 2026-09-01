@@ -34,7 +34,7 @@ export class ProgramRepository extends BaseRepository<ProgramEntity> {
 				modalityTypeId: filters.modalityTypeId,
 			});
 
-		if (academicPeriodId) {
+		if (filters.useAcademicPeriod && academicPeriodId) {
 			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.program_id = prog.id');
 			qb.innerJoin(StudyPlanAcademicPeriodEntity, 'spap', 'spap.study_plan_id = sp.id');
 			qb.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId });

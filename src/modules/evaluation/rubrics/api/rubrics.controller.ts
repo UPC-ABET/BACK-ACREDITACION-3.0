@@ -1,4 +1,13 @@
-import { Body, Param, Post, Get, ParseIntPipe, Query, ValidationPipe } from '@nestjs/common';
+import {
+	Body,
+	Param,
+	Post,
+	Get,
+	ParseBoolPipe,
+	ParseIntPipe,
+	Query,
+	ValidationPipe,
+} from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
 import { parseSuccessResponse } from 'src/libs/global.functions';
 import { BaseController } from 'src/commons/base.controller';
@@ -87,10 +96,18 @@ export class RubricController extends BaseController<RubricService> {
 	@SwaggerRubricGetAll()
 	@ApiSchoolHeader(false)
 	@ApiAcademicPeriodHeader(false)
+	@ApiQuery({
+		name: 'useAcademicPeriod',
+		required: false,
+		type: Boolean,
+		description:
+			'When true, restrict results to rubrics whose study plan applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present.',
+	})
 	@RequirePermission({ module: PERMISSION_MODULES.EVALUATION, action: PERMISSION_ACTIONS.GET })
 	async getAll(
 		@SchoolId({ optional: true }) schoolId?: number | null,
 		@AcademicPeriodId({ optional: true }) academicPeriodId?: number | null,
+		@Query('useAcademicPeriod', new ParseBoolPipe({ optional: true })) useAcademicPeriod?: boolean,
 		@Query(new ValidationPipe({ transform: true, whitelist: true }))
 		query: GetRubricsQueryDto = {},
 	) {
@@ -99,7 +116,7 @@ export class RubricController extends BaseController<RubricService> {
 				{
 					schoolId: schoolId ?? undefined,
 					programId: query.programId,
-					academicPeriodId: academicPeriodId ?? undefined,
+					academicPeriodId: useAcademicPeriod ? (academicPeriodId ?? undefined) : undefined,
 					courseId: query.courseId,
 				},
 				query,

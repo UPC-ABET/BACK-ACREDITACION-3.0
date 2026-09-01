@@ -76,6 +76,15 @@ export class FilterProgramDto {
 	schoolFilter?: boolean;
 
 	@IsOptional()
+	@ApiProperty({
+		example: true,
+		required: false,
+		description:
+			'When true, restrict results to programs whose study plan applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present.',
+	})
+	useAcademicPeriod?: boolean;
+
+	@IsOptional()
 	@ApiProperty({ example: 1, required: false })
 	modalityTypeId?: number;
 

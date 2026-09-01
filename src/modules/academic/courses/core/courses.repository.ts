@@ -32,7 +32,8 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 		if (filters.isActive !== undefined)
 			qb.andWhere('c.is_active = :isActive', { isActive: filters.isActive });
 
-		const needsJoins = !!(academicPeriodId || filters.programId || schoolId);
+		const filterByAcademicPeriod = !!(filters.useAcademicPeriod && academicPeriodId);
+		const needsJoins = !!(filterByAcademicPeriod || filters.programId || schoolId);
 
 		if (needsJoins) {
 			qb.innerJoin(StudyPlanCourseEntity, 'spc', 'spc.course_id = c.id');
@@ -44,7 +45,7 @@ export class CourseRepository extends BaseRepository<CourseEntity> {
 			qb.innerJoin(StudyPlanEntity, 'sp', 'sp.id = spap.study_plan_id');
 		}
 
-		if (academicPeriodId) {
+		if (filterByAcademicPeriod) {
 			qb.andWhere('spap.academic_period_id = :academicPeriodId', { academicPeriodId });
 		}
 

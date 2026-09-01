@@ -3555,6 +3555,13 @@
 						"schema": { "example": 1, "type": "number" }
 					},
 					{
+						"name": "commissionId",
+						"required": false,
+						"in": "query",
+						"description": "Commission id to scope the list to. Omit only when the program has a single commission in the period; otherwise outcomes from every commission come back mixed together.",
+						"schema": { "example": 1, "type": "number" }
+					},
+					{
 						"name": "search",
 						"required": false,
 						"in": "query",
@@ -4278,6 +4285,13 @@
 				"operationId": "RubricController_getAll",
 				"parameters": [
 					{
+						"name": "useAcademicPeriod",
+						"required": false,
+						"in": "query",
+						"description": "When true, restrict results to rubrics whose study plan applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present.",
+						"schema": { "type": "boolean" }
+					},
+					{
 						"name": "page",
 						"required": false,
 						"in": "query",
@@ -4391,6 +4405,28 @@
 					"500": { "description": "Internal server error" }
 				},
 				"summary": "Get RC semaphore report data (JSON)",
+				"tags": ["Semaphore Reports"]
+			}
+		},
+		"/evaluation/semaphore-reports/rc/performance-levels": {
+			"get": {
+				"operationId": "SemaphoreReportsController_rcPerformanceLevels",
+				"parameters": [
+					{ "name": "lang", "required": true, "in": "query", "schema": { "type": "string" } },
+					{
+						"name": "X-Academic-Period-Id",
+						"in": "header",
+						"description": "Active academic period scope id",
+						"required": true,
+						"schema": { "type": "integer", "example": 1 }
+					}
+				],
+				"responses": {
+					"200": { "description": "Successful operation" },
+					"400": { "description": "Bad request" },
+					"500": { "description": "Internal server error" }
+				},
+				"summary": "List the RC performance levels (Nivel de Desempeño) configured for the active academic period, for the \"Nivel de Desempeño\" filter",
 				"tags": ["Semaphore Reports"]
 			}
 		},
@@ -13466,7 +13502,12 @@
 						"type": "object",
 						"example": { "es": "learningOutcomeEs", "en": "learningOutcomeEn" }
 					},
-					"programId": { "type": "number", "example": 1, "description": "ID de la carrera" }
+					"programId": { "type": "number", "example": 1, "description": "ID de la carrera" },
+					"useAcademicPeriod": {
+						"type": "boolean",
+						"example": true,
+						"description": "When true, restrict results to courses whose study plan applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present."
+					}
 				}
 			},
 			"FilterCourseEnrolledStudentsDto": {
@@ -13740,6 +13781,11 @@
 					"extra": { "type": "object", "example": { "key": "extraValue" } },
 					"isActive": { "type": "boolean", "example": true },
 					"schoolFilter": { "type": "boolean", "example": true },
+					"useAcademicPeriod": {
+						"type": "boolean",
+						"example": true,
+						"description": "When true, restrict results to programs whose study plan applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present."
+					},
 					"modalityTypeId": { "type": "number", "example": 1 },
 					"code": { "type": "string", "example": "codeExample" },
 					"name": { "type": "object", "example": { "es": "nameEs", "en": "nameEn" } },
@@ -14460,6 +14506,12 @@
 						"type": "array",
 						"items": { "type": "number" }
 					},
+					"outcomeIds": {
+						"example": [1, 2],
+						"description": "RC PDF download only: outcome IDs to report on. RC is generated one outcome at a time, so the download endpoint returns a zip with one PDF per outcome -- the selected ones, or every active outcome of the selected commission when omitted. Ignored by RC Excel/JSON and by RV entirely.",
+						"type": "array",
+						"items": { "type": "number" }
+					},
 					"lang": {
 						"type": "string",
 						"example": "es",
@@ -14477,6 +14529,11 @@
 						"description": "RV only: grade type IDs (tipo de nota, core.types group TG205) to include. Filters RV grades by their rubric grade type. Omit for all.",
 						"type": "array",
 						"items": { "type": "number" }
+					},
+					"performanceLevelId": {
+						"type": "number",
+						"example": 3,
+						"description": "RC PDF download only: a single academic.performance_levels id (see GET rc/performance-levels). When set, the chart and the consolidated table narrow to that one level's column/series instead of showing all of them. Ignored by RC Excel/JSON and by RV entirely."
 					}
 				}
 			},
@@ -17944,6 +18001,11 @@
 						"type": "number",
 						"example": 1,
 						"description": "Evaluator professor ID."
+					},
+					"useAcademicPeriod": {
+						"type": "boolean",
+						"example": true,
+						"description": "When true, restrict results to projects whose course section applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present."
 					}
 				}
 			},

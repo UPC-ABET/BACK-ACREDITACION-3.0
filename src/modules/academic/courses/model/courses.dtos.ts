@@ -100,6 +100,15 @@ export class FilterCourseDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false, description: 'ID de la carrera' })
 	programId?: number;
+
+	@IsOptional()
+	@ApiProperty({
+		example: true,
+		required: false,
+		description:
+			'When true, restrict results to courses whose study plan applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present.',
+	})
+	useAcademicPeriod?: boolean;
 }
 
 export interface CourseLookupItem {

@@ -176,15 +176,16 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 			qb.andWhere('pe_f.professor_id = :professorId', { professorId: filters.professorId });
 		}
 
+		const filterByAcademicPeriod = !!(filters.useAcademicPeriod && academicPeriodId);
 		const needsSseJoin = !!(
 			filters.studentId ||
 			filters.courseId ||
-			academicPeriodId ||
+			filterByAcademicPeriod ||
 			filters.programId ||
 			schoolId ||
 			search
 		);
-		const needsCsJoin = !!(filters.courseId || academicPeriodId || schoolId);
+		const needsCsJoin = !!(filters.courseId || filterByAcademicPeriod || schoolId);
 
 		if (needsSseJoin) {
 			qb.innerJoin(
@@ -199,7 +200,7 @@ export class ProjectRepository extends BaseRepository<ProjectEntity> {
 		if (filters.courseId) {
 			qb.andWhere('cs.course_id = :courseId', { courseId: filters.courseId });
 		}
-		if (academicPeriodId) {
+		if (filterByAcademicPeriod) {
 			qb.andWhere('cs.academic_period_id = :academicPeriodId', { academicPeriodId });
 		}
 		if (filters.studentId) {

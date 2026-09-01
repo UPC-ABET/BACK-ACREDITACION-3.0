@@ -512,4 +512,14 @@ export class FilterProjectDto extends PaginationQueryDto {
 		description: 'Evaluator professor ID.',
 	})
 	professorId?: number;
+
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		example: true,
+		required: false,
+		description:
+			'When true, restrict results to projects whose course section applies to the X-Academic-Period-Id header. Ignored (no filter applied) when false or omitted, even if the header is present.',
+	})
+	useAcademicPeriod?: boolean;
 }
