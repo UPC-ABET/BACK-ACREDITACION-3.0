@@ -2,7 +2,9 @@
 // you, and the jest suite mocks `query`, so nothing else executes this SQL.
 import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
 
-// Non-matches fall through to candidates's status_text as unstructured status text instead.
+// A source's grade field can itself hold status text (e.g. 'RET'), not just a number, so a
+// value only counts as a grade when it parses as numeric -- non-matches fall through to
+// candidates's status_text instead.
 const NUMERIC_GRADE_PATTERN = String.raw`^-?[0-9]+(\.[0-9]+)?$`;
 
 // 'partial' is excluded on purpose: a run scoped to one school or cut short holds FEWER rows than
