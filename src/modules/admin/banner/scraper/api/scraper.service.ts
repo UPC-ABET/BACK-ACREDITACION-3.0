@@ -35,9 +35,7 @@ const INSERT_BATCH_SIZE = 500;
 
 interface ScrapeStats {
 	departments: { requested: string[]; succeeded: string[]; failed: string[] };
-	// grades stays in this shape permanently at 0 — Banner grades scraping was retired (see
-	// ADR-005); kept only so RunSummary.counts doesn't change shape for existing consumers.
-	counts: { schedule: number; enrollment: number; students: number; grades: number };
+	counts: { schedule: number; enrollment: number; students: number };
 	uniqueStudents: number;
 	errors: Array<{ step: string; key: string; message: string }>;
 }
@@ -200,7 +198,7 @@ export class ScraperService {
 	): Promise<void> {
 		const stats: ScrapeStats = {
 			departments: { requested: departments, succeeded: [], failed: [] },
-			counts: { schedule: 0, enrollment: 0, students: 0, grades: 0 },
+			counts: { schedule: 0, enrollment: 0, students: 0 },
 			uniqueStudents: 0,
 			errors: [],
 		};

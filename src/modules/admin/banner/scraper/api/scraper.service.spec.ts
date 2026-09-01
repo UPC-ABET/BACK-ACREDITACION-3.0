@@ -244,7 +244,7 @@ describe('ScraperService.execute phase tracking', () => {
 describe('ScraperService.scrapeSchedule concurrency', () => {
 	const STATS = () => ({
 		departments: { requested: ['DEPT_SLOW', 'DEPT_FAST', 'DEPT_BAD'], succeeded: [], failed: [] },
-		counts: { schedule: 0, enrollment: 0, students: 0, grades: 0 },
+		counts: { schedule: 0, enrollment: 0, students: 0 },
 		uniqueStudents: 0,
 		errors: [] as Array<{ step: string; key: string; message: string }>,
 	});
