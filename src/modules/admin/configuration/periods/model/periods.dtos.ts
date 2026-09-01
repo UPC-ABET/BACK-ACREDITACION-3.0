@@ -3,14 +3,14 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreatePeriodDto {
 	@IsString()
-	@Matches(/^\d{4}-(01|02|00)$/, {
-		message: 'code must match the format YYYY-01 | YYYY-02 | YYYY-00',
+	@Matches(/^(19|20)\d{4}$/, {
+		message: 'code must match the format YYYYNN (e.g. 202620)',
 	})
 	@MaxLength(50)
 	@ApiProperty({
-		example: '2026-01',
+		example: '202620',
 		required: true,
-		description: 'Academic cycle code (YYYY-01/02/00)',
+		description: 'Academic cycle code (YYYYNN, e.g. 202620, 202625, 202515)',
 	})
 	code: string;
 

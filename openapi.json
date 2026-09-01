@@ -18055,8 +18055,8 @@
 				"properties": {
 					"code": {
 						"type": "string",
-						"example": "2026-01",
-						"description": "Academic cycle code (YYYY-01/02/00)"
+						"example": "202620",
+						"description": "Academic cycle code (YYYYNN, e.g. 202620, 202625, 202515)"
 					},
 					"startDate": {
 						"type": "string",
