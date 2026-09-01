@@ -623,6 +623,70 @@ test/manual/grades-rc-export.verify.ts`) — confirm all checks still pass, and 
 
 - [x] Task complete
 
+### Review round 2 (re-audit after round 1's fixes)
+
+Six auditors re-ran against the HEAD produced by AF.1–AF.8. **No blockers or majors** — both
+round-1 majors independently reproduced as genuinely resolved (Auditor C went further than
+asked and simulated two different `merged` `ORDER BY` regressions in the SQL itself, confirming
+the NRC12 assertions actually catch what they claim to; Auditor F traced the deploy-order fix
+at both the runbook and code level). Three new minors, all mechanical/non-logic, fixed below.
+
+### Task AF.9 — Restore the "why" trimmed from `NUMERIC_GRADE_PATTERN`'s comment (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Two auditors (A and D) independently flagged the same over-trim: the earlier comment cut
+> removed the actual reason the pattern exists (a source's grade field can hold status text
+> like `'RET'`, not just numbers) and left only a restatement of the adjacent `candidates` CTE
+> comment. Restored the "why" in one sentence, still shorter than the pre-audit-round-1
+> original.
+
+**Files**
+
+- `src/modules/admin/scraping-exports/core/grades-rc-export.sql.ts` (modify)
+
+**Commit**: `docs(scraping-exports): restore the why in NUMERIC_GRADE_PATTERN's comment`
+
+### Task AF.10 — Remove stale mock fields from the new regression test (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Auditor D found the "reaches completed without grades scraping" test's `mockResolvedValue`
+> calls still passed `courseByNrc`/`enrollments` — fields removed from the real return types by
+> Task AF.3 — copy-pasted from a pre-existing block elsewhere in the file. Not a type error, but
+> misleading in a test whose whole point is proving those fields are gone. Fixed only this PR's
+> own new block; the pre-existing occurrence elsewhere in the file predates this change and is
+> out of scope.
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify)
+
+**Commit**: `test(banner-scraper): drop stale courseByNrc/enrollments from a new mock`
+
+### Task AF.11 — Fix the nonexistent endpoint path in the runbook (minor) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Auditor F caught that the deploy prerequisite's in-flight-scrape check cited
+> `GET .../banner/scraper/runs`, which doesn't exist — verified the real route directly against
+> `scraper.routes.ts`: `GET /banner/scrape`, scoped by the `X-Academic-Period-Id` header, not a
+> path segment. Also folded in the auditor's suggestion that the check is period-scoped while
+> `raw_notas` is not, so the runbook now says to check every period with a plausibly-active
+> scrape, not just the one being migrated for.
+
+**Files**
+
+- `openspec/changes/retire-banner-grades-scraping/runbook.md` (modify)
+
+**Commit**: `docs(runbook): fix the in-flight-scrape check's endpoint path`
+
+> **Note on process**: these three fixes were applied without a third full six-auditor round.
+> All three are mechanical (comment content, removing already-inert stale mock properties, a
+> doc'd URL correction) — none touch application logic, and round 2 already independently
+> re-verified every substantive behavioral fix, including by simulating actual regressions.
+> Verified via `tsc --noEmit` + the affected jest suites (135/135) after applying all three.
+
 **Files**
 
 - `docs/CONTEXT.md` (modify)
