@@ -687,6 +687,32 @@ at both the runbook and code level). Three new minors, all mechanical/non-logic,
 > re-verified every substantive behavioral fix, including by simulating actual regressions.
 > Verified via `tsc --noEmit` + the affected jest suites (135/135) after applying all three.
 
+### Task AF.12 — Drop `counts.grades` instead of keeping it at permanent zero (post-PR-open) ✅ DONE (2026-08-31)
+
+- [x] Task complete
+
+> Requester reconsidered the original Non-goal (proposal.md's "keeping `counts.grades` stable
+> for the frontend") after seeing it live: a field permanently `0` in an API response reads as
+> a bug, not a deliberate state. Removed `grades` from `ScrapeStats.counts` entirely (interface
+> and the `execute()` initializer), updated the two test fixtures (`scraper.service.spec.ts`'s
+> `STATS()` helper and the new AC-7 regression test) that still constructed the old shape.
+> Confirmed safe: `RunSummaryResponseDto.counts`/`ScrapeRunStatusResponseDto.stats` are both
+> typed `@ApiPropertyOptional({ type: Object, nullable: true })` in `scraper.dtos.ts` — opaque
+> to Swagger, so `pnpm openapi:export` reproduces the exact same pre-existing, already-verified
+> drift as before, byte-for-byte. Not an OpenAPI contract change; recorded as a dated scope
+> extension in `proposal.md` (new AC-10) rather than rewriting the original Non-goal, and
+> `docs/adr/ADR-005-*.md` was deliberately left untouched (only `/abet-adr` writes ADRs; this
+> is a scope-level implementation detail within the same already-decided change, not a new
+> hard-to-reverse decision needing its own ADR).
+
+**Files**
+
+- `src/modules/admin/banner/scraper/api/scraper.service.ts` (modify)
+- `src/modules/admin/banner/scraper/api/scraper.service.spec.ts` (modify)
+- `openspec/changes/retire-banner-grades-scraping/proposal.md` (modify — scope extension)
+
+**Commit**: `feat(banner-scraper): drop counts.grades instead of keeping it at zero`
+
 **Files**
 
 - `docs/CONTEXT.md` (modify)

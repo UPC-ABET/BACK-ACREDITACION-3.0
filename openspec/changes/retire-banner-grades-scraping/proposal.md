@@ -211,3 +211,31 @@ program code`, line 740; `R8 career filled from the Banner leg when the Planner 
 None — the two decisions that would otherwise block design (careerCode resolution strategy;
 keeping `counts.grades`/`'studentsAndGrades'` stable for the frontend) were resolved with the
 requester during this proposal's investigation.
+
+---
+
+### Scope extension — drop `counts.grades` instead of keeping it at permanent zero (2026-08-31)
+
+The original Non-goal above ("keeping `counts.grades`/`'studentsAndGrades'` stable for the
+frontend") is **reversed for `counts.grades` only** (`'studentsAndGrades'` as a `ScraperPhase`
+literal is unaffected and stays as originally scoped). After the change shipped, seeing a live
+API response where `counts.grades` is permanently `0` forever made clear this reads as a bug,
+not a deliberate state — worse than the response-shape risk the original Non-goal was written
+to avoid.
+
+Reversed after confirming it is safe to do so: `RunSummaryResponseDto.counts` /
+`ScrapeRunStatusResponseDto.stats` are both typed `@ApiPropertyOptional({ type: Object,
+nullable: true })` — opaque to Swagger, no field-level shape documented — so removing `grades`
+from the runtime object changes **nothing** in `openapi.json` (confirmed: `pnpm openapi:export`
+after the removal reproduces the exact same pre-existing, already-verified-unrelated drift as
+before, byte-for-byte). This is not an API contract change in the OpenAPI sense; it is a
+runtime JSON shape change for any consumer reading the field directly, which the requester
+confirmed is acceptable and coordinated with the frontend side.
+
+10. **AC-10** — Given a Banner scrape run's stats after this change, when `stats.counts` /
+    `RunSummary.counts` is inspected, then it contains only `{ schedule, enrollment, students }`
+    — no `grades` key at all, present-and-zero or otherwise.
+
+| AC  | Criterion                                                    | Satisfied by                                                                                                                                          |
+| --- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10  | `counts.grades` removed entirely, not kept at permanent zero | `ScrapeStats`/`RunSummary.counts` type in `scraper.service.ts`; verified via the full jest suite and a manual `openapi:export` diff showing no change |
