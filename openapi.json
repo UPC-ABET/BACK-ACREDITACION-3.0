@@ -12794,6 +12794,12 @@
 						"schema": { "type": "string" }
 					}
 				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/StartAuthSessionDto" } }
+					}
+				},
 				"responses": {
 					"201": { "description": "Resource created successfully" },
 					"400": { "description": "Bad request" },
@@ -18337,6 +18343,15 @@
 				},
 				"required": ["id", "code", "name"]
 			},
+			"AcademicSyncModalityRefDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": { "type": "string", "example": "TG103-T001" },
+					"name": { "type": "object", "example": { "es": "Presencial", "en": "In-person" } }
+				},
+				"required": ["id", "code", "name"]
+			},
 			"AcademicSyncSectionDto": {
 				"type": "object",
 				"properties": {
@@ -18346,9 +18361,14 @@
 						"nullable": true,
 						"type": "object",
 						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncCampusRefDto" }]
+					},
+					"modality": {
+						"nullable": true,
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncModalityRefDto" }]
 					}
 				},
-				"required": ["id", "sectionCode", "campus"]
+				"required": ["id", "sectionCode", "campus", "modality"]
 			},
 			"AcademicSyncCourseDto": {
 				"type": "object",
@@ -18540,6 +18560,13 @@
 					"finishedAt": { "format": "date-time", "type": "string", "nullable": true }
 				},
 				"required": ["status"]
+			},
+			"StartAuthSessionDto": {
+				"type": "object",
+				"properties": {
+					"username": { "type": "string", "example": "usuario@upc.edu.pe" },
+					"password": { "type": "string" }
+				}
 			},
 			"PlannerSessionStatusDto": {
 				"type": "object",

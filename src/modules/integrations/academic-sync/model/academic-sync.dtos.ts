@@ -78,6 +78,17 @@ export class AcademicSyncCommissionRefDto {
 	name: I18nText;
 }
 
+export class AcademicSyncModalityRefDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({ example: 'TG103-T001' })
+	code: string;
+
+	@ApiProperty({ example: { es: 'Presencial', en: 'In-person' } })
+	name: I18nText;
+}
+
 export class AcademicSyncSectionDto {
 	@ApiProperty({ example: 501 })
 	id: number;
@@ -87,6 +98,9 @@ export class AcademicSyncSectionDto {
 
 	@ApiProperty({ type: AcademicSyncCampusRefDto, nullable: true })
 	campus: AcademicSyncCampusRefDto | null;
+
+	@ApiProperty({ type: AcademicSyncModalityRefDto, nullable: true })
+	modality: AcademicSyncModalityRefDto | null;
 }
 
 export class AcademicSyncCourseDto {
