@@ -22,8 +22,10 @@ for a Banner outage.
 #    even before the migration runs.
 
 # 2. Confirm no Banner scrape is currently in flight on the OLD image before proceeding
-#    (GET .../banner/scraper/runs — no 'running' status for the period in question). If one
-#    is in flight, wait for it to finish (or fail) before running the migration.
+#    (GET /banner/scrape, scoped by the X-Academic-Period-Id header -- no 'running' status).
+#    This is scoped to ONE period per call, and raw_notas is not period-scoped, so check every
+#    period with a plausibly-active scrape, not just the one you're deploying for. If one is
+#    in flight, wait for it to finish (or fail) before running the migration.
 
 # 3. Only once the new image is confirmed live and no old-image scrape is in flight:
 pnpm migration:raw:run
