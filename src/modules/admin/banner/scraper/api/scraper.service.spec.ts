@@ -336,13 +336,10 @@ describe('ScraperService.execute reaches completed without grades scraping', () 
 		mockScrapeRunRepository.deleteOtherRunsForPeriod.mockResolvedValue(undefined);
 	});
 
-	// Regression test for ADR-005 / the 'partial' cascade-delete bug this change fixes: a clean
-	// schedule/enrollment/students run must reach 'completed' on its own, with no grades call
-	// (and therefore nothing that can turn a Banner grades-endpoint outage into a lost run).
-	// `createScrapeLimit` is stubbed the same way `createScheduleLimit` already is elsewhere in
-	// this file, past the real `await import('p-limit')` that's unusable under this jest setup;
-	// `scrapeStudents` is left real -- with an empty `studentCodes` array it resolves trivially,
-	// with no HTTP calls and nothing to insert.
+	// Regression test for ADR-005. `createScrapeLimit` is stubbed the same way
+	// `createScheduleLimit` already is elsewhere in this file, past the real `await
+	// import('p-limit')` that's unusable under this jest setup; `scrapeStudents` is left real --
+	// with an empty `studentCodes` array it resolves trivially, with no HTTP calls.
 	it('finishes completed when schedule/enrollment/students succeed, with no scrapeGrades call', async () => {
 		const service = buildService();
 		jest
