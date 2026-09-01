@@ -7,7 +7,6 @@ import {
 	RawMatriculaRepository,
 } from '../../raw/core/raw-matricula.repository';
 import { RawAlumnoInsert, RawAlumnoRepository } from '../../raw/core/raw-alumno.repository';
-import { RawNotasInsert, RawNotasRepository } from '../../raw/core/raw-notas.repository';
 import { DepartmentSourceRepository } from '../core/department-source.repository';
 import { BannerHttpClient } from '../core/banner-http.client';
 import { SessionExpiredError } from '../../banner-token/model/session-expired.error';
@@ -29,24 +28,16 @@ const ENROLLMENT_CONCURRENCY = 3;
 // Banner at concurrency 20–200: real throughput plateaus at ~35 req/s by concurrency ~80 (zero
 // 429s even at 200, so this is backend capacity, not a policy throttle) — 120 bought +3%
 // throughput over 80 for +44% p50 latency, pure queueing cost with no wall-clock benefit.
+// That benchmark predates ADR-005 (grades scraping removed); this constant now governs
+// scrapeStudents alone and hasn't been re-validated against that endpoint in isolation.
 const SCRAPE_CONCURRENCY = 80;
 const INSERT_BATCH_SIZE = 500;
 
 interface ScrapeStats {
 	departments: { requested: string[]; succeeded: string[]; failed: string[] };
-	counts: { schedule: number; enrollment: number; students: number; grades: number };
+	counts: { schedule: number; enrollment: number; students: number };
 	uniqueStudents: number;
 	errors: Array<{ step: string; key: string; message: string }>;
-}
-
-interface Enrollment {
-	studentCode: string;
-	nrc: string;
-}
-// A unique (student, course) target for the grades endpoint (NRC is not part of its key).
-interface GradePair {
-	studentCode: string;
-	courseCode: string;
 }
 
 export interface RunSummary {
@@ -79,7 +70,6 @@ export class ScraperService {
 		private readonly rawHorarioRepository: RawHorarioRepository,
 		private readonly rawMatriculaRepository: RawMatriculaRepository,
 		private readonly rawAlumnoRepository: RawAlumnoRepository,
-		private readonly rawNotasRepository: RawNotasRepository,
 		private readonly departmentSourceRepository: DepartmentSourceRepository,
 		private readonly http: BannerHttpClient,
 		private readonly exportGenerationService: ScrapingExportGenerationService,
@@ -208,14 +198,14 @@ export class ScraperService {
 	): Promise<void> {
 		const stats: ScrapeStats = {
 			departments: { requested: departments, succeeded: [], failed: [] },
-			counts: { schedule: 0, enrollment: 0, students: 0, grades: 0 },
+			counts: { schedule: 0, enrollment: 0, students: 0 },
 			uniqueStudents: 0,
 			errors: [],
 		};
 
 		try {
 			await this.scrapeRunRepository.updatePhase(runId, 'schedule');
-			const { nrcs, courseByNrc } = await this.scrapeSchedule(
+			const { nrcs } = await this.scrapeSchedule(
 				runId,
 				level,
 				period,
@@ -224,29 +214,11 @@ export class ScraperService {
 				stats,
 			);
 			await this.scrapeRunRepository.updatePhase(runId, 'enrollment');
-			const { studentCodes, enrollments } = await this.scrapeEnrollment(
-				runId,
-				level,
-				period,
-				nrcs,
-				stats,
-			);
+			const { studentCodes } = await this.scrapeEnrollment(runId, level, period, nrcs, stats);
 			stats.uniqueStudents = studentCodes.length;
 			await this.scrapeRunRepository.updatePhase(runId, 'studentsAndGrades');
-			// Students and Grades only depend on enrollment output, not on each other.
-			// Run them concurrently through one shared limiter (see SCRAPE_CONCURRENCY).
-			const limit = await createLimiter(SCRAPE_CONCURRENCY);
-			await Promise.all([
-				this.scrapeStudents(runId, level, studentCodes, stats, limit),
-				this.scrapeGrades(
-					runId,
-					level,
-					period,
-					buildGradePairs(enrollments, courseByNrc),
-					stats,
-					limit,
-				),
-			]);
+			const limit = await this.createScrapeLimit();
+			await this.scrapeStudents(runId, level, studentCodes, stats, limit);
 
 			const status: ScrapeRunStatus =
 				stats.departments.failed.length > 0 || stats.errors.length > 0 ? 'partial' : 'completed';
@@ -314,6 +286,12 @@ export class ScraperService {
 		return await createLimiter(SCHEDULE_CONCURRENCY);
 	}
 
+	// Same seam as createScheduleLimit, for the students phase's own real `await
+	// import('p-limit')` call.
+	private async createScrapeLimit(): Promise<Limiter> {
+		return await createLimiter(SCRAPE_CONCURRENCY);
+	}
+
 	private async scrapeSchedule(
 		runId: string,
 		level: string,
@@ -321,9 +299,8 @@ export class ScraperService {
 		departments: string[],
 		courseCodes: Set<string>,
 		stats: ScrapeStats,
-	): Promise<{ nrcs: string[]; courseByNrc: Map<string, string> }> {
+	): Promise<{ nrcs: string[] }> {
 		const nrcs = new Set<string>();
-		const courseByNrc = new Map<string, string>();
 		const limit = await this.createScheduleLimit();
 
 		await Promise.all(
@@ -343,14 +320,11 @@ export class ScraperService {
 						for (const section of sections) {
 							// Scope the scrape to courses tracked in the period's study plans. Sections whose
 							// derived code (materia.codigo + numeroCurso) isn't one of ours are dropped here, so
-							// they never reach raw_horario nor the downstream enrollment/students/grades steps.
+							// they never reach raw_horario nor the downstream enrollment/students steps.
 							const courseCode = courseCodeOf(section);
 							if (!courseCodes.has(courseCode)) continue;
 							const nrc = toStringOrNull(section.nrc);
-							if (nrc) {
-								nrcs.add(nrc);
-								courseByNrc.set(nrc, courseCode);
-							}
+							if (nrc) nrcs.add(nrc);
 							rows.push({
 								runId,
 								level,
@@ -377,7 +351,7 @@ export class ScraperService {
 			),
 		);
 
-		return { nrcs: [...nrcs], courseByNrc };
+		return { nrcs: [...nrcs] };
 	}
 
 	private async scrapeEnrollment(
@@ -386,9 +360,8 @@ export class ScraperService {
 		period: string,
 		nrcs: string[],
 		stats: ScrapeStats,
-	): Promise<{ studentCodes: string[]; enrollments: Enrollment[] }> {
+	): Promise<{ studentCodes: string[] }> {
 		const studentCodes = new Set<string>();
-		const enrollments: Enrollment[] = [];
 		const chunks = chunk(nrcs, NRC_CHUNK_SIZE);
 		// No stubbable seam here, unlike `scrapeSchedule`'s `createScheduleLimit()` — no end-to-end
 		// test path reaches this call today (the 'expired' test now stops at `scrapeSchedule`), so
@@ -411,10 +384,7 @@ export class ScraperService {
 							const alumnos = asArray<Record<string, unknown>>(item.listaAlumnos);
 							for (const alumno of alumnos) {
 								const studentCode = toStringOrNull(alumno.codigoAlumno);
-								if (studentCode) {
-									studentCodes.add(studentCode);
-									if (nrc) enrollments.push({ studentCode, nrc });
-								}
+								if (studentCode) studentCodes.add(studentCode);
 								rows.push({
 									runId,
 									level,
@@ -440,7 +410,7 @@ export class ScraperService {
 			),
 		);
 
-		return { studentCodes: [...studentCodes], enrollments };
+		return { studentCodes: [...studentCodes] };
 	}
 
 	private async scrapeStudents(
@@ -486,57 +456,6 @@ export class ScraperService {
 
 		await buffer.flush();
 	}
-
-	private async scrapeGrades(
-		runId: string,
-		level: string,
-		period: string,
-		pairs: GradePair[],
-		stats: ScrapeStats,
-		limit: Limiter,
-	): Promise<void> {
-		const buffer = new InsertBuffer<RawNotasInsert>(INSERT_BATCH_SIZE, (rows) =>
-			this.rawNotasRepository.bulkInsert(rows),
-		);
-
-		await Promise.all(
-			pairs.map((pair) =>
-				limit(async () => {
-					try {
-						const path =
-							`/alumno/notaactual/notas/${encodeURIComponent(pair.studentCode)}` +
-							`/${encodeURIComponent(`${level}-${period}`)}/${encodeURIComponent(pair.courseCode)}`;
-						const json = await this.http.get<{
-							detalle?: { notaFinal?: unknown; notas?: unknown };
-						}>(path, {});
-						const detalle = json.detalle;
-						// No grades yet for this (student, course) — skip, don't store an empty row.
-						if (!detalle || (detalle.notaFinal == null && !detalle.notas)) return;
-
-						await buffer.add({
-							runId,
-							level,
-							period,
-							studentCode: pair.studentCode,
-							courseCode: pair.courseCode,
-							payload: json,
-							payloadHash: hashPayload(json),
-						});
-						stats.counts.grades += 1;
-					} catch (error) {
-						if (error instanceof SessionExpiredError) throw error;
-						stats.errors.push({
-							step: 'grade',
-							key: `${pair.studentCode}/${pair.courseCode}`,
-							message: (error as Error).message,
-						});
-					}
-				}),
-			),
-		);
-
-		await buffer.flush();
-	}
 }
 
 // Course code is derived: materia.codigo + numeroCurso (e.g. "1ASI" + "0572").
@@ -545,20 +464,6 @@ function courseCodeOf(section: Record<string, unknown>): string {
 	const codigo = toStringOrNull(materia?.codigo) ?? '';
 	const numero = toStringOrNull(section.numeroCurso) ?? '';
 	return `${codigo}${numero}`;
-}
-
-function buildGradePairs(enrollments: Enrollment[], courseByNrc: Map<string, string>): GradePair[] {
-	const pairs: GradePair[] = [];
-	const seen = new Set<string>();
-	for (const enrollment of enrollments) {
-		const courseCode = courseByNrc.get(enrollment.nrc);
-		if (!courseCode) continue;
-		const key = `${enrollment.studentCode}|${courseCode}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		pairs.push({ studentCode: enrollment.studentCode, courseCode });
-	}
-	return pairs;
 }
 
 function asArray<T>(value: unknown): T[] {

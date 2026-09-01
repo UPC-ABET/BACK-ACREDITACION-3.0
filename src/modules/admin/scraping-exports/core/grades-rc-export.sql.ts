@@ -2,8 +2,9 @@
 // you, and the jest suite mocks `query`, so nothing else executes this SQL.
 import { GRADE_RC_OBSERVATIONS } from '../model/scraping-exports.types';
 
-// Banner writes statuses ("SAN", "RET", "NR") into the grade field itself, so a value is only a
-// grade when it parses as a number.
+// A source's grade field can itself hold status text (e.g. 'RET'), not just a number, so a
+// value only counts as a grade when it parses as numeric -- non-matches fall through to
+// candidates's status_text instead.
 const NUMERIC_GRADE_PATTERN = String.raw`^-?[0-9]+(\.[0-9]+)?$`;
 
 // 'partial' is excluded on purpose: a run scoped to one school or cut short holds FEWER rows than
@@ -12,8 +13,8 @@ const EXPORTABLE_RUN_STATUSES = `('completed')`;
 
 // Planner marks an awarded zero with markType 'CAL', to tell it from the default 0 of a still
 // ungraded evaluation. It must not become a status: the RC semaphore drops anything not ASISTIO.
-// Measured against the data: CAL appears only on zeros, and Banner independently reports 0 for 97.6%
-// of the rows that match.
+// Historically measured against the data (while this query still had a Banner leg): CAL appears
+// only on zeros, and Banner independently reported 0 for 97.6% of the rows that matched.
 const VERIFIED_ZERO_MARK = `'CAL'`;
 
 // $1 period code | $2/$3 TG205 names/codes | $4/$5 TG404 names/codes
@@ -29,11 +30,11 @@ const VERIFIED_ZERO_MARK = `'CAL'`;
 //
 // No $18/$19: the study-plan rescue is no longer a parameter pair here -- see `period_enrolled`.
 //
-// $10 is applied inside EACH leg rather than once over their union: the union is the whole
-// Banner-by-Planner cross, so scoping afterwards leaves both legs to be built in full first. That
-// only ever worked because the planner chose to push the predicate down on its own, and a second
-// scope array on the same column was enough to stop it -- the export then ran forever in production.
-// Filtering where the sections are read makes the scope part of the plan instead of a hint.
+// $10 is applied where the sections are read (scoped_planner_sections), not as a filter bolted on
+// afterwards -- a second scope array on the same column, applied later, was enough to stop Postgres
+// pushing the predicate down at all once (back when this query also had a Banner leg to scope the
+// same way) -- the export then ran forever in production. Filtering at the source keeps the scope
+// part of the plan instead of a hint.
 export const GRADES_RC_SQL = `
 WITH grade_types AS (SELECT * FROM unnest($2::text[], $3::text[]) AS t(name, code)),
 -- A program outside the map does NOT drop the row, unlike the matriculados export: the career just
@@ -44,6 +45,9 @@ careers AS (SELECT * FROM unnest($14::text[], $15::text[]) AS t(program_code, ca
 -- of them with a real grade), and fn_upload_grades_rc would auto-provision either as a permanent
 -- TG404 type.
 qual_status AS (SELECT * FROM unnest($4::text[], $5::text[]) AS t(name, code)),
+-- Kept only to scope program_lookup below -- the grades leg that used to read from it
+-- (banner_grades/banner_sections/banner_legs) was retired in favor of Planner alone; see
+-- ADR-005.
 banner_run AS (
 	SELECT id FROM scrape_run
 	WHERE ($1::text IS NULL OR period = $1)
@@ -58,78 +62,16 @@ planner_run AS (
 	ORDER BY started_at DESC
 	LIMIT 1
 ),
-banner_grades AS (
+-- programCode -> careerCode no longer rides through the grades merge (it used to be backfilled
+-- from banner_legs via a window function over every row for a student, so a Planner-only row
+-- could inherit a Banner-only row's value). Resolved directly, once per student, independent of
+-- which source has grade rows for them.
+program_lookup AS (
 	SELECT
-		rn.student_code         AS student_code,
-		rn.course_code          AS course_code,
-		UPPER(TRIM(n->>'tipo')) AS raw_type,
-		n->>'peso'              AS weight,
-		TRIM(n->>'nota')        AS grade_raw,
-		-- Banner has no status field of its own; status_text is derived from grade_raw downstream.
-		NULL::text              AS status_raw,
-		(NULLIF(TRIM(n->>'nota'), '') IS NOT NULL) AS has_grade,
-		-- No CAL equivalent and no notion of an open evaluation.
-		false                   AS zero_verified,
-		true                    AS is_submitted,
-		CASE WHEN n->>'numero' ~ '^[0-9]+$' THEN (n->>'numero')::int END AS order_no,
-		rn.scraped_at           AS scraped_at
-	FROM raw_notas rn
-	CROSS JOIN LATERAL jsonb_array_elements(
-		CASE WHEN jsonb_typeof(rn.payload->'detalle'->'notas') = 'array'
-			THEN rn.payload->'detalle'->'notas'
-			ELSE '[]'::jsonb
-		END
-	) AS n
-	WHERE rn.run_id = (SELECT id FROM banner_run)
-	  AND NULLIF(TRIM(n->>'tipo'), '') IS NOT NULL
-),
--- raw_notas carries no NRC: the section is reached student -> matrícula -> horario within the run.
---
--- Deliberately NOT filtered on calificable='Y'. Which of a course's NRCs (theory, practice/lab)
--- counts is decided by academic.course_sections, not by Banner; a second rule here could drop a
--- section the app deliberately loaded.
-banner_sections AS (
-	SELECT DISTINCT
-		m.student_code,
-		h.nrc,
-		(h.payload->'materia'->>'codigo') || (h.payload->>'numeroCurso') AS course_code,
-		-- materia is the SUBJECT AREA ("1ASI" -> "COMPUTACIÓN"), not the course. nombreCurso is
-		-- unconfirmed; Planner's courseName wins over it in merged.
-		h.payload->>'nombreCurso' AS course_name
-	FROM raw_matricula m
-	JOIN raw_horario h ON h.run_id = m.run_id AND h.nrc = m.nrc
-	WHERE m.run_id = (SELECT id FROM banner_run)
-	  AND NULLIF(TRIM(m.student_code), '') IS NOT NULL
-	  AND NULLIF(TRIM(m.nrc), '') IS NOT NULL
-	  AND h.nrc = ANY($10::text[])
-),
-banner_legs AS (
-	SELECT
-		bs.nrc AS section_code,
-		bg.student_code,
-		bg.raw_type,
-		bg.weight,
-		bg.grade_raw,
-		bg.status_raw,
-		bg.has_grade,
-		bg.zero_verified,
-		bg.is_submitted,
-		bg.order_no,
-		bg.scraped_at,
-		bs.course_code,
-		bs.course_name,
-		NULLIF(TRIM(CONCAT_WS(', ', a.payload->>'apellidos', a.payload->>'nombres')), '') AS student_name,
-		-- Banner's own program code ("UAC_ISOF_SP1"); resolved to the career code the rest of the
-		-- system speaks ("SW") through the map injected in $14/$15.
-		NULLIF(TRIM(a.payload->'programa'->>'codigo'), '') AS program_code,
-		'Banner'::text AS source
-	FROM banner_grades bg
-	JOIN banner_sections bs
-	  ON bs.student_code = bg.student_code
-	 AND bs.course_code   = bg.course_code
-	LEFT JOIN raw_alumno a
-	  ON a.run_id = (SELECT id FROM banner_run)
-	 AND a.student_code = bg.student_code
+		student_code,
+		NULLIF(TRIM(payload->'programa'->>'codigo'), '') AS program_code
+	FROM raw_alumno
+	WHERE run_id = (SELECT id FROM banner_run)
 ),
 -- Resolved up front so planner_raw can filter nota.section_id directly -- filtering seccion.payload
 -- after the join left Postgres scanning every nota row before discarding ~80% as out of scope.
@@ -171,8 +113,6 @@ planner_raw AS (
 		         n.payload->>'nameCourse')                             AS course_name,
 		NULLIF(TRIM(CONCAT_WS(', ', n.payload->>'studentLastName',
 		                            n.payload->>'studentFirstName')), '') AS student_name,
-		-- No program in Planner; filled from the Banner leg by the window in merged.
-		NULL::text                                                     AS program_code,
 		'Planner'::text                                                AS source
 	FROM raw_planner_nota n
 	JOIN raw_planner_seccion s
@@ -211,40 +151,30 @@ planner_raw AS (
 planner_legs AS (
 	SELECT section_code, student_code, raw_type, weight, grade_raw, status_raw, has_grade,
 		zero_verified, is_submitted, order_no, scraped_at, course_code, course_name, student_name,
-		program_code, source
+		source
 	FROM planner_raw
 	WHERE has_grade OR status_raw IS NOT NULL
 ),
--- Both sources' rows, with the status resolved BEFORE the merge: which row wins depends on the
+-- Planner's rows, with the status resolved BEFORE the merge: which row wins depends on the
 -- status's reach, so it cannot be classified afterwards.
 --
--- Both legs are already scoped to $10, so every window and collapse downstream only sees exportable
--- rows. Two things ride on that one array, and neither is reported as an observation because a row
--- outside it has nowhere to go: a section absent from academic.course_sections would make
+-- Already scoped to $10, so every window and collapse downstream only sees exportable rows. Two
+-- things ride on that array, and neither is reported as an observation because a row outside it
+-- has nowhere to go: a section absent from academic.course_sections would make
 -- audit.fn_upload_grades_rc reject the whole file, and a course with no CONTROL outcome (TG302-T002)
 -- mapped in the period's study plan is never read by the RC semaphore.
 candidates AS (
 	SELECT
 		u.*,
 		COALESCE(u.grade_raw ~ '${NUMERIC_GRADE_PATTERN}', false) AS is_numeric,
-		-- One status text per row: Planner's whitelisted field, else Banner's non-numeric grade.
+		-- One status text per row: Planner's whitelisted status field, else its own non-numeric grade.
 		COALESCE(
 			u.status_raw,
 			CASE WHEN NOT COALESCE(u.grade_raw ~ '${NUMERIC_GRADE_PATTERN}', false)
 				THEN NULLIF(TRIM(u.grade_raw), '')
 			END
 		) AS status_text
-	FROM (
-		SELECT section_code, student_code, raw_type, weight, grade_raw, status_raw, has_grade,
-			zero_verified, is_submitted, order_no, scraped_at, course_code, course_name, student_name,
-			program_code, source
-		FROM banner_legs
-		UNION ALL
-		SELECT section_code, student_code, raw_type, weight, grade_raw, status_raw, has_grade,
-			zero_verified, is_submitted, order_no, scraped_at, course_code, course_name, student_name,
-			program_code, source
-		FROM planner_legs
-	) u
+	FROM planner_legs u
 ),
 -- Statuses do not all have the same reach, and treating them alike is how a status gets invented.
 --  - COURSE level (RET, SAN): withdrawing from or being sanctioned in a course applies to every one
@@ -277,13 +207,8 @@ merged AS (
 		is_submitted, order_no, scraped_at, source, is_numeric, status_text, status_code, status_name,
 		status_is_course_level,
 		max(course_code) OVER (PARTITION BY section_code) AS course_code,
-		-- Planner names the course; Banner's is only a fallback (its materia is the subject area).
-		COALESCE(
-			max(course_name) FILTER (WHERE source = 'Planner') OVER (PARTITION BY section_code),
-			max(course_name) FILTER (WHERE source = 'Banner')  OVER (PARTITION BY section_code)
-		) AS course_name,
-		max(student_name) OVER (PARTITION BY student_code) AS student_name,
-		max(program_code) OVER (PARTITION BY student_code) AS program_code
+		max(course_name) OVER (PARTITION BY section_code) AS course_name,
+		max(student_name) OVER (PARTITION BY student_code) AS student_name
 	FROM classified
 	ORDER BY section_code, student_code, raw_type,
 		status_is_course_level DESC, is_numeric DESC, has_grade DESC, scraped_at DESC
@@ -483,9 +408,10 @@ SELECT
 		CASE WHEN NOT EXISTS (SELECT 1 FROM qual_status q WHERE q.code = s.final_status_code)
 			THEN '${GRADE_RC_OBSERVATIONS.UNREGISTERED_STATUS}' END,
 		-- The source stated nothing at all -- no grade, no status, and no reason for either -- so the
-		-- $16 default in final_status_code is this export's own guess, not something Banner or Planner
-		-- said. banner_legs does not filter on has_grade (planner_legs does), so a Banner notas entry
-		-- with a tipo and an empty nota reaches here; without this the row ships 0 + NR to the upload
+		-- $16 default in final_status_code is this export's own guess, not something Planner said.
+		-- planner_legs's WHERE (has_grade OR status_raw IS NOT NULL) still lets a blank-but-present
+		-- grade through (has_grade is true whenever the grade key is non-null, even if its text is
+		-- empty/whitespace), so this stays reachable; without this the row ships 0 + NR to the upload
 		-- sheet and becomes a real grade for a student nobody ever graded.
 		CASE WHEN NOT s.missing_designated AND NOT s.is_numeric
 		          AND s.explained_status_code IS NULL AND s.status_text IS NULL
@@ -496,7 +422,8 @@ SELECT
 	-- it, so it never reaches GradeRcExportRow / rowsData.
 	s.not_in_section AS "notInSection"
 FROM final s
-LEFT JOIN careers c ON c.program_code = s.program_code
+LEFT JOIN program_lookup pl ON pl.student_code = s.student_code
+LEFT JOIN careers c ON c.program_code = pl.program_code
 ORDER BY s.section_code, s.student_code
 `;
 

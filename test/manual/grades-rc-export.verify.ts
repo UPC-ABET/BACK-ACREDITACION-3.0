@@ -1,13 +1,15 @@
 /**
- * Behavioural verification of GRADES_RC_SQL (the Banner + Planner merge behind
- * GET /scraping/exports/grades-rc). The merge, the "newest scrape wins" rule, the dedup, the
- * designated/fallback pick and the status classification are SQL, so they can only be proven
- * against a real Postgres — the jest suite mocks `query` and never executes them.
+ * Behavioural verification of GRADES_RC_SQL (the Planner-sourced merge, plus a Banner-sourced
+ * raw_alumno careerCode lookup, behind GET /scraping/exports/grades-rc — see ADR-005 for why
+ * Banner's own grades scraping was retired from this merge). The merge, the "newest scrape wins"
+ * rule, the dedup, the designated/fallback pick and the status classification are SQL, so they
+ * can only be proven against a real Postgres — the jest suite mocks `query` and never executes
+ * them.
  *
  * It TRUNCATEs both run tables before loading its fixtures, and the raw_* tables cascade off them,
- * so pointing it at the real scraping database costs a full re-scrape of Banner and Planner —
- * hours, credentials, and data that exists nowhere else. Three guards stand in the way, in
- * increasing order of how much they actually prove:
+ * so pointing it at the real scraping database costs a full re-scrape of Banner (for raw_alumno)
+ * and Planner (for the grades themselves) — hours, credentials, and data that exists nowhere else.
+ * Three guards stand in the way, in increasing order of how much they actually prove:
  *
  *  1. VERIFY_DB_URL must be set explicitly. There is no default, so nothing happens by accident.
  *  2. VERIFY_DB_URL must not resolve to the same server and database as RAW_DB_URL — compared by
@@ -49,8 +51,8 @@ import { PROGRAM_CAREER_MAP } from 'src/modules/admin/scraping-exports/model/scr
 dotenv.config();
 
 const BANNER_RUN = '11111111-1111-1111-1111-111111111111';
-const BANNER_UNFINISHED_RUN = '22222222-2222-2222-2222-222222222222';
 const PLANNER_RUN = '33333333-3333-3333-3333-333333333333';
+const PLANNER_UNFINISHED_RUN = '44444444-4444-4444-4444-444444444444';
 
 const OLDER_SCRAPE = '2026-08-01T10:00:00Z';
 const NEWER_SCRAPE = '2026-08-02T10:00:00Z';
@@ -225,9 +227,10 @@ function resolveConnectionString(): string {
 const MAX_PREEXISTING_ROWS = 500;
 
 async function assertThrowaway(db: Client): Promise<void> {
+	// raw_notas is deliberately NOT checked here -- ADR-005 retired it, so a post-migration
+	// VERIFY_DB_URL correctly does not have it.
 	const { rows: schema } = await db.query<{ present: boolean }>(
-		`SELECT (to_regclass('public.raw_notas') IS NOT NULL
-		     AND to_regclass('public.raw_planner_nota') IS NOT NULL) AS present`,
+		`SELECT (to_regclass('public.raw_planner_nota') IS NOT NULL) AS present`,
 	);
 	if (!schema[0]?.present) {
 		throw new Error(
@@ -236,8 +239,7 @@ async function assertThrowaway(db: Client): Promise<void> {
 	}
 
 	const { rows: counted } = await db.query<{ total: string }>(
-		`SELECT (SELECT count(*) FROM raw_notas)
-		      + (SELECT count(*) FROM raw_planner_nota) AS total`,
+		`SELECT count(*) AS total FROM raw_planner_nota`,
 	);
 	const total = Number(counted[0]?.total ?? 0);
 	if (total > MAX_PREEXISTING_ROWS) {
@@ -251,31 +253,21 @@ async function assertThrowaway(db: Client): Promise<void> {
 async function loadFixtures(db: Client): Promise<void> {
 	await db.query(`TRUNCATE scrape_run, planner_scrape_run CASCADE`);
 	await db.query(
-		`INSERT INTO scrape_run (id, period, level, departments, status, started_at) VALUES
-			($1, '202610', 'UG', '{ISW}', 'completed', $3),
-			($2, '202610', 'UG', '{ISW}', 'running',   $4)`,
-		[BANNER_RUN, BANNER_UNFINISHED_RUN, OLDER_SCRAPE, NEWER_SCRAPE],
+		`INSERT INTO scrape_run (id, period, level, departments, status, started_at)
+		 VALUES ($1, '202610', 'UG', '{ISW}', 'completed', $2)`,
+		[BANNER_RUN, OLDER_SCRAPE],
 	);
 	await db.query(
-		`INSERT INTO planner_scrape_run (id, period, status, started_at)
-		 VALUES ($1, '202610', 'completed', $2)`,
-		[PLANNER_RUN, OLDER_SCRAPE],
+		`INSERT INTO planner_scrape_run (id, period, status, started_at) VALUES
+			($1, '202610', 'completed', $3),
+			($2, '202610', 'running',   $4)`,
+		[PLANNER_RUN, PLANNER_UNFINISHED_RUN, OLDER_SCRAPE, NEWER_SCRAPE],
 	);
 
-	const horario = (nrc: string, courseNumber: string) =>
-		db.query(
-			`INSERT INTO raw_horario (run_id, level, period, department, nrc, payload, payload_hash)
-			 VALUES ($1, 'UG', '202610', 'ISW', $2, $3::jsonb, repeat('0', 64))`,
-			[BANNER_RUN, nrc, JSON.stringify({ materia: { codigo: '1ASI' }, numeroCurso: courseNumber })],
-		);
-	const matricula = (nrc: string, studentCode: string) =>
-		db.query(
-			`INSERT INTO raw_matricula (run_id, level, period, nrc, student_code, payload, payload_hash)
-			 VALUES ($1, 'UG', '202610', $2, $3, '{}'::jsonb, repeat('0', 64))`,
-			[BANNER_RUN, nrc, studentCode],
-		);
-	// raw_alumno is where the student's name and Banner program live. Only Banner has it, so a
-	// student who exists solely in Planner has neither -- which is a case the assertions cover.
+	// raw_alumno is where the student's name and Banner program live -- populated by scrapeStudents,
+	// independent of grades scraping (see ADR-005), so this is untouched by the Banner-leg removal.
+	// Only Banner has it, so a student who exists solely in Planner has neither -- which is a case
+	// the assertions cover.
 	const alumno = (studentCode: string, programCode: string | null) =>
 		db.query(
 			`INSERT INTO raw_alumno (run_id, level, student_code, payload, payload_hash)
@@ -290,33 +282,19 @@ async function loadFixtures(db: Client): Promise<void> {
 				}),
 			],
 		);
-	const notas = (
-		studentCode: string,
-		courseCode: string,
-		items: Array<Record<string, unknown>>,
-		options: { scrapedAt?: string; runId?: string } = {},
-	) =>
-		db.query(
-			`INSERT INTO raw_notas
-				(run_id, level, period, student_code, course_code, payload, payload_hash, scraped_at)
-			 VALUES ($1, 'UG', '202610', $2, $3, $4::jsonb, repeat('0', 64), $5)`,
-			[
-				options.runId ?? BANNER_RUN,
-				studentCode,
-				courseCode,
-				JSON.stringify({ detalle: { notas: items, notaFinal: '15' } }),
-				options.scrapedAt ?? OLDER_SCRAPE,
-			],
-		);
 
-	const seccion = (sectionId: string, nrc: string) =>
+	const seccion = (sectionId: string, nrc: string, courseCode?: string) =>
 		db.query(
 			`INSERT INTO raw_planner_seccion (run_id, period, section_id, payload, payload_hash)
 			 VALUES ($1, '202610', $2, $3::jsonb, repeat('0', 64))`,
 			[
 				PLANNER_RUN,
 				sectionId,
-				JSON.stringify({ sectionId: Number(sectionId), sectionNumber: nrc }),
+				JSON.stringify({
+					sectionId: Number(sectionId),
+					sectionNumber: nrc,
+					...(courseCode ? { courses: [{ courseCode, courseName: `Course ${courseCode}` }] } : {}),
+				}),
 			],
 		);
 	const evaluacion = (sectionId: string, componentId: string, payload: Record<string, unknown>) =>
@@ -330,46 +308,21 @@ async function loadFixtures(db: Client): Promise<void> {
 		componentId: string,
 		studentCode: string,
 		payload: Record<string, unknown>,
-		scrapedAt = OLDER_SCRAPE,
+		options: { scrapedAt?: string; runId?: string } = {},
 	) =>
 		db.query(
 			`INSERT INTO raw_planner_nota
 				(run_id, section_id, component_id, student_code, payload, payload_hash, scraped_at)
 			 VALUES ($1, $2, $3, $4, $5::jsonb, repeat('0', 64), $6)`,
-			[PLANNER_RUN, sectionId, componentId, studentCode, JSON.stringify(payload), scrapedAt],
+			[
+				options.runId ?? PLANNER_RUN,
+				sectionId,
+				componentId,
+				studentCode,
+				JSON.stringify(payload),
+				options.scrapedAt ?? OLDER_SCRAPE,
+			],
 		);
-
-	// nrc -> course number. NRC1B carries NRC1's course on purpose: the same student is enrolled in
-	// both loaded sections of one course, which is what the dedup has to collapse.
-	const banner: Array<[string, string, string]> = [
-		['NRC1', '1', 'A1'],
-		['NRC1', '1', 'A1B'],
-		['NRC1', '1', 'A1E'],
-		['NRC1', '1', 'A1F'],
-		['NRC1', '1', 'A1C'],
-		['NRC1', '1', 'A1D'],
-		['NRC1B', '1', 'A1'],
-		['NRC2', '2', 'A2'],
-		['NRC3', '3', 'A3'],
-		['NRC5', '5', 'A5'],
-		['NRC6', '6', 'A6'],
-		['NRC6', '6', 'A6B'],
-		['NRC6', '6', 'A6C'],
-		['NRC8', '8', 'A8'],
-		['NRC8', '8', 'A8B'],
-		['NRC9', '9', 'A9'],
-		['NRC12', '12', 'A12'],
-		['NRC13', '13', 'A13'],
-		['NRC14', '14', 'A14'],
-	];
-	const seenSections = new Set<string>();
-	for (const [nrc, courseNumber, student] of banner) {
-		if (!seenSections.has(nrc)) {
-			await horario(nrc, courseNumber);
-			seenSections.add(nrc);
-		}
-		await matricula(nrc, student);
-	}
 
 	// A1 -> SW and A2 -> CC are in PROGRAM_CAREER_MAP; A5's program is a real Banner code that is
 	// NOT in the map (a non-engineering program), and A7 has no raw_alumno row at all because it
@@ -391,67 +344,134 @@ async function loadFixtures(db: Client): Promise<void> {
 		await alumno(student, program);
 	}
 
-	// NRC1 (designated EA1): the designated grade exists only in Banner, and the student carries
-	// three other evaluations that must NOT produce rows of their own.
-	await notas('A1', '1ASI1', [
-		{ tipo: 'EA1', peso: 20, nota: '14.80', numero: 1 },
-		{ tipo: 'PA', peso: 10, nota: 'RET', numero: 4 },
-		{ tipo: 'TA', peso: 10, nota: 'XXX', numero: 5 },
-	]);
-	await notas('A1B', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '11.00', numero: 1 }]);
-	// A1E: never matriculated at all -- see PERIOD_ENROLLED above.
-	await notas('A1E', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '9.00', numero: 1 }]);
-	// A1F: matriculado, but NRC1's course is not on their study plan -- see IN_STUDY_PLAN above.
-	await notas('A1F', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '8.00', numero: 1 }]);
-	// Designated grade that is a known TG404 status instead of a number, and one whose text is not a
-	// status at all.
-	await notas('A1C', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: 'RET', numero: 1 }]);
-	await notas('A1D', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: 'XXX', numero: 1 }]);
-	// NRC2 (designated PC1): both sources hold it, Planner's scrape is newer and carries its own
-	// weight.
-	await notas('A2', '1ASI2', [{ tipo: 'PC1', peso: 60, nota: '10.00', numero: 2 }]);
-	// NRC3 (designated EB1): both sources hold the same value -> one row, not two.
-	await notas('A3', '1ASI3', [{ tipo: 'EB1', peso: 20, nota: '16.00', numero: 3 }]);
-	// NRC5: unconfigured -> the fallback rescues the last evaluation with its raw, unregistered code.
-	await notas('A5', '1ASI5', [
-		{ tipo: 'TA', peso: 40, nota: '12.00', numero: 1 },
-		{ tipo: 'ZZ1', peso: 60, nota: '15.00', numero: 3 },
-	]);
-	// NRC6 (designated EA1 AND EB1, both graded, with weights where a text max() would cross them:
-	// '5' > '20'). A6C has neither and must get one consistent (code, name, weight) triple.
-	await notas('A6', '1ASI6', [{ tipo: 'EB1', peso: 20, nota: '14.00', numero: 2 }]);
-	await notas('A6B', '1ASI6', [{ tipo: 'EA1', peso: 5, nota: '13.00', numero: 1 }]);
-	await notas('A6C', '1ASI6', [{ tipo: 'QQ2', peso: 80, nota: '17.00', numero: 8 }]);
-	// NRC8 (designated EA1): A8 lacks it but is withdrawn from the course, which explains it.
-	await notas('A8', '1ASI8', [
-		{ tipo: 'TB1', peso: 30, nota: '12.00', numero: 2 },
-		{ tipo: 'PA', peso: 10, nota: 'RET', numero: 4 },
-	]);
-	await notas('A8B', '1ASI8', [{ tipo: 'EA1', peso: 70, nota: '15.00', numero: 1 }]);
-	// NRC12: the same designated grade Planner reports as a sanction, here as a number and scraped
-	// LATER. The sanction has to win anyway -- newest-scrape-wins only applies within a tier.
-	await notas('A12', '1ASI12', [{ tipo: 'TB1', peso: 25, nota: '15.00', numero: 4 }], {
-		scrapedAt: NEWER_SCRAPE,
+	// NRC1 (designated EA1): three of A1's evaluations must collapse to the one designated row.
+	await seccion('900010', 'NRC1', '1ASI1');
+	await evaluacion('900010', 'C_EA1', {
+		evalComponentCode: 'EA1',
+		percentage: 20,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
 	});
-	// NRC13 (designated EA1): the designated type IS present, so nothing is "missing", but its nota
-	// is blank and no status explains it -- banner_legs keeps it because, unlike planner_legs, it does
-	// not filter on has_grade. Nothing about this row comes from the source except the type itself.
-	await notas('A13', '1ASI13', [{ tipo: 'EA1', peso: 100, nota: '', numero: 1 }]);
-	// NRC14: a perfectly exportable grade whose course is mapped to no CONTROL outcome.
-	await notas('A14', '1ASI14', [{ tipo: 'EA1', peso: 100, nota: '16.00', numero: 1 }]);
-	// NRC9 is not in academic.course_sections: nothing of it may be exported.
-	await notas('A9', '1ASI9', [{ tipo: 'EA1', peso: 100, nota: '19.00', numero: 1 }]);
-	// Same student, same grade, unfinished run: must lose to the completed one.
-	await notas('A1', '1ASI1', [{ tipo: 'EA1', peso: 20, nota: '99.00', numero: 1 }], {
-		scrapedAt: NEWER_SCRAPE,
-		runId: BANNER_UNFINISHED_RUN,
+	await evaluacion('900010', 'C_PA1', {
+		evalComponentCode: 'PA',
+		percentage: 10,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 4,
+		componentTypeId: 1,
+	});
+	await evaluacion('900010', 'C_TA1', {
+		evalComponentCode: 'TA',
+		percentage: 10,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 5,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900010', 'C_EA1', 'A1', {
+		grade: 14.8,
+		gradeFormat: '14.80',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900010', 'C_PA1', 'A1', {
+		grade: 12,
+		gradeFormat: '12.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900010', 'C_TA1', 'A1', {
+		grade: 13,
+		gradeFormat: '13.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	// A1B: matriculado but missing from THIS section's pairing -- see ENROLLED/IN_STUDY_PLAN below.
+	await notaPlanner('900010', 'C_EA1', 'A1B', {
+		grade: 11,
+		gradeFormat: '11.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	// A1E: never matriculated at all -- see PERIOD_ENROLLED below.
+	await notaPlanner('900010', 'C_EA1', 'A1E', {
+		grade: 9,
+		gradeFormat: '9.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	// A1F: matriculado, but NRC1's course is not on their study plan -- see IN_STUDY_PLAN below.
+	await notaPlanner('900010', 'C_EA1', 'A1F', {
+		grade: 8,
+		gradeFormat: '8.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	// Designated grade that is a known TG404 status instead of a number, and one whose text is not a
+	// status at all -- reached the same way Planner reaches any unstructured grade text: status_raw
+	// stays null (no statusName/markType/isSanctioned set) and status_text falls back to the
+	// non-numeric grade itself.
+	await notaPlanner('900010', 'C_EA1', 'A1C', {
+		grade: 'RET',
+		gradeFormat: 'RET',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900010', 'C_EA1', 'A1D', {
+		grade: 'XXX',
+		gradeFormat: 'XXX',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	// Same student, same designated grade, on an unfinished Planner run: must lose to the completed
+	// one -- planner_run only ever resolves to the completed run's id, so this row is excluded
+	// regardless of its (deliberately newer) scraped_at.
+	await notaPlanner(
+		'900010',
+		'C_EA1',
+		'A1',
+		{ grade: 99, gradeFormat: '99.00', isFinal: 0, isSanctioned: 0 },
+		{ scrapedAt: NEWER_SCRAPE, runId: PLANNER_UNFINISHED_RUN },
+	);
+
+	// NRC1B: A1 enrolled/graded in a second loaded section of the SAME course -- the dedup collapses
+	// it (NRC1 wins: 'NRC1' < 'NRC1B' alphabetically).
+	await seccion('900011', 'NRC1B', '1ASI1');
+	await evaluacion('900011', 'C_EA1B', {
+		evalComponentCode: 'EA1',
+		percentage: 20,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900011', 'C_EA1B', 'A1', {
+		grade: 11,
+		gradeFormat: '11.00',
+		isFinal: 0,
+		isSanctioned: 0,
 	});
 
-	// NRC2: the disagreeing designated grade, scraped later than Banner's.
+	// NRC2 (designated PC1): a later Planner scrape of the same evaluation type replaces an
+	// earlier one. Two different component_ids both resolving to raw_type 'PC1' (the same
+	// technique NRC12 uses below) -- raw_planner_nota's own UQ_..._component_id_student_code
+	// constraint has no scraped_at column, so two genuinely competing scrapes of "the same
+	// evaluation" can only be modeled this way, not as two rows sharing one component_id.
 	await seccion('900001', 'NRC2');
 	await evaluacion('900001', '338001', {
 		evalComponentCode: 'PC1',
 		evalComponentName: 'Práctica Calificada 1',
+		percentage: 15,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 2,
+		componentTypeId: 1,
+	});
+	await evaluacion('900001', '338002', {
+		evalComponentCode: 'PC1',
+		evalComponentName: 'Práctica Calificada 1 (recalificada)',
 		percentage: 15,
 		isFinal: 0,
 		isSubmitted: 1,
@@ -463,10 +483,18 @@ async function loadFixtures(db: Client): Promise<void> {
 		'338001',
 		'A2',
 		{ grade: 12, gradeFormat: '12.00', isFinal: 0, isSanctioned: 0 },
-		NEWER_SCRAPE,
+		{ scrapedAt: NEWER_SCRAPE },
 	);
+	// The older, losing competitor -- without this row, 'newest scrape wins' has nothing to
+	// win against and is vacuously true.
+	await notaPlanner('900001', '338002', 'A2', {
+		grade: 10,
+		gradeFormat: '10.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
 
-	// NRC3: the same value from both sources.
+	// NRC3 (designated EB1): a single Planner value.
 	await seccion('900002', 'NRC3');
 	await evaluacion('900002', '338011', {
 		evalComponentCode: 'EB1',
@@ -482,11 +510,10 @@ async function loadFixtures(db: Client): Promise<void> {
 		'338011',
 		'A3',
 		{ grade: 16, gradeFormat: '16.00', isFinal: 0, isSanctioned: 0 },
-		NEWER_SCRAPE,
+		{ scrapedAt: NEWER_SCRAPE },
 	);
 
-	// NRC4 (designated TB1): the designated grade exists ONLY in Planner. The computed "Nota Final"
-	// alongside it must be dropped.
+	// NRC4 (designated TB1). The computed "Nota Final" alongside it must be dropped.
 	await seccion('900003', 'NRC4');
 	await evaluacion('900003', '338021', {
 		evalComponentCode: 'TB1',
@@ -517,6 +544,83 @@ async function loadFixtures(db: Client): Promise<void> {
 		grade: 15,
 		gradeFormat: '15.00',
 		isFinal: 1,
+		isSanctioned: 0,
+	});
+
+	// NRC5: unconfigured -> the fallback rescues the last evaluation with its raw, unregistered code.
+	await seccion('900012', 'NRC5');
+	await evaluacion('900012', 'C_TA5', {
+		evalComponentCode: 'TA',
+		percentage: 40,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await evaluacion('900012', 'C_ZZ1', {
+		evalComponentCode: 'ZZ1',
+		percentage: 60,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 3,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900012', 'C_TA5', 'A5', {
+		grade: 12,
+		gradeFormat: '12.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900012', 'C_ZZ1', 'A5', {
+		grade: 15,
+		gradeFormat: '15.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+
+	// NRC6 (designated EA1 AND EB1, both graded, with weights where a text max() would cross them:
+	// '5' > '20'). A6C has neither and must get one consistent (code, name, weight) triple.
+	await seccion('900013', 'NRC6');
+	await evaluacion('900013', 'C_EB16', {
+		evalComponentCode: 'EB1',
+		percentage: 20,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 2,
+		componentTypeId: 1,
+	});
+	await evaluacion('900013', 'C_EA16', {
+		evalComponentCode: 'EA1',
+		percentage: 5,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await evaluacion('900013', 'C_QQ26', {
+		evalComponentCode: 'QQ2',
+		percentage: 80,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 8,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900013', 'C_EB16', 'A6', {
+		grade: 14,
+		gradeFormat: '14.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900013', 'C_EA16', 'A6B', {
+		grade: 13,
+		gradeFormat: '13.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900013', 'C_QQ26', 'A6C', {
+		grade: 17,
+		gradeFormat: '17.00',
+		isFinal: 0,
 		isSanctioned: 0,
 	});
 
@@ -571,6 +675,70 @@ async function loadFixtures(db: Client): Promise<void> {
 		isSanctioned: 0,
 	});
 
+	// NRC8 (designated EA1): A8 lacks it but is withdrawn from the course (a structured Planner
+	// status, not overloaded grade text), which explains it.
+	await seccion('900014', 'NRC8');
+	await evaluacion('900014', 'C_TB18', {
+		evalComponentCode: 'TB1',
+		percentage: 30,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 2,
+		componentTypeId: 1,
+	});
+	await evaluacion('900014', 'C_PA8', {
+		evalComponentCode: 'PA',
+		percentage: 10,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 4,
+		componentTypeId: 1,
+	});
+	await evaluacion('900014', 'C_EA18', {
+		evalComponentCode: 'EA1',
+		percentage: 70,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900014', 'C_TB18', 'A8', {
+		grade: 12,
+		gradeFormat: '12.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+	await notaPlanner('900014', 'C_PA8', 'A8', {
+		grade: null,
+		gradeFormat: null,
+		isFinal: 0,
+		isSanctioned: 0,
+		statusName: 'RET',
+	});
+	await notaPlanner('900014', 'C_EA18', 'A8B', {
+		grade: 15,
+		gradeFormat: '15.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+
+	// NRC9 is not in academic.course_sections: nothing of it may be exported.
+	await seccion('900015', 'NRC9');
+	await evaluacion('900015', 'C_EA19', {
+		evalComponentCode: 'EA1',
+		percentage: 100,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900015', 'C_EA19', 'A9', {
+		grade: 19,
+		gradeFormat: '19.00',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+
 	// NRC11 (designated PC1): the designated evaluation is still open, so A11B's missing grade is
 	// pending rather than unexplained.
 	await seccion('900005', 'NRC11');
@@ -605,11 +773,22 @@ async function loadFixtures(db: Client): Promise<void> {
 		isSanctioned: 0,
 	});
 
-	// NRC12 (designated TB1): the designated grade itself is a sanction, not a number.
+	// NRC12 (designated TB1): the designated grade itself is a sanction, not a number -- and the
+	// sanction has to win even against a NEWER, numeric competitor from the SAME source (a second
+	// evaluation resolving to the same raw_type). newest-scrape-wins only applies within a tier.
 	await seccion('900006', 'NRC12');
 	await evaluacion('900006', '338051', {
 		evalComponentCode: 'TB1',
 		evalComponentName: 'Trabajo 1',
+		percentage: 100,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await evaluacion('900006', '338052', {
+		evalComponentCode: 'TB1',
+		evalComponentName: 'Trabajo 1 (re-evaluado)',
 		percentage: 100,
 		isFinal: 0,
 		isSubmitted: 1,
@@ -621,6 +800,50 @@ async function loadFixtures(db: Client): Promise<void> {
 		gradeFormat: null,
 		isFinal: 0,
 		isSanctioned: 1,
+	});
+	await notaPlanner(
+		'900006',
+		'338052',
+		'A12',
+		{ grade: 15, gradeFormat: '15.00', isFinal: 0, isSanctioned: 0 },
+		{ scrapedAt: NEWER_SCRAPE },
+	);
+
+	// NRC13 (designated EA1): the designated type IS present, so nothing is "missing", but its grade
+	// is blank and no status explains it. The grade key is present-but-empty, not null: has_grade is
+	// true whenever the key exists at all, so this still clears planner_legs's WHERE (has_grade OR
+	// status_raw IS NOT NULL) -- a null grade key would drop the row entirely.
+	await seccion('900016', 'NRC13');
+	await evaluacion('900016', 'C_EA113', {
+		evalComponentCode: 'EA1',
+		percentage: 100,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900016', 'C_EA113', 'A13', {
+		grade: '',
+		gradeFormat: '',
+		isFinal: 0,
+		isSanctioned: 0,
+	});
+
+	// NRC14: a perfectly exportable grade whose course is mapped to no CONTROL outcome.
+	await seccion('900017', 'NRC14');
+	await evaluacion('900017', 'C_EA114', {
+		evalComponentCode: 'EA1',
+		percentage: 100,
+		isFinal: 0,
+		isSubmitted: 1,
+		orderEvaluation: 1,
+		componentTypeId: 1,
+	});
+	await notaPlanner('900017', 'C_EA114', 'A14', {
+		grade: 16,
+		gradeFormat: '16.00',
+		isFinal: 0,
+		isSanctioned: 0,
 	});
 }
 
@@ -637,7 +860,6 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 			'R6 only the designated grade ships, not every evaluation',
 			inSection('NRC1').every((row) => row.gradeTypeCode === 'TG205-T001'),
 		],
-		['R4 designated grade only Banner has', of('NRC1|A1')?.grade === '14.80'],
 		['R4 designated grade only Planner has', of('NRC4|A4')?.grade === '17.00'],
 		['R4 both sources agree -> one row', inSection('NRC3').length === 1],
 		['R4 sources disagree -> newest scrape wins', of('NRC2|A2')?.grade === '12.00'],
@@ -666,8 +888,8 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 			of('NRC12|A12')?.grade === '0' && of('NRC12|A12')?.qualificationStatusCode === 'TG404-T006',
 		],
 		[
-			'R7 a course-level status beats a numeric grade from the other source, however new',
-			of('NRC12|A12')?.grade === '0' && of('NRC12|A12')?.source === 'Planner',
+			'R7 a course-level status beats a newer numeric grade of the same evaluation type',
+			inSection('NRC12').length === 1 && of('NRC12|A12')?.grade !== '15.00',
 		],
 		[
 			'R7 a defaulted status is flagged, so a 0 the source never stated cannot reach the upload sheet',
@@ -739,7 +961,7 @@ function assertions(rows: ExportedRow[]): Array<[string, boolean]> {
 		],
 		['R8 career resolved from the Banner program code', of('NRC1|A1')?.careerCode === 'SW'],
 		[
-			'R8 career filled from the Banner leg when the Planner row wins',
+			'R8 career resolved independently of which row carries the grade',
 			of('NRC2|A2')?.careerCode === 'CC',
 		],
 		[

@@ -104,10 +104,11 @@ export class ScrapingExportsService {
 		return this.buildExcel(labels, data);
 	}
 
-	// %% GRADES RC — fetch runs the Banner+Planner merge once and collects it, language-neutral, into
-	// one array (the same shape the sync exports' fetch* methods already produce, persisted through
-	// `rowsData` — see ADR-004); render splits that array by `hasObservations` and writes both
-	// sheets. Fetch is the only caller of GradesRcExportRepository (the `exports-raw` connection).
+	// %% GRADES RC — fetch runs the Planner-sourced merge once (see ADR-005) and collects it,
+	// language-neutral, into one array (the same shape the sync exports' fetch* methods already
+	// produce, persisted through `rowsData` — see ADR-004); render splits that array by
+	// `hasObservations` and writes both sheets. Fetch is the only caller of
+	// GradesRcExportRepository (the `exports-raw` connection).
 
 	async fetchGradesRcRows(
 		academicPeriodId: number,

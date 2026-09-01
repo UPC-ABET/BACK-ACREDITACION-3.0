@@ -325,7 +325,7 @@ Use these shared helpers — never redeclare them locally.
 
 | System                 | Role                                                                                                                                                                                                                                                                                      | Reached via                                                                                                                                                                                                                                              |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Banner**             | University system of record for enrolment, schedules and grades                                                                                                                                                                                                                           | Scraped into the raw datasource                                                                                                                                                                                                                          |
+| **Banner**             | University system of record for enrolment, schedules and grades — grades are no longer scraped from it (Planner is the sole grades source; see [ADR-005](./adr/ADR-005-planner-only-grades-source.md))                                                                                    | Scraped into the raw datasource                                                                                                                                                                                                                          |
 | **uPlanner**           | Source of planning and grade data                                                                                                                                                                                                                                                         | Scraped into the raw datasource. Authenticated through u-planner's own HTTP API (a credential POST, then a token exchange) using credentials stored in `core.scraper_credentials` — **not** by driving a browser. Banner still needs one, because of 2FA |
 | **Microsoft Entra ID** | Institutional sign-in                                                                                                                                                                                                                                                                     | MSAL (`@azure/msal-node`)                                                                                                                                                                                                                                |
 | **AWS S3**             | Configured (env vars, `@aws-sdk/client-s3` dependency) but not yet used by any code path — no client/service wrapper exists. Generated scraping exports use `core.scraping_export_runs.file_bytes` instead; see [ADR-002](./adr/ADR-002-persisted-pollable-scraping-export-generation.md) | `@aws-sdk/client-s3` (installed, unused)                                                                                                                                                                                                                 |
@@ -421,7 +421,7 @@ _why_ writes them down. Do not populate it by guessing from the code.
   (`hasProgramAncestor`) and in `audit.fn_upload_charts`.
 - **A completed Banner or Planner scrape run deletes every other raw-data run for the same
   `period`; a run that itself finishes partial/failed/expired deletes only its own rows.**
-  Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno`/`raw_notas` on the `raw`
+  Raw scrape data (`raw_horario`/`raw_matricula`/`raw_alumno` on the `raw`
   connection; `raw_planner_seccion`/`raw_planner_evaluacion`/`raw_planner_nota` on
   `planner-raw`) is otherwise insert-only, tagged by a `runId` FK to `scrape_run` /
   `planner_scrape_run` with `onDelete: 'CASCADE'` — nothing ever removed a superseded run
@@ -458,5 +458,15 @@ _why_ writes them down. Do not populate it by guessing from the code.
   [ADR-004](./adr/ADR-004-gradesrc-rows-in-shared-jsonb-storage.md), which revisits
   [ADR-003](./adr/ADR-003-language-neutral-scraping-export-generation.md)'s original decision to
   give `gradesRc` a dedicated table.
+- **`gradesRc` is generated from Planner (`raw_planner_nota`) alone — Banner's grades scraping and
+  `raw_notas` were retired.** Banner's grades endpoint only exposed the currently-active period's
+  notes and carried less detail per grade than Planner, and a transient outage on it was capable
+  of discarding an otherwise-successful Banner scrape's schedule/enrollment/student data too (see
+  the retention rule above). `careerCode` still resolves from Banner's `raw_alumno` — that table is
+  unaffected, since it's populated by the students phase, not by grades scraping. A real-data check
+  against production (period 202610, the only period with grades data at the time) found every
+  Banner-graded `(student, course)` pair also covered by Planner — 0 of 51,435 pairs Banner-only.
+  See [ADR-005](./adr/ADR-005-planner-only-grades-source.md) and
+  `openspec/changes/retire-banner-grades-scraping/`.
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->
