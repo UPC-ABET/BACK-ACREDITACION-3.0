@@ -467,6 +467,6 @@ _why_ writes them down. Do not populate it by guessing from the code.
   against production (period 202610, the only period with grades data at the time) found every
   Banner-graded `(student, course)` pair also covered by Planner — 0 of 51,435 pairs Banner-only.
   See [ADR-005](./adr/ADR-005-planner-only-grades-source.md) and
-  `openspec/changes/retire-banner-grades-scraping/`.
+  `openspec/specs/retire-banner-grades-scraping/`.
 
 <!-- Add rules as they are established. Each entry: the rule, and why it exists. -->
