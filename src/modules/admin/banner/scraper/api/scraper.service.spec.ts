@@ -342,12 +342,8 @@ describe('ScraperService.execute reaches completed without grades scraping', () 
 	// with an empty `studentCodes` array it resolves trivially, with no HTTP calls.
 	it('finishes completed when schedule/enrollment/students succeed, with no scrapeGrades call', async () => {
 		const service = buildService();
-		jest
-			.spyOn(service as any, 'scrapeSchedule')
-			.mockResolvedValue({ nrcs: [], courseByNrc: new Map() });
-		jest
-			.spyOn(service as any, 'scrapeEnrollment')
-			.mockResolvedValue({ studentCodes: [], enrollments: [] });
+		jest.spyOn(service as any, 'scrapeSchedule').mockResolvedValue({ nrcs: [] });
+		jest.spyOn(service as any, 'scrapeEnrollment').mockResolvedValue({ studentCodes: [] });
 		jest
 			.spyOn(service as any, 'createScrapeLimit')
 			.mockResolvedValue((fn: () => Promise<unknown>) => fn());
