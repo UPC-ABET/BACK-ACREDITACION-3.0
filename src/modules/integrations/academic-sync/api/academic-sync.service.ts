@@ -6,6 +6,7 @@ import { StudyPlanCourseEntity } from 'src/modules/academic/study-plan-courses/m
 import {
 	AcademicSyncRepository,
 	CommissionOption,
+	OutcomeOption,
 	pickPreferredCommission,
 } from '../core/academic-sync.repository';
 import {
@@ -50,8 +51,28 @@ export class AcademicSyncService {
 			this.repository.getCommissionsByPrograms(programIds, academicPeriodId),
 		]);
 
+		// The outcome lookup has to be scoped to the SAME program_commission pickPreferredCommission
+		// already chose per program (e.g. EAC over CAC/ICT) — otherwise a course mapped under
+		// several accreditors/commissions could surface an outcome from one the DTO's own
+		// `commission` field doesn't even mention.
+		const preferredProgramCommissionIds = [
+			...new Set(
+				programIds
+					.map((programId) => pickPreferredCommission(commissionsByProgram.get(programId) ?? []))
+					.filter((commission): commission is CommissionOption => commission !== null)
+					.map((commission) => commission.programCommissionId),
+			),
+		];
+		const studyPlanCourseIds = rows.map((row) => row.id);
+		const firstOutcomeByStudyPlanCourse = await this.repository.getFirstOutcomesForStudyPlanCourses(
+			studyPlanCourseIds,
+			preferredProgramCommissionIds,
+		);
+
 		const sectionsByCourse = this.groupSectionsByCourse(sections);
-		return rows.map((row) => this.toCourseDto(row, sectionsByCourse, commissionsByProgram));
+		return rows.map((row) =>
+			this.toCourseDto(row, sectionsByCourse, commissionsByProgram, firstOutcomeByStudyPlanCourse),
+		);
 	}
 
 	async getOrgChart(academicPeriodId: number): Promise<AcademicSyncOrgChartNodeDto[]> {
@@ -110,12 +131,14 @@ export class AcademicSyncService {
 		row: StudyPlanCourseEntity,
 		sectionsByCourse: Map<number, CourseSectionEntity[]>,
 		commissionsByProgram: Map<number, CommissionOption[]>,
+		firstOutcomeByStudyPlanCourse: Map<number, OutcomeOption>,
 	): AcademicSyncCourseDto {
 		// `program` is always populated by getByFilters — see StudyPlanCourseRepository's own note on
 		// why that join chain can never miss.
 		const program = row.program!;
 		const commission = pickPreferredCommission(commissionsByProgram.get(program.id) ?? []);
 		const sections = sectionsByCourse.get(row.courseId) ?? [];
+		const firstOutcome = firstOutcomeByStudyPlanCourse.get(row.id) ?? null;
 
 		return {
 			id: row.course.id,
@@ -127,6 +150,7 @@ export class AcademicSyncService {
 			commission: commission
 				? { id: commission.id, code: commission.code, name: commission.name }
 				: null,
+			firstOutcome,
 			sections: sections.map((section) => ({
 				id: section.id,
 				sectionCode: section.sectionCode,

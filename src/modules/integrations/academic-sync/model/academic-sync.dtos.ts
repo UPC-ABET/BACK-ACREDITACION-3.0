@@ -78,6 +78,23 @@ export class AcademicSyncCommissionRefDto {
 	name: I18nText;
 }
 
+export class AcademicSyncOutcomeRefDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({
+		example: 'EAC-SI-2',
+		description: 'Compound outcome code (accreditor-program-number), not the bare number',
+	})
+	code: string;
+
+	@ApiProperty({
+		example: { es: '2', en: '2' },
+		description: 'The bare outcome number/letter, e.g. "2"',
+	})
+	name: I18nText;
+}
+
 export class AcademicSyncModalityRefDto {
 	@ApiProperty({ example: 1 })
 	id: number;
@@ -124,6 +141,14 @@ export class AcademicSyncCourseDto {
 
 	@ApiProperty({ type: AcademicSyncCommissionRefDto, nullable: true })
 	commission: AcademicSyncCommissionRefDto | null;
+
+	@ApiProperty({
+		type: AcademicSyncOutcomeRefDto,
+		nullable: true,
+		description:
+			'First (lowest outcome_code) Student Outcome this course maps to in the curriculum, scoped to `commission` above. Null when unmapped or `commission` is null.',
+	})
+	firstOutcome: AcademicSyncOutcomeRefDto | null;
 
 	@ApiProperty({ type: AcademicSyncSectionDto, isArray: true })
 	sections: AcademicSyncSectionDto[];

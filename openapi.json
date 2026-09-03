@@ -18292,6 +18292,23 @@
 				},
 				"required": ["id", "code", "name"]
 			},
+			"AcademicSyncOutcomeRefDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": {
+						"type": "string",
+						"example": "EAC-SI-2",
+						"description": "Compound outcome code (accreditor-program-number), not the bare number"
+					},
+					"name": {
+						"type": "object",
+						"example": { "es": "2", "en": "2" },
+						"description": "The bare outcome number/letter, e.g. \"2\""
+					}
+				},
+				"required": ["id", "code", "name"]
+			},
 			"AcademicSyncCampusRefDto": {
 				"type": "object",
 				"properties": {
@@ -18351,6 +18368,12 @@
 						"type": "object",
 						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncCommissionRefDto" }]
 					},
+					"firstOutcome": {
+						"nullable": true,
+						"description": "First (lowest outcome_code) Student Outcome this course maps to in the curriculum, scoped to `commission` above. Null when unmapped or `commission` is null.",
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncOutcomeRefDto" }]
+					},
 					"sections": {
 						"type": "array",
 						"items": { "$ref": "#/components/schemas/AcademicSyncSectionDto" }
@@ -18364,6 +18387,7 @@
 					"learningOutcome",
 					"program",
 					"commission",
+					"firstOutcome",
 					"sections"
 				]
 			},

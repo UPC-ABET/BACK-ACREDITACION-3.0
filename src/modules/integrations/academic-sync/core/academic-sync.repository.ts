@@ -16,6 +16,15 @@ export interface CommissionOption {
 	id: number;
 	code: string;
 	name: I18nText;
+	/// `accreditation.program_commissions.id` — the join key `outcomes.program_commission_id`
+	/// actually needs; distinct from `id` above (which is `commissions.id`, the commission itself).
+	programCommissionId: number;
+}
+
+export interface OutcomeOption {
+	id: number;
+	code: string;
+	name: I18nText;
 }
 
 export interface OrgChartNodeRow {
@@ -91,26 +100,71 @@ export class AcademicSyncRepository {
 		const map = new Map<number, CommissionOption[]>();
 		if (programIds.length === 0) return map;
 
-		const rows: Array<{ programId: number; id: number; code: string; name: I18nText }> =
-			await this.dataSource.query(
-				`SELECT
-					pc.program_id AS "programId",
-					com.id        AS "id",
-					com.code      AS "code",
-					com.name      AS "name"
-				FROM accreditation.program_commissions pc
-				INNER JOIN accreditation.commissions com ON com.id = pc.commission_id AND com.is_active = true
-				WHERE pc.program_id = ANY($1::int[])
-				  AND pc.academic_period_id = $2
-				  AND pc.is_active = true
-				ORDER BY pc.program_id, com.code ASC`,
-				[programIds, academicPeriodId],
-			);
+		const rows: Array<{
+			programId: number;
+			id: number;
+			code: string;
+			name: I18nText;
+			programCommissionId: number;
+		}> = await this.dataSource.query(
+			`SELECT
+				pc.program_id AS "programId",
+				com.id        AS "id",
+				com.code      AS "code",
+				com.name      AS "name",
+				pc.id         AS "programCommissionId"
+			FROM accreditation.program_commissions pc
+			INNER JOIN accreditation.commissions com ON com.id = pc.commission_id AND com.is_active = true
+			WHERE pc.program_id = ANY($1::int[])
+			  AND pc.academic_period_id = $2
+			  AND pc.is_active = true
+			ORDER BY pc.program_id, com.code ASC`,
+			[programIds, academicPeriodId],
+		);
 
 		for (const row of rows) {
 			const list = map.get(row.programId) ?? [];
-			list.push({ id: row.id, code: row.code, name: row.name });
+			list.push({
+				id: row.id,
+				code: row.code,
+				name: row.name,
+				programCommissionId: row.programCommissionId,
+			});
 			map.set(row.programId, list);
+		}
+		return map;
+	}
+
+	// The "first" outcome per course, scoped to one specific program_commission (the one already
+	// chosen by pickPreferredCommission for that course's program) — lets a Blackboard-export-style
+	// {OUTCOME} token auto-resolve to the curriculum's actual mapping instead of being typed by
+	// hand. `outcome.outcome_name` (a bare "2", not the compound "EAC-SI-2" outcome_code) is what
+	// callers want here — the accreditor/program prefix is already conveyed separately via `commission`.
+	async getFirstOutcomesForStudyPlanCourses(
+		studyPlanCourseIds: number[],
+		programCommissionIds: number[],
+	): Promise<Map<number, OutcomeOption>> {
+		const map = new Map<number, OutcomeOption>();
+		if (studyPlanCourseIds.length === 0 || programCommissionIds.length === 0) return map;
+
+		const rows: Array<{ studyPlanCourseId: number; id: number; code: string; name: I18nText }> =
+			await this.dataSource.query(
+				`SELECT DISTINCT ON (com.study_plan_course_id)
+					com.study_plan_course_id AS "studyPlanCourseId",
+					o.id                     AS "id",
+					o.outcome_code           AS "code",
+					o.outcome_name           AS "name"
+				FROM academic.course_outcome_mappings com
+				INNER JOIN accreditation.outcomes o ON o.id = com.outcome_id AND o.is_active = true
+				WHERE com.study_plan_course_id = ANY($1::int[])
+				  AND o.program_commission_id = ANY($2::int[])
+				  AND com.is_active = true
+				ORDER BY com.study_plan_course_id, o.outcome_code ASC`,
+				[studyPlanCourseIds, programCommissionIds],
+			);
+
+		for (const row of rows) {
+			map.set(row.studyPlanCourseId, { id: row.id, code: row.code, name: row.name });
 		}
 		return map;
 	}
