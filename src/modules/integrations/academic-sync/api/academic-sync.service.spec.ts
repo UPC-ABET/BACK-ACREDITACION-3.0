@@ -7,6 +7,7 @@ const mockRepository = {
 	getCoursesForPeriod: jest.fn(),
 	getSectionsForCourses: jest.fn(),
 	getCommissionsByPrograms: jest.fn(),
+	getFirstOutcomesForStudyPlanCourses: jest.fn(),
 	getOrgChartNodes: jest.fn(),
 	getUsersPage: jest.fn(),
 };
@@ -73,6 +74,7 @@ describe('AcademicSyncService', () => {
 		it('assembles course, sections, and the preferred commission per program', async () => {
 			mockRepository.getCoursesForPeriod.mockResolvedValue([
 				{
+					id: 1453,
 					courseId: 77,
 					course: {
 						id: 77,
@@ -103,17 +105,21 @@ describe('AcademicSyncService', () => {
 					[
 						3,
 						[
-							{ id: 10, code: 'ABC', name: { es: 'ABC', en: 'ABC' } },
-							{ id: 11, code: 'EAC', name: { es: 'EAC', en: 'EAC' } },
+							{ id: 10, code: 'ABC', name: { es: 'ABC', en: 'ABC' }, programCommissionId: 20 },
+							{ id: 11, code: 'EAC', name: { es: 'EAC', en: 'EAC' }, programCommissionId: 21 },
 						],
 					],
 				]),
+			);
+			mockRepository.getFirstOutcomesForStudyPlanCourses.mockResolvedValue(
+				new Map([[1453, { id: 200, code: 'EAC-ISW-2', name: { es: '2', en: '2' } }]]),
 			);
 
 			const result = await service.getCourses(12);
 
 			expect(mockRepository.getSectionsForCourses).toHaveBeenCalledWith([77], 12);
 			expect(mockRepository.getCommissionsByPrograms).toHaveBeenCalledWith([3], 12);
+			expect(mockRepository.getFirstOutcomesForStudyPlanCourses).toHaveBeenCalledWith([1453], [21]);
 			expect(result).toEqual([
 				{
 					id: 77,
@@ -123,6 +129,7 @@ describe('AcademicSyncService', () => {
 					learningOutcome: { es: 'resultado', en: 'outcome' },
 					program: { id: 3, code: 'ISW', name: { es: 'Ing. Software', en: 'Software Eng.' } },
 					commission: { id: 11, code: 'EAC', name: { es: 'EAC', en: 'EAC' } },
+					firstOutcome: { id: 200, code: 'EAC-ISW-2', name: { es: '2', en: '2' } },
 					sections: [
 						{
 							id: 501,
@@ -139,6 +146,7 @@ describe('AcademicSyncService', () => {
 		it('sets commission to null when the program has no commission rows for the period', async () => {
 			mockRepository.getCoursesForPeriod.mockResolvedValue([
 				{
+					id: 1454,
 					courseId: 88,
 					course: {
 						id: 88,
@@ -152,26 +160,33 @@ describe('AcademicSyncService', () => {
 			]);
 			mockRepository.getSectionsForCourses.mockResolvedValue([]);
 			mockRepository.getCommissionsByPrograms.mockResolvedValue(new Map());
+			mockRepository.getFirstOutcomesForStudyPlanCourses.mockResolvedValue(new Map());
 
 			const result = await service.getCourses(12);
 
 			expect(result[0].commission).toBeNull();
+			expect(result[0].firstOutcome).toBeNull();
 			expect(result[0].sections).toEqual([]);
 		});
 	});
 
 	describe('getOrgChart', () => {
-		it('maps a chart node with an assigned staff member', async () => {
+		it('maps a chart node with an assigned staff member and a resolved entity', async () => {
 			mockRepository.getOrgChartNodes.mockResolvedValue([
 				{
 					id: 100,
 					parentId: 5,
 					entityType: 'COURSE',
 					entityCode: 77,
+					organizationLevelTitle: { es: 'Curso', en: 'Course' },
 					staffId: 10,
 					staffFirstName: 'Maria',
 					staffLastName: 'Lopez',
 					staffEmail: 'maria.lopez@upc.edu.pe',
+					staffTitle: { es: 'Docente', en: 'Faculty' },
+					professorCode: 'PROF123',
+					entityResolvedCode: 'CS301',
+					entityResolvedName: { es: 'Estructuras de Datos', en: 'Data Structures' },
 				},
 			]);
 
@@ -183,33 +198,43 @@ describe('AcademicSyncService', () => {
 					parentId: 5,
 					entityType: 'COURSE',
 					entityCode: 77,
+					organizationLevelTitle: { es: 'Curso', en: 'Course' },
+					entity: { code: 'CS301', name: { es: 'Estructuras de Datos', en: 'Data Structures' } },
 					staff: {
 						id: 10,
 						firstName: 'Maria',
 						lastName: 'Lopez',
 						email: 'maria.lopez@upc.edu.pe',
+						title: { es: 'Docente', en: 'Faculty' },
+						professorCode: 'PROF123',
 					},
 				},
 			]);
 		});
 
-		it('sets staff to null when the chart node has no staffId', async () => {
+		it('sets staff and entity to null when the chart node has neither', async () => {
 			mockRepository.getOrgChartNodes.mockResolvedValue([
 				{
 					id: 101,
 					parentId: null,
-					entityType: 'SCHOOL',
+					entityType: 'AREA',
 					entityCode: 9,
+					organizationLevelTitle: { es: 'Coordinador de Area', en: 'Area Coordinator' },
 					staffId: null,
 					staffFirstName: null,
 					staffLastName: null,
 					staffEmail: null,
+					staffTitle: null,
+					professorCode: null,
+					entityResolvedCode: null,
+					entityResolvedName: null,
 				},
 			]);
 
 			const result = await service.getOrgChart(12);
 
 			expect(result[0].staff).toBeNull();
+			expect(result[0].entity).toBeNull();
 		});
 	});
 

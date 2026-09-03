@@ -1,7 +1,12 @@
 import { CommissionOption, pickPreferredCommission } from './academic-sync.repository';
 
 function commission(id: number, code: string): CommissionOption {
-	return { id, code, name: { es: `Comision ${code}`, en: `${code} Commission` } };
+	return {
+		id,
+		code,
+		name: { es: `Comision ${code}`, en: `${code} Commission` },
+		programCommissionId: id * 100,
+	};
 }
 
 describe('pickPreferredCommission', () => {

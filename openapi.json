@@ -18396,6 +18396,23 @@
 				},
 				"required": ["id", "code", "name"]
 			},
+			"AcademicSyncOutcomeRefDto": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "number", "example": 1 },
+					"code": {
+						"type": "string",
+						"example": "EAC-SI-2",
+						"description": "Compound outcome code (accreditor-program-number), not the bare number"
+					},
+					"name": {
+						"type": "object",
+						"example": { "es": "2", "en": "2" },
+						"description": "The bare outcome number/letter, e.g. \"2\""
+					}
+				},
+				"required": ["id", "code", "name"]
+			},
 			"AcademicSyncCampusRefDto": {
 				"type": "object",
 				"properties": {
@@ -18455,6 +18472,12 @@
 						"type": "object",
 						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncCommissionRefDto" }]
 					},
+					"firstOutcome": {
+						"nullable": true,
+						"description": "First (lowest outcome_code) Student Outcome this course maps to in the curriculum, scoped to `commission` above. Null when unmapped or `commission` is null.",
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncOutcomeRefDto" }]
+					},
 					"sections": {
 						"type": "array",
 						"items": { "$ref": "#/components/schemas/AcademicSyncSectionDto" }
@@ -18468,8 +18491,20 @@
 					"learningOutcome",
 					"program",
 					"commission",
+					"firstOutcome",
 					"sections"
 				]
+			},
+			"AcademicSyncEntityRefDto": {
+				"type": "object",
+				"properties": {
+					"code": { "type": "string", "example": "ISW" },
+					"name": {
+						"type": "object",
+						"example": { "es": "Ingenieria de Software", "en": "Software Engineering" }
+					}
+				},
+				"required": ["code", "name"]
 			},
 			"AcademicSyncOrgChartStaffDto": {
 				"type": "object",
@@ -18477,9 +18512,15 @@
 					"id": { "type": "number", "example": 10 },
 					"firstName": { "type": "string", "example": "Maria" },
 					"lastName": { "type": "string", "example": "Lopez" },
-					"email": { "type": "object", "example": "maria.lopez@upc.edu.pe", "nullable": true }
+					"email": { "type": "object", "example": "maria.lopez@upc.edu.pe", "nullable": true },
+					"title": {
+						"type": "object",
+						"example": { "es": "Docente Tiempo Completo", "en": "Full-Time Faculty" },
+						"nullable": true
+					},
+					"professorCode": { "type": "object", "example": "PROF123", "nullable": true }
 				},
-				"required": ["id", "firstName", "lastName", "email"]
+				"required": ["id", "firstName", "lastName", "email", "title", "professorCode"]
 			},
 			"AcademicSyncOrgChartNodeDto": {
 				"type": "object",
@@ -18487,6 +18528,15 @@
 					"id": { "type": "number", "example": 100 },
 					"parentId": { "type": "object", "example": 5, "nullable": true },
 					"entityType": { "type": "object", "example": "COURSE", "nullable": true },
+					"organizationLevelTitle": {
+						"type": "object",
+						"example": { "es": "Director de Escuela", "en": "School Director" }
+					},
+					"entity": {
+						"nullable": true,
+						"type": "object",
+						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncEntityRefDto" }]
+					},
 					"entityCode": { "type": "object", "example": 77, "nullable": true },
 					"staff": {
 						"nullable": true,
@@ -18494,7 +18544,15 @@
 						"allOf": [{ "$ref": "#/components/schemas/AcademicSyncOrgChartStaffDto" }]
 					}
 				},
-				"required": ["id", "parentId", "entityType", "entityCode", "staff"]
+				"required": [
+					"id",
+					"parentId",
+					"entityType",
+					"organizationLevelTitle",
+					"entity",
+					"entityCode",
+					"staff"
+				]
 			},
 			"AcademicSyncUserDto": {
 				"type": "object",
