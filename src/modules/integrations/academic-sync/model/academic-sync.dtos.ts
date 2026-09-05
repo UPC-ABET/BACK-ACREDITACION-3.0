@@ -78,6 +78,23 @@ export class AcademicSyncCommissionRefDto {
 	name: I18nText;
 }
 
+export class AcademicSyncOutcomeRefDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({
+		example: 'EAC-SI-2',
+		description: 'Compound outcome code (accreditor-program-number), not the bare number',
+	})
+	code: string;
+
+	@ApiProperty({
+		example: { es: '2', en: '2' },
+		description: 'The bare outcome number/letter, e.g. "2"',
+	})
+	name: I18nText;
+}
+
 export class AcademicSyncModalityRefDto {
 	@ApiProperty({ example: 1 })
 	id: number;
@@ -125,6 +142,14 @@ export class AcademicSyncCourseDto {
 	@ApiProperty({ type: AcademicSyncCommissionRefDto, nullable: true })
 	commission: AcademicSyncCommissionRefDto | null;
 
+	@ApiProperty({
+		type: AcademicSyncOutcomeRefDto,
+		nullable: true,
+		description:
+			'First (lowest outcome_code) Student Outcome this course maps to in the curriculum, scoped to `commission` above. Null when unmapped or `commission` is null.',
+	})
+	firstOutcome: AcademicSyncOutcomeRefDto | null;
+
 	@ApiProperty({ type: AcademicSyncSectionDto, isArray: true })
 	sections: AcademicSyncSectionDto[];
 }
@@ -141,6 +166,23 @@ export class AcademicSyncOrgChartStaffDto {
 
 	@ApiProperty({ example: 'maria.lopez@upc.edu.pe', nullable: true })
 	email: string | null;
+
+	@ApiProperty({
+		example: { es: 'Docente Tiempo Completo', en: 'Full-Time Faculty' },
+		nullable: true,
+	})
+	title: I18nText | null;
+
+	@ApiProperty({ example: 'PROF123', nullable: true })
+	professorCode: string | null;
+}
+
+export class AcademicSyncEntityRefDto {
+	@ApiProperty({ example: 'ISW' })
+	code: string;
+
+	@ApiProperty({ example: { es: 'Ingenieria de Software', en: 'Software Engineering' } })
+	name: I18nText;
 }
 
 export class AcademicSyncOrgChartNodeDto {
@@ -152,6 +194,12 @@ export class AcademicSyncOrgChartNodeDto {
 
 	@ApiProperty({ example: 'COURSE', nullable: true })
 	entityType: string | null;
+
+	@ApiProperty({ example: { es: 'Director de Escuela', en: 'School Director' } })
+	organizationLevelTitle: I18nText;
+
+	@ApiProperty({ type: AcademicSyncEntityRefDto, nullable: true })
+	entity: AcademicSyncEntityRefDto | null;
 
 	@ApiProperty({ example: 77, nullable: true })
 	entityCode: number | null;
