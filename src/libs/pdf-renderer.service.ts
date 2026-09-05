@@ -5,13 +5,11 @@ import * as path from 'path';
 import { ConcurrencyGate, ConcurrencyGateRejection } from './concurrency-gate';
 import { reportRenderStrings } from './strings/report-render.strings';
 
-// puppeteer and archiver are pure ESM; loaded via dynamic import so unit tests (CommonJS / ts-jest)
-// can import this file without parse errors.
+// Dynamic import: puppeteer/archiver are ESM-only, and a static import breaks ts-jest's CommonJS parse.
 type PuppeteerBrowser = {
 	newPage: () => Promise<any>;
 	close: () => Promise<void>;
 	connected: boolean;
-	on?: (event: string, listener: () => void) => void;
 	process?: () => { kill: (signal: string) => void } | null;
 };
 
@@ -27,13 +25,27 @@ type ArchiverModule = {
 	ZipArchive: new (options: { zlib: { level: number } }) => ArchiverInstance;
 };
 
-const DEFAULT_RENDER_CONCURRENCY = 2;
+// Also the cap on concurrent Chromium processes (each render launches its own, see renderOnce) —
+// start at 1, raise only after staging confirms headroom under the container's memory cap.
+const DEFAULT_RENDER_CONCURRENCY = 1;
 const DEFAULT_RENDER_TIMEOUT_MS = 120_000;
 const DEFAULT_QUEUE_TIMEOUT_MS = 60_000;
 const MAX_QUEUED_RENDERS = 20;
 const BROWSER_LAUNCH_TIMEOUT_MS = 60_000;
 const BROWSER_CLOSE_TIMEOUT_MS = 10_000;
-const PAGE_CLOSE_TIMEOUT_MS = 10_000;
+
+// No --single-process/--no-zygote: Chromium's own team calls that mode unsafe for production (a
+// renderer fault kills the whole process), and Puppeteer's issues show recurring crashes on
+// Linux/Docker from it, including on browser.close() -- exactly what every render below calls.
+// The idle-memory win here comes from launching fresh and closing per render, not from that flag.
+const CHROMIUM_ARGS = [
+	'--no-sandbox',
+	'--disable-setuid-sandbox',
+	'--disable-dev-shm-usage',
+	'--disable-accelerated-2d-canvas',
+	'--no-first-run',
+	'--disable-gpu',
+];
 
 class RenderTimeoutError extends Error {
 	constructor(step: string, timeoutMs: number) {
@@ -42,11 +54,8 @@ class RenderTimeoutError extends Error {
 	}
 }
 
-/**
- * Transport-level failure of the shared Chromium renderer. Always a 503: the request itself is
- * valid, the renderer is momentarily saturated or unhealthy, and retrying is the right client
- * behaviour. The i18n key tells the client which of the three it was.
- */
+/** Always 503: the request is valid, the renderer is transiently saturated/unhealthy, and
+ *  retrying is correct. The i18n key says which of the three. */
 export class PdfRenderUnavailableError extends HttpException {
 	constructor(messageKey: string) {
 		super({ message: messageKey }, HttpStatus.SERVICE_UNAVAILABLE);
@@ -66,7 +75,7 @@ function loadLogoDataUri(): string {
 				return `data:image/png;base64,${buf.toString('base64')}`;
 			}
 		} catch {
-			/* try next candidate */
+			// try the next candidate path
 		}
 	}
 	return '';
@@ -77,8 +86,6 @@ export const UPC_LOGO_DATA_URI: string = loadLogoDataUri();
 @Injectable()
 export class PdfRendererService implements OnModuleDestroy {
 	private readonly logger = new Logger(PdfRendererService.name);
-	private browser: PuppeteerBrowser | null = null;
-	private browserLaunch: Promise<PuppeteerBrowser> | null = null;
 	private readonly gate: ConcurrencyGate;
 	private readonly renderTimeoutMs: number;
 	private shuttingDown = false;
@@ -104,16 +111,13 @@ export class PdfRendererService implements OnModuleDestroy {
 		}
 	}
 
-	/**
-	 * Every Chromium interaction is timed out. An unresponsive browser answers `connected === true`
-	 * while never replying over the DevTools protocol, so without these the awaits hang forever, the
-	 * permit is never released, and the gate deadlocks every later export process-wide.
-	 */
+	/** Every Chromium call is timed out: an unresponsive browser reports `connected: true` while
+	 *  never answering the DevTools protocol, so a bare await would hang forever and never free the
+	 *  gate permit. */
 	private async renderOnce(html: string): Promise<Buffer> {
 		const browser = await this.getBrowser();
-		let page: any;
 		try {
-			page = await this.withTimeout(browser.newPage(), this.renderTimeoutMs, 'newPage');
+			const page = await this.withTimeout(browser.newPage(), this.renderTimeoutMs, 'newPage');
 			await this.withTimeout(
 				page.setContent(html, { waitUntil: 'load', timeout: this.renderTimeoutMs }),
 				this.renderTimeoutMs,
@@ -131,81 +135,42 @@ export class PdfRendererService implements OnModuleDestroy {
 				'pdf',
 			);
 			return Buffer.from(pdf);
-		} catch (error) {
-			// A timeout means Chromium stopped answering; anything reused from it would hang too.
-			if (error instanceof RenderTimeoutError || !browser.connected) {
-				await this.recycleBrowser(browser, this.describe(error));
-			}
-			throw error;
 		} finally {
-			// Closing a page on a browser that is already gone can only hang; skipping keeps the
-			// permit from being held for another full close timeout.
-			if (page && browser.connected) {
-				await this.withTimeout(page.close(), PAGE_CLOSE_TIMEOUT_MS, 'pageClose').catch(
-					() => undefined,
-				);
-			}
+			// No separate page.close(): this browser is dedicated to this one render, so closing it
+			// tears down its only page too.
+			await this.closeBrowser(browser);
 		}
 	}
 
 	private async getBrowser(): Promise<PuppeteerBrowser> {
-		const current = this.browser;
-		if (current?.connected) return current;
-		if (this.browserLaunch) return this.browserLaunch;
-
-		const launch = (async () => {
-			const puppeteerMod: any = await import('puppeteer');
-			const puppeteer = puppeteerMod.default ?? puppeteerMod;
-			const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
+		const puppeteerMod: any = await import('puppeteer');
+		const puppeteer = puppeteerMod.default ?? puppeteerMod;
+		const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
+		try {
 			const browser: PuppeteerBrowser = await puppeteer.launch({
 				headless: true,
 				...(executablePath ? { executablePath } : {}),
-				args: [
-					'--no-sandbox',
-					'--disable-setuid-sandbox',
-					'--disable-dev-shm-usage',
-					'--disable-gpu',
-				],
+				args: CHROMIUM_ARGS,
 				timeout: BROWSER_LAUNCH_TIMEOUT_MS,
 				protocolTimeout: this.renderTimeoutMs,
 			});
-			// A crashed Chromium must not stay cached as the live browser, or every later render
-			// waits on a dead socket until its own timeout fires.
-			browser.on?.('disconnected', () => {
-				if (this.browser === browser) this.browser = null;
-			});
-			this.browser = browser;
-			this.logger.log(
-				`Chromium launched${executablePath ? ` (executablePath=${executablePath})` : ''}`,
-			);
 			return browser;
-		})();
-
-		this.browserLaunch = launch;
-		try {
-			return await launch;
 		} catch (error) {
 			this.logger.error(`Chromium launch failed: ${this.describe(error)}`);
-			this.browser = null;
 			throw error;
-		} finally {
-			// Only clear the memo if it is still ours -- a newer launch must not be discarded.
-			if (this.browserLaunch === launch) this.browserLaunch = null;
 		}
 	}
 
-	private async recycleBrowser(browser: PuppeteerBrowser, reason: string): Promise<void> {
-		if (this.browser === browser) this.browser = null;
-		this.logger.warn(`Recycling Chromium: ${reason}`);
+	private async closeBrowser(browser: PuppeteerBrowser): Promise<void> {
 		try {
 			await this.withTimeout(browser.close(), BROWSER_CLOSE_TIMEOUT_MS, 'browserClose');
-		} catch {
-			// close() hangs on the same dead protocol connection that caused the recycle; SIGKILL is
-			// the only thing left that reliably stops the process leaking.
+		} catch (error) {
+			// close() hangs on the same dead connection a timeout leaves behind; SIGKILL is the last resort.
+			this.logger.warn(`Chromium close failed, killing process: ${this.describe(error)}`);
 			try {
 				browser.process?.()?.kill('SIGKILL');
 			} catch {
-				/* process already gone */
+				// process already gone
 			}
 		}
 	}
@@ -271,9 +236,7 @@ export class PdfRendererService implements OnModuleDestroy {
 	}
 
 	async onModuleDestroy() {
+		// No shared browser to close here -- each render tears down its own (see renderOnce).
 		this.shuttingDown = true;
-		const browser = this.browser;
-		this.browser = null;
-		if (browser) await this.recycleBrowser(browser, 'module shutdown');
 	}
 }

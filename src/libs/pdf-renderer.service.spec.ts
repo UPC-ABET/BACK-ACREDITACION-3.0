@@ -3,12 +3,10 @@ import { PdfRendererService } from './pdf-renderer.service';
 import { reportRenderStrings } from './strings/report-render.strings';
 
 /**
- * `getBrowser()` loads puppeteer through a dynamic `import()`, which Jest's default (non-ESM) VM
- * cannot intercept with `jest.mock('puppeteer', ...)` -- it throws
- * `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING_FLAG` before ever reaching the mock. Stubbing the
- * `getBrowser` seam instead keeps every other path real: the ConcurrencyGate wiring, the
- * per-step Chromium timeouts, browser recycling, and the error-to-i18n-key mapping in
- * `toHttpError` -- the logic this hotfix actually changed.
+ * `getBrowser()` uses a dynamic `import()`, which Jest's non-ESM VM can't intercept with
+ * `jest.mock('puppeteer', ...)` (throws `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING_FLAG`). Stubbing
+ * the `getBrowser` seam instead keeps everything else real: gate wiring, per-step timeouts,
+ * per-render teardown, and `toHttpError`'s mapping.
  */
 const deferred = <T = void>() => {
 	let resolve!: (value: T) => void;
@@ -110,7 +108,7 @@ describe('PdfRendererService', () => {
 		await held;
 	});
 
-	it('rejects with the render-timeout key and recycles the browser when a Chromium step hangs', async () => {
+	it('rejects with the render-timeout key and closes the browser when a Chromium step hangs', async () => {
 		const service = new PdfRendererService(configWith({ REPORT_RENDER_TIMEOUT_MS: '20' }));
 		const browser = makeBrowser();
 		const hungPage = makePage({ setContent: jest.fn(() => new Promise(() => undefined)) });
@@ -125,7 +123,7 @@ describe('PdfRendererService', () => {
 		expect(browser.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('rejects with the unavailable key on an unrelated render failure, without recycling a healthy browser', async () => {
+	it('rejects with the unavailable key on an unrelated render failure, and still closes its dedicated browser', async () => {
 		const service = new PdfRendererService(configWith());
 		const browser = makeBrowser();
 		const page = makePage({ pdf: jest.fn().mockRejectedValue(new Error('boom')) });
@@ -137,7 +135,7 @@ describe('PdfRendererService', () => {
 			message: reportRenderStrings.error.unavailable,
 		});
 
-		expect(browser.close).not.toHaveBeenCalled();
+		expect(browser.close).toHaveBeenCalledTimes(1);
 	});
 
 	it('refuses new renders once shutting down, without acquiring a browser', async () => {
