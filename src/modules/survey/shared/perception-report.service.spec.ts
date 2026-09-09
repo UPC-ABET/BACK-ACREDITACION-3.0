@@ -213,8 +213,10 @@ describe('PerceptionReportService', () => {
 
 		await service.generate({ ...baseRequest, campusId: 1, lang: 'en' });
 
+		// The legend entry carries the band's score range alongside its name, in the same
+		// interval notation the acceptance table uses.
 		const series = chart.buildGroupedBarChart.mock.calls[0][0].series;
-		expect(series[0].label).toBe('Expected');
+		expect(series[0].label).toBe('Expected ([ 0 - 5 >)');
 	});
 
 	it('includes configured outcomes with zero responses instead of omitting them', async () => {

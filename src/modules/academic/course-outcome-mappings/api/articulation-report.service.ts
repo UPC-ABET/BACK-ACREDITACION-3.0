@@ -17,7 +17,6 @@ const LABELS = {
 		university: 'UNIVERSIDAD PERUANA DE CIENCIAS APLICADAS',
 		reportTitle: 'ARTICULACIÓN',
 		commission: 'COMISIÓN',
-		career: 'CARRERA',
 		cycle: 'CICLO',
 		legend: 'LEYENDA',
 		plan: 'PLAN CURRICULAR',
@@ -32,7 +31,6 @@ const LABELS = {
 		university: 'UNIVERSIDAD PERUANA DE CIENCIAS APLICADAS',
 		reportTitle: 'ARTICULATION',
 		commission: 'COMMISSION',
-		career: 'PROGRAM',
 		cycle: 'TERM',
 		legend: 'LEGEND',
 		plan: 'CURRICULUM',
@@ -128,9 +126,9 @@ export class ArticulationReportService {
 			language: lang,
 			reportName: L.reportTitle,
 			programName: localize(header.programName, lang),
+			// The career is rendered from `programName` above, at the head of this same row.
 			metadata: [
 				{ label: L.commission, value: commissionLabel },
-				{ label: L.career, value: localize(header.programName, lang) },
 				{ label: L.cycle, value: header.academicPeriodCode },
 			],
 			bodyHtml,

@@ -900,7 +900,7 @@ export class PerceptionReportService {
 			title,
 			categories: outcomes.map((outcome) => outcome.label),
 			series: bands.map((band, bandIndex) => ({
-				label: band.name,
+				label: `${band.name} (${bandRange(band, bandIndex, bands.length)})`,
 				color: band.color,
 				values: outcomes.map((outcome) => outcome.counts[bandIndex]),
 			})),
@@ -937,7 +937,7 @@ export class PerceptionReportService {
 			title,
 			categories: scoreValues.map(String),
 			series: bands.map((band, bandIndex) => ({
-				label: band.name,
+				label: `${band.name} (${bandRange(band, bandIndex, bands.length)})`,
 				color: band.color,
 				values: scoreValues.map((value, valueIndex) =>
 					bandIndexByScore[valueIndex] === bandIndex ? (countByScore.get(value) ?? 0) : 0,
@@ -1041,13 +1041,7 @@ export class PerceptionReportService {
 	): string {
 		const rows = bands
 			.map((band, index) => {
-				const isFirst = index === 0;
-				const isLast = index === bands.length - 1;
-				const range = isFirst
-					? `[ ${formatScore(band.minScore)} - ${formatScore(band.maxScore)} >`
-					: isLast
-						? `< ${formatScore(band.minScore)} - ${formatScore(band.maxScore)} ]`
-						: `[ ${formatScore(band.minScore)} - ${formatScore(band.maxScore)} ]`;
+				const range = bandRange(band, index, bands.length);
 				return `<tr><td><span class="band-cell" style="display:inline-block;padding:1px 8px;border-radius:3px;background:${escapeHtml(
 					band.color,
 				)}">${escapeHtml(band.name)}</span></td><td>${escapeHtml(range)}</td></tr>`;
@@ -1119,6 +1113,19 @@ function formatCountWithPercent(count: number, total: number): string {
 
 function formatScore(value: number): string {
 	return String(value);
+}
+
+/**
+ * The band's score interval, as the acceptance table has always written it: the lowest band is
+ * open at the top, the highest closed at the bottom, everything between closed on both ends.
+ * Shared with the chart legend so a reader sees the same notation in both places.
+ */
+function bandRange(band: AcceptanceBand, index: number, bandCount: number): string {
+	const from = formatScore(band.minScore);
+	const to = formatScore(band.maxScore);
+	if (index === 0) return `[ ${from} - ${to} >`;
+	if (index === bandCount - 1) return `< ${from} - ${to} ]`;
+	return `[ ${from} - ${to} ]`;
 }
 
 function dateStamp(): string {
