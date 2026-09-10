@@ -86,16 +86,9 @@ export const SEMAPHORE_REPORT_STYLES = `
 	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
 	section h4 { font-size: 11pt; margin: 10px 0 6px; }
 	/* Narrower than the header's default columns so every metadata item (campus, period,
-	   modality, career, accreditor, commission, acceptance level) fits on one row. Label/value
-	   font sizes match the GRA report's (report.theme.ts defaults) instead of a report-specific
-	   shrink. */
+	   modality, career, accreditor, commission, acceptance level) fits on one row. */
 	.report-metadata { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; padding: 12px 16px; }
-	/* Neutral gray for headers that don't map to a performance level -- level-column headers keep
-	   their own colour as a full background instead (set inline per level). */
 	thead th { background: #3a3a3c; color: #fff; text-align: center; vertical-align: middle; }
-	/* These tables pack many columns onto an A4 page (outcome/course + 3 levels + total), the
-	   same reason the graduandos report's own dense table (.course-outcome-table) drops to
-	   8.5pt/tighter padding instead of the report default 10pt. */
 	table { font-size: 8.5pt; }
 	th, td { padding: 4px 6px; }
 	tbody tr.totals-row td { background: #f1f1f1; font-weight: bold; }
@@ -109,9 +102,6 @@ export const SEMAPHORE_REPORT_STYLES = `
 		vertical-align: middle;
 	}
 
-	/* Indicator legend: styled to match the bar chart's own native legend (square swatch, plain
-	   12px label, centered row) -- a small colour swatch per level, name and (range) beside it,
-	   instead of painting the whole row. */
 	.indicator-scale {
 		display: flex;
 		flex-wrap: wrap;
@@ -133,7 +123,6 @@ export const SEMAPHORE_REPORT_STYLES = `
 	.indicator-scale__name { font-size: 7.5pt; font-weight: 400; color: #18181b; }
 	.indicator-scale__range { font-size: 7.5pt; font-weight: 400; color: #18181b; }
 
-	/* All numeric/count columns centered; text columns (code, description/name) stay left. */
 	td, th { text-align: left; }
 	.cell-percentage { font-size: inherit; color: #52525b; white-space: nowrap; }
 	.consolidated td:nth-child(3),
@@ -142,6 +131,6 @@ export const SEMAPHORE_REPORT_STYLES = `
 	.consolidated td:last-child { text-align: center; white-space: nowrap; }
 	.rv-pivot td:first-child,
 	.rv-pivot td:nth-child(n+3) { text-align: center; white-space: nowrap; }
+	.rv-pivot tr.totals-row td:not(:first-child) { text-align: center; white-space: nowrap; }
 	tbody tr.consolidated__totals td { font-weight: 700; background: #f1f1f1; text-align: center; }
-	tbody tr.consolidated__totals td:first-child { text-align: left; }
 `;
