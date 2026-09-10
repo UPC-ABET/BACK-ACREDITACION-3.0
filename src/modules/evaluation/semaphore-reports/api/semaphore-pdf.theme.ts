@@ -1,3 +1,5 @@
+import { REPORT_FONT_SIZE, REPORT_THEME } from 'src/libs/reporting/report.theme';
+
 export const SEMAPHORE_PDF_LABELS = {
 	es: {
 		reportTitleRC: 'Reporte de Control por Outcome',
@@ -74,25 +76,22 @@ export const SEMAPHORE_PDF_LABELS = {
 } as const;
 
 export const SEMAPHORE_REPORT_STYLES = `
-	section { break-inside: avoid; margin-top: 18px; }
 	/* A section that holds a table can be taller than the room left on the page: forcing the
-	   whole section onto the next one (the default above) leaves the rest of the current page
-	   blank. Letting the table itself break keeps rows flowing right after whatever fit, while
-	   still never splitting a single row across pages. */
+	   whole section onto the next one (the shared base rule's default) leaves the rest of the
+	   current page blank. Letting the table itself break keeps rows flowing right after whatever
+	   fit, while still never splitting a single row across pages. */
 	section:has(table) { break-inside: auto; }
 	table { break-inside: auto; }
 	tr { break-inside: avoid; }
 	thead { display: table-header-group; }
-	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
-	section h4 { font-size: 11pt; margin: 10px 0 6px; }
 	/* Narrower than the header's default columns so every metadata item (campus, period,
 	   modality, career, accreditor, commission, acceptance level) fits on one row. */
 	.report-metadata { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; padding: 12px 16px; }
-	thead th { background: #3a3a3c; color: #fff; text-align: center; vertical-align: middle; }
-	table { font-size: 8.5pt; }
+	thead th { background: ${REPORT_THEME.brandDark}; color: #fff; text-align: center; vertical-align: middle; }
+	table { font-size: ${REPORT_FONT_SIZE.dense}; }
 	th, td { padding: 4px 6px; }
 	tbody tr.totals-row td { background: #f1f1f1; font-weight: bold; }
-	.legend-line { margin: 8px 0 16px; font-size: 9pt; }
+	.legend-line { margin: 8px 0 16px; font-size: ${REPORT_FONT_SIZE.compact}; }
 	.legend-item { display: inline-flex; align-items: center; margin-right: 18px; }
 	.semaphore-dot {
 		display: inline-block;
@@ -120,8 +119,8 @@ export const SEMAPHORE_REPORT_STYLES = `
 		height: 12px;
 		flex-shrink: 0;
 	}
-	.indicator-scale__name { font-size: 7.5pt; font-weight: 400; color: #18181b; }
-	.indicator-scale__range { font-size: 7.5pt; font-weight: 400; color: #18181b; }
+	.indicator-scale__name { font-size: ${REPORT_FONT_SIZE.micro}; font-weight: 400; color: #18181b; }
+	.indicator-scale__range { font-size: ${REPORT_FONT_SIZE.micro}; font-weight: 400; color: #18181b; }
 
 	td, th { text-align: left; }
 	.cell-percentage { font-size: inherit; color: #52525b; white-space: nowrap; }

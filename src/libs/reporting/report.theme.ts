@@ -19,14 +19,32 @@ export const REPORT_THEME = {
 	white: '#ffffff',
 } as const;
 
+/** The one type scale every PDF report draws from. Named by role, not by number, so a report
+ *  reaching for "the size a section title uses" doesn't have to know it happens to be 12pt. */
+export const REPORT_FONT_SIZE = {
+	micro: '7.5pt',
+	small: '8pt',
+	dense: '8.5pt',
+	compact: '9pt',
+	base: '10pt',
+	subheading: '11pt',
+	sectionTitle: '12pt',
+} as const;
+
 export const REPORT_BASE_STYLES = `
 	* { box-sizing: border-box; }
 	body {
 		margin: 0;
 		font-family: Arial, Helvetica, sans-serif;
 		color: ${REPORT_THEME.text};
-		font-size: 10pt;
+		font-size: ${REPORT_FONT_SIZE.base};
 	}
+	/* Reports that lay out sections with plain semantic markup (<section>/<h3>/<h4>) share this
+	   look instead of redeclaring it per report; a report using the .report-section* classes
+	   below is free to ignore these. */
+	section { break-inside: avoid; margin-top: 18px; }
+	section h3 { color: ${REPORT_THEME.brand}; font-size: ${REPORT_FONT_SIZE.sectionTitle}; margin: 0 0 10px; }
+	section h4 { font-size: ${REPORT_FONT_SIZE.subheading}; margin: 10px 0 6px; }
 	.report-header__primary {
 		min-height: 72px;
 		padding: 18px 28px;
@@ -94,14 +112,14 @@ export const REPORT_BASE_STYLES = `
 	.report-metadata__label {
 		display: block;
 		margin-bottom: 5px;
-		font-size: 8pt;
+		font-size: ${REPORT_FONT_SIZE.small};
 		font-weight: 700;
 		text-transform: uppercase;
 	}
 	.report-metadata__value {
 		display: block;
 		color: ${REPORT_THEME.mutedText};
-		font-size: 8.5pt;
+		font-size: ${REPORT_FONT_SIZE.dense};
 		overflow-wrap: anywhere;
 	}
 	.report-content {
@@ -114,7 +132,7 @@ export const REPORT_BASE_STYLES = `
 	.report-section__title {
 		margin: 0 0 8px;
 		color: ${REPORT_THEME.brand};
-		font-size: 12pt;
+		font-size: ${REPORT_FONT_SIZE.sectionTitle};
 	}
 	table {
 		width: 100%;
@@ -148,7 +166,7 @@ export const REPORT_BASE_STYLES = `
 	.report-chart__title {
 		margin: 0 0 4px;
 		text-align: center;
-		font-size: 11pt;
+		font-size: ${REPORT_FONT_SIZE.subheading};
 	}
 	.report-chart__grid {
 		stroke: ${REPORT_THEME.border};

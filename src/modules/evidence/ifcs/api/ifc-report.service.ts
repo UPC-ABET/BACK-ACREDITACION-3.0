@@ -3,20 +3,19 @@ import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import { ifcsValidationStrings } from '../config/strings/ifcs.validation';
 import { IfcStatusReportDto } from '../model/ifcs.dtos';
 import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
+import { REPORT_THEME } from 'src/libs/reporting/report.theme';
 import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize } from 'src/libs/reporting/report.utils';
 import { PDF_LABELS } from './ifc-pdf.theme';
 import { IfcViewService } from './ifc-view.service';
 import { IFC_INSTRUMENT_CODE } from './ifcs.constants';
 import * as ExcelJS from 'exceljs';
-import { XLSX_THEME } from './pdf-theme';
+import { XLSX_THEME } from './ifc-xlsx.theme';
 import { IfcRepository, IfcStatusReportRow } from '../core/ifcs.repository';
 
 const IFC_REPORT_STYLES = `
-	section { break-inside: avoid; margin-top: 18px; }
-	section h3 { color: #e30613; text-decoration: underline; font-size: 12pt; margin: 0 0 10px; }
-	section h4 { font-size: 11pt; margin: 10px 0 6px; }
-	thead th { background: #e30613; color: #fff; text-align: left; }
+	section h3 { text-decoration: underline; }
+	thead th { background: ${REPORT_THEME.brand}; color: #fff; text-align: left; }
 	tbody tr:nth-child(even) td { background: #fafafa; }
 	ul { padding-left: 18px; }
 	li { margin-bottom: 6px; }

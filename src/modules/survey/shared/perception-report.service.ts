@@ -8,6 +8,7 @@ import type {
 	ReportMetadataItem,
 } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
+import { REPORT_FONT_SIZE } from 'src/libs/reporting/report.theme';
 import { SURVEY_TABLE_STYLES, countWithShare } from './survey-report.theme';
 import type { I18nText } from 'src/shared/types/i18n';
 import { BadRequestError } from 'src/commons/domain-error';
@@ -108,10 +109,9 @@ interface AcceptanceBand {
 const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
 
 const REPORT_STYLES = `
-	section { break-inside: avoid; margin-top: 18px; }
 	${SURVEY_TABLE_STYLES}
 	.course-outcome-table th, .course-outcome-table td { padding: 5px 6px; }
-	.course-outcome-table td { font-size: 8.5pt; }
+	.course-outcome-table td { font-size: ${REPORT_FONT_SIZE.dense}; }
 `;
 
 const LABELS = {

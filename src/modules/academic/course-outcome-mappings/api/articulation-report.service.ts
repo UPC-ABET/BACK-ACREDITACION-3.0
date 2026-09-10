@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ReportGeneratorService } from 'src/libs/reporting/report-generator.service';
+import { REPORT_FONT_SIZE, REPORT_THEME } from 'src/libs/reporting/report.theme';
 import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize } from 'src/libs/reporting/report.utils';
 import { CourseOutcomeMappingService } from './course-outcome-mappings.service';
@@ -44,17 +45,17 @@ const LABELS = {
 } as const;
 
 const STYLES = `
-	.section-title { color: #C8102E; font-weight: 700; font-size: 12pt; margin: 16px 0 6px; border-bottom: 1px solid #C8102E; padding-bottom: 2px; }
-	th, td { border: 1px solid #94a3b8; padding: 3px 5px; font-size: 9pt; }
-	thead th { background: #dbeafe; color: #18181b; text-align: center; font-weight: 700; }
+	.section-title { color: ${REPORT_THEME.brand}; font-weight: 700; font-size: ${REPORT_FONT_SIZE.sectionTitle}; margin: 16px 0 6px; border-bottom: 1px solid ${REPORT_THEME.brand}; padding-bottom: 2px; }
+	th, td { border: 1px solid ${REPORT_THEME.border}; padding: 3px 5px; font-size: ${REPORT_FONT_SIZE.compact}; }
+	thead th { background: ${REPORT_THEME.surface}; color: ${REPORT_THEME.text}; text-align: center; font-weight: 700; }
 	td.code { white-space: nowrap; font-weight: 600; }
 	td.course { text-align: left; }
 	td.mark { text-align: center; width: 24px; }
 	tr.level td { background: #e2e8f0; font-weight: 700; text-transform: uppercase; }
 	.legend-table { width: auto; }
-	.legend-table td { border: 1px solid #94a3b8; }
-	.legend-glyph { text-align: center; font-size: 12pt; width: 28px; }
-	.glyph { font-size: 11pt; }
+	.legend-table td { border: 1px solid ${REPORT_THEME.border}; }
+	.legend-glyph { text-align: center; font-size: ${REPORT_FONT_SIZE.sectionTitle}; width: 28px; }
+	.glyph { font-size: ${REPORT_FONT_SIZE.subheading}; }
 	.marker { vertical-align: middle; }
 `;
 

@@ -7,8 +7,6 @@ import { GraNotificationService } from './gra-notification.service';
 import { SURVEY_TABLE_STYLES, countWithShare } from 'src/modules/survey/shared/survey-report.theme';
 
 const GRA_REPORT_STYLES = `
-	section { break-inside: avoid; margin-top: 18px; }
-	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
 	${SURVEY_TABLE_STYLES}
 `;
 

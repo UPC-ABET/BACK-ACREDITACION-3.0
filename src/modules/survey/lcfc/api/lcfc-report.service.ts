@@ -4,14 +4,13 @@ import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.t
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
 import type { I18nText } from 'src/shared/types/i18n';
 import { LcfcNotificationService } from './lcfc-notification.service';
+import { REPORT_FONT_SIZE } from 'src/libs/reporting/report.theme';
 import { SURVEY_TABLE_STYLES, countWithShare } from 'src/modules/survey/shared/survey-report.theme';
 
 const LCFC_REPORT_STYLES = `
-	section { break-inside: avoid; margin-top: 18px; }
-	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
 	.summary-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 6px; }
 	.summary-grid .item { min-width: 110px; }
-	.summary-grid .label { font-size: 9pt; color: #666; display: block; }
+	.summary-grid .label { font-size: ${REPORT_FONT_SIZE.compact}; color: #666; display: block; }
 	.summary-grid .value { font-size: 14pt; font-weight: bold; }
 	${SURVEY_TABLE_STYLES}
 	.report-chart + table { margin-top: 8px; }

@@ -63,7 +63,6 @@ interface CampusSection {
 const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
 
 const REPORT_STYLES = `
-	section { break-inside: avoid; margin-top: 18px; }
 	${SURVEY_TABLE_STYLES}
 `;
 
