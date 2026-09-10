@@ -1,4 +1,13 @@
+import type { ReportLanguage } from './report.types';
+
 export const REPORT_ORGANIZATION_NAME = 'UNIVERSIDAD PERUANA DE CIENCIAS APLICADAS';
+
+/** The program/career is no longer part of the banner title -- it rides in the metadata row
+ *  below it, so it needs a label of its own. */
+export const REPORT_PROGRAM_LABEL: Record<ReportLanguage, string> = {
+	es: 'Carrera',
+	en: 'Program',
+};
 
 export const REPORT_THEME = {
 	brand: '#e30613',
@@ -58,7 +67,9 @@ export const REPORT_BASE_STYLES = `
 	}
 	.report-metadata {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+		/* 90px keeps six fields -- the career plus the five a PPP header can carry -- on a single
+		   portrait row. */
+		grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
 		gap: 14px;
 		padding: 16px 28px;
 	}

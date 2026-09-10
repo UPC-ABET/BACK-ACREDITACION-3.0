@@ -8,6 +8,7 @@ import type {
 	ReportMetadataItem,
 } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
+import { SURVEY_TABLE_STYLES, countWithShare } from './survey-report.theme';
 import type { I18nText } from 'src/shared/types/i18n';
 import { BadRequestError } from 'src/commons/domain-error';
 import { perceptionReportValidationStrings } from './config/strings/perception-report.validation';
@@ -108,12 +109,9 @@ const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
 
 const REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
-	section h3 { color: #18181b; font-size: 12pt; margin: 0 0 10px; }
-	thead th { background: #3a3a3c; color: #fff; text-align: center; }
-	td.num, th.num { text-align: center; }
-	.band-cell { color: #fff; font-weight: 700; }
-	.course-outcome-table { font-size: 8.5pt; }
-	.course-outcome-table th, .course-outcome-table td { padding: 4px 6px; }
+	${SURVEY_TABLE_STYLES}
+	.course-outcome-table th, .course-outcome-table td { padding: 5px 6px; }
+	.course-outcome-table td { font-size: 8.5pt; }
 `;
 
 const LABELS = {
@@ -123,10 +121,7 @@ const LABELS = {
 		modality: 'Modalidad de Estudio',
 		count: 'Cantidad',
 		chartTitle: 'Percepción por Outcome',
-		acceptanceTitle: 'Niveles de aceptación',
-		acceptanceLevel: 'Nivel de Aceptación',
-		values: 'Valores',
-		resultsTitle: 'Resultados por Outcome',
+		totals: 'TOTALES',
 		period: 'Periodo',
 		campus: 'Sede',
 		commission: 'Comisión',
@@ -147,10 +142,7 @@ const LABELS = {
 		modality: 'Study modality',
 		count: 'Count',
 		chartTitle: 'Perception by outcome',
-		acceptanceTitle: 'Acceptance levels',
-		acceptanceLevel: 'Acceptance level',
-		values: 'Values',
-		resultsTitle: 'Results by outcome',
+		totals: 'TOTALS',
 		period: 'Period',
 		campus: 'Campus',
 		commission: 'Commission',
@@ -471,7 +463,6 @@ export class PerceptionReportService {
 		const bodyHtml = `
 			${this.buildChart(courses, bands, L, L.chartTitle, L.course)}
 			${this.buildCourseOutcomeTable(courses, bands, totalLabel, L)}
-			${this.buildAcceptanceTable(bands, L)}
 		`;
 
 		const document: ReportDocument = {
@@ -784,7 +775,6 @@ export class PerceptionReportService {
 			? `
 				${chart}
 				${this.buildResultsTable(outcomes, bands, totalLabel, L)}
-				${this.buildAcceptanceTable(bands, L)}
 			`
 			: `<section><p class="report-empty">${escapeHtml(L.empty)}</p></section>`;
 
@@ -900,7 +890,7 @@ export class PerceptionReportService {
 			title,
 			categories: outcomes.map((outcome) => outcome.label),
 			series: bands.map((band, bandIndex) => ({
-				label: band.name,
+				label: `${band.name} (${bandRange(band, bandIndex, bands.length)})`,
 				color: band.color,
 				values: outcomes.map((outcome) => outcome.counts[bandIndex]),
 			})),
@@ -937,7 +927,7 @@ export class PerceptionReportService {
 			title,
 			categories: scoreValues.map(String),
 			series: bands.map((band, bandIndex) => ({
-				label: band.name,
+				label: `${band.name} (${bandRange(band, bandIndex, bands.length)})`,
 				color: band.color,
 				values: scoreValues.map((value, valueIndex) =>
 					bandIndexByScore[valueIndex] === bandIndex ? (countByScore.get(value) ?? 0) : 0,
@@ -977,17 +967,25 @@ export class PerceptionReportService {
 				(outcome) =>
 					`<tr>
 						<td class="num">${escapeHtml(outcome.label)}</td>
-						${outcome.counts.map((count) => `<td class="num">${formatCountWithPercent(count, outcome.total)}</td>`).join('')}
+						${outcome.counts.map((count) => `<td class="num">${countWithShare(count, outcome.total)}</td>`).join('')}
 						<td class="num">${escapeHtml(formatAverage(outcome))}</td>
 						<td class="num">${outcome.total}</td>
 					</tr>`,
 			)
 			.join('');
 
+		const totals = sumAggregates(outcomes, bands.length);
+		const totalsRow = `
+			<tr class="totals-row">
+				<td class="num">${escapeHtml(labels.totals)}</td>
+				${totals.counts.map((count) => `<td class="num">${countWithShare(count, totals.total)}</td>`).join('')}
+				<td class="num">${escapeHtml(formatAverage(totals))}</td>
+				<td class="num">${totals.total}</td>
+			</tr>`;
+
 		return `
 			<section>
-				<h3>${escapeHtml(labels.resultsTitle)}</h3>
-				<table><thead>${head}</thead><tbody>${body}</tbody></table>
+				<table><thead>${head}</thead><tbody>${body}${totalsRow}</tbody></table>
 			</section>`;
 	}
 
@@ -1021,46 +1019,25 @@ export class PerceptionReportService {
 					`<tr>
 						<td>${escapeHtml(course.label)}</td>
 						<td>${escapeHtml(course.name)}</td>
-						${course.counts.map((count) => `<td class="num">${formatCountWithPercent(count, course.total)}</td>`).join('')}
+						${course.counts.map((count) => `<td class="num">${countWithShare(count, course.total)}</td>`).join('')}
 						<td class="num">${escapeHtml(formatAverage(course))}</td>
 						<td class="num">${course.total}</td>
 					</tr>`,
 			)
 			.join('');
 
-		return `
-			<section>
-				<h3>${escapeHtml(labels.resultsTitle)}</h3>
-				<table class="course-outcome-table"><thead>${head}</thead><tbody>${body}</tbody></table>
-			</section>`;
-	}
-
-	private buildAcceptanceTable(
-		bands: AcceptanceBand[],
-		labels: (typeof LABELS)[ReportLanguage],
-	): string {
-		const rows = bands
-			.map((band, index) => {
-				const isFirst = index === 0;
-				const isLast = index === bands.length - 1;
-				const range = isFirst
-					? `[ ${formatScore(band.minScore)} - ${formatScore(band.maxScore)} >`
-					: isLast
-						? `< ${formatScore(band.minScore)} - ${formatScore(band.maxScore)} ]`
-						: `[ ${formatScore(band.minScore)} - ${formatScore(band.maxScore)} ]`;
-				return `<tr><td><span class="band-cell" style="display:inline-block;padding:1px 8px;border-radius:3px;background:${escapeHtml(
-					band.color,
-				)}">${escapeHtml(band.name)}</span></td><td>${escapeHtml(range)}</td></tr>`;
-			})
-			.join('');
+		const totals = sumAggregates(courses, bands.length);
+		const totalsRow = `
+			<tr class="totals-row">
+				<td colspan="2">${escapeHtml(labels.totals)}</td>
+				${totals.counts.map((count) => `<td class="num">${countWithShare(count, totals.total)}</td>`).join('')}
+				<td class="num">${escapeHtml(formatAverage(totals))}</td>
+				<td class="num">${totals.total}</td>
+			</tr>`;
 
 		return `
 			<section>
-				<h3>${escapeHtml(labels.acceptanceTitle)}</h3>
-				<table>
-					<thead><tr><th>${escapeHtml(labels.acceptanceLevel)}</th><th>${escapeHtml(labels.values)}</th></tr></thead>
-					<tbody>${rows}</tbody>
-				</table>
+				<table class="course-outcome-table"><thead>${head}</thead><tbody>${body}${totalsRow}</tbody></table>
 			</section>`;
 	}
 
@@ -1111,14 +1088,40 @@ function formatAverage(outcome: OutcomeAggregate): string {
 	return (outcome.scoreSum / outcome.total).toFixed(2);
 }
 
-/** "count (12.50%)" — the share of this band's count out of the row's total. */
-function formatCountWithPercent(count: number, total: number): string {
-	const percent = total > 0 ? (count / total) * 100 : 0;
-	return `${count} (${percent.toFixed(2)}%)`;
+/**
+ * The table's TOTALES row, shaped as one more aggregate so it renders through the same helpers:
+ * responses per band added up across the rows, and a mean weighted by them — not the mean of the
+ * per-row means, which would let a row with three responses outweigh one with eighty.
+ */
+function sumAggregates(rows: OutcomeAggregate[], bandCount: number): OutcomeAggregate {
+	const counts = Array.from({ length: bandCount }, (_, index) =>
+		rows.reduce((sum, row) => sum + (row.counts[index] ?? 0), 0),
+	);
+	return {
+		code: '',
+		label: '',
+		name: '',
+		counts,
+		total: rows.reduce((sum, row) => sum + row.total, 0),
+		scoreSum: rows.reduce((sum, row) => sum + row.scoreSum, 0),
+	};
 }
 
 function formatScore(value: number): string {
 	return String(value);
+}
+
+/**
+ * The band's score interval, as the acceptance table has always written it: the lowest band is
+ * open at the top, the highest closed at the bottom, everything between closed on both ends.
+ * Shared with the chart legend so a reader sees the same notation in both places.
+ */
+function bandRange(band: AcceptanceBand, index: number, bandCount: number): string {
+	const from = formatScore(band.minScore);
+	const to = formatScore(band.maxScore);
+	if (index === 0) return `[ ${from} - ${to} >`;
+	if (index === bandCount - 1) return `< ${from} - ${to} ]`;
+	return `[ ${from} - ${to} ]`;
 }
 
 function dateStamp(): string {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { UPC_LOGO_DATA_URI } from 'src/libs/pdf-renderer.service';
-import { REPORT_BASE_STYLES, REPORT_ORGANIZATION_NAME } from './report.theme';
+import { REPORT_BASE_STYLES, REPORT_ORGANIZATION_NAME, REPORT_PROGRAM_LABEL } from './report.theme';
 import type { ReportDocument, ReportMetadataItem, ReportOrientation } from './report.types';
 import { escapeHtml, fitFontSizePt } from './report.utils';
 
@@ -12,11 +12,11 @@ const LOGO_WIDTH_PT = 60;
 export class ReportHtmlService {
 	build(document: ReportDocument): string {
 		const orientation = document.orientation ?? 'portrait';
-		const metadata = this.buildMetadata(document.metadata ?? []);
+		// The dark banner names the report alone; the program/career reads as one more header
+		// field, so it leads the metadata row instead of trailing the title.
+		const metadata = this.buildMetadata(this.withProgram(document));
 		const secondaryMetadata = this.buildMetadata(document.secondaryMetadata ?? [], 'secondary');
-		const reportTitle = document.programName
-			? `${document.reportName} — ${document.programName}`
-			: document.reportName;
+		const reportTitle = document.reportName;
 		const logo = UPC_LOGO_DATA_URI
 			? `<img class="report-header__logo" src="${UPC_LOGO_DATA_URI}" alt="UPC" />`
 			: '';
@@ -62,6 +62,16 @@ export class ReportHtmlService {
 			</body>
 			</html>
 		`;
+	}
+
+	/** Modules that already list the career among their own `metadata` (the semaphore reports,
+	 *  say) pass an empty `programName`, so nothing is duplicated. */
+	private withProgram(document: ReportDocument): ReportMetadataItem[] {
+		const metadata = document.metadata ?? [];
+		const program = document.programName?.trim();
+		if (!program) return metadata;
+
+		return [{ label: REPORT_PROGRAM_LABEL[document.language], value: program }, ...metadata];
 	}
 
 	private buildMetadata(items: ReportMetadataItem[], variant?: 'secondary'): string {

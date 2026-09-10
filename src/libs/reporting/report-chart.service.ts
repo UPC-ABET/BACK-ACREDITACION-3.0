@@ -63,6 +63,7 @@ export class ReportChartService {
 							barsWidth,
 							axisMaximum,
 							plotHeight,
+							chart.valueDecimals,
 						)
 					: chart.series
 							.map((series, seriesIndex) => {
@@ -72,7 +73,7 @@ export class ReportChartService {
 								const y = MARGIN.top + plotHeight - height;
 								return `
 									<rect x="${x}" y="${y}" width="${barWidth}" height="${height}" fill="${escapeHtml(series.color)}" rx="1" />
-									<text x="${x + barWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>
+									<text x="${x + barWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value, chart.valueDecimals)}</text>
 								`;
 							})
 							.join('');
@@ -174,6 +175,7 @@ function renderSingleBar(
 	barsWidth: number,
 	axisMaximum: number,
 	plotHeight: number,
+	valueDecimals?: number,
 ): string {
 	const active = series.find((s) => safeValue(s.values[categoryIndex]) > 0) ?? series[0];
 	const value = safeValue(active?.values[categoryIndex]);
@@ -182,7 +184,7 @@ function renderSingleBar(
 	const y = MARGIN.top + plotHeight - height;
 	return `
 		<rect x="${x}" y="${y}" width="${barsWidth}" height="${height}" fill="${escapeHtml(active?.color ?? '#999')}" rx="1" />
-		<text x="${x + barsWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value)}</text>
+		<text x="${x + barsWidth / 2}" y="${Math.max(MARGIN.top + 10, y - 5)}" class="report-chart__value" text-anchor="middle">${formatNumber(value, valueDecimals)}</text>
 	`;
 }
 
@@ -190,7 +192,8 @@ function safeValue(value: number | undefined): number {
 	return Number.isFinite(value) && value !== undefined ? Math.max(0, value) : 0;
 }
 
-function formatNumber(value: number): string {
+function formatNumber(value: number, decimals?: number): string {
+	if (decimals !== undefined) return value.toFixed(decimals);
 	return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 

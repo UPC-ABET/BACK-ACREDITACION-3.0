@@ -17,6 +17,8 @@ import {
 	DashboardGraDto,
 	ReplicateGraConfigDto,
 	ListGraSurveyOutcomesDto,
+	ListGraReportOutcomesDto,
+	GraImportanceReportDto,
 	SearchGraStudentsDto,
 } from '../../model/gra.dtos';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
@@ -110,4 +112,8 @@ export const SwaggerGraExport = () =>
 	HttpMethodWithSwagger({ ...cfg.dashboard.export, produces: XLSX_CONTENT_TYPE });
 export const SwaggerGraReportPerception = () =>
 	HttpMethodWithSwagger({ ...cfg.report.perception, body: PerceptionReportDto });
+export const SwaggerGraReportOutcomesList = () =>
+	HttpMethodWithSwagger({ ...cfg.report.outcomesList, body: ListGraReportOutcomesDto });
+export const SwaggerGraReportImportance = () =>
+	HttpMethodWithSwagger({ ...cfg.report.importance, body: GraImportanceReportDto });
 export const SwaggerGraConversionRebuild = () => HttpMethodWithSwagger(cfg.conversion.rebuild);

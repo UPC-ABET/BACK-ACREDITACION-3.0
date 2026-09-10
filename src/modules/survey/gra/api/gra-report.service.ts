@@ -4,14 +4,12 @@ import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.t
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
 import type { I18nText } from 'src/shared/types/i18n';
 import { GraNotificationService } from './gra-notification.service';
+import { SURVEY_TABLE_STYLES, countWithShare } from 'src/modules/survey/shared/survey-report.theme';
 
 const GRA_REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
 	section h3 { color: #e30613; font-size: 12pt; margin: 0 0 10px; }
-	thead th { background: #e30613; color: #fff; text-align: left; }
-	tbody tr:nth-child(even) td { background: #fafafa; }
-	td.num, th.num { text-align: right; }
-	tfoot td { font-weight: bold; background: #f1f1f1; }
+	${SURVEY_TABLE_STYLES}
 `;
 
 const LABELS = {
@@ -82,10 +80,10 @@ export class GraReportService {
 					<tbody>${sorted
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${countWithShare(r.completed, r.total)}</td><td class="num">${countWithShare(r.pending, r.total)}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
-					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${this.formatCountWithPercent(totals.completed, totals.total)}</td><td class="num">${this.formatCountWithPercent(totals.pending, totals.total)}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
+					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${countWithShare(totals.completed, totals.total)}</td><td class="num">${countWithShare(totals.pending, totals.total)}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
 				</table>
 			</section>`
 			: `<section><p>${escapeHtml(L.empty)}</p></section>`;
@@ -106,12 +104,6 @@ export class GraReportService {
 
 	private rate(completed: number, total: number): number {
 		return total > 0 ? Math.round((completed / total) * 100) : 0;
-	}
-
-	/** "count (12.50%)" — the share of this count out of the row's total. */
-	private formatCountWithPercent(count: number, total: number): string {
-		const percent = total > 0 ? (count / total) * 100 : 0;
-		return `${count} (${percent.toFixed(2)}%)`;
 	}
 }
 

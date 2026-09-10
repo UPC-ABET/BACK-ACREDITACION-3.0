@@ -62,6 +62,10 @@ const scoreRow = (
 	...overrides,
 });
 
+/** A count cell as the shared survey table renders it: the count, its share on its own line. */
+const countCell = (count: number, percent: string) =>
+	`${count}<span class="count-share">(${percent}%)</span>`;
+
 const documentOf = (callIndex: number) =>
 	generator.generateDocument.mock.calls[callIndex][0] as { bodyHtml: string; metadata: unknown[] };
 
@@ -111,6 +115,33 @@ describe('PerceptionReportService', () => {
 		repo.getScoreRows.mockResolvedValue([]);
 		await expect(service.generate(baseRequest)).resolves.toEqual({ reports: [], zip: null });
 		expect(generator.generateDocument).not.toHaveBeenCalled();
+	});
+
+	it('closes the results table with a weighted TOTALES row', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		// Outcome 1: 8 responses at 5 (Sobresaliente). Outcome 2: 2 at 1 (Necesita mejora).
+		// Totals: 2 + 0 + 8 of 10 responses, mean (2x1 + 8x5)/10 = 4.20 -- the weighted mean,
+		// not the average of 5.00 and 1.00.
+		repo.getScoreRows.mockResolvedValue([
+			scoreRow(1, 'Lima', '5', 8),
+			scoreRow(1, 'Lima', '1', 2, { outcomeId: 2, outcomeCode: 'EAC-BIO-2' }),
+		]);
+
+		await service.generate({ ...baseRequest, campusId: 1 });
+
+		const totalsRow = /<tr class="totals-row">([\s\S]*?)<\/tr>/.exec(documentOf(0).bodyHtml);
+		expect(totalsRow).not.toBeNull();
+		const cells = [...(totalsRow as RegExpExecArray)[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(
+			(cell) => cell[1].trim(),
+		);
+		expect(cells).toEqual([
+			'TOTALES',
+			countCell(2, '20.00'),
+			countCell(0, '0.00'),
+			countCell(8, '80.00'),
+			'4.20',
+			'10',
+		]);
 	});
 
 	it('rejects when no acceptance levels are configured for the survey type/period', async () => {
@@ -213,8 +244,10 @@ describe('PerceptionReportService', () => {
 
 		await service.generate({ ...baseRequest, campusId: 1, lang: 'en' });
 
+		// The legend entry carries the band's score range alongside its name, in the same
+		// interval notation the acceptance table uses.
 		const series = chart.buildGroupedBarChart.mock.calls[0][0].series;
-		expect(series[0].label).toBe('Expected');
+		expect(series[0].label).toBe('Expected ([ 0 - 5 >)');
 	});
 
 	it('includes configured outcomes with zero responses instead of omitting them', async () => {

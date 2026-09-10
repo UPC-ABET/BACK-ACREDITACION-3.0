@@ -143,6 +143,18 @@ export const graRoutes = {
 			route: 'report/perception',
 			summary: 'Generate the GRA perception-by-outcome PDF report (all sedes + one per sede)',
 		},
+		outcomesList: {
+			method: 'POST',
+			route: 'report/outcomes',
+			summary: 'List outcomes for a program/commission (for the "Importancia por Outcome" filter)',
+		},
+		importance: {
+			method: 'POST',
+			route: 'report/importance',
+			summary:
+				'Generate the GRA "Importancia por Outcome" PDF: mean score per outcome, each bar ' +
+				'coloured by its acceptance band (all sedes + one per sede)',
+		},
 	},
 	conversion: {
 		rebuild: {
