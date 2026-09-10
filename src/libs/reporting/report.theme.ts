@@ -49,9 +49,7 @@ export const REPORT_BASE_STYLES = `
 		width: 58px;
 		max-height: 58px;
 		object-fit: contain;
-		/* The asset is the red flame; the banner it sits on is the same red, so flatten it to
-		   white. brightness(0) crushes every colour to black, invert(1) lifts it to white --
-		   transparency, and therefore the flame's silhouette, is untouched. */
+		opacity: 1;
 		filter: brightness(0) invert(1);
 	}
 	.report-header__secondary {

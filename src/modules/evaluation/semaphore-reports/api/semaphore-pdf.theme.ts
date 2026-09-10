@@ -32,6 +32,8 @@ export const SEMAPHORE_PDF_LABELS = {
 		axisStudentCount: 'N° de Alumnos',
 		axisOutcomes: 'Outcomes',
 		axisCourses: 'Cursos',
+		chartTitleRC: 'Resultados por Curso',
+		chartTitleRV: 'Resultados por Outcome',
 	},
 	en: {
 		reportTitleRC: 'Control Report by Outcome',
@@ -66,6 +68,8 @@ export const SEMAPHORE_PDF_LABELS = {
 		axisStudentCount: 'Number of Students',
 		axisOutcomes: 'Outcomes',
 		axisCourses: 'Courses',
+		chartTitleRC: 'Results by Course',
+		chartTitleRV: 'Results by Outcome',
 	},
 } as const;
 
@@ -84,11 +88,10 @@ export const SEMAPHORE_REPORT_STYLES = `
 	/* Narrower than the header's default columns so every metadata item (campus, period,
 	   modality, career, accreditor, commission, acceptance level) fits on one row. */
 	.report-metadata { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; padding: 12px 16px; }
-	.report-metadata__label { font-size: 7pt; }
-	.report-metadata__value { font-size: 7.5pt; }
-	thead th { background: #e30613; color: #fff; text-align: left; font-size: 9pt; }
-	tbody tr:nth-child(even) td { background: #fafafa; }
-	tbody tr.totals-row td { background: #e5e7eb; font-weight: bold; }
+	thead th { background: #3a3a3c; color: #fff; text-align: center; vertical-align: middle; }
+	table { font-size: 8.5pt; }
+	th, td { padding: 4px 6px; }
+	tbody tr.totals-row td { background: #f1f1f1; font-weight: bold; }
 	.legend-line { margin: 8px 0 16px; font-size: 9pt; }
 	.legend-item { display: inline-flex; align-items: center; margin-right: 18px; }
 	.semaphore-dot {
@@ -99,33 +102,35 @@ export const SEMAPHORE_REPORT_STYLES = `
 		vertical-align: middle;
 	}
 
-	/* Horizontal 0-20 score scale: one segment per performance level, widths proportional to
-	   each level's span so the bar reads as the grading scale itself, not three equal thirds. */
 	.indicator-scale {
 		display: flex;
-		width: 100%;
-		border-radius: 4px;
-		overflow: hidden;
-	}
-	.indicator-scale__segment {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
+		flex-wrap: wrap;
 		justify-content: center;
-		gap: 2px;
-		padding: 8px 6px;
-		text-align: center;
-		min-width: 0;
+		width: 100%;
+		gap: 8px 24px;
 	}
-	.indicator-scale__name { font-size: 9pt; font-weight: 700; }
-	.indicator-scale__range { font-size: 8.5pt; }
+	.indicator-scale__item {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.indicator-scale__swatch {
+		display: inline-block;
+		width: 12px;
+		height: 12px;
+		flex-shrink: 0;
+	}
+	.indicator-scale__name { font-size: 7.5pt; font-weight: 400; color: #18181b; }
+	.indicator-scale__range { font-size: 7.5pt; font-weight: 400; color: #18181b; }
 
+	td, th { text-align: left; }
+	.cell-percentage { font-size: inherit; color: #52525b; white-space: nowrap; }
 	.consolidated td:nth-child(3),
 	.consolidated td:nth-child(4),
 	.consolidated td:nth-child(5),
 	.consolidated td:last-child { text-align: center; white-space: nowrap; }
-	/* Selector kept at the same specificity as the zebra-striping rule above and declared after
-	   it, so a totals row landing on an even stripe still reads as a totals row. */
-	tbody tr.consolidated__totals td { font-weight: 700; background: #f4f4f5; text-align: center; }
-	tbody tr.consolidated__totals td:first-child { text-align: right; }
+	.rv-pivot td:first-child,
+	.rv-pivot td:nth-child(n+3) { text-align: center; white-space: nowrap; }
+	.rv-pivot tr.totals-row td:not(:first-child) { text-align: center; white-space: nowrap; }
+	tbody tr.consolidated__totals td { font-weight: 700; background: #f1f1f1; text-align: center; }
 `;
