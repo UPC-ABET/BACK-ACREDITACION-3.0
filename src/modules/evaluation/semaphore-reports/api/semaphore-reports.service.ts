@@ -971,12 +971,10 @@ export class SemaphoreReportsService {
 		lang: ReportLanguage,
 		keepLevelIndex?: number,
 	): string {
-		const L = SEMAPHORE_PDF_LABELS[lang];
 		return `
 			${this.buildChartSection(data, lang, 'rc', keepLevelIndex)}
 			<section>
-				<h3>${escapeHtml(L.indicatorScale)}</h3>
-				${this.buildIndicatorScale(data.legend, true)}
+				${this.buildIndicatorScale(data.legend)}
 			</section>
 			${this.buildConsolidatedSection(data, lang, keepLevelIndex)}
 		`;
@@ -994,7 +992,8 @@ export class SemaphoreReportsService {
 		const levelHeaders = data.outcomePivot[0]?.levels ?? [];
 		const summaryHeaderCells = levelHeaders
 			.map(
-				(lv) => `<th style="background-color:${escapeHtml(lv.color)}">${escapeHtml(lv.name)}</th>`,
+				(lv) =>
+					`<th style="background-color:${escapeHtml(lv.color)};color:${this.contrastText(lv.color)}">${escapeHtml(lv.name)}</th>`,
 			)
 			.join('');
 
@@ -1004,7 +1003,7 @@ export class SemaphoreReportsService {
 				<tr>
 					<td>${escapeHtml(r.outcomeName)}</td>
 					<td>${escapeHtml(r.outcomeDescription)}</td>
-					${r.levels.map((lv) => `<td>(${lv.count}) ${lv.percentage}%</td>`).join('')}
+					${r.levels.map((lv) => `<td>${lv.count}<br /><span class="cell-percentage">(${lv.percentage}%)</span></td>`).join('')}
 					<td>${r.totalStudents}</td>
 				</tr>`,
 			)
@@ -1027,11 +1026,10 @@ export class SemaphoreReportsService {
 		return `
 			${this.buildChartSection(data, lang, 'rv')}
 			<section>
-				<h3>${escapeHtml(L.indicatorScale)}</h3>
-				${this.buildIndicatorScale(data.legend, true)}
+				${this.buildIndicatorScale(data.legend)}
 			</section>
 			<section>
-				<table>
+				<table class="rv-pivot">
 					<thead><tr>
 						<th>${escapeHtml(L.colOutcome)}</th><th>${escapeHtml(L.colDescription)}</th>${summaryHeaderCells}<th>${escapeHtml(L.colTotalStudents)}</th>
 					</tr></thead>
@@ -1070,27 +1068,23 @@ export class SemaphoreReportsService {
 	}
 
 	/**
-	 * The score scale as a single horizontal bar. By default each segment's `flex-grow` is that
-	 * level's span, so the bar reads as the real 0-20 scale rather than N equal slices; a level
-	 * configured with a non-positive span still gets a visible slice instead of collapsing to
-	 * nothing. RV renders it with `equalWidths` instead -- there it's read as a plain legend next
-	 * to the outcome table, not as a scale, so every segment gets the same width.
+	 * The indicator legend: one small colour swatch per level with its name and, in parentheses,
+	 * its score range next to it -- not a painted bar, so the colour reads as a marker rather than
+	 * taking over the whole row.
 	 */
-	private buildIndicatorScale(legend: SemaphoreLevelLegendDto[], equalWidths = false): string {
+	private buildIndicatorScale(legend: SemaphoreLevelLegendDto[]): string {
 		if (legend.length === 0) return '';
-		const segments = legend
-			.map((level, index) => {
-				const span = equalWidths
-					? 1
-					: Math.max(this.levelUpperBound(legend, index) - Number(level.minScore), 1);
-				return `
-				<div class="indicator-scale__segment" style="flex-grow:${span};background-color:${escapeHtml(level.color)};color:${this.contrastText(level.color)}">
+		const items = legend
+			.map(
+				(level, index) => `
+				<div class="indicator-scale__item">
+					<span class="indicator-scale__swatch" style="background-color:${escapeHtml(level.color)}"></span>
 					<span class="indicator-scale__name">${escapeHtml(level.name)}</span>
-					<span class="indicator-scale__range">${escapeHtml(this.formatLevelRange(legend, index))}</span>
-				</div>`;
-			})
+					<span class="indicator-scale__range">(${escapeHtml(this.formatLevelRange(legend, index))})</span>
+				</div>`,
+			)
 			.join('');
-		return `<div class="indicator-scale">${segments}</div>`;
+		return `<div class="indicator-scale">${items}</div>`;
 	}
 
 	/**
@@ -1122,7 +1116,8 @@ export class SemaphoreReportsService {
 			})
 			.join('');
 
-		const cell = (count: number, percentage: number) => `<td>(${count}) ${percentage}%</td>`;
+		const cell = (count: number, percentage: number) =>
+			`<td>${count}<br /><span class="cell-percentage">(${percentage}%)</span></td>`;
 		const body = data.consolidated
 			.map(
 				(group) => `

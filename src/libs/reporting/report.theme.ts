@@ -40,6 +40,8 @@ export const REPORT_BASE_STYLES = `
 		width: 58px;
 		max-height: 58px;
 		object-fit: contain;
+		opacity: 1;
+		filter: brightness(0) invert(1);
 	}
 	.report-header__secondary {
 		padding: 10px 28px;
