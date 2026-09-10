@@ -215,7 +215,6 @@ export class LcfcReportService {
 		return total > 0 ? Math.round((completed / total) * 100) : 0;
 	}
 
-	/** "count (12.50%)" — the share of this count out of the row's total. */
 	/**
 	 * The closing TOTAL row of a completion table: completed/pending summed and re-percentaged
 	 * against the grand total, and the rate recomputed from those sums — never averaged from the
@@ -248,6 +247,7 @@ export class LcfcReportService {
 		</tr>`;
 	}
 
+	/** "count (12.50%)" — the share of this count out of the row's total. */
 	private formatCountWithPercent(count: number, total: number): string {
 		const percent = total > 0 ? (count / total) * 100 : 0;
 		return `${count} (${percent.toFixed(2)}%)`;
