@@ -7,6 +7,7 @@ import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting
 import { BadRequestError } from 'src/commons/domain-error';
 import type { I18nText } from 'src/shared/types/i18n';
 import { perceptionReportValidationStrings } from './config/strings/perception-report.validation';
+import { SURVEY_TABLE_STYLES } from './survey-report.theme';
 import {
 	PerceptionReportRepository,
 	type ConfiguredOutcomeRow,
@@ -63,9 +64,7 @@ const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
 
 const REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
-	thead th { background: #3a3a3c; color: #fff; text-align: center; }
-	td.num, th.num { text-align: center; }
-	.totals-row td { background: #f4f4f5; font-weight: 700; }
+	${SURVEY_TABLE_STYLES}
 `;
 
 const LABELS = {

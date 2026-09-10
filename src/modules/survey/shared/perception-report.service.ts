@@ -8,6 +8,7 @@ import type {
 	ReportMetadataItem,
 } from 'src/libs/reporting/report.types';
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
+import { SURVEY_TABLE_STYLES, countWithShare } from './survey-report.theme';
 import type { I18nText } from 'src/shared/types/i18n';
 import { BadRequestError } from 'src/commons/domain-error';
 import { perceptionReportValidationStrings } from './config/strings/perception-report.validation';
@@ -108,13 +109,9 @@ const BAND_COLORS = ['#e30613', '#f4c20d', '#16a34a', '#2563eb', '#7c3aed'];
 
 const REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
-	section h3 { color: #18181b; font-size: 12pt; margin: 0 0 10px; }
-	thead th { background: #3a3a3c; color: #fff; text-align: center; }
-	td.num, th.num { text-align: center; }
-	.band-cell { color: #fff; font-weight: 700; }
-	.totals-row td { background: #f4f4f5; font-weight: 700; }
-	.course-outcome-table { font-size: 8.5pt; }
-	.course-outcome-table th, .course-outcome-table td { padding: 4px 6px; }
+	${SURVEY_TABLE_STYLES}
+	.course-outcome-table th, .course-outcome-table td { padding: 5px 6px; }
+	.course-outcome-table td { font-size: 8.5pt; }
 `;
 
 const LABELS = {
@@ -124,9 +121,6 @@ const LABELS = {
 		modality: 'Modalidad de Estudio',
 		count: 'Cantidad',
 		chartTitle: 'Percepción por Outcome',
-		acceptanceTitle: 'Niveles de aceptación',
-		acceptanceLevel: 'Nivel de Aceptación',
-		values: 'Valores',
 		totals: 'TOTALES',
 		period: 'Periodo',
 		campus: 'Sede',
@@ -148,9 +142,6 @@ const LABELS = {
 		modality: 'Study modality',
 		count: 'Count',
 		chartTitle: 'Perception by outcome',
-		acceptanceTitle: 'Acceptance levels',
-		acceptanceLevel: 'Acceptance level',
-		values: 'Values',
 		totals: 'TOTALS',
 		period: 'Period',
 		campus: 'Campus',
@@ -472,7 +463,6 @@ export class PerceptionReportService {
 		const bodyHtml = `
 			${this.buildChart(courses, bands, L, L.chartTitle, L.course)}
 			${this.buildCourseOutcomeTable(courses, bands, totalLabel, L)}
-			${this.buildAcceptanceTable(bands, L)}
 		`;
 
 		const document: ReportDocument = {
@@ -785,7 +775,6 @@ export class PerceptionReportService {
 			? `
 				${chart}
 				${this.buildResultsTable(outcomes, bands, totalLabel, L)}
-				${this.buildAcceptanceTable(bands, L)}
 			`
 			: `<section><p class="report-empty">${escapeHtml(L.empty)}</p></section>`;
 
@@ -978,7 +967,7 @@ export class PerceptionReportService {
 				(outcome) =>
 					`<tr>
 						<td class="num">${escapeHtml(outcome.label)}</td>
-						${outcome.counts.map((count) => `<td class="num">${formatCountWithPercent(count, outcome.total)}</td>`).join('')}
+						${outcome.counts.map((count) => `<td class="num">${countWithShare(count, outcome.total)}</td>`).join('')}
 						<td class="num">${escapeHtml(formatAverage(outcome))}</td>
 						<td class="num">${outcome.total}</td>
 					</tr>`,
@@ -989,7 +978,7 @@ export class PerceptionReportService {
 		const totalsRow = `
 			<tr class="totals-row">
 				<td class="num">${escapeHtml(labels.totals)}</td>
-				${totals.counts.map((count) => `<td class="num">${formatCountWithPercent(count, totals.total)}</td>`).join('')}
+				${totals.counts.map((count) => `<td class="num">${countWithShare(count, totals.total)}</td>`).join('')}
 				<td class="num">${escapeHtml(formatAverage(totals))}</td>
 				<td class="num">${totals.total}</td>
 			</tr>`;
@@ -1030,7 +1019,7 @@ export class PerceptionReportService {
 					`<tr>
 						<td>${escapeHtml(course.label)}</td>
 						<td>${escapeHtml(course.name)}</td>
-						${course.counts.map((count) => `<td class="num">${formatCountWithPercent(count, course.total)}</td>`).join('')}
+						${course.counts.map((count) => `<td class="num">${countWithShare(count, course.total)}</td>`).join('')}
 						<td class="num">${escapeHtml(formatAverage(course))}</td>
 						<td class="num">${course.total}</td>
 					</tr>`,
@@ -1041,7 +1030,7 @@ export class PerceptionReportService {
 		const totalsRow = `
 			<tr class="totals-row">
 				<td colspan="2">${escapeHtml(labels.totals)}</td>
-				${totals.counts.map((count) => `<td class="num">${formatCountWithPercent(count, totals.total)}</td>`).join('')}
+				${totals.counts.map((count) => `<td class="num">${countWithShare(count, totals.total)}</td>`).join('')}
 				<td class="num">${escapeHtml(formatAverage(totals))}</td>
 				<td class="num">${totals.total}</td>
 			</tr>`;
@@ -1049,29 +1038,6 @@ export class PerceptionReportService {
 		return `
 			<section>
 				<table class="course-outcome-table"><thead>${head}</thead><tbody>${body}${totalsRow}</tbody></table>
-			</section>`;
-	}
-
-	private buildAcceptanceTable(
-		bands: AcceptanceBand[],
-		labels: (typeof LABELS)[ReportLanguage],
-	): string {
-		const rows = bands
-			.map((band, index) => {
-				const range = bandRange(band, index, bands.length);
-				return `<tr><td><span class="band-cell" style="display:inline-block;padding:1px 8px;border-radius:3px;background:${escapeHtml(
-					band.color,
-				)}">${escapeHtml(band.name)}</span></td><td>${escapeHtml(range)}</td></tr>`;
-			})
-			.join('');
-
-		return `
-			<section>
-				<h3>${escapeHtml(labels.acceptanceTitle)}</h3>
-				<table>
-					<thead><tr><th>${escapeHtml(labels.acceptanceLevel)}</th><th>${escapeHtml(labels.values)}</th></tr></thead>
-					<tbody>${rows}</tbody>
-				</table>
 			</section>`;
 	}
 
@@ -1139,12 +1105,6 @@ function sumAggregates(rows: OutcomeAggregate[], bandCount: number): OutcomeAggr
 		total: rows.reduce((sum, row) => sum + row.total, 0),
 		scoreSum: rows.reduce((sum, row) => sum + row.scoreSum, 0),
 	};
-}
-
-/** "count (12.50%)" — the share of this band's count out of the row's total. */
-function formatCountWithPercent(count: number, total: number): string {
-	const percent = total > 0 ? (count / total) * 100 : 0;
-	return `${count} (${percent.toFixed(2)}%)`;
 }
 
 function formatScore(value: number): string {

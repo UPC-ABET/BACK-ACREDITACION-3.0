@@ -4,6 +4,7 @@ import type { ReportDocument, ReportLanguage } from 'src/libs/reporting/report.t
 import { escapeHtml, localize, sanitizeReportFilename } from 'src/libs/reporting/report.utils';
 import type { I18nText } from 'src/shared/types/i18n';
 import { LcfcNotificationService } from './lcfc-notification.service';
+import { SURVEY_TABLE_STYLES, countWithShare } from 'src/modules/survey/shared/survey-report.theme';
 
 const LCFC_REPORT_STYLES = `
 	section { break-inside: avoid; margin-top: 18px; }
@@ -12,11 +13,8 @@ const LCFC_REPORT_STYLES = `
 	.summary-grid .item { min-width: 110px; }
 	.summary-grid .label { font-size: 9pt; color: #666; display: block; }
 	.summary-grid .value { font-size: 14pt; font-weight: bold; }
-	thead th { background: #e30613; color: #fff; text-align: left; }
-	tbody tr:nth-child(even) td { background: #fafafa; }
-	td.num, th.num { text-align: right; }
+	${SURVEY_TABLE_STYLES}
 	.report-chart + table { margin-top: 8px; }
-	tfoot td { font-weight: bold; background: #f1f1f1; }
 `;
 
 interface CountRow {
@@ -160,10 +158,10 @@ export class LcfcReportService {
 					<tbody>${sorted
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${r.total}</td><td class="num">${countWithShare(r.completed, r.total)}</td><td class="num">${countWithShare(r.pending, r.total)}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
-					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${this.formatCountWithPercent(totals.completed, totals.total)}</td><td class="num">${this.formatCountWithPercent(totals.pending, totals.total)}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
+					<tfoot><tr><td>${escapeHtml(L.totalRow)}</td><td class="num">${totals.total}</td><td class="num">${countWithShare(totals.completed, totals.total)}</td><td class="num">${countWithShare(totals.pending, totals.total)}</td><td class="num">${this.rate(totals.completed, totals.total)}%</td></tr></tfoot>
 				</table>
 			</section>`
 			: `<section><p>${escapeHtml(L.empty)}</p></section>`;
@@ -240,17 +238,11 @@ export class LcfcReportService {
 		return `<tr>
 			<td colspan="${labelColumns}">${escapeHtml(label)}</td>
 			${enrolled === undefined ? '' : `<td class="num">${enrolled}</td>`}
-			<td class="num">${this.formatCountWithPercent(totals.completed, totals.total)}</td>
-			<td class="num">${this.formatCountWithPercent(totals.pending, totals.total)}</td>
+			<td class="num">${countWithShare(totals.completed, totals.total)}</td>
+			<td class="num">${countWithShare(totals.pending, totals.total)}</td>
 			<td class="num">${totals.total}</td>
 			<td class="num">${this.rate(totals.completed, totals.total)}%</td>
 		</tr>`;
-	}
-
-	/** "count (12.50%)" — the share of this count out of the row's total. */
-	private formatCountWithPercent(count: number, total: number): string {
-		const percent = total > 0 ? (count / total) * 100 : 0;
-		return `${count} (${percent.toFixed(2)}%)`;
 	}
 
 	private buildFilename(
@@ -323,7 +315,7 @@ export class LcfcReportService {
 					<tbody>${byProgram
 						.map(
 							(r) =>
-								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${countWithShare(r.completed, r.total)}</td><td class="num">${countWithShare(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
 					<tfoot>${this.completionTotalsRow(byProgram, L.totalRow, 1)}</tfoot>
@@ -359,7 +351,7 @@ export class LcfcReportService {
 									groupBy === 'section'
 										? `<td>${escapeHtml(r.professorName ?? '')}</td><td>${escapeHtml(r.sectionCode ?? '')}</td><td>${escapeHtml(localizeName(r.campusName ?? undefined, lang))}</td><td>${escapeHtml(localizeName(r.modalityName ?? undefined, lang))}</td>`
 										: ''
-								}<td class="num">${r.enrolled ?? 0}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
+								}<td class="num">${r.enrolled ?? 0}</td><td class="num">${countWithShare(r.completed, r.total)}</td><td class="num">${countWithShare(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
 					<tfoot>${this.completionTotalsRow(

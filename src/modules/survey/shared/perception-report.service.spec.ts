@@ -62,6 +62,10 @@ const scoreRow = (
 	...overrides,
 });
 
+/** A count cell as the shared survey table renders it: the count, its share on its own line. */
+const countCell = (count: number, percent: string) =>
+	`${count}<span class="count-share">(${percent}%)</span>`;
+
 const documentOf = (callIndex: number) =>
 	generator.generateDocument.mock.calls[callIndex][0] as { bodyHtml: string; metadata: unknown[] };
 
@@ -130,7 +134,14 @@ describe('PerceptionReportService', () => {
 		const cells = [...(totalsRow as RegExpExecArray)[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(
 			(cell) => cell[1].trim(),
 		);
-		expect(cells).toEqual(['TOTALES', '2 (20.00%)', '0 (0.00%)', '8 (80.00%)', '4.20', '10']);
+		expect(cells).toEqual([
+			'TOTALES',
+			countCell(2, '20.00'),
+			countCell(0, '0.00'),
+			countCell(8, '80.00'),
+			'4.20',
+			'10',
+		]);
 	});
 
 	it('rejects when no acceptance levels are configured for the survey type/period', async () => {
