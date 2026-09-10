@@ -545,18 +545,18 @@ describe('SemaphoreReportsService', () => {
 					ReportDocument,
 				];
 
-				expect(rcDocument.bodyHtml).toContain('Interpretación de Indicadores');
+				expect(rcDocument.bodyHtml).toContain('class="indicator-scale"');
 				expect(rcDocument.bodyHtml).toContain('class="consolidated"');
-				expect(rcDocument.bodyHtml).toContain('(5) 25%');
+				expect(rcDocument.bodyHtml).toContain('5<br /><span class="cell-percentage">(25%)</span>');
 				expect(rcDocument.bodyHtml).not.toContain('Listado de Cursos con Nivel');
 
-				// RV: chart (no legend of its own) + the "Interpretación de Indicadores" scale +
-				// the pivoted outcome table -- no separate legend line, no per-course listings.
-				expect(rvDocument.bodyHtml).toContain('Interpretación de Indicadores');
+				// RV: chart (no legend of its own) + the indicator scale + the pivoted outcome table
+				// -- no separate legend line, no per-course listings.
+				expect(rvDocument.bodyHtml).toContain('class="indicator-scale"');
 				expect(rvDocument.bodyHtml).not.toContain('Listado de Cursos con Nivel');
 				expect(rvDocument.bodyHtml).not.toContain('Detalle de Cursos por Outcome');
 				expect(rvDocument.bodyHtml).toContain('Outcome 1 description');
-				expect(rvDocument.bodyHtml).toContain('(5) 25%');
+				expect(rvDocument.bodyHtml).toContain('5<br /><span class="cell-percentage">(25%)</span>');
 				expect(rvDocument.bodyHtml).toContain('TOTALES');
 			});
 
