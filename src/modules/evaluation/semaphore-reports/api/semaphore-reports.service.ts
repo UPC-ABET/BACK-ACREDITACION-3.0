@@ -1057,6 +1057,7 @@ export class SemaphoreReportsService {
 		const series =
 			keepLevelIndex !== undefined ? [data.chart.series[keepLevelIndex]] : data.chart.series;
 		return `<section>${this.reportChart.buildGroupedBarChart({
+			title: instrument === 'rc' ? L.chartTitleRC : L.chartTitleRV,
 			categories: data.chart.categories,
 			series,
 			yAxisLabel: L.axisStudentCount,

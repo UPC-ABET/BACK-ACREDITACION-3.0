@@ -32,6 +32,8 @@ export const SEMAPHORE_PDF_LABELS = {
 		axisStudentCount: 'N° de Alumnos',
 		axisOutcomes: 'Outcomes',
 		axisCourses: 'Cursos',
+		chartTitleRC: 'Resultados por Curso',
+		chartTitleRV: 'Resultados por Outcome',
 	},
 	en: {
 		reportTitleRC: 'Control Report by Outcome',
@@ -66,6 +68,8 @@ export const SEMAPHORE_PDF_LABELS = {
 		axisStudentCount: 'Number of Students',
 		axisOutcomes: 'Outcomes',
 		axisCourses: 'Courses',
+		chartTitleRC: 'Results by Course',
+		chartTitleRV: 'Results by Outcome',
 	},
 } as const;
 
@@ -88,8 +92,13 @@ export const SEMAPHORE_REPORT_STYLES = `
 	.report-metadata { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; padding: 12px 16px; }
 	/* Neutral gray for headers that don't map to a performance level -- level-column headers keep
 	   their own colour as a full background instead (set inline per level). */
-	thead th { background: #3a3a3c; color: #fff; text-align: center; }
-	tbody tr.totals-row td { background: transparent; font-weight: bold; }
+	thead th { background: #3a3a3c; color: #fff; text-align: center; vertical-align: middle; }
+	/* These tables pack many columns onto an A4 page (outcome/course + 3 levels + total), the
+	   same reason the graduandos report's own dense table (.course-outcome-table) drops to
+	   8.5pt/tighter padding instead of the report default 10pt. */
+	table { font-size: 8.5pt; }
+	th, td { padding: 4px 6px; }
+	tbody tr.totals-row td { background: #f1f1f1; font-weight: bold; }
 	.legend-line { margin: 8px 0 16px; font-size: 9pt; }
 	.legend-item { display: inline-flex; align-items: center; margin-right: 18px; }
 	.semaphore-dot {
@@ -121,18 +130,18 @@ export const SEMAPHORE_REPORT_STYLES = `
 		height: 12px;
 		flex-shrink: 0;
 	}
-	.indicator-scale__name { font-size: 9pt; font-weight: 400; color: #18181b; }
-	.indicator-scale__range { font-size: 9pt; font-weight: 400; color: #18181b; }
+	.indicator-scale__name { font-size: 7.5pt; font-weight: 400; color: #18181b; }
+	.indicator-scale__range { font-size: 7.5pt; font-weight: 400; color: #18181b; }
 
 	/* All numeric/count columns centered; text columns (code, description/name) stay left. */
 	td, th { text-align: left; }
-	.cell-percentage { font-size: 8pt; color: #52525b; white-space: nowrap; }
+	.cell-percentage { font-size: inherit; color: #52525b; white-space: nowrap; }
 	.consolidated td:nth-child(3),
 	.consolidated td:nth-child(4),
 	.consolidated td:nth-child(5),
 	.consolidated td:last-child { text-align: center; white-space: nowrap; }
 	.rv-pivot td:first-child,
 	.rv-pivot td:nth-child(n+3) { text-align: center; white-space: nowrap; }
-	tbody tr.consolidated__totals td { font-weight: 700; background: transparent; text-align: center; }
+	tbody tr.consolidated__totals td { font-weight: 700; background: #f1f1f1; text-align: center; }
 	tbody tr.consolidated__totals td:first-child { text-align: left; }
 `;
