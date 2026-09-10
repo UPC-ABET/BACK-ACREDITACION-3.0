@@ -1,6 +1,8 @@
 import {
 	IsArray,
 	IsBoolean,
+	IsIn,
+	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
@@ -445,4 +447,52 @@ export class DashboardGraDto {
 	@IsNumber()
 	@ApiProperty({ example: 1, required: false })
 	campusId?: number;
+}
+
+export class ListGraReportOutcomesDto {
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Program/Carrera ID' })
+	programId: number;
+
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Commission ID' })
+	commissionId: number;
+}
+
+export class GraImportanceReportDto {
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Program/Carrera ID' })
+	programId: number;
+
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({ example: 1, description: 'Commission ID' })
+	commissionId: number;
+
+	@IsOptional()
+	@IsInt()
+	@Type(() => Number)
+	@ApiProperty({
+		example: 1,
+		description: 'Outcome ID. Omit to chart every outcome configured for the commission.',
+		required: false,
+	})
+	outcomeId?: number;
+
+	@IsOptional()
+	@IsString()
+	@ApiProperty({
+		example: 'TODOS',
+		description: 'Study modality label shown in the report header (display only)',
+		required: false,
+	})
+	modalityLabel?: string;
+
+	@IsOptional()
+	@IsIn(['es', 'en'])
+	@ApiProperty({ example: 'es', description: 'Report language: es | en', required: false })
+	lang?: 'es' | 'en';
 }

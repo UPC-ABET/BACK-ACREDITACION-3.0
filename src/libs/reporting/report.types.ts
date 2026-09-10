@@ -26,7 +26,10 @@ export interface ReportFilterDefinition<TValue extends string | number = number>
 
 export interface ReportDocument {
 	language: ReportLanguage;
+	/** Shown alone in the dark banner. */
 	reportName: string;
+	/** Rendered as the first item of the `metadata` row, labelled Carrera/Program. Pass '' when
+	 *  the module lists the career among its own `metadata` items instead. */
 	programName: string;
 	metadata?: ReportMetadataItem[];
 	/** Rendered as its own row below `metadata` — centered as a group, or full-width when it's a

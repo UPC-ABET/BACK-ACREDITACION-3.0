@@ -6,6 +6,7 @@ import { OutcomeConversionsModule } from 'src/modules/accreditation/outcome-conv
 import { SurveyEmailTemplateService } from './survey-email.service';
 import { SurveyEmailTemplateRepository } from './core/survey-email-template.repository';
 import { PerceptionReportService } from './perception-report.service';
+import { OutcomeImportanceReportService } from './outcome-importance-report.service';
 import { PerceptionReportRepository } from './core/perception-report.repository';
 import { SurveyConversionService } from './api/survey-conversion.service';
 import { SurveyConversionRepository } from './core/survey-conversion.repository';
@@ -20,6 +21,7 @@ import { SurveyConversionRepository } from './core/survey-conversion.repository'
 		SurveyEmailTemplateService,
 		SurveyEmailTemplateRepository,
 		PerceptionReportService,
+		OutcomeImportanceReportService,
 		PerceptionReportRepository,
 		SurveyConversionService,
 		SurveyConversionRepository,
@@ -28,6 +30,7 @@ import { SurveyConversionRepository } from './core/survey-conversion.repository'
 		SurveyEmailTemplateService,
 		SurveyEmailTemplateRepository,
 		PerceptionReportService,
+		OutcomeImportanceReportService,
 		SurveyConversionService,
 	],
 })

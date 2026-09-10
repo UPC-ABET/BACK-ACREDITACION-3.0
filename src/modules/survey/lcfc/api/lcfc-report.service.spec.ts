@@ -1,5 +1,9 @@
 import { LcfcReportService } from './lcfc-report.service';
 
+/** A count cell as the shared survey table renders it: the count, its share on its own line. */
+const countCell = (count: number, percent: string) =>
+	`${count}<span class="count-share">(${percent}%)</span>`;
+
 describe('LcfcReportService', () => {
 	function buildService() {
 		const notificationService = {
@@ -70,8 +74,8 @@ describe('LcfcReportService', () => {
 		expect(result.document.bodyHtml).toContain('Presencial');
 		expect(result.document.bodyHtml).toContain('Virtual');
 		// Completed/pending now show their share of that row's total, 2 decimals.
-		expect(result.document.bodyHtml).toContain('10 (83.33%)');
-		expect(result.document.bodyHtml).toContain('2 (16.67%)');
+		expect(result.document.bodyHtml).toContain(countCell(10, '83.33'));
+		expect(result.document.bodyHtml).toContain(countCell(2, '16.67'));
 	});
 
 	it('aggregates by course and omits professor/section/campus/modality when groupBy is "course"', async () => {
@@ -89,8 +93,39 @@ describe('LcfcReportService', () => {
 		expect(result.document.bodyHtml).not.toContain('Presencial');
 		// Enrolled/completed/pending summed across both sections (29+15, 10+5, 2+1 of 12+6 total).
 		expect(result.document.bodyHtml).toContain('<td class="num">44</td>');
-		expect(result.document.bodyHtml).toContain('15 (83.33%)');
-		expect(result.document.bodyHtml).toContain('3 (16.67%)');
+		expect(result.document.bodyHtml).toContain(countCell(15, '83.33'));
+		expect(result.document.bodyHtml).toContain(countCell(3, '16.67'));
+	});
+
+	it('closes both completion tables with a weighted TOTAL row', async () => {
+		const service = buildService();
+
+		const result = (await service.generateResultsPdf(5, 7, 'es')) as unknown as {
+			document: { bodyHtml: string };
+		};
+
+		const footers = [...result.document.bodyHtml.matchAll(/<tfoot>([\s\S]*?)<\/tfoot>/g)].map(
+			(match) => [...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((c) => c[1].trim()),
+		);
+
+		// By program: the single row, restated as a total.
+		expect(footers[0]).toEqual([
+			'TOTAL',
+			countCell(18, '75.00'),
+			countCell(6, '25.00'),
+			'24',
+			'75%',
+		]);
+		// By NRC: 29+15 enrolled, 10+5 completed and 2+1 pending of 12+6, with the percentages
+		// recomputed against that grand total rather than carried over from either row.
+		expect(footers[1]).toEqual([
+			'TOTAL',
+			'44',
+			countCell(15, '83.33'),
+			countCell(3, '16.67'),
+			'18',
+			'83%',
+		]);
 	});
 
 	it('omits the by-course table entirely when hideCourseBreakdown is set', async () => {
