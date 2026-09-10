@@ -112,6 +112,7 @@ const REPORT_STYLES = `
 	thead th { background: #3a3a3c; color: #fff; text-align: center; }
 	td.num, th.num { text-align: center; }
 	.band-cell { color: #fff; font-weight: 700; }
+	.totals-row td { background: #f4f4f5; font-weight: 700; }
 	.course-outcome-table { font-size: 8.5pt; }
 	.course-outcome-table th, .course-outcome-table td { padding: 4px 6px; }
 `;
@@ -126,7 +127,7 @@ const LABELS = {
 		acceptanceTitle: 'Niveles de aceptación',
 		acceptanceLevel: 'Nivel de Aceptación',
 		values: 'Valores',
-		resultsTitle: 'Resultados por Outcome',
+		totals: 'TOTALES',
 		period: 'Periodo',
 		campus: 'Sede',
 		commission: 'Comisión',
@@ -150,7 +151,7 @@ const LABELS = {
 		acceptanceTitle: 'Acceptance levels',
 		acceptanceLevel: 'Acceptance level',
 		values: 'Values',
-		resultsTitle: 'Results by outcome',
+		totals: 'TOTALS',
 		period: 'Period',
 		campus: 'Campus',
 		commission: 'Commission',
@@ -984,10 +985,18 @@ export class PerceptionReportService {
 			)
 			.join('');
 
+		const totals = sumAggregates(outcomes, bands.length);
+		const totalsRow = `
+			<tr class="totals-row">
+				<td class="num">${escapeHtml(labels.totals)}</td>
+				${totals.counts.map((count) => `<td class="num">${formatCountWithPercent(count, totals.total)}</td>`).join('')}
+				<td class="num">${escapeHtml(formatAverage(totals))}</td>
+				<td class="num">${totals.total}</td>
+			</tr>`;
+
 		return `
 			<section>
-				<h3>${escapeHtml(labels.resultsTitle)}</h3>
-				<table><thead>${head}</thead><tbody>${body}</tbody></table>
+				<table><thead>${head}</thead><tbody>${body}${totalsRow}</tbody></table>
 			</section>`;
 	}
 
@@ -1028,10 +1037,18 @@ export class PerceptionReportService {
 			)
 			.join('');
 
+		const totals = sumAggregates(courses, bands.length);
+		const totalsRow = `
+			<tr class="totals-row">
+				<td colspan="2">${escapeHtml(labels.totals)}</td>
+				${totals.counts.map((count) => `<td class="num">${formatCountWithPercent(count, totals.total)}</td>`).join('')}
+				<td class="num">${escapeHtml(formatAverage(totals))}</td>
+				<td class="num">${totals.total}</td>
+			</tr>`;
+
 		return `
 			<section>
-				<h3>${escapeHtml(labels.resultsTitle)}</h3>
-				<table class="course-outcome-table"><thead>${head}</thead><tbody>${body}</tbody></table>
+				<table class="course-outcome-table"><thead>${head}</thead><tbody>${body}${totalsRow}</tbody></table>
 			</section>`;
 	}
 
@@ -1103,6 +1120,25 @@ function outcomeLabel(code: string): string {
 function formatAverage(outcome: OutcomeAggregate): string {
 	if (outcome.total === 0) return '—';
 	return (outcome.scoreSum / outcome.total).toFixed(2);
+}
+
+/**
+ * The table's TOTALES row, shaped as one more aggregate so it renders through the same helpers:
+ * responses per band added up across the rows, and a mean weighted by them — not the mean of the
+ * per-row means, which would let a row with three responses outweigh one with eighty.
+ */
+function sumAggregates(rows: OutcomeAggregate[], bandCount: number): OutcomeAggregate {
+	const counts = Array.from({ length: bandCount }, (_, index) =>
+		rows.reduce((sum, row) => sum + (row.counts[index] ?? 0), 0),
+	);
+	return {
+		code: '',
+		label: '',
+		name: '',
+		counts,
+		total: rows.reduce((sum, row) => sum + row.total, 0),
+		scoreSum: rows.reduce((sum, row) => sum + row.scoreSum, 0),
+	};
 }
 
 /** "count (12.50%)" — the share of this band's count out of the row's total. */

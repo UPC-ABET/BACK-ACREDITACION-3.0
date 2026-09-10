@@ -32,6 +32,8 @@ import {
 	SwaggerGraDashboard,
 	SwaggerGraExport,
 	SwaggerGraReportPerception,
+	SwaggerGraReportOutcomesList,
+	SwaggerGraReportImportance,
 	SwaggerGraConversionRebuild,
 } from './docs/gra.swagger';
 import { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
@@ -52,6 +54,8 @@ import {
 	DashboardGraDto,
 	ReplicateGraConfigDto,
 	ListGraSurveyOutcomesDto,
+	ListGraReportOutcomesDto,
+	GraImportanceReportDto,
 } from '../model/gra.dtos';
 import { RequirePermission } from 'src/modules/auth/protocols/jwt/decorators/require-permission.decorator';
 import { CurrentUser } from 'src/modules/auth/protocols/jwt/decorators/current-user.decorator';
@@ -311,6 +315,28 @@ export class GraController {
 	) {
 		return parseSuccessResponse(
 			await this.graService.generatePerceptionReport(dto, academicPeriodId),
+		);
+	}
+
+	@SwaggerGraReportOutcomesList()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async reportOutcomesList(
+		@Body() dto: ListGraReportOutcomesDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(await this.graService.listReportOutcomes(dto, academicPeriodId));
+	}
+
+	@SwaggerGraReportImportance()
+	@ApiAcademicPeriodHeader()
+	@RequirePermission({ module: PERMISSION_MODULES.SURVEY, action: PERMISSION_ACTIONS.POST })
+	async reportImportance(
+		@Body() dto: GraImportanceReportDto,
+		@AcademicPeriodId() academicPeriodId: number,
+	) {
+		return parseSuccessResponse(
+			await this.graService.generateImportanceReport(dto, academicPeriodId),
 		);
 	}
 

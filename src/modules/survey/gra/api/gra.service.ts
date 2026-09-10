@@ -6,6 +6,7 @@ import {
 	PerceptionReportService,
 	type PerceptionReportResult,
 } from 'src/modules/survey/shared/perception-report.service';
+import { OutcomeImportanceReportService } from 'src/modules/survey/shared/outcome-importance-report.service';
 import type { PerceptionReportDto } from 'src/modules/survey/shared/model/perception-report.dto';
 import { TYPE_CODES } from 'src/modules/core/types/constants/type-codes';
 import {
@@ -25,6 +26,8 @@ import {
 	CompleteGraSurveyDto,
 	DashboardGraDto,
 	SearchGraStudentsDto,
+	ListGraReportOutcomesDto,
+	GraImportanceReportDto,
 } from '../model/gra.dtos';
 
 @Injectable()
@@ -34,6 +37,7 @@ export class GraService {
 		private readonly notifService: GraNotificationService,
 		private readonly reportService: GraReportService,
 		private readonly perceptionReport: PerceptionReportService,
+		private readonly importanceReport: OutcomeImportanceReportService,
 	) {}
 
 	async generatePerceptionReport(
@@ -69,6 +73,30 @@ export class GraService {
 			commissionId: dto.commissionId,
 			campusId: dto.campusId,
 			surveyNumbers: dto.surveyNumbers,
+			modalityLabel: dto.modalityLabel,
+			lang: dto.lang ?? 'es',
+		});
+	}
+
+	listReportOutcomes(dto: ListGraReportOutcomesDto, academicPeriodId: number) {
+		return this.perceptionReport.listOutcomes(dto.programId, dto.commissionId, academicPeriodId);
+	}
+
+	generateImportanceReport(
+		dto: GraImportanceReportDto,
+		academicPeriodId: number,
+	): Promise<PerceptionReportResult> {
+		return this.importanceReport.generate({
+			surveyTypeCode: TYPE_CODES.SURVEY_TYPE.GRA,
+			fileLabel: 'GRA',
+			reportName: {
+				es: 'Informe de Importancia por Outcome',
+				en: 'Outcome Importance Report',
+			},
+			academicPeriodId,
+			programId: dto.programId,
+			commissionId: dto.commissionId,
+			outcomeId: dto.outcomeId,
 			modalityLabel: dto.modalityLabel,
 			lang: dto.lang ?? 'es',
 		});

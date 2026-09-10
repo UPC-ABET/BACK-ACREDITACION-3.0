@@ -216,6 +216,38 @@ export class LcfcReportService {
 	}
 
 	/** "count (12.50%)" — the share of this count out of the row's total. */
+	/**
+	 * The closing TOTAL row of a completion table: completed/pending summed and re-percentaged
+	 * against the grand total, and the rate recomputed from those sums — never averaged from the
+	 * per-row rates, which would give a course with 4 surveys the same weight as one with 200.
+	 * `labelColumns` is how many leading descriptive columns the label spans; `enrolled`, when
+	 * given, fills the extra column the course breakdown carries before the counts.
+	 */
+	private completionTotalsRow(
+		rows: Array<{ completed: number; pending: number; total: number }>,
+		label: string,
+		labelColumns: number,
+		enrolled?: number,
+	): string {
+		const totals = rows.reduce(
+			(acc, row) => ({
+				completed: acc.completed + row.completed,
+				pending: acc.pending + row.pending,
+				total: acc.total + row.total,
+			}),
+			{ completed: 0, pending: 0, total: 0 },
+		);
+
+		return `<tr>
+			<td colspan="${labelColumns}">${escapeHtml(label)}</td>
+			${enrolled === undefined ? '' : `<td class="num">${enrolled}</td>`}
+			<td class="num">${this.formatCountWithPercent(totals.completed, totals.total)}</td>
+			<td class="num">${this.formatCountWithPercent(totals.pending, totals.total)}</td>
+			<td class="num">${totals.total}</td>
+			<td class="num">${this.rate(totals.completed, totals.total)}%</td>
+		</tr>`;
+	}
+
 	private formatCountWithPercent(count: number, total: number): string {
 		const percent = total > 0 ? (count / total) * 100 : 0;
 		return `${count} (${percent.toFixed(2)}%)`;
@@ -294,6 +326,7 @@ export class LcfcReportService {
 								`<tr><td>${escapeHtml(localizeName(r.programName, lang))}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
+					<tfoot>${this.completionTotalsRow(byProgram, L.totalRow, 1)}</tfoot>
 				</table>
 			</section>`
 			: '';
@@ -329,6 +362,13 @@ export class LcfcReportService {
 								}<td class="num">${r.enrolled ?? 0}</td><td class="num">${this.formatCountWithPercent(r.completed, r.total)}</td><td class="num">${this.formatCountWithPercent(r.pending, r.total)}</td><td class="num">${r.total}</td><td class="num">${this.rate(r.completed, r.total)}%</td></tr>`,
 						)
 						.join('')}</tbody>
+					<tfoot>${this.completionTotalsRow(
+						byCourse,
+						L.totalRow,
+						// Curso + Código, plus the four descriptive columns the section breakdown adds.
+						groupBy === 'section' ? 6 : 2,
+						byCourse.reduce((sum, row) => sum + (row.enrolled ?? 0), 0),
+					)}</tfoot>
 				</table>
 			</section>`
 				: `<section><p>${escapeHtml(L.empty)}</p></section>`;

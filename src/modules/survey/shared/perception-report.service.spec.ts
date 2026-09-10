@@ -113,6 +113,26 @@ describe('PerceptionReportService', () => {
 		expect(generator.generateDocument).not.toHaveBeenCalled();
 	});
 
+	it('closes the results table with a weighted TOTALES row', async () => {
+		repo.getSurveyTypeId.mockResolvedValue(10);
+		// Outcome 1: 8 responses at 5 (Sobresaliente). Outcome 2: 2 at 1 (Necesita mejora).
+		// Totals: 2 + 0 + 8 of 10 responses, mean (2x1 + 8x5)/10 = 4.20 -- the weighted mean,
+		// not the average of 5.00 and 1.00.
+		repo.getScoreRows.mockResolvedValue([
+			scoreRow(1, 'Lima', '5', 8),
+			scoreRow(1, 'Lima', '1', 2, { outcomeId: 2, outcomeCode: 'EAC-BIO-2' }),
+		]);
+
+		await service.generate({ ...baseRequest, campusId: 1 });
+
+		const totalsRow = /<tr class="totals-row">([\s\S]*?)<\/tr>/.exec(documentOf(0).bodyHtml);
+		expect(totalsRow).not.toBeNull();
+		const cells = [...(totalsRow as RegExpExecArray)[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(
+			(cell) => cell[1].trim(),
+		);
+		expect(cells).toEqual(['TOTALES', '2 (20.00%)', '0 (0.00%)', '8 (80.00%)', '4.20', '10']);
+	});
+
 	it('rejects when no acceptance levels are configured for the survey type/period', async () => {
 		repo.getSurveyTypeId.mockResolvedValue(10);
 		repo.getScoreRows.mockResolvedValue([scoreRow(1, 'Lima', '4.5', 3)]);

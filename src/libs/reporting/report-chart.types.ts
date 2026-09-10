@@ -21,4 +21,7 @@ export interface ReportBarChart {
 	width?: number;
 	/** Overrides the default plot area height (viewBox units), excluding legend/axis titles. */
 	plotHeight?: number;
+	/** Decimal places for the value printed above each bar. Default: integers bare, else one
+	 *  decimal — set it where the same figure also appears in a table at a fixed precision. */
+	valueDecimals?: number;
 }

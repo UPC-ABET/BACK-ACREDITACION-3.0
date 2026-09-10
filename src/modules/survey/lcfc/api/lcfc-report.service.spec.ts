@@ -93,6 +93,24 @@ describe('LcfcReportService', () => {
 		expect(result.document.bodyHtml).toContain('3 (16.67%)');
 	});
 
+	it('closes both completion tables with a weighted TOTAL row', async () => {
+		const service = buildService();
+
+		const result = (await service.generateResultsPdf(5, 7, 'es')) as unknown as {
+			document: { bodyHtml: string };
+		};
+
+		const footers = [...result.document.bodyHtml.matchAll(/<tfoot>([\s\S]*?)<\/tfoot>/g)].map(
+			(match) => [...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((c) => c[1].trim()),
+		);
+
+		// By program: the single row, restated as a total.
+		expect(footers[0]).toEqual(['TOTAL', '18 (75.00%)', '6 (25.00%)', '24', '75%']);
+		// By NRC: 29+15 enrolled, 10+5 completed and 2+1 pending of 12+6, with the percentages
+		// recomputed against that grand total rather than carried over from either row.
+		expect(footers[1]).toEqual(['TOTAL', '44', '15 (83.33%)', '3 (16.67%)', '18', '83%']);
+	});
+
 	it('omits the by-course table entirely when hideCourseBreakdown is set', async () => {
 		const service = buildService();
 
